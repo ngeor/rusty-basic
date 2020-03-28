@@ -1,5 +1,4 @@
 use crate::common::Result;
-use crate::parser::{QName, TypeQualifier};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Variant {
@@ -11,13 +10,13 @@ pub enum Variant {
 }
 
 impl Variant {
-    pub fn is_true(&self) -> bool {
+    pub fn is_true(&self) -> Result<bool> {
         match self {
-            Variant::VFloat(n) => *n != 0.0,
-            Variant::VDouble(n) => *n != 0.0,
-            Variant::VString(s) => s.len() > 0,
-            Variant::VInteger(n) => *n != 0,
-            Variant::VLong(n) => *n != 0,
+            Variant::VFloat(n) => Ok(*n != 0.0),
+            Variant::VDouble(n) => Ok(*n != 0.0),
+            Variant::VString(s) => Err("Type mismatch".to_string()),
+            Variant::VInteger(n) => Ok(*n != 0),
+            Variant::VLong(n) => Ok(*n != 0),
         }
     }
 

@@ -1,4 +1,4 @@
-use super::{NameWithTypeQualifier, Parser, TypeQualifier};
+use super::{Parser, QName, TypeQualifier};
 use crate::common::Result;
 use crate::lexer::Lexeme;
 use std::convert::TryFrom;
@@ -12,12 +12,12 @@ pub enum Operand {
     Minus,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     StringLiteral(String),
-    VariableName(NameWithTypeQualifier),
+    VariableName(QName),
     IntegerLiteral(i32),
-    FunctionCall(String, Vec<Expression>),
+    FunctionCall(QName, Vec<Expression>),
     BinaryExpression(Operand, Box<Expression>, Box<Expression>),
 }
 
@@ -32,12 +32,12 @@ impl Expression {
         name: S,
         type_qualifier: TypeQualifier,
     ) -> Expression {
-        Expression::VariableName(NameWithTypeQualifier::new(name, type_qualifier))
+        Expression::VariableName(QName::Typed(name.as_ref().to_string(), type_qualifier))
     }
 
     /// Creates a new VariableName expression without a qualified type
     pub fn variable_name_unqualified<S: AsRef<str>>(name: S) -> Expression {
-        Expression::VariableName(NameWithTypeQualifier::new_unqualified(name))
+        Expression::VariableName(QName::Untyped(name.as_ref().to_string()))
     }
 
     /// Creates a new StringLiteral expression
@@ -45,21 +45,8 @@ impl Expression {
         Expression::StringLiteral(literal.as_ref().to_string())
     }
 
-    /// Returns the variable name if this expression is a VariableName,
-    /// errors otherwise.
-    pub fn try_to_variable_name(&self) -> Result<String> {
-        match self {
-            Expression::VariableName(n) => Ok(n.name()),
-            _ => Err(format!("Expected variable name, was {:?}", self)),
-        }
-    }
-
     pub fn binary(operand: Operand, left: Expression, right: Expression) -> Expression {
-        Expression::BinaryExpression(
-            operand,
-            Box::new(left),
-            Box::new(right)
-        )
+        Expression::BinaryExpression(operand, Box::new(left), Box::new(right))
     }
 
     pub fn lte(left: Expression, right: Expression) -> Expression {
@@ -154,9 +141,11 @@ impl<T: BufRead> Parser<T> {
             self.buf_lexer.consume();
             match l {
                 Lexeme::Symbol('"') => break,
-                Lexeme::EOF => return Err("EOF while looking for end of string".to_string()),
+                Lexeme::EOF => return self.buf_lexer.err("EOF while looking for end of string"),
                 Lexeme::EOL(_) => {
-                    return Err("Unexpected new line while looking for end of string".to_string())
+                    return self
+                        .buf_lexer
+                        .err("Unexpected new line while looking for end of string")
                 }
                 _ => l.push_to(&mut buf),
             }
@@ -169,21 +158,23 @@ impl<T: BufRead> Parser<T> {
         self.buf_lexer.consume();
         match i32::try_from(digits) {
             Ok(i) => Ok(Expression::IntegerLiteral(i)),
-            Err(err) => Err(format!("Could not convert digits to i32: {}", err)),
+            Err(err) => self
+                .buf_lexer
+                .err(format!("Could not convert digits to i32: {}", err)),
         }
     }
 
     fn _parse_word(&mut self, word: String) -> Result<Expression> {
         self.buf_lexer.consume();
         // is it maybe a qualified variable name
-        let qualifier = self.parse_type_qualifier()?;
+        let qualifier = self.try_parse_type_qualifier()?;
         // it could be a function call?
         if self.buf_lexer.try_consume_symbol('(')? {
             let args = self.parse_expression_list()?;
             self.buf_lexer.demand_symbol(')')?;
-            Ok(Expression::FunctionCall(word, args))
+            Ok(Expression::FunctionCall(QName::new(word, qualifier), args))
         } else {
-            Ok(Expression::variable_name_qualified(word, qualifier))
+            Ok(Expression::VariableName(QName::new(word, qualifier)))
         }
     }
 
@@ -246,7 +237,21 @@ mod tests {
         let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::FunctionCall("IsValid".to_string(), vec![])
+            Expression::FunctionCall(QName::Untyped("IsValid".to_string()), vec![])
+        );
+    }
+
+    #[test]
+    fn test_function_call_qualified_expression_no_args() {
+        let input = "IsValid%()";
+        let mut parser = Parser::from(input);
+        let expression = parser.demand_expression().unwrap();
+        assert_eq!(
+            expression,
+            Expression::FunctionCall(
+                QName::Typed("IsValid".to_string(), TypeQualifier::PercentInteger),
+                vec![]
+            )
         );
     }
 
@@ -257,7 +262,10 @@ mod tests {
         let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::FunctionCall("IsValid".to_string(), vec![Expression::IntegerLiteral(42)])
+            Expression::FunctionCall(
+                QName::Untyped("IsValid".to_string()),
+                vec![Expression::IntegerLiteral(42)]
+            )
         );
     }
 
@@ -269,7 +277,7 @@ mod tests {
         assert_eq!(
             expression,
             Expression::FunctionCall(
-                "CheckProperty".to_string(),
+                QName::Untyped("CheckProperty".to_string()),
                 vec![
                     Expression::IntegerLiteral(42),
                     Expression::string_literal("age")
@@ -286,13 +294,13 @@ mod tests {
         assert_eq!(
             expression,
             Expression::FunctionCall(
-                "CheckProperty".to_string(),
+                QName::Untyped("CheckProperty".to_string()),
                 vec![
                     Expression::FunctionCall(
-                        "LookupName".to_string(),
+                        QName::Untyped("LookupName".to_string()),
                         vec![Expression::string_literal("age")]
                     ),
-                    Expression::FunctionCall("Confirm".to_string(), vec![])
+                    Expression::FunctionCall(QName::Untyped("Confirm".to_string()), vec![])
                 ]
             )
         );
@@ -368,7 +376,7 @@ mod tests {
             Expression::BinaryExpression(
                 Operand::Plus,
                 Box::new(Expression::FunctionCall(
-                    "Fib".to_string(),
+                    QName::Untyped("Fib".to_string()),
                     vec![Expression::BinaryExpression(
                         Operand::Minus,
                         Box::new(Expression::variable_name_unqualified("N")),
@@ -376,11 +384,10 @@ mod tests {
                     )]
                 )),
                 Box::new(Expression::FunctionCall(
-                    "Fib".to_string(),
-                    vec![Expression::BinaryExpression(
-                        Operand::Minus,
-                        Box::new(Expression::variable_name_unqualified("N")),
-                        Box::new(Expression::IntegerLiteral(2))
+                    QName::Untyped("Fib".to_string()),
+                    vec![Expression::minus(
+                        Expression::variable_name_unqualified("N"),
+                        Expression::IntegerLiteral(2)
                     )]
                 ))
             )

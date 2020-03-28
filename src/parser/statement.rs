@@ -1,14 +1,14 @@
-use super::{Block, Parser, Expression, NameWithTypeQualifier};
+use super::{Block, Parser, Expression, QName};
 use crate::common::Result;
 use std::io::BufRead;
 use super::if_block::IfBlock;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     SubCall(String, Vec<Expression>),
     ForLoop(
         /// The counter of the loop
-        NameWithTypeQualifier,
+        QName,
         /// The lower bound
         Expression,
         /// The upper bound
@@ -18,7 +18,7 @@ pub enum Statement {
     ),
     IfBlock(IfBlock),
     /// Assignment to a variable e.g. ANSWER = 42
-    Assignment(NameWithTypeQualifier, Expression)
+    Assignment(QName, Expression)
 }
 
 impl Statement {

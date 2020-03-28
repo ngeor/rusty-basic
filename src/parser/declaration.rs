@@ -1,4 +1,4 @@
-use super::{NameWithTypeQualifier, Parser, TopLevelToken};
+use super::{QName, Parser, TopLevelToken};
 use crate::common::Result;
 use std::io::BufRead;
 
@@ -21,7 +21,7 @@ impl<T: BufRead> Parser<T> {
             self.buf_lexer.demand_whitespace()?;
             let function_name = self.demand_name_with_type_qualifier()?;
             self.buf_lexer.skip_whitespace()?;
-            let function_arguments: Vec<NameWithTypeQualifier> = self.parse_declaration_parameters()?;
+            let function_arguments: Vec<QName> = self.parse_declaration_parameters()?;
             self.buf_lexer.demand_eol_or_eof()?;
             Ok(TopLevelToken::FunctionDeclaration(
                 function_name,
@@ -32,8 +32,8 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    pub fn parse_declaration_parameters(&mut self) -> Result<Vec<NameWithTypeQualifier>> {
-        let mut function_arguments: Vec<NameWithTypeQualifier> = vec![];
+    pub fn parse_declaration_parameters(&mut self) -> Result<Vec<QName>> {
+        let mut function_arguments: Vec<QName> = vec![];
         if self.buf_lexer.try_consume_symbol('(')? {
             self.buf_lexer.skip_whitespace()?;
             let mut is_first_parameter = true;
@@ -55,17 +55,17 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use crate::parser::test_utils::*;
-    use crate::parser::{NameWithTypeQualifier, TopLevelToken, TypeQualifier};
+    use crate::parser::{QName, TopLevelToken, TypeQualifier};
 
     #[test]
     fn test_fn() {
         let input = "DECLARE FUNCTION Fib! (N!)";
-        let program = parse(input).unwrap();
+        let program = parse(input);
         assert_eq!(
             program,
             vec![TopLevelToken::FunctionDeclaration(
-                NameWithTypeQualifier::new("Fib", TypeQualifier::BangInteger),
-                vec![NameWithTypeQualifier::new("N", TypeQualifier::BangInteger)]
+                QName::Typed("Fib".to_string(), TypeQualifier::BangFloat),
+                vec![QName::Typed("N".to_string(), TypeQualifier::BangFloat)]
             )]
         );
     }

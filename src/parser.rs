@@ -1,6 +1,8 @@
+use crate::buf_lexer::BufLexer;
 use crate::common::Result;
-use crate::lexer::*;
-use std::io::prelude::*;
+use crate::lexer::Lexeme;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Cursor};
 
 mod assignment;
 mod declaration;
@@ -11,20 +13,22 @@ mod if_block;
 mod qname;
 mod statement;
 mod sub_call;
+mod type_qualifier;
 
 pub use self::expression::*;
 pub use self::if_block::*;
 pub use self::qname::*;
 pub use self::statement::*;
+pub use self::type_qualifier::*;
 
 pub type Block = Vec<Statement>;
 
 #[derive(Debug, PartialEq)]
 pub enum TopLevelToken {
     EOF,
-    FunctionDeclaration(NameWithTypeQualifier, Vec<NameWithTypeQualifier>),
+    FunctionDeclaration(QName, Vec<QName>),
     Statement(Statement),
-    FunctionImplementation(NameWithTypeQualifier, Vec<NameWithTypeQualifier>, Block),
+    FunctionImplementation(QName, Vec<QName>, Block),
 }
 
 impl TopLevelToken {
@@ -36,14 +40,12 @@ impl TopLevelToken {
 pub type Program = Vec<TopLevelToken>;
 
 pub struct Parser<T> {
-    buf_lexer: BufLexer<T>,
+    pub buf_lexer: BufLexer<T>,
 }
 
 impl<T: BufRead> Parser<T> {
-    pub fn new(reader: T) -> Parser<T> {
-        Parser {
-            buf_lexer: BufLexer::new(reader),
-        }
+    pub fn new(buf_lexer: BufLexer<T>) -> Parser<T> {
+        Parser { buf_lexer }
     }
 
     pub fn parse(&mut self) -> Result<Program> {
@@ -85,39 +87,37 @@ impl<T: BufRead> Parser<T> {
     }
 }
 
+// bytes || &str -> Parser
+impl<T> From<T> for Parser<BufReader<Cursor<T>>>
+where
+    T: AsRef<[u8]>,
+{
+    fn from(input: T) -> Self {
+        Parser::new(BufLexer::from(input))
+    }
+}
+
+// File -> Parser
+impl From<File> for Parser<BufReader<File>> {
+    fn from(input: File) -> Self {
+        Parser::new(BufLexer::from(input))
+    }
+}
+
 #[cfg(test)]
 mod test_utils {
     use super::*;
-    use std::fs::File;
-    use std::io::{BufReader, Cursor};
 
-    // bytes || &str -> Parser
-    impl<T> From<T> for Parser<std::io::BufReader<std::io::Cursor<T>>>
+    pub fn parse<T>(input: T) -> Program
     where
-        T: std::convert::AsRef<[u8]>,
-    {
-        fn from(input: T) -> Self {
-            Parser::new(BufReader::new(Cursor::new(input)))
-        }
-    }
-
-    // File -> Parser
-    impl From<File> for Parser<std::io::BufReader<File>> {
-        fn from(input: File) -> Self {
-            Parser::new(BufReader::new(input))
-        }
-    }
-
-    pub fn parse<T>(input: T) -> Result<Program>
-    where
-        T: std::convert::AsRef<[u8]>,
+        T: AsRef<[u8]>,
     {
         let mut parser = Parser::from(input);
-        parser.parse()
+        parser.parse().expect("Could not parse program")
     }
 
-    pub fn parse_file(filename: &str) -> Program {
-        let file_path = format!("fixtures/{}", filename);
+    pub fn parse_file<S: AsRef<str>>(filename: S) -> Program {
+        let file_path = format!("fixtures/{}", filename.as_ref());
         let mut parser = Parser::from(File::open(file_path).expect("Could not read bas file"));
         parser.parse().expect("Could not parse program")
     }
@@ -127,19 +127,18 @@ mod test_utils {
 mod tests {
     use super::test_utils::*;
     use super::*;
-    use crate::parser::if_block::*;
 
     #[test]
     fn test_parse_sub_call_no_args() {
         let input = "PRINT";
-        let program = parse(input).unwrap();
+        let program = parse(input);
         assert_eq!(program, vec![TopLevelToken::sub_call("PRINT", vec![])]);
     }
 
     #[test]
     fn test_parse_sub_call_single_arg_string_literal() {
         let input = "PRINT \"Hello, world!\"";
-        let program = parse(input).unwrap();
+        let program = parse(input);
         assert_eq!(
             program,
             vec![TopLevelToken::sub_call(
@@ -211,8 +210,8 @@ mod tests {
             vec![
                 // DECLARE FUNCTION Fib! (N!)
                 TopLevelToken::FunctionDeclaration(
-                    NameWithTypeQualifier::new("Fib", TypeQualifier::BangInteger),
-                    vec![NameWithTypeQualifier::new("N", TypeQualifier::BangInteger)]
+                    QName::Typed("Fib".to_string(), TypeQualifier::BangFloat),
+                    vec![QName::Typed("N".to_string(), TypeQualifier::BangFloat)]
                 ),
                 // PRINT "Enter the number of fibonacci to calculate"
                 TopLevelToken::sub_call(
@@ -225,7 +224,7 @@ mod tests {
                 TopLevelToken::sub_call("INPUT", vec![Expression::variable_name_unqualified("N")]),
                 // FOR I = 0 TO N
                 TopLevelToken::Statement(Statement::ForLoop(
-                    NameWithTypeQualifier::new_unqualified("I"),
+                    QName::Untyped("I".to_string()),
                     Expression::IntegerLiteral(0),
                     Expression::variable_name_unqualified("N"),
                     vec![
@@ -237,7 +236,7 @@ mod tests {
                                 Expression::variable_name_unqualified("I"),
                                 Expression::string_literal(" is "),
                                 Expression::FunctionCall(
-                                    "Fib".to_string(),
+                                    QName::Untyped("Fib".to_string()),
                                     vec![Expression::variable_name_unqualified("I")]
                                 )
                             ]
@@ -246,8 +245,8 @@ mod tests {
                 )),
                 // FUNCTION Fib (N)
                 TopLevelToken::FunctionImplementation(
-                    NameWithTypeQualifier::new_unqualified("Fib"),
-                    vec![NameWithTypeQualifier::new_unqualified("N")],
+                    QName::Untyped("Fib".to_string()),
+                    vec![QName::Untyped("N".to_string())],
                     vec![
                         // IF N <= 1 THEN
                         Statement::IfBlock(IfBlock::new_if_else(
@@ -258,22 +257,22 @@ mod tests {
                             ),
                             // Fib = N
                             vec![Statement::Assignment(
-                                NameWithTypeQualifier::new_unqualified("Fib"),
+                                QName::Untyped("Fib".to_string()),
                                 Expression::variable_name_unqualified("N")
                             )],
                             // ELSE Fib = Fib(N - 1) + Fib(N - 2)
                             vec![Statement::Assignment(
-                                NameWithTypeQualifier::new_unqualified("Fib"),
+                                QName::Untyped("Fib".to_string()),
                                 Expression::plus(
                                     Expression::FunctionCall(
-                                        "Fib".to_string(),
+                                        QName::Untyped("Fib".to_string()),
                                         vec![Expression::minus(
                                             Expression::variable_name_unqualified("N"),
                                             Expression::IntegerLiteral(1)
                                         )]
                                     ),
                                     Expression::FunctionCall(
-                                        "Fib".to_string(),
+                                        QName::Untyped("Fib".to_string()),
                                         vec![Expression::minus(
                                             Expression::variable_name_unqualified("N"),
                                             Expression::IntegerLiteral(2)

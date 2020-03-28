@@ -1,77 +1,87 @@
-use super::Parser;
+use super::{Parser, TypeQualifier};
 use crate::common::Result;
 use crate::lexer::Lexeme;
+use std::convert::TryFrom;
+use std::fmt::Display;
 use std::io::BufRead;
 
-/// The optional character postfix that specifies the type of a name.
-/// Example: A$ denotes a string variable
-#[derive(Debug, Clone, PartialEq)]
-pub enum TypeQualifier {
-    None,
-    BangInteger,
-    DollarSignString,
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum QName {
+    Untyped(String),
+    Typed(String, TypeQualifier),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct NameWithTypeQualifier {
-    pub name: String,
-    pub type_qualifier: TypeQualifier,
+impl Display for QName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QName::Untyped(name) => write!(f, "{}", name),
+            QName::Typed(name, qualifier) => write!(f, "{}{}", name, qualifier),
+        }
+    }
 }
 
-impl NameWithTypeQualifier {
-    pub fn new<S: AsRef<str>>(name: S, type_qualifier: TypeQualifier) -> NameWithTypeQualifier {
-        NameWithTypeQualifier {
-            name: name.as_ref().to_string(),
-            type_qualifier: type_qualifier,
+impl QName {
+    pub fn new(name: String, optional_qualifier: Option<TypeQualifier>) -> QName {
+        match optional_qualifier {
+            Some(qualifier) => QName::Typed(name, qualifier),
+            None => QName::Untyped(name),
         }
     }
 
-    pub fn new_unqualified<S: AsRef<str>>(name: S) -> NameWithTypeQualifier {
-        NameWithTypeQualifier::new(name, TypeQualifier::None)
-    }
-
-    pub fn name(&self) -> String {
-        self.name.to_owned()
-    }
-
-    pub fn type_qualifier(&self) -> TypeQualifier {
-        self.type_qualifier.clone()
+    pub fn name(&self) -> &String {
+        match self {
+            QName::Untyped(name) => name,
+            QName::Typed(name, _) => name
+        }
     }
 }
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_name_with_type_qualifier(&mut self) -> Result<Option<NameWithTypeQualifier>> {
+    pub fn try_parse_name_with_type_qualifier(&mut self) -> Result<Option<QName>> {
         let next = self.buf_lexer.try_consume_any_word()?;
         match next {
-            Some(w) => {
-                let type_qualifier = self.parse_type_qualifier()?;
-                Ok(Some(NameWithTypeQualifier::new(w, type_qualifier)))
-            },
-            None => Ok(None)
+            Some(word) => {
+                let optional_type_qualifier = self.try_parse_type_qualifier()?;
+                Ok(Some(QName::new(word, optional_type_qualifier)))
+            }
+            None => Ok(None),
         }
     }
 
-    pub fn demand_name_with_type_qualifier(&mut self) -> Result<NameWithTypeQualifier> {
+    pub fn demand_name_with_type_qualifier(&mut self) -> Result<QName> {
         let name = self.buf_lexer.demand_any_word()?;
-        let type_qualifier = self.parse_type_qualifier()?;
-        Ok(NameWithTypeQualifier::new(name, type_qualifier))
+        let optional_type_qualifier = self.try_parse_type_qualifier()?;
+        Ok(QName::new(name, optional_type_qualifier))
     }
 
-    pub fn parse_type_qualifier(&mut self) -> Result<TypeQualifier> {
+    pub fn try_parse_type_qualifier(&mut self) -> Result<Option<TypeQualifier>> {
         let next = self.buf_lexer.read()?;
         match next {
-            Lexeme::Symbol(ch) => {
-                if ch == '!' {
+            Lexeme::Symbol(ch) => match TypeQualifier::try_from(ch) {
+                Ok(t) => {
                     self.buf_lexer.consume();
-                    Ok(TypeQualifier::BangInteger)
-                } else if ch == '$' {
-                    self.buf_lexer.consume();
-                    Ok(TypeQualifier::DollarSignString)
-                } else {
-                    Ok(TypeQualifier::None)
+                    Ok(Some(t))
                 }
-            }
-            _ => Ok(TypeQualifier::None),
+                _ => Ok(None),
+            },
+            _ => Ok(None),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format() {
+        assert_eq!("A", format!("{}", QName::Untyped("A".to_string())));
+        assert_eq!(
+            "B$",
+            format!(
+                "{}",
+                QName::Typed("B".to_string(), TypeQualifier::DollarString)
+            )
+        );
     }
 }

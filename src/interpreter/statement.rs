@@ -27,13 +27,13 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
 
     fn _if_block(&mut self, if_block: &IfBlock) -> Result<()> {
         let if_condition_expr = &if_block.if_block.condition;
-        let if_condition_var = self.evaluate_expression_as_variant(if_condition_expr)?;
+        let if_condition_var = self.evaluate_expression(if_condition_expr)?;
         if if_condition_var.is_true() {
             self.statements(&if_block.if_block.block)
         } else {
             for else_if_block in &if_block.else_if_blocks {
                 let if_condition_expr = &else_if_block.condition;
-                let if_condition_var = self.evaluate_expression_as_variant(if_condition_expr)?;
+                let if_condition_var = self.evaluate_expression(if_condition_expr)?;
                 if if_condition_var.is_true() {
                     return self.statements(&else_if_block.block)
                 }
@@ -48,11 +48,10 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
 
     fn _assignment(
         &mut self,
-        left_side: &NameWithTypeQualifier,
+        left_side: &QName,
         right_side: &Expression,
     ) -> Result<()> {
-        let val = self.evaluate_expression_as_variant(right_side)?;
-        let name = left_side.name.to_owned();
-        self.set_variable(name, val)
+        let val = self.evaluate_expression(right_side)?;
+        self.set_variable(left_side, val)
     }
 }

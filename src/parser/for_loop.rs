@@ -45,16 +45,16 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use crate::parser::test_utils::*;
-    use crate::parser::{Expression, NameWithTypeQualifier, Statement, TopLevelToken};
+    use crate::parser::{Expression, QName, Statement, TopLevelToken};
 
     #[test]
     fn test_for_loop() {
         let input = "FOR I = 1 TO 10\r\nPRINT I\r\nNEXT";
-        let result = parse(input).unwrap();
+        let result = parse(input);
         assert_eq!(
             result,
             vec![TopLevelToken::Statement(Statement::ForLoop(
-                NameWithTypeQualifier::new_unqualified("I"),
+                QName::Untyped("I".to_string()),
                 Expression::integer_literal(1),
                 Expression::integer_literal(10),
                 vec![Statement::sub_call(
@@ -71,7 +71,7 @@ mod tests {
         assert_eq!(
             result,
             vec![TopLevelToken::Statement(Statement::ForLoop(
-                NameWithTypeQualifier::new_unqualified("I"),
+                QName::Untyped("I".to_string()),
                 Expression::integer_literal(1),
                 Expression::integer_literal(10),
                 vec![Statement::sub_call(
@@ -96,7 +96,7 @@ mod tests {
                     vec![Expression::string_literal("Before the outer loop")]
                 ),
                 TopLevelToken::Statement(Statement::ForLoop(
-                    NameWithTypeQualifier::new_unqualified("I"),
+                    QName::Untyped("I".to_string()),
                     Expression::integer_literal(1),
                     Expression::integer_literal(10),
                     vec![
@@ -108,7 +108,7 @@ mod tests {
                             ]
                         ),
                         Statement::ForLoop(
-                            NameWithTypeQualifier::new_unqualified("J"),
+                            QName::Untyped("J".to_string()),
                             Expression::integer_literal(1),
                             Expression::integer_literal(10),
                             vec![Statement::sub_call(

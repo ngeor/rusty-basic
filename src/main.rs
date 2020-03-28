@@ -1,3 +1,4 @@
+mod buf_lexer;
 mod common;
 mod interpreter;
 mod lexer;
@@ -5,7 +6,6 @@ mod parser;
 mod reader;
 use std::env;
 use std::fs::File;
-use std::io::BufReader;
 
 use interpreter::Interpreter;
 
@@ -16,7 +16,6 @@ fn main() {
         .last()
         .expect("The first argument should be the program to run");
     let f = File::open(&filename).expect(format!("Could not find program {}", filename).as_ref());
-    let r = BufReader::new(f);
-    let mut interpreter = Interpreter::new(r);
+    let mut interpreter = Interpreter::from(f);
     interpreter.interpret().unwrap();
 }

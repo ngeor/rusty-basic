@@ -20,7 +20,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _try_parse_left_side_of_assignment(&mut self) -> Result<Option<NameWithTypeQualifier>> {
+    fn _try_parse_left_side_of_assignment(&mut self) -> Result<Option<QName>> {
         match self.try_parse_name_with_type_qualifier()? {
             Some(n) => {
                 self.buf_lexer.skip_whitespace()?;
@@ -50,7 +50,7 @@ mod tests {
         assert_eq!(
             result,
             Statement::Assignment(
-                NameWithTypeQualifier::new_unqualified("A"),
+                QName::Untyped("A".to_string()),
                 Expression::IntegerLiteral(42)
             )
         );

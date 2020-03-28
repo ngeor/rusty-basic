@@ -1,28 +1,33 @@
-use crate::parser::Block;
 use crate::common::Result;
+use crate::parser::{Block, QName};
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct FunctionDeclaration {
-    pub name: String,
+    pub name: QName,
+    pub parameters: Vec<QName>,
 }
 
 impl FunctionDeclaration {
-    pub fn new(name: String) -> FunctionDeclaration {
-        FunctionDeclaration { name }
+    pub fn new(name: QName, parameters: Vec<QName>) -> FunctionDeclaration {
+        FunctionDeclaration { name, parameters }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionImplementation {
-    pub name: String,
-    pub parameters: Vec<String>,
+    pub name: QName,
+    pub parameters: Vec<QName>,
     pub block: Block,
 }
 
 impl FunctionImplementation {
-    pub fn new(name: String, parameters: Vec<String>, block: Block) -> FunctionImplementation {
-        FunctionImplementation { name, parameters, block }
+    pub fn new(name: QName, parameters: Vec<QName>, block: Block) -> FunctionImplementation {
+        FunctionImplementation {
+            name,
+            parameters,
+            block,
+        }
     }
 }
 
@@ -41,40 +46,34 @@ impl FunctionContext {
         }
     }
 
-    pub fn add_function_declaration<S: AsRef<str>>(&mut self, name: S) -> Result<()> {
+    pub fn add_function_declaration(&mut self, name: QName, parameters: Vec<QName>) -> Result<()> {
         self.function_declaration_map.insert(
-            name.as_ref().to_string(),
-            FunctionDeclaration::new(name.as_ref().to_string()),
+            name.name().to_string(),
+            FunctionDeclaration::new(name, parameters),
         );
         Ok(())
     }
 
-    pub fn add_function_implementation<S: AsRef<str>>(
+    pub fn add_function_implementation(
         &mut self,
-        name: S,
-        parameters: Vec<S>,
+        name: QName,
+        parameters: Vec<QName>,
         block: Block,
     ) -> Result<()> {
-        let owned_parameters: Vec<String> = parameters.iter().map(|x| x.as_ref().to_string()).collect();
         self.function_implementation_map.insert(
-            name.as_ref().to_string(),
-            FunctionImplementation::new(
-                name.as_ref().to_string(),
-                owned_parameters,
-                block
-            ),
+            name.name().to_string(),
+            FunctionImplementation::new(name, parameters, block),
         );
         Ok(())
     }
 
-    pub fn get_function_declarations(&self) -> std::collections::hash_map::Keys<String, FunctionDeclaration> {
+    pub fn get_function_declarations(
+        &self,
+    ) -> std::collections::hash_map::Keys<String, FunctionDeclaration> {
         self.function_declaration_map.keys()
     }
 
-    pub fn get_function_implementation<S: AsRef<str>>(&self, name: S) -> Option<FunctionImplementation> {
-        match self.function_implementation_map.get(name.as_ref()) {
-            Some(f) => Some(f.clone()),
-            None => None
-        }
+    pub fn get_function_implementation(&self, name: &String) -> Option<FunctionImplementation> {
+        self.function_implementation_map.get(name).map(|x| x.clone())
     }
 }

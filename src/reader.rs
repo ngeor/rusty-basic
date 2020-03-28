@@ -1,5 +1,6 @@
 use crate::common::Result;
-use std::io::prelude::*;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Cursor};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum CharOrEof {
@@ -100,5 +101,22 @@ impl<T: BufRead> CharOrEofReader<T> {
             }
             Err(e) => Err(e.to_string()),
         }
+    }
+}
+
+// bytes || &str -> CharOrEofReader
+impl<T> From<T> for CharOrEofReader<BufReader<Cursor<T>>>
+where
+    T: AsRef<[u8]>,
+{
+    fn from(input: T) -> Self {
+        CharOrEofReader::new(BufReader::new(Cursor::new(input)))
+    }
+}
+
+// File -> CharOrEofReader
+impl From<File> for CharOrEofReader<BufReader<File>> {
+    fn from(input: File) -> Self {
+        CharOrEofReader::new(BufReader::new(input))
     }
 }

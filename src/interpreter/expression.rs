@@ -80,8 +80,8 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
             Operand::LessOrEqualThan => {
                 let cmp = left_var.compare_to(&right_var)?;
                 match cmp {
-                    std::cmp::Ordering::Less | std::cmp::Ordering::Equal => Ok(Variant::from(1)),
-                    std::cmp::Ordering::Greater => Ok(Variant::from(0)),
+                    std::cmp::Ordering::Less | std::cmp::Ordering::Equal => Ok(V_TRUE),
+                    std::cmp::Ordering::Greater => Ok(V_FALSE),
                 }
             }
             Operand::Plus => Ok(left_var.plus(&right_var)),

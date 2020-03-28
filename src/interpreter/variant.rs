@@ -9,6 +9,9 @@ pub enum Variant {
     VLong(i64),
 }
 
+pub const V_TRUE: Variant = Variant::VInteger(-1);
+pub const V_FALSE: Variant = Variant::VInteger(0);
+
 impl Variant {
     pub fn is_true(&self) -> Result<bool> {
         match self {

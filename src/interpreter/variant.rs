@@ -15,129 +15,6 @@ pub enum Variant {
 pub const V_TRUE: Variant = Variant::VInteger(-1);
 pub const V_FALSE: Variant = Variant::VInteger(0);
 
-// https://doc.rust-lang.org/nomicon/casts.html
-// 1. casting from an f32 to an f64 is perfect and lossless
-// 2. casting from a float to an integer will round the float towards zero
-//    NOTE: currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes Inf and NaN. This is a bug and will be fixed.
-// 3. casting from an integer to float will produce the floating point representation of the integer, rounded if necessary (rounding to nearest, ties to even)
-// 4. casting from an f64 to an f32 will produce the closest possible value (rounding to nearest, ties to even)
-
-pub trait QBNumberCast<T> {
-    fn try_cast(&self) -> Result<T>;
-}
-
-impl QBNumberCast<f64> for f32 {
-    fn try_cast(&self) -> Result<f64> {
-        Ok(*self as f64)
-    }
-}
-
-impl QBNumberCast<i32> for f32 {
-    fn try_cast(&self) -> Result<i32> {
-        if self.is_finite() {
-            let r = self.round();
-            if r >= (std::i32::MIN as f32) && r <= (std::i32::MAX as f32) {
-                Ok(r as i32)
-            } else {
-                Err(format!("Overflow {}", self))
-            }
-        } else {
-            Err(format!("Cannot cast {} to i32", self))
-        }
-    }
-}
-
-impl QBNumberCast<i64> for f32 {
-    fn try_cast(&self) -> Result<i64> {
-        if self.is_finite() {
-            let r = self.round();
-            if r >= (std::i64::MIN as f32) && r <= (std::i64::MAX as f32) {
-                Ok(r as i64)
-            } else {
-                Err(format!("Overflow {}", self))
-            }
-        } else {
-            Err(format!("Cannot cast {} to i64", self))
-        }
-    }
-}
-
-impl QBNumberCast<f32> for f64 {
-    fn try_cast(&self) -> Result<f32> {
-        Ok(*self as f32)
-    }
-}
-
-impl QBNumberCast<i32> for f64 {
-    fn try_cast(&self) -> Result<i32> {
-        if self.is_finite() {
-            let r = self.round();
-            if r >= (std::i32::MIN as f64) && r <= (std::i32::MAX as f64) {
-                Ok(r as i32)
-            } else {
-                Err(format!("Overflow {}", self))
-            }
-        } else {
-            Err(format!("Cannot cast {} to i32", self))
-        }
-    }
-}
-
-impl QBNumberCast<i64> for f64 {
-    fn try_cast(&self) -> Result<i64> {
-        if self.is_finite() {
-            let r = self.round();
-            if r >= (std::i64::MIN as f64) && r <= (std::i64::MAX as f64) {
-                Ok(r as i64)
-            } else {
-                Err(format!("Overflow {}", self))
-            }
-        } else {
-            Err(format!("Cannot cast {} to i64", self))
-        }
-    }
-}
-
-impl QBNumberCast<f32> for i32 {
-    fn try_cast(&self) -> Result<f32> {
-        Ok(*self as f32)
-    }
-}
-
-impl QBNumberCast<f64> for i32 {
-    fn try_cast(&self) -> Result<f64> {
-        Ok(*self as f64)
-    }
-}
-
-impl QBNumberCast<i64> for i32 {
-    fn try_cast(&self) -> Result<i64> {
-        Ok(*self as i64)
-    }
-}
-
-impl QBNumberCast<f32> for i64 {
-    fn try_cast(&self) -> Result<f32> {
-        Ok(*self as f32)
-    }
-}
-
-impl QBNumberCast<f64> for i64 {
-    fn try_cast(&self) -> Result<f64> {
-        Ok(*self as f64)
-    }
-}
-
-impl QBNumberCast<i32> for i64 {
-    fn try_cast(&self) -> Result<i32> {
-        if *self >= (std::i32::MIN as i64) && *self <= (std::i32::MAX as i64) {
-            Ok(*self as i32)
-        } else {
-            Err(format!("Overflow {}", self))
-        }
-    }
-}
-
 fn partial_cmp_to_result<T>(left: &T, right: &T) -> Result<Ordering>
 where
     T: PartialOrd + Display + Copy,
@@ -148,64 +25,34 @@ where
     }
 }
 
-fn partial_cmp_to_result_cast_left<TLeft, TRight>(left: &TLeft, right: &TRight) -> Result<Ordering>
-where
-    TLeft: PartialOrd + Display + Copy + QBNumberCast<TRight>,
-    TRight: PartialOrd + Display + Copy,
-{
-    let casted_left: TRight = left.try_cast()?;
-    match casted_left.partial_cmp(right) {
-        Some(o) => Ok(o),
-        _ => Err(format!("Could not compare {} with {}", left, right)),
-    }
-}
-
-fn partial_cmp_to_result_cast_right<TLeft, TRight>(left: &TLeft, right: &TRight) -> Result<Ordering>
-where
-    TLeft: PartialOrd + Display + Copy,
-    TRight: PartialOrd + Display + Copy + QBNumberCast<TLeft>,
-{
-    let casted_right: TLeft = right.try_cast()?;
-    match left.partial_cmp(&casted_right) {
-        Some(o) => Ok(o),
-        _ => Err(format!("Could not compare {} with {}", left, right)),
-    }
-}
-
 impl Variant {
     pub fn cmp(&self, other: &Self) -> Result<Ordering> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => partial_cmp_to_result(f_left, f_right),
-                Variant::VDouble(d_right) => partial_cmp_to_result_cast_left(f_left, d_right),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => partial_cmp_to_result_cast_right(f_left, i_right),
-                Variant::VLong(l_right) => partial_cmp_to_result_cast_right(f_left, l_right),
+                Variant::VDouble(d_right) => partial_cmp_to_result(&(*f_left as f64), d_right),
+                Variant::VInteger(i_right) => partial_cmp_to_result(f_left, &(*i_right as f32)),
+                Variant::VLong(l_right) => partial_cmp_to_result(f_left, &(*l_right as f32)),
+                _ => other.cmp(self).map(|x| x.reverse())
             },
             Variant::VDouble(d_left) => match other {
-                Variant::VSingle(f_right) => partial_cmp_to_result_cast_right(d_left, f_right),
                 Variant::VDouble(d_right) => partial_cmp_to_result(d_left, d_right),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => partial_cmp_to_result_cast_right(d_left, i_right),
-                Variant::VLong(l_right) => partial_cmp_to_result_cast_right(d_left, l_right),
+                Variant::VInteger(i_right) => partial_cmp_to_result(d_left, &(*i_right as f64)),
+                Variant::VLong(l_right) => partial_cmp_to_result(d_left, &(*l_right as f64)),
+                _ => other.cmp(self).map(|x| x.reverse())
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err("Type mismatch".to_string()),
             },
             Variant::VInteger(i_left) => match other {
-                Variant::VSingle(f_right) => partial_cmp_to_result_cast_left(i_left, f_right),
-                Variant::VDouble(d_right) => partial_cmp_to_result_cast_left(i_left, d_right),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
-                Variant::VLong(l_right) => partial_cmp_to_result_cast_left(i_left, l_right),
+                Variant::VLong(l_right) => partial_cmp_to_result(&(*i_left as i64), l_right),
+                _ => other.cmp(self).map(|x| x.reverse())
             },
             Variant::VLong(l_left) => match other {
-                Variant::VSingle(f_right) => partial_cmp_to_result_cast_left(l_left, f_right),
-                Variant::VDouble(d_right) => partial_cmp_to_result_cast_left(l_left, d_right),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => partial_cmp_to_result_cast_right(l_left, i_right),
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
+                _ => other.cmp(self).map(|x| x.reverse())
             },
         }
     }

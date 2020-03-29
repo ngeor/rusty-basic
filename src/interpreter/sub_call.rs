@@ -1,6 +1,4 @@
 use super::*;
-use super::Interpreter;
-use super::Stdlib;
 use crate::common::Result;
 use crate::parser::{Expression, QName, TypeQualifier};
 use std::io::BufRead;
@@ -30,7 +28,7 @@ impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
 
     fn _do_print_map_arg(&mut self, arg: &Expression) -> Result<String> {
         let evaluated = self.evaluate_expression(arg)?;
-        Ok(evaluated.to_str())
+        Ok(evaluated.to_string())
     }
 
     fn _do_input(&mut self, args: &Vec<Expression>) -> Result<()> {
@@ -81,8 +79,8 @@ fn parse_int_input(s: String) -> Result<i32> {
 mod tests {
     mod input {
         mod unqualified_var {
-            use crate::interpreter::*;
             use crate::interpreter::test_utils::*;
+            use crate::interpreter::*;
             use crate::parser::QName;
 
             fn test_input<S: AsRef<str>>(user_input: S) -> Variant {
@@ -123,8 +121,8 @@ mod tests {
         }
 
         mod string_var {
-            use crate::interpreter::*;
             use crate::interpreter::test_utils::*;
+            use crate::interpreter::*;
             use crate::parser::{QName, TypeQualifier};
 
             fn test_input<S: AsRef<str>>(user_input: S) -> Variant {
@@ -152,8 +150,8 @@ mod tests {
         }
 
         mod int_var {
-            use crate::interpreter::*;
             use crate::interpreter::test_utils::*;
+            use crate::interpreter::*;
             use crate::parser::{QName, TypeQualifier};
 
             fn test_input<S: AsRef<str>>(user_input: S) -> Variant {
@@ -163,7 +161,10 @@ mod tests {
                 let mut interpreter = Interpreter::new_from_bytes(input, stdlib);
                 interpreter.interpret().unwrap();
                 interpreter
-                    .get_variable(&QName::Typed("A".to_string(), TypeQualifier::PercentInteger))
+                    .get_variable(&QName::Typed(
+                        "A".to_string(),
+                        TypeQualifier::PercentInteger,
+                    ))
                     .unwrap()
             }
 

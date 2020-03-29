@@ -1,4 +1,4 @@
-use super::{Parser, QName, TypeQualifier};
+use super::*;
 use crate::common::Result;
 use crate::lexer::Lexeme;
 use std::convert::TryFrom;
@@ -14,35 +14,49 @@ pub enum Operand {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
+    SingleLiteral(f32),
+    DoubleLiteral(f64),
     StringLiteral(String),
-    VariableName(QName),
     IntegerLiteral(i32),
+    LongLiteral(i64),
+    VariableName(QName),
     FunctionCall(QName, Vec<Expression>),
     BinaryExpression(Operand, Box<Expression>, Box<Expression>),
 }
 
-impl Expression {
-    /// Creates a new IntegerLiteral expression
-    pub fn integer_literal(value: i32) -> Expression {
+impl From<f32> for Expression {
+    fn from(value: f32) -> Expression {
+        Expression::SingleLiteral(value)
+    }
+}
+
+impl From<f64> for Expression {
+    fn from(value: f64) -> Expression {
+        Expression::DoubleLiteral(value)
+    }
+}
+
+impl From<&str> for Expression {
+    fn from(value: &str) -> Expression {
+        Expression::StringLiteral(value.to_string())
+    }
+}
+
+impl From<i32> for Expression {
+    fn from(value: i32) -> Expression {
         Expression::IntegerLiteral(value)
     }
+}
 
-    /// Creates a new VariableName expression with a qualified type
-    pub fn variable_name_qualified<S: AsRef<str>>(
-        name: S,
-        type_qualifier: TypeQualifier,
-    ) -> Expression {
-        Expression::VariableName(QName::Typed(name.as_ref().to_string(), type_qualifier))
+impl From<i64> for Expression {
+    fn from(value: i64) -> Expression {
+        Expression::LongLiteral(value)
     }
+}
 
-    /// Creates a new VariableName expression without a qualified type
-    pub fn variable_name_unqualified<S: AsRef<str>>(name: S) -> Expression {
-        Expression::VariableName(QName::Untyped(name.as_ref().to_string()))
-    }
-
-    /// Creates a new StringLiteral expression
-    pub fn string_literal<S: AsRef<str>>(literal: S) -> Expression {
-        Expression::StringLiteral(literal.as_ref().to_string())
+impl Expression {
+    pub fn variable_name_unqualified(name: &str) -> Expression {
+        Expression::VariableName(QName::Untyped(name.to_string()))
     }
 
     pub fn binary(operand: Operand, left: Expression, right: Expression) -> Expression {
@@ -51,6 +65,10 @@ impl Expression {
 
     pub fn lte(left: Expression, right: Expression) -> Expression {
         Expression::binary(Operand::LessOrEqualThan, left, right)
+    }
+
+    pub fn less(left: Expression, right: Expression) -> Expression {
+        Expression::binary(Operand::LessThan, left, right)
     }
 
     pub fn plus(left: Expression, right: Expression) -> Expression {
@@ -156,11 +174,31 @@ impl<T: BufRead> Parser<T> {
 
     fn _parse_number_literal(&mut self, digits: u32) -> Result<Expression> {
         self.buf_lexer.consume();
-        match i32::try_from(digits) {
-            Ok(i) => Ok(Expression::IntegerLiteral(i)),
-            Err(err) => self
-                .buf_lexer
-                .err(format!("Could not convert digits to i32: {}", err)),
+        if self.buf_lexer.try_consume_symbol('.')? {
+            // decimal point found, single or double
+            let next = self.buf_lexer.read()?;
+            match next {
+                Lexeme::Digits(fraction_digits) => {
+                    self.buf_lexer.consume();
+                    match format!("{}.{}", digits, fraction_digits).parse::<f32>() {
+                        Ok(f) => Ok(Expression::SingleLiteral(f)),
+                        Err(err) => self
+                            .buf_lexer
+                            .err(format!("Could not convert digits to f32: {}", err)),
+                    }
+                }
+                _ => self
+                    .buf_lexer
+                    .err("Expected number after decimal point".to_string()),
+            }
+        } else {
+            // no decimal point, just integer
+            match i32::try_from(digits) {
+                Ok(i) => Ok(Expression::IntegerLiteral(i)),
+                Err(err) => self
+                    .buf_lexer
+                    .err(format!("Could not convert digits to i32: {}", err)),
+            }
         }
     }
 
@@ -205,17 +243,18 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn test_string_literal_expression() {
         let input = "\"hello, world\"";
         let mut parser = Parser::from(input);
         let expression = parser.demand_expression().unwrap();
-        assert_eq!(expression, Expression::string_literal("hello, world"));
+        assert_eq!(expression, Expression::from("hello, world"));
     }
 
     #[test]
-    fn test_numeric_expression() {
+    fn test_integer_literal() {
         let input = "42";
         let mut parser = Parser::from(input);
         let expression = parser.demand_expression().unwrap();
@@ -223,11 +262,22 @@ mod tests {
     }
 
     #[test]
+    fn test_single_literal() {
+        let input = "4.2";
+        let mut parser = Parser::from(input);
+        let expression = parser.demand_expression().unwrap();
+        assert_eq!(expression, Expression::SingleLiteral(4.2_f32));
+    }
+
+    #[test]
     fn test_variable_expression() {
         let input = "A";
         let mut parser = Parser::from(input);
         let expression = parser.demand_expression().unwrap();
-        assert_eq!(expression, Expression::variable_name_unqualified("A"));
+        assert_eq!(
+            expression,
+            Expression::VariableName(QName::from_str("A").unwrap())
+        );
     }
 
     #[test]
@@ -278,10 +328,7 @@ mod tests {
             expression,
             Expression::FunctionCall(
                 QName::Untyped("CheckProperty".to_string()),
-                vec![
-                    Expression::IntegerLiteral(42),
-                    Expression::string_literal("age")
-                ]
+                vec![Expression::from(42), Expression::from("age")]
             )
         );
     }
@@ -298,7 +345,7 @@ mod tests {
                 vec![
                     Expression::FunctionCall(
                         QName::Untyped("LookupName".to_string()),
-                        vec![Expression::string_literal("age")]
+                        vec![Expression::from("age")]
                     ),
                     Expression::FunctionCall(QName::Untyped("Confirm".to_string()), vec![])
                 ]

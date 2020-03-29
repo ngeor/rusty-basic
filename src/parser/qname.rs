@@ -4,6 +4,7 @@ use crate::lexer::Lexeme;
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::io::BufRead;
+use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum QName {
@@ -31,7 +32,24 @@ impl QName {
     pub fn name(&self) -> &String {
         match self {
             QName::Untyped(name) => name,
-            QName::Typed(name, _) => name
+            QName::Typed(name, _) => name,
+        }
+    }
+}
+
+impl FromStr for QName {
+    type Err = String;
+    fn from_str(s: &str) -> Result<QName> {
+        let mut buf = s.to_string();
+        match buf.pop() {
+            None => Err("empty string".to_string()),
+            Some(ch) => match TypeQualifier::try_from(ch) {
+                Ok(type_qualifier) => Ok(QName::Typed(buf, type_qualifier)),
+                Err(_) => {
+                    buf.push(ch);
+                    Ok(QName::Untyped(buf))
+                }
+            },
         }
     }
 }
@@ -82,6 +100,26 @@ mod tests {
                 "{}",
                 QName::Typed("B".to_string(), TypeQualifier::DollarString)
             )
+        );
+    }
+
+    #[test]
+    fn test_from_str() {
+        assert_eq!(
+            QName::from_str("A").unwrap(),
+            QName::Untyped("A".to_string())
+        );
+        assert_eq!(
+            QName::from_str("Fib").unwrap(),
+            QName::Untyped("Fib".to_string())
+        );
+        assert_eq!(
+            QName::from_str("A$").unwrap(),
+            QName::Typed("A".to_string(), TypeQualifier::DollarString)
+        );
+        assert_eq!(
+            QName::from_str("Fib%").unwrap(),
+            QName::Typed("Fib".to_string(), TypeQualifier::PercentInteger)
         );
     }
 }

@@ -1,4 +1,7 @@
 use crate::common::Result;
+use std::cmp::Ordering;
+use std::convert::TryFrom;
+use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Variant {
@@ -12,9 +15,328 @@ pub enum Variant {
 pub const V_TRUE: Variant = Variant::VInteger(-1);
 pub const V_FALSE: Variant = Variant::VInteger(0);
 
+// https://doc.rust-lang.org/nomicon/casts.html
+// 1. casting from an f32 to an f64 is perfect and lossless
+// 2. casting from a float to an integer will round the float towards zero
+//    NOTE: currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes Inf and NaN. This is a bug and will be fixed.
+// 3. casting from an integer to float will produce the floating point representation of the integer, rounded if necessary (rounding to nearest, ties to even)
+// 4. casting from an f64 to an f32 will produce the closest possible value (rounding to nearest, ties to even)
+
+pub trait QBNumberCast<T> {
+    fn try_cast(&self) -> Result<T>;
+}
+
+impl QBNumberCast<f64> for f32 {
+    fn try_cast(&self) -> Result<f64> {
+        Ok(*self as f64)
+    }
+}
+
+impl QBNumberCast<i32> for f32 {
+    fn try_cast(&self) -> Result<i32> {
+        if self.is_finite() {
+            let r = self.round();
+            if r >= (std::i32::MIN as f32) && r <= (std::i32::MAX as f32) {
+                Ok(r as i32)
+            } else {
+                Err(format!("Overflow {}", self))
+            }
+        } else {
+            Err(format!("Cannot cast {} to i32", self))
+        }
+    }
+}
+
+impl QBNumberCast<i64> for f32 {
+    fn try_cast(&self) -> Result<i64> {
+        if self.is_finite() {
+            let r = self.round();
+            if r >= (std::i64::MIN as f32) && r <= (std::i64::MAX as f32) {
+                Ok(r as i64)
+            } else {
+                Err(format!("Overflow {}", self))
+            }
+        } else {
+            Err(format!("Cannot cast {} to i64", self))
+        }
+    }
+}
+
+impl QBNumberCast<f32> for f64 {
+    fn try_cast(&self) -> Result<f32> {
+        Ok(*self as f32)
+    }
+}
+
+impl QBNumberCast<i32> for f64 {
+    fn try_cast(&self) -> Result<i32> {
+        if self.is_finite() {
+            let r = self.round();
+            if r >= (std::i32::MIN as f64) && r <= (std::i32::MAX as f64) {
+                Ok(r as i32)
+            } else {
+                Err(format!("Overflow {}", self))
+            }
+        } else {
+            Err(format!("Cannot cast {} to i32", self))
+        }
+    }
+}
+
+impl QBNumberCast<i64> for f64 {
+    fn try_cast(&self) -> Result<i64> {
+        if self.is_finite() {
+            let r = self.round();
+            if r >= (std::i64::MIN as f64) && r <= (std::i64::MAX as f64) {
+                Ok(r as i64)
+            } else {
+                Err(format!("Overflow {}", self))
+            }
+        } else {
+            Err(format!("Cannot cast {} to i64", self))
+        }
+    }
+}
+
+impl QBNumberCast<f32> for i32 {
+    fn try_cast(&self) -> Result<f32> {
+        Ok(*self as f32)
+    }
+}
+
+impl QBNumberCast<f64> for i32 {
+    fn try_cast(&self) -> Result<f64> {
+        Ok(*self as f64)
+    }
+}
+
+impl QBNumberCast<i64> for i32 {
+    fn try_cast(&self) -> Result<i64> {
+        Ok(*self as i64)
+    }
+}
+
+impl QBNumberCast<f32> for i64 {
+    fn try_cast(&self) -> Result<f32> {
+        Ok(*self as f32)
+    }
+}
+
+impl QBNumberCast<f64> for i64 {
+    fn try_cast(&self) -> Result<f64> {
+        Ok(*self as f64)
+    }
+}
+
+impl QBNumberCast<i32> for i64 {
+    fn try_cast(&self) -> Result<i32> {
+        if *self >= (std::i32::MIN as i64) && *self <= (std::i32::MAX as i64) {
+            Ok(*self as i32)
+        } else {
+            Err(format!("Overflow {}", self))
+        }
+    }
+}
+
+fn partial_cmp_to_result<T>(left: &T, right: &T) -> Result<Ordering>
+where
+    T: PartialOrd + Display + Copy,
+{
+    match left.partial_cmp(right) {
+        Some(o) => Ok(o),
+        _ => Err(format!("Could not compare {} with {}", left, right)),
+    }
+}
+
+fn partial_cmp_to_result_cast_left<TLeft, TRight>(left: &TLeft, right: &TRight) -> Result<Ordering>
+where
+    TLeft: PartialOrd + Display + Copy + QBNumberCast<TRight>,
+    TRight: PartialOrd + Display + Copy,
+{
+    let casted_left: TRight = left.try_cast()?;
+    match casted_left.partial_cmp(right) {
+        Some(o) => Ok(o),
+        _ => Err(format!("Could not compare {} with {}", left, right)),
+    }
+}
+
+fn partial_cmp_to_result_cast_right<TLeft, TRight>(left: &TLeft, right: &TRight) -> Result<Ordering>
+where
+    TLeft: PartialOrd + Display + Copy,
+    TRight: PartialOrd + Display + Copy + QBNumberCast<TLeft>,
+{
+    let casted_right: TLeft = right.try_cast()?;
+    match left.partial_cmp(&casted_right) {
+        Some(o) => Ok(o),
+        _ => Err(format!("Could not compare {} with {}", left, right)),
+    }
+}
+
 impl Variant {
-    pub fn is_true(&self) -> Result<bool> {
+    pub fn cmp(&self, other: &Self) -> Result<Ordering> {
         match self {
+            Variant::VSingle(f_left) => match other {
+                Variant::VSingle(f_right) => partial_cmp_to_result(f_left, f_right),
+                Variant::VDouble(d_right) => partial_cmp_to_result_cast_left(f_left, d_right),
+                Variant::VString(_) => Err("Type mismatch".to_string()),
+                Variant::VInteger(i_right) => partial_cmp_to_result_cast_right(f_left, i_right),
+                Variant::VLong(l_right) => partial_cmp_to_result_cast_right(f_left, l_right),
+            },
+            Variant::VDouble(d_left) => match other {
+                Variant::VSingle(f_right) => partial_cmp_to_result_cast_right(d_left, f_right),
+                Variant::VDouble(d_right) => partial_cmp_to_result(d_left, d_right),
+                Variant::VString(_) => Err("Type mismatch".to_string()),
+                Variant::VInteger(i_right) => partial_cmp_to_result_cast_right(d_left, i_right),
+                Variant::VLong(l_right) => partial_cmp_to_result_cast_right(d_left, l_right),
+            },
+            Variant::VString(s_left) => match other {
+                Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
+                _ => Err("Type mismatch".to_string()),
+            },
+            Variant::VInteger(i_left) => match other {
+                Variant::VSingle(f_right) => partial_cmp_to_result_cast_left(i_left, f_right),
+                Variant::VDouble(d_right) => partial_cmp_to_result_cast_left(i_left, d_right),
+                Variant::VString(_) => Err("Type mismatch".to_string()),
+                Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
+                Variant::VLong(l_right) => partial_cmp_to_result_cast_left(i_left, l_right),
+            },
+            Variant::VLong(l_left) => match other {
+                Variant::VSingle(f_right) => partial_cmp_to_result_cast_left(l_left, f_right),
+                Variant::VDouble(d_right) => partial_cmp_to_result_cast_left(l_left, d_right),
+                Variant::VString(_) => Err("Type mismatch".to_string()),
+                Variant::VInteger(i_right) => partial_cmp_to_result_cast_right(l_left, i_right),
+                Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
+            },
+        }
+    }
+
+    pub fn negate(&self) -> Self {
+        match self {
+            Variant::VSingle(n) => Variant::VSingle(-n),
+            Variant::VDouble(n) => Variant::VDouble(-n),
+            Variant::VInteger(n) => Variant::VInteger(-n),
+            Variant::VLong(n) => Variant::VLong(-n),
+            _ => unimplemented!()
+        }
+    }
+
+    pub fn plus(&self, other: &Self) -> Result<Self> {
+        match self {
+            Variant::VSingle(f_left) => match other {
+                Variant::VSingle(f_right) => Ok(Variant::VSingle(*f_left + *f_right)),
+                Variant::VDouble(d_right) => Ok(Variant::VDouble(*f_left as f64 + *d_right)),
+                Variant::VInteger(i_right) => Ok(Variant::VSingle(*f_left + *i_right as f32)),
+                Variant::VLong(l_right) => Ok(Variant::VSingle(*f_left + *l_right as f32)),
+                _ => other.plus(self),
+            },
+            Variant::VDouble(d_left) => match other {
+                Variant::VDouble(d_right) => Ok(Variant::VDouble(*d_left + *d_right)),
+                Variant::VInteger(i_right) => Ok(Variant::VDouble(*d_left + *i_right as f64)),
+                Variant::VLong(l_right) => Ok(Variant::VDouble(*d_left + *l_right as f64)),
+                _ => other.plus(self),
+            },
+            Variant::VString(s_left) => match other {
+                Variant::VString(s_right) => Ok(Variant::VString(format!("{}{}", s_left, s_right))),
+                _ => Err("Type mismatch".to_string()),
+            },
+            Variant::VInteger(i_left) => match other {
+                Variant::VInteger(i_right) => Ok(Variant::VInteger(*i_left + *i_right)),
+                Variant::VLong(l_right) => Ok(Variant::VLong(*i_left as i64 + *l_right)),
+                _ => other.plus(self),
+            },
+            Variant::VLong(l_left) => match other {
+                Variant::VLong(l_right) => Ok(Variant::VLong(*l_left + *l_right)),
+                _ => other.plus(self)
+            },
+        }
+    }
+
+    pub fn minus(&self, other: &Self) -> Result<Self> {
+        match self {
+            Variant::VSingle(f_left) => match other {
+                Variant::VSingle(f_right) => Ok(Variant::VSingle(*f_left - *f_right)),
+                Variant::VDouble(d_right) => Ok(Variant::VDouble(*f_left as f64 - *d_right)),
+                Variant::VInteger(i_right) => Ok(Variant::VSingle(*f_left - *i_right as f32)),
+                Variant::VLong(l_right) => Ok(Variant::VSingle(*f_left - *l_right as f32)),
+                _ => other.minus(self).map(|x| x.negate()),
+            },
+            Variant::VDouble(d_left) => match other {
+                Variant::VDouble(d_right) => Ok(Variant::VDouble(*d_left - *d_right)),
+                Variant::VInteger(i_right) => Ok(Variant::VDouble(*d_left - *i_right as f64)),
+                Variant::VLong(l_right) => Ok(Variant::VDouble(*d_left - *l_right as f64)),
+                _ => other.minus(self).map(|x| x.negate()),
+            },
+            Variant::VString(_) => Err("Type mismatch".to_string()),
+            Variant::VInteger(i_left) => match other {
+                Variant::VInteger(i_right) => Ok(Variant::VInteger(*i_left - *i_right)),
+                Variant::VLong(l_right) => Ok(Variant::VLong(*i_left as i64 - *l_right)),
+                _ => other.minus(self).map(|x| x.negate())
+            },
+            Variant::VLong(l_left) => match other {
+                Variant::VLong(l_right) => Ok(Variant::VLong(*l_left - *l_right)),
+                _ => other.minus(self).map(|x| x.negate())
+            },
+        }
+    }
+}
+
+impl From<f32> for Variant {
+    fn from(f: f32) -> Self {
+        Variant::VSingle(f)
+    }
+}
+
+impl From<f64> for Variant {
+    fn from(f: f64) -> Self {
+        Variant::VDouble(f)
+    }
+}
+
+impl From<String> for Variant {
+    fn from(s: String) -> Self {
+        Variant::VString(s)
+    }
+}
+
+impl From<&String> for Variant {
+    fn from(s: &String) -> Self {
+        Variant::VString(s.to_owned())
+    }
+}
+
+impl From<&str> for Variant {
+    fn from(s: &str) -> Self {
+        Variant::VString(s.to_string())
+    }
+}
+
+impl From<i32> for Variant {
+    fn from(i: i32) -> Self {
+        Variant::VInteger(i)
+    }
+}
+
+impl From<i64> for Variant {
+    fn from(i: i64) -> Self {
+        Variant::VLong(i)
+    }
+}
+
+impl From<bool> for Variant {
+    fn from(b: bool) -> Self {
+        if b {
+            V_TRUE
+        } else {
+            V_FALSE
+        }
+    }
+}
+
+impl TryFrom<&Variant> for bool {
+    type Error = String;
+
+    fn try_from(value: &Variant) -> Result<bool> {
+        match value {
             Variant::VSingle(n) => Ok(*n != 0.0),
             Variant::VDouble(n) => Ok(*n != 0.0),
             Variant::VString(_) => Err("Type mismatch".to_string()),
@@ -22,181 +344,25 @@ impl Variant {
             Variant::VLong(n) => Ok(*n != 0),
         }
     }
+}
 
-    pub fn to_str(&self) -> String {
+impl TryFrom<Variant> for bool {
+    type Error = String;
+
+    fn try_from(value: Variant) -> Result<bool> {
+        bool::try_from(&value)
+    }
+}
+
+impl Display for Variant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Variant::VSingle(n) => format!("{}", n),
-            Variant::VDouble(n) => format!("{}", n),
-            Variant::VString(s) => s.clone(),
-            Variant::VInteger(n) => format!("{}", n),
-            Variant::VLong(n) => format!("{}", n),
+            Variant::VSingle(n) => write!(f, "{}", n),
+            Variant::VDouble(n) => write!(f, "{}", n),
+            Variant::VString(s) => write!(f, "{}", s),
+            Variant::VInteger(n) => write!(f, "{}", n),
+            Variant::VLong(n) => write!(f, "{}", n),
         }
-    }
-
-    pub fn to_int(&self) -> Result<i32> {
-        match self {
-            Variant::VSingle(f) => Ok(f.round() as i32),
-            Variant::VString(s) => s
-                .parse::<i32>()
-                .map_err(|e| format!("Could not convert {} to a number: {}", s, e)),
-            Variant::VInteger(i) => Ok(*i),
-            _ => unimplemented!(),
-        }
-    }
-
-    pub fn compare_to(&self, other: &Variant) -> Result<std::cmp::Ordering> {
-        match self {
-            Variant::VString(s_left) => match other {
-                Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
-                _ => unimplemented!(),
-            },
-            Variant::VInteger(i_left) => match other {
-                Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
-                _ => unimplemented!(),
-            },
-            _ => unimplemented!(),
-        }
-    }
-
-    pub fn plus(&self, other: &Variant) -> Result<Variant> {
-        match self {
-            Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VSingle(*f_left + *f_right)),
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(*f_left as f64 + *d_right)),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => Ok(Variant::VSingle(*f_left + *i_right as f32)),
-                Variant::VLong(l_right) => Ok(Variant::VSingle(*f_left + *l_right as f32)),
-            },
-            Variant::VDouble(d_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VDouble(*d_left + *f_right as f64)),
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(*d_left + *d_right)),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => Ok(Variant::VDouble(*d_left + *i_right as f64)),
-                Variant::VLong(l_right) => Ok(Variant::VDouble(*d_left + *l_right as f64)),
-            },
-            Variant::VString(s_left) => match other {
-                Variant::VString(s_right) => Ok(Variant::VString(format!("{}{}", s_left, s_right))),
-                _ => Err("Type mismatch".to_string()),
-            },
-            Variant::VInteger(i_left) => match other {
-                Variant::VSingle(f_right) => {
-                    Ok(Variant::VInteger(*i_left + f_right.round() as i32))
-                }
-                Variant::VDouble(d_right) => {
-                    Ok(Variant::VInteger(*i_left + d_right.round() as i32))
-                }
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => Ok(Variant::VInteger(*i_left + *i_right)),
-                Variant::VLong(l_right) => Ok(Variant::VLong(*i_left as i64 + *l_right)),
-            },
-            Variant::VLong(l_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VLong(*l_left + f_right.round() as i64)),
-                Variant::VDouble(d_right) => Ok(Variant::VLong(*l_left + d_right.round() as i64)),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => Ok(Variant::VLong(*l_left + *i_right as i64)),
-                Variant::VLong(l_right) => Ok(Variant::VLong(*l_left + *l_right)),
-            },
-        }
-    }
-
-    pub fn minus(&self, other: &Variant) -> Result<Variant> {
-        match self {
-            Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VSingle(*f_left - *f_right)),
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(*f_left as f64 - *d_right)),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => Ok(Variant::VSingle(*f_left - *i_right as f32)),
-                Variant::VLong(l_right) => Ok(Variant::VSingle(*f_left - *l_right as f32)),
-            },
-            Variant::VDouble(d_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VDouble(*d_left - *f_right as f64)),
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(*d_left - *d_right)),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => Ok(Variant::VDouble(*d_left - *i_right as f64)),
-                Variant::VLong(l_right) => Ok(Variant::VDouble(*d_left - *l_right as f64)),
-            },
-            Variant::VString(_) => Err("Type mismatch".to_string()),
-            Variant::VInteger(i_left) => match other {
-                Variant::VSingle(f_right) => {
-                    Ok(Variant::VInteger(*i_left - f_right.round() as i32))
-                }
-                Variant::VDouble(d_right) => {
-                    Ok(Variant::VInteger(*i_left - d_right.round() as i32))
-                }
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => Ok(Variant::VInteger(*i_left - *i_right)),
-                Variant::VLong(l_right) => Ok(Variant::VLong(*i_left as i64 - *l_right)),
-            },
-            Variant::VLong(l_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VLong(*l_left - f_right.round() as i64)),
-                Variant::VDouble(d_right) => Ok(Variant::VLong(*l_left - d_right.round() as i64)),
-                Variant::VString(_) => Err("Type mismatch".to_string()),
-                Variant::VInteger(i_right) => Ok(Variant::VLong(*l_left - *i_right as i64)),
-                Variant::VLong(l_right) => Ok(Variant::VLong(*l_left - *l_right)),
-            },
-        }
-    }
-
-    pub fn try_cast_to_single(&self) -> Result<Variant> {
-        match *self {
-            Variant::VSingle(f) => Ok(Variant::VSingle(f)),
-            Variant::VDouble(d) => Ok(Variant::VSingle(d as f32)),
-            Variant::VString(_) => Err("Type mismatch".to_string()),
-            Variant::VInteger(i) => Ok(Variant::VSingle(i as f32)),
-            Variant::VLong(l) => Ok(Variant::VSingle(l as f32)),
-        }
-    }
-
-    pub fn try_cast_to_double(&self) -> Result<Variant> {
-        match self {
-            Variant::VSingle(f) => Ok(Variant::VDouble(*f as f64)),
-            Variant::VDouble(d) => Ok(Variant::VDouble(*d as f64)),
-            Variant::VString(_) => Err("Type mismatch".to_string()),
-            Variant::VInteger(i) => Ok(Variant::VDouble(*i as f64)),
-            Variant::VLong(l) => Ok(Variant::VDouble(*l as f64)),
-        }
-    }
-}
-
-impl From<f32> for Variant {
-    fn from(f: f32) -> Variant {
-        Variant::VSingle(f)
-    }
-}
-
-impl From<f64> for Variant {
-    fn from(f: f64) -> Variant {
-        Variant::VDouble(f)
-    }
-}
-
-impl From<String> for Variant {
-    fn from(s: String) -> Variant {
-        Variant::VString(s)
-    }
-}
-
-impl From<&String> for Variant {
-    fn from(s: &String) -> Variant {
-        Variant::VString(s.to_owned())
-    }
-}
-
-impl From<&str> for Variant {
-    fn from(s: &str) -> Variant {
-        Variant::VString(s.to_string())
-    }
-}
-
-impl From<i32> for Variant {
-    fn from(i: i32) -> Variant {
-        Variant::VInteger(i)
-    }
-}
-
-impl From<i64> for Variant {
-    fn from(i: i64) -> Variant {
-        Variant::VLong(i)
     }
 }
 
@@ -206,6 +372,60 @@ mod tests {
 
     const EPSILON_SINGLE: f32 = 0.00001;
     const EPSILON_DOUBLE: f64 = 0.00001;
+
+    mod fmt {
+        use super::*;
+
+        #[test]
+        fn test_fmt() {
+            assert_eq!(Variant::VSingle(1.1).to_string(), "1.1");
+            assert_eq!(Variant::VDouble(1.1).to_string(), "1.1");
+            assert_eq!(
+                Variant::VString("hello, world".to_string()).to_string(),
+                "hello, world"
+            );
+            assert_eq!(Variant::VInteger(42).to_string(), "42");
+            assert_eq!(Variant::VLong(42).to_string(), "42");
+        }
+    }
+
+    mod from {
+        use super::*;
+
+        #[test]
+        fn test_from() {
+            assert_eq!(Variant::from(3.14_f32), Variant::VSingle(3.14));
+            assert_eq!(Variant::from(3.14), Variant::VDouble(3.14));
+            assert_eq!(
+                Variant::from("hello"),
+                Variant::VString("hello".to_string())
+            );
+            assert_eq!(Variant::from(42), Variant::VInteger(42));
+            assert_eq!(Variant::from(42_i64), Variant::VLong(42));
+            assert_eq!(Variant::from(true), V_TRUE);
+            assert_eq!(Variant::from(false), V_FALSE);
+        }
+    }
+
+    mod try_from {
+        use super::*;
+
+        #[test]
+        fn test_bool_try_from() {
+            assert_eq!(true, bool::try_from(Variant::from(1.0_f32)).unwrap());
+            assert_eq!(false, bool::try_from(Variant::from(0.0_f32)).unwrap());
+            assert_eq!(true, bool::try_from(Variant::from(1.0)).unwrap());
+            assert_eq!(false, bool::try_from(Variant::from(0.0)).unwrap());
+            bool::try_from(Variant::from("hi")).expect_err("should not convert from string");
+            bool::try_from(Variant::from("")).expect_err("should not convert from string");
+            assert_eq!(true, bool::try_from(Variant::from(42)).unwrap());
+            assert_eq!(false, bool::try_from(Variant::from(0)).unwrap());
+            assert_eq!(true, bool::try_from(Variant::from(42_i64)).unwrap());
+            assert_eq!(false, bool::try_from(Variant::from(0_i64)).unwrap());
+            assert_eq!(true, bool::try_from(V_TRUE).unwrap());
+            assert_eq!(false, bool::try_from(V_FALSE).unwrap());
+        }
+    }
 
     mod plus {
         use super::*;
@@ -342,42 +562,26 @@ mod tests {
         mod integer {
             use super::*;
 
-            fn test_rounding_with_f32(left: i32, right: f32, expected: i32) {
-                match Variant::VInteger(left).plus(&Variant::VSingle(right)).unwrap() {
-                    Variant::VInteger(result) => assert_eq!(result, expected),
-                    _ => panic!("assertion failed"),
-                }
-            }
-
             #[test]
             fn test_single() {
-                test_rounding_with_f32(1, 0.0, 1);
-                test_rounding_with_f32(1, 0.1, 1);
-                test_rounding_with_f32(1, 0.5, 2);
-                test_rounding_with_f32(1, 0.9, 2);
-                test_rounding_with_f32(1, -0.5, 0);
-                test_rounding_with_f32(-42, -2.1, -44);
-                test_rounding_with_f32(-42, -2.5, -45);
-                test_rounding_with_f32(-42, -2.75, -45);
-            }
-
-            fn test_rounding_with_f64(left: i32, right: f64, expected: i32) {
-                match Variant::VInteger(left).plus(&Variant::VDouble(right)).unwrap() {
-                    Variant::VInteger(result) => assert_eq!(result, expected),
+                match Variant::VInteger(1)
+                    .plus(&Variant::VSingle(0.5))
+                    .unwrap()
+                {
+                    Variant::VSingle(result) => assert_eq!(result, 1.5),
                     _ => panic!("assertion failed"),
                 }
             }
 
             #[test]
             fn test_double() {
-                test_rounding_with_f64(1, 0.0, 1);
-                test_rounding_with_f64(1, 0.1, 1);
-                test_rounding_with_f64(1, 0.5, 2);
-                test_rounding_with_f64(1, 0.9, 2);
-                test_rounding_with_f64(1, -0.5, 0);
-                test_rounding_with_f64(-42, -2.1, -44);
-                test_rounding_with_f64(-42, -2.5, -45);
-                test_rounding_with_f64(-42, -2.75, -45);
+                match Variant::VInteger(1)
+                    .plus(&Variant::VDouble(0.6))
+                    .unwrap()
+                {
+                    Variant::VDouble(result) => assert_eq!(result, 1.6),
+                    _ => panic!("assertion failed"),
+                }
             }
 
             #[test]
@@ -407,42 +611,20 @@ mod tests {
         mod long {
             use super::*;
 
-            fn test_rounding_with_f32(left: i64, right: f32, expected: i64) {
-                match Variant::VLong(left).plus(&Variant::VSingle(right)).unwrap() {
-                    Variant::VLong(result) => assert_eq!(result, expected),
-                    _ => panic!("assertion failed"),
-                }
-            }
-
             #[test]
             fn test_single() {
-                test_rounding_with_f32(1, 0.0, 1);
-                test_rounding_with_f32(1, 0.1, 1);
-                test_rounding_with_f32(1, 0.5, 2);
-                test_rounding_with_f32(1, 0.9, 2);
-                test_rounding_with_f32(1, -0.5, 0);
-                test_rounding_with_f32(-42, -2.1, -44);
-                test_rounding_with_f32(-42, -2.5, -45);
-                test_rounding_with_f32(-42, -2.75, -45);
-            }
-
-            fn test_rounding_with_f64(left: i64, right: f64, expected: i64) {
-                match Variant::VLong(left).plus(&Variant::VDouble(right)).unwrap() {
-                    Variant::VLong(result) => assert_eq!(result, expected),
+                match Variant::VLong(1).plus(&Variant::VSingle(2.0)).unwrap() {
+                    Variant::VSingle(result) => assert_eq!(result, 3.0),
                     _ => panic!("assertion failed"),
                 }
             }
 
             #[test]
             fn test_double() {
-                test_rounding_with_f64(1, 0.0, 1);
-                test_rounding_with_f64(1, 0.1, 1);
-                test_rounding_with_f64(1, 0.5, 2);
-                test_rounding_with_f64(1, 0.9, 2);
-                test_rounding_with_f64(1, -0.5, 0);
-                test_rounding_with_f64(-42, -2.1, -44);
-                test_rounding_with_f64(-42, -2.5, -45);
-                test_rounding_with_f64(-42, -2.75, -45);
+                match Variant::VLong(1).plus(&Variant::VDouble(2.0)).unwrap() {
+                    Variant::VDouble(result) => assert_eq!(result, 3.0),
+                    _ => panic!("assertion failed"),
+                }
             }
 
             #[test]
@@ -469,7 +651,6 @@ mod tests {
             }
         }
     }
-
 
     mod minus {
         use super::*;
@@ -602,36 +783,26 @@ mod tests {
         mod integer {
             use super::*;
 
-            fn test_rounding_with_f32(left: i32, right: f32, expected: i32) {
-                match Variant::VInteger(left).minus(&Variant::VSingle(right)).unwrap() {
-                    Variant::VInteger(result) => assert_eq!(result, expected),
-                    _ => panic!("assertion failed"),
-                }
-            }
-
             #[test]
             fn test_single() {
-                test_rounding_with_f32(1, 0.0, 1);
-                test_rounding_with_f32(1, 0.1, 1);
-                test_rounding_with_f32(1, 0.5, 0);
-                test_rounding_with_f32(1, 0.9, 0);
-                test_rounding_with_f32(1, -0.5, 2);
-            }
-
-            fn test_rounding_with_f64(left: i32, right: f64, expected: i32) {
-                match Variant::VInteger(left).minus(&Variant::VDouble(right)).unwrap() {
-                    Variant::VInteger(result) => assert_eq!(result, expected),
+                match Variant::VInteger(31)
+                    .minus(&Variant::VSingle(13.0))
+                    .unwrap()
+                {
+                    Variant::VSingle(result) => assert_eq!(result, 18.0),
                     _ => panic!("assertion failed"),
                 }
             }
 
             #[test]
             fn test_double() {
-                test_rounding_with_f64(1, 0.0, 1);
-                test_rounding_with_f64(1, 0.1, 1);
-                test_rounding_with_f64(1, 0.5, 0);
-                test_rounding_with_f64(1, 0.9, 0);
-                test_rounding_with_f64(1, -0.5, 2);
+                match Variant::VInteger(31)
+                    .minus(&Variant::VDouble(13.0))
+                    .unwrap()
+                {
+                    Variant::VDouble(result) => assert_eq!(result, 18.0),
+                    _ => panic!("assertion failed"),
+                }
             }
 
             #[test]
@@ -661,36 +832,26 @@ mod tests {
         mod long {
             use super::*;
 
-            fn test_rounding_with_f32(left: i64, right: f32, expected: i64) {
-                match Variant::VLong(left).minus(&Variant::VSingle(right)).unwrap() {
-                    Variant::VLong(result) => assert_eq!(result, expected),
-                    _ => panic!("assertion failed"),
-                }
-            }
-
             #[test]
             fn test_single() {
-                test_rounding_with_f32(1, 0.0, 1);
-                test_rounding_with_f32(1, 0.1, 1);
-                test_rounding_with_f32(1, 0.5, 0);
-                test_rounding_with_f32(1, 0.9, 0);
-                test_rounding_with_f32(1, -0.5, 2);
-            }
-
-            fn test_rounding_with_f64(left: i64, right: f64, expected: i64) {
-                match Variant::VLong(left).minus(&Variant::VDouble(right)).unwrap() {
-                    Variant::VLong(result) => assert_eq!(result, expected),
+                match Variant::VLong(5)
+                    .minus(&Variant::VSingle(2.0))
+                    .unwrap()
+                {
+                    Variant::VSingle(result) => assert_eq!(result, 3.0),
                     _ => panic!("assertion failed"),
                 }
             }
 
             #[test]
             fn test_double() {
-                test_rounding_with_f64(1, 0.0, 1);
-                test_rounding_with_f64(1, 0.1, 1);
-                test_rounding_with_f64(1, 0.5, 0);
-                test_rounding_with_f64(1, 0.9, 0);
-                test_rounding_with_f64(1, -0.5, 2);
+                match Variant::VLong(5)
+                    .minus(&Variant::VDouble(2.0))
+                    .unwrap()
+                {
+                    Variant::VDouble(result) => assert_eq!(result, 3.0),
+                    _ => panic!("assertion failed"),
+                }
             }
 
             #[test]
@@ -715,6 +876,154 @@ mod tests {
                     _ => panic!("assertion failed"),
                 }
             }
+        }
+    }
+
+    mod compare {
+        use super::*;
+
+        fn assert_less(left: Variant, right: Variant) {
+            assert_eq!(left.cmp(&right).unwrap(), Ordering::Less);
+        }
+
+        fn assert_equal(left: Variant, right: Variant) {
+            assert_eq!(left.cmp(&right).unwrap(), Ordering::Equal);
+        }
+
+        fn assert_greater(left: Variant, right: Variant) {
+            assert_eq!(left.cmp(&right).unwrap(), Ordering::Greater);
+        }
+
+        fn assert_err(left: Variant, right: Variant) {
+            left.cmp(&right).expect_err("cannot compare");
+        }
+
+        #[test]
+        fn test_single_to_single() {
+            assert_less(Variant::from(1.0_f32), Variant::from(2.0_f32));
+            assert_equal(Variant::from(3.0_f32), Variant::from(3.0_f32));
+            assert_greater(Variant::from(5.0_f32), Variant::from(4.0_f32));
+        }
+
+        #[test]
+        fn test_single_to_double() {
+            assert_less(Variant::from(1.0_f32), Variant::from(2.0));
+            assert_equal(Variant::from(3.0_f32), Variant::from(3.0));
+            assert_greater(Variant::from(5.0_f32), Variant::from(4.0));
+        }
+
+        #[test]
+        fn test_single_to_integer() {
+            assert_less(Variant::from(1.0_f32), Variant::from(2));
+            assert_less(Variant::from(1.9_f32), Variant::from(2));
+            assert_equal(Variant::from(3.0_f32), Variant::from(3));
+            assert_greater(Variant::from(5.0_f32), Variant::from(4));
+            assert_greater(Variant::from(5.1_f32), Variant::from(5));
+        }
+
+        #[test]
+        fn test_single_to_long() {
+            assert_less(Variant::from(1.0_f32), Variant::from(2_i64));
+            assert_equal(Variant::from(3.0_f32), Variant::from(3_i64));
+            assert_greater(Variant::from(5.0_f32), Variant::from(4_i64));
+        }
+
+        #[test]
+        fn test_numbers_to_string_both_ways() {
+            assert_err(Variant::from(1.0_f32), Variant::from("hi"));
+            assert_err(Variant::from(1.0), Variant::from("hi"));
+            assert_err(Variant::from(1), Variant::from("hi"));
+            assert_err(Variant::from(1_i64), Variant::from("hi"));
+            assert_err(Variant::from("hi"), Variant::from(1.0_f32));
+            assert_err(Variant::from("hi"), Variant::from(1.0));
+            assert_err(Variant::from("hi"), Variant::from(1));
+            assert_err(Variant::from("hi"), Variant::from(1_i64));
+        }
+
+        #[test]
+        fn test_double_to_single() {
+            assert_less(Variant::from(1.0), Variant::from(2.0_f32));
+            assert_equal(Variant::from(3.0), Variant::from(3.0_f32));
+            assert_greater(Variant::from(5.0), Variant::from(4.0_f32));
+        }
+
+        #[test]
+        fn test_double_to_double() {
+            assert_less(Variant::from(1.0), Variant::from(2.0));
+            assert_equal(Variant::from(3.0), Variant::from(3.0));
+            assert_greater(Variant::from(5.0), Variant::from(4.0));
+        }
+
+        #[test]
+        fn test_double_to_integer() {
+            assert_less(Variant::from(1.0), Variant::from(2));
+            assert_equal(Variant::from(3.0), Variant::from(3));
+            assert_greater(Variant::from(5.0), Variant::from(4));
+        }
+
+        #[test]
+        fn test_double_to_long() {
+            assert_less(Variant::from(1.0), Variant::from(2_i64));
+            assert_equal(Variant::from(3.0), Variant::from(3_i64));
+            assert_greater(Variant::from(5.0), Variant::from(4_i64));
+        }
+
+        #[test]
+        fn test_integer_to_single() {
+            assert_less(Variant::from(1), Variant::from(1.1_f32));
+            assert_less(Variant::from(1), Variant::from(2.0_f32));
+            assert_equal(Variant::from(3), Variant::from(3.0_f32));
+            assert_greater(Variant::from(5), Variant::from(4.9_f32));
+            assert_greater(Variant::from(5), Variant::from(4.0_f32));
+        }
+
+        #[test]
+        fn test_integer_to_double() {
+            assert_less(Variant::from(1), Variant::from(2.0));
+            assert_equal(Variant::from(3), Variant::from(3.0));
+            assert_greater(Variant::from(5), Variant::from(4.0));
+        }
+
+        #[test]
+        fn test_integer_to_integer() {
+            assert_less(Variant::from(1), Variant::from(2));
+            assert_equal(Variant::from(3), Variant::from(3));
+            assert_greater(Variant::from(5), Variant::from(4));
+        }
+
+        #[test]
+        fn test_integer_to_long() {
+            assert_less(Variant::from(1), Variant::from(2_i64));
+            assert_equal(Variant::from(3), Variant::from(3_i64));
+            assert_greater(Variant::from(5), Variant::from(4_i64));
+        }
+
+        #[test]
+        fn test_long_to_single() {
+            assert_less(Variant::from(1_i64), Variant::from(2.0_f32));
+            assert_equal(Variant::from(3_i64), Variant::from(3.0_f32));
+            assert_greater(Variant::from(5_i64), Variant::from(4.0_f32));
+        }
+
+        #[test]
+        fn test_long_to_double() {
+            assert_less(Variant::from(1_i64), Variant::from(2.0));
+            assert_equal(Variant::from(3_i64), Variant::from(3.0));
+            assert_greater(Variant::from(5_i64), Variant::from(4.0));
+        }
+
+        #[test]
+        fn test_long_to_integer() {
+            assert_less(Variant::from(1_i64), Variant::from(2));
+            assert_equal(Variant::from(3_i64), Variant::from(3));
+            assert_greater(Variant::from(5_i64), Variant::from(4));
+        }
+
+        #[test]
+        fn test_long_to_long() {
+            assert_less(Variant::from(1_i64), Variant::from(2_i64));
+            assert_equal(Variant::from(3_i64), Variant::from(3_i64));
+            assert_greater(Variant::from(5_i64), Variant::from(4_i64));
         }
     }
 }

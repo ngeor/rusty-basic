@@ -11,14 +11,14 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
         b: &Expression,
         statements: &Block,
     ) -> Result<()> {
-        let mut start = self.evaluate_expression(a)?.to_int()?;
-        let mut stop = self.evaluate_expression(b)?.to_int()?;
-        while start <= stop {
-            self.set_variable(counter_var_name, Variant::from(start))?;
+        let mut start = self.evaluate_expression(a)?;
+        let mut stop = self.evaluate_expression(b)?;
+        while start.cmp(&stop)? != std::cmp::Ordering::Greater {
+            self.set_variable(counter_var_name, start.clone())?;
             self.statements(&statements)?;
 
-            start += 1;
-            stop = self.evaluate_expression(b)?.to_int()?;
+            start = start.plus(&Variant::from(1))?;
+            stop = self.evaluate_expression(b)?;
         }
 
         Ok(())

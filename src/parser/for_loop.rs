@@ -55,8 +55,8 @@ mod tests {
             result,
             vec![TopLevelToken::Statement(Statement::ForLoop(
                 QName::Untyped("I".to_string()),
-                Expression::integer_literal(1),
-                Expression::integer_literal(10),
+                Expression::from(1),
+                Expression::from(10),
                 vec![Statement::sub_call(
                     "PRINT",
                     vec![Expression::variable_name_unqualified("I")]
@@ -72,12 +72,12 @@ mod tests {
             result,
             vec![TopLevelToken::Statement(Statement::ForLoop(
                 QName::Untyped("I".to_string()),
-                Expression::integer_literal(1),
-                Expression::integer_literal(10),
+                Expression::from(1),
+                Expression::from(10),
                 vec![Statement::sub_call(
                     "PRINT",
                     vec![
-                        Expression::string_literal("Hello"),
+                        Expression::from("Hello"),
                         Expression::variable_name_unqualified("I")
                     ]
                 )]
@@ -93,28 +93,28 @@ mod tests {
             vec![
                 TopLevelToken::sub_call(
                     "PRINT",
-                    vec![Expression::string_literal("Before the outer loop")]
+                    vec![Expression::from("Before the outer loop")]
                 ),
                 TopLevelToken::Statement(Statement::ForLoop(
                     QName::Untyped("I".to_string()),
-                    Expression::integer_literal(1),
-                    Expression::integer_literal(10),
+                    Expression::from(1),
+                    Expression::from(10),
                     vec![
                         Statement::sub_call(
                             "PRINT",
                             vec![
-                                Expression::string_literal("Before the inner loop"),
+                                Expression::from("Before the inner loop"),
                                 Expression::variable_name_unqualified("I")
                             ]
                         ),
                         Statement::ForLoop(
                             QName::Untyped("J".to_string()),
-                            Expression::integer_literal(1),
-                            Expression::integer_literal(10),
+                            Expression::from(1),
+                            Expression::from(10),
                             vec![Statement::sub_call(
                                 "PRINT",
                                 vec![
-                                    Expression::string_literal("Inner loop"),
+                                    Expression::from("Inner loop"),
                                     Expression::variable_name_unqualified("I"),
                                     Expression::variable_name_unqualified("J"),
                                 ]
@@ -123,7 +123,7 @@ mod tests {
                         Statement::sub_call(
                             "PRINT",
                             vec![
-                                Expression::string_literal("After the inner loop"),
+                                Expression::from("After the inner loop"),
                                 Expression::variable_name_unqualified("I")
                             ]
                         ),
@@ -131,7 +131,7 @@ mod tests {
                 )),
                 TopLevelToken::sub_call(
                     "PRINT",
-                    vec![Expression::string_literal("After the outer loop")]
+                    vec![Expression::from("After the outer loop")]
                 ),
             ]
         );

@@ -127,6 +127,7 @@ mod test_utils {
 mod tests {
     use super::test_utils::*;
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn test_parse_sub_call_no_args() {
@@ -143,7 +144,7 @@ mod tests {
             program,
             vec![TopLevelToken::sub_call(
                 "PRINT",
-                vec![Expression::string_literal("Hello, world!")]
+                vec![Expression::from("Hello, world!")]
             )]
         );
     }
@@ -155,7 +156,7 @@ mod tests {
             program,
             vec![TopLevelToken::sub_call(
                 "PRINT",
-                vec![Expression::string_literal("Hello, world!")]
+                vec![Expression::from("Hello, world!")]
             )]
         );
     }
@@ -167,10 +168,7 @@ mod tests {
             program,
             vec![TopLevelToken::sub_call(
                 "PRINT",
-                vec![
-                    Expression::string_literal("Hello"),
-                    Expression::string_literal("world!"),
-                ]
+                vec![Expression::from("Hello"), Expression::from("world!"),]
             )]
         );
     }
@@ -181,10 +179,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::sub_call(
-                    "PRINT",
-                    vec![Expression::string_literal("Hello, world!"),]
-                ),
+                TopLevelToken::sub_call("PRINT", vec![Expression::from("Hello, world!"),]),
                 TopLevelToken::sub_call("SYSTEM", vec![])
             ]
         );
@@ -216,7 +211,7 @@ mod tests {
                 // PRINT "Enter the number of fibonacci to calculate"
                 TopLevelToken::sub_call(
                     "PRINT",
-                    vec![Expression::string_literal(
+                    vec![Expression::from(
                         "Enter the number of fibonacci to calculate"
                     )]
                 ),
@@ -224,7 +219,7 @@ mod tests {
                 TopLevelToken::sub_call("INPUT", vec![Expression::variable_name_unqualified("N")]),
                 // FOR I = 0 TO N
                 TopLevelToken::Statement(Statement::ForLoop(
-                    QName::Untyped("I".to_string()),
+                    QName::from_str("I").unwrap(),
                     Expression::IntegerLiteral(0),
                     Expression::variable_name_unqualified("N"),
                     vec![
@@ -232,11 +227,11 @@ mod tests {
                         Statement::sub_call(
                             "PRINT",
                             vec![
-                                Expression::string_literal("Fibonacci of "),
+                                Expression::from("Fibonacci of "),
                                 Expression::variable_name_unqualified("I"),
-                                Expression::string_literal(" is "),
+                                Expression::from(" is "),
                                 Expression::FunctionCall(
-                                    QName::Untyped("Fib".to_string()),
+                                    QName::from_str("Fib").unwrap(),
                                     vec![Expression::variable_name_unqualified("I")]
                                 )
                             ]

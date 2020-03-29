@@ -91,7 +91,7 @@ impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
 
     pub fn effective_type_qualifier(&self, variable_name: &QName) -> TypeQualifier {
         match variable_name {
-            QName::Untyped(_) => TypeQualifier::BangFloat,
+            QName::Untyped(_) => TypeQualifier::BangSingle,
             QName::Typed(_, type_qualifier) => type_qualifier.clone(),
         }
     }

@@ -50,7 +50,7 @@ impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
     fn _do_input_one_var(&mut self, qualified_name: &QName) -> Result<()> {
         let raw_input: String = self.stdlib.input()?;
         let variable_value = match self.effective_type_qualifier(qualified_name) {
-            TypeQualifier::BangFloat => Variant::from(parse_float_input(raw_input)?),
+            TypeQualifier::BangSingle => Variant::from(parse_single_input(raw_input)?),
             TypeQualifier::DollarString => Variant::from(raw_input),
             TypeQualifier::PercentInteger => Variant::from(parse_int_input(raw_input)?),
             _ => unimplemented!(),
@@ -59,7 +59,7 @@ impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
     }
 }
 
-fn parse_float_input(s: String) -> Result<f32> {
+fn parse_single_input(s: String) -> Result<f32> {
     if s.is_empty() {
         Ok(0.0)
     } else {
@@ -98,27 +98,27 @@ mod tests {
 
             #[test]
             fn test_input_empty() {
-                assert_eq!(test_input(""), Variant::VFloat(0.0));
+                assert_eq!(test_input(""), Variant::VSingle(0.0));
             }
 
             #[test]
             fn test_input_zero() {
-                assert_eq!(test_input("0"), Variant::VFloat(0.0));
+                assert_eq!(test_input("0"), Variant::VSingle(0.0));
             }
 
             #[test]
-            fn test_input_float() {
-                assert_eq!(test_input("1.1"), Variant::VFloat(1.1));
+            fn test_input_single() {
+                assert_eq!(test_input("1.1"), Variant::VSingle(1.1));
             }
 
             #[test]
             fn test_input_negative() {
-                assert_eq!(test_input("-1.2345"), Variant::VFloat(-1.2345));
+                assert_eq!(test_input("-1.2345"), Variant::VSingle(-1.2345));
             }
 
             #[test]
             fn test_input_explicit_positive() {
-                assert_eq!(test_input("+3.14"), Variant::VFloat(3.14));
+                assert_eq!(test_input("+3.14"), Variant::VSingle(3.14));
             }
         }
 

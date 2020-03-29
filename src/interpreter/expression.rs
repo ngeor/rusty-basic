@@ -84,7 +84,7 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
                     std::cmp::Ordering::Greater => Ok(V_FALSE),
                 }
             }
-            Operand::Plus => Ok(left_var.plus(&right_var)),
+            Operand::Plus => left_var.plus(&right_var),
             Operand::Minus => left_var.minus(&right_var),
             _ => unimplemented!(),
         }

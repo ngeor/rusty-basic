@@ -64,8 +64,8 @@ mod tests {
         assert_eq!(
             program,
             vec![TopLevelToken::FunctionDeclaration(
-                QName::Typed("Fib".to_string(), TypeQualifier::BangFloat),
-                vec![QName::Typed("N".to_string(), TypeQualifier::BangFloat)]
+                QName::Typed("Fib".to_string(), TypeQualifier::BangSingle),
+                vec![QName::Typed("N".to_string(), TypeQualifier::BangSingle)]
             )]
         );
     }

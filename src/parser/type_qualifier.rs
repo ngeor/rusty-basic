@@ -8,7 +8,7 @@ use std::str::FromStr;
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub enum TypeQualifier {
     /// ! Single-precision
-    BangFloat,
+    BangSingle,
     /// # Double-precision
     HashDouble,
     /// $ String
@@ -22,7 +22,7 @@ pub enum TypeQualifier {
 impl Display for TypeQualifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeQualifier::BangFloat => write!(f, "!"),
+            TypeQualifier::BangSingle => write!(f, "!"),
             TypeQualifier::HashDouble => write!(f, "#"),
             TypeQualifier::DollarString => write!(f, "$"),
             TypeQualifier::PercentInteger => write!(f, "%"),
@@ -35,7 +35,7 @@ impl FromStr for TypeQualifier {
     type Err = String;
     fn from_str(s: &str) -> Result<TypeQualifier> {
         if s == "!" {
-            Ok(TypeQualifier::BangFloat)
+            Ok(TypeQualifier::BangSingle)
         } else if s == "#" {
             Ok(TypeQualifier::HashDouble)
         } else if s == "$" {
@@ -54,7 +54,7 @@ impl TryFrom<char> for TypeQualifier {
     type Error = String;
     fn try_from(ch: char) -> Result<TypeQualifier> {
         if ch == '!' {
-            Ok(TypeQualifier::BangFloat)
+            Ok(TypeQualifier::BangSingle)
         } else if ch == '#' {
             Ok(TypeQualifier::HashDouble)
         } else if ch == '$' {
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        assert_eq!("!", format!("{}", TypeQualifier::BangFloat));
+        assert_eq!("!", format!("{}", TypeQualifier::BangSingle));
         assert_eq!("#", format!("{}", TypeQualifier::HashDouble));
         assert_eq!("$", format!("{}", TypeQualifier::DollarString));
         assert_eq!("%", format!("{}", TypeQualifier::PercentInteger));
@@ -86,7 +86,7 @@ mod tests {
     fn test_from_str() {
         assert_eq!(
             TypeQualifier::from_str("!").unwrap(),
-            TypeQualifier::BangFloat
+            TypeQualifier::BangSingle
         );
         assert_eq!(
             TypeQualifier::from_str("#").unwrap(),
@@ -111,7 +111,7 @@ mod tests {
     fn test_try_from_char() {
         assert_eq!(
             TypeQualifier::try_from('!').unwrap(),
-            TypeQualifier::BangFloat
+            TypeQualifier::BangSingle
         );
         assert_eq!(
             TypeQualifier::try_from('#').unwrap(),

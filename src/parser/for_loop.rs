@@ -91,10 +91,7 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                TopLevelToken::sub_call(
-                    "PRINT",
-                    vec![Expression::from("Before the outer loop")]
-                ),
+                TopLevelToken::sub_call("PRINT", vec![Expression::from("Before the outer loop")]),
                 TopLevelToken::Statement(Statement::ForLoop(
                     QName::Untyped("I".to_string()),
                     Expression::from(1),
@@ -129,10 +126,7 @@ mod tests {
                         ),
                     ]
                 )),
-                TopLevelToken::sub_call(
-                    "PRINT",
-                    vec![Expression::from("After the outer loop")]
-                ),
+                TopLevelToken::sub_call("PRINT", vec![Expression::from("After the outer loop")]),
             ]
         );
     }

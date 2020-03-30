@@ -166,7 +166,7 @@ mod tests {
         fn test_err<TLeft, TRight>(left: TLeft, right: TRight)
         where
             Expression: From<TLeft>,
-            Expression: From<TRight>
+            Expression: From<TRight>,
         {
             let stdlib = MockStdlib::new();
             let mut interpreter = Interpreter::new_from_bytes("", stdlib);
@@ -252,7 +252,7 @@ mod tests {
         fn test_err<TLeft, TRight>(left: TLeft, right: TRight)
         where
             Expression: From<TLeft>,
-            Expression: From<TRight>
+            Expression: From<TRight>,
         {
             let stdlib = MockStdlib::new();
             let mut interpreter = Interpreter::new_from_bytes("", stdlib);
@@ -338,7 +338,7 @@ mod tests {
         fn test_err<TLeft, TRight>(left: TLeft, right: TRight)
         where
             Expression: From<TLeft>,
-            Expression: From<TRight>
+            Expression: From<TRight>,
         {
             let stdlib = MockStdlib::new();
             let mut interpreter = Interpreter::new_from_bytes("", stdlib);
@@ -478,7 +478,7 @@ mod tests {
         fn test_err<TLeft, TRight>(left: TLeft, right: TRight)
         where
             Expression: From<TLeft>,
-            Expression: From<TRight>
+            Expression: From<TRight>,
         {
             let stdlib = MockStdlib::new();
             let mut interpreter = Interpreter::new_from_bytes("", stdlib);

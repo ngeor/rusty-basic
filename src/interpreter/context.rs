@@ -1,7 +1,7 @@
+use super::Variant;
 use crate::common::Result;
 use crate::parser::{QName, TypeQualifier};
 use std::collections::HashMap;
-use super::Variant;
 
 /// A variable context
 #[derive(Debug, Clone)]

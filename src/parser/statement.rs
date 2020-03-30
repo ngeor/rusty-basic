@@ -1,7 +1,7 @@
-use super::{Block, Parser, Expression, QName};
+use super::if_block::IfBlock;
+use super::{Block, Expression, Parser, QName};
 use crate::common::Result;
 use std::io::BufRead;
-use super::if_block::IfBlock;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
@@ -18,7 +18,7 @@ pub enum Statement {
     ),
     IfBlock(IfBlock),
     /// Assignment to a variable e.g. ANSWER = 42
-    Assignment(QName, Expression)
+    Assignment(QName, Expression),
 }
 
 impl Statement {
@@ -31,8 +31,11 @@ impl<T: BufRead> Parser<T> {
     pub fn demand_statement(&mut self) -> Result<Statement> {
         match self.try_parse_statement() {
             Ok(Some(x)) => Ok(x),
-            Ok(None) => Err(format!("Expected statement, found {:?}", self.buf_lexer.read()?)),
-            Err(e) => Err(e)
+            Ok(None) => Err(format!(
+                "Expected statement, found {:?}",
+                self.buf_lexer.read()?
+            )),
+            Err(e) => Err(e),
         }
     }
 
@@ -56,7 +59,7 @@ impl<T: BufRead> Parser<T> {
             self.buf_lexer.skip_whitespace_and_eol()?;
             match self.try_parse_statement()? {
                 Some(s) => statements.push(s),
-                None => break
+                None => break,
             }
         }
         Ok(statements)

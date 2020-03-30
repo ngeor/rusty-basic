@@ -20,7 +20,7 @@ impl<T: BufRead> Parser<T> {
             Ok(Some(TopLevelToken::FunctionImplementation(
                 name,
                 function_arguments,
-                block
+                block,
             )))
         } else {
             Ok(None)

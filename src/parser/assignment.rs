@@ -12,7 +12,7 @@ impl<T: BufRead> Parser<T> {
                 self.buf_lexer.skip_whitespace()?;
                 self.buf_lexer.demand_eol_or_eof()?;
                 Ok(Some(Statement::Assignment(n, exp)))
-            },
+            }
             None => {
                 self.buf_lexer.backtrack();
                 Ok(None)
@@ -30,10 +30,8 @@ impl<T: BufRead> Parser<T> {
                 } else {
                     Ok(None)
                 }
-            },
-            None => {
-                Ok(None)
             }
+            None => Ok(None),
         }
     }
 }

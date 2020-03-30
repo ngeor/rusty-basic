@@ -74,6 +74,8 @@ impl FunctionContext {
     }
 
     pub fn get_function_implementation(&self, name: &String) -> Option<FunctionImplementation> {
-        self.function_implementation_map.get(name).map(|x| x.clone())
+        self.function_implementation_map
+            .get(name)
+            .map(|x| x.clone())
     }
 }

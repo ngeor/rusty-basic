@@ -25,7 +25,7 @@ impl IfBlock {
         IfBlock {
             if_block: ConditionalBlock::new(condition, if_block),
             else_if_blocks: vec![],
-            else_block: Some(else_block)
+            else_block: Some(else_block),
         }
     }
 }

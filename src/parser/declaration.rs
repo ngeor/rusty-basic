@@ -1,4 +1,4 @@
-use super::{QName, Parser, TopLevelToken};
+use super::{Parser, QName, TopLevelToken};
 use crate::common::Result;
 use std::io::BufRead;
 

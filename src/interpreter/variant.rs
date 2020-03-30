@@ -33,13 +33,13 @@ impl Variant {
                 Variant::VDouble(d_right) => partial_cmp_to_result(&(*f_left as f64), d_right),
                 Variant::VInteger(i_right) => partial_cmp_to_result(f_left, &(*i_right as f32)),
                 Variant::VLong(l_right) => partial_cmp_to_result(f_left, &(*l_right as f32)),
-                _ => other.cmp(self).map(|x| x.reverse())
+                _ => other.cmp(self).map(|x| x.reverse()),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VDouble(d_right) => partial_cmp_to_result(d_left, d_right),
                 Variant::VInteger(i_right) => partial_cmp_to_result(d_left, &(*i_right as f64)),
                 Variant::VLong(l_right) => partial_cmp_to_result(d_left, &(*l_right as f64)),
-                _ => other.cmp(self).map(|x| x.reverse())
+                _ => other.cmp(self).map(|x| x.reverse()),
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
@@ -48,11 +48,11 @@ impl Variant {
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
                 Variant::VLong(l_right) => partial_cmp_to_result(&(*i_left as i64), l_right),
-                _ => other.cmp(self).map(|x| x.reverse())
+                _ => other.cmp(self).map(|x| x.reverse()),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
-                _ => other.cmp(self).map(|x| x.reverse())
+                _ => other.cmp(self).map(|x| x.reverse()),
             },
         }
     }
@@ -63,7 +63,7 @@ impl Variant {
             Variant::VDouble(n) => Variant::VDouble(-n),
             Variant::VInteger(n) => Variant::VInteger(-n),
             Variant::VLong(n) => Variant::VLong(-n),
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 
@@ -93,7 +93,7 @@ impl Variant {
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(Variant::VLong(*l_left + *l_right)),
-                _ => other.plus(self)
+                _ => other.plus(self),
             },
         }
     }
@@ -117,11 +117,11 @@ impl Variant {
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(Variant::VInteger(*i_left - *i_right)),
                 Variant::VLong(l_right) => Ok(Variant::VLong(*i_left as i64 - *l_right)),
-                _ => other.minus(self).map(|x| x.negate())
+                _ => other.minus(self).map(|x| x.negate()),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(Variant::VLong(*l_left - *l_right)),
-                _ => other.minus(self).map(|x| x.negate())
+                _ => other.minus(self).map(|x| x.negate()),
             },
         }
     }
@@ -411,10 +411,7 @@ mod tests {
 
             #[test]
             fn test_single() {
-                match Variant::VInteger(1)
-                    .plus(&Variant::VSingle(0.5))
-                    .unwrap()
-                {
+                match Variant::VInteger(1).plus(&Variant::VSingle(0.5)).unwrap() {
                     Variant::VSingle(result) => assert_eq!(result, 1.5),
                     _ => panic!("assertion failed"),
                 }
@@ -422,10 +419,7 @@ mod tests {
 
             #[test]
             fn test_double() {
-                match Variant::VInteger(1)
-                    .plus(&Variant::VDouble(0.6))
-                    .unwrap()
-                {
+                match Variant::VInteger(1).plus(&Variant::VDouble(0.6)).unwrap() {
                     Variant::VDouble(result) => assert_eq!(result, 1.6),
                     _ => panic!("assertion failed"),
                 }
@@ -681,10 +675,7 @@ mod tests {
 
             #[test]
             fn test_single() {
-                match Variant::VLong(5)
-                    .minus(&Variant::VSingle(2.0))
-                    .unwrap()
-                {
+                match Variant::VLong(5).minus(&Variant::VSingle(2.0)).unwrap() {
                     Variant::VSingle(result) => assert_eq!(result, 3.0),
                     _ => panic!("assertion failed"),
                 }
@@ -692,10 +683,7 @@ mod tests {
 
             #[test]
             fn test_double() {
-                match Variant::VLong(5)
-                    .minus(&Variant::VDouble(2.0))
-                    .unwrap()
-                {
+                match Variant::VLong(5).minus(&Variant::VDouble(2.0)).unwrap() {
                     Variant::VDouble(result) => assert_eq!(result, 3.0),
                     _ => panic!("assertion failed"),
                 }

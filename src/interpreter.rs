@@ -2,6 +2,7 @@ use crate::common::Result;
 use crate::parser::{Block, Parser, QName, TopLevelToken, TypeQualifier};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
+mod assignment;
 mod casting;
 mod context;
 mod expression;

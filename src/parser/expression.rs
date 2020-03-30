@@ -105,6 +105,7 @@ impl<T: BufRead> Parser<T> {
             Lexeme::Symbol('"') => Ok(Some(self._parse_string_literal()?)),
             Lexeme::Word(word) => Ok(Some(self._parse_word(word)?)),
             Lexeme::Digits(digits) => Ok(Some(self._parse_number_literal(digits)?)),
+            Lexeme::Symbol('.') => Ok(Some(self._parse_single_literal(0)?)),
             _ => Ok(None),
         }
     }
@@ -173,32 +174,43 @@ impl<T: BufRead> Parser<T> {
     }
 
     fn _parse_number_literal(&mut self, digits: u32) -> Result<Expression> {
+        // consume digits
         self.buf_lexer.consume();
-        if self.buf_lexer.try_consume_symbol('.')? {
-            // decimal point found, single or double
-            let next = self.buf_lexer.read()?;
-            match next {
-                Lexeme::Digits(fraction_digits) => {
-                    self.buf_lexer.consume();
-                    match format!("{}.{}", digits, fraction_digits).parse::<f32>() {
-                        Ok(f) => Ok(Expression::SingleLiteral(f)),
-                        Err(err) => self
-                            .buf_lexer
-                            .err(format!("Could not convert digits to f32: {}", err)),
-                    }
+        let next = self.buf_lexer.read()?;
+        match next {
+            Lexeme::Symbol('.') => self._parse_single_literal(digits),
+            _ => {
+                // no decimal point, just integer
+                match i32::try_from(digits) {
+                    Ok(i) => Ok(Expression::IntegerLiteral(i)),
+                    Err(err) => self
+                        .buf_lexer
+                        .err(format!("Could not convert digits to i32: {}", err)),
                 }
-                _ => self
-                    .buf_lexer
-                    .err("Expected number after decimal point".to_string()),
             }
-        } else {
-            // no decimal point, just integer
-            match i32::try_from(digits) {
-                Ok(i) => Ok(Expression::IntegerLiteral(i)),
-                Err(err) => self
-                    .buf_lexer
-                    .err(format!("Could not convert digits to i32: {}", err)),
+        }
+    }
+
+    fn _demand_digits(&mut self) -> Result<u32> {
+        let next = self.buf_lexer.read()?;
+        match next {
+            Lexeme::Digits(digits) => {
+                self.buf_lexer.consume();
+                Ok(digits)
             }
+            _ => self.buf_lexer.err("Expected digits"),
+        }
+    }
+
+    fn _parse_single_literal(&mut self, integer_digits: u32) -> Result<Expression> {
+        // consume dot
+        self.buf_lexer.consume();
+        let fraction_digits = self._demand_digits()?;
+        match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
+            Ok(f) => Ok(Expression::SingleLiteral(f)),
+            Err(err) => self
+                .buf_lexer
+                .err(format!("Could not convert digits to f32: {}", err)),
         }
     }
 
@@ -245,28 +257,23 @@ mod tests {
     use super::*;
     use std::str::FromStr;
 
-    #[test]
-    fn test_string_literal_expression() {
-        let input = "\"hello, world\"";
+    fn assert_parse_literal<TResult>(input: &str, expected: TResult)
+    where
+        TResult: std::fmt::Display + PartialEq,
+        Expression: From<TResult>,
+    {
         let mut parser = Parser::from(input);
         let expression = parser.demand_expression().unwrap();
-        assert_eq!(expression, Expression::from("hello, world"));
+        assert_eq!(expression, Expression::from(expected));
     }
 
     #[test]
-    fn test_integer_literal() {
-        let input = "42";
-        let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
-        assert_eq!(expression, Expression::IntegerLiteral(42));
-    }
-
-    #[test]
-    fn test_single_literal() {
-        let input = "4.2";
-        let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
-        assert_eq!(expression, Expression::SingleLiteral(4.2_f32));
+    fn test_literals() {
+        assert_parse_literal("\"hello, world\"", "hello, world");
+        assert_parse_literal("42", 42);
+        assert_parse_literal("4.2", 4.2_f32);
+        assert_parse_literal("0.5", 0.5_f32);
+        assert_parse_literal(".5", 0.5_f32);
     }
 
     #[test]

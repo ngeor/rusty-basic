@@ -105,7 +105,7 @@ impl<T: BufRead> Parser<T> {
             Lexeme::Symbol('"') => Ok(Some(self._parse_string_literal()?)),
             Lexeme::Word(word) => Ok(Some(self._parse_word(word)?)),
             Lexeme::Digits(digits) => Ok(Some(self._parse_number_literal(digits)?)),
-            Lexeme::Symbol('.') => Ok(Some(self._parse_single_literal(0)?)),
+            Lexeme::Symbol('.') => Ok(Some(self._parse_floating_point_literal(0)?)),
             _ => Ok(None),
         }
     }
@@ -178,7 +178,7 @@ impl<T: BufRead> Parser<T> {
         self.buf_lexer.consume();
         let next = self.buf_lexer.read()?;
         match next {
-            Lexeme::Symbol('.') => self._parse_single_literal(digits),
+            Lexeme::Symbol('.') => self._parse_floating_point_literal(digits),
             _ => {
                 // no decimal point, just integer
                 match i32::try_from(digits) {
@@ -202,15 +202,25 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _parse_single_literal(&mut self, integer_digits: u32) -> Result<Expression> {
+    fn _parse_floating_point_literal(&mut self, integer_digits: u32) -> Result<Expression> {
         // consume dot
         self.buf_lexer.consume();
         let fraction_digits = self._demand_digits()?;
-        match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
-            Ok(f) => Ok(Expression::SingleLiteral(f)),
-            Err(err) => self
-                .buf_lexer
-                .err(format!("Could not convert digits to f32: {}", err)),
+        let is_double = self.buf_lexer.try_consume_symbol('#')?;
+        if is_double {
+            match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
+                Ok(f) => Ok(Expression::DoubleLiteral(f)),
+                Err(err) => self
+                    .buf_lexer
+                    .err(format!("Could not convert digits to f64: {}", err)),
+            }
+        } else {
+            match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
+                Ok(f) => Ok(Expression::SingleLiteral(f)),
+                Err(err) => self
+                    .buf_lexer
+                    .err(format!("Could not convert digits to f32: {}", err)),
+            }
         }
     }
 
@@ -274,6 +284,7 @@ mod tests {
         assert_parse_literal("4.2", 4.2_f32);
         assert_parse_literal("0.5", 0.5_f32);
         assert_parse_literal(".5", 0.5_f32);
+        assert_parse_literal("3.14#", 3.14_f64);
     }
 
     #[test]

@@ -45,6 +45,10 @@ mod tests {
                 Variant::from(1.0_f32)
             );
             assert_eq!(
+                test_literal(QName::from_str("X").unwrap(), "3.14#").unwrap(),
+                Variant::from(3.14_f32)
+            );
+            assert_eq!(
                 test_literal(QName::from_str("X").unwrap(), "\"hello\"").unwrap_err(),
                 "Type mismatch"
             );
@@ -87,6 +91,10 @@ mod tests {
             assert_eq!(
                 test_literal(QName::from_str("X#").unwrap(), "\"hello\"").unwrap_err(),
                 "Type mismatch"
+            );
+            assert_eq!(
+                test_literal(QName::from_str("X#").unwrap(), "3.14#").unwrap(),
+                Variant::from(3.14_f64)
             );
         }
 
@@ -131,6 +139,10 @@ mod tests {
             assert_eq!(
                 test_literal(QName::from_str("X%").unwrap(), "\"hello\"").unwrap_err(),
                 "Type mismatch"
+            );
+            assert_eq!(
+                test_literal(QName::from_str("X%").unwrap(), "3.14#").unwrap(),
+                Variant::from(3)
             );
         }
 

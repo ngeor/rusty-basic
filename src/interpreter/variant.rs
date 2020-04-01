@@ -26,6 +26,13 @@ where
 }
 
 impl Variant {
+    pub fn is_numeric(&self) -> bool {
+        match self {
+            Variant::VString(_) => false,
+            _ => true,
+        }
+    }
+
     pub fn cmp(&self, other: &Self) -> Result<Ordering> {
         match self {
             Variant::VSingle(f_left) => match other {

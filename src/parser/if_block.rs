@@ -80,6 +80,7 @@ impl<T: BufRead> Parser<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
     use super::*;
 
     #[test]
@@ -92,7 +93,7 @@ mod tests {
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
                     Expression::variable_name_unqualified("X"),
-                    vec![Statement::sub_call(
+                    vec![sub_call(
                         "PRINT",
                         vec![Expression::variable_name_unqualified("X")]
                     )]
@@ -117,13 +118,13 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
                     Expression::variable_name_unqualified("X"),
-                    vec![Statement::sub_call(
+                    vec![sub_call(
                         "PRINT",
                         vec![Expression::variable_name_unqualified("X")]
                     )]
                 ),
                 else_if_blocks: vec![],
-                else_block: Some(vec![Statement::sub_call(
+                else_block: Some(vec![sub_call(
                     "PRINT",
                     vec![Expression::variable_name_unqualified("Y")]
                 )])
@@ -145,14 +146,14 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
                     Expression::variable_name_unqualified("X"),
-                    vec![Statement::sub_call(
+                    vec![sub_call(
                         "PRINT",
                         vec![Expression::variable_name_unqualified("X")]
                     )]
                 ),
                 else_if_blocks: vec![ConditionalBlock::new(
                     Expression::variable_name_unqualified("Y"),
-                    vec![Statement::sub_call(
+                    vec![sub_call(
                         "PRINT",
                         vec![Expression::variable_name_unqualified("Y")]
                     )]
@@ -178,7 +179,7 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
                     Expression::variable_name_unqualified("X"),
-                    vec![Statement::sub_call(
+                    vec![sub_call(
                         "PRINT",
                         vec![Expression::variable_name_unqualified("X")]
                     )]
@@ -186,14 +187,14 @@ END IF"#;
                 else_if_blocks: vec![
                     ConditionalBlock::new(
                         Expression::variable_name_unqualified("Y"),
-                        vec![Statement::sub_call(
+                        vec![sub_call(
                             "PRINT",
                             vec![Expression::variable_name_unqualified("Y")]
                         )]
                     ),
                     ConditionalBlock::new(
                         Expression::variable_name_unqualified("Z"),
-                        vec![Statement::sub_call(
+                        vec![sub_call(
                             "PRINT",
                             vec![Expression::variable_name_unqualified("Z")]
                         )]
@@ -220,19 +221,19 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
                     Expression::variable_name_unqualified("X"),
-                    vec![Statement::sub_call(
+                    vec![sub_call(
                         "PRINT",
                         vec![Expression::variable_name_unqualified("X")]
                     )]
                 ),
                 else_if_blocks: vec![ConditionalBlock::new(
                     Expression::variable_name_unqualified("Y"),
-                    vec![Statement::sub_call(
+                    vec![sub_call(
                         "PRINT",
                         vec![Expression::variable_name_unqualified("Y")]
                     )]
                 )],
-                else_block: Some(vec![Statement::sub_call(
+                else_block: Some(vec![sub_call(
                     "PRINT",
                     vec![Expression::variable_name_unqualified("Z")]
                 )])

@@ -1,30 +1,16 @@
-use super::if_block::IfBlock;
-use super::{Block, Expression, Parser, QName};
+use super::{Block, Expression, ForLoop, IfBlock, Parser, QName};
 use crate::common::Result;
+use crate::lexer::Lexeme;
 use std::io::BufRead;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     SubCall(String, Vec<Expression>),
-    ForLoop(
-        /// The counter of the loop
-        QName,
-        /// The lower bound
-        Expression,
-        /// The upper bound
-        Expression,
-        /// The statements to execute
-        Block,
-    ),
+    ForLoop(ForLoop),
     IfBlock(IfBlock),
     /// Assignment to a variable e.g. ANSWER = 42
     Assignment(QName, Expression),
-}
-
-impl Statement {
-    pub fn sub_call<S: AsRef<str>>(name: S, args: Vec<Expression>) -> Statement {
-        Statement::SubCall(name.as_ref().to_string(), args)
-    }
+    Whitespace(String),
 }
 
 impl<T: BufRead> Parser<T> {
@@ -48,6 +34,8 @@ impl<T: BufRead> Parser<T> {
             Ok(Some(s))
         } else if let Some(s) = self.try_parse_sub_call()? {
             Ok(Some(s))
+        } else if let Some(s) = self._try_parse_whitespace()? {
+            Ok(Some(s))
         } else {
             Ok(None)
         }
@@ -63,5 +51,29 @@ impl<T: BufRead> Parser<T> {
             }
         }
         Ok(statements)
+    }
+
+    fn _try_parse_whitespace(&mut self) -> Result<Option<Statement>> {
+        let mut buf = String::new();
+        loop {
+            let lexeme = self.buf_lexer.read()?;
+            match lexeme {
+                Lexeme::Whitespace(w) => {
+                    self.buf_lexer.consume();
+                    buf.push_str(&w);
+                }
+                Lexeme::EOL(w) => {
+                    self.buf_lexer.consume();
+                    buf.push_str(&w);
+                }
+                _ => break,
+            }
+        }
+
+        if buf.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(Statement::Whitespace(buf)))
+        }
     }
 }

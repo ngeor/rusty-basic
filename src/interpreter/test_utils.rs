@@ -50,29 +50,33 @@ where
 
 pub struct MockStdlib {
     pub next_input: String,
+    pub output: Vec<String>,
 }
 
 impl MockStdlib {
     pub fn new() -> MockStdlib {
         MockStdlib {
             next_input: String::new(),
+            output: vec![],
         }
     }
 }
 
 impl Stdlib for MockStdlib {
-    fn print(&self, args: Vec<String>) {
+    fn print(&mut self, args: Vec<String>) {
         let mut is_first = true;
-        for a in args {
+        let mut buf = String::new();
+        for arg in args {
             if is_first {
                 is_first = false;
             } else {
-                print!(" ");
+                buf.push(' ');
             }
-            print!("{}", a)
+            buf.push_str(&arg);
         }
 
-        println!("")
+        println!("{}", buf);
+        self.output.push(buf);
     }
 
     fn system(&self) {

@@ -8,9 +8,10 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
     pub fn statement(&mut self, statement: &Statement) -> Result<()> {
         match statement {
             Statement::SubCall(name, args) => self.sub_call(name, args),
-            Statement::ForLoop(i, a, b, statements) => self.for_loop(i, a, b, statements),
+            Statement::ForLoop(f) => self.for_loop(f),
             Statement::IfBlock(i) => self._if_block(i),
             Statement::Assignment(left_side, right_side) => self.assignment(left_side, right_side),
+            Statement::Whitespace(_) => Ok(()),
         }
     }
 

@@ -39,7 +39,7 @@ impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
     }
 
     pub fn err<TResult, S: AsRef<str>>(&self, msg: S) -> Result<TResult> {
-        self.parser.buf_lexer.err(msg)
+        Err(msg.as_ref().to_string())
     }
 
     pub fn interpret(&mut self) -> Result<()> {

@@ -3,7 +3,8 @@ use crate::common::Result;
 /// The standard functions that QBasic offers
 pub trait Stdlib {
     /// Implementation of PRINT x[, y, z]
-    fn print(&self, args: Vec<String>);
+    /// Mutable because of the test implementation
+    fn print(&mut self, args: Vec<String>);
 
     /// Implementation of SYSTEM
     fn system(&self);
@@ -15,7 +16,7 @@ pub trait Stdlib {
 pub struct DefaultStdlib {}
 
 impl Stdlib for DefaultStdlib {
-    fn print(&self, args: Vec<String>) {
+    fn print(&mut self, args: Vec<String>) {
         for a in args {
             print!("{}", a)
         }

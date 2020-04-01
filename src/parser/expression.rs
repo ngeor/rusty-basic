@@ -4,12 +4,19 @@ use crate::lexer::Lexeme;
 use std::convert::TryFrom;
 use std::io::BufRead;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Operand {
     LessOrEqualThan,
     LessThan,
     Plus,
     Minus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnaryOperand {
+    // Plus,
+    Minus,
+    // Not,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -22,6 +29,7 @@ pub enum Expression {
     VariableName(QName),
     FunctionCall(QName, Vec<Expression>),
     BinaryExpression(Operand, Box<Expression>, Box<Expression>),
+    UnaryExpression(UnaryOperand, Box<Expression>),
 }
 
 impl From<f32> for Expression {
@@ -61,6 +69,20 @@ impl Expression {
 
     pub fn binary(operand: Operand, left: Expression, right: Expression) -> Expression {
         Expression::BinaryExpression(operand, Box::new(left), Box::new(right))
+    }
+
+    pub fn unary(operand: UnaryOperand, child: Expression) -> Expression {
+        Expression::UnaryExpression(operand, Box::new(child))
+    }
+
+    pub fn unary_minus(child: Expression) -> Expression {
+        match child {
+            Expression::SingleLiteral(n) => Expression::from(-n),
+            Expression::DoubleLiteral(n) => Expression::from(-n),
+            Expression::IntegerLiteral(n) => Expression::from(-n),
+            Expression::LongLiteral(n) => Expression::from(-n),
+            _ => Expression::unary(UnaryOperand::Minus, child),
+        }
     }
 
     pub fn lte(left: Expression, right: Expression) -> Expression {
@@ -106,6 +128,15 @@ impl<T: BufRead> Parser<T> {
             Lexeme::Word(word) => Ok(Some(self._parse_word(word)?)),
             Lexeme::Digits(digits) => Ok(Some(self._parse_number_literal(digits)?)),
             Lexeme::Symbol('.') => Ok(Some(self._parse_floating_point_literal(0)?)),
+            Lexeme::Symbol('-') => {
+                self.buf_lexer.consume();
+                match self._try_parse_single_expression()? {
+                    Some(e) => Ok(Some(Expression::unary_minus(e))),
+                    None => self
+                        .buf_lexer
+                        .err("Expected expression after minus operator"),
+                }
+            }
             _ => Ok(None),
         }
     }
@@ -285,6 +316,7 @@ mod tests {
         assert_parse_literal("0.5", 0.5_f32);
         assert_parse_literal(".5", 0.5_f32);
         assert_parse_literal("3.14#", 3.14_f64);
+        assert_parse_literal("-42", -42);
     }
 
     #[test]
@@ -432,6 +464,17 @@ mod tests {
     }
 
     #[test]
+    fn test_negated_variable() {
+        let input = "-N";
+        let mut parser = Parser::from(input);
+        let expression = parser.demand_expression().unwrap();
+        assert_eq!(
+            expression,
+            Expression::unary_minus(Expression::variable_name_unqualified("N"))
+        );
+    }
+
+    #[test]
     fn test_fib_expression() {
         let input = "Fib(N - 1) + Fib(N - 2)";
         let mut parser = Parser::from(input);
@@ -456,6 +499,22 @@ mod tests {
                     )]
                 ))
             )
+        );
+    }
+
+    #[test]
+    fn test_negated_function_call() {
+        let input = "-Fib(-N)";
+        let mut parser = Parser::from(input);
+        let expression = parser.demand_expression().unwrap();
+        assert_eq!(
+            expression,
+            Expression::unary_minus(Expression::FunctionCall(
+                QName::Untyped("Fib".to_string()),
+                vec![Expression::unary_minus(
+                    Expression::variable_name_unqualified("N")
+                )]
+            ))
         );
     }
 }

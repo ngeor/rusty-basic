@@ -80,98 +80,53 @@ mod tests {
     mod input {
         mod unqualified_var {
             use crate::interpreter::test_utils::*;
-            use crate::interpreter::*;
-            use crate::parser::QName;
-
-            fn test_input<S: AsRef<str>>(user_input: S) -> Variant {
-                let mut stdlib = MockStdlib::new();
-                stdlib.next_input = user_input.as_ref().to_string();
-                let input = "INPUT N";
-                let mut interpreter = Interpreter::new_from_bytes(input, stdlib);
-                interpreter.interpret().unwrap();
-                interpreter
-                    .get_variable(&QName::Untyped("N".to_string()))
-                    .unwrap()
-            }
 
             #[test]
             fn test_input_empty() {
-                assert_eq!(test_input(""), Variant::VSingle(0.0));
+                assert_input("", "N", 0.0_f32);
             }
 
             #[test]
             fn test_input_zero() {
-                assert_eq!(test_input("0"), Variant::VSingle(0.0));
+                assert_input("0", "N", 0.0_f32);
             }
 
             #[test]
             fn test_input_single() {
-                assert_eq!(test_input("1.1"), Variant::VSingle(1.1));
+                assert_input("1.1", "N", 1.1_f32);
             }
 
             #[test]
             fn test_input_negative() {
-                assert_eq!(test_input("-1.2345"), Variant::VSingle(-1.2345));
+                assert_input("-1.2345", "N", -1.2345_f32);
             }
 
             #[test]
             fn test_input_explicit_positive() {
-                assert_eq!(test_input("+3.14"), Variant::VSingle(3.14));
+                assert_input("+3.14", "N", 3.14_f32);
             }
         }
 
         mod string_var {
             use crate::interpreter::test_utils::*;
-            use crate::interpreter::*;
-            use crate::parser::{QName, TypeQualifier};
-
-            fn test_input<S: AsRef<str>>(user_input: S) -> Variant {
-                let mut stdlib = MockStdlib::new();
-                stdlib.next_input = user_input.as_ref().to_string();
-                let input = "INPUT A$";
-                let mut interpreter = Interpreter::new_from_bytes(input, stdlib);
-                interpreter.interpret().unwrap();
-                interpreter
-                    .get_variable(&QName::Typed("A".to_string(), TypeQualifier::DollarString))
-                    .unwrap()
-            }
 
             #[test]
             fn test_input_hello() {
-                let var = test_input("hello");
-                assert_eq!(var, Variant::from("hello"));
+                assert_input("hello", "A$", "hello");
             }
 
             #[test]
             fn test_input_does_not_trim_new_line() {
-                let var = test_input("hello\r\n");
-                assert_eq!(var, Variant::from("hello\r\n"));
+                assert_input("hello\r\n", "A$", "hello\r\n");
             }
         }
 
         mod int_var {
             use crate::interpreter::test_utils::*;
-            use crate::interpreter::*;
-            use crate::parser::{QName, TypeQualifier};
-
-            fn test_input<S: AsRef<str>>(user_input: S) -> Variant {
-                let mut stdlib = MockStdlib::new();
-                stdlib.next_input = user_input.as_ref().to_string();
-                let input = "INPUT A%";
-                let mut interpreter = Interpreter::new_from_bytes(input, stdlib);
-                interpreter.interpret().unwrap();
-                interpreter
-                    .get_variable(&QName::Typed(
-                        "A".to_string(),
-                        TypeQualifier::PercentInteger,
-                    ))
-                    .unwrap()
-            }
 
             #[test]
             fn test_input_42() {
-                let var = test_input("42");
-                assert_eq!(var, Variant::from(42));
+                assert_input("42", "A%", 42);
             }
         }
     }

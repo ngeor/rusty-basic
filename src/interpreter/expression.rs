@@ -17,6 +17,7 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
             Expression::BinaryExpression(op, left, right) => {
                 self._evaluate_binary_expression(op, left, right)
             }
+            Expression::UnaryExpression(op, child) => self._evaluate_unary_expression(op, child),
         }
     }
 
@@ -96,6 +97,23 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
             }
             Operand::Plus => left_var.plus(&right_var),
             Operand::Minus => left_var.minus(&right_var),
+        }
+    }
+
+    fn _evaluate_unary_expression(
+        &mut self,
+        op: &UnaryOperand,
+        child: &Box<Expression>,
+    ) -> Result<Variant> {
+        let child_var: Variant = self.evaluate_expression(child)?;
+        match op {
+            // UnaryOperand::Plus => Ok(child_var),
+            UnaryOperand::Minus => Ok(child_var.negate()),
+            // UnaryOperand::Not => Ok(if bool::try_from(child_var)? {
+            //     V_FALSE
+            // } else {
+            //     V_TRUE
+            // }),
         }
     }
 }

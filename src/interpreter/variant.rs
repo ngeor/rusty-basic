@@ -215,10 +215,8 @@ impl Display for Variant {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
     use super::*;
-
-    const EPSILON_SINGLE: f32 = 0.00001;
-    const EPSILON_DOUBLE: f64 = 0.00001;
 
     mod fmt {
         use super::*;
@@ -282,18 +280,18 @@ mod tests {
 
             #[test]
             fn test_single() {
-                match Variant::VSingle(1.1).plus(&Variant::VSingle(2.4)).unwrap() {
-                    Variant::VSingle(result) => assert!((result - 3.5).abs() <= EPSILON_SINGLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VSingle(1.1).plus(&Variant::VSingle(2.4)).unwrap(),
+                    Variant::VSingle(3.5),
+                );
             }
 
             #[test]
             fn test_double() {
-                match Variant::VSingle(1.1).plus(&Variant::VDouble(2.4)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.5).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VSingle(1.1).plus(&Variant::VDouble(2.4)).unwrap(),
+                    Variant::VDouble(3.5),
+                );
             }
 
             #[test]
@@ -305,18 +303,18 @@ mod tests {
 
             #[test]
             fn test_integer() {
-                match Variant::VSingle(1.1).plus(&Variant::VInteger(2)).unwrap() {
-                    Variant::VSingle(result) => assert!((result - 3.1).abs() <= EPSILON_SINGLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VSingle(1.1).plus(&Variant::VInteger(2)).unwrap(),
+                    Variant::VSingle(3.1),
+                );
             }
 
             #[test]
             fn test_long() {
-                match Variant::VSingle(1.1).plus(&Variant::VLong(2)).unwrap() {
-                    Variant::VSingle(result) => assert!((result - 3.1).abs() <= EPSILON_SINGLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VSingle(1.1).plus(&Variant::VLong(2)).unwrap(),
+                    Variant::VSingle(3.1),
+                );
             }
         }
 
@@ -325,18 +323,18 @@ mod tests {
 
             #[test]
             fn test_single() {
-                match Variant::VDouble(1.1).plus(&Variant::VSingle(2.4)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.5).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VDouble(1.1).plus(&Variant::VSingle(2.4)).unwrap(),
+                    Variant::VDouble(3.5),
+                );
             }
 
             #[test]
             fn test_double() {
-                match Variant::VDouble(1.1).plus(&Variant::VDouble(2.4)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.5).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VDouble(1.1).plus(&Variant::VDouble(2.4)).unwrap(),
+                    Variant::VDouble(3.5),
+                );
             }
 
             #[test]
@@ -348,18 +346,18 @@ mod tests {
 
             #[test]
             fn test_integer() {
-                match Variant::VDouble(1.1).plus(&Variant::VInteger(2)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.1).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VDouble(1.1).plus(&Variant::VInteger(2)).unwrap(),
+                    Variant::VDouble(3.1),
+                );
             }
 
             #[test]
             fn test_long() {
-                match Variant::VDouble(1.1).plus(&Variant::VLong(2)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.1).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VDouble(1.1).plus(&Variant::VLong(2)).unwrap(),
+                    Variant::VDouble(3.1),
+                );
             }
         }
 
@@ -501,18 +499,18 @@ mod tests {
 
             #[test]
             fn test_single() {
-                match Variant::VSingle(5.9).minus(&Variant::VSingle(2.4)).unwrap() {
-                    Variant::VSingle(result) => assert!((result - 3.5).abs() <= EPSILON_SINGLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VSingle(5.9).minus(&Variant::VSingle(2.4)).unwrap(),
+                    Variant::VSingle(3.5),
+                );
             }
 
             #[test]
             fn test_double() {
-                match Variant::VSingle(5.9).minus(&Variant::VDouble(2.4)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.5).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VSingle(5.9).minus(&Variant::VDouble(2.4)).unwrap(),
+                    Variant::VDouble(3.5),
+                );
             }
 
             #[test]
@@ -524,18 +522,18 @@ mod tests {
 
             #[test]
             fn test_integer() {
-                match Variant::VSingle(5.1).minus(&Variant::VInteger(2)).unwrap() {
-                    Variant::VSingle(result) => assert!((result - 3.1).abs() <= EPSILON_SINGLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VSingle(5.1).minus(&Variant::VInteger(2)).unwrap(),
+                    Variant::VSingle(3.1),
+                );
             }
 
             #[test]
             fn test_long() {
-                match Variant::VSingle(5.1).minus(&Variant::VLong(2)).unwrap() {
-                    Variant::VSingle(result) => assert!((result - 3.1).abs() <= EPSILON_SINGLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VSingle(5.1).minus(&Variant::VLong(2)).unwrap(),
+                    Variant::VSingle(3.1),
+                );
             }
         }
 
@@ -544,18 +542,18 @@ mod tests {
 
             #[test]
             fn test_single() {
-                match Variant::VDouble(5.9).minus(&Variant::VSingle(2.4)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.5).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VDouble(5.9).minus(&Variant::VSingle(2.4)).unwrap(),
+                    Variant::VDouble(3.5),
+                );
             }
 
             #[test]
             fn test_double() {
-                match Variant::VDouble(5.9).minus(&Variant::VDouble(2.4)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.5).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VDouble(5.9).minus(&Variant::VDouble(2.4)).unwrap(),
+                    Variant::VDouble(3.5),
+                );
             }
 
             #[test]
@@ -567,18 +565,18 @@ mod tests {
 
             #[test]
             fn test_integer() {
-                match Variant::VDouble(5.1).minus(&Variant::VInteger(2)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.1).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VDouble(5.1).minus(&Variant::VInteger(2)).unwrap(),
+                    Variant::VDouble(3.1),
+                );
             }
 
             #[test]
             fn test_long() {
-                match Variant::VDouble(5.1).minus(&Variant::VLong(2)).unwrap() {
-                    Variant::VDouble(result) => assert!((result - 3.1).abs() <= EPSILON_DOUBLE),
-                    _ => panic!("assertion failed"),
-                }
+                assert_close_enough(
+                    Variant::VDouble(5.1).minus(&Variant::VLong(2)).unwrap(),
+                    Variant::VDouble(3.1),
+                );
             }
         }
 

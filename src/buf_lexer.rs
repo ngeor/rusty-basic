@@ -3,6 +3,7 @@ use crate::lexer::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
+#[derive(Debug)]
 pub struct BufLexer<T> {
     lexer: Lexer<T>,
     _history: Vec<Lexeme>,

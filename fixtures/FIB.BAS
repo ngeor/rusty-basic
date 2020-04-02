@@ -2,7 +2,7 @@ DECLARE FUNCTION Fib! (N!)
 PRINT "Enter the number of fibonacci to calculate"
 INPUT N
 FOR I = 0 TO N
-    PRINT "Fibonacci of ", I, " is ", Fib(I)
+    PRINT "Fibonacci of", I, "is", Fib(I)
 NEXT
 
 FUNCTION Fib (N)

@@ -2,7 +2,7 @@ use crate::common::Result;
 use crate::parser::{Block, QName};
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub name: QName,
     pub parameters: Vec<QName>,

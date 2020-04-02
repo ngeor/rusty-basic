@@ -37,6 +37,7 @@ pub enum TopLevelToken {
 
 pub type Program = Vec<TopLevelToken>;
 
+#[derive(Debug)]
 pub struct Parser<T> {
     pub buf_lexer: BufLexer<T>,
 }
@@ -207,9 +208,9 @@ mod tests {
                         sub_call(
                             "PRINT",
                             vec![
-                                Expression::from("Fibonacci of "),
+                                Expression::from("Fibonacci of"),
                                 Expression::variable_name_unqualified("I"),
-                                Expression::from(" is "),
+                                Expression::from("is"),
                                 Expression::FunctionCall(
                                     QName::from_str("Fib").unwrap(),
                                     vec![Expression::variable_name_unqualified("I")]

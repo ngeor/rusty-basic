@@ -100,7 +100,7 @@ A# = 3.14
 A$ = \"Hello\"
 A% = 1
 A& = 100";
-            let interpreter = interpret(input, stdlib);
+            let interpreter = interpret(input, stdlib).unwrap();
             interpreter.has_variable("A", 0.1_f32);
             interpreter.has_variable("A!", 0.1_f32);
             interpreter.has_variable_close_enough("A#", 3.14);
@@ -113,7 +113,7 @@ A& = 100";
         fn test_assign_negated_variable() {
             let input = "A = -42
 B = -A";
-            let interpreter = interpret(input, MockStdlib::new());
+            let interpreter = interpret(input, MockStdlib::new()).unwrap();
             interpreter.has_variable("A", -42.0_f32);
             interpreter.has_variable("B", 42.0_f32);
         }

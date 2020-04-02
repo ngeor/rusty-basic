@@ -48,6 +48,7 @@ where
     interpreter.interpret().map(|_| interpreter)
 }
 
+#[derive(Debug)]
 pub struct MockStdlib {
     pub next_input: String,
     pub output: Vec<String>,
@@ -88,7 +89,7 @@ impl Stdlib for MockStdlib {
     }
 }
 
-pub trait InterAssertions {
+pub trait InterpreterAssertions {
     fn has_variable<TVar>(&self, variable_name: &str, expected_value: TVar)
     where
         Variant: From<TVar>;
@@ -99,41 +100,27 @@ pub trait InterAssertions {
 const EPSILON_SINGLE: f32 = 0.000001;
 const EPSILON_DOUBLE: f64 = 0.000001;
 
-impl<T: BufRead, S: Stdlib> InterAssertions for Result<Interpreter<T, S>> {
+impl<T: BufRead, S: Stdlib> InterpreterAssertions for Interpreter<T, S> {
     fn has_variable<TVar>(&self, variable_name: &str, expected_value: TVar)
     where
         Variant: From<TVar>,
     {
-        match self {
-            Ok(i) => {
-                assert_eq!(
-                    i.get_variable(&QName::from_str(variable_name).unwrap())
-                        .unwrap(),
-                    Variant::from(expected_value)
-                );
-            }
-            Err(e) => {
-                panic!(e.clone());
-            }
-        }
+        assert_eq!(
+            self.get_variable(&QName::from_str(variable_name).unwrap())
+                .unwrap(),
+            Variant::from(expected_value)
+        );
     }
 
     fn has_variable_close_enough(&self, variable_name: &str, expected_value: f64) {
-        match self {
-            Ok(i) => {
-                match i
-                    .get_variable(&QName::from_str(variable_name).unwrap())
-                    .unwrap()
-                {
-                    Variant::VDouble(actual_value) => {
-                        assert!((expected_value - actual_value).abs() <= EPSILON_DOUBLE);
-                    }
-                    _ => panic!("Expected double variable"),
-                }
+        match self
+            .get_variable(&QName::from_str(variable_name).unwrap())
+            .unwrap()
+        {
+            Variant::VDouble(actual_value) => {
+                assert!((expected_value - actual_value).abs() <= EPSILON_DOUBLE);
             }
-            Err(e) => {
-                panic!(e.clone());
-            }
+            _ => panic!("Expected double variable"),
         }
     }
 }
@@ -195,12 +182,12 @@ impl AssignmentBuilder {
 
     pub fn assert_err(&self) {
         if self.program.is_empty() {
-            panic!("Program was not set")
+            panic!("Program was not set");
         } else {
-            match interpret(&self.program, MockStdlib::new()) {
-                Err(err) => assert_eq!(err, "Type mismatch"),
-                _ => panic!("should have failed"),
-            }
+            assert_eq!(
+                interpret(&self.program, MockStdlib::new()).unwrap_err(),
+                "Type mismatch"
+            );
         }
     }
 }
@@ -216,6 +203,6 @@ where
     let mut stdlib = MockStdlib::new();
     stdlib.next_input = raw_input.to_string();
     let input = format!("INPUT {}", variable_name);
-    let interpreter = interpret(input, stdlib);
+    let interpreter = interpret(input, stdlib).unwrap();
     interpreter.has_variable(variable_name, expected_value);
 }

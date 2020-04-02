@@ -32,11 +32,13 @@ impl Lexeme {
             Self::Word(s) => buf.push_str(s),
             Self::Whitespace(s) => buf.push_str(s),
             Self::Symbol(c) => buf.push(*c),
-            _ => unimplemented!(),
+            Self::Digits(d) => buf.push_str(&format!("{}", d)),
+            _ => panic!(format!("Cannot push {:?}", self)),
         }
     }
 }
 
+#[derive(Debug)]
 pub struct Lexer<T> {
     reader: CharOrEofReader<T>,
     _last_pos: RowCol,

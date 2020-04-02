@@ -7,6 +7,7 @@ mod casting;
 mod context;
 mod expression;
 mod for_loop;
+mod function_call;
 mod function_context;
 mod statement;
 mod stdlib;
@@ -21,6 +22,7 @@ use self::function_context::FunctionContext;
 use self::stdlib::{DefaultStdlib, Stdlib};
 use self::variant::*;
 
+#[derive(Debug)]
 pub struct Interpreter<T, S> {
     parser: Parser<T>,
     stdlib: S,
@@ -47,7 +49,6 @@ impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
         let mut statements: Block = vec![];
         for top_level_token in program {
             match top_level_token {
-                // TODO: search for duplicate declarations / conflicting types
                 TopLevelToken::FunctionDeclaration(f, args) => {
                     self.function_context.add_function_declaration(f, args)?;
                 }
@@ -87,7 +88,7 @@ impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
     fn _search_for_unimplemented_declarations(&mut self) -> Result<()> {
         for name in self.function_context.get_function_declarations() {
             if let None = self.function_context.get_function_implementation(name) {
-                return self.err(format!("Function {} is not implemented", name));
+                return self.err("Subprogram not defined");
             }
         }
 
@@ -185,14 +186,32 @@ mod tests {
     }
 
     #[test]
-    fn test_interpreter_fixture_fib() {
+    fn test_interpreter_fixture_fib_bas() {
         let mut stdlib = MockStdlib::new();
         stdlib.next_input = "10".to_string();
-        interpret_file("FIB.BAS", stdlib).unwrap();
+        let interpreter = interpret_file("FIB.BAS", stdlib).unwrap();
+        let output = interpreter.stdlib.output;
+        assert_eq!(
+            output,
+            vec![
+                "Enter the number of fibonacci to calculate",
+                "Fibonacci of 0 is 0",
+                "Fibonacci of 1 is 1",
+                "Fibonacci of 2 is 1",
+                "Fibonacci of 3 is 2",
+                "Fibonacci of 4 is 3",
+                "Fibonacci of 5 is 5",
+                "Fibonacci of 6 is 8",
+                "Fibonacci of 7 is 13",
+                "Fibonacci of 8 is 21",
+                "Fibonacci of 9 is 34",
+                "Fibonacci of 10 is 55"
+            ]
+        );
     }
 
     #[test]
-    fn test_interpreter_fixture_fib_fq() {
+    fn test_interpreter_fixture_fib_fq_bas() {
         let mut stdlib = MockStdlib::new();
         stdlib.next_input = "11".to_string();
         interpret_file("FIB_FQ.BAS", stdlib).unwrap();

@@ -57,7 +57,6 @@ impl<T: BufRead> Parser<T> {
                 None
             };
 
-            // TODO support "NEXT FOR"
             self.buf_lexer.demand_eol_or_eof()?;
 
             Ok(Some(Statement::ForLoop(ForLoop {

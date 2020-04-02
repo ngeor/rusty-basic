@@ -102,7 +102,7 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new());
+        let interpreter = interpret(input, MockStdlib::new()).unwrap();
         interpreter.has_variable("i%", 6);
     }
 
@@ -113,9 +113,9 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new());
+        let interpreter = interpret(input, MockStdlib::new()).unwrap();
         interpreter.has_variable("i%", 1);
-        let stdlib = interpreter.unwrap().stdlib;
+        let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, Vec::<String>::new());
     }
 
@@ -150,9 +150,9 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new());
+        let interpreter = interpret(input, MockStdlib::new()).unwrap();
         interpreter.has_variable("i%", -4);
-        let stdlib = interpreter.unwrap().stdlib;
+        let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["3", "2", "1", "0", "-1", "-2", "-3"]);
     }
 
@@ -192,10 +192,10 @@ mod tests {
             N% = N% - 1
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new());
+        let interpreter = interpret(input, MockStdlib::new()).unwrap();
         interpreter.has_variable("I%", 4);
         interpreter.has_variable("N%", 0);
-        let stdlib = interpreter.unwrap().stdlib;
+        let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["1", "2", "3"]);
     }
 }

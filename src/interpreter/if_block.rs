@@ -1,0 +1,241 @@
+use super::*;
+use crate::common::Result;
+use crate::parser::*;
+use std::convert::TryInto;
+
+impl<S: Stdlib> Interpreter<S> {
+    pub fn if_block(&mut self, if_block: &IfBlock) -> Result<()> {
+        if self._conditional_block(&if_block.if_block)? {
+            return Ok(());
+        }
+
+        for else_if_block in &if_block.else_if_blocks {
+            if self._conditional_block(else_if_block)? {
+                return Ok(());
+            }
+        }
+
+        match &if_block.else_block {
+            Some(e) => self.statements(&e),
+            None => Ok(()),
+        }
+    }
+
+    fn _conditional_block(&mut self, conditional_block: &ConditionalBlock) -> Result<bool> {
+        let condition_expr: &Expression = &conditional_block.condition;
+        let condition_value: Variant = self.evaluate_expression(condition_expr)?;
+        let is_true: bool = condition_value.try_into()?;
+        if is_true {
+            self.statements(&conditional_block.block)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::test_utils::*;
+
+    #[test]
+    fn test_if_block_true() {
+        let input = "
+        IF 1 < 2 THEN
+            PRINT \"hello\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["hello"]
+        );
+    }
+
+    #[test]
+    fn test_if_block_false() {
+        let input = "
+        IF 2 < 1 THEN
+            PRINT \"hello\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn test_if_else_block_true() {
+        let input = "
+        IF 1 < 2 THEN
+            PRINT \"hello\"
+        ELSE
+            PRINT \"bye\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["hello"]
+        );
+    }
+
+    #[test]
+    fn test_if_else_block_false() {
+        let input = "
+        IF 2 < 1 THEN
+            PRINT \"hello\"
+        ELSE
+            PRINT \"bye\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["bye"]
+        );
+    }
+
+    #[test]
+    fn test_if_elseif_block_true_true() {
+        let input = "
+        IF 1 < 2 THEN
+            PRINT \"hello\"
+        ELSEIF 1 < 2 THEN
+            PRINT \"bye\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["hello"]
+        );
+    }
+
+    #[test]
+    fn test_if_elseif_block_true_false() {
+        let input = "
+        IF 1 < 2 THEN
+            PRINT \"hello\"
+        ELSEIF 2 < 1 THEN
+            PRINT \"bye\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["hello"]
+        );
+    }
+
+    #[test]
+    fn test_if_elseif_block_false_true() {
+        let input = "
+        IF 2 < 1 THEN
+            PRINT \"hello\"
+        ELSEIF 1 < 2 THEN
+            PRINT \"bye\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["bye"]
+        );
+    }
+
+    #[test]
+    fn test_if_elseif_block_false_false() {
+        let input = "
+        IF 2 < 1 THEN
+            PRINT \"hello\"
+        ELSEIF 2 < 1 THEN
+            PRINT \"bye\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn test_if_elseif_else_block_true_true() {
+        let input = "
+        IF 1 < 2 THEN
+            PRINT \"hello\"
+        ELSEIF 1 < 2 THEN
+            PRINT \"bye\"
+        ELSE
+            PRINT \"else\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["hello"]
+        );
+    }
+
+    #[test]
+    fn test_if_elseif_else_block_true_false() {
+        let input = "
+        IF 1 < 2 THEN
+            PRINT \"hello\"
+        ELSEIF 2 < 1 THEN
+            PRINT \"bye\"
+        ELSE
+            PRINT \"else\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["hello"]
+        );
+    }
+
+    #[test]
+    fn test_if_elseif_else_block_false_true() {
+        let input = "
+        IF 2 < 1 THEN
+            PRINT \"hello\"
+        ELSEIF 1 < 2 THEN
+            PRINT \"bye\"
+        ELSE
+            PRINT \"else\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["bye"]
+        );
+    }
+
+    #[test]
+    fn test_if_elseif_else_block_false_false() {
+        let input = "
+        IF 2 < 1 THEN
+            PRINT \"hello\"
+        ELSEIF 2 < 1 THEN
+            PRINT \"bye\"
+        ELSE
+            PRINT \"else\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["else"]
+        );
+    }
+
+    #[test]
+    fn test_if_multiple_elseif_block() {
+        let input = "
+        IF 2 < 1 THEN
+            PRINT \"hello\"
+        ELSEIF 1 < 2 THEN
+            PRINT \"bye\"
+        ELSEIF 1 < 2 THEN
+            PRINT \"else if 2\"
+        END IF
+        ";
+        assert_eq!(
+            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
+            vec!["bye"]
+        );
+    }
+}

@@ -8,6 +8,7 @@ mod expression;
 mod for_loop;
 mod function_call;
 mod function_context;
+mod if_block;
 mod statement;
 mod stdlib;
 mod sub_call;

@@ -51,13 +51,6 @@ impl QName {
             None => QName::Untyped(name),
         }
     }
-
-    pub fn get_bare_name(&self) -> &String {
-        match self {
-            QName::Untyped(bare_name) => bare_name,
-            QName::Typed(qualified_name) => &qualified_name.name,
-        }
-    }
 }
 
 impl FromStr for QName {

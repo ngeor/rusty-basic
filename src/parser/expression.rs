@@ -63,10 +63,12 @@ impl From<i64> for Expression {
 }
 
 impl Expression {
+    #[cfg(test)]
     pub fn variable_name_unqualified(name: &str) -> Expression {
         Expression::VariableName(QName::Untyped(name.to_string()))
     }
 
+    #[cfg(test)]
     pub fn binary(operand: Operand, left: Expression, right: Expression) -> Expression {
         Expression::BinaryExpression(operand, Box::new(left), Box::new(right))
     }
@@ -85,18 +87,22 @@ impl Expression {
         }
     }
 
+    #[cfg(test)]
     pub fn lte(left: Expression, right: Expression) -> Expression {
         Expression::binary(Operand::LessOrEqualThan, left, right)
     }
 
+    #[cfg(test)]
     pub fn less(left: Expression, right: Expression) -> Expression {
         Expression::binary(Operand::LessThan, left, right)
     }
 
+    #[cfg(test)]
     pub fn plus(left: Expression, right: Expression) -> Expression {
         Expression::binary(Operand::Plus, left, right)
     }
 
+    #[cfg(test)]
     pub fn minus(left: Expression, right: Expression) -> Expression {
         Expression::binary(Operand::Minus, left, right)
     }

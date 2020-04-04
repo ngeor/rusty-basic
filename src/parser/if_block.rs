@@ -21,6 +21,7 @@ pub struct IfBlock {
 }
 
 impl IfBlock {
+    #[cfg(test)]
     pub fn new_if_else(condition: Expression, if_block: Block, else_block: Block) -> IfBlock {
         IfBlock {
             if_block: ConditionalBlock::new(condition, if_block),

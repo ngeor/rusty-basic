@@ -1,9 +1,8 @@
 use super::*;
 use crate::common::Result;
 use crate::parser::*;
-use std::io::BufRead;
 
-impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
+impl<S: Stdlib> Interpreter<S> {
     pub fn evaluate_expression(&mut self, e: &Expression) -> Result<Variant> {
         match e {
             Expression::SingleLiteral(n) => Ok(Variant::from(*n)),
@@ -11,7 +10,7 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
             Expression::StringLiteral(s) => Ok(Variant::from(s)),
             Expression::IntegerLiteral(i) => Ok(Variant::from(*i)),
             Expression::LongLiteral(i) => Ok(Variant::from(*i)),
-            Expression::VariableName(qn) => self.get_variable(qn),
+            Expression::VariableName(qn) => self.get_variable(qn).map(|x| x.clone()),
             Expression::FunctionCall(name, args) => self.evaluate_function_call(name, args),
             Expression::BinaryExpression(op, left, right) => {
                 self._evaluate_binary_expression(op, left, right)
@@ -74,7 +73,7 @@ mod tests {
     #[test]
     fn test_literals() {
         let stdlib = MockStdlib::new();
-        let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+        let mut interpreter = Interpreter::new(stdlib);
         assert_eq!(
             interpreter
                 .evaluate_expression(&Expression::from(3.14_f32))
@@ -117,7 +116,7 @@ mod tests {
             Variant: From<TResult>,
         {
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+            let mut interpreter = Interpreter::new(stdlib);
             assert_eq!(
                 interpreter
                     .evaluate_expression(&Expression::plus(
@@ -135,7 +134,7 @@ mod tests {
             Expression: From<TRight>,
         {
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+            let mut interpreter = Interpreter::new(stdlib);
             assert_eq!(
                 interpreter
                     .evaluate_expression(&Expression::plus(
@@ -203,7 +202,7 @@ mod tests {
             Variant: From<TResult>,
         {
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+            let mut interpreter = Interpreter::new(stdlib);
             assert_eq!(
                 interpreter
                     .evaluate_expression(&Expression::minus(
@@ -221,7 +220,7 @@ mod tests {
             Expression: From<TRight>,
         {
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+            let mut interpreter = Interpreter::new(stdlib);
             assert_eq!(
                 interpreter
                     .evaluate_expression(&Expression::minus(
@@ -289,7 +288,7 @@ mod tests {
             Variant: From<TResult>,
         {
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+            let mut interpreter = Interpreter::new(stdlib);
             assert_eq!(
                 interpreter
                     .evaluate_expression(&Expression::less(
@@ -307,7 +306,7 @@ mod tests {
             Expression: From<TRight>,
         {
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+            let mut interpreter = Interpreter::new(stdlib);
             assert_eq!(
                 interpreter
                     .evaluate_expression(&Expression::less(
@@ -429,7 +428,7 @@ mod tests {
             Variant: From<TResult>,
         {
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+            let mut interpreter = Interpreter::new(stdlib);
             assert_eq!(
                 interpreter
                     .evaluate_expression(&Expression::lte(
@@ -447,7 +446,7 @@ mod tests {
             Expression: From<TRight>,
         {
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new_from_bytes("", stdlib);
+            let mut interpreter = Interpreter::new(stdlib);
             assert_eq!(
                 interpreter
                     .evaluate_expression(&Expression::lte(

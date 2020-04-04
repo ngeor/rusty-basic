@@ -2,24 +2,48 @@ use super::function_context::FunctionImplementation;
 use super::*;
 use crate::common::Result;
 use crate::parser::*;
-use std::io::BufRead;
 
-impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
+impl<S: Stdlib> Interpreter<S> {
     pub fn evaluate_function_call(
         &mut self,
-        name: &QName,
+        function_name: &QName,
         args: &Vec<Expression>,
     ) -> Result<Variant> {
+        let implementation = self._lookup_implementation(function_name)?;
         let arg_values: Vec<Variant> = self._evaluate_arguments(args)?;
-
-        match self
-            .function_context
-            .get_function_implementation(&name.name())
-        {
+        match implementation {
             Some(function_implementation) => {
-                self._do_evaluate_function_call(name, function_implementation, arg_values)
+                self._do_evaluate_function_call(function_implementation, arg_values)
             }
-            None => self._handle_undefined_function(name, arg_values),
+            None => self._handle_undefined_function(function_name, arg_values),
+        }
+    }
+
+    fn _lookup_implementation(
+        &self,
+        function_name: &QName,
+    ) -> Result<Option<FunctionImplementation>> {
+        match function_name {
+            QName::Untyped(bare_function_name) => Ok(self
+                .function_context
+                .get_function_implementation(bare_function_name)),
+            QName::Typed(qualified_function_name) => {
+                match self
+                    .function_context
+                    .get_function_implementation(&qualified_function_name.name)
+                {
+                    Some(function_implementation) => {
+                        if function_implementation.name.qualifier
+                            != qualified_function_name.qualifier
+                        {
+                            Err("Duplicate definition".to_string())
+                        } else {
+                            Ok(Some(function_implementation))
+                        }
+                    }
+                    None => Ok(None),
+                }
+            }
         }
     }
 
@@ -36,44 +60,43 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
 
     fn _do_evaluate_function_call(
         &mut self,
-        name: &QName,
         function_implementation: FunctionImplementation,
         args: Vec<Variant>,
     ) -> Result<Variant> {
-        let function_parameters: Vec<QName> = function_implementation.parameters;
+        let function_parameters: Vec<QualifiedName> = function_implementation.parameters;
         if function_parameters.len() != args.len() {
             self.err(format!(
                 "Function {} expected {} parameters but {} were given",
-                name,
+                function_implementation.name,
                 function_parameters.len(),
                 args.len()
             ))
         } else {
-            self.push_context()?;
+            self.push_context(function_implementation.name.clone());
             self._populate_new_context(function_parameters, args)?;
             self.statements(&function_implementation.block)?;
-            let result = self._get_variable_name_or_default(name);
-            self.pop_context()?;
+            let result = self._get_variable_name_or_default(&function_implementation.name);
+            self.pop_context();
             Ok(result)
         }
     }
 
     fn _populate_new_context(
         &mut self,
-        mut parameter_names: Vec<QName>,
+        mut parameter_names: Vec<QualifiedName>,
         mut arguments: Vec<Variant>,
     ) -> Result<()> {
         while !parameter_names.is_empty() {
             let variable_name = parameter_names.pop().unwrap();
-            self.set_variable(&variable_name, arguments.pop().unwrap())?;
+            self.set_variable(variable_name, arguments.pop().unwrap());
         }
         Ok(())
     }
 
-    fn _get_variable_name_or_default(&self, function_name: &QName) -> Variant {
+    fn _get_variable_name_or_default(&self, function_name: &QualifiedName) -> Variant {
         match self.get_variable(function_name) {
-            Ok(v) => v,
-            Err(_) => _default_variant(self.effective_type_qualifier(function_name)),
+            Ok(v) => v.clone(),
+            Err(_) => _default_variant(&function_name.qualifier),
         }
     }
 
@@ -89,12 +112,12 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
             }
         }
         Ok(_default_variant(
-            self.effective_type_qualifier(function_name),
+            &self.effective_type_qualifier(function_name),
         ))
     }
 }
 
-fn _default_variant(type_qualifier: TypeQualifier) -> Variant {
+fn _default_variant(type_qualifier: &TypeQualifier) -> Variant {
     match type_qualifier {
         TypeQualifier::BangSingle => Variant::VSingle(0.0),
         TypeQualifier::HashDouble => Variant::VDouble(0.0),

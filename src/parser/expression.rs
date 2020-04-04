@@ -349,7 +349,10 @@ mod tests {
         assert_eq!(
             expression,
             Expression::FunctionCall(
-                QName::Typed("IsValid".to_string(), TypeQualifier::PercentInteger),
+                QName::Typed(QualifiedName::new(
+                    "IsValid".to_string(),
+                    TypeQualifier::PercentInteger
+                )),
                 vec![]
             )
         );

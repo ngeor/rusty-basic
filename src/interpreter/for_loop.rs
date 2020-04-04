@@ -2,9 +2,8 @@ use super::*;
 use crate::common::Result;
 use crate::parser::ForLoop;
 use std::cmp::Ordering;
-use std::io::BufRead;
 
-impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
+impl<S: Stdlib> Interpreter<S> {
     pub fn for_loop(&mut self, for_loop: &ForLoop) -> Result<()> {
         let start = self.evaluate_expression(&for_loop.lower_bound)?;
         if !start.is_numeric() {
@@ -28,10 +27,8 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
 
         match &for_loop.next_counter {
             None => (),
-            Some(n) => {
-                let act_n = self.ensure_typed(n);
-                let c_n = self.ensure_typed(counter_var_name);
-                if act_n != c_n {
+            Some(next_counter_name) => {
+                if !self._are_same_variable(next_counter_name, counter_var_name) {
                     return self.err("NEXT without FOR");
                 }
             }
@@ -41,7 +38,7 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
 
         match step_sign {
             Ordering::Greater => {
-                self.set_variable(counter_var_name, start.clone())?;
+                self.set_variable(counter_var_name, start.clone());
                 while self._is_less_or_equal(counter_var_name, &stop)? {
                     self.statements(statements)?;
                     self._inc_variable(counter_var_name, &step)?;
@@ -49,7 +46,7 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
                 Ok(())
             }
             Ordering::Less => {
-                self.set_variable(counter_var_name, start.clone())?;
+                self.set_variable(counter_var_name, start.clone());
                 while self._is_greater_or_equal(counter_var_name, &stop)? {
                     self.statements(statements)?;
                     self._inc_variable(counter_var_name, &step)?;
@@ -63,7 +60,8 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
     fn _inc_variable(&mut self, variable_name: &QName, step: &Variant) -> Result<()> {
         let existing_value = self.get_variable(variable_name)?;
         let new_value = existing_value.plus(step)?;
-        self.set_variable(variable_name, new_value)
+        self.set_variable(variable_name, new_value);
+        Ok(())
     }
 
     fn _is_less_or_equal(&self, variable_name: &QName, stop: &Variant) -> Result<bool> {
@@ -76,6 +74,27 @@ impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
         self.get_variable(variable_name)?
             .cmp(&stop)
             .map(|o| o != std::cmp::Ordering::Less)
+    }
+
+    fn _are_same_variable(&self, left: &QName, right: &QName) -> bool {
+        match left {
+            QName::Untyped(left_bare_name) => match right {
+                QName::Untyped(right_bare_name) => left_bare_name == right_bare_name,
+                QName::Typed(right_qualified_name) => {
+                    left_bare_name == &right_qualified_name.name
+                        && self.effective_type_qualifier(left_bare_name)
+                            == right_qualified_name.qualifier
+                }
+            },
+            QName::Typed(left_qualified_name) => match right {
+                QName::Untyped(right_bare_name) => {
+                    &left_qualified_name.name == right_bare_name
+                        && left_qualified_name.qualifier
+                            == self.effective_type_qualifier(right_bare_name)
+                }
+                QName::Typed(right_qualified_name) => left_qualified_name == right_qualified_name,
+            },
+        }
     }
 }
 

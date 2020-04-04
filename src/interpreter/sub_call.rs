@@ -1,9 +1,8 @@
 use super::*;
 use crate::common::Result;
 use crate::parser::{Expression, QName, TypeQualifier};
-use std::io::BufRead;
 
-impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
+impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     pub fn sub_call(&mut self, name: &String, args: &Vec<Expression>) -> Result<()> {
         if name == "PRINT" {
             self._do_print(args)
@@ -53,7 +52,8 @@ impl<T: BufRead, TStdlib: Stdlib> Interpreter<T, TStdlib> {
             TypeQualifier::PercentInteger => Variant::from(parse_int_input(raw_input)?),
             _ => unimplemented!(),
         };
-        self.set_variable(qualified_name, variable_value)
+        self.set_variable(qualified_name, variable_value);
+        Ok(())
     }
 }
 

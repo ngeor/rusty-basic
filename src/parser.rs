@@ -185,8 +185,14 @@ mod tests {
             vec![
                 // DECLARE FUNCTION Fib! (N!)
                 TopLevelToken::FunctionDeclaration(
-                    QName::Typed("Fib".to_string(), TypeQualifier::BangSingle),
-                    vec![QName::Typed("N".to_string(), TypeQualifier::BangSingle)]
+                    QName::Typed(QualifiedName::new(
+                        "Fib".to_string(),
+                        TypeQualifier::BangSingle
+                    )),
+                    vec![QName::Typed(QualifiedName::new(
+                        "N".to_string(),
+                        TypeQualifier::BangSingle
+                    ))]
                 ),
                 // PRINT "Enter the number of fibonacci to calculate"
                 top_sub_call(

@@ -2,9 +2,8 @@ use super::*;
 use crate::common::Result;
 use crate::parser::*;
 use std::convert::TryInto;
-use std::io::BufRead;
 
-impl<T: BufRead, S: Stdlib> Interpreter<T, S> {
+impl<S: Stdlib> Interpreter<S> {
     pub fn statement(&mut self, statement: &Statement) -> Result<()> {
         match statement {
             Statement::SubCall(name, args) => self.sub_call(name, args),

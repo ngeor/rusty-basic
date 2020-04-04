@@ -1,51 +1,29 @@
 use super::*;
+use crate::parser::Parser;
+use std::fs::File;
 use std::str::FromStr;
 
-impl<T, TStdlib> Interpreter<BufReader<Cursor<T>>, TStdlib>
+pub fn interpret<T, TStdlib>(input: T, stdlib: TStdlib) -> Result<Interpreter<TStdlib>>
 where
     T: AsRef<[u8]>,
     TStdlib: Stdlib,
 {
-    pub fn new_from_bytes(input: T, stdlib: TStdlib) -> Self {
-        Interpreter::new(Parser::from(input), stdlib)
-    }
+    let mut parser = Parser::from(input);
+    let program = parser.parse()?;
+    let mut interpreter = Interpreter::new(stdlib);
+    interpreter.interpret(program).map(|_| interpreter)
 }
 
-impl<TStdlib> Interpreter<BufReader<File>, TStdlib>
-where
-    TStdlib: Stdlib,
-{
-    pub fn new_from_file(input: File, stdlib: TStdlib) -> Self {
-        Interpreter::new(Parser::from(input), stdlib)
-    }
-}
-
-pub fn interpret<T, TStdlib>(
-    input: T,
-    stdlib: TStdlib,
-) -> Result<Interpreter<BufReader<Cursor<T>>, TStdlib>>
-where
-    T: AsRef<[u8]>,
-    TStdlib: Stdlib,
-{
-    let mut interpreter = Interpreter::new_from_bytes(input, stdlib);
-    interpreter.interpret().map(|_| interpreter)
-}
-
-pub fn interpret_file<S, TStdlib>(
-    filename: S,
-    stdlib: TStdlib,
-) -> Result<Interpreter<BufReader<File>, TStdlib>>
+pub fn interpret_file<S, TStdlib>(filename: S, stdlib: TStdlib) -> Result<Interpreter<TStdlib>>
 where
     S: AsRef<str>,
     TStdlib: Stdlib,
 {
     let file_path = format!("fixtures/{}", filename.as_ref());
-    let mut interpreter = Interpreter::new_from_file(
-        File::open(file_path).expect("Could not read bas file"),
-        stdlib,
-    );
-    interpreter.interpret().map(|_| interpreter)
+    let mut parser = Parser::from(File::open(file_path).expect("Could not read bas file"));
+    let program = parser.parse()?;
+    let mut interpreter = Interpreter::new(stdlib);
+    interpreter.interpret(program).map(|_| interpreter)
 }
 
 #[derive(Debug)]
@@ -100,13 +78,14 @@ pub trait InterpreterAssertions {
 const EPSILON_SINGLE: f32 = 0.000001;
 const EPSILON_DOUBLE: f64 = 0.000001;
 
-impl<T: BufRead, S: Stdlib> InterpreterAssertions for Interpreter<T, S> {
+impl<S: Stdlib> InterpreterAssertions for Interpreter<S> {
     fn has_variable<TVar>(&self, variable_name: &str, expected_value: TVar)
     where
         Variant: From<TVar>,
     {
         assert_eq!(
             self.get_variable(&QName::from_str(variable_name).unwrap())
+                .map(|x| x.clone())
                 .unwrap(),
             Variant::from(expected_value)
         );
@@ -174,7 +153,10 @@ impl AssignmentBuilder {
         } else {
             let interpreter = interpret(&self.program, MockStdlib::new()).unwrap();
             assert_eq!(
-                interpreter.get_variable(&self.variable_name).unwrap(),
+                interpreter
+                    .get_variable(&self.variable_name)
+                    .map(|x| x.clone())
+                    .unwrap(),
                 Variant::from(expected_value)
             );
         }

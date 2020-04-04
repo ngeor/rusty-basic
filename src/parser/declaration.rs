@@ -55,7 +55,7 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use crate::parser::test_utils::*;
-    use crate::parser::{QName, TopLevelToken, TypeQualifier};
+    use crate::parser::{QName, QualifiedName, TopLevelToken, TypeQualifier};
 
     #[test]
     fn test_fn() {
@@ -64,8 +64,14 @@ mod tests {
         assert_eq!(
             program,
             vec![TopLevelToken::FunctionDeclaration(
-                QName::Typed("Fib".to_string(), TypeQualifier::BangSingle),
-                vec![QName::Typed("N".to_string(), TypeQualifier::BangSingle)]
+                QName::Typed(QualifiedName::new(
+                    "Fib".to_string(),
+                    TypeQualifier::BangSingle
+                )),
+                vec![QName::Typed(QualifiedName::new(
+                    "N".to_string(),
+                    TypeQualifier::BangSingle
+                ))]
             )]
         );
     }

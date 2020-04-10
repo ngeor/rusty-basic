@@ -1,43 +1,42 @@
-use super::{Parser, QName, TopLevelToken};
-use crate::common::Result;
-use std::io::BufRead;
+use super::*;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_declaration(&mut self) -> Result<Option<TopLevelToken>> {
-        if self.buf_lexer.try_consume_word("DECLARE")? {
-            match self._parse_declaration() {
-                Ok(d) => Ok(Some(d)),
-                Err(x) => Err(x),
-            }
-        } else {
-            Ok(None)
+    pub fn try_parse_declaration(&mut self) -> Result<Option<TopLevelTokenNode>, LexerError> {
+        match self.buf_lexer.try_consume_word("DECLARE")? {
+            Some(pos) => self._parse_declaration(pos).map(|x| Some(x)),
+            None => Ok(None),
         }
     }
 
-    fn _parse_declaration(&mut self) -> Result<TopLevelToken> {
+    fn _parse_declaration(
+        &mut self,
+        declare_pos: Location,
+    ) -> Result<TopLevelTokenNode, LexerError> {
         self.buf_lexer.demand_whitespace()?;
-        let next_word = self.buf_lexer.demand_any_word()?;
+        let (next_word, declarable_pos) = self.buf_lexer.demand_any_word()?;
         if next_word == "FUNCTION" {
             self.buf_lexer.demand_whitespace()?;
             let function_name = self.demand_name_with_type_qualifier()?;
             self.buf_lexer.skip_whitespace()?;
-            let function_arguments: Vec<QName> = self.parse_declaration_parameters()?;
+            let function_arguments: Vec<NameNode> = self.parse_declaration_parameters()?;
             self.buf_lexer.demand_eol_or_eof()?;
-            Ok(TopLevelToken::FunctionDeclaration(
-                function_name,
-                function_arguments,
+            Ok(TopLevelTokenNode::FunctionDeclaration(
+                FunctionDeclarationNode::new(function_name, function_arguments, declare_pos),
             ))
         } else {
-            Err(format!("Unknown declaration: {}", next_word))
+            Err(LexerError::Unexpected(
+                "Unknown declaration".to_string(),
+                LexemeNode::Word(next_word, declarable_pos),
+            ))
         }
     }
 
-    pub fn parse_declaration_parameters(&mut self) -> Result<Vec<QName>> {
-        let mut function_arguments: Vec<QName> = vec![];
-        if self.buf_lexer.try_consume_symbol('(')? {
+    pub fn parse_declaration_parameters(&mut self) -> Result<Vec<NameNode>, LexerError> {
+        let mut function_arguments: Vec<NameNode> = vec![];
+        if self.buf_lexer.try_consume_symbol('(')?.is_some() {
             self.buf_lexer.skip_whitespace()?;
             let mut is_first_parameter = true;
-            while !self.buf_lexer.try_consume_symbol(')')? {
+            while self.buf_lexer.try_consume_symbol(')')?.is_none() {
                 if is_first_parameter {
                     is_first_parameter = false;
                 } else {
@@ -54,8 +53,8 @@ impl<T: BufRead> Parser<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::test_utils::*;
-    use crate::parser::{QName, QualifiedName, TopLevelToken, TypeQualifier};
+    use super::super::test_utils::*;
+    use super::*;
 
     #[test]
     fn test_fn() {
@@ -63,15 +62,12 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![TopLevelToken::FunctionDeclaration(
-                QName::Typed(QualifiedName::new(
-                    "Fib".to_string(),
-                    TypeQualifier::BangSingle
-                )),
-                vec![QName::Typed(QualifiedName::new(
-                    "N".to_string(),
-                    TypeQualifier::BangSingle
-                ))]
+            vec![TopLevelTokenNode::FunctionDeclaration(
+                FunctionDeclarationNode::new(
+                    NameNode::from("Fib!").at(Location::new(1, 18)),
+                    vec![NameNode::from("N!").at(Location::new(1, 24))],
+                    Location::new(1, 1)
+                )
             )]
         );
     }

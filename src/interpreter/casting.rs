@@ -1,5 +1,4 @@
 use super::Variant;
-use crate::common::Result;
 use crate::parser::TypeQualifier;
 
 // https://doc.rust-lang.org/nomicon/casts.html
@@ -10,17 +9,17 @@ use crate::parser::TypeQualifier;
 // 4. casting from an f64 to an f32 will produce the closest possible value (rounding to nearest, ties to even)
 
 trait QBNumberCast<T> {
-    fn try_cast(&self) -> Result<T>;
+    fn try_cast(&self) -> Result<T, String>;
 }
 
 impl QBNumberCast<f64> for f32 {
-    fn try_cast(&self) -> Result<f64> {
+    fn try_cast(&self) -> Result<f64, String> {
         Ok(*self as f64)
     }
 }
 
 impl QBNumberCast<i32> for f32 {
-    fn try_cast(&self) -> Result<i32> {
+    fn try_cast(&self) -> Result<i32, String> {
         if self.is_finite() {
             let r = self.round();
             if r >= (std::i32::MIN as f32) && r <= (std::i32::MAX as f32) {
@@ -35,7 +34,7 @@ impl QBNumberCast<i32> for f32 {
 }
 
 impl QBNumberCast<i64> for f32 {
-    fn try_cast(&self) -> Result<i64> {
+    fn try_cast(&self) -> Result<i64, String> {
         if self.is_finite() {
             let r = self.round();
             if r >= (std::i64::MIN as f32) && r <= (std::i64::MAX as f32) {
@@ -50,13 +49,13 @@ impl QBNumberCast<i64> for f32 {
 }
 
 impl QBNumberCast<f32> for f64 {
-    fn try_cast(&self) -> Result<f32> {
+    fn try_cast(&self) -> Result<f32, String> {
         Ok(*self as f32)
     }
 }
 
 impl QBNumberCast<i32> for f64 {
-    fn try_cast(&self) -> Result<i32> {
+    fn try_cast(&self) -> Result<i32, String> {
         if self.is_finite() {
             let r = self.round();
             if r >= (std::i32::MIN as f64) && r <= (std::i32::MAX as f64) {
@@ -71,7 +70,7 @@ impl QBNumberCast<i32> for f64 {
 }
 
 impl QBNumberCast<i64> for f64 {
-    fn try_cast(&self) -> Result<i64> {
+    fn try_cast(&self) -> Result<i64, String> {
         if self.is_finite() {
             let r = self.round();
             if r >= (std::i64::MIN as f64) && r <= (std::i64::MAX as f64) {
@@ -86,37 +85,37 @@ impl QBNumberCast<i64> for f64 {
 }
 
 impl QBNumberCast<f32> for i32 {
-    fn try_cast(&self) -> Result<f32> {
+    fn try_cast(&self) -> Result<f32, String> {
         Ok(*self as f32)
     }
 }
 
 impl QBNumberCast<f64> for i32 {
-    fn try_cast(&self) -> Result<f64> {
+    fn try_cast(&self) -> Result<f64, String> {
         Ok(*self as f64)
     }
 }
 
 impl QBNumberCast<i64> for i32 {
-    fn try_cast(&self) -> Result<i64> {
+    fn try_cast(&self) -> Result<i64, String> {
         Ok(*self as i64)
     }
 }
 
 impl QBNumberCast<f32> for i64 {
-    fn try_cast(&self) -> Result<f32> {
+    fn try_cast(&self) -> Result<f32, String> {
         Ok(*self as f32)
     }
 }
 
 impl QBNumberCast<f64> for i64 {
-    fn try_cast(&self) -> Result<f64> {
+    fn try_cast(&self) -> Result<f64, String> {
         Ok(*self as f64)
     }
 }
 
 impl QBNumberCast<i32> for i64 {
-    fn try_cast(&self) -> Result<i32> {
+    fn try_cast(&self) -> Result<i32, String> {
         if *self >= (std::i32::MIN as i64) && *self <= (std::i32::MAX as i64) {
             Ok(*self as i32)
         } else {
@@ -125,7 +124,7 @@ impl QBNumberCast<i32> for i64 {
     }
 }
 
-pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant> {
+pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, String> {
     match value {
         Variant::VSingle(f) => match target_type {
             TypeQualifier::BangSingle => Ok(value),

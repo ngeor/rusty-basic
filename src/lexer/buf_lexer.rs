@@ -1,14 +1,14 @@
-use crate::common::Result;
-use crate::lexer::*;
+use super::{LexemeNode, Lexer, LexerError};
+use crate::common::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
 #[derive(Debug)]
 pub struct BufLexer<T> {
     lexer: Lexer<T>,
-    _history: Vec<Lexeme>,
+    _history: Vec<LexemeNode>,
     _index: usize,
-    _mark_index: usize,
+    _mark_index: Option<usize>,
 }
 
 impl<T: BufRead> BufLexer<T> {
@@ -17,17 +17,18 @@ impl<T: BufRead> BufLexer<T> {
             lexer: lexer,
             _history: vec![],
             _index: 0,
-            _mark_index: 0,
+            _mark_index: None,
         }
     }
 
     /// Reads the next lexeme.
     /// The lexeme is stored and no further reads will be done unless
     /// consume is called.
-    pub fn read(&mut self) -> LexerResult {
+    pub fn read(&mut self) -> Result<LexemeNode, LexerError> {
         if self.needs_to_read() {
+            let pos = self.lexer.pos();
             let new_lexeme = self.lexer.read()?;
-            self._history.push(new_lexeme);
+            self._history.push(new_lexeme.add_location(pos));
         }
         Ok(self._history[self._index].clone())
     }
@@ -46,11 +47,14 @@ impl<T: BufRead> BufLexer<T> {
     }
 
     pub fn mark(&mut self) {
-        self._mark_index = self._index;
+        match self._mark_index {
+            Some(_) => panic!("Mark called without backtrack or clear!"),
+            None => self._mark_index = Some(self._index),
+        }
     }
 
     pub fn backtrack(&mut self) {
-        self._index = self._mark_index;
+        self._index = self._mark_index.take().unwrap();
     }
 
     pub fn clear(&mut self) {
@@ -58,129 +62,159 @@ impl<T: BufRead> BufLexer<T> {
             self._history.remove(0);
             self._index -= 1;
         }
-        self._mark_index = 0;
+        self._mark_index = None;
     }
 
     /// Tries to read the given word. If the next lexeme is this particular word,
     /// it consumes it and it returns true.
-    pub fn try_consume_word(&mut self, word: &str) -> Result<bool> {
+    pub fn try_consume_word(&mut self, word: &str) -> Result<Option<Location>, LexerError> {
         let lexeme = self.read()?;
         match lexeme {
-            Lexeme::Word(w) => {
+            LexemeNode::Word(w, pos) => {
                 if w == word {
                     self.consume();
-                    Ok(true)
+                    Ok(Some(pos))
                 } else {
-                    Ok(false)
+                    Ok(None)
                 }
-            }
-            _ => Ok(false),
-        }
-    }
-
-    pub fn try_consume_any_word(&mut self) -> Result<Option<String>> {
-        let lexeme = self.read()?;
-        match lexeme {
-            Lexeme::Word(w) => {
-                self.consume();
-                Ok(Some(w))
             }
             _ => Ok(None),
         }
     }
 
-    pub fn try_consume_symbol(&mut self, ch: char) -> Result<bool> {
+    pub fn try_consume_any_word(&mut self) -> Result<Option<(String, Location)>, LexerError> {
         let lexeme = self.read()?;
         match lexeme {
-            Lexeme::Symbol(w) => {
+            LexemeNode::Word(w, pos) => {
+                self.consume();
+                Ok(Some((w, pos)))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    pub fn try_consume_symbol(&mut self, ch: char) -> Result<Option<Location>, LexerError> {
+        let lexeme = self.read()?;
+        match lexeme {
+            LexemeNode::Symbol(w, pos) => {
                 if w == ch {
                     self.consume();
-                    Ok(true)
+                    Ok(Some(pos))
                 } else {
-                    Ok(false)
+                    Ok(None)
                 }
             }
-            _ => Ok(false),
+            _ => Ok(None),
         }
     }
 
-    pub fn demand_any_word(&mut self) -> Result<String> {
+    pub fn try_consume_symbol_one_of(
+        &mut self,
+        symbols: Vec<char>,
+    ) -> Result<Option<(char, Location)>, LexerError> {
         let lexeme = self.read()?;
         match lexeme {
-            Lexeme::Word(w) => {
-                self.consume();
-                Ok(w)
+            LexemeNode::Symbol(w, pos) => {
+                if symbols.contains(&w) {
+                    self.consume();
+                    Ok(Some((w, pos)))
+                } else {
+                    Ok(None)
+                }
             }
-            _ => self.err("Expected word"),
+            _ => Ok(None),
         }
     }
 
-    pub fn demand_specific_word(&mut self, expected: &str) -> Result<()> {
-        let word = self.demand_any_word()?;
-        if word != expected {
-            self.err(format!("Expected {}, found {}", expected, word))
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn demand_symbol(&mut self, ch: char) -> Result<()> {
+    pub fn demand_any_word(&mut self) -> Result<(String, Location), LexerError> {
         let lexeme = self.read()?;
         match lexeme {
-            Lexeme::Symbol(s) => {
+            LexemeNode::Word(w, pos) => {
+                self.consume();
+                Ok((w, pos))
+            }
+            _ => Err(LexerError::Unexpected("Expected word".to_string(), lexeme)),
+        }
+    }
+
+    pub fn demand_specific_word(&mut self, expected: &str) -> Result<Location, LexerError> {
+        let (word, pos) = self.demand_any_word()?;
+        if word != expected {
+            Err(LexerError::Unexpected(
+                format!("Expected {}", expected),
+                LexemeNode::Word(word, pos),
+            ))
+        } else {
+            Ok(pos)
+        }
+    }
+
+    pub fn demand_symbol(&mut self, ch: char) -> Result<Location, LexerError> {
+        let lexeme = self.read()?;
+        match lexeme {
+            LexemeNode::Symbol(s, _) => {
                 if s == ch {
                     self.consume();
-                    return Ok(());
+                    return Ok(lexeme.location());
                 }
             }
             _ => (),
         }
 
-        self.err(format!("Expected symbol {}", ch))
+        Err(LexerError::Unexpected(
+            format!("Expected symbol {}", ch),
+            lexeme,
+        ))
     }
 
-    pub fn demand_eol(&mut self) -> Result<()> {
+    pub fn demand_eol(&mut self) -> Result<(), LexerError> {
         let lexeme = self.read()?;
         match lexeme {
-            Lexeme::EOL(_) => {
+            LexemeNode::EOL(_, _) => {
                 self.consume();
                 Ok(())
             }
-            _ => self.err("Expected EOL"),
+            _ => Err(LexerError::Unexpected("Expected EOL".to_string(), lexeme)),
         }
     }
 
-    pub fn demand_eol_or_eof(&mut self) -> Result<()> {
+    pub fn demand_eol_or_eof(&mut self) -> Result<(), LexerError> {
         let lexeme = self.read()?;
         match lexeme {
-            Lexeme::EOL(_) | Lexeme::EOF => {
+            LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => {
                 self.consume();
                 Ok(())
             }
-            _ => self.err("Expected EOL or EOF"),
+            _ => Err(LexerError::Unexpected(
+                "Expected EOL or EOF".to_string(),
+                lexeme,
+            )),
         }
     }
 
-    pub fn demand_whitespace(&mut self) -> Result<()> {
+    pub fn demand_whitespace(&mut self) -> Result<(), LexerError> {
         let lexeme = self.read()?;
         match lexeme {
-            Lexeme::Whitespace(_) => {
+            LexemeNode::Whitespace(_, _) => {
                 self.consume();
                 Ok(())
             }
-            _ => self.err("Expected whitespace"),
+            _ => Err(LexerError::Unexpected(
+                "Expected whitespace".to_string(),
+                lexeme,
+            )),
         }
     }
 
     /// Reads and consumes while the next lexeme is Whitespace.
     ///
     /// Returns true if at least one Whitespace was found, false otherwise.
-    pub fn skip_whitespace(&mut self) -> Result<bool> {
+    pub fn skip_whitespace(&mut self) -> Result<bool, LexerError> {
         let mut found = false;
         loop {
             let lexeme = self.read()?;
             match lexeme {
-                Lexeme::Whitespace(_) => {
+                LexemeNode::Whitespace(_, _) => {
                     found = true;
                     self.consume();
                 }
@@ -190,27 +224,15 @@ impl<T: BufRead> BufLexer<T> {
         Ok(found)
     }
 
-    pub fn skip_whitespace_and_eol(&mut self) -> Result<()> {
+    pub fn skip_whitespace_and_eol(&mut self) -> Result<(), LexerError> {
         loop {
             let lexeme = self.read()?;
             match lexeme {
-                Lexeme::Whitespace(_) | Lexeme::EOL(_) => self.consume(),
+                LexemeNode::Whitespace(_, _) | LexemeNode::EOL(_, _) => self.consume(),
                 _ => break,
             }
         }
         Ok(())
-    }
-
-    pub fn err<TResult, S: AsRef<str>>(&self, msg: S) -> Result<TResult> {
-        if self.needs_to_read() {
-            self.lexer.err(msg)
-        } else {
-            self.lexer.err(format!(
-                "{} {:?}",
-                msg.as_ref(),
-                self._history[self._index].clone()
-            ))
-        }
     }
 }
 

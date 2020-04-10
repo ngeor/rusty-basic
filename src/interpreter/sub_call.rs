@@ -1,22 +1,29 @@
-use super::*;
-use crate::common::Result;
-use crate::parser::{Expression, QName, TypeQualifier};
+use super::{Interpreter, InterpreterError, Result, Stdlib, VariableSetter, Variant};
+use crate::common::HasLocation;
+use crate::parser::{ExpressionNode, NameNode, TypeQualifier};
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
-    pub fn sub_call(&mut self, name: &String, args: &Vec<Expression>) -> Result<()> {
-        if name == "PRINT" {
+    pub fn sub_call(&mut self, name: &NameNode, args: &Vec<ExpressionNode>) -> Result<()> {
+        let raw_name = match name {
+            NameNode::Bare(b) => b.name().clone(),
+            NameNode::Typed(t) => t.name().clone(),
+        };
+        if raw_name == "PRINT" {
             self._do_print(args)
-        } else if name == "INPUT" {
+        } else if raw_name == "INPUT" {
             self._do_input(args)
-        } else if name == "SYSTEM" {
+        } else if raw_name == "SYSTEM" {
             self.stdlib.system();
             Ok(())
         } else {
-            self.err(format!("Unknown sub {}", name))
+            Err(InterpreterError::new_with_pos(
+                format!("Unknown sub {}", raw_name),
+                name.location(),
+            ))
         }
     }
 
-    fn _do_print(&mut self, args: &Vec<Expression>) -> Result<()> {
+    fn _do_print(&mut self, args: &Vec<ExpressionNode>) -> Result<()> {
         let mut strings: Vec<String> = vec![];
         for a in args {
             strings.push(self._do_print_map_arg(a)?);
@@ -25,39 +32,50 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         Ok(())
     }
 
-    fn _do_print_map_arg(&mut self, arg: &Expression) -> Result<String> {
+    fn _do_print_map_arg(&mut self, arg: &ExpressionNode) -> Result<String> {
         let evaluated = self.evaluate_expression(arg)?;
         Ok(evaluated.to_string())
     }
 
-    fn _do_input(&mut self, args: &Vec<Expression>) -> Result<()> {
+    fn _do_input(&mut self, args: &Vec<ExpressionNode>) -> Result<()> {
         for a in args {
             self._do_input_one(a)?;
         }
         Ok(())
     }
 
-    fn _do_input_one(&mut self, expression: &Expression) -> Result<()> {
+    fn _do_input_one(&mut self, expression: &ExpressionNode) -> Result<()> {
         match expression {
-            Expression::VariableName(n) => self._do_input_one_var(n),
-            _ => self.err(format!("Expected variable name, was {:?}", expression)),
+            ExpressionNode::VariableName(n) => self._do_input_one_var(n),
+            _ => Err(InterpreterError::new_with_pos(
+                format!("Expected variable name, was {:?}", expression),
+                expression.location(),
+            )),
         }
     }
 
-    fn _do_input_one_var(&mut self, qualified_name: &QName) -> Result<()> {
-        let raw_input: String = self.stdlib.input()?;
-        let variable_value = match self.effective_type_qualifier(qualified_name) {
-            TypeQualifier::BangSingle => Variant::from(parse_single_input(raw_input)?),
+    fn _do_input_one_var(&mut self, qualified_name: &NameNode) -> Result<()> {
+        let raw_input: String = self.stdlib.input().map_err(|e| {
+            InterpreterError::new_with_pos(e.to_string(), qualified_name.location())
+        })?;
+        let variable_value = match qualified_name.resolve(self).qualifier() {
+            TypeQualifier::BangSingle => Variant::from(
+                parse_single_input(raw_input)
+                    .map_err(|e| InterpreterError::new_with_pos(e, qualified_name.location()))?,
+            ),
             TypeQualifier::DollarString => Variant::from(raw_input),
-            TypeQualifier::PercentInteger => Variant::from(parse_int_input(raw_input)?),
+            TypeQualifier::PercentInteger => Variant::from(
+                parse_int_input(raw_input)
+                    .map_err(|e| InterpreterError::new_with_pos(e, qualified_name.location()))?,
+            ),
             _ => unimplemented!(),
         };
-        self.set_variable(qualified_name, variable_value);
-        Ok(())
+        self.set_variable(qualified_name, variable_value)
+            .map(|_| ())
     }
 }
 
-fn parse_single_input(s: String) -> Result<f32> {
+fn parse_single_input(s: String) -> std::result::Result<f32, String> {
     if s.is_empty() {
         Ok(0.0)
     } else {
@@ -66,7 +84,7 @@ fn parse_single_input(s: String) -> Result<f32> {
     }
 }
 
-fn parse_int_input(s: String) -> Result<i32> {
+fn parse_int_input(s: String) -> std::result::Result<i32, String> {
     if s.is_empty() {
         Ok(0)
     } else {

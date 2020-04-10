@@ -1,7 +1,7 @@
 use super::*;
+use crate::common::{Location, StripLocation};
 use crate::parser::Parser;
 use std::fs::File;
-use std::str::FromStr;
 
 pub fn interpret<T, TStdlib>(input: T, stdlib: TStdlib) -> Result<Interpreter<TStdlib>>
 where
@@ -9,7 +9,7 @@ where
     TStdlib: Stdlib,
 {
     let mut parser = Parser::from(input);
-    let program = parser.parse()?;
+    let program = parser.parse().unwrap();
     let mut interpreter = Interpreter::new(stdlib);
     interpreter.interpret(program).map(|_| interpreter)
 }
@@ -21,7 +21,7 @@ where
 {
     let file_path = format!("fixtures/{}", filename.as_ref());
     let mut parser = Parser::from(File::open(file_path).expect("Could not read bas file"));
-    let program = parser.parse()?;
+    let program = parser.parse().unwrap();
     let mut interpreter = Interpreter::new(stdlib);
     interpreter.interpret(program).map(|_| interpreter)
 }
@@ -62,7 +62,7 @@ impl Stdlib for MockStdlib {
         println!("would have exited")
     }
 
-    fn input(&self) -> Result<String> {
+    fn input(&self) -> std::io::Result<String> {
         Ok(self.next_input.clone())
     }
 }
@@ -84,7 +84,7 @@ impl<S: Stdlib> InterpreterAssertions for Interpreter<S> {
         Variant: From<TVar>,
     {
         assert_eq!(
-            self.get_variable(&QName::from_str(variable_name).unwrap())
+            self.get_variable(&NameNode::from(variable_name))
                 .map(|x| x.clone())
                 .unwrap(),
             Variant::from(expected_value)
@@ -92,10 +92,7 @@ impl<S: Stdlib> InterpreterAssertions for Interpreter<S> {
     }
 
     fn has_variable_close_enough(&self, variable_name: &str, expected_value: f64) {
-        match self
-            .get_variable(&QName::from_str(variable_name).unwrap())
-            .unwrap()
-        {
+        match self.get_variable(&NameNode::from(variable_name)).unwrap() {
             Variant::VDouble(actual_value) => {
                 assert!((expected_value - actual_value).abs() <= EPSILON_DOUBLE);
             }
@@ -123,21 +120,25 @@ pub fn assert_close_enough(actual: Variant, expected: Variant) {
 }
 
 pub struct AssignmentBuilder {
-    variable_name: QName,
+    variable_name: NameNode,
     program: String,
 }
 
 impl AssignmentBuilder {
     pub fn new(variable_literal: &str) -> AssignmentBuilder {
         AssignmentBuilder {
-            variable_name: QName::from_str(variable_literal).unwrap(),
+            variable_name: NameNode::from(variable_literal),
             program: String::new(),
         }
     }
 
     pub fn literal(&mut self, expression_literal: &str) -> &mut Self {
         if self.program.is_empty() {
-            self.program = format!("{} = {}", self.variable_name, expression_literal);
+            self.program = format!(
+                "{} = {}",
+                self.variable_name.strip_location(),
+                expression_literal
+            );
             self
         } else {
             panic!("Cannot re-assign program")
@@ -168,7 +169,7 @@ impl AssignmentBuilder {
         } else {
             assert_eq!(
                 interpret(&self.program, MockStdlib::new()).unwrap_err(),
-                "Type mismatch"
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 1))
             );
         }
     }

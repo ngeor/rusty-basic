@@ -1,20 +1,9 @@
-use super::{Block, Expression, Parser, QName, Statement};
-use crate::common::Result;
-use std::io::BufRead;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ForLoop {
-    pub variable_name: QName,
-    pub lower_bound: Expression,
-    pub upper_bound: Expression,
-    pub step: Option<Expression>,
-    pub statements: Block,
-    pub next_counter: Option<QName>,
-}
+use super::*;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_for_loop(&mut self) -> Result<Option<Statement>> {
-        if self.buf_lexer.try_consume_word("FOR")? {
+    pub fn try_parse_for_loop(&mut self) -> Result<Option<StatementNode>, LexerError> {
+        let opt_pos = self.buf_lexer.try_consume_word("FOR")?;
+        if let Some(pos) = opt_pos {
             self.buf_lexer.demand_whitespace()?;
             let for_counter_variable = self.demand_name_with_type_qualifier()?;
             self.buf_lexer.skip_whitespace()?;
@@ -28,7 +17,7 @@ impl<T: BufRead> Parser<T> {
 
             let optional_step = if self.buf_lexer.skip_whitespace()? {
                 // might have "STEP" keyword
-                if self.buf_lexer.try_consume_word("STEP")? {
+                if self.buf_lexer.try_consume_word("STEP")?.is_some() {
                     self.buf_lexer.demand_whitespace()?;
                     Some(self.demand_expression()?)
                 } else {
@@ -42,10 +31,10 @@ impl<T: BufRead> Parser<T> {
             self.buf_lexer.demand_eol()?;
             self.buf_lexer.skip_whitespace_and_eol()?;
 
-            let mut statements: Vec<Statement> = vec![];
+            let mut statements: BlockNode = vec![];
 
             // might have a dummy empty for loop
-            while !self.buf_lexer.try_consume_word("NEXT")? {
+            while self.buf_lexer.try_consume_word("NEXT")?.is_none() {
                 statements.push(self.demand_statement()?);
                 self.buf_lexer.skip_whitespace_and_eol()?;
             }
@@ -59,13 +48,14 @@ impl<T: BufRead> Parser<T> {
 
             self.buf_lexer.demand_eol_or_eof()?;
 
-            Ok(Some(Statement::ForLoop(ForLoop {
+            Ok(Some(StatementNode::ForLoop(ForLoopNode {
                 variable_name: for_counter_variable,
                 lower_bound,
                 upper_bound,
                 step: optional_step,
                 statements,
                 next_counter,
+                pos,
             })))
         } else {
             Ok(None)
@@ -81,24 +71,21 @@ mod tests {
     #[test]
     fn test_for_loop() {
         let input = "FOR I = 1 TO 10\r\nPRINT I\r\nNEXT";
-        let result = parse(input);
+        let result = parse(input).strip_location();
         assert_eq!(
             result,
             vec![top_for_loop(
                 "I",
                 1,
                 10,
-                vec![sub_call(
-                    "PRINT",
-                    vec![Expression::variable_name_unqualified("I")]
-                )]
-            )]
+                vec![sub_call("PRINT", vec![Expression::variable_name("I")],)],
+            )],
         );
     }
 
     #[test]
     fn fn_fixture_for_print_10() {
-        let result = parse_file("FOR_PRINT_10.BAS");
+        let result = parse_file("FOR_PRINT_10.BAS").strip_location();
         assert_eq!(
             result,
             vec![top_for_loop(
@@ -107,18 +94,15 @@ mod tests {
                 10,
                 vec![sub_call(
                     "PRINT",
-                    vec![
-                        Expression::from("Hello"),
-                        Expression::variable_name_unqualified("I")
-                    ]
-                )]
-            )]
+                    vec![Expression::from("Hello"), Expression::variable_name("I"),],
+                )],
+            )],
         );
     }
 
     #[test]
     fn fn_fixture_for_nested() {
-        let result = parse_file("FOR_NESTED.BAS");
+        let result = parse_file("FOR_NESTED.BAS").strip_location();
         assert_eq!(
             result,
             vec![
@@ -132,8 +116,8 @@ mod tests {
                             "PRINT",
                             vec![
                                 Expression::from("Before the inner loop"),
-                                Expression::variable_name_unqualified("I")
-                            ]
+                                Expression::variable_name("I"),
+                            ],
                         ),
                         for_loop(
                             "J",
@@ -143,22 +127,22 @@ mod tests {
                                 "PRINT",
                                 vec![
                                     Expression::from("Inner loop"),
-                                    Expression::variable_name_unqualified("I"),
-                                    Expression::variable_name_unqualified("J"),
-                                ]
-                            ),]
+                                    Expression::variable_name("I"),
+                                    Expression::variable_name("J"),
+                                ],
+                            )],
                         ),
                         sub_call(
                             "PRINT",
                             vec![
                                 Expression::from("After the inner loop"),
-                                Expression::variable_name_unqualified("I")
-                            ]
+                                Expression::variable_name("I"),
+                            ],
                         ),
-                    ]
+                    ],
                 ),
                 top_sub_call("PRINT", vec![Expression::from("After the outer loop")]),
-            ]
+            ],
         );
     }
 }

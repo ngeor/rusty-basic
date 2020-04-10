@@ -1,53 +1,28 @@
-use super::function_context::FunctionImplementation;
-use super::*;
-use crate::common::Result;
-use crate::parser::*;
+use super::{
+    Interpreter, InterpreterError, Result, Stdlib, VariableGetter, VariableSetter, Variant,
+};
+use crate::common::{HasLocation, StripLocation};
+use crate::parser::{
+    ExpressionNode, NameNode, QualifiedFunctionImplementationNode, QualifiedNameNode, TypeResolver,
+};
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn evaluate_function_call(
         &mut self,
-        function_name: &QName,
-        args: &Vec<Expression>,
+        function_name: &NameNode,
+        args: &Vec<ExpressionNode>,
     ) -> Result<Variant> {
-        let implementation = self._lookup_implementation(function_name)?;
+        let implementation = self.function_context.lookup_implementation(function_name)?;
         let arg_values: Vec<Variant> = self._evaluate_arguments(args)?;
         match implementation {
             Some(function_implementation) => {
-                self._do_evaluate_function_call(function_implementation, arg_values)
+                self._do_evaluate_function_call(function_implementation, arg_values, function_name)
             }
-            None => self._handle_undefined_function(function_name, arg_values),
+            None => self._handle_undefined_function(function_name, arg_values, args),
         }
     }
 
-    fn _lookup_implementation(
-        &self,
-        function_name: &QName,
-    ) -> Result<Option<FunctionImplementation>> {
-        match function_name {
-            QName::Untyped(bare_function_name) => Ok(self
-                .function_context
-                .get_function_implementation(bare_function_name)),
-            QName::Typed(qualified_function_name) => {
-                match self
-                    .function_context
-                    .get_function_implementation(&qualified_function_name.name)
-                {
-                    Some(function_implementation) => {
-                        if function_implementation.name.qualifier
-                            != qualified_function_name.qualifier
-                        {
-                            Err("Duplicate definition".to_string())
-                        } else {
-                            Ok(Some(function_implementation))
-                        }
-                    }
-                    None => Ok(None),
-                }
-            }
-        }
-    }
-
-    fn _evaluate_arguments(&mut self, args: &Vec<Expression>) -> Result<Vec<Variant>> {
+    fn _evaluate_arguments(&mut self, args: &Vec<ExpressionNode>) -> Result<Vec<Variant>> {
         let mut i = 0;
         let mut result: Vec<Variant> = vec![];
         while i < args.len() {
@@ -60,21 +35,26 @@ impl<S: Stdlib> Interpreter<S> {
 
     fn _do_evaluate_function_call(
         &mut self,
-        function_implementation: FunctionImplementation,
+        function_implementation: QualifiedFunctionImplementationNode,
         args: Vec<Variant>,
+        function_name: &NameNode,
     ) -> Result<Variant> {
-        let function_parameters: Vec<QualifiedName> = function_implementation.parameters;
+        let function_parameters: Vec<QualifiedNameNode> = function_implementation.parameters;
         if function_parameters.len() != args.len() {
-            self.err(format!(
-                "Function {} expected {} parameters but {} were given",
-                function_implementation.name,
-                function_parameters.len(),
-                args.len()
+            Err(InterpreterError::new_with_pos(
+                format!(
+                    "Function {} expected {} parameters but {} were given",
+                    function_implementation.name.name(),
+                    function_parameters.len(),
+                    args.len()
+                ),
+                function_name.location(),
             ))
         } else {
-            self.push_context(function_implementation.name.clone());
+            self.push_context(function_implementation.name.strip_location());
             self._populate_new_context(function_parameters, args)?;
-            self.statements(&function_implementation.block)?;
+            self.statements(&function_implementation.block)
+                .map_err(|e| e.merge_pos(function_name.location()))?;
             let result = self._get_variable_name_or_default(&function_implementation.name);
             self.pop_context();
             Ok(result)
@@ -83,53 +63,51 @@ impl<S: Stdlib> Interpreter<S> {
 
     fn _populate_new_context(
         &mut self,
-        mut parameter_names: Vec<QualifiedName>,
+        mut parameter_names: Vec<QualifiedNameNode>,
         mut arguments: Vec<Variant>,
     ) -> Result<()> {
         while !parameter_names.is_empty() {
             let variable_name = parameter_names.pop().unwrap();
-            self.set_variable(variable_name, arguments.pop().unwrap());
+            self.set_variable(variable_name, arguments.pop().unwrap())?;
         }
         Ok(())
     }
 
-    fn _get_variable_name_or_default(&self, function_name: &QualifiedName) -> Variant {
+    fn _get_variable_name_or_default(&self, function_name: &QualifiedNameNode) -> Variant {
         match self.get_variable(function_name) {
             Ok(v) => v.clone(),
-            Err(_) => _default_variant(&function_name.qualifier),
+            Err(_) => Variant::default_variant(function_name.qualifier()),
         }
     }
 
     fn _handle_undefined_function(
         &self,
-        function_name: &QName,
-        args: Vec<Variant>,
+        function_name: &NameNode,
+        arg_values: Vec<Variant>,
+        arg_nodes: &Vec<ExpressionNode>,
     ) -> Result<Variant> {
-        for arg in args {
-            match arg {
-                Variant::VString(_) => return self.err("Type mismatch"),
+        for i in 0..arg_values.len() {
+            let arg_value = &arg_values[i];
+            let arg_node = &arg_nodes[i];
+            match arg_value {
+                Variant::VString(_) => {
+                    return Err(InterpreterError::new_with_pos(
+                        "Type mismatch",
+                        arg_node.location(),
+                    ))
+                }
                 _ => (),
             }
         }
-        Ok(_default_variant(
-            &self.effective_type_qualifier(function_name),
-        ))
-    }
-}
-
-fn _default_variant(type_qualifier: &TypeQualifier) -> Variant {
-    match type_qualifier {
-        TypeQualifier::BangSingle => Variant::VSingle(0.0),
-        TypeQualifier::HashDouble => Variant::VDouble(0.0),
-        TypeQualifier::DollarString => Variant::VString(String::new()),
-        TypeQualifier::PercentInteger => Variant::VInteger(0),
-        TypeQualifier::AmpersandLong => Variant::VLong(0),
+        Ok(Variant::default_variant(self.resolve(function_name.name())))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use super::*;
+    use crate::common::Location;
 
     #[test]
     fn test_function_call_declared_and_implemented() {
@@ -152,7 +130,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Subprogram not defined"
+            InterpreterError::new_with_pos("Subprogram not defined", Location::new(2, 9))
         );
     }
 
@@ -198,7 +176,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Type mismatch"
+            InterpreterError::new_with_pos("Type mismatch", Location::new(2, 17))
         );
     }
 }

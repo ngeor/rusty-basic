@@ -1,24 +1,4 @@
 use super::*;
-use std::io::BufRead;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ConditionalBlock {
-    pub condition: Expression,
-    pub block: Block,
-}
-
-impl ConditionalBlock {
-    pub fn new(condition: Expression, block: Block) -> ConditionalBlock {
-        ConditionalBlock { condition, block }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct IfBlock {
-    pub if_block: ConditionalBlock,
-    pub else_if_blocks: Vec<ConditionalBlock>,
-    pub else_block: Option<Block>,
-}
 
 impl IfBlock {
     #[cfg(test)]
@@ -32,17 +12,25 @@ impl IfBlock {
 }
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_if_block(&mut self) -> Result<Option<Statement>> {
-        if self.buf_lexer.try_consume_word("IF")? {
+    pub fn try_parse_if_block(&mut self) -> Result<Option<StatementNode>, LexerError> {
+        let opt_if_pos = self.buf_lexer.try_consume_word("IF")?;
+        if let Some(if_pos) = opt_if_pos {
             // parse main if block
-            let if_block = self._demand_conditional_block()?;
+            let if_block = self._demand_conditional_block(if_pos)?;
+
             // parse additional elseif blocks
-            let mut else_if_blocks: Vec<ConditionalBlock> = vec![];
-            while self.buf_lexer.try_consume_word("ELSEIF")? {
-                else_if_blocks.push(self._demand_conditional_block()?);
+            let mut else_if_blocks: Vec<ConditionalBlockNode> = vec![];
+            loop {
+                let opt_else_if_pos = self.buf_lexer.try_consume_word("ELSEIF")?;
+                if let Some(else_if_pos) = opt_else_if_pos {
+                    else_if_blocks.push(self._demand_conditional_block(else_if_pos)?);
+                } else {
+                    break;
+                }
             }
+
             // parse else block
-            let else_block = if self.buf_lexer.try_consume_word("ELSE")? {
+            let else_block = if self.buf_lexer.try_consume_word("ELSE")?.is_some() {
                 self.buf_lexer.demand_eol()?;
                 Some(self.parse_block()?)
             } else {
@@ -53,7 +41,7 @@ impl<T: BufRead> Parser<T> {
             self.buf_lexer.demand_whitespace()?;
             self.buf_lexer.demand_specific_word("IF")?;
             self.buf_lexer.demand_eol_or_eof()?;
-            Ok(Some(Statement::IfBlock(IfBlock {
+            Ok(Some(StatementNode::IfBlock(IfBlockNode {
                 if_block: if_block,
                 else_if_blocks: else_if_blocks,
                 else_block: else_block,
@@ -63,13 +51,20 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _demand_conditional_block(&mut self) -> Result<ConditionalBlock> {
+    fn _demand_conditional_block(
+        &mut self,
+        pos: Location,
+    ) -> Result<ConditionalBlockNode, LexerError> {
         let condition = self._demand_condition()?;
         let block = self.parse_block()?;
-        Ok(ConditionalBlock::new(condition, block))
+        Ok(ConditionalBlockNode {
+            condition,
+            block,
+            pos,
+        })
     }
 
-    fn _demand_condition(&mut self) -> Result<Expression> {
+    fn _demand_condition(&mut self) -> Result<ExpressionNode, LexerError> {
         self.buf_lexer.demand_whitespace()?;
         let condition = self.demand_expression()?;
         self.buf_lexer.demand_whitespace()?;
@@ -88,20 +83,21 @@ mod tests {
     fn test_if() {
         let input = "IF X THEN\r\nPRINT X\r\nEND IF";
         let mut parser = Parser::from(input);
-        let if_block = parser.try_parse_if_block().unwrap().unwrap();
+        let if_block = parser
+            .try_parse_if_block()
+            .unwrap()
+            .unwrap()
+            .strip_location();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
-                    Expression::variable_name_unqualified("X"),
-                    vec![sub_call(
-                        "PRINT",
-                        vec![Expression::variable_name_unqualified("X")]
-                    )]
+                    Expression::variable_name("X"),
+                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
                 ),
                 else_if_blocks: vec![],
-                else_block: None
-            })
+                else_block: None,
+            }),
         );
     }
 
@@ -113,23 +109,24 @@ ELSE
     PRINT Y
 END IF"#;
         let mut parser = Parser::from(input);
-        let if_block = parser.try_parse_if_block().unwrap().unwrap();
+        let if_block = parser
+            .try_parse_if_block()
+            .unwrap()
+            .unwrap()
+            .strip_location();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
-                    Expression::variable_name_unqualified("X"),
-                    vec![sub_call(
-                        "PRINT",
-                        vec![Expression::variable_name_unqualified("X")]
-                    )]
+                    Expression::variable_name("X"),
+                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
                 ),
                 else_if_blocks: vec![],
                 else_block: Some(vec![sub_call(
                     "PRINT",
-                    vec![Expression::variable_name_unqualified("Y")]
-                )])
-            })
+                    vec![Expression::variable_name("Y")],
+                )]),
+            }),
         );
     }
 
@@ -141,26 +138,24 @@ ELSEIF Y THEN
     PRINT Y
 END IF"#;
         let mut parser = Parser::from(input);
-        let if_block = parser.try_parse_if_block().unwrap().unwrap();
+        let if_block = parser
+            .try_parse_if_block()
+            .unwrap()
+            .unwrap()
+            .strip_location();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
-                    Expression::variable_name_unqualified("X"),
-                    vec![sub_call(
-                        "PRINT",
-                        vec![Expression::variable_name_unqualified("X")]
-                    )]
+                    Expression::variable_name("X"),
+                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
                 ),
                 else_if_blocks: vec![ConditionalBlock::new(
-                    Expression::variable_name_unqualified("Y"),
-                    vec![sub_call(
-                        "PRINT",
-                        vec![Expression::variable_name_unqualified("Y")]
-                    )]
+                    Expression::variable_name("Y"),
+                    vec![sub_call("PRINT", vec![Expression::variable_name("Y")],)],
                 )],
-                else_block: None
-            })
+                else_block: None,
+            }),
         );
     }
 
@@ -174,35 +169,30 @@ ELSEIF Z THEN
     PRINT Z
 END IF"#;
         let mut parser = Parser::from(input);
-        let if_block = parser.try_parse_if_block().unwrap().unwrap();
+        let if_block = parser
+            .try_parse_if_block()
+            .unwrap()
+            .unwrap()
+            .strip_location();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
-                    Expression::variable_name_unqualified("X"),
-                    vec![sub_call(
-                        "PRINT",
-                        vec![Expression::variable_name_unqualified("X")]
-                    )]
+                    Expression::variable_name("X"),
+                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
                 ),
                 else_if_blocks: vec![
                     ConditionalBlock::new(
-                        Expression::variable_name_unqualified("Y"),
-                        vec![sub_call(
-                            "PRINT",
-                            vec![Expression::variable_name_unqualified("Y")]
-                        )]
+                        Expression::variable_name("Y"),
+                        vec![sub_call("PRINT", vec![Expression::variable_name("Y")],)],
                     ),
                     ConditionalBlock::new(
-                        Expression::variable_name_unqualified("Z"),
-                        vec![sub_call(
-                            "PRINT",
-                            vec![Expression::variable_name_unqualified("Z")]
-                        )]
-                    )
+                        Expression::variable_name("Z"),
+                        vec![sub_call("PRINT", vec![Expression::variable_name("Z")],)],
+                    ),
                 ],
-                else_block: None
-            })
+                else_block: None,
+            }),
         );
     }
 
@@ -216,29 +206,27 @@ ELSE
     PRINT Z
 END IF"#;
         let mut parser = Parser::from(input);
-        let if_block = parser.try_parse_if_block().unwrap().unwrap();
+        let if_block = parser
+            .try_parse_if_block()
+            .unwrap()
+            .unwrap()
+            .strip_location();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock::new(
-                    Expression::variable_name_unqualified("X"),
-                    vec![sub_call(
-                        "PRINT",
-                        vec![Expression::variable_name_unqualified("X")]
-                    )]
+                    Expression::variable_name("X"),
+                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
                 ),
                 else_if_blocks: vec![ConditionalBlock::new(
-                    Expression::variable_name_unqualified("Y"),
-                    vec![sub_call(
-                        "PRINT",
-                        vec![Expression::variable_name_unqualified("Y")]
-                    )]
+                    Expression::variable_name("Y"),
+                    vec![sub_call("PRINT", vec![Expression::variable_name("Y")],)],
                 )],
                 else_block: Some(vec![sub_call(
                     "PRINT",
-                    vec![Expression::variable_name_unqualified("Z")]
-                )])
-            })
+                    vec![Expression::variable_name("Z")],
+                )]),
+            }),
         );
     }
 }

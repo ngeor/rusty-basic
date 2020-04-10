@@ -1,8 +1,7 @@
 use super::*;
-use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_assignment(&mut self) -> Result<Option<Statement>> {
+    pub fn try_parse_assignment(&mut self) -> Result<Option<StatementNode>, LexerError> {
         self.buf_lexer.mark();
         let left_side = self._try_parse_left_side_of_assignment()?;
         match left_side {
@@ -11,7 +10,7 @@ impl<T: BufRead> Parser<T> {
                 let exp = self.demand_expression()?;
                 self.buf_lexer.skip_whitespace()?;
                 self.buf_lexer.demand_eol_or_eof()?;
-                Ok(Some(Statement::Assignment(n, exp)))
+                Ok(Some(StatementNode::Assignment(n, exp)))
             }
             None => {
                 self.buf_lexer.backtrack();
@@ -20,11 +19,11 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _try_parse_left_side_of_assignment(&mut self) -> Result<Option<QName>> {
+    fn _try_parse_left_side_of_assignment(&mut self) -> Result<Option<NameNode>, LexerError> {
         match self.try_parse_name_with_type_qualifier()? {
             Some(n) => {
                 self.buf_lexer.skip_whitespace()?;
-                if self.buf_lexer.try_consume_symbol('=')? {
+                if self.buf_lexer.try_consume_symbol('=')?.is_some() {
                     self.buf_lexer.skip_whitespace()?;
                     Ok(Some(n))
                 } else {
@@ -44,13 +43,14 @@ mod tests {
     fn test_numeric_assignment() {
         let input = "A = 42";
         let mut parser = Parser::from(input);
-        let result = parser.try_parse_assignment().unwrap().unwrap();
+        let result = parser
+            .try_parse_assignment()
+            .unwrap()
+            .unwrap()
+            .strip_location();
         assert_eq!(
             result,
-            Statement::Assignment(
-                QName::Untyped("A".to_string()),
-                Expression::IntegerLiteral(42)
-            )
+            Statement::Assignment(Name::from("A"), Expression::IntegerLiteral(42),),
         );
     }
 
@@ -59,7 +59,10 @@ mod tests {
         let input = "PRINT 42";
         let mut parser = Parser::from(input);
         let result = parser.try_parse_assignment().unwrap();
-        assert_eq!(result, None);
+        match result {
+            None => (),
+            Some(_) => panic!("should not have mistaken sub call for assignment"),
+        };
         parser.try_parse_sub_call().unwrap().unwrap();
     }
 }

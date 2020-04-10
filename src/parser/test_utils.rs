@@ -1,7 +1,6 @@
 use super::*;
-use std::str::FromStr;
 
-pub fn parse<T>(input: T) -> Program
+pub fn parse<T>(input: T) -> ProgramNode
 where
     T: AsRef<[u8]>,
 {
@@ -9,7 +8,7 @@ where
     parser.parse().expect("Could not parse program")
 }
 
-pub fn parse_file<S: AsRef<str>>(filename: S) -> Program {
+pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
     let file_path = format!("fixtures/{}", filename.as_ref());
     let mut parser = Parser::from(File::open(file_path).expect("Could not read bas file"));
     parser.parse().expect("Could not parse program")
@@ -30,7 +29,7 @@ pub fn for_loop(
     statements: Block,
 ) -> Statement {
     Statement::ForLoop(ForLoop {
-        variable_name: QName::from_str(variable_name).unwrap(),
+        variable_name: Name::from(variable_name),
         lower_bound: Expression::from(lower_bound),
         upper_bound: Expression::from(upper_bound),
         step: None,

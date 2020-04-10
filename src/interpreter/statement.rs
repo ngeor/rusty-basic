@@ -1,19 +1,20 @@
-use super::*;
-use crate::common::Result;
-use crate::parser::*;
+use super::{Interpreter, Result, Stdlib};
+use crate::parser::{BlockNode, StatementNode};
 
 impl<S: Stdlib> Interpreter<S> {
-    pub fn statement(&mut self, statement: &Statement) -> Result<()> {
+    pub fn statement(&mut self, statement: &StatementNode) -> Result<()> {
         match statement {
-            Statement::SubCall(name, args) => self.sub_call(name, args),
-            Statement::ForLoop(f) => self.for_loop(f),
-            Statement::IfBlock(i) => self.if_block(i),
-            Statement::Assignment(left_side, right_side) => self.assignment(left_side, right_side),
-            Statement::Whitespace(_) => Ok(()),
+            StatementNode::SubCall(name, args) => self.sub_call(name, args),
+            StatementNode::ForLoop(f) => self.for_loop(f),
+            StatementNode::IfBlock(i) => self.if_block(i),
+            StatementNode::Assignment(left_side, right_side) => {
+                self.assignment(left_side, right_side).map(|_| ())
+            }
+            StatementNode::Whitespace(_) => Ok(()),
         }
     }
 
-    pub fn statements(&mut self, statements: &Block) -> Result<()> {
+    pub fn statements(&mut self, statements: &BlockNode) -> Result<()> {
         for statement in statements {
             match self.statement(statement) {
                 Err(e) => return Err(e),

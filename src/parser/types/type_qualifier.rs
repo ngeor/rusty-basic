@@ -1,11 +1,10 @@
-use crate::common::Result;
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::str::FromStr;
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TypeQualifier {
     /// ! Single-precision
     BangSingle,
@@ -33,7 +32,7 @@ impl Display for TypeQualifier {
 
 impl FromStr for TypeQualifier {
     type Err = String;
-    fn from_str(s: &str) -> Result<TypeQualifier> {
+    fn from_str(s: &str) -> Result<TypeQualifier, String> {
         if s == "!" {
             Ok(TypeQualifier::BangSingle)
         } else if s == "#" {
@@ -52,7 +51,7 @@ impl FromStr for TypeQualifier {
 
 impl TryFrom<char> for TypeQualifier {
     type Error = String;
-    fn try_from(ch: char) -> Result<TypeQualifier> {
+    fn try_from(ch: char) -> Result<TypeQualifier, String> {
         if ch == '!' {
             Ok(TypeQualifier::BangSingle)
         } else if ch == '#' {

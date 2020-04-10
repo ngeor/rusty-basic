@@ -1,159 +1,72 @@
+use super::parse_result::ParseResult;
 use super::*;
-use crate::common::Result;
-use crate::lexer::Lexeme;
+use crate::lexer::LexemeNode;
 use std::convert::TryFrom;
-use std::io::BufRead;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Operand {
-    LessOrEqualThan,
-    LessThan,
-    Plus,
-    Minus,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UnaryOperand {
-    // Plus,
-    Minus,
-    // Not,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Expression {
-    SingleLiteral(f32),
-    DoubleLiteral(f64),
-    StringLiteral(String),
-    IntegerLiteral(i32),
-    LongLiteral(i64),
-    VariableName(QName),
-    FunctionCall(QName, Vec<Expression>),
-    BinaryExpression(Operand, Box<Expression>, Box<Expression>),
-    UnaryExpression(UnaryOperand, Box<Expression>),
-}
-
-impl From<f32> for Expression {
-    fn from(value: f32) -> Expression {
-        Expression::SingleLiteral(value)
-    }
-}
-
-impl From<f64> for Expression {
-    fn from(value: f64) -> Expression {
-        Expression::DoubleLiteral(value)
-    }
-}
-
-impl From<&str> for Expression {
-    fn from(value: &str) -> Expression {
-        Expression::StringLiteral(value.to_string())
-    }
-}
-
-impl From<i32> for Expression {
-    fn from(value: i32) -> Expression {
-        Expression::IntegerLiteral(value)
-    }
-}
-
-impl From<i64> for Expression {
-    fn from(value: i64) -> Expression {
-        Expression::LongLiteral(value)
-    }
-}
-
-impl Expression {
-    #[cfg(test)]
-    pub fn variable_name_unqualified(name: &str) -> Expression {
-        Expression::VariableName(QName::Untyped(name.to_string()))
-    }
-
-    #[cfg(test)]
-    pub fn binary(operand: Operand, left: Expression, right: Expression) -> Expression {
-        Expression::BinaryExpression(operand, Box::new(left), Box::new(right))
-    }
-
-    pub fn unary(operand: UnaryOperand, child: Expression) -> Expression {
-        Expression::UnaryExpression(operand, Box::new(child))
-    }
-
-    pub fn unary_minus(child: Expression) -> Expression {
-        match child {
-            Expression::SingleLiteral(n) => Expression::from(-n),
-            Expression::DoubleLiteral(n) => Expression::from(-n),
-            Expression::IntegerLiteral(n) => Expression::from(-n),
-            Expression::LongLiteral(n) => Expression::from(-n),
-            _ => Expression::unary(UnaryOperand::Minus, child),
-        }
-    }
-
-    #[cfg(test)]
-    pub fn lte(left: Expression, right: Expression) -> Expression {
-        Expression::binary(Operand::LessOrEqualThan, left, right)
-    }
-
-    #[cfg(test)]
-    pub fn less(left: Expression, right: Expression) -> Expression {
-        Expression::binary(Operand::LessThan, left, right)
-    }
-
-    #[cfg(test)]
-    pub fn plus(left: Expression, right: Expression) -> Expression {
-        Expression::binary(Operand::Plus, left, right)
-    }
-
-    #[cfg(test)]
-    pub fn minus(left: Expression, right: Expression) -> Expression {
-        Expression::binary(Operand::Minus, left, right)
+impl From<ExpressionNode> for ParseResult<ExpressionNode> {
+    fn from(expr: ExpressionNode) -> ParseResult<ExpressionNode> {
+        ParseResult::Match(expr)
     }
 }
 
 impl<T: BufRead> Parser<T> {
-    pub fn demand_expression(&mut self) -> Result<Expression> {
-        match self.try_parse_expression()? {
-            Some(e) => Ok(e),
-            None => Err(format!(
-                "Expected expression, found {:?}",
-                self.buf_lexer.read()?
-            )),
+    pub fn demand_expression(&mut self) -> Result<ExpressionNode, LexerError> {
+        match self.try_parse_expression() {
+            Ok(x) => x.demand("Expected expression"),
+            Err(err) => Err(err),
         }
     }
 
-    pub fn try_parse_expression(&mut self) -> Result<Option<Expression>> {
-        let left_side = self._try_parse_single_expression()?;
-        match left_side {
-            None => Ok(None),
-            Some(exp) => Ok(Some(self._try_parse_second_expression(exp)?)),
+    pub fn try_parse_expression(&mut self) -> Result<ParseResult<ExpressionNode>, LexerError> {
+        let first = self._try_parse_single_expression()?;
+        match first {
+            ParseResult::Match(e) => self
+                ._try_parse_second_expression(e)
+                .map(|x| ParseResult::Match(x)),
+            _ => Ok(first),
         }
     }
 
-    fn _try_parse_single_expression(&mut self) -> Result<Option<Expression>> {
+    fn _try_parse_single_expression(&mut self) -> Result<ParseResult<ExpressionNode>, LexerError> {
         let next = self.buf_lexer.read()?;
         match next {
-            Lexeme::Symbol('"') => Ok(Some(self._parse_string_literal()?)),
-            Lexeme::Word(word) => Ok(Some(self._parse_word(word)?)),
-            Lexeme::Digits(digits) => Ok(Some(self._parse_number_literal(digits)?)),
-            Lexeme::Symbol('.') => Ok(Some(self._parse_floating_point_literal(0)?)),
-            Lexeme::Symbol('-') => {
-                self.buf_lexer.consume();
-                match self._try_parse_single_expression()? {
-                    Some(e) => Ok(Some(Expression::unary_minus(e))),
-                    None => self
-                        .buf_lexer
-                        .err("Expected expression after minus operator"),
-                }
+            LexemeNode::Symbol('"', _) => {
+                self._parse_string_literal().map(|x| ParseResult::Match(x))
             }
-            _ => Ok(None),
+            LexemeNode::Word(word, pos) => {
+                self._parse_word(&word, pos).map(|x| ParseResult::Match(x))
+            }
+            LexemeNode::Digits(digits, pos) => self
+                ._parse_number_literal(digits, pos)
+                .map(|x| ParseResult::Match(x)),
+            LexemeNode::Symbol('.', pos) => self
+                ._parse_floating_point_literal(0, pos)
+                .map(|x| ParseResult::Match(x)),
+            LexemeNode::Symbol('-', minus_pos) => {
+                self.buf_lexer.consume();
+                let opt_child = self._try_parse_single_expression()?;
+                Ok(match opt_child {
+                    ParseResult::Match(e) => ParseResult::Match(ExpressionNode::unary_minus(
+                        Locatable::new(UnaryOperand::Minus, minus_pos),
+                        e,
+                    )),
+                    _ => opt_child,
+                })
+            }
+            _ => Ok(ParseResult::NoMatch(next)),
         }
     }
 
-    fn _try_parse_second_expression(&mut self, left_side: Expression) -> Result<Expression> {
+    fn _try_parse_second_expression(
+        &mut self,
+        left_side: ExpressionNode,
+    ) -> Result<ExpressionNode, LexerError> {
         let operand = self._try_parse_operand()?;
         match operand {
             Some(op) => {
                 self.buf_lexer.skip_whitespace()?;
                 let right_side = self.demand_expression()?;
-                Ok(Expression::BinaryExpression(
+                Ok(ExpressionNode::BinaryExpression(
                     op,
                     Box::new(left_side),
                     Box::new(right_side),
@@ -164,10 +77,10 @@ impl<T: BufRead> Parser<T> {
     }
 
     /// Parses a comma separated list of expressions.
-    pub fn parse_expression_list(&mut self) -> Result<Vec<Expression>> {
-        let mut args: Vec<Expression> = vec![];
+    pub fn parse_expression_list(&mut self) -> Result<Vec<ExpressionNode>, LexerError> {
+        let mut args: Vec<ExpressionNode> = vec![];
         let optional_first_arg = self.try_parse_expression()?;
-        if let Some(first_arg) = optional_first_arg {
+        if let ParseResult::Match(first_arg) = optional_first_arg {
             args.push(first_arg);
             while self._read_comma_between_arguments()? {
                 self.buf_lexer.skip_whitespace()?;
@@ -179,15 +92,15 @@ impl<T: BufRead> Parser<T> {
         Ok(args)
     }
 
-    fn _read_comma_between_arguments(&mut self) -> Result<bool> {
+    fn _read_comma_between_arguments(&mut self) -> Result<bool, LexerError> {
         // skip whitespace after previous arg
         self.buf_lexer.skip_whitespace()?;
-        self.buf_lexer.try_consume_symbol(',')
+        self.buf_lexer.try_consume_symbol(',').map(|x| x.is_some())
     }
 
-    fn _parse_string_literal(&mut self) -> Result<Expression> {
+    fn _parse_string_literal(&mut self) -> Result<ExpressionNode, LexerError> {
         // verify we read a double quote
-        self.buf_lexer.demand_symbol('"')?;
+        let pos = self.buf_lexer.demand_symbol('"')?;
 
         let mut buf: String = String::new();
 
@@ -196,105 +109,129 @@ impl<T: BufRead> Parser<T> {
             let l = self.buf_lexer.read()?;
             self.buf_lexer.consume();
             match l {
-                Lexeme::Symbol('"') => break,
-                Lexeme::EOF => return self.buf_lexer.err("EOF while looking for end of string"),
-                Lexeme::EOL(_) => {
-                    return self
-                        .buf_lexer
-                        .err("Unexpected new line while looking for end of string")
+                LexemeNode::Symbol('"', _) => break,
+                LexemeNode::EOF(_) => {
+                    return Err(LexerError::Unexpected(
+                        format!("EOF while looking for end of string"),
+                        l,
+                    ))
                 }
-                _ => l.push_to(&mut buf),
+                LexemeNode::EOL(_, _) => {
+                    return Err(LexerError::Unexpected(
+                        format!("Unexpected new line while looking for end of string"),
+                        l,
+                    ))
+                }
+                _ => l.strip_location().push_to(&mut buf),
             }
         }
 
-        Ok(Expression::StringLiteral(buf))
+        Ok(ExpressionNode::StringLiteral(buf, pos))
     }
 
-    fn _parse_number_literal(&mut self, digits: u32) -> Result<Expression> {
+    fn _parse_number_literal(
+        &mut self,
+        digits: u32,
+        pos: Location,
+    ) -> Result<ExpressionNode, LexerError> {
         // consume digits
         self.buf_lexer.consume();
         let next = self.buf_lexer.read()?;
         match next {
-            Lexeme::Symbol('.') => self._parse_floating_point_literal(digits),
+            LexemeNode::Symbol('.', _) => self._parse_floating_point_literal(digits, pos),
             _ => {
                 // no decimal point, just integer
                 match i32::try_from(digits) {
-                    Ok(i) => Ok(Expression::IntegerLiteral(i)),
-                    Err(err) => self
-                        .buf_lexer
-                        .err(format!("Could not convert digits to i32: {}", err)),
+                    Ok(i) => Ok(ExpressionNode::IntegerLiteral(i, pos)),
+                    Err(err) => Err(LexerError::Internal(err.to_string(), pos)),
                 }
             }
         }
     }
 
-    fn _demand_digits(&mut self) -> Result<u32> {
+    fn _demand_digits(&mut self) -> Result<u32, LexerError> {
         let next = self.buf_lexer.read()?;
         match next {
-            Lexeme::Digits(digits) => {
+            LexemeNode::Digits(digits, _) => {
                 self.buf_lexer.consume();
                 Ok(digits)
             }
-            _ => self.buf_lexer.err("Expected digits"),
+            _ => Err(LexerError::Unexpected(format!("Expected digits"), next)),
         }
     }
 
-    fn _parse_floating_point_literal(&mut self, integer_digits: u32) -> Result<Expression> {
+    fn _parse_floating_point_literal(
+        &mut self,
+        integer_digits: u32,
+        pos: Location,
+    ) -> Result<ExpressionNode, LexerError> {
         // consume dot
         self.buf_lexer.consume();
         let fraction_digits = self._demand_digits()?;
-        let is_double = self.buf_lexer.try_consume_symbol('#')?;
+        let is_double = self.buf_lexer.try_consume_symbol('#')?.is_some();
         if is_double {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
-                Ok(f) => Ok(Expression::DoubleLiteral(f)),
-                Err(err) => self
-                    .buf_lexer
-                    .err(format!("Could not convert digits to f64: {}", err)),
+                Ok(f) => Ok(ExpressionNode::DoubleLiteral(f, pos)),
+                Err(err) => Err(LexerError::Internal(err.to_string(), pos)),
             }
         } else {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
-                Ok(f) => Ok(Expression::SingleLiteral(f)),
-                Err(err) => self
-                    .buf_lexer
-                    .err(format!("Could not convert digits to f32: {}", err)),
+                Ok(f) => Ok(ExpressionNode::SingleLiteral(f, pos)),
+                Err(err) => Err(LexerError::Internal(err.to_string(), pos)),
             }
         }
     }
 
-    fn _parse_word(&mut self, word: String) -> Result<Expression> {
+    fn _parse_word(&mut self, word: &String, pos: Location) -> Result<ExpressionNode, LexerError> {
         self.buf_lexer.consume();
         // is it maybe a qualified variable name
         let qualifier = self.try_parse_type_qualifier()?;
         // it could be a function call?
-        if self.buf_lexer.try_consume_symbol('(')? {
+        if self.buf_lexer.try_consume_symbol('(')?.is_some() {
             let args = self.parse_expression_list()?;
             self.buf_lexer.demand_symbol(')')?;
-            Ok(Expression::FunctionCall(QName::new(word, qualifier), args))
+            Ok(ExpressionNode::FunctionCall(
+                NameNode::new(word, qualifier, pos),
+                args,
+            ))
         } else {
-            Ok(Expression::VariableName(QName::new(word, qualifier)))
+            Ok(ExpressionNode::VariableName(NameNode::new(
+                word, qualifier, pos,
+            )))
         }
     }
 
-    fn _try_parse_operand(&mut self) -> Result<Option<Operand>> {
+    fn _try_parse_operand(&mut self) -> Result<Option<OperandNode>, LexerError> {
         self.buf_lexer.mark();
         self.buf_lexer.skip_whitespace()?;
-        if self.buf_lexer.try_consume_symbol('<')? {
-            self._less_or_lte()
-        } else if self.buf_lexer.try_consume_symbol('+')? {
-            Ok(Some(Operand::Plus))
-        } else if self.buf_lexer.try_consume_symbol('-')? {
-            Ok(Some(Operand::Minus))
-        } else {
-            self.buf_lexer.backtrack();
-            Ok(None)
+        match self
+            .buf_lexer
+            .try_consume_symbol_one_of(vec!['<', '+', '-'])?
+        {
+            Some((ch, pos)) => {
+                self.buf_lexer.clear();
+                if ch == '<' {
+                    Ok(Some(Locatable::new(self._less_or_lte()?, pos)))
+                } else if ch == '+' {
+                    Ok(Some(Locatable::new(Operand::Plus, pos)))
+                } else if ch == '-' {
+                    Ok(Some(Locatable::new(Operand::Minus, pos)))
+                } else {
+                    panic!(format!("Unexpected symbol {}", ch))
+                }
+            }
+            None => {
+                self.buf_lexer.backtrack();
+                Ok(None)
+            }
         }
     }
 
-    fn _less_or_lte(&mut self) -> Result<Option<Operand>> {
-        if self.buf_lexer.try_consume_symbol('=')? {
-            Ok(Some(Operand::LessOrEqualThan))
+    fn _less_or_lte(&mut self) -> Result<Operand, LexerError> {
+        if self.buf_lexer.try_consume_symbol('=')?.is_some() {
+            Ok(Operand::LessOrEqualThan)
         } else {
-            Ok(Some(Operand::LessThan))
+            Ok(Operand::LessThan)
         }
     }
 }
@@ -302,7 +239,6 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     fn assert_parse_literal<TResult>(input: &str, expected: TResult)
     where
@@ -310,7 +246,7 @@ mod tests {
         Expression: From<TResult>,
     {
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(expression, Expression::from(expected));
     }
 
@@ -329,21 +265,18 @@ mod tests {
     fn test_variable_expression() {
         let input = "A";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
-        assert_eq!(
-            expression,
-            Expression::VariableName(QName::from_str("A").unwrap())
-        );
+        let expression = parser.demand_expression().unwrap().strip_location();
+        assert_eq!(expression, Expression::VariableName(Name::from("A")));
     }
 
     #[test]
     fn test_function_call_expression_no_args() {
         let input = "IsValid()";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
-            Expression::FunctionCall(QName::Untyped("IsValid".to_string()), vec![])
+            Expression::FunctionCall(Name::from("IsValid"), vec![])
         );
     }
 
@@ -351,16 +284,10 @@ mod tests {
     fn test_function_call_qualified_expression_no_args() {
         let input = "IsValid%()";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
-            Expression::FunctionCall(
-                QName::Typed(QualifiedName::new(
-                    "IsValid".to_string(),
-                    TypeQualifier::PercentInteger
-                )),
-                vec![]
-            )
+            Expression::FunctionCall(Name::from("IsValid%"), vec![])
         );
     }
 
@@ -368,13 +295,10 @@ mod tests {
     fn test_function_call_expression_one_arg() {
         let input = "IsValid(42)";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
-            Expression::FunctionCall(
-                QName::Untyped("IsValid".to_string()),
-                vec![Expression::IntegerLiteral(42)]
-            )
+            Expression::FunctionCall(Name::from("IsValid"), vec![Expression::IntegerLiteral(42)])
         );
     }
 
@@ -382,11 +306,11 @@ mod tests {
     fn test_function_call_expression_two_args() {
         let input = "CheckProperty(42, \"age\")";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
             Expression::FunctionCall(
-                QName::Untyped("CheckProperty".to_string()),
+                Name::from("CheckProperty"),
                 vec![Expression::from(42), Expression::from("age")]
             )
         );
@@ -396,17 +320,23 @@ mod tests {
     fn test_function_call_in_function_call() {
         let input = "CheckProperty(LookupName(\"age\"), Confirm())";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression_node = parser.demand_expression().unwrap();
         assert_eq!(
-            expression,
-            Expression::FunctionCall(
-                QName::Untyped("CheckProperty".to_string()),
+            expression_node,
+            ExpressionNode::FunctionCall(
+                NameNode::from("CheckProperty").at(Location::new(1, 1)),
                 vec![
-                    Expression::FunctionCall(
-                        QName::Untyped("LookupName".to_string()),
-                        vec![Expression::from("age")]
+                    ExpressionNode::FunctionCall(
+                        NameNode::from("LookupName").at(Location::new(1, 15)),
+                        vec![ExpressionNode::StringLiteral(
+                            "age".to_string(),
+                            Location::new(1, 26)
+                        )]
                     ),
-                    Expression::FunctionCall(QName::Untyped("Confirm".to_string()), vec![])
+                    ExpressionNode::FunctionCall(
+                        NameNode::from("Confirm").at(Location::new(1, 34)),
+                        vec![]
+                    )
                 ]
             )
         );
@@ -416,14 +346,14 @@ mod tests {
     fn test_lte() {
         let input = "N <= 1";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
             Expression::BinaryExpression(
                 Operand::LessOrEqualThan,
-                Box::new(Expression::variable_name_unqualified("N")),
-                Box::new(Expression::IntegerLiteral(1))
-            )
+                Box::new(Expression::variable_name("N")),
+                Box::new(Expression::IntegerLiteral(1)),
+            ),
         );
     }
 
@@ -431,14 +361,14 @@ mod tests {
     fn test_less_than() {
         let input = "A < B";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
             Expression::BinaryExpression(
                 Operand::LessThan,
-                Box::new(Expression::variable_name_unqualified("A")),
-                Box::new(Expression::variable_name_unqualified("B"))
-            )
+                Box::new(Expression::variable_name("A")),
+                Box::new(Expression::variable_name("B")),
+            ),
         );
     }
 
@@ -446,14 +376,14 @@ mod tests {
     fn test_plus() {
         let input = "N + 1";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
             Expression::BinaryExpression(
                 Operand::Plus,
-                Box::new(Expression::variable_name_unqualified("N")),
-                Box::new(Expression::IntegerLiteral(1))
-            )
+                Box::new(Expression::variable_name("N")),
+                Box::new(Expression::IntegerLiteral(1)),
+            ),
         );
     }
 
@@ -461,14 +391,14 @@ mod tests {
     fn test_minus() {
         let input = "N - 2";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
             Expression::BinaryExpression(
                 Operand::Minus,
-                Box::new(Expression::variable_name_unqualified("N")),
-                Box::new(Expression::IntegerLiteral(2))
-            )
+                Box::new(Expression::variable_name("N")),
+                Box::new(Expression::IntegerLiteral(2)),
+            ),
         );
     }
 
@@ -476,10 +406,13 @@ mod tests {
     fn test_negated_variable() {
         let input = "-N";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
-            Expression::unary_minus(Expression::variable_name_unqualified("N"))
+            Expression::UnaryExpression(
+                UnaryOperand::Minus,
+                Box::new(Expression::variable_name("N"))
+            ),
         );
     }
 
@@ -487,27 +420,27 @@ mod tests {
     fn test_fib_expression() {
         let input = "Fib(N - 1) + Fib(N - 2)";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
             Expression::BinaryExpression(
                 Operand::Plus,
                 Box::new(Expression::FunctionCall(
-                    QName::Untyped("Fib".to_string()),
+                    Name::from("Fib"),
                     vec![Expression::BinaryExpression(
                         Operand::Minus,
-                        Box::new(Expression::variable_name_unqualified("N")),
-                        Box::new(Expression::IntegerLiteral(1))
-                    )]
+                        Box::new(Expression::variable_name("N")),
+                        Box::new(Expression::IntegerLiteral(1)),
+                    )],
                 )),
                 Box::new(Expression::FunctionCall(
-                    QName::Untyped("Fib".to_string()),
+                    Name::from("Fib"),
                     vec![Expression::minus(
-                        Expression::variable_name_unqualified("N"),
-                        Expression::IntegerLiteral(2)
-                    )]
-                ))
-            )
+                        Expression::variable_name("N"),
+                        Expression::IntegerLiteral(2),
+                    )],
+                )),
+            ),
         );
     }
 
@@ -515,15 +448,19 @@ mod tests {
     fn test_negated_function_call() {
         let input = "-Fib(-N)";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap();
+        let expression = parser.demand_expression().unwrap().strip_location();
         assert_eq!(
             expression,
-            Expression::unary_minus(Expression::FunctionCall(
-                QName::Untyped("Fib".to_string()),
-                vec![Expression::unary_minus(
-                    Expression::variable_name_unqualified("N")
-                )]
-            ))
+            Expression::UnaryExpression(
+                UnaryOperand::Minus,
+                Box::new(Expression::FunctionCall(
+                    Name::from("Fib"),
+                    vec![Expression::UnaryExpression(
+                        UnaryOperand::Minus,
+                        Box::new(Expression::variable_name("N")),
+                    )],
+                ))
+            )
         );
     }
 }

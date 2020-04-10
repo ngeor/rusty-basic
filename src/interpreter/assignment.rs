@@ -1,53 +1,14 @@
-use super::casting::cast;
-use super::*;
-use crate::common::Result;
-use crate::parser::*;
+use super::{Interpreter, Result, Stdlib, VariableSetter, Variant};
+use crate::parser::{ExpressionNode, NameNode};
 
 impl<S: Stdlib> Interpreter<S> {
-    pub fn assignment(&mut self, left_side: &QName, right_side: &Expression) -> Result<()> {
+    pub fn assignment(
+        &mut self,
+        left_side: &NameNode,
+        right_side: &ExpressionNode,
+    ) -> Result<Option<Variant>> {
         let val: Variant = self.evaluate_expression(right_side)?;
-        match left_side {
-            QName::Untyped(bare_name) => self._assign_untyped(bare_name, val),
-            QName::Typed(qualified_name) => self._assign_typed(qualified_name, val),
-        }
-    }
-
-    fn _assign_untyped(&mut self, bare_name: &BareName, value: Variant) -> Result<()> {
-        match self.matches_result_name(bare_name) {
-            Some(result_name) => {
-                // assigning the return value to a function using an unqualified name
-                self._do_assign_typed(&result_name, value)
-            }
-            None => {
-                let target_type = self.effective_type_qualifier(bare_name);
-                self.set_variable(
-                    QualifiedName::new(bare_name.clone(), target_type.clone()),
-                    cast(value, target_type.clone())?,
-                );
-                Ok(())
-            }
-        }
-    }
-
-    fn _assign_typed(&mut self, qualified_name: &QualifiedName, value: Variant) -> Result<()> {
-        match self.matches_result_name(&qualified_name.name) {
-            Some(result_name) => {
-                // assigning the return value to a function using a qualified name
-                // make sure the function type matches
-                if result_name.qualifier == qualified_name.qualifier {
-                    self._do_assign_typed(qualified_name, value)
-                } else {
-                    self.err("Duplicate definition")
-                }
-            }
-            None => self._do_assign_typed(qualified_name, value),
-        }
-    }
-
-    fn _do_assign_typed(&mut self, qualified_name: &QualifiedName, value: Variant) -> Result<()> {
-        let target_type = qualified_name.qualifier.clone();
-        self.set_variable(qualified_name, cast(value, target_type)?);
-        Ok(())
+        self.set_variable(left_side, val)
     }
 }
 

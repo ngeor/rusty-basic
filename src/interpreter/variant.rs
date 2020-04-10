@@ -1,9 +1,9 @@
-use crate::common::Result;
+use crate::parser::TypeQualifier;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::Display;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Variant {
     VSingle(f32),
     VDouble(f64),
@@ -15,7 +15,7 @@ pub enum Variant {
 pub const V_TRUE: Variant = Variant::VInteger(-1);
 pub const V_FALSE: Variant = Variant::VInteger(0);
 
-fn partial_cmp_to_result<T>(left: &T, right: &T) -> Result<Ordering>
+fn partial_cmp_to_result<T>(left: &T, right: &T) -> Result<Ordering, String>
 where
     T: PartialOrd + Display + Copy,
 {
@@ -33,7 +33,7 @@ impl Variant {
         }
     }
 
-    pub fn cmp(&self, other: &Self) -> Result<Ordering> {
+    pub fn cmp(&self, other: &Self) -> Result<Ordering, String> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => partial_cmp_to_result(f_left, f_right),
@@ -74,7 +74,7 @@ impl Variant {
         }
     }
 
-    pub fn plus(&self, other: &Self) -> Result<Self> {
+    pub fn plus(&self, other: &Self) -> Result<Self, String> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(Variant::VSingle(*f_left + *f_right)),
@@ -105,7 +105,7 @@ impl Variant {
         }
     }
 
-    pub fn minus(&self, other: &Self) -> Result<Self> {
+    pub fn minus(&self, other: &Self) -> Result<Self, String> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(Variant::VSingle(*f_left - *f_right)),
@@ -129,6 +129,41 @@ impl Variant {
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(Variant::VLong(*l_left - *l_right)),
                 _ => other.minus(self).map(|x| x.negate()),
+            },
+        }
+    }
+
+    pub fn default_variant(type_qualifier: TypeQualifier) -> Variant {
+        match type_qualifier {
+            TypeQualifier::BangSingle => Variant::VSingle(0.0),
+            TypeQualifier::HashDouble => Variant::VDouble(0.0),
+            TypeQualifier::DollarString => Variant::VString(String::new()),
+            TypeQualifier::PercentInteger => Variant::VInteger(0),
+            TypeQualifier::AmpersandLong => Variant::VLong(0),
+        }
+    }
+
+    pub fn is_same_type(&self, other: &Variant) -> bool {
+        match self {
+            Variant::VSingle(_) => match other {
+                Variant::VSingle(_) => true,
+                _ => false,
+            },
+            Variant::VDouble(_) => match other {
+                Variant::VDouble(_) => true,
+                _ => false,
+            },
+            Variant::VString(_) => match other {
+                Variant::VString(_) => true,
+                _ => false,
+            },
+            Variant::VInteger(_) => match other {
+                Variant::VInteger(_) => true,
+                _ => false,
+            },
+            Variant::VLong(_) => match other {
+                Variant::VLong(_) => true,
+                _ => false,
             },
         }
     }
@@ -189,7 +224,7 @@ impl From<bool> for Variant {
 impl TryFrom<&Variant> for bool {
     type Error = String;
 
-    fn try_from(value: &Variant) -> Result<bool> {
+    fn try_from(value: &Variant) -> Result<bool, String> {
         match value {
             Variant::VSingle(n) => Ok(*n != 0.0),
             Variant::VDouble(n) => Ok(*n != 0.0),
@@ -203,7 +238,7 @@ impl TryFrom<&Variant> for bool {
 impl TryFrom<Variant> for bool {
     type Error = String;
 
-    fn try_from(value: Variant) -> Result<bool> {
+    fn try_from(value: Variant) -> Result<bool, String> {
         bool::try_from(&value)
     }
 }

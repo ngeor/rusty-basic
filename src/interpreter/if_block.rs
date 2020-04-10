@@ -1,10 +1,9 @@
 use super::*;
-use crate::common::Result;
-use crate::parser::*;
+use crate::parser::IfBlockNode;
 use std::convert::TryInto;
 
 impl<S: Stdlib> Interpreter<S> {
-    pub fn if_block(&mut self, if_block: &IfBlock) -> Result<()> {
+    pub fn if_block(&mut self, if_block: &IfBlockNode) -> Result<()> {
         if self._conditional_block(&if_block.if_block)? {
             return Ok(());
         }
@@ -21,10 +20,12 @@ impl<S: Stdlib> Interpreter<S> {
         }
     }
 
-    fn _conditional_block(&mut self, conditional_block: &ConditionalBlock) -> Result<bool> {
-        let condition_expr: &Expression = &conditional_block.condition;
+    fn _conditional_block(&mut self, conditional_block: &ConditionalBlockNode) -> Result<bool> {
+        let condition_expr: &ExpressionNode = &conditional_block.condition;
         let condition_value: Variant = self.evaluate_expression(condition_expr)?;
-        let is_true: bool = condition_value.try_into()?;
+        let is_true: bool = condition_value
+            .try_into()
+            .map_err(|e| InterpreterError::new_with_pos(e, conditional_block.pos))?;
         if is_true {
             self.statements(&conditional_block.block)?;
             Ok(true)

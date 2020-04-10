@@ -1,4 +1,3 @@
-mod buf_lexer;
 mod common;
 mod interpreter;
 mod lexer;

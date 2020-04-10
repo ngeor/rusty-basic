@@ -1,45 +1,16 @@
-use crate::common::Result;
-use crate::parser::{Block, QualifiedName};
+use super::{InterpreterError, Result};
+use crate::common::*;
+use crate::parser::{
+    NameNode, QualifiedFunctionDeclarationNode, QualifiedFunctionImplementationNode,
+    QualifiedNameNode,
+};
 use std::collections::HashMap;
-
-#[derive(Debug, Clone)]
-pub struct FunctionDeclaration {
-    pub name: QualifiedName,
-    pub parameters: Vec<QualifiedName>,
-}
-
-impl FunctionDeclaration {
-    pub fn new(name: QualifiedName, parameters: Vec<QualifiedName>) -> FunctionDeclaration {
-        FunctionDeclaration { name, parameters }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct FunctionImplementation {
-    pub name: QualifiedName,
-    pub parameters: Vec<QualifiedName>,
-    pub block: Block,
-}
-
-impl FunctionImplementation {
-    pub fn new(
-        name: QualifiedName,
-        parameters: Vec<QualifiedName>,
-        block: Block,
-    ) -> FunctionImplementation {
-        FunctionImplementation {
-            name,
-            parameters,
-            block,
-        }
-    }
-}
 
 /// A function context
 #[derive(Debug)]
 pub struct FunctionContext {
-    function_declaration_map: HashMap<String, FunctionDeclaration>,
-    function_implementation_map: HashMap<String, FunctionImplementation>,
+    function_declaration_map: HashMap<String, QualifiedFunctionDeclarationNode>,
+    function_implementation_map: HashMap<String, QualifiedFunctionImplementationNode>,
 }
 
 impl FunctionContext {
@@ -50,98 +21,162 @@ impl FunctionContext {
         }
     }
 
-    pub fn add_function_declaration(
-        &mut self,
-        function_name: QualifiedName,
-        parameters: Vec<QualifiedName>,
-    ) -> Result<()> {
-        if self
-            .function_declaration_map
-            .contains_key(&function_name.name)
-        {
-            let existing_declaration = self
-                .function_declaration_map
-                .get(&function_name.name)
-                .unwrap();
-            if existing_declaration.name != function_name {
-                Err("Duplicate definition".to_string())
-            } else {
-                if existing_declaration.parameters.len() != parameters.len() {
-                    Err("Argument-count mismatch".to_string())
-                } else {
-                    if existing_declaration.parameters == parameters {
-                        Ok(())
-                    } else {
-                        Err("Parameter type mismatch".to_string())
-                    }
-                }
+    pub fn add_function_declaration(&mut self, f: QualifiedFunctionDeclarationNode) -> Result<()> {
+        match self._validate_against_existing_declaration(&f.name, &f.parameters, f.pos)? {
+            None => {
+                self.function_declaration_map
+                    .insert(f.name.name().clone(), f);
+                Ok(())
             }
-        } else {
-            self.function_declaration_map.insert(
-                function_name.name.clone(),
-                FunctionDeclaration::new(function_name, parameters),
-            );
-            Ok(())
+            _ => Ok(()),
         }
     }
 
     pub fn add_function_implementation(
         &mut self,
-        function_name: QualifiedName,
-        parameters: Vec<QualifiedName>,
-        block: Block,
+        f: QualifiedFunctionImplementationNode,
     ) -> Result<()> {
-        if self
-            .function_implementation_map
-            .contains_key(&function_name.name)
-        {
-            Err("Duplicate definition".to_string())
+        if self._contains_implementation(&f.name) {
+            Err(InterpreterError::new_with_pos(
+                "Duplicate definition",
+                f.pos,
+            ))
         } else {
-            if self
-                .function_declaration_map
-                .contains_key(&function_name.name)
-            {
-                let existing_declaration = self
-                    .function_declaration_map
-                    .get(&function_name.name)
-                    .unwrap();
-                if existing_declaration.name != function_name {
-                    return Err("Duplicate definition".to_string());
-                }
+            self._validate_against_existing_declaration(&f.name, &f.parameters, f.pos)?;
+            self.function_implementation_map
+                .insert(f.name.name().clone(), f);
+            Ok(())
+        }
+    }
 
-                if existing_declaration.parameters.len() != parameters.len() {
-                    return Err("Argument-count mismatch".to_string());
-                }
-
-                if existing_declaration.parameters != parameters {
-                    return Err("Parameter type mismatch".to_string());
+    fn _validate_against_existing_declaration(
+        &self,
+        function_name: &QualifiedNameNode,
+        parameters: &Vec<QualifiedNameNode>,
+        pos: Location,
+    ) -> Result<Option<&QualifiedFunctionDeclarationNode>> {
+        match self.function_declaration_map.get(function_name.name()) {
+            Some(existing_declaration) => {
+                if existing_declaration.name.qualifier() != function_name.qualifier() {
+                    Err(InterpreterError::new_with_pos("Duplicate definition", pos))
+                } else {
+                    _are_parameters_same(&existing_declaration.parameters, &parameters, pos)?;
+                    Ok(Some(existing_declaration))
                 }
             }
-
-            self.function_implementation_map.insert(
-                function_name.name.clone(),
-                FunctionImplementation::new(function_name, parameters, block),
-            );
-            Ok(())
+            None => Ok(None),
         }
     }
 
     pub fn get_function_declarations(
         &self,
-    ) -> std::collections::hash_map::Keys<String, FunctionDeclaration> {
+    ) -> std::collections::hash_map::Keys<String, QualifiedFunctionDeclarationNode> {
         self.function_declaration_map.keys()
     }
 
-    pub fn get_function_implementation(&self, name: &String) -> Option<FunctionImplementation> {
+    pub fn get_function_declaration_pos(&self, name: &String) -> Option<Location> {
+        self.function_declaration_map.get(name).map(|x| x.pos)
+    }
+
+    pub fn get_function_implementation(
+        &self,
+        name: &String,
+    ) -> Option<QualifiedFunctionImplementationNode> {
         self.function_implementation_map
             .get(name)
             .map(|x| x.clone())
     }
+
+    fn _contains_declaration(&self, function_name: &QualifiedNameNode) -> bool {
+        self.function_declaration_map
+            .contains_key(function_name.name())
+    }
+
+    fn _contains_implementation(&self, function_name: &QualifiedNameNode) -> bool {
+        self.function_implementation_map
+            .contains_key(function_name.name())
+    }
+
+    fn _get_declaration(
+        &self,
+        function_name: &QualifiedNameNode,
+    ) -> Result<&QualifiedFunctionDeclarationNode> {
+        match self.function_declaration_map.get(function_name.name()) {
+            Some(x) => Ok(x),
+            None => Err(InterpreterError::new_with_pos(
+                format!("Function {} not declared", function_name.name()),
+                function_name.location(),
+            )),
+        }
+    }
+
+    pub fn lookup_implementation(
+        &self,
+        function_name: &NameNode,
+    ) -> Result<Option<QualifiedFunctionImplementationNode>> {
+        match function_name {
+            NameNode::Bare(bare_function_name) => {
+                Ok(self.get_function_implementation(bare_function_name.name()))
+            }
+            NameNode::Typed(qualified_function_name) => {
+                self._lookup_implementation_qualified(qualified_function_name)
+            }
+        }
+    }
+
+    fn _lookup_implementation_qualified(
+        &self,
+        function_name: &QualifiedNameNode,
+    ) -> Result<Option<QualifiedFunctionImplementationNode>> {
+        match self.get_function_implementation(function_name.name()) {
+            Some(function_implementation) => {
+                if function_implementation.name.qualifier() != function_name.qualifier() {
+                    // the function is defined as A#
+                    // but is being called as A!
+                    Err(InterpreterError::new_with_pos(
+                        "Duplicate definition",
+                        function_name.location(),
+                    ))
+                } else {
+                    Ok(Some(function_implementation))
+                }
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+fn _are_parameters_same(
+    existing: &Vec<QualifiedNameNode>,
+    parameters: &Vec<QualifiedNameNode>,
+    pos: Location,
+) -> Result<()> {
+    if existing.len() != parameters.len() {
+        return Err(InterpreterError::new_with_pos(
+            "Argument-count mismatch",
+            pos,
+        ));
+    }
+
+    for i in 0..existing.len() {
+        let e = &existing[i];
+        let n = &parameters[i];
+        if e.qualifier() != n.qualifier() {
+            return Err(InterpreterError::new_with_pos(
+                "Parameter type mismatch",
+                n.location(),
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use super::InterpreterError;
+    use crate::common::Location;
 
     #[test]
     fn test_duplicate_function_declaration_identical_is_tolerated() {
@@ -166,7 +201,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Argument-count mismatch"
+            InterpreterError::new_with_pos("Argument-count mismatch", Location::new(3, 9))
         );
     }
 
@@ -181,7 +216,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Argument-count mismatch"
+            InterpreterError::new_with_pos("Argument-count mismatch", Location::new(4, 9))
         );
     }
 
@@ -194,7 +229,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Duplicate definition"
+            InterpreterError::new_with_pos("Duplicate definition", Location::new(3, 9))
         );
     }
 
@@ -212,7 +247,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Duplicate definition"
+            InterpreterError::new_with_pos("Duplicate definition", Location::new(7, 9))
         );
     }
 
@@ -225,7 +260,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Parameter type mismatch"
+            InterpreterError::new_with_pos("Parameter type mismatch", Location::new(3, 30))
         );
     }
 
@@ -240,7 +275,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Parameter type mismatch"
+            InterpreterError::new_with_pos("Parameter type mismatch", Location::new(4, 25))
         );
     }
 
@@ -255,7 +290,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Duplicate definition"
+            InterpreterError::new_with_pos("Duplicate definition", Location::new(3, 15))
         );
     }
 
@@ -270,7 +305,7 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Duplicate definition"
+            InterpreterError::new_with_pos("Duplicate definition", Location::new(4, 9))
         );
     }
 
@@ -285,7 +320,10 @@ mod tests {
         ";
         assert_eq!(
             interpret(program, MockStdlib::new()).unwrap_err(),
-            "Duplicate definition"
+            InterpreterError::new(
+                "Duplicate definition",
+                vec![Location::new(5, 13), Location::new(3, 15)]
+            )
         );
     }
 

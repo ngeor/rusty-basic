@@ -31,6 +31,13 @@ impl<T: BufRead> BufLexer<T> {
         Ok(self._history[self._index].clone())
     }
 
+    pub fn read_ref(&mut self) -> Result<&LexemeNode, LexerError> {
+        if self.needs_to_read() {
+            self._history.push(self.lexer.read()?);
+        }
+        Ok(&self._history[self._index])
+    }
+
     fn needs_to_read(&self) -> bool {
         self._index >= self._history.len()
     }
@@ -69,7 +76,7 @@ impl<T: BufRead> BufLexer<T> {
         let lexeme = self.read()?;
         match lexeme {
             LexemeNode::Word(w, pos) => {
-                if w == word {
+                if w.to_uppercase() == word.to_uppercase() {
                     self.consume();
                     Ok(Some(pos))
                 } else {
@@ -137,7 +144,7 @@ impl<T: BufRead> BufLexer<T> {
 
     pub fn demand_specific_word(&mut self, expected: &str) -> Result<Location, LexerError> {
         let (word, pos) = self.demand_any_word()?;
-        if word != expected {
+        if word.to_uppercase() != expected.to_uppercase() {
             Err(LexerError::Unexpected(
                 format!("Expected {}", expected),
                 LexemeNode::Word(word, pos),

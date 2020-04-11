@@ -1,4 +1,7 @@
-use super::*;
+use super::{FunctionDeclarationNode, NameNode, Parser, TopLevelTokenNode};
+use crate::common::Location;
+use crate::lexer::{LexemeNode, LexerError};
+use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_declaration(&mut self) -> Result<Option<TopLevelTokenNode>, LexerError> {
@@ -14,7 +17,7 @@ impl<T: BufRead> Parser<T> {
     ) -> Result<TopLevelTokenNode, LexerError> {
         self.buf_lexer.demand_whitespace()?;
         let (next_word, declarable_pos) = self.buf_lexer.demand_any_word()?;
-        if next_word == "FUNCTION" {
+        if next_word.to_uppercase() == "FUNCTION" {
             self.buf_lexer.demand_whitespace()?;
             let function_name = self.demand_name_with_type_qualifier()?;
             self.buf_lexer.skip_whitespace()?;
@@ -55,6 +58,8 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
+    use crate::common::StripLocation;
+    use crate::parser::{Name, TopLevelToken};
 
     #[test]
     fn test_fn() {
@@ -70,5 +75,17 @@ mod tests {
                 )
             )]
         );
+    }
+
+    #[test]
+    fn test_lower_case() {
+        let program = parse("declare function echo$(msg$)").strip_location();
+        assert_eq!(
+            program,
+            vec![TopLevelToken::FunctionDeclaration(
+                Name::from("echo$"),
+                vec![Name::from("msg$")]
+            )]
+        )
     }
 }

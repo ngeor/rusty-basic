@@ -1,6 +1,8 @@
-use super::*;
-use crate::lexer::LexemeNode;
+use super::{NameNode, Parser, TypeQualifier};
+use crate::common::CaseInsensitiveString;
+use crate::lexer::{LexemeNode, LexerError};
 use std::convert::TryFrom;
+use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_name_with_type_qualifier(&mut self) -> Result<Option<NameNode>, LexerError> {
@@ -8,7 +10,11 @@ impl<T: BufRead> Parser<T> {
         match next {
             Some((word, pos)) => {
                 let optional_type_qualifier = self.try_parse_type_qualifier()?;
-                Ok(Some(NameNode::new(word, optional_type_qualifier, pos)))
+                Ok(Some(NameNode::new(
+                    CaseInsensitiveString::new(word),
+                    optional_type_qualifier,
+                    pos,
+                )))
             }
             None => Ok(None),
         }
@@ -17,7 +23,11 @@ impl<T: BufRead> Parser<T> {
     pub fn demand_name_with_type_qualifier(&mut self) -> Result<NameNode, LexerError> {
         let (name, pos) = self.buf_lexer.demand_any_word()?;
         let optional_type_qualifier = self.try_parse_type_qualifier()?;
-        Ok(NameNode::new(name, optional_type_qualifier, pos))
+        Ok(NameNode::new(
+            CaseInsensitiveString::new(name),
+            optional_type_qualifier,
+            pos,
+        ))
     }
 
     pub fn try_parse_type_qualifier(&mut self) -> Result<Option<TypeQualifier>, LexerError> {

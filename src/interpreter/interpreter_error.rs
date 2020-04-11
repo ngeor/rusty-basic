@@ -22,9 +22,9 @@ impl InterpreterError {
         InterpreterError::new(msg, vec![pos])
     }
 
-    pub fn merge_pos(&self, pos: Location) -> InterpreterError {
-        let mut new_vec = self.stacktrace.clone();
+    pub fn merge_pos(self, pos: Location) -> InterpreterError {
+        let mut new_vec = self.stacktrace;
         new_vec.push(pos);
-        InterpreterError::new(self.message.clone(), new_vec)
+        InterpreterError::new(self.message, new_vec)
     }
 }

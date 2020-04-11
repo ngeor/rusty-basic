@@ -8,7 +8,8 @@ pub trait Stdlib {
     fn system(&self);
 
     /// Implementation of INPUT
-    fn input(&self) -> std::io::Result<String>;
+    /// Mutable because of the test implementation
+    fn input(&mut self) -> std::io::Result<String>;
 }
 
 pub struct DefaultStdlib {}
@@ -26,7 +27,7 @@ impl Stdlib for DefaultStdlib {
         std::process::exit(0)
     }
 
-    fn input(&self) -> std::io::Result<String> {
+    fn input(&mut self) -> std::io::Result<String> {
         let mut line = String::new();
         match std::io::stdin().read_line(&mut line) {
             Ok(_) => Ok(line.trim_end().to_string()),

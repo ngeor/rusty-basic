@@ -3,7 +3,8 @@ use super::{
 };
 use crate::common::{HasLocation, StripLocation};
 use crate::parser::{
-    ExpressionNode, NameNode, QualifiedFunctionImplementationNode, QualifiedNameNode, TypeResolver,
+    ExpressionNode, HasBareName, HasQualifier, NameNode, QualifiedFunctionImplementationNode,
+    QualifiedNameNode, TypeResolver,
 };
 
 impl<S: Stdlib> Interpreter<S> {
@@ -23,12 +24,10 @@ impl<S: Stdlib> Interpreter<S> {
     }
 
     fn _evaluate_arguments(&mut self, args: &Vec<ExpressionNode>) -> Result<Vec<Variant>> {
-        let mut i = 0;
         let mut result: Vec<Variant> = vec![];
-        while i < args.len() {
-            let variable_value = self.evaluate_expression(&args[i])?;
+        for arg in args.iter() {
+            let variable_value = self.evaluate_expression(arg)?;
             result.push(variable_value);
-            i += 1;
         }
         Ok(result)
     }
@@ -44,14 +43,14 @@ impl<S: Stdlib> Interpreter<S> {
             Err(InterpreterError::new_with_pos(
                 format!(
                     "Function {} expected {} parameters but {} were given",
-                    function_implementation.name.name(),
+                    function_implementation.name.element(),
                     function_parameters.len(),
                     args.len()
                 ),
                 function_name.location(),
             ))
         } else {
-            self.push_context(function_implementation.name.strip_location());
+            self.push_context(function_implementation.name.clone().strip_location());
             self._populate_new_context(function_parameters, args)?;
             self.statements(&function_implementation.block)
                 .map_err(|e| e.merge_pos(function_name.location()))?;
@@ -99,7 +98,9 @@ impl<S: Stdlib> Interpreter<S> {
                 _ => (),
             }
         }
-        Ok(Variant::default_variant(self.resolve(function_name.name())))
+        Ok(Variant::default_variant(
+            self.resolve(function_name.bare_name()),
+        ))
     }
 }
 
@@ -178,5 +179,18 @@ mod tests {
             interpret(program, MockStdlib::new()).unwrap_err(),
             InterpreterError::new_with_pos("Type mismatch", Location::new(2, 17))
         );
+    }
+
+    #[test]
+    fn test_function_call_lowercase() {
+        let program = "
+        DECLARE FUNCTION Add(A, B, c)
+        X = add(1, 2, 3)
+        FUNCTION ADD(a, B, C)
+            aDd = a + b + c
+        END FUNCTION
+        ";
+        let interpreter = interpret(program, MockStdlib::new()).unwrap();
+        interpreter.has_variable("X", 6.0_f32);
     }
 }

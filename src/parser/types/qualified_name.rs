@@ -1,26 +1,32 @@
-use super::TypeQualifier;
+use super::{HasBareName, HasQualifier, TypeQualifier};
+use crate::common::CaseInsensitiveString;
 use std::fmt::Display;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QualifiedName {
-    name: String,
+    name: CaseInsensitiveString,
     qualifier: TypeQualifier,
 }
 
 impl QualifiedName {
-    pub fn new<S: AsRef<str>>(name: S, qualifier: TypeQualifier) -> QualifiedName {
-        QualifiedName {
-            name: name.as_ref().to_string(),
-            qualifier,
-        }
+    pub fn new(name: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
+        QualifiedName { name, qualifier }
     }
+}
 
-    pub fn name(&self) -> &String {
+impl HasQualifier for QualifiedName {
+    fn qualifier(&self) -> TypeQualifier {
+        self.qualifier
+    }
+}
+
+impl HasBareName for QualifiedName {
+    fn bare_name(&self) -> &CaseInsensitiveString {
         &self.name
     }
 
-    pub fn qualifier(&self) -> TypeQualifier {
-        self.qualifier
+    fn bare_name_into(self) -> CaseInsensitiveString {
+        self.name
     }
 }
 

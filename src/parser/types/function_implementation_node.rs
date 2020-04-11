@@ -1,5 +1,5 @@
-use super::{BlockNode, NameNode, QualifiedNameNode, TypeResolver};
-use crate::common::Location;
+use super::{BlockNode, HasBareName, NameNode, QualifiedNameNode, TypeResolver};
+use crate::common::{CaseInsensitiveString, Location};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionImplementationNode {
@@ -24,14 +24,14 @@ impl FunctionImplementationNode {
         }
     }
 
-    pub fn resolve(&self, resolver: &dyn TypeResolver) -> QualifiedFunctionImplementationNode {
+    pub fn resolve(self, resolver: &dyn TypeResolver) -> QualifiedFunctionImplementationNode {
         QualifiedFunctionImplementationNode::new(
             self.name.resolve(resolver),
             self.parameters
-                .iter()
+                .into_iter()
                 .map(|p| p.resolve(resolver))
                 .collect(),
-            self.block.clone(),
+            self.block,
             self.pos,
         )
     }
@@ -58,5 +58,15 @@ impl QualifiedFunctionImplementationNode {
             block,
             pos,
         }
+    }
+}
+
+impl HasBareName for QualifiedFunctionImplementationNode {
+    fn bare_name(&self) -> &CaseInsensitiveString {
+        self.name.bare_name()
+    }
+
+    fn bare_name_into(self) -> CaseInsensitiveString {
+        self.name.bare_name_into()
     }
 }

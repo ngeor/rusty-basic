@@ -1,15 +1,7 @@
-use super::*;
-
-impl IfBlock {
-    #[cfg(test)]
-    pub fn new_if_else(condition: Expression, if_block: Block, else_block: Block) -> IfBlock {
-        IfBlock {
-            if_block: ConditionalBlock::new(condition, if_block),
-            else_if_blocks: vec![],
-            else_block: Some(else_block),
-        }
-    }
-}
+use super::{ConditionalBlockNode, ExpressionNode, IfBlockNode, Parser, StatementNode};
+use crate::common::Location;
+use crate::lexer::LexerError;
+use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_if_block(&mut self) -> Result<Option<StatementNode>, LexerError> {
@@ -78,6 +70,8 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
+    use crate::common::StripLocation;
+    use crate::parser::{ConditionalBlock, Expression, IfBlock, Statement};
 
     #[test]
     fn test_if() {
@@ -225,6 +219,40 @@ END IF"#;
                 else_block: Some(vec![sub_call(
                     "PRINT",
                     vec![Expression::variable_name("Z")],
+                )]),
+            }),
+        );
+    }
+
+    #[test]
+    fn test_if_else_if_else_lower_case() {
+        let input = r#"if x then
+    print x
+elseif y then
+    print y
+else
+    print z
+end if"#;
+        let mut parser = Parser::from(input);
+        let if_block = parser
+            .try_parse_if_block()
+            .unwrap()
+            .unwrap()
+            .strip_location();
+        assert_eq!(
+            if_block,
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock::new(
+                    Expression::variable_name("x"),
+                    vec![sub_call("print", vec![Expression::variable_name("x")],)],
+                ),
+                else_if_blocks: vec![ConditionalBlock::new(
+                    Expression::variable_name("y"),
+                    vec![sub_call("print", vec![Expression::variable_name("y")],)],
+                )],
+                else_block: Some(vec![sub_call(
+                    "print",
+                    vec![Expression::variable_name("z")],
                 )]),
             }),
         );

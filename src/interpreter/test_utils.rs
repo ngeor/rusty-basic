@@ -28,16 +28,20 @@ where
 
 #[derive(Debug)]
 pub struct MockStdlib {
-    pub next_input: String,
+    next_input: Vec<String>,
     pub output: Vec<String>,
 }
 
 impl MockStdlib {
     pub fn new() -> MockStdlib {
         MockStdlib {
-            next_input: String::new(),
+            next_input: vec![],
             output: vec![],
         }
+    }
+
+    pub fn add_next_input<S: AsRef<str>>(&mut self, value: S) {
+        self.next_input.push(value.as_ref().to_string())
     }
 }
 
@@ -62,8 +66,8 @@ impl Stdlib for MockStdlib {
         println!("would have exited")
     }
 
-    fn input(&self) -> std::io::Result<String> {
-        Ok(self.next_input.clone())
+    fn input(&mut self) -> std::io::Result<String> {
+        Ok(self.next_input.remove(0))
     }
 }
 
@@ -84,15 +88,13 @@ impl<S: Stdlib> InterpreterAssertions for Interpreter<S> {
         Variant: From<TVar>,
     {
         assert_eq!(
-            self.get_variable(&NameNode::from(variable_name))
-                .map(|x| x.clone())
-                .unwrap(),
-            Variant::from(expected_value)
+            self.get_variable(variable_name).unwrap(),
+            &Variant::from(expected_value)
         );
     }
 
     fn has_variable_close_enough(&self, variable_name: &str, expected_value: f64) {
-        match self.get_variable(&NameNode::from(variable_name)).unwrap() {
+        match self.get_variable(variable_name).unwrap() {
             Variant::VDouble(actual_value) => {
                 assert!((expected_value - actual_value).abs() <= EPSILON_DOUBLE);
             }
@@ -136,7 +138,7 @@ impl AssignmentBuilder {
         if self.program.is_empty() {
             self.program = format!(
                 "{} = {}",
-                self.variable_name.strip_location(),
+                self.variable_name.clone().strip_location(),
                 expression_literal
             );
             self
@@ -154,11 +156,8 @@ impl AssignmentBuilder {
         } else {
             let interpreter = interpret(&self.program, MockStdlib::new()).unwrap();
             assert_eq!(
-                interpreter
-                    .get_variable(&self.variable_name)
-                    .map(|x| x.clone())
-                    .unwrap(),
-                Variant::from(expected_value)
+                interpreter.get_variable(&self.variable_name).unwrap(),
+                &Variant::from(expected_value)
             );
         }
     }
@@ -184,7 +183,7 @@ where
     Variant: From<T>,
 {
     let mut stdlib = MockStdlib::new();
-    stdlib.next_input = raw_input.to_string();
+    stdlib.add_next_input(raw_input);
     let input = format!("INPUT {}", variable_name);
     let interpreter = interpret(input, stdlib).unwrap();
     interpreter.has_variable(variable_name, expected_value);

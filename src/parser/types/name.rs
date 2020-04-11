@@ -1,16 +1,31 @@
-use super::{QualifiedName, TypeQualifier};
+use super::{HasBareName, QualifiedName};
+use crate::common::CaseInsensitiveString;
 use std::fmt::Display;
 
-pub trait TypeResolver {
-    fn resolve(&self, name: &str) -> TypeQualifier;
-}
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Name {
-    Bare(String),
+    Bare(CaseInsensitiveString),
     Typed(QualifiedName),
 }
 
+impl HasBareName for Name {
+    fn bare_name(&self) -> &CaseInsensitiveString {
+        match self {
+            Self::Bare(x) => x,
+            Self::Typed(t) => t.bare_name(),
+        }
+    }
+
+    fn bare_name_into(self) -> CaseInsensitiveString {
+        match self {
+            Self::Bare(x) => x,
+            Self::Typed(t) => t.bare_name_into(),
+        }
+    }
+}
+
+#[cfg(test)]
+use super::TypeQualifier;
 #[cfg(test)]
 use std::convert::TryFrom;
 
@@ -20,10 +35,13 @@ impl Name {
         let mut buf = s.as_ref().to_string();
         let last_ch: char = buf.pop().unwrap();
         match TypeQualifier::try_from(last_ch) {
-            Ok(qualifier) => Name::Typed(QualifiedName::new(buf, qualifier)),
+            Ok(qualifier) => Name::Typed(QualifiedName::new(
+                CaseInsensitiveString::new(buf),
+                qualifier,
+            )),
             _ => {
                 buf.push(last_ch);
-                Name::Bare(buf)
+                Name::Bare(CaseInsensitiveString::new(buf))
             }
         }
     }
@@ -44,10 +62,13 @@ mod tests {
 
     #[test]
     fn test_from() {
-        assert_eq!(Name::from("A"), Name::Bare("A".to_string()));
+        assert_eq!(Name::from("A"), Name::Bare("A".into()));
         assert_eq!(
             Name::from("Pos%"),
-            Name::Typed(QualifiedName::new("Pos", TypeQualifier::PercentInteger))
+            Name::Typed(QualifiedName::new(
+                CaseInsensitiveString::new("Pos".to_string()),
+                TypeQualifier::PercentInteger
+            ))
         );
     }
 }

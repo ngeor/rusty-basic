@@ -1,54 +1,30 @@
-use super::{QualifiedNameNode, TypeQualifier};
-use crate::common::{AddLocation, HasLocation, Location, StripLocation, StripLocationRef};
+use super::{HasBareName, QualifiedName, QualifiedNameNode, TypeQualifier};
+use crate::common::{AddLocation, CaseInsensitiveString, Locatable, Location};
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct BareNameNode {
-    name: String,
-    pos: Location,
-}
+pub type BareNameNode = Locatable<CaseInsensitiveString>;
 
 impl BareNameNode {
-    pub fn new<S: AsRef<str>>(name: S, pos: Location) -> BareNameNode {
-        BareNameNode {
-            name: name.as_ref().to_string(),
-            pos,
-        }
+    pub fn to_qualified_name_node(self, qualifier: TypeQualifier) -> QualifiedNameNode {
+        self.map_into(|x| QualifiedName::new(x, qualifier))
     }
 
-    pub fn name(&self) -> &String {
-        &self.name
-    }
-
-    pub fn to_qualified_name_node(&self, qualifier: TypeQualifier) -> QualifiedNameNode {
-        QualifiedNameNode::new(&self.name, qualifier, self.pos)
-    }
-
-    #[cfg(test)]
-    pub fn at(&self, location: Location) -> Self {
-        BareNameNode::new(&self.name, location)
+    pub fn to_qualified_name_node_ref(&self, qualifier: TypeQualifier) -> QualifiedNameNode {
+        self.map(|x| QualifiedName::new(x.clone(), qualifier))
     }
 }
 
-impl HasLocation for BareNameNode {
-    fn location(&self) -> Location {
-        self.pos
+impl HasBareName for BareNameNode {
+    fn bare_name(&self) -> &CaseInsensitiveString {
+        self.element()
+    }
+
+    fn bare_name_into(self) -> CaseInsensitiveString {
+        self.element_into()
     }
 }
 
-impl AddLocation<BareNameNode> for String {
-    fn add_location(&self, pos: Location) -> BareNameNode {
+impl AddLocation<BareNameNode> for CaseInsensitiveString {
+    fn add_location(self, pos: Location) -> BareNameNode {
         BareNameNode::new(self, pos)
-    }
-}
-
-impl StripLocationRef<String> for BareNameNode {
-    fn strip_location_ref(&self) -> &String {
-        &self.name
-    }
-}
-
-impl StripLocation<String> for BareNameNode {
-    fn strip_location(&self) -> String {
-        self.name.clone()
     }
 }

@@ -1,54 +1,26 @@
-use super::{QualifiedName, TypeQualifier};
-use crate::common::{AddLocation, HasLocation, Location, StripLocation};
+use super::{HasBareName, HasQualifier, QualifiedName, TypeQualifier};
+use crate::common::{AddLocation, CaseInsensitiveString, Locatable, Location};
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct QualifiedNameNode {
-    name: String,
-    qualifier: TypeQualifier,
-    pos: Location,
-}
+pub type QualifiedNameNode = Locatable<QualifiedName>;
 
-impl QualifiedNameNode {
-    pub fn new<S: AsRef<str>>(
-        name: S,
-        qualifier: TypeQualifier,
-        pos: Location,
-    ) -> QualifiedNameNode {
-        QualifiedNameNode {
-            name: name.as_ref().to_string(),
-            qualifier,
-            pos,
-        }
+impl HasBareName for QualifiedNameNode {
+    fn bare_name(&self) -> &CaseInsensitiveString {
+        self.element().bare_name()
     }
 
-    pub fn name(&self) -> &String {
-        &self.name
-    }
-
-    pub fn qualifier(&self) -> TypeQualifier {
-        self.qualifier
-    }
-
-    #[cfg(test)]
-    pub fn at(&self, location: Location) -> Self {
-        QualifiedNameNode::new(&self.name, self.qualifier, location)
+    fn bare_name_into(self) -> CaseInsensitiveString {
+        self.element_into().bare_name_into()
     }
 }
 
-impl HasLocation for QualifiedNameNode {
-    fn location(&self) -> Location {
-        self.pos
+impl HasQualifier for QualifiedNameNode {
+    fn qualifier(&self) -> TypeQualifier {
+        self.element().qualifier()
     }
 }
 
 impl AddLocation<QualifiedNameNode> for QualifiedName {
-    fn add_location(&self, pos: Location) -> QualifiedNameNode {
-        QualifiedNameNode::new(self.name(), self.qualifier(), pos)
-    }
-}
-
-impl StripLocation<QualifiedName> for QualifiedNameNode {
-    fn strip_location(&self) -> QualifiedName {
-        QualifiedName::new(&self.name, self.qualifier)
+    fn add_location(self, pos: Location) -> QualifiedNameNode {
+        QualifiedNameNode::new(self, pos)
     }
 }

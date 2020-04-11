@@ -11,6 +11,7 @@ mod statement;
 mod statement_node;
 mod top_level_token;
 mod top_level_token_node;
+mod traits;
 mod type_qualifier;
 
 pub use self::bare_name_node::*;
@@ -26,4 +27,5 @@ pub use self::statement::*;
 pub use self::statement_node::*;
 pub use self::top_level_token::*;
 pub use self::top_level_token_node::*;
+pub use self::traits::*;
 pub use self::type_qualifier::*;

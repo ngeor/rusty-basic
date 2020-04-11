@@ -1,5 +1,7 @@
 use super::parse_result::ParseResult;
-use super::*;
+use super::{BlockNode, Parser, StatementNode};
+use crate::lexer::LexerError;
+use std::io::BufRead;
 
 impl From<StatementNode> for ParseResult<StatementNode> {
     fn from(expr: StatementNode) -> ParseResult<StatementNode> {
@@ -30,8 +32,6 @@ impl<T: BufRead> Parser<T> {
             s.into()
         } else if let Some(s) = self.try_parse_sub_call()? {
             s.into()
-        } else if let Some(s) = self._try_parse_whitespace()? {
-            s.into()
         } else {
             self.buf_lexer.read()?.into()
         }
@@ -47,25 +47,5 @@ impl<T: BufRead> Parser<T> {
             }
         }
         Ok(statements)
-    }
-
-    fn _try_parse_whitespace(&mut self) -> Result<Option<StatementNode>, LexerError> {
-        let mut buf = String::new();
-        loop {
-            let lexeme = self.buf_lexer.read()?;
-            match lexeme {
-                LexemeNode::Whitespace(w, _) | LexemeNode::EOL(w, _) => {
-                    self.buf_lexer.consume();
-                    buf.push_str(&w);
-                }
-                _ => break,
-            }
-        }
-
-        if buf.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(StatementNode::Whitespace(buf)))
-        }
     }
 }

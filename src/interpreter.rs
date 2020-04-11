@@ -1,4 +1,4 @@
-use crate::common::{HasLocation, StripLocation};
+use crate::common::{CaseInsensitiveString, HasLocation};
 use crate::parser::*;
 
 mod assignment;
@@ -15,6 +15,9 @@ mod stdlib;
 mod sub_call;
 mod variable_setter;
 mod variant;
+
+#[cfg(test)]
+use crate::common::Location;
 
 #[cfg(test)]
 mod test_utils;
@@ -104,7 +107,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
 }
 
 impl<TStdlib: Stdlib> TypeResolver for Interpreter<TStdlib> {
-    fn resolve(&self, _name: &str) -> TypeQualifier {
+    fn resolve(&self, _name: &CaseInsensitiveString) -> TypeQualifier {
         TypeQualifier::BangSingle
     }
 }
@@ -120,13 +123,15 @@ trait VariableGetter<T> {
 impl<S: Stdlib> VariableGetter<&QualifiedNameNode> for Interpreter<S> {
     fn get_variable(
         &self,
-        variable_name: &QualifiedNameNode,
+        variable_name_node: &QualifiedNameNode,
     ) -> std::result::Result<&Variant, InterpreterError> {
-        match self.context_ref().get(&variable_name.strip_location()) {
+        let qualified_name = variable_name_node.element();
+        let location = variable_name_node.location();
+        match self.context_ref().get(qualified_name) {
             Some(v) => Ok(v),
             None => Err(InterpreterError::new_with_pos(
-                format!("Variable {} not defined", variable_name.strip_location()),
-                variable_name.location(),
+                format!("Variable {} not defined", qualified_name),
+                location,
             )),
         }
     }
@@ -137,8 +142,19 @@ impl<S: Stdlib> VariableGetter<&NameNode> for Interpreter<S> {
         &self,
         variable_name: &NameNode,
     ) -> std::result::Result<&Variant, InterpreterError> {
-        let q: QualifiedNameNode = variable_name.resolve(self);
+        let q = variable_name.resolve_ref(self);
         self.get_variable(&q)
+    }
+}
+
+#[cfg(test)]
+use crate::common::AddLocation;
+
+#[cfg(test)]
+impl<S: Stdlib> VariableGetter<&str> for Interpreter<S> {
+    fn get_variable(&self, variable_name: &str) -> std::result::Result<&Variant, InterpreterError> {
+        let name_node = Name::from(variable_name).add_location(Location::zero());
+        self.get_variable(&name_node)
     }
 }
 
@@ -186,7 +202,7 @@ mod tests {
     #[test]
     fn test_interpreter_fixture_fib_bas() {
         let mut stdlib = MockStdlib::new();
-        stdlib.next_input = "10".to_string();
+        stdlib.add_next_input("10");
         let interpreter = interpret_file("FIB.BAS", stdlib).unwrap();
         let output = interpreter.stdlib.output;
         assert_eq!(
@@ -211,13 +227,14 @@ mod tests {
     #[test]
     fn test_interpreter_fixture_fib_fq_bas() {
         let mut stdlib = MockStdlib::new();
-        stdlib.next_input = "11".to_string();
+        stdlib.add_next_input("11");
         interpret_file("FIB_FQ.BAS", stdlib).unwrap();
     }
 
     #[test]
     fn test_interpreter_fixture_input() {
-        let stdlib = MockStdlib::new();
+        let mut stdlib = MockStdlib::new();
+        stdlib.add_next_input("");
         interpret_file("INPUT.BAS", stdlib).unwrap();
     }
 }

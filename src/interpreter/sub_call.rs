@@ -1,13 +1,10 @@
 use super::{Interpreter, InterpreterError, Result, Stdlib, VariableSetter, Variant};
 use crate::common::HasLocation;
-use crate::parser::{ExpressionNode, NameNode, TypeQualifier};
+use crate::parser::{ExpressionNode, HasBareName, NameNode, TypeQualifier};
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     pub fn sub_call(&mut self, name: &NameNode, args: &Vec<ExpressionNode>) -> Result<()> {
-        let raw_name = match name {
-            NameNode::Bare(b) => b.name().clone(),
-            NameNode::Typed(t) => t.name().clone(),
-        };
+        let raw_name = name.bare_name();
         if raw_name == "PRINT" {
             self._do_print(args)
         } else if raw_name == "INPUT" {
@@ -54,24 +51,24 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         }
     }
 
-    fn _do_input_one_var(&mut self, qualified_name: &NameNode) -> Result<()> {
-        let raw_input: String = self.stdlib.input().map_err(|e| {
-            InterpreterError::new_with_pos(e.to_string(), qualified_name.location())
-        })?;
-        let variable_value = match qualified_name.resolve(self).qualifier() {
+    fn _do_input_one_var(&mut self, var_name: &NameNode) -> Result<()> {
+        let raw_input: String = self
+            .stdlib
+            .input()
+            .map_err(|e| InterpreterError::new_with_pos(e.to_string(), var_name.location()))?;
+        let variable_value = match var_name.resolve_qualifier(self) {
             TypeQualifier::BangSingle => Variant::from(
                 parse_single_input(raw_input)
-                    .map_err(|e| InterpreterError::new_with_pos(e, qualified_name.location()))?,
+                    .map_err(|e| InterpreterError::new_with_pos(e, var_name.location()))?,
             ),
             TypeQualifier::DollarString => Variant::from(raw_input),
             TypeQualifier::PercentInteger => Variant::from(
                 parse_int_input(raw_input)
-                    .map_err(|e| InterpreterError::new_with_pos(e, qualified_name.location()))?,
+                    .map_err(|e| InterpreterError::new_with_pos(e, var_name.location()))?,
             ),
             _ => unimplemented!(),
         };
-        self.set_variable(qualified_name, variable_value)
-            .map(|_| ())
+        self.set_variable(var_name, variable_value).map(|_| ())
     }
 }
 

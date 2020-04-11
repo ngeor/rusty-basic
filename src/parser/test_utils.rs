@@ -1,5 +1,9 @@
-use super::*;
-
+use super::{
+    Block, ConditionalBlock, Expression, ForLoop, IfBlock, Name, Parser, ProgramNode, Statement,
+    TopLevelToken,
+};
+use crate::common::CaseInsensitiveString;
+use std::fs::File;
 pub fn parse<T>(input: T) -> ProgramNode
 where
     T: AsRef<[u8]>,
@@ -15,7 +19,7 @@ pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
 }
 
 pub fn sub_call<S: AsRef<str>>(name: S, args: Vec<Expression>) -> Statement {
-    Statement::SubCall(name.as_ref().to_string(), args)
+    Statement::SubCall(CaseInsensitiveString::new(name.as_ref().to_string()), args)
 }
 
 pub fn top_sub_call<S: AsRef<str>>(name: S, args: Vec<Expression>) -> TopLevelToken {
@@ -50,4 +54,12 @@ pub fn top_for_loop(
         upper_bound,
         statements,
     ))
+}
+
+pub fn new_if_else(condition: Expression, if_block: Block, else_block: Block) -> IfBlock {
+    IfBlock {
+        if_block: ConditionalBlock::new(condition, if_block),
+        else_if_blocks: vec![],
+        else_block: Some(else_block),
+    }
 }

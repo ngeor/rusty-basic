@@ -1,14 +1,14 @@
 use super::{Expression, Name};
+use crate::common::CaseInsensitiveString;
 
 pub type Block = Vec<Statement>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    SubCall(String, Vec<Expression>),
+    SubCall(CaseInsensitiveString, Vec<Expression>),
     ForLoop(ForLoop),
     IfBlock(IfBlock),
     Assignment(Name, Expression),
-    Whitespace(String),
 }
 
 #[derive(Clone, Debug, PartialEq)]

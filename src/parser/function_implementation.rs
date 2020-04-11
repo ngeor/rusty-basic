@@ -1,4 +1,6 @@
-use super::*;
+use super::{FunctionImplementationNode, NameNode, Parser, TopLevelTokenNode};
+use crate::lexer::LexerError;
+use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_function_implementation(
@@ -25,5 +27,60 @@ impl<T: BufRead> Parser<T> {
         } else {
             Ok(None)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::test_utils::*;
+    use crate::common::StripLocation;
+    use crate::parser::{Expression, Name, Statement, TopLevelToken};
+
+    #[test]
+    fn test_function_implementation() {
+        let input = "
+        FUNCTION Add(A, B)
+            Add = A + B
+        END FUNCTION
+        ";
+        let result = parse(input).strip_location();
+        assert_eq!(
+            result,
+            vec![TopLevelToken::FunctionImplementation(
+                Name::from("Add"),
+                vec![Name::from("A"), Name::from("B")],
+                vec![Statement::Assignment(
+                    Name::from("Add"),
+                    Expression::plus(
+                        Expression::VariableName(Name::from("A")),
+                        Expression::VariableName(Name::from("B"))
+                    )
+                )]
+            )]
+        );
+    }
+
+    #[test]
+    fn test_function_implementation_lower_case() {
+        let input = "
+        function add(a, b)
+            add = a + b
+        end function
+        ";
+        let result = parse(input).strip_location();
+        assert_eq!(
+            result,
+            vec![TopLevelToken::FunctionImplementation(
+                Name::from("add"),
+                vec![Name::from("a"), Name::from("b")],
+                vec![Statement::Assignment(
+                    Name::from("add"),
+                    Expression::plus(
+                        Expression::VariableName(Name::from("a")),
+                        Expression::VariableName(Name::from("b"))
+                    )
+                )]
+            )]
+        );
     }
 }

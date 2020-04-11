@@ -1,5 +1,5 @@
-use super::{NameNode, QualifiedNameNode, TypeResolver};
-use crate::common::Location;
+use super::{HasBareName, NameNode, QualifiedNameNode, TypeResolver};
+use crate::common::{CaseInsensitiveString, Location};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionDeclarationNode {
@@ -21,11 +21,11 @@ impl FunctionDeclarationNode {
         }
     }
 
-    pub fn resolve(&self, resolver: &dyn TypeResolver) -> QualifiedFunctionDeclarationNode {
+    pub fn resolve(self, resolver: &dyn TypeResolver) -> QualifiedFunctionDeclarationNode {
         QualifiedFunctionDeclarationNode::new(
             self.name.resolve(resolver),
             self.parameters
-                .iter()
+                .into_iter()
                 .map(|p| p.resolve(resolver))
                 .collect(),
             self.pos,
@@ -51,5 +51,15 @@ impl QualifiedFunctionDeclarationNode {
             parameters,
             pos,
         }
+    }
+}
+
+impl HasBareName for QualifiedFunctionDeclarationNode {
+    fn bare_name(&self) -> &CaseInsensitiveString {
+        self.name.bare_name()
+    }
+
+    fn bare_name_into(self) -> CaseInsensitiveString {
+        self.name.bare_name_into()
     }
 }

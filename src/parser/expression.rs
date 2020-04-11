@@ -1,7 +1,9 @@
 use super::parse_result::ParseResult;
-use super::*;
-use crate::lexer::LexemeNode;
+use super::{ExpressionNode, NameNode, Operand, OperandNode, Parser, UnaryOperand};
+use crate::common::{CaseInsensitiveString, Locatable, Location};
+use crate::lexer::{LexemeNode, LexerError};
 use std::convert::TryFrom;
+use std::io::BufRead;
 
 impl From<ExpressionNode> for ParseResult<ExpressionNode> {
     fn from(expr: ExpressionNode) -> ParseResult<ExpressionNode> {
@@ -34,7 +36,7 @@ impl<T: BufRead> Parser<T> {
                 self._parse_string_literal().map(|x| ParseResult::Match(x))
             }
             LexemeNode::Word(word, pos) => {
-                self._parse_word(&word, pos).map(|x| ParseResult::Match(x))
+                self._parse_word(word, pos).map(|x| ParseResult::Match(x))
             }
             LexemeNode::Digits(digits, pos) => self
                 ._parse_number_literal(digits, pos)
@@ -182,7 +184,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _parse_word(&mut self, word: &String, pos: Location) -> Result<ExpressionNode, LexerError> {
+    fn _parse_word(&mut self, word: String, pos: Location) -> Result<ExpressionNode, LexerError> {
         self.buf_lexer.consume();
         // is it maybe a qualified variable name
         let qualifier = self.try_parse_type_qualifier()?;
@@ -191,12 +193,14 @@ impl<T: BufRead> Parser<T> {
             let args = self.parse_expression_list()?;
             self.buf_lexer.demand_symbol(')')?;
             Ok(ExpressionNode::FunctionCall(
-                NameNode::new(word, qualifier, pos),
+                NameNode::new(CaseInsensitiveString::new(word), qualifier, pos),
                 args,
             ))
         } else {
             Ok(ExpressionNode::VariableName(NameNode::new(
-                word, qualifier, pos,
+                CaseInsensitiveString::new(word),
+                qualifier,
+                pos,
             )))
         }
     }
@@ -239,6 +243,8 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::StripLocation;
+    use crate::parser::{Expression, Name};
 
     fn assert_parse_literal<TResult>(input: &str, expected: TResult)
     where

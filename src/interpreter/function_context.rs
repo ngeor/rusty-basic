@@ -1,16 +1,17 @@
 use super::{InterpreterError, Result};
-use crate::common::*;
+use crate::common::{CaseInsensitiveString, HasLocation, Location};
 use crate::parser::{
-    NameNode, QualifiedFunctionDeclarationNode, QualifiedFunctionImplementationNode,
-    QualifiedNameNode,
+    HasBareName, HasQualifier, NameNode, QualifiedFunctionDeclarationNode,
+    QualifiedFunctionImplementationNode, QualifiedNameNode,
 };
 use std::collections::HashMap;
 
 /// A function context
 #[derive(Debug)]
 pub struct FunctionContext {
-    function_declaration_map: HashMap<String, QualifiedFunctionDeclarationNode>,
-    function_implementation_map: HashMap<String, QualifiedFunctionImplementationNode>,
+    function_declaration_map: HashMap<CaseInsensitiveString, QualifiedFunctionDeclarationNode>,
+    function_implementation_map:
+        HashMap<CaseInsensitiveString, QualifiedFunctionImplementationNode>,
 }
 
 impl FunctionContext {
@@ -25,7 +26,7 @@ impl FunctionContext {
         match self._validate_against_existing_declaration(&f.name, &f.parameters, f.pos)? {
             None => {
                 self.function_declaration_map
-                    .insert(f.name.name().clone(), f);
+                    .insert(f.bare_name().clone(), f);
                 Ok(())
             }
             _ => Ok(()),
@@ -44,7 +45,7 @@ impl FunctionContext {
         } else {
             self._validate_against_existing_declaration(&f.name, &f.parameters, f.pos)?;
             self.function_implementation_map
-                .insert(f.name.name().clone(), f);
+                .insert(f.bare_name().clone(), f);
             Ok(())
         }
     }
@@ -55,7 +56,7 @@ impl FunctionContext {
         parameters: &Vec<QualifiedNameNode>,
         pos: Location,
     ) -> Result<Option<&QualifiedFunctionDeclarationNode>> {
-        match self.function_declaration_map.get(function_name.name()) {
+        match self.function_declaration_map.get(function_name.bare_name()) {
             Some(existing_declaration) => {
                 if existing_declaration.name.qualifier() != function_name.qualifier() {
                     Err(InterpreterError::new_with_pos("Duplicate definition", pos))
@@ -70,17 +71,18 @@ impl FunctionContext {
 
     pub fn get_function_declarations(
         &self,
-    ) -> std::collections::hash_map::Keys<String, QualifiedFunctionDeclarationNode> {
+    ) -> std::collections::hash_map::Keys<CaseInsensitiveString, QualifiedFunctionDeclarationNode>
+    {
         self.function_declaration_map.keys()
     }
 
-    pub fn get_function_declaration_pos(&self, name: &String) -> Option<Location> {
+    pub fn get_function_declaration_pos(&self, name: &CaseInsensitiveString) -> Option<Location> {
         self.function_declaration_map.get(name).map(|x| x.pos)
     }
 
     pub fn get_function_implementation(
         &self,
-        name: &String,
+        name: &CaseInsensitiveString,
     ) -> Option<QualifiedFunctionImplementationNode> {
         self.function_implementation_map
             .get(name)
@@ -89,22 +91,22 @@ impl FunctionContext {
 
     fn _contains_declaration(&self, function_name: &QualifiedNameNode) -> bool {
         self.function_declaration_map
-            .contains_key(function_name.name())
+            .contains_key(function_name.bare_name())
     }
 
     fn _contains_implementation(&self, function_name: &QualifiedNameNode) -> bool {
         self.function_implementation_map
-            .contains_key(function_name.name())
+            .contains_key(function_name.bare_name())
     }
 
     fn _get_declaration(
         &self,
         function_name: &QualifiedNameNode,
     ) -> Result<&QualifiedFunctionDeclarationNode> {
-        match self.function_declaration_map.get(function_name.name()) {
+        match self.function_declaration_map.get(function_name.bare_name()) {
             Some(x) => Ok(x),
             None => Err(InterpreterError::new_with_pos(
-                format!("Function {} not declared", function_name.name()),
+                format!("Function {} not declared", function_name.bare_name()),
                 function_name.location(),
             )),
         }
@@ -116,7 +118,7 @@ impl FunctionContext {
     ) -> Result<Option<QualifiedFunctionImplementationNode>> {
         match function_name {
             NameNode::Bare(bare_function_name) => {
-                Ok(self.get_function_implementation(bare_function_name.name()))
+                Ok(self.get_function_implementation(bare_function_name.element()))
             }
             NameNode::Typed(qualified_function_name) => {
                 self._lookup_implementation_qualified(qualified_function_name)
@@ -128,7 +130,7 @@ impl FunctionContext {
         &self,
         function_name: &QualifiedNameNode,
     ) -> Result<Option<QualifiedFunctionImplementationNode>> {
-        match self.get_function_implementation(function_name.name()) {
+        match self.get_function_implementation(function_name.bare_name()) {
             Some(function_implementation) => {
                 if function_implementation.name.qualifier() != function_name.qualifier() {
                     // the function is defined as A#

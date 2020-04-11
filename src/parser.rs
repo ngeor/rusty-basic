@@ -1,4 +1,3 @@
-use crate::common::*;
 use crate::lexer::{BufLexer, LexemeNode, LexerError};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
@@ -9,8 +8,8 @@ mod expression;
 mod for_loop;
 mod function_implementation;
 mod if_block;
+mod name;
 mod parse_result;
-mod qname;
 mod statement;
 mod sub_call;
 mod types;
@@ -21,7 +20,7 @@ mod test_utils;
 pub use self::expression::*;
 pub use self::for_loop::*;
 pub use self::if_block::*;
-pub use self::qname::*;
+pub use self::name::*;
 pub use self::statement::*;
 pub use self::types::*;
 
@@ -40,6 +39,7 @@ impl<T: BufRead> Parser<T> {
     pub fn parse(&mut self) -> Result<ProgramNode, LexerError> {
         let mut v: Vec<TopLevelTokenNode> = vec![];
         loop {
+            self.buf_lexer.skip_whitespace_and_eol()?;
             let x = self._parse_top_level_token()?;
             match x {
                 Some(t) => v.push(t),
@@ -218,7 +218,7 @@ mod tests {
                     vec![Name::from("N")],
                     vec![
                         // IF N <= 1 THEN
-                        Statement::IfBlock(IfBlock::new_if_else(
+                        Statement::IfBlock(new_if_else(
                             // N <= 1
                             Expression::lte(
                                 Expression::variable_name("N"),

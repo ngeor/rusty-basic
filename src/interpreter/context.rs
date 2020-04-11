@@ -1,7 +1,9 @@
 use super::casting::cast;
 use super::{InterpreterError, Result, Variant};
 use crate::common::{HasLocation, StripLocation};
-use crate::parser::{BareNameNode, QualifiedName, QualifiedNameNode};
+use crate::parser::{
+    BareNameNode, HasBareName, HasQualifier, NameNode, QualifiedName, QualifiedNameNode,
+};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -48,17 +50,17 @@ impl Context {
         }
     }
 
-    pub fn resolve_result_name_bare(&self, name: &BareNameNode) -> Option<QualifiedNameNode> {
+    pub fn resolve_result_name_bare(&self, name: BareNameNode) -> NameNode {
         match self {
-            Context::Root(_) => None,
+            Context::Root(_) => NameNode::Bare(name),
             Context::Nested(_, result_name, _) => {
-                if name.name() != result_name.name() {
+                if result_name.bare_name() != name.bare_name() {
                     // different names, it does not match with the result name
-                    None
+                    NameNode::Bare(name)
                 } else {
                     // names match
                     // promote the bare name node to a qualified
-                    Some(name.to_qualified_name_node(result_name.qualifier()))
+                    NameNode::Typed(name.to_qualified_name_node(result_name.qualifier()))
                 }
             }
         }
@@ -68,7 +70,7 @@ impl Context {
         match self {
             Context::Root(_) => Ok(()),
             Context::Nested(_, result_name, _) => {
-                if name.name() != result_name.name() {
+                if result_name.bare_name() != name.bare_name() {
                     // different names, it does not match with the result name
                     Ok(())
                 } else {
@@ -88,7 +90,7 @@ impl Context {
 
     pub fn cast_insert(
         &mut self,
-        name: &QualifiedNameNode,
+        name: QualifiedNameNode,
         value: Variant,
     ) -> Result<Option<Variant>> {
         cast(value, name.qualifier())

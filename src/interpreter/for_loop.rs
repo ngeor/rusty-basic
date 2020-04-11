@@ -44,18 +44,18 @@ impl<S: Stdlib> Interpreter<S> {
 
         match step_sign {
             Ordering::Greater => {
-                self.set_variable(counter_var_name, start.clone())?;
+                self.set_variable(counter_var_name, start)?;
                 while self._is_less_or_equal(counter_var_name, &stop)? {
                     self.statements(statements)?;
-                    self._inc_variable(counter_var_name, &step)?;
+                    self._inc_variable(counter_var_name.clone(), &step)?;
                 }
                 Ok(())
             }
             Ordering::Less => {
-                self.set_variable(counter_var_name, start.clone())?;
+                self.set_variable(counter_var_name, start)?;
                 while self._is_greater_or_equal(counter_var_name, &stop)? {
                     self.statements(statements)?;
-                    self._inc_variable(counter_var_name, &step)?;
+                    self._inc_variable(counter_var_name.clone(), &step)?;
                 }
                 Ok(())
             }
@@ -66,8 +66,8 @@ impl<S: Stdlib> Interpreter<S> {
         }
     }
 
-    fn _inc_variable(&mut self, variable_name: &NameNode, step: &Variant) -> Result<()> {
-        let existing_value = self.get_variable(variable_name)?;
+    fn _inc_variable(&mut self, variable_name: NameNode, step: &Variant) -> Result<()> {
+        let existing_value = self.get_variable(&variable_name)?;
         let new_value = existing_value
             .plus(step)
             .map_err(|e| InterpreterError::new_with_pos(e, variable_name.location()))?;
@@ -107,8 +107,8 @@ impl<S: Stdlib> Interpreter<S> {
     }
 
     fn _are_different_variable(&self, left: &NameNode, right: &NameNode) -> bool {
-        let left_qualified_name_node = left.resolve(self);
-        let right_qualified_name_node = right.resolve(self);
+        let left_qualified_name_node = left.resolve_ref(self);
+        let right_qualified_name_node = right.resolve_ref(self);
         let left_qualified_name = left_qualified_name_node.strip_location();
         let right_qualified_name = right_qualified_name_node.strip_location();
         left_qualified_name != right_qualified_name
@@ -122,10 +122,34 @@ mod tests {
     use crate::common::Location;
 
     #[test]
-    fn test_simple_for_loop() {
+    fn test_simple_for_loop_untyped() {
+        let input = "
+        FOR I = 1 TO 5
+            PRINT I
+        NEXT
+        ";
+        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let stdlib = interpreter.stdlib;
+        assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
+    }
+
+    #[test]
+    fn test_simple_for_loop_typed() {
         let input = "
         FOR i% = 1 TO 5
             PRINT i%
+        NEXT
+        ";
+        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let stdlib = interpreter.stdlib;
+        assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
+    }
+
+    #[test]
+    fn test_simple_for_loop_lowercase() {
+        let input = "
+        FOR i% = 1 TO 5
+            PRINT I%
         NEXT
         ";
         let interpreter = interpret(input, MockStdlib::new()).unwrap();
@@ -200,6 +224,18 @@ mod tests {
         FOR i% = 1 TO 5
             PRINT i%
         NEXT i%
+        ";
+        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let stdlib = interpreter.stdlib;
+        assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
+    }
+
+    #[test]
+    fn test_for_loop_with_specified_next_counter_lower_case() {
+        let input = "
+        FOR i% = 1 TO 5
+            PRINT i%
+        NEXT I%
         ";
         let interpreter = interpret(input, MockStdlib::new()).unwrap();
         let stdlib = interpreter.stdlib;

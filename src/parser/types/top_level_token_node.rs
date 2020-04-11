@@ -11,7 +11,7 @@ pub enum TopLevelTokenNode {
 }
 
 impl StripLocation<TopLevelToken> for TopLevelTokenNode {
-    fn strip_location(&self) -> TopLevelToken {
+    fn strip_location(self) -> TopLevelToken {
         match self {
             TopLevelTokenNode::FunctionDeclaration(n) => TopLevelToken::FunctionDeclaration(
                 n.name.strip_location(),

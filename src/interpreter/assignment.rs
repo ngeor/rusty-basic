@@ -116,5 +116,61 @@ B = -A";
             interpreter.has_variable("A", -42.0_f32);
             interpreter.has_variable("B", 42.0_f32);
         }
+
+        #[test]
+        fn test_assign_variable_bare_lower_case() {
+            let input = "
+            A = 42
+            b = 12
+            ";
+            let interpreter = interpret(input, MockStdlib::new()).unwrap();
+            interpreter.has_variable("A", 42.0_f32);
+            interpreter.has_variable("a", 42.0_f32);
+            interpreter.has_variable("B", 12.0_f32);
+            interpreter.has_variable("b", 12.0_f32);
+        }
+
+        #[test]
+        fn test_assign_variable_typed_lower_case() {
+            let input = "
+            A% = 42
+            b% = 12
+            ";
+            let interpreter = interpret(input, MockStdlib::new()).unwrap();
+            interpreter.has_variable("A%", 42);
+            interpreter.has_variable("a%", 42);
+            interpreter.has_variable("B%", 12);
+            interpreter.has_variable("b%", 12);
+        }
+
+        #[test]
+        fn test_increment_variable_bare_lower_case() {
+            let input = "
+            A = 42
+            A = a + 1
+            b = 12
+            B = b + 1
+            ";
+            let interpreter = interpret(input, MockStdlib::new()).unwrap();
+            interpreter.has_variable("A", 43_f32);
+            interpreter.has_variable("a", 43_f32);
+            interpreter.has_variable("B", 13_f32);
+            interpreter.has_variable("b", 13_f32);
+        }
+
+        #[test]
+        fn test_increment_variable_typed_lower_case() {
+            let input = "
+            A% = 42
+            A% = a% + 1
+            b% = 12
+            B% = b% + 1
+            ";
+            let interpreter = interpret(input, MockStdlib::new()).unwrap();
+            interpreter.has_variable("A%", 43);
+            interpreter.has_variable("a%", 43);
+            interpreter.has_variable("B%", 13);
+            interpreter.has_variable("b%", 13);
+        }
     }
 }

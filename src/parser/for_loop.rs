@@ -1,4 +1,6 @@
-use super::*;
+use super::{BlockNode, ForLoopNode, Parser, StatementNode};
+use crate::lexer::LexerError;
+use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_for_loop(&mut self) -> Result<Option<StatementNode>, LexerError> {
@@ -66,7 +68,8 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use super::*;
+    use crate::common::StripLocation;
+    use crate::parser::Expression;
 
     #[test]
     fn test_for_loop() {
@@ -79,6 +82,21 @@ mod tests {
                 1,
                 10,
                 vec![sub_call("PRINT", vec![Expression::variable_name("I")],)],
+            )],
+        );
+    }
+
+    #[test]
+    fn test_for_loop_lower_case() {
+        let input = "for i = 1 TO 10\r\nprint i\r\nnext";
+        let result = parse(input).strip_location();
+        assert_eq!(
+            result,
+            vec![top_for_loop(
+                "i",
+                1,
+                10,
+                vec![sub_call("print", vec![Expression::variable_name("i")],)],
             )],
         );
     }

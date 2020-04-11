@@ -1,7 +1,5 @@
 use super::{Expression, NameNode, Operand, UnaryOperand};
-use crate::common::{
-    AddLocation, HasLocation, Locatable, Location, StripLocation, StripLocationRef,
-};
+use crate::common::{AddLocation, HasLocation, Locatable, Location, StripLocation};
 
 pub type OperandNode = Locatable<Operand>;
 
@@ -61,42 +59,41 @@ impl HasLocation for ExpressionNode {
 }
 
 impl StripLocation<Expression> for ExpressionNode {
-    fn strip_location(&self) -> Expression {
+    fn strip_location(self) -> Expression {
         match self {
-            ExpressionNode::SingleLiteral(x, _) => Expression::SingleLiteral(*x),
-            ExpressionNode::DoubleLiteral(x, _) => Expression::DoubleLiteral(*x),
-            ExpressionNode::StringLiteral(x, _) => Expression::StringLiteral(x.clone()),
-            ExpressionNode::IntegerLiteral(x, _) => Expression::IntegerLiteral(*x),
-            ExpressionNode::LongLiteral(x, _) => Expression::LongLiteral(*x),
+            ExpressionNode::SingleLiteral(x, _) => Expression::SingleLiteral(x),
+            ExpressionNode::DoubleLiteral(x, _) => Expression::DoubleLiteral(x),
+            ExpressionNode::StringLiteral(x, _) => Expression::StringLiteral(x),
+            ExpressionNode::IntegerLiteral(x, _) => Expression::IntegerLiteral(x),
+            ExpressionNode::LongLiteral(x, _) => Expression::LongLiteral(x),
             ExpressionNode::VariableName(n) => Expression::VariableName(n.strip_location()),
             ExpressionNode::FunctionCall(n, args) => {
                 Expression::FunctionCall(n.strip_location(), args.strip_location())
             }
             ExpressionNode::BinaryExpression(op, left, right) => Expression::BinaryExpression(
-                *op.strip_location_ref(),
+                op.strip_location(),
                 left.strip_location(),
                 right.strip_location(),
             ),
             ExpressionNode::UnaryExpression(op, child) => {
-                Expression::UnaryExpression(*op.strip_location_ref(), child.strip_location())
+                Expression::UnaryExpression(op.strip_location(), child.strip_location())
             }
         }
     }
 }
 
 impl AddLocation<ExpressionNode> for Expression {
-    fn add_location(&self, pos: Location) -> ExpressionNode {
+    fn add_location(self, pos: Location) -> ExpressionNode {
         match self {
-            Expression::SingleLiteral(x) => ExpressionNode::SingleLiteral(*x, pos),
-            Expression::DoubleLiteral(x) => ExpressionNode::DoubleLiteral(*x, pos),
-            Expression::StringLiteral(x) => ExpressionNode::StringLiteral(x.clone(), pos),
-            Expression::IntegerLiteral(x) => ExpressionNode::IntegerLiteral(*x, pos),
-            Expression::LongLiteral(x) => ExpressionNode::LongLiteral(*x, pos),
+            Expression::SingleLiteral(x) => ExpressionNode::SingleLiteral(x, pos),
+            Expression::DoubleLiteral(x) => ExpressionNode::DoubleLiteral(x, pos),
+            Expression::StringLiteral(x) => ExpressionNode::StringLiteral(x, pos),
+            Expression::IntegerLiteral(x) => ExpressionNode::IntegerLiteral(x, pos),
+            Expression::LongLiteral(x) => ExpressionNode::LongLiteral(x, pos),
             Expression::VariableName(n) => ExpressionNode::VariableName(n.add_location(pos)),
-            Expression::FunctionCall(n, args) => ExpressionNode::FunctionCall(
-                n.add_location(pos),
-                args.iter().map(|x| x.add_location(pos)).collect(),
-            ),
+            Expression::FunctionCall(n, args) => {
+                ExpressionNode::FunctionCall(n.add_location(pos), args.add_location(pos))
+            }
             Expression::BinaryExpression(op, left, right) => ExpressionNode::BinaryExpression(
                 op.add_location(pos),
                 left.add_location(pos),

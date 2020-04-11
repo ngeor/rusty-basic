@@ -1,4 +1,4 @@
-use super::{ConditionalBlock, ExpressionNode, ForLoop, IfBlock, NameNode, Statement};
+use super::{ConditionalBlock, ExpressionNode, ForLoop, HasBareName, IfBlock, NameNode, Statement};
 use crate::common::{Location, StripLocation};
 
 pub type BlockNode = Vec<StatementNode>;
@@ -9,21 +9,19 @@ pub enum StatementNode {
     ForLoop(ForLoopNode),
     IfBlock(IfBlockNode),
     Assignment(NameNode, ExpressionNode),
-    Whitespace(String),
 }
 
 impl StripLocation<Statement> for StatementNode {
-    fn strip_location(&self) -> Statement {
+    fn strip_location(self) -> Statement {
         match self {
             StatementNode::SubCall(n, args) => {
-                Statement::SubCall(n.name().clone(), args.strip_location())
+                Statement::SubCall(n.bare_name_into(), args.strip_location())
             }
             StatementNode::ForLoop(f) => Statement::ForLoop(f.strip_location()),
             StatementNode::IfBlock(i) => Statement::IfBlock(i.strip_location()),
             StatementNode::Assignment(left, right) => {
                 Statement::Assignment(left.strip_location(), right.strip_location())
             }
-            StatementNode::Whitespace(x) => Statement::Whitespace(x.clone()),
         }
     }
 }
@@ -40,7 +38,7 @@ pub struct ForLoopNode {
 }
 
 impl StripLocation<ForLoop> for ForLoopNode {
-    fn strip_location(&self) -> ForLoop {
+    fn strip_location(self) -> ForLoop {
         ForLoop {
             variable_name: self.variable_name.strip_location(),
             lower_bound: self.lower_bound.strip_location(),
@@ -60,7 +58,7 @@ pub struct ConditionalBlockNode {
 }
 
 impl StripLocation<ConditionalBlock> for ConditionalBlockNode {
-    fn strip_location(&self) -> ConditionalBlock {
+    fn strip_location(self) -> ConditionalBlock {
         ConditionalBlock {
             condition: self.condition.strip_location(),
             block: self.block.strip_location(),
@@ -76,7 +74,7 @@ pub struct IfBlockNode {
 }
 
 impl StripLocation<IfBlock> for IfBlockNode {
-    fn strip_location(&self) -> IfBlock {
+    fn strip_location(self) -> IfBlock {
         IfBlock {
             if_block: self.if_block.strip_location(),
             else_if_blocks: self.else_if_blocks.strip_location(),

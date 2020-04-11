@@ -1,4 +1,6 @@
-use super::*;
+use super::{NameNode, Parser, StatementNode};
+use crate::lexer::LexerError;
+use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_assignment(&mut self) -> Result<Option<StatementNode>, LexerError> {
@@ -38,6 +40,8 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::StripLocation;
+    use crate::parser::{Expression, Name, Statement};
 
     #[test]
     fn test_numeric_assignment() {

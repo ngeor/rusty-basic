@@ -26,9 +26,7 @@ impl<T: BufRead> BufLexer<T> {
     /// consume is called.
     pub fn read(&mut self) -> Result<LexemeNode, LexerError> {
         if self.needs_to_read() {
-            let pos = self.lexer.pos();
-            let new_lexeme = self.lexer.read()?;
-            self._history.push(new_lexeme.add_location(pos));
+            self._history.push(self.lexer.read()?);
         }
         Ok(self._history[self._index].clone())
     }

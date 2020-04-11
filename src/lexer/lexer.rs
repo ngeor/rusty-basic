@@ -1,5 +1,5 @@
 use super::error::*;
-use super::{Lexeme, LexerResult};
+use super::LexemeNode;
 use crate::common::Location;
 use crate::reader::*;
 use std::convert::From;
@@ -58,38 +58,35 @@ impl<T: BufRead> Lexer<T> {
         }
     }
 
-    pub fn pos(&self) -> Location {
-        self.pos
-    }
-
-    pub fn read(&mut self) -> LexerResult {
+    pub fn read(&mut self) -> Result<LexemeNode, LexerError> {
         let x = self._read_one()?;
         match x {
-            None => Ok(Lexeme::EOF),
+            None => Ok(LexemeNode::EOF(self.pos)),
             Some(ch) => self._read_char(ch),
         }
     }
 
-    fn _read_char(&mut self, ch: char) -> LexerResult {
+    fn _read_char(&mut self, ch: char) -> Result<LexemeNode, LexerError> {
+        let pos = self.pos;
         if _is_letter(ch) {
             let buf = self._read_while(_is_letter)?;
-            Ok(Lexeme::Word(buf))
+            Ok(LexemeNode::Word(buf, pos))
         } else if _is_whitespace(ch) {
             let buf = self._read_while(_is_whitespace)?;
-            Ok(Lexeme::Whitespace(buf))
+            Ok(LexemeNode::Whitespace(buf, pos))
         } else if _is_digit(ch) {
             let buf = self._read_while(_is_digit)?;
             let num: u32 = self._parse_digits(buf)?;
-            Ok(Lexeme::Digits(num))
+            Ok(LexemeNode::Digits(num, pos))
         } else if _is_eol(ch) {
             let buf = self._read_while_eol()?;
-            Ok(Lexeme::EOL(buf))
+            Ok(LexemeNode::EOL(buf, pos))
         } else if _is_symbol(ch) {
             self._consume();
             self.pos.inc_col();
-            Ok(Lexeme::Symbol(ch))
+            Ok(LexemeNode::Symbol(ch, pos))
         } else {
-            Err(LexerError::UnsupportedCharacter(ch, self.pos))
+            Err(LexerError::UnsupportedCharacter(ch, pos))
         }
     }
 
@@ -195,24 +192,74 @@ mod tests {
     fn test_lexer() {
         let input = "PRINT \"Hello, world!\"";
         let mut lexer = Lexer::from(input);
-        assert_eq!(lexer.read().unwrap(), Lexeme::Word("PRINT".to_string()));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Whitespace(" ".to_string()));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Symbol('"'));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Word("Hello".to_string()));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Symbol(','));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Whitespace(" ".to_string()));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Word("world".to_string()));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Symbol('!'));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Symbol('"'));
-        assert_eq!(lexer.read().unwrap(), Lexeme::EOF);
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Word("PRINT".to_string(), Location::new(1, 1))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Whitespace(" ".to_string(), Location::new(1, 6))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Symbol('"', Location::new(1, 7))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Word("Hello".to_string(), Location::new(1, 8))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Symbol(',', Location::new(1, 13))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Whitespace(" ".to_string(), Location::new(1, 14))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Word("world".to_string(), Location::new(1, 15))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Symbol('!', Location::new(1, 20))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Symbol('"', Location::new(1, 21))
+        );
+        assert_eq!(lexer.read().unwrap(), LexemeNode::EOF(Location::new(1, 22)));
     }
 
     #[test]
     fn test_cr_lf() {
-        let input = "Hi\r\n\n\r";
-        let mut lexer = Lexer::from(input);
-        assert_eq!(lexer.read().unwrap(), Lexeme::Word("Hi".to_string()));
-        assert_eq!(lexer.read().unwrap(), Lexeme::EOL("\r\n\n\r".to_string()));
-        assert_eq!(lexer.read().unwrap(), Lexeme::EOF);
+        let mut lexer = Lexer::from("Hi\r\n123");
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Word("Hi".to_string(), Location::new(1, 1))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::EOL("\r\n".to_string(), Location::new(1, 3))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Digits(123, Location::new(2, 1))
+        );
+        assert_eq!(lexer.read().unwrap(), LexemeNode::EOF(Location::new(2, 4)));
+    }
+
+    #[test]
+    fn test_cr_lf_2() {
+        let mut lexer = Lexer::from("Hi\r\n\n\r");
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Word("Hi".to_string(), Location::new(1, 1))
+        );
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::EOL("\r\n\n\r".to_string(), Location::new(1, 3))
+        );
+        assert_eq!(lexer.read().unwrap(), LexemeNode::EOF(Location::new(4, 1)));
     }
 }

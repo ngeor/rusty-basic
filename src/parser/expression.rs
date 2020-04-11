@@ -122,7 +122,7 @@ impl<T: BufRead> Parser<T> {
                         l,
                     ))
                 }
-                _ => l.strip_location().push_to(&mut buf),
+                _ => l.push_to(&mut buf),
             }
         }
 

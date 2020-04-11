@@ -1,4 +1,3 @@
-use super::Lexeme;
 use crate::common::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -22,6 +21,17 @@ pub enum LexemeNode {
     Digits(u32, Location),
 }
 
+impl LexemeNode {
+    pub fn push_to(&self, buf: &mut String) {
+        match self {
+            Self::Word(s, _) | Self::Whitespace(s, _) => buf.push_str(s),
+            Self::Symbol(c, _) => buf.push(*c),
+            Self::Digits(d, _) => buf.push_str(&format!("{}", d)),
+            _ => panic!(format!("Cannot push {:?}", self)),
+        }
+    }
+}
+
 impl HasLocation for LexemeNode {
     fn location(&self) -> Location {
         match self {
@@ -31,32 +41,6 @@ impl HasLocation for LexemeNode {
             | LexemeNode::Whitespace(_, pos)
             | LexemeNode::Symbol(_, pos)
             | LexemeNode::Digits(_, pos) => *pos,
-        }
-    }
-}
-
-impl AddLocation<LexemeNode> for Lexeme {
-    fn add_location(&self, pos: Location) -> LexemeNode {
-        match self {
-            Lexeme::EOF => LexemeNode::EOF(pos),
-            Lexeme::EOL(x) => LexemeNode::EOL(x.clone(), pos),
-            Lexeme::Word(x) => LexemeNode::Word(x.clone(), pos),
-            Lexeme::Whitespace(x) => LexemeNode::Whitespace(x.clone(), pos),
-            Lexeme::Symbol(x) => LexemeNode::Symbol(*x, pos),
-            Lexeme::Digits(x) => LexemeNode::Digits(*x, pos),
-        }
-    }
-}
-
-impl StripLocation<Lexeme> for LexemeNode {
-    fn strip_location(&self) -> Lexeme {
-        match self {
-            LexemeNode::EOF(_) => Lexeme::EOF,
-            LexemeNode::EOL(x, _) => Lexeme::EOL(x.clone()),
-            LexemeNode::Word(x, _) => Lexeme::Word(x.clone()),
-            LexemeNode::Whitespace(x, _) => Lexeme::Whitespace(x.clone()),
-            LexemeNode::Symbol(x, _) => Lexeme::Symbol(*x),
-            LexemeNode::Digits(x, _) => Lexeme::Digits(*x),
         }
     }
 }

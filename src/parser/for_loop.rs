@@ -1,10 +1,10 @@
 use super::{BlockNode, ForLoopNode, Parser, StatementNode};
-use crate::lexer::LexerError;
+use crate::lexer::{Keyword, LexerError};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_for_loop(&mut self) -> Result<Option<StatementNode>, LexerError> {
-        let opt_pos = self.buf_lexer.try_consume_word("FOR")?;
+        let opt_pos = self.buf_lexer.try_consume_keyword(Keyword::For)?;
         if let Some(pos) = opt_pos {
             self.buf_lexer.demand_whitespace()?;
             let for_counter_variable = self.demand_name_with_type_qualifier()?;
@@ -13,13 +13,13 @@ impl<T: BufRead> Parser<T> {
             self.buf_lexer.skip_whitespace()?;
             let lower_bound = self.demand_expression()?;
             self.buf_lexer.demand_whitespace()?;
-            self.buf_lexer.demand_specific_word("TO")?;
+            self.buf_lexer.demand_keyword(Keyword::To)?;
             self.buf_lexer.demand_whitespace()?;
             let upper_bound = self.demand_expression()?;
 
             let optional_step = if self.buf_lexer.skip_whitespace()? {
                 // might have "STEP" keyword
-                if self.buf_lexer.try_consume_word("STEP")?.is_some() {
+                if self.buf_lexer.try_consume_keyword(Keyword::Step)?.is_some() {
                     self.buf_lexer.demand_whitespace()?;
                     Some(self.demand_expression()?)
                 } else {
@@ -36,7 +36,7 @@ impl<T: BufRead> Parser<T> {
             let mut statements: BlockNode = vec![];
 
             // might have a dummy empty for loop
-            while self.buf_lexer.try_consume_word("NEXT")?.is_none() {
+            while self.buf_lexer.try_consume_keyword(Keyword::Next)?.is_none() {
                 statements.push(self.demand_statement()?);
                 self.buf_lexer.skip_whitespace_and_eol()?;
             }

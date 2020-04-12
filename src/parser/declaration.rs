@@ -1,11 +1,11 @@
 use super::{FunctionDeclarationNode, NameNode, Parser, TopLevelTokenNode};
 use crate::common::Location;
-use crate::lexer::{LexemeNode, LexerError};
+use crate::lexer::{Keyword, LexemeNode, LexerError};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_declaration(&mut self) -> Result<Option<TopLevelTokenNode>, LexerError> {
-        match self.buf_lexer.try_consume_word("DECLARE")? {
+        match self.buf_lexer.try_consume_keyword(Keyword::Declare)? {
             Some(pos) => self._parse_declaration(pos).map(|x| Some(x)),
             None => Ok(None),
         }
@@ -16,21 +16,23 @@ impl<T: BufRead> Parser<T> {
         declare_pos: Location,
     ) -> Result<TopLevelTokenNode, LexerError> {
         self.buf_lexer.demand_whitespace()?;
-        let (next_word, declarable_pos) = self.buf_lexer.demand_any_word()?;
-        if next_word.to_uppercase() == "FUNCTION" {
-            self.buf_lexer.demand_whitespace()?;
-            let function_name = self.demand_name_with_type_qualifier()?;
-            self.buf_lexer.skip_whitespace()?;
-            let function_arguments: Vec<NameNode> = self.parse_declaration_parameters()?;
-            self.buf_lexer.demand_eol_or_eof()?;
-            Ok(TopLevelTokenNode::FunctionDeclaration(
-                FunctionDeclarationNode::new(function_name, function_arguments, declare_pos),
-            ))
-        } else {
-            Err(LexerError::Unexpected(
+        let next = self.buf_lexer.read()?;
+        match next {
+            LexemeNode::Keyword(Keyword::Function, _, _) => {
+                self.buf_lexer.consume();
+                self.buf_lexer.demand_whitespace()?;
+                let function_name = self.demand_name_with_type_qualifier()?;
+                self.buf_lexer.skip_whitespace()?;
+                let function_arguments: Vec<NameNode> = self.parse_declaration_parameters()?;
+                self.buf_lexer.demand_eol_or_eof()?;
+                Ok(TopLevelTokenNode::FunctionDeclaration(
+                    FunctionDeclarationNode::new(function_name, function_arguments, declare_pos),
+                ))
+            }
+            _ => Err(LexerError::Unexpected(
                 "Unknown declaration".to_string(),
-                LexemeNode::Word(next_word, declarable_pos),
-            ))
+                next,
+            )),
         }
     }
 

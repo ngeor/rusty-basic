@@ -11,4 +11,5 @@
 
 ## Development
 
-Tip: run tests continuously with `nodemon -e rs -x "cargo test"`.
+Tip: run tests continuously with `make watch` or
+`nodemon -e rs -x "cargo test"`.

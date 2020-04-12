@@ -1,10 +1,11 @@
 use super::error::*;
-use super::LexemeNode;
+use super::{Keyword, LexemeNode};
 use crate::common::Location;
 use crate::reader::*;
 use std::convert::From;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct Lexer<T> {
@@ -18,6 +19,10 @@ fn _is_letter(ch: char) -> bool {
 
 fn _is_digit(ch: char) -> bool {
     ch >= '0' && ch <= '9'
+}
+
+fn _is_alphanumeric(ch: char) -> bool {
+    _is_letter(ch) || _is_digit(ch)
 }
 
 fn _is_whitespace(ch: char) -> bool {
@@ -69,8 +74,11 @@ impl<T: BufRead> Lexer<T> {
     fn _read_char(&mut self, ch: char) -> Result<LexemeNode, LexerError> {
         let pos = self.pos;
         if _is_letter(ch) {
-            let buf = self._read_while(_is_letter)?;
-            Ok(LexemeNode::Word(buf, pos))
+            let buf = self._read_while(_is_alphanumeric)?;
+            match Keyword::from_str(&buf) {
+                Ok(k) => Ok(LexemeNode::Keyword(k, buf, pos)),
+                Err(_) => Ok(LexemeNode::Word(buf, pos)),
+            }
         } else if _is_whitespace(ch) {
             let buf = self._read_while(_is_whitespace)?;
             Ok(LexemeNode::Whitespace(buf, pos))

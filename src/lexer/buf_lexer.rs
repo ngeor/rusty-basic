@@ -1,4 +1,4 @@
-use super::{LexemeNode, Lexer, LexerError};
+use super::{Keyword, LexemeNode, Lexer, LexerError};
 use crate::common::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
@@ -70,13 +70,14 @@ impl<T: BufRead> BufLexer<T> {
         self._mark_index = None;
     }
 
-    /// Tries to read the given word. If the next lexeme is this particular word,
-    /// it consumes it and it returns true.
-    pub fn try_consume_word(&mut self, word: &str) -> Result<Option<Location>, LexerError> {
+    pub fn try_consume_keyword(
+        &mut self,
+        keyword: Keyword,
+    ) -> Result<Option<Location>, LexerError> {
         let lexeme = self.read()?;
         match lexeme {
-            LexemeNode::Word(w, pos) => {
-                if w.to_uppercase() == word.to_uppercase() {
+            LexemeNode::Keyword(k, _, pos) => {
+                if k == keyword {
                     self.consume();
                     Ok(Some(pos))
                 } else {
@@ -142,16 +143,20 @@ impl<T: BufRead> BufLexer<T> {
         }
     }
 
-    pub fn demand_specific_word(&mut self, expected: &str) -> Result<Location, LexerError> {
-        let (word, pos) = self.demand_any_word()?;
-        if word.to_uppercase() != expected.to_uppercase() {
-            Err(LexerError::Unexpected(
-                format!("Expected {}", expected),
-                LexemeNode::Word(word, pos),
-            ))
-        } else {
-            Ok(pos)
+    pub fn demand_keyword(&mut self, keyword: Keyword) -> Result<Option<Location>, LexerError> {
+        let lexeme = self.read()?;
+
+        if let LexemeNode::Keyword(k, _, pos) = lexeme {
+            if k == keyword {
+                self.consume();
+                return Ok(Some(pos));
+            }
         }
+
+        Err(LexerError::Unexpected(
+            format!("Expected {}", keyword),
+            lexeme,
+        ))
     }
 
     pub fn demand_symbol(&mut self, ch: char) -> Result<Location, LexerError> {

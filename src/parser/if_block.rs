@@ -1,11 +1,11 @@
 use super::{ConditionalBlockNode, ExpressionNode, IfBlockNode, Parser, StatementNode};
 use crate::common::Location;
-use crate::lexer::LexerError;
+use crate::lexer::{Keyword, LexerError};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_if_block(&mut self) -> Result<Option<StatementNode>, LexerError> {
-        let opt_if_pos = self.buf_lexer.try_consume_word("IF")?;
+        let opt_if_pos = self.buf_lexer.try_consume_keyword(Keyword::If)?;
         if let Some(if_pos) = opt_if_pos {
             // parse main if block
             let if_block = self._demand_conditional_block(if_pos)?;
@@ -13,7 +13,7 @@ impl<T: BufRead> Parser<T> {
             // parse additional elseif blocks
             let mut else_if_blocks: Vec<ConditionalBlockNode> = vec![];
             loop {
-                let opt_else_if_pos = self.buf_lexer.try_consume_word("ELSEIF")?;
+                let opt_else_if_pos = self.buf_lexer.try_consume_keyword(Keyword::ElseIf)?;
                 if let Some(else_if_pos) = opt_else_if_pos {
                     else_if_blocks.push(self._demand_conditional_block(else_if_pos)?);
                 } else {
@@ -22,16 +22,16 @@ impl<T: BufRead> Parser<T> {
             }
 
             // parse else block
-            let else_block = if self.buf_lexer.try_consume_word("ELSE")?.is_some() {
+            let else_block = if self.buf_lexer.try_consume_keyword(Keyword::Else)?.is_some() {
                 self.buf_lexer.demand_eol()?;
                 Some(self.parse_block()?)
             } else {
                 None
             };
             // parse end if
-            self.buf_lexer.demand_specific_word("END")?;
+            self.buf_lexer.demand_keyword(Keyword::End)?;
             self.buf_lexer.demand_whitespace()?;
-            self.buf_lexer.demand_specific_word("IF")?;
+            self.buf_lexer.demand_keyword(Keyword::If)?;
             self.buf_lexer.demand_eol_or_eof()?;
             Ok(Some(StatementNode::IfBlock(IfBlockNode {
                 if_block: if_block,
@@ -60,7 +60,7 @@ impl<T: BufRead> Parser<T> {
         self.buf_lexer.demand_whitespace()?;
         let condition = self.demand_expression()?;
         self.buf_lexer.demand_whitespace()?;
-        self.buf_lexer.demand_specific_word("THEN")?;
+        self.buf_lexer.demand_keyword(Keyword::Then)?;
         self.buf_lexer.demand_eol()?;
         Ok(condition)
     }

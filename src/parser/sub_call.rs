@@ -3,25 +3,10 @@ use crate::common::CaseInsensitiveString;
 use crate::lexer::{LexemeNode, LexerError};
 use std::io::BufRead;
 
-fn _is_allowed_sub_name(word: String) -> bool {
-    word != "NEXT"
-        && word != "END"
-        && word != "DECLARE"
-        && word != "IF"
-        && word != "ELSEIF"
-        && word != "ELSE"
-}
-
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_sub_call(&mut self) -> Result<Option<StatementNode>, LexerError> {
         match self.buf_lexer.read_ref()? {
-            LexemeNode::Word(w, _) => {
-                if _is_allowed_sub_name(w.to_uppercase()) {
-                    Ok(Some(self._parse_sub_call()?))
-                } else {
-                    Ok(None)
-                }
-            }
+            LexemeNode::Word(_, _) => Ok(Some(self._parse_sub_call()?)),
             _ => Ok(None),
         }
     }

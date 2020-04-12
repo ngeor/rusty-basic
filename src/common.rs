@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 // Location
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -232,6 +234,47 @@ impl AsRef<str> for CaseInsensitiveString {
     }
 }
 
+// CmpIgnoreAsciiCase
+
+pub trait CmpIgnoreAsciiCase {
+    fn compare_ignore_ascii_case(left: Self, right: Self) -> Ordering;
+}
+
+impl CmpIgnoreAsciiCase for u8 {
+    fn compare_ignore_ascii_case(left: u8, right: u8) -> Ordering {
+        let l_upper: u8 = left.to_ascii_uppercase();
+        let r_upper: u8 = right.to_ascii_uppercase();
+        l_upper.cmp(&r_upper)
+    }
+}
+
+impl CmpIgnoreAsciiCase for &[u8] {
+    fn compare_ignore_ascii_case(left: &[u8], right: &[u8]) -> Ordering {
+        let mut i = 0;
+        while i < left.len() && i < right.len() {
+            let ord = CmpIgnoreAsciiCase::compare_ignore_ascii_case(left[i], right[i]);
+            if ord != Ordering::Equal {
+                return ord;
+            }
+            i += 1;
+        }
+
+        if i < right.len() {
+            Ordering::Less
+        } else if i < left.len() {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
+impl CmpIgnoreAsciiCase for &str {
+    fn compare_ignore_ascii_case(left: &str, right: &str) -> Ordering {
+        CmpIgnoreAsciiCase::compare_ignore_ascii_case(left.as_bytes(), right.as_bytes())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,5 +286,68 @@ mod tests {
         assert_eq!("abcDEF".to_string(), x.to_string());
         assert_eq!("ABCdef".to_string(), y.to_string());
         assert_eq!(x, y);
+    }
+
+    #[test]
+    fn test_cmp_ignore_ascii_case() {
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("abc", "abc"),
+            Ordering::Equal
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("abc", "ABC"),
+            Ordering::Equal
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("ABC", "abc"),
+            Ordering::Equal
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("ABC", "ABC"),
+            Ordering::Equal
+        );
+
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("abc", "def"),
+            Ordering::Less
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("abc", "DEF"),
+            Ordering::Less
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("ABC", "def"),
+            Ordering::Less
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("ABC", "DEF"),
+            Ordering::Less
+        );
+
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("xyz", "def"),
+            Ordering::Greater
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("xyz", "DEF"),
+            Ordering::Greater
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("XYZ", "def"),
+            Ordering::Greater
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("XYZ", "DEF"),
+            Ordering::Greater
+        );
+
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("abc", "abca"),
+            Ordering::Less
+        );
+        assert_eq!(
+            CmpIgnoreAsciiCase::compare_ignore_ascii_case("abca", "abc"),
+            Ordering::Greater
+        );
     }
 }

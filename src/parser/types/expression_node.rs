@@ -105,3 +105,13 @@ impl AddLocation<ExpressionNode> for Expression {
         }
     }
 }
+
+#[cfg(test)]
+impl PartialEq<i32> for ExpressionNode {
+    fn eq(&self, other: &i32) -> bool {
+        match self {
+            ExpressionNode::IntegerLiteral(i, _) => i == other,
+            _ => false,
+        }
+    }
+}

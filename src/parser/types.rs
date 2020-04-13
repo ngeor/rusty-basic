@@ -1,8 +1,10 @@
 mod bare_name_node;
+mod def_type_node;
 mod expression;
 mod expression_node;
 mod function_declaration_node;
 mod function_implementation_node;
+mod letter_range_node;
 mod name;
 mod name_node;
 mod qualified_name;
@@ -15,10 +17,12 @@ mod traits;
 mod type_qualifier;
 
 pub use self::bare_name_node::*;
+pub use self::def_type_node::*;
 pub use self::expression::*;
 pub use self::expression_node::*;
 pub use self::function_declaration_node::*;
 pub use self::function_implementation_node::*;
+pub use self::letter_range_node::*;
 pub use self::name::*;
 pub use self::name_node::*;
 pub use self::qualified_name::*;

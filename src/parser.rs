@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader, Cursor};
 
 mod assignment;
 mod declaration;
+mod def_type;
 mod expression;
 mod for_loop;
 mod function_implementation;
@@ -54,6 +55,8 @@ impl<T: BufRead> Parser<T> {
             Ok(Some(d))
         } else if let Some(f) = self.try_parse_function_implementation()? {
             Ok(Some(f))
+        } else if let Some(x) = self.try_parse_def_type()? {
+            Ok(Some(x))
         } else if let Some(s) = self._try_parse_statement_as_top_level_token()? {
             Ok(Some(s))
         } else {
@@ -102,79 +105,10 @@ impl From<File> for Parser<BufReader<File>> {
 mod tests {
     use super::test_utils::*;
     use super::*;
-    use crate::common::StripLocation;
-
-    #[test]
-    fn test_parse_sub_call_no_args() {
-        let input = "PRINT";
-        let program = parse(input).strip_location();
-        assert_eq!(program, vec![top_sub_call("PRINT", vec![])]);
-    }
-
-    #[test]
-    fn test_parse_sub_call_single_arg_string_literal() {
-        let input = "PRINT \"Hello, world!\"";
-        let program = parse(input).strip_location();
-        assert_eq!(
-            program,
-            vec![top_sub_call(
-                "PRINT",
-                vec![Expression::from("Hello, world!")],
-            )],
-        );
-    }
-
-    #[test]
-    fn test_parse_fixture_hello1() {
-        let program = parse_file("HELLO1.BAS").strip_location();
-        assert_eq!(
-            program,
-            vec![top_sub_call(
-                "PRINT",
-                vec![Expression::from("Hello, world!")],
-            )],
-        );
-    }
-
-    #[test]
-    fn test_parse_fixture_hello2() {
-        let program = parse_file("HELLO2.BAS").strip_location();
-        assert_eq!(
-            program,
-            vec![top_sub_call(
-                "PRINT",
-                vec![Expression::from("Hello"), Expression::from("world!")],
-            )],
-        );
-    }
-
-    #[test]
-    fn test_parse_fixture_hello_system() {
-        let program = parse_file("HELLO_S.BAS").strip_location();
-        assert_eq!(
-            program,
-            vec![
-                top_sub_call("PRINT", vec![Expression::from("Hello, world!")]),
-                top_sub_call("SYSTEM", vec![]),
-            ],
-        );
-    }
-
-    #[test]
-    fn test_parse_fixture_input() {
-        let program = parse_file("INPUT.BAS").strip_location();
-        assert_eq!(
-            program,
-            vec![
-                top_sub_call("INPUT", vec![Expression::variable_name("N")]),
-                top_sub_call("PRINT", vec![Expression::variable_name("N")]),
-            ],
-        );
-    }
 
     #[test]
     fn test_parse_fixture_fib() {
-        let program = parse_file("FIB.BAS").strip_location();
+        let program = parse_file("FIB.BAS");
         assert_eq!(
             program,
             vec![

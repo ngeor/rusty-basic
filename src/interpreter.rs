@@ -34,6 +34,7 @@ pub struct Interpreter<S> {
     stdlib: S,
     context: Option<Context>, // declared as option to be able to use Option.take; it should always have Some value
     function_context: FunctionContext,
+    resolver_helper: ResolverHelper,
 }
 
 pub type Result<T> = std::result::Result<T, InterpreterError>;
@@ -44,6 +45,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             stdlib,
             context: Some(Context::new()),
             function_context: FunctionContext::new(),
+            resolver_helper: ResolverHelper::new(),
         }
     }
 
@@ -62,6 +64,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 TopLevelTokenNode::Statement(s) => {
                     statements.push(s);
                 }
+                TopLevelTokenNode::DefType(x) => self.handle_def_type(x),
             }
         }
         self._search_for_unimplemented_declarations()?;
@@ -104,11 +107,59 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             None => panic!("Stack underflow"),
         }
     }
+
+    fn handle_def_type(&mut self, x: DefTypeNode) {
+        let q = x.qualifier();
+        for r in x.ranges() {
+            match *r {
+                LetterRangeNode::Single(c) => self.resolver_helper.set(c, c, q),
+                LetterRangeNode::Range(start, stop) => self.resolver_helper.set(start, stop, q),
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+struct ResolverHelper {
+    ranges: [TypeQualifier; 26],
+}
+
+fn char_to_alphabet_index(ch: char) -> usize {
+    let upper = ch.to_ascii_uppercase();
+    if upper >= 'A' && upper <= 'Z' {
+        ((upper as u8) - ('A' as u8)) as usize
+    } else {
+        panic!(format!("Not a latin letter {}", ch))
+    }
+}
+
+impl ResolverHelper {
+    pub fn new() -> Self {
+        ResolverHelper {
+            ranges: [TypeQualifier::BangSingle; 26],
+        }
+    }
+
+    pub fn set(&mut self, start: char, stop: char, qualifier: TypeQualifier) {
+        let mut x: usize = char_to_alphabet_index(start);
+        let y: usize = char_to_alphabet_index(stop);
+        while x <= y {
+            self.ranges[x] = qualifier;
+            x += 1;
+        }
+    }
+}
+
+impl TypeResolver for ResolverHelper {
+    fn resolve(&self, name: &CaseInsensitiveString) -> TypeQualifier {
+        let x = char_to_alphabet_index(name.first_char());
+        self.ranges[x]
+    }
 }
 
 impl<TStdlib: Stdlib> TypeResolver for Interpreter<TStdlib> {
-    fn resolve(&self, _name: &CaseInsensitiveString) -> TypeQualifier {
-        TypeQualifier::BangSingle
+    fn resolve(&self, name: &CaseInsensitiveString) -> TypeQualifier {
+        self.resolver_helper.resolve(name)
     }
 }
 

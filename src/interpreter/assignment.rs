@@ -172,5 +172,74 @@ B = -A";
             interpreter.has_variable("B%", 13);
             interpreter.has_variable("b%", 13);
         }
+
+        #[test]
+        fn test_assign_with_def_dbl() {
+            let stdlib = MockStdlib::new();
+            let input = "
+            DEFDBL A-Z
+            A = 6.28
+            A! = 3.14
+            ";
+            let interpreter = interpret(input, stdlib).unwrap();
+            interpreter.has_variable_close_enough("A", 6.28_f64);
+            interpreter.has_variable("A!", 3.14_f32);
+            interpreter.has_variable_close_enough("A#", 6.28_f64);
+        }
+
+        #[test]
+        fn test_assign_with_def_int() {
+            let stdlib = MockStdlib::new();
+            let input = "
+            DEFINT A-Z
+            A = 42
+            A! = 3.14
+            ";
+            let interpreter = interpret(input, stdlib).unwrap();
+            interpreter.has_variable("A", 42);
+            interpreter.has_variable("A!", 3.14_f32);
+            interpreter.has_variable("A%", 42);
+        }
+
+        #[test]
+        fn test_assign_with_def_lng() {
+            let stdlib = MockStdlib::new();
+            let input = "
+            DEFLNG A-Z
+            A = 42
+            A! = 3.14
+            ";
+            let interpreter = interpret(input, stdlib).unwrap();
+            interpreter.has_variable("A", 42_i64);
+            interpreter.has_variable("A!", 3.14_f32);
+            interpreter.has_variable("A&", 42_i64);
+        }
+
+        #[test]
+        fn test_assign_with_def_sng() {
+            let stdlib = MockStdlib::new();
+            let input = "
+            DEFSNG A-Z
+            A = 42
+            A! = 3.14
+            ";
+            let interpreter = interpret(input, stdlib).unwrap();
+            interpreter.has_variable("A", 3.14_f32);
+            interpreter.has_variable("A!", 3.14_f32);
+        }
+
+        #[test]
+        fn test_assign_with_def_str() {
+            let stdlib = MockStdlib::new();
+            let input = r#"
+            DEFSTR A-Z
+            A = "hello"
+            A! = 3.14
+            "#;
+            let interpreter = interpret(input, stdlib).unwrap();
+            interpreter.has_variable("A", "hello");
+            interpreter.has_variable("A!", 3.14_f32);
+            interpreter.has_variable("A$", "hello");
+        }
     }
 }

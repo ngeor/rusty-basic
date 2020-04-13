@@ -28,3 +28,9 @@ impl AddLocation<BareNameNode> for CaseInsensitiveString {
         BareNameNode::new(self, pos)
     }
 }
+
+impl PartialEq<CaseInsensitiveString> for BareNameNode {
+    fn eq(&self, other: &CaseInsensitiveString) -> bool {
+        self.element() == other
+    }
+}

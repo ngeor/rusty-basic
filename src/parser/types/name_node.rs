@@ -108,3 +108,26 @@ impl StripLocation<Name> for NameNode {
         }
     }
 }
+
+#[cfg(test)]
+impl PartialEq<Name> for NameNode {
+    fn eq(&self, other: &Name) -> bool {
+        match self {
+            Self::Bare(b_left) => match other {
+                Name::Bare(b_right) => b_left == b_right,
+                _ => false,
+            },
+            Self::Typed(t_left) => match other {
+                Name::Typed(t_right) => t_left == t_right,
+                _ => false,
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+impl PartialEq<str> for NameNode {
+    fn eq(&self, other: &str) -> bool {
+        self == &Name::from(other)
+    }
+}

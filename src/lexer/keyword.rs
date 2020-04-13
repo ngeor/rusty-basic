@@ -6,6 +6,16 @@ use std::str::FromStr;
 pub enum Keyword {
     /// DECLARE
     Declare,
+    /// DEFDBL
+    DefDbl,
+    /// DEFINT
+    DefInt,
+    /// DEFLNG
+    DefLng,
+    /// DEFSNG
+    DefSng,
+    /// DEFSTR
+    DefStr,
     /// ELSE
     Else,
     /// ELSEIF
@@ -29,6 +39,11 @@ pub enum Keyword {
 }
 
 const STR_DECLARE: &str = "DECLARE";
+const STR_DEFDBL: &str = "DEFDBL";
+const STR_DEFINT: &str = "DEFINT";
+const STR_DEFLNG: &str = "DEFLNG";
+const STR_DEFSNG: &str = "DEFSNG";
+const STR_DEFSTR: &str = "DEFSTR";
 const STR_ELSE: &str = "ELSE";
 const STR_ELSEIF: &str = "ELSEIF";
 const STR_END: &str = "END";
@@ -40,8 +55,13 @@ const STR_STEP: &str = "STEP";
 const STR_THEN: &str = "THEN";
 const STR_TO: &str = "TO";
 
-const SORTED_KEYWORDS_STR: [&str; 11] = [
+const SORTED_KEYWORDS_STR: [&str; 16] = [
     STR_DECLARE,
+    STR_DEFDBL,
+    STR_DEFINT,
+    STR_DEFLNG,
+    STR_DEFSNG,
+    STR_DEFSTR,
     STR_ELSE,
     STR_ELSEIF,
     STR_END,
@@ -54,8 +74,13 @@ const SORTED_KEYWORDS_STR: [&str; 11] = [
     STR_TO,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 11] = [
+const SORTED_KEYWORDS: [Keyword; 16] = [
     Keyword::Declare,
+    Keyword::DefDbl,
+    Keyword::DefInt,
+    Keyword::DefLng,
+    Keyword::DefSng,
+    Keyword::DefStr,
     Keyword::Else,
     Keyword::ElseIf,
     Keyword::End,
@@ -72,6 +97,11 @@ impl Display for Keyword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Declare => STR_DECLARE.fmt(f),
+            Self::DefDbl => STR_DEFDBL.fmt(f),
+            Self::DefInt => STR_DEFINT.fmt(f),
+            Self::DefLng => STR_DEFLNG.fmt(f),
+            Self::DefSng => STR_DEFSNG.fmt(f),
+            Self::DefStr => STR_DEFSTR.fmt(f),
             Self::Else => STR_ELSE.fmt(f),
             Self::ElseIf => STR_ELSEIF.fmt(f),
             Self::End => STR_END.fmt(f),
@@ -103,16 +133,31 @@ mod tests {
     #[test]
     fn test_to_string() {
         assert_eq!(Keyword::Declare.to_string(), "DECLARE");
+        assert_eq!(Keyword::DefDbl.to_string(), "DEFDBL");
+        assert_eq!(Keyword::DefInt.to_string(), "DEFINT");
+        assert_eq!(Keyword::DefLng.to_string(), "DEFLNG");
+        assert_eq!(Keyword::DefSng.to_string(), "DEFSNG");
+        assert_eq!(Keyword::DefStr.to_string(), "DEFSTR");
         assert_eq!(Keyword::Else.to_string(), "ELSE");
         assert_eq!(Keyword::ElseIf.to_string(), "ELSEIF");
         assert_eq!(Keyword::End.to_string(), "END");
+        assert_eq!(Keyword::For.to_string(), "FOR");
+        assert_eq!(Keyword::Function.to_string(), "FUNCTION");
         assert_eq!(Keyword::If.to_string(), "IF");
         assert_eq!(Keyword::Next.to_string(), "NEXT");
+        assert_eq!(Keyword::Step.to_string(), "STEP");
+        assert_eq!(Keyword::Then.to_string(), "THEN");
+        assert_eq!(Keyword::To.to_string(), "TO");
     }
 
     #[test]
     fn test_from_string() {
         assert_eq!(Keyword::Declare, "DECLARE".parse().unwrap());
+        assert_eq!(Keyword::DefDbl, "DEFDBL".parse().unwrap());
+        assert_eq!(Keyword::DefInt, "DEFINT".parse().unwrap());
+        assert_eq!(Keyword::DefLng, "DEFLNG".parse().unwrap());
+        assert_eq!(Keyword::DefSng, "DEFSNG".parse().unwrap());
+        assert_eq!(Keyword::DefStr, "DEFSTR".parse().unwrap());
         assert_eq!(Keyword::Else, "ELSE".parse().unwrap());
         assert_eq!(Keyword::ElseIf, "ELSEIF".parse().unwrap());
         assert_eq!(Keyword::End, "END".parse().unwrap());
@@ -128,6 +173,11 @@ mod tests {
     #[test]
     fn test_from_string_lowercase() {
         assert_eq!(Keyword::Declare, "declare".parse().unwrap());
+        assert_eq!(Keyword::DefDbl, "defdbl".parse().unwrap());
+        assert_eq!(Keyword::DefInt, "defint".parse().unwrap());
+        assert_eq!(Keyword::DefLng, "deflng".parse().unwrap());
+        assert_eq!(Keyword::DefSng, "defsng".parse().unwrap());
+        assert_eq!(Keyword::DefStr, "defstr".parse().unwrap());
         assert_eq!(Keyword::Else, "else".parse().unwrap());
         assert_eq!(Keyword::ElseIf, "elseif".parse().unwrap());
         assert_eq!(Keyword::End, "end".parse().unwrap());

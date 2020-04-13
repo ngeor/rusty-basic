@@ -60,34 +60,30 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
-    use crate::common::StripLocation;
-    use crate::parser::{Name, TopLevelToken};
+
+    macro_rules! assert_function_declaration {
+        ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
+            match parse_single_top_level_token_node($input) {
+                TopLevelTokenNode::FunctionDeclaration(f) => {
+                    assert_eq!(&f.name, $expected_function_name, "Function name mismatch");
+                    let x = $expected_params;
+                    assert_eq!(f.parameters.len(), x.len(), "Parameter count mismatch");
+                    for i in 0..x.len() {
+                        assert_eq!(&f.parameters[i], x[i], "Parameter {}", i);
+                    }
+                }
+                _ => panic!(format!("{:?}", $input)),
+            }
+        };
+    }
 
     #[test]
     fn test_fn() {
-        let input = "DECLARE FUNCTION Fib! (N!)";
-        let program = parse(input);
-        assert_eq!(
-            program,
-            vec![TopLevelTokenNode::FunctionDeclaration(
-                FunctionDeclarationNode::new(
-                    NameNode::from("Fib!").at(Location::new(1, 18)),
-                    vec![NameNode::from("N!").at(Location::new(1, 24))],
-                    Location::new(1, 1)
-                )
-            )]
-        );
+        assert_function_declaration!("DECLARE FUNCTION Fib! (N!)", "Fib!", vec!["N!"]);
     }
 
     #[test]
     fn test_lower_case() {
-        let program = parse("declare function echo$(msg$)").strip_location();
-        assert_eq!(
-            program,
-            vec![TopLevelToken::FunctionDeclaration(
-                Name::from("echo$"),
-                vec![Name::from("msg$")]
-            )]
-        )
+        assert_function_declaration!("declare function echo$(msg$)", "echo$", vec!["msg$"]);
     }
 }

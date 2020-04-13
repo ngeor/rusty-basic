@@ -26,3 +26,77 @@ impl<T: BufRead> Parser<T> {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::test_utils::*;
+    use crate::parser::Expression;
+
+    #[test]
+    fn test_parse_sub_call_no_args() {
+        let input = "PRINT";
+        let program = parse(input);
+        assert_eq!(program, vec![top_sub_call("PRINT", vec![])]);
+    }
+
+    #[test]
+    fn test_parse_sub_call_single_arg_string_literal() {
+        let input = "PRINT \"Hello, world!\"";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![top_sub_call(
+                "PRINT",
+                vec![Expression::from("Hello, world!")],
+            )],
+        );
+    }
+
+    #[test]
+    fn test_parse_fixture_hello1() {
+        let program = parse_file("HELLO1.BAS");
+        assert_eq!(
+            program,
+            vec![top_sub_call(
+                "PRINT",
+                vec![Expression::from("Hello, world!")],
+            )],
+        );
+    }
+
+    #[test]
+    fn test_parse_fixture_hello2() {
+        let program = parse_file("HELLO2.BAS");
+        assert_eq!(
+            program,
+            vec![top_sub_call(
+                "PRINT",
+                vec![Expression::from("Hello"), Expression::from("world!")],
+            )],
+        );
+    }
+
+    #[test]
+    fn test_parse_fixture_hello_system() {
+        let program = parse_file("HELLO_S.BAS");
+        assert_eq!(
+            program,
+            vec![
+                top_sub_call("PRINT", vec![Expression::from("Hello, world!")]),
+                top_sub_call("SYSTEM", vec![]),
+            ],
+        );
+    }
+
+    #[test]
+    fn test_parse_fixture_input() {
+        let program = parse_file("INPUT.BAS");
+        assert_eq!(
+            program,
+            vec![
+                top_sub_call("INPUT", vec![Expression::variable_name("N")]),
+                top_sub_call("PRINT", vec![Expression::variable_name("N")]),
+            ],
+        );
+    }
+}

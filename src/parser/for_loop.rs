@@ -68,13 +68,12 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::common::StripLocation;
     use crate::parser::Expression;
 
     #[test]
     fn test_for_loop() {
         let input = "FOR I = 1 TO 10\r\nPRINT I\r\nNEXT";
-        let result = parse(input).strip_location();
+        let result = parse(input);
         assert_eq!(
             result,
             vec![top_for_loop(
@@ -89,7 +88,7 @@ mod tests {
     #[test]
     fn test_for_loop_lower_case() {
         let input = "for i = 1 TO 10\r\nprint i\r\nnext";
-        let result = parse(input).strip_location();
+        let result = parse(input);
         assert_eq!(
             result,
             vec![top_for_loop(
@@ -103,7 +102,7 @@ mod tests {
 
     #[test]
     fn fn_fixture_for_print_10() {
-        let result = parse_file("FOR_PRINT_10.BAS").strip_location();
+        let result = parse_file("FOR_PRINT_10.BAS");
         assert_eq!(
             result,
             vec![top_for_loop(
@@ -120,7 +119,7 @@ mod tests {
 
     #[test]
     fn fn_fixture_for_nested() {
-        let result = parse_file("FOR_NESTED.BAS").strip_location();
+        let result = parse_file("FOR_NESTED.BAS");
         assert_eq!(
             result,
             vec![

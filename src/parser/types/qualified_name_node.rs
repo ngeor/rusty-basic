@@ -24,3 +24,9 @@ impl AddLocation<QualifiedNameNode> for QualifiedName {
         QualifiedNameNode::new(self, pos)
     }
 }
+
+impl PartialEq<QualifiedName> for QualifiedNameNode {
+    fn eq(&self, other: &QualifiedName) -> bool {
+        self.element() == other
+    }
+}

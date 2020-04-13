@@ -173,20 +173,17 @@ where
 #[derive(Clone, Debug)]
 pub struct CaseInsensitiveString {
     inner: String,
-    upper: String,
 }
 
 impl CaseInsensitiveString {
     pub fn new(value: String) -> CaseInsensitiveString {
-        let upper = value.to_uppercase();
-        CaseInsensitiveString {
-            inner: value,
-            upper,
-        }
+        CaseInsensitiveString { inner: value }
     }
 
-    pub fn eq(&self, other: &str) -> bool {
-        self.upper == other.to_uppercase()
+    /// Gets the first character of the string.
+    /// Panics if the string is empty.
+    pub fn first_char(&self) -> char {
+        self.inner.chars().next().unwrap()
     }
 }
 
@@ -204,19 +201,14 @@ impl std::fmt::Display for CaseInsensitiveString {
 
 impl PartialEq for CaseInsensitiveString {
     fn eq(&self, other: &Self) -> bool {
-        self.upper == other.upper
+        CmpIgnoreAsciiCase::compare_ignore_ascii_case(self, other) == Ordering::Equal
     }
 }
 
-impl PartialEq<&str> for CaseInsensitiveString {
-    fn eq(&self, other: &&str) -> bool {
-        self.upper == other.to_uppercase()
-    }
-}
-
-impl PartialEq<&str> for &CaseInsensitiveString {
-    fn eq(&self, other: &&str) -> bool {
-        self.upper == other.to_uppercase()
+impl PartialEq<str> for CaseInsensitiveString {
+    fn eq(&self, other: &str) -> bool {
+        CmpIgnoreAsciiCase::compare_ignore_ascii_case(self.inner.as_bytes(), other.as_bytes())
+            == Ordering::Equal
     }
 }
 
@@ -224,13 +216,9 @@ impl Eq for CaseInsensitiveString {}
 
 impl std::hash::Hash for CaseInsensitiveString {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.upper.hash(state);
-    }
-}
-
-impl AsRef<str> for CaseInsensitiveString {
-    fn as_ref(&self) -> &str {
-        self.inner.as_ref()
+        for b in self.inner.as_bytes() {
+            b.to_ascii_uppercase().hash(state);
+        }
     }
 }
 
@@ -271,13 +259,36 @@ impl CmpIgnoreAsciiCase for &[u8] {
 
 impl CmpIgnoreAsciiCase for &str {
     fn compare_ignore_ascii_case(left: &str, right: &str) -> Ordering {
-        CmpIgnoreAsciiCase::compare_ignore_ascii_case(left.as_bytes(), right.as_bytes())
+        let l_bytes: &[u8] = left.as_bytes();
+        let r_bytes: &[u8] = right.as_bytes();
+        CmpIgnoreAsciiCase::compare_ignore_ascii_case(l_bytes, r_bytes)
+    }
+}
+
+impl CmpIgnoreAsciiCase for &String {
+    fn compare_ignore_ascii_case(left: &String, right: &String) -> Ordering {
+        let l_bytes: &[u8] = left.as_bytes();
+        let r_bytes: &[u8] = right.as_bytes();
+        CmpIgnoreAsciiCase::compare_ignore_ascii_case(l_bytes, r_bytes)
+    }
+}
+
+impl CmpIgnoreAsciiCase for &CaseInsensitiveString {
+    fn compare_ignore_ascii_case(
+        left: &CaseInsensitiveString,
+        right: &CaseInsensitiveString,
+    ) -> Ordering {
+        let l_inner: &String = &left.inner;
+        let r_inner: &String = &right.inner;
+        CmpIgnoreAsciiCase::compare_ignore_ascii_case(l_inner, r_inner)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
 
     #[test]
     fn test_case_insensitive_string() {
@@ -286,6 +297,16 @@ mod tests {
         assert_eq!("abcDEF".to_string(), x.to_string());
         assert_eq!("ABCdef".to_string(), y.to_string());
         assert_eq!(x, y);
+
+        let mut hasher = DefaultHasher::new();
+        x.hash(&mut hasher);
+        let x_hash = hasher.finish();
+
+        hasher = DefaultHasher::new();
+        y.hash(&mut hasher);
+        let y_hash = hasher.finish();
+
+        assert_eq!(x_hash, y_hash);
     }
 
     #[test]

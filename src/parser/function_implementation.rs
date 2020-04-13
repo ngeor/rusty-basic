@@ -33,7 +33,6 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::common::StripLocation;
     use crate::parser::{Expression, Name, Statement, TopLevelToken};
 
     #[test]
@@ -43,7 +42,7 @@ mod tests {
             Add = A + B
         END FUNCTION
         ";
-        let result = parse(input).strip_location();
+        let result = parse(input);
         assert_eq!(
             result,
             vec![TopLevelToken::FunctionImplementation(
@@ -67,7 +66,7 @@ mod tests {
             add = a + b
         end function
         ";
-        let result = parse(input).strip_location();
+        let result = parse(input);
         assert_eq!(
             result,
             vec![TopLevelToken::FunctionImplementation(

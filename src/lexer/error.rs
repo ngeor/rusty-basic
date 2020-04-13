@@ -1,7 +1,7 @@
 use super::LexemeNode;
 use crate::common::Location;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LexerError {
     Internal(String, Location),
 

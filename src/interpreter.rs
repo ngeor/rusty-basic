@@ -1,4 +1,4 @@
-use crate::common::{CaseInsensitiveString, HasLocation};
+use crate::common::{CaseInsensitiveString, HasLocation, Location};
 use crate::parser::*;
 
 mod assignment;
@@ -17,17 +17,13 @@ mod variable_setter;
 mod variant;
 
 #[cfg(test)]
-use crate::common::Location;
-
-#[cfg(test)]
 mod test_utils;
 
-use self::context::*;
-use self::function_context::FunctionContext;
+pub use self::context::*;
+pub use self::function_context::*;
 pub use self::interpreter_error::*;
 pub use self::stdlib::*;
-use self::variable_setter::*;
-use self::variant::*;
+pub use self::variant::*;
 
 #[derive(Debug)]
 pub struct Interpreter<S> {
@@ -55,11 +51,11 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             match top_level_token {
                 TopLevelTokenNode::FunctionDeclaration(f) => {
                     self.function_context
-                        .add_function_declaration(f.resolve(self))?;
+                        .add_function_declaration(f, &self.resolver_helper)?;
                 }
                 TopLevelTokenNode::FunctionImplementation(f) => {
                     self.function_context
-                        .add_function_implementation(f.resolve(self))?;
+                        .add_function_implementation(f, &self.resolver_helper)?;
                 }
                 TopLevelTokenNode::Statement(s) => {
                     statements.push(s);
@@ -171,13 +167,12 @@ trait VariableGetter<T> {
     fn get_variable(&self, variable_name: T) -> std::result::Result<&Variant, InterpreterError>;
 }
 
-impl<S: Stdlib> VariableGetter<&QualifiedNameNode> for Interpreter<S> {
+impl<S: Stdlib> VariableGetter<(&QualifiedName, Location)> for Interpreter<S> {
     fn get_variable(
         &self,
-        variable_name_node: &QualifiedNameNode,
+        variable_name_node: (&QualifiedName, Location),
     ) -> std::result::Result<&Variant, InterpreterError> {
-        let qualified_name = variable_name_node.element();
-        let location = variable_name_node.location();
+        let (qualified_name, location) = variable_name_node;
         match self.context_ref().get(qualified_name) {
             Some(v) => Ok(v),
             None => Err(InterpreterError::new_with_pos(
@@ -191,21 +186,19 @@ impl<S: Stdlib> VariableGetter<&QualifiedNameNode> for Interpreter<S> {
 impl<S: Stdlib> VariableGetter<&NameNode> for Interpreter<S> {
     fn get_variable(
         &self,
-        variable_name: &NameNode,
+        variable_name_node: &NameNode,
     ) -> std::result::Result<&Variant, InterpreterError> {
-        let q = variable_name.resolve_ref(self);
-        self.get_variable(&q)
+        let pos = variable_name_node.location();
+        let q = variable_name_node.element().to_qualified_name(self);
+        self.get_variable((&q, pos))
     }
 }
 
 #[cfg(test)]
-use crate::common::AddLocation;
-
-#[cfg(test)]
 impl<S: Stdlib> VariableGetter<&str> for Interpreter<S> {
     fn get_variable(&self, variable_name: &str) -> std::result::Result<&Variant, InterpreterError> {
-        let name_node = Name::from(variable_name).add_location(Location::zero());
-        self.get_variable(&name_node)
+        let qualified_name = Name::from(variable_name).to_qualified_name_into(self);
+        self.get_variable((&qualified_name, Location::new(1, 1)))
     }
 }
 
@@ -216,8 +209,7 @@ mod tests {
     #[test]
     fn test_interpret_print_hello_world() {
         let input = "PRINT \"Hello, world!\"";
-        let stdlib = MockStdlib::new();
-        interpret(input, stdlib).unwrap();
+        assert_eq!(interpret(input).stdlib.output, vec!["Hello, world!"]);
     }
 
     #[test]

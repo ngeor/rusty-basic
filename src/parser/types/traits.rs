@@ -13,3 +13,7 @@ pub trait HasBareName {
 pub trait HasQualifier {
     fn qualifier(&self) -> TypeQualifier;
 }
+
+pub trait ResolvesQualifier {
+    fn qualifier(&self, resolver: &dyn TypeResolver) -> TypeQualifier;
+}

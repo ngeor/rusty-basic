@@ -1,6 +1,7 @@
-use super::{Interpreter, InterpreterError, Result, Stdlib, VariableSetter, Variant};
+use super::variable_setter::VariableSetter;
+use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
-use crate::parser::{ExpressionNode, HasBareName, NameNode, TypeQualifier};
+use crate::parser::{ExpressionNode, HasBareName, NameNode, ResolvesQualifier, TypeQualifier};
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     pub fn sub_call(&mut self, name: &NameNode, args: &Vec<ExpressionNode>) -> Result<()> {
@@ -56,7 +57,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             .stdlib
             .input()
             .map_err(|e| InterpreterError::new_with_pos(e.to_string(), var_name.location()))?;
-        let variable_value = match var_name.resolve_qualifier(self) {
+        let variable_value = match var_name.qualifier(self) {
             TypeQualifier::BangSingle => Variant::from(
                 parse_single_input(raw_input)
                     .map_err(|e| InterpreterError::new_with_pos(e, var_name.location()))?,

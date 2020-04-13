@@ -27,4 +27,9 @@ impl InterpreterError {
         new_vec.push(pos);
         InterpreterError::new(self.message, new_vec)
     }
+
+    #[cfg(test)]
+    pub fn message(&self) -> &String {
+        &self.message
+    }
 }

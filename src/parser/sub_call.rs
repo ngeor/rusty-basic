@@ -1,5 +1,4 @@
 use super::{ExpressionNode, NameNode, Parser, StatementNode};
-use crate::common::CaseInsensitiveString;
 use crate::lexer::{LexemeNode, LexerError};
 use std::io::BufRead;
 
@@ -21,7 +20,7 @@ impl<T: BufRead> Parser<T> {
         };
         self.buf_lexer.demand_eol_or_eof()?;
         Ok(StatementNode::SubCall(
-            NameNode::new(CaseInsensitiveString::new(sub_name), None, pos),
+            NameNode::from(sub_name, None, pos),
             args,
         ))
     }
@@ -30,49 +29,53 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::parser::Expression;
+    use super::*;
+    use crate::parser::TopLevelTokenNode;
 
     #[test]
     fn test_parse_sub_call_no_args() {
         let input = "PRINT";
-        let program = parse(input);
-        assert_eq!(program, vec![top_sub_call("PRINT", vec![])]);
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            StatementNode::SubCall("PRINT".as_name(1, 1), vec![])
+        );
     }
 
     #[test]
     fn test_parse_sub_call_single_arg_string_literal() {
         let input = "PRINT \"Hello, world!\"";
-        let program = parse(input);
+        let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            vec![top_sub_call(
-                "PRINT",
-                vec![Expression::from("Hello, world!")],
-            )],
+            StatementNode::SubCall(
+                "PRINT".as_name(1, 1),
+                vec!["Hello, world!".as_lit_expr(1, 7)]
+            )
         );
     }
 
     #[test]
     fn test_parse_fixture_hello1() {
-        let program = parse_file("HELLO1.BAS");
+        let program = parse_file("HELLO1.BAS").demand_single_statement();
         assert_eq!(
             program,
-            vec![top_sub_call(
-                "PRINT",
-                vec![Expression::from("Hello, world!")],
-            )],
+            StatementNode::SubCall(
+                "PRINT".as_name(1, 1),
+                vec!["Hello, world!".as_lit_expr(1, 7)]
+            )
         );
     }
 
     #[test]
     fn test_parse_fixture_hello2() {
-        let program = parse_file("HELLO2.BAS");
+        let program = parse_file("HELLO2.BAS").demand_single_statement();
         assert_eq!(
             program,
-            vec![top_sub_call(
-                "PRINT",
-                vec![Expression::from("Hello"), Expression::from("world!")],
-            )],
+            StatementNode::SubCall(
+                "PRINT".as_name(1, 1),
+                vec!["Hello".as_lit_expr(1, 7), "world!".as_lit_expr(1, 16)]
+            )
         );
     }
 
@@ -82,8 +85,14 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                top_sub_call("PRINT", vec![Expression::from("Hello, world!")]),
-                top_sub_call("SYSTEM", vec![]),
+                TopLevelTokenNode::Statement(StatementNode::SubCall(
+                    "PRINT".as_name(1, 1),
+                    vec!["Hello, world!".as_lit_expr(1, 7)]
+                )),
+                TopLevelTokenNode::Statement(StatementNode::SubCall(
+                    "SYSTEM".as_name(2, 1),
+                    vec![]
+                )),
             ],
         );
     }
@@ -94,8 +103,14 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                top_sub_call("INPUT", vec![Expression::variable_name("N")]),
-                top_sub_call("PRINT", vec![Expression::variable_name("N")]),
+                TopLevelTokenNode::Statement(StatementNode::SubCall(
+                    "INPUT".as_name(1, 1),
+                    vec!["N".as_var_expr(1, 7)]
+                )),
+                TopLevelTokenNode::Statement(StatementNode::SubCall(
+                    "PRINT".as_name(2, 1),
+                    vec!["N".as_var_expr(2, 7)]
+                )),
             ],
         );
     }

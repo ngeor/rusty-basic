@@ -33,7 +33,9 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::parser::{Expression, Name, Statement, TopLevelToken};
+    use super::*;
+    use crate::common::Location;
+    use crate::parser::{ExpressionNode, Operand, OperandNode, StatementNode};
 
     #[test]
     fn test_function_implementation() {
@@ -42,20 +44,22 @@ mod tests {
             Add = A + B
         END FUNCTION
         ";
-        let result = parse(input);
+        let result = parse(input).demand_single();
         assert_eq!(
             result,
-            vec![TopLevelToken::FunctionImplementation(
-                Name::from("Add"),
-                vec![Name::from("A"), Name::from("B")],
-                vec![Statement::Assignment(
-                    Name::from("Add"),
-                    Expression::plus(
-                        Expression::VariableName(Name::from("A")),
-                        Expression::VariableName(Name::from("B"))
+            TopLevelTokenNode::FunctionImplementation(FunctionImplementationNode::new(
+                "Add".as_name(2, 18),
+                vec!["A".as_name(2, 22), "B".as_name(2, 25)],
+                vec![StatementNode::Assignment(
+                    "Add".as_name(3, 13),
+                    ExpressionNode::BinaryExpression(
+                        OperandNode::new(Operand::Plus, Location::new(3, 21)),
+                        Box::new("A".as_var_expr(3, 19)),
+                        Box::new("B".as_var_expr(3, 23))
                     )
-                )]
-            )]
+                )],
+                Location::new(2, 9)
+            ))
         );
     }
 
@@ -66,20 +70,22 @@ mod tests {
             add = a + b
         end function
         ";
-        let result = parse(input);
+        let result = parse(input).demand_single();
         assert_eq!(
             result,
-            vec![TopLevelToken::FunctionImplementation(
-                Name::from("add"),
-                vec![Name::from("a"), Name::from("b")],
-                vec![Statement::Assignment(
-                    Name::from("add"),
-                    Expression::plus(
-                        Expression::VariableName(Name::from("a")),
-                        Expression::VariableName(Name::from("b"))
+            TopLevelTokenNode::FunctionImplementation(FunctionImplementationNode::new(
+                "add".as_name(2, 18),
+                vec!["a".as_name(2, 22), "b".as_name(2, 25)],
+                vec![StatementNode::Assignment(
+                    "add".as_name(3, 13),
+                    ExpressionNode::BinaryExpression(
+                        OperandNode::new(Operand::Plus, Location::new(3, 21)),
+                        Box::new("a".as_var_expr(3, 19)),
+                        Box::new("b".as_var_expr(3, 23))
                     )
-                )]
-            )]
+                )],
+                Location::new(2, 9)
+            ))
         );
     }
 }

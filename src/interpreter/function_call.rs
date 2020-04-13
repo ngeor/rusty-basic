@@ -1,10 +1,9 @@
-use super::{
-    Interpreter, InterpreterError, Result, Stdlib, VariableGetter, VariableSetter, Variant,
-};
-use crate::common::{HasLocation, StripLocation};
+use super::function_context::QualifiedFunctionImplementationNode;
+use super::variable_setter::VariableSetter;
+use super::{Interpreter, InterpreterError, Result, Stdlib, VariableGetter, Variant};
+use crate::common::{HasLocation, Location};
 use crate::parser::{
-    ExpressionNode, HasBareName, HasQualifier, NameNode, QualifiedFunctionImplementationNode,
-    QualifiedNameNode, TypeResolver,
+    ExpressionNode, HasBareName, HasQualifier, NameNode, QualifiedName, TypeResolver,
 };
 
 impl<S: Stdlib> Interpreter<S> {
@@ -38,23 +37,26 @@ impl<S: Stdlib> Interpreter<S> {
         args: Vec<Variant>,
         function_name: &NameNode,
     ) -> Result<Variant> {
-        let function_parameters: Vec<QualifiedNameNode> = function_implementation.parameters;
+        let function_parameters: Vec<QualifiedName> = function_implementation.parameters;
         if function_parameters.len() != args.len() {
             Err(InterpreterError::new_with_pos(
                 format!(
                     "Function {} expected {} parameters but {} were given",
-                    function_implementation.name.element(),
+                    function_implementation.name,
                     function_parameters.len(),
                     args.len()
                 ),
                 function_name.location(),
             ))
         } else {
-            self.push_context(function_implementation.name.clone().strip_location());
-            self._populate_new_context(function_parameters, args)?;
+            self.push_context(function_implementation.name.clone());
+            self._populate_new_context(function_parameters, args, function_name.location())?;
             self.statements(&function_implementation.block)
                 .map_err(|e| e.merge_pos(function_name.location()))?;
-            let result = self._get_variable_name_or_default(&function_implementation.name);
+            let result = self._get_variable_name_or_default(
+                &function_implementation.name,
+                function_name.location(),
+            );
             self.pop_context();
             Ok(result)
         }
@@ -62,18 +64,23 @@ impl<S: Stdlib> Interpreter<S> {
 
     fn _populate_new_context(
         &mut self,
-        mut parameter_names: Vec<QualifiedNameNode>,
+        mut parameter_names: Vec<QualifiedName>,
         mut arguments: Vec<Variant>,
+        call_pos: Location,
     ) -> Result<()> {
         while !parameter_names.is_empty() {
             let variable_name = parameter_names.pop().unwrap();
-            self.set_variable(variable_name, arguments.pop().unwrap())?;
+            self.set_variable((variable_name, call_pos), arguments.pop().unwrap())?;
         }
         Ok(())
     }
 
-    fn _get_variable_name_or_default(&self, function_name: &QualifiedNameNode) -> Variant {
-        match self.get_variable(function_name) {
+    fn _get_variable_name_or_default(
+        &self,
+        function_name: &QualifiedName,
+        pos: Location,
+    ) -> Variant {
+        match self.get_variable((function_name, pos)) {
             Ok(v) => v.clone(),
             Err(_) => Variant::default_variant(function_name.qualifier()),
         }
@@ -108,6 +115,7 @@ impl<S: Stdlib> Interpreter<S> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
+    use crate::assert_has_variable;
     use crate::common::Location;
 
     #[test]
@@ -119,8 +127,8 @@ mod tests {
             Add = A + B
         END FUNCTION
         ";
-        let interpreter = interpret(program, MockStdlib::new()).unwrap();
-        interpreter.has_variable("X", 3.0_f32);
+        let interpreter = interpret(program);
+        assert_has_variable!(interpreter, "X", 3.0_f32);
     }
 
     #[test]
@@ -130,7 +138,7 @@ mod tests {
         X = Add(1, 2)
         ";
         assert_eq!(
-            interpret(program, MockStdlib::new()).unwrap_err(),
+            interpret_err(program),
             InterpreterError::new_with_pos("Subprogram not defined", Location::new(2, 9))
         );
     }
@@ -143,8 +151,8 @@ mod tests {
             Add = A + B
         END FUNCTION
         ";
-        let interpreter = interpret(program, MockStdlib::new()).unwrap();
-        interpreter.has_variable("X", 3.0_f32);
+        let interpreter = interpret(program);
+        assert_has_variable!(interpreter, "X", 3.0_f32);
     }
 
     #[test]
@@ -156,8 +164,8 @@ mod tests {
             PRINT A + B
         END FUNCTION
         ";
-        let interpreter = interpret(program, MockStdlib::new()).unwrap();
-        interpreter.has_variable("X", 0.0_f32);
+        let interpreter = interpret(program);
+        assert_has_variable!(interpreter, "X", 0.0_f32);
         assert_eq!(interpreter.stdlib.output, vec!["3"]);
     }
 
@@ -166,8 +174,8 @@ mod tests {
         let program = "
         X = Add(1, 2)
         ";
-        let interpreter = interpret(program, MockStdlib::new()).unwrap();
-        interpreter.has_variable("X", 0.0_f32);
+        let interpreter = interpret(program);
+        assert_has_variable!(interpreter, "X", 0.0_f32);
     }
 
     #[test]
@@ -176,7 +184,7 @@ mod tests {
         X = Add(\"1\", \"2\")
         ";
         assert_eq!(
-            interpret(program, MockStdlib::new()).unwrap_err(),
+            interpret_err(program),
             InterpreterError::new_with_pos("Type mismatch", Location::new(2, 17))
         );
     }
@@ -190,7 +198,35 @@ mod tests {
             aDd = a + b + c
         END FUNCTION
         ";
-        let interpreter = interpret(program, MockStdlib::new()).unwrap();
-        interpreter.has_variable("X", 6.0_f32);
+        let interpreter = interpret(program);
+        assert_has_variable!(interpreter, "X", 6.0_f32);
+    }
+
+    #[test]
+    fn test_function_call_defint() {
+        let program = "
+        DEFINT A-Z
+        DECLARE FUNCTION Add(A, B, c)
+        X = add(1, 2, 3)
+        FUNCTION ADD(a, B, C)
+            aDd = a + b + c
+        END FUNCTION
+        ";
+        let interpreter = interpret(program);
+        assert_has_variable!(interpreter, "X", 6);
+    }
+
+    #[test]
+    fn test_function_call_defstr() {
+        let program = r#"
+        DEFSTR A-Z
+        DECLARE FUNCTION Add(A, B, c)
+        X = add("1", "2", "3")
+        FUNCTION ADD(a, B, C)
+            aDd = a + b + c
+        END FUNCTION
+        "#;
+        let interpreter = interpret(program);
+        assert_has_variable!(interpreter, "X", "123");
     }
 }

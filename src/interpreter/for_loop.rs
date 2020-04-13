@@ -1,7 +1,6 @@
-use super::{
-    Interpreter, InterpreterError, Result, Stdlib, VariableGetter, VariableSetter, Variant,
-};
-use crate::common::{HasLocation, StripLocation};
+use super::variable_setter::VariableSetter;
+use super::{Interpreter, InterpreterError, Result, Stdlib, VariableGetter, Variant};
+use crate::common::HasLocation;
 use crate::parser::{ForLoopNode, NameNode};
 use std::cmp::Ordering;
 
@@ -107,10 +106,8 @@ impl<S: Stdlib> Interpreter<S> {
     }
 
     fn _are_different_variable(&self, left: &NameNode, right: &NameNode) -> bool {
-        let left_qualified_name_node = left.resolve_ref(self);
-        let right_qualified_name_node = right.resolve_ref(self);
-        let left_qualified_name = left_qualified_name_node.strip_location();
-        let right_qualified_name = right_qualified_name_node.strip_location();
+        let left_qualified_name = left.element().to_qualified_name(self);
+        let right_qualified_name = right.element().to_qualified_name(self);
         left_qualified_name != right_qualified_name
     }
 }
@@ -119,6 +116,8 @@ impl<S: Stdlib> Interpreter<S> {
 mod tests {
     use super::super::test_utils::*;
     use super::InterpreterError;
+    use super::*;
+    use crate::assert_has_variable;
     use crate::common::Location;
 
     #[test]
@@ -128,7 +127,7 @@ mod tests {
             PRINT I
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let interpreter = interpret(input);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
     }
@@ -140,7 +139,7 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let interpreter = interpret(input);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
     }
@@ -152,7 +151,7 @@ mod tests {
             PRINT I%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let interpreter = interpret(input);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
     }
@@ -164,8 +163,8 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
-        interpreter.has_variable("i%", 6);
+        let interpreter = interpret(input);
+        assert_has_variable!(interpreter, "i%", 6);
     }
 
     #[test]
@@ -175,8 +174,8 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
-        interpreter.has_variable("i%", 1);
+        let interpreter = interpret(input);
+        assert_has_variable!(interpreter, "i%", 1);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, Vec::<String>::new());
     }
@@ -188,7 +187,7 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let interpreter = interpret(input);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["1", "3", "5", "7"]);
     }
@@ -200,7 +199,7 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let interpreter = interpret(input);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["7", "4", "1", "-2", "-5"]);
     }
@@ -212,8 +211,8 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
-        interpreter.has_variable("i%", -4);
+        let interpreter = interpret(input);
+        assert_has_variable!(interpreter, "i%", -4);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["3", "2", "1", "0", "-1", "-2", "-3"]);
     }
@@ -225,7 +224,7 @@ mod tests {
             PRINT i%
         NEXT i%
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let interpreter = interpret(input);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
     }
@@ -237,7 +236,7 @@ mod tests {
             PRINT i%
         NEXT I%
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
+        let interpreter = interpret(input);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
     }
@@ -249,15 +248,10 @@ mod tests {
             PRINT i%
         NEXT i
         ";
-        match interpret(input, MockStdlib::new()) {
-            Ok(_) => panic!("should have failed"),
-            Err(err) => {
-                assert_eq!(
-                    err,
-                    InterpreterError::new_with_pos("NEXT without FOR", Location::new(4, 14))
-                );
-            }
-        }
+        assert_eq!(
+            interpret_err(input),
+            InterpreterError::new_with_pos("NEXT without FOR", Location::new(4, 14))
+        );
     }
 
     #[test]
@@ -269,9 +263,9 @@ mod tests {
             N% = N% - 1
         NEXT
         ";
-        let interpreter = interpret(input, MockStdlib::new()).unwrap();
-        interpreter.has_variable("I%", 4);
-        interpreter.has_variable("N%", 0);
+        let interpreter = interpret(input);
+        assert_has_variable!(interpreter, "I%", 4);
+        assert_has_variable!(interpreter, "N%", 0);
         let stdlib = interpreter.stdlib;
         assert_eq!(stdlib.output, vec!["1", "2", "3"]);
     }

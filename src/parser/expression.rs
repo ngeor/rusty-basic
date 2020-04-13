@@ -1,6 +1,6 @@
 use super::parse_result::ParseResult;
 use super::{ExpressionNode, NameNode, Operand, OperandNode, Parser, UnaryOperand};
-use crate::common::{CaseInsensitiveString, Locatable, Location};
+use crate::common::{Locatable, Location};
 use crate::lexer::{LexemeNode, LexerError};
 use std::convert::TryFrom;
 use std::io::BufRead;
@@ -193,14 +193,12 @@ impl<T: BufRead> Parser<T> {
             let args = self.parse_expression_list()?;
             self.buf_lexer.demand_symbol(')')?;
             Ok(ExpressionNode::FunctionCall(
-                NameNode::new(CaseInsensitiveString::new(word), qualifier, pos),
+                NameNode::from(word, qualifier, pos),
                 args,
             ))
         } else {
-            Ok(ExpressionNode::VariableName(NameNode::new(
-                CaseInsensitiveString::new(word),
-                qualifier,
-                pos,
+            Ok(ExpressionNode::VariableName(NameNode::from(
+                word, qualifier, pos,
             )))
         }
     }
@@ -242,22 +240,18 @@ impl<T: BufRead> Parser<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
     use super::*;
-    use crate::common::StripLocation;
-    use crate::parser::{Expression, Name};
+    use crate::parser::UnaryOperandNode;
 
-    fn assert_parse_literal<TResult>(input: &str, expected: TResult)
-    where
-        TResult: std::fmt::Display + PartialEq,
-        Expression: From<TResult>,
-    {
+    fn assert_parse_literal<T: ExpressionNodeLiteralFactory>(input: &str, expected: T) {
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
-        assert_eq!(expression, Expression::from(expected));
+        let expression = parser.demand_expression().unwrap();
+        assert_eq!(expression, expected.as_lit_expr(1, 1));
     }
 
     #[test]
-    fn test_literals() {
+    fn test_parse_literals() {
         assert_parse_literal("\"hello, world\"", "hello, world");
         assert_parse_literal("42", 42);
         assert_parse_literal("4.2", 4.2_f32);
@@ -271,18 +265,18 @@ mod tests {
     fn test_variable_expression() {
         let input = "A";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
-        assert_eq!(expression, Expression::VariableName(Name::from("A")));
+        let expression = parser.demand_expression().unwrap();
+        assert_eq!(expression, "A".as_var_expr(1, 1));
     }
 
     #[test]
     fn test_function_call_expression_no_args() {
         let input = "IsValid()";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::FunctionCall(Name::from("IsValid"), vec![])
+            ExpressionNode::FunctionCall("IsValid".as_name(1, 1), vec![])
         );
     }
 
@@ -290,10 +284,10 @@ mod tests {
     fn test_function_call_qualified_expression_no_args() {
         let input = "IsValid%()";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::FunctionCall(Name::from("IsValid%"), vec![])
+            ExpressionNode::FunctionCall("IsValid%".as_name(1, 1), vec![])
         );
     }
 
@@ -301,10 +295,10 @@ mod tests {
     fn test_function_call_expression_one_arg() {
         let input = "IsValid(42)";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::FunctionCall(Name::from("IsValid"), vec![Expression::IntegerLiteral(42)])
+            ExpressionNode::FunctionCall("IsValid".as_name(1, 1), vec![42.as_lit_expr(1, 9)])
         );
     }
 
@@ -312,12 +306,12 @@ mod tests {
     fn test_function_call_expression_two_args() {
         let input = "CheckProperty(42, \"age\")";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::FunctionCall(
-                Name::from("CheckProperty"),
-                vec![Expression::from(42), Expression::from("age")]
+            ExpressionNode::FunctionCall(
+                "CheckProperty".as_name(1, 1),
+                vec![42.as_lit_expr(1, 15), "age".as_lit_expr(1, 19)]
             )
         );
     }
@@ -330,19 +324,13 @@ mod tests {
         assert_eq!(
             expression_node,
             ExpressionNode::FunctionCall(
-                NameNode::from("CheckProperty").at(Location::new(1, 1)),
+                "CheckProperty".as_name(1, 1),
                 vec![
                     ExpressionNode::FunctionCall(
-                        NameNode::from("LookupName").at(Location::new(1, 15)),
-                        vec![ExpressionNode::StringLiteral(
-                            "age".to_string(),
-                            Location::new(1, 26)
-                        )]
+                        "LookupName".as_name(1, 15),
+                        vec!["age".as_lit_expr(1, 26)]
                     ),
-                    ExpressionNode::FunctionCall(
-                        NameNode::from("Confirm").at(Location::new(1, 34)),
-                        vec![]
-                    )
+                    ExpressionNode::FunctionCall("Confirm".as_name(1, 34), vec![])
                 ]
             )
         );
@@ -352,13 +340,13 @@ mod tests {
     fn test_lte() {
         let input = "N <= 1";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::BinaryExpression(
-                Operand::LessOrEqualThan,
-                Box::new(Expression::variable_name("N")),
-                Box::new(Expression::IntegerLiteral(1)),
+            ExpressionNode::BinaryExpression(
+                OperandNode::new(Operand::LessOrEqualThan, Location::new(1, 3)),
+                Box::new("N".as_var_expr(1, 1)),
+                Box::new(1.as_lit_expr(1, 6)),
             ),
         );
     }
@@ -367,13 +355,13 @@ mod tests {
     fn test_less_than() {
         let input = "A < B";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::BinaryExpression(
-                Operand::LessThan,
-                Box::new(Expression::variable_name("A")),
-                Box::new(Expression::variable_name("B")),
+            ExpressionNode::BinaryExpression(
+                OperandNode::new(Operand::LessThan, Location::new(1, 3)),
+                Box::new("A".as_var_expr(1, 1)),
+                Box::new("B".as_var_expr(1, 5)),
             ),
         );
     }
@@ -382,13 +370,13 @@ mod tests {
     fn test_plus() {
         let input = "N + 1";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::BinaryExpression(
-                Operand::Plus,
-                Box::new(Expression::variable_name("N")),
-                Box::new(Expression::IntegerLiteral(1)),
+            ExpressionNode::BinaryExpression(
+                OperandNode::new(Operand::Plus, Location::new(1, 3)),
+                Box::new("N".as_var_expr(1, 1)),
+                Box::new(1.as_lit_expr(1, 5)),
             ),
         );
     }
@@ -397,13 +385,13 @@ mod tests {
     fn test_minus() {
         let input = "N - 2";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::BinaryExpression(
-                Operand::Minus,
-                Box::new(Expression::variable_name("N")),
-                Box::new(Expression::IntegerLiteral(2)),
+            ExpressionNode::BinaryExpression(
+                OperandNode::new(Operand::Minus, Location::new(1, 3)),
+                Box::new("N".as_var_expr(1, 1)),
+                Box::new(2.as_lit_expr(1, 5)),
             ),
         );
     }
@@ -412,12 +400,12 @@ mod tests {
     fn test_negated_variable() {
         let input = "-N";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::UnaryExpression(
-                UnaryOperand::Minus,
-                Box::new(Expression::variable_name("N"))
+            ExpressionNode::UnaryExpression(
+                UnaryOperandNode::new(UnaryOperand::Minus, Location::new(1, 1)),
+                Box::new("N".as_var_expr(1, 2))
             ),
         );
     }
@@ -426,24 +414,25 @@ mod tests {
     fn test_fib_expression() {
         let input = "Fib(N - 1) + Fib(N - 2)";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::BinaryExpression(
-                Operand::Plus,
-                Box::new(Expression::FunctionCall(
-                    Name::from("Fib"),
-                    vec![Expression::BinaryExpression(
-                        Operand::Minus,
-                        Box::new(Expression::variable_name("N")),
-                        Box::new(Expression::IntegerLiteral(1)),
+            ExpressionNode::BinaryExpression(
+                OperandNode::new(Operand::Plus, Location::new(1, 12)),
+                Box::new(ExpressionNode::FunctionCall(
+                    "Fib".as_name(1, 1),
+                    vec![ExpressionNode::BinaryExpression(
+                        OperandNode::new(Operand::Minus, Location::new(1, 7)),
+                        Box::new("N".as_var_expr(1, 5)),
+                        Box::new(1.as_lit_expr(1, 9)),
                     )],
                 )),
-                Box::new(Expression::FunctionCall(
-                    Name::from("Fib"),
-                    vec![Expression::minus(
-                        Expression::variable_name("N"),
-                        Expression::IntegerLiteral(2),
+                Box::new(ExpressionNode::FunctionCall(
+                    "Fib".as_name(1, 14),
+                    vec![ExpressionNode::BinaryExpression(
+                        OperandNode::new(Operand::Minus, Location::new(1, 20)),
+                        Box::new("N".as_var_expr(1, 18)),
+                        Box::new(2.as_lit_expr(1, 22)),
                     )],
                 )),
             ),
@@ -454,16 +443,16 @@ mod tests {
     fn test_negated_function_call() {
         let input = "-Fib(-N)";
         let mut parser = Parser::from(input);
-        let expression = parser.demand_expression().unwrap().strip_location();
+        let expression = parser.demand_expression().unwrap();
         assert_eq!(
             expression,
-            Expression::UnaryExpression(
-                UnaryOperand::Minus,
-                Box::new(Expression::FunctionCall(
-                    Name::from("Fib"),
-                    vec![Expression::UnaryExpression(
-                        UnaryOperand::Minus,
-                        Box::new(Expression::variable_name("N")),
+            ExpressionNode::UnaryExpression(
+                UnaryOperandNode::new(UnaryOperand::Minus, Location::new(1, 1)),
+                Box::new(ExpressionNode::FunctionCall(
+                    "Fib".as_name(1, 2),
+                    vec![ExpressionNode::UnaryExpression(
+                        UnaryOperandNode::new(UnaryOperand::Minus, Location::new(1, 6)),
+                        Box::new("N".as_var_expr(1, 7)),
                     )],
                 ))
             )

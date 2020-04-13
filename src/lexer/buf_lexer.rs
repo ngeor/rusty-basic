@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
 #[derive(Debug)]
-pub struct BufLexer<T> {
+pub struct BufLexer<T: BufRead> {
     lexer: Lexer<T>,
     _history: Vec<LexemeNode>,
     _index: usize,

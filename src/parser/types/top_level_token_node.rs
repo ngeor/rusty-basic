@@ -1,7 +1,4 @@
-use super::{
-    DefTypeNode, FunctionDeclarationNode, FunctionImplementationNode, StatementNode, TopLevelToken,
-};
-use crate::common::StripLocation;
+use super::{DefTypeNode, FunctionDeclarationNode, FunctionImplementationNode, StatementNode};
 
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 
@@ -13,22 +10,4 @@ pub enum TopLevelTokenNode {
 
     /// A default type definition, e.g. DEFINT A-Z.
     DefType(DefTypeNode),
-}
-
-impl StripLocation<TopLevelToken> for TopLevelTokenNode {
-    fn strip_location(self) -> TopLevelToken {
-        match self {
-            TopLevelTokenNode::FunctionDeclaration(n) => TopLevelToken::FunctionDeclaration(
-                n.name.strip_location(),
-                n.parameters.strip_location(),
-            ),
-            TopLevelTokenNode::Statement(s) => TopLevelToken::Statement(s.strip_location()),
-            TopLevelTokenNode::FunctionImplementation(n) => TopLevelToken::FunctionImplementation(
-                n.name.strip_location(),
-                n.parameters.strip_location(),
-                n.block.strip_location(),
-            ),
-            TopLevelTokenNode::DefType(_) => unimplemented!(),
-        }
-    }
 }

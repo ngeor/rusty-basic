@@ -43,19 +43,16 @@ mod tests {
     use super::*;
     use crate::common::Location;
     use crate::lexer::LexemeNode;
-    use crate::parser::{StatementNode, TopLevelTokenNode};
+    use crate::parser::StatementNode;
 
     macro_rules! assert_top_level_assignment {
         ($input:expr, $name:expr, $value:expr) => {
-            match parse_single_top_level_token_node($input) {
-                TopLevelTokenNode::Statement(s) => match s {
-                    StatementNode::Assignment(n, v) => {
-                        assert_eq!(&n, $name);
-                        assert_eq!(v, $value);
-                    }
-                    _ => panic!("expected assignment"),
-                },
-                _ => panic!("expected statement"),
+            match parse($input).demand_single_statement() {
+                StatementNode::Assignment(n, v) => {
+                    assert_eq!(&n, $name);
+                    assert_eq!(v, $value);
+                }
+                _ => panic!("expected assignment"),
             }
         };
     }

@@ -63,7 +63,7 @@ mod tests {
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
-            match parse_single_top_level_token_node($input) {
+            match parse($input).demand_single() {
                 TopLevelTokenNode::FunctionDeclaration(f) => {
                     assert_eq!(&f.name, $expected_function_name, "Function name mismatch");
                     let x = $expected_params;

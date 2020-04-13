@@ -46,10 +46,7 @@ mod tests {
             PRINT \"hello\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["hello"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
     }
 
     #[test]
@@ -59,10 +56,7 @@ mod tests {
             PRINT \"hello\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            Vec::<String>::new()
-        );
+        assert_eq!(interpret(input).stdlib.output, Vec::<String>::new());
     }
 
     #[test]
@@ -74,10 +68,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["hello"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
     }
 
     #[test]
@@ -89,10 +80,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["bye"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
     }
 
     #[test]
@@ -104,10 +92,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["hello"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
     }
 
     #[test]
@@ -119,10 +104,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["hello"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
     }
 
     #[test]
@@ -134,10 +116,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["bye"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
     }
 
     #[test]
@@ -149,10 +128,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            Vec::<String>::new()
-        );
+        assert_eq!(interpret(input).stdlib.output, Vec::<String>::new());
     }
 
     #[test]
@@ -166,10 +142,7 @@ mod tests {
             PRINT \"else\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["hello"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
     }
 
     #[test]
@@ -183,10 +156,7 @@ mod tests {
             PRINT \"else\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["hello"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
     }
 
     #[test]
@@ -200,10 +170,7 @@ mod tests {
             PRINT \"else\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["bye"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
     }
 
     #[test]
@@ -217,10 +184,7 @@ mod tests {
             PRINT \"else\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["else"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["else"]);
     }
 
     #[test]
@@ -234,9 +198,6 @@ mod tests {
             PRINT \"else if 2\"
         END IF
         ";
-        assert_eq!(
-            interpret(input, MockStdlib::new()).unwrap().stdlib.output,
-            vec!["bye"]
-        );
+        assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
     }
 }

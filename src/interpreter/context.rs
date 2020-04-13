@@ -1,9 +1,7 @@
 use super::casting::cast;
 use super::{InterpreterError, Result, Variant};
-use crate::common::{HasLocation, StripLocation};
-use crate::parser::{
-    BareNameNode, HasBareName, HasQualifier, NameNode, QualifiedName, QualifiedNameNode,
-};
+use crate::common::{CaseInsensitiveString, Location};
+use crate::parser::{HasBareName, HasQualifier, Name, QualifiedName};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -50,23 +48,23 @@ impl Context {
         }
     }
 
-    pub fn resolve_result_name_bare(&self, name: BareNameNode) -> NameNode {
+    pub fn resolve_result_name_bare(&self, name: CaseInsensitiveString) -> Name {
         match self {
-            Context::Root(_) => NameNode::Bare(name),
+            Context::Root(_) => Name::Bare(name),
             Context::Nested(_, result_name, _) => {
-                if result_name.bare_name() != name.bare_name() {
+                if result_name.bare_name() != &name {
                     // different names, it does not match with the result name
-                    NameNode::Bare(name)
+                    Name::Bare(name)
                 } else {
                     // names match
                     // promote the bare name node to a qualified
-                    NameNode::Typed(name.to_qualified_name_node(result_name.qualifier()))
+                    Name::Typed(QualifiedName::new(name, result_name.qualifier()))
                 }
             }
         }
     }
 
-    pub fn resolve_result_name_typed(&self, name: &QualifiedNameNode) -> Result<()> {
+    pub fn resolve_result_name_typed(&self, name: &QualifiedName, pos: Location) -> Result<()> {
         match self {
             Context::Root(_) => Ok(()),
             Context::Nested(_, result_name, _) => {
@@ -78,10 +76,7 @@ impl Context {
                     if name.qualifier() == result_name.qualifier() {
                         Ok(())
                     } else {
-                        Err(InterpreterError::new_with_pos(
-                            "Duplicate definition",
-                            name.location(),
-                        ))
+                        Err(InterpreterError::new_with_pos("Duplicate definition", pos))
                     }
                 }
             }
@@ -90,11 +85,12 @@ impl Context {
 
     pub fn cast_insert(
         &mut self,
-        name: QualifiedNameNode,
+        name: QualifiedName,
         value: Variant,
+        pos: Location,
     ) -> Result<Option<Variant>> {
         cast(value, name.qualifier())
-            .map_err(|e| InterpreterError::new_with_pos(e, name.location()))
-            .map(|casted| self.insert(name.strip_location(), casted))
+            .map_err(|e| InterpreterError::new_with_pos(e, pos))
+            .map(|casted| self.insert(name, casted))
     }
 }

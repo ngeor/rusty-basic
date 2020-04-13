@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader, Cursor};
 use std::str::FromStr;
 
 #[derive(Debug)]
-pub struct Lexer<T> {
+pub struct Lexer<T: BufRead> {
     reader: CharOrEofReader<T>,
     pos: Location,
 }

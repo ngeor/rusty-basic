@@ -34,7 +34,7 @@ impl<S: Stdlib> Interpreter<S> {
             Operand::LessOrEqualThan => {
                 let cmp = left_var
                     .cmp(&right_var)
-                    .map_err(|e| InterpreterError::new_with_pos(e, left.location()))?;
+                    .map_err(|e| InterpreterError::new_with_pos(e, op.location()))?;
                 match cmp {
                     std::cmp::Ordering::Less | std::cmp::Ordering::Equal => Ok(V_TRUE),
                     std::cmp::Ordering::Greater => Ok(V_FALSE),
@@ -43,7 +43,7 @@ impl<S: Stdlib> Interpreter<S> {
             Operand::LessThan => {
                 let cmp = left_var
                     .cmp(&right_var)
-                    .map_err(|e| InterpreterError::new_with_pos(e, left.location()))?;
+                    .map_err(|e| InterpreterError::new_with_pos(e, op.location()))?;
                 match cmp {
                     std::cmp::Ordering::Less => Ok(V_TRUE),
                     _ => Ok(V_FALSE),
@@ -51,10 +51,10 @@ impl<S: Stdlib> Interpreter<S> {
             }
             Operand::Plus => left_var
                 .plus(&right_var)
-                .map_err(|e| InterpreterError::new_with_pos(e, left.location())),
+                .map_err(|e| InterpreterError::new_with_pos(e, op.location())),
             Operand::Minus => left_var
                 .minus(&right_var)
-                .map_err(|e| InterpreterError::new_with_pos(e, left.location())),
+                .map_err(|e| InterpreterError::new_with_pos(e, op.location())),
         }
     }
 
@@ -79,482 +79,343 @@ impl<S: Stdlib> Interpreter<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::{AddLocation, Location};
+    use crate::assert_has_variable;
+    use crate::common::Location;
     use crate::interpreter::test_utils::*;
-    use crate::parser::Expression;
-
-    fn eval_expr(interpreter: &mut Interpreter<MockStdlib>, e: Expression) -> Result<Variant> {
-        let expression_node = e.add_location(Location::zero());
-        interpreter.evaluate_expression(&expression_node)
-    }
 
     #[test]
     fn test_literals() {
-        let stdlib = MockStdlib::new();
-        let mut interpreter = Interpreter::new(stdlib);
-        assert_eq!(
-            eval_expr(&mut interpreter, Expression::from(3.14_f32)).unwrap(),
-            Variant::from(3.14_f32)
-        );
-        assert_eq!(
-            eval_expr(&mut interpreter, Expression::from(3.14)).unwrap(),
-            Variant::from(3.14)
-        );
-        assert_eq!(
-            eval_expr(&mut interpreter, Expression::from("hello")).unwrap(),
-            Variant::from("hello")
-        );
-        assert_eq!(
-            eval_expr(&mut interpreter, Expression::from(42)).unwrap(),
-            Variant::from(42)
-        );
-        assert_eq!(
-            eval_expr(&mut interpreter, Expression::from(42_i64)).unwrap(),
-            Variant::from(42_i64)
-        );
+        assert_has_variable!(interpret("X = 3.14"), "X", 3.14_f32);
+        assert_has_variable!(interpret("X# = 3.14"), "X#", 3.14);
+        assert_has_variable!(interpret("X$ = \"hello\""), "X$", "hello");
+        assert_has_variable!(interpret("X% = 42"), "X%", 42);
+        assert_has_variable!(interpret("X& = 42"), "X&", 42_i64);
     }
 
     mod plus {
         use super::*;
 
-        fn test<TLeft, TRight, TResult>(left: TLeft, right: TRight, expected: TResult)
-        where
-            Expression: From<TLeft>,
-            Expression: From<TRight>,
-            Variant: From<TResult>,
-        {
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
-            assert_eq!(
-                eval_expr(
-                    &mut interpreter,
-                    Expression::plus(Expression::from(left), Expression::from(right))
-                )
-                .unwrap(),
-                Variant::from(expected)
-            );
-        }
-
-        fn test_err<TLeft, TRight>(left: TLeft, right: TRight)
-        where
-            Expression: From<TLeft>,
-            Expression: From<TRight>,
-        {
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
-            assert_eq!(
-                eval_expr(
-                    &mut interpreter,
-                    Expression::plus(Expression::from(left), Expression::from(right))
-                )
-                .unwrap_err(),
-                InterpreterError::new_with_pos("Type mismatch", Location::zero())
-            );
-        }
-
         #[test]
         fn test_left_float() {
-            test(1.0_f32, 2.0_f32, 3.0_f32);
-            test(1.0_f32, 2.0, 3.0);
-            test_err(1.0_f32, "hello");
-            test(1.0_f32, 2, 3.0_f32);
-            test(1.0_f32, 2_i64, 3.0_f32);
+            assert_has_variable!(interpret("X = 1.1 + 2.1"), "X", 3.2_f32);
+            assert_has_variable!(interpret("X = 1.1 + 2.1#"), "X", 3.2_f32);
+            assert_has_variable!(interpret("X = 1.1 + 2"), "X", 3.1_f32);
+            assert_eq!(
+                interpret_err("X = 1.1 + \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 9))
+            );
         }
 
         #[test]
         fn test_left_double() {
-            test(1.0, 2.0_f32, 3.0);
-            test(1.0, 2.0, 3.0);
-            test_err(1.0, "hello");
-            test(1.0, 2, 3.0);
-            test(1.0, 2_i64, 3.0);
+            assert_has_variable!(interpret("X# = 1.1# + 2.1"), "X#", 3.2_f64);
+            assert_has_variable!(interpret("X# = 1.1 + 2.1#"), "X#", 3.2_f64);
+            assert_has_variable!(interpret("X# = 1.1# + 2"), "X#", 3.1_f64);
+            assert_eq!(
+                interpret_err("X = 1.1# + \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 10))
+            );
         }
 
         #[test]
         fn test_left_string() {
-            test_err("hello", 3.14_f32);
-            test_err("hello", 3.14);
-            test("hello", " world", "hello world");
-            test_err("hello", 42);
-            test_err("hello", 42_i64);
+            assert_has_variable!(interpret(r#"X$ = "hello" + " hi""#), "X$", "hello hi");
+            assert_eq!(
+                interpret_err("X$ = \"hello\" + 1"),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 14))
+            );
+            assert_eq!(
+                interpret_err("X$ = \"hello\" + 1.1"),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 14))
+            );
+            assert_eq!(
+                interpret_err("X$ = \"hello\" + 1.1#"),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 14))
+            );
         }
 
         #[test]
         fn test_left_integer() {
-            test(1, 2.0_f32, 3.0_f32);
-            test(1, 2.0, 3.0);
-            test_err(42, "hello");
-            test(1, 2, 3);
-            test(1, 2_i64, 3_i64);
+            assert_has_variable!(interpret("X% = 1 + 2.1"), "X%", 3);
+            assert_has_variable!(interpret("X% = 1 + 2.5"), "X%", 4);
+            assert_has_variable!(interpret("X% = 1 + 2.1#"), "X%", 3);
+            assert_has_variable!(interpret("X% = 1 + 2"), "X%", 3);
+            assert_eq!(
+                interpret_err("X% = 1 + \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 8))
+            );
         }
 
         #[test]
         fn test_left_long() {
-            test(1_i64, 2.0_f32, 3.0_f32);
-            test(1_i64, 2.0, 3.0);
-            test_err(1_i64, "hello");
-            test(1_i64, 2, 3_i64);
-            test(1_i64, 2_i64, 3_i64);
+            assert_has_variable!(interpret("X& = 1 + 2.1"), "X&", 3_i64);
+            assert_has_variable!(interpret("X& = 1 + 2.5"), "X&", 4_i64);
+            assert_has_variable!(interpret("X& = 1 + 2.1#"), "X&", 3_i64);
+            assert_has_variable!(interpret("X& = 1 + 2"), "X&", 3_i64);
+            assert_eq!(
+                interpret_err("X& = 1 + \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 8))
+            );
         }
     }
 
     mod minus {
         use super::*;
 
-        fn test<TLeft, TRight, TResult>(left: TLeft, right: TRight, expected: TResult)
-        where
-            Expression: From<TLeft>,
-            Expression: From<TRight>,
-            Variant: From<TResult>,
-        {
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
-            assert_eq!(
-                eval_expr(
-                    &mut interpreter,
-                    Expression::minus(Expression::from(left), Expression::from(right))
-                )
-                .unwrap(),
-                Variant::from(expected)
-            );
-        }
-
-        fn test_err<TLeft, TRight>(left: TLeft, right: TRight)
-        where
-            Expression: From<TLeft>,
-            Expression: From<TRight>,
-        {
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
-            assert_eq!(
-                eval_expr(
-                    &mut interpreter,
-                    Expression::minus(Expression::from(left), Expression::from(right))
-                )
-                .unwrap_err(),
-                InterpreterError::new_with_pos("Type mismatch", Location::zero())
-            );
-        }
-
         #[test]
         fn test_left_float() {
-            test(9.0_f32, 2.0_f32, 7.0_f32);
-            test(9.0_f32, 2.0, 7.0);
-            test_err(9.0_f32, "hello");
-            test(9.0_f32, 2, 7.0_f32);
-            test(9.0_f32, 2_i64, 7.0_f32);
+            assert_has_variable!(interpret("X = 5.4 - 2.1"), "X", 3.3_f32);
+            assert_has_variable!(interpret("X = 5.4 - 2.1#"), "X", 3.3_f32);
+            assert_has_variable!(interpret("X = 5.1 - 2"), "X", 3.1_f32);
+            assert_eq!(
+                interpret_err("X = 1.1 - \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 9))
+            );
         }
 
         #[test]
         fn test_left_double() {
-            test(9.0, 2.0_f32, 7.0);
-            test(9.0, 2.0, 7.0);
-            test_err(9.0, "hello");
-            test(9.0, 2, 7.0);
-            test(9.0, 2_i64, 7.0);
+            assert_has_variable!(interpret("X# = 5.4# - 2.1"), "X#", 3.3_f64);
+            assert_has_variable!(interpret("X# = 5.4 - 2.1#"), "X#", 3.3_f64);
+            assert_has_variable!(interpret("X# = 5.1# - 2"), "X#", 3.1_f64);
+            assert_eq!(
+                interpret_err("X = 1.1# - \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 10))
+            );
         }
 
         #[test]
         fn test_left_string() {
-            test_err("hello", 3.14_f32);
-            test_err("hello", 3.14);
-            test_err("hello", " world");
-            test_err("hello", 42);
-            test_err("hello", 42_i64);
+            assert_eq!(
+                interpret_err("X$ = \"hello\" - \"hi\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 14))
+            );
+            assert_eq!(
+                interpret_err("X$ = \"hello\" - 1"),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 14))
+            );
+            assert_eq!(
+                interpret_err("X$ = \"hello\" - 1.1"),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 14))
+            );
+            assert_eq!(
+                interpret_err("X$ = \"hello\" - 1.1#"),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 14))
+            );
         }
 
         #[test]
         fn test_left_integer() {
-            test(9, 2.0_f32, 7.0_f32);
-            test(9, 2.0, 7.0);
-            test_err(42, "hello");
-            test(9, 2, 7);
-            test(9, 2_i64, 7_i64);
+            assert_has_variable!(interpret("X% = 5 - 2.1"), "X%", 3);
+            assert_has_variable!(interpret("X% = 6 - 2.5"), "X%", 4);
+            assert_has_variable!(interpret("X% = 5 - 2.1#"), "X%", 3);
+            assert_has_variable!(interpret("X% = 5 - 2"), "X%", 3);
+            assert_eq!(
+                interpret_err("X% = 1 - \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 8))
+            );
         }
 
         #[test]
         fn test_left_long() {
-            test(9_i64, 2.0_f32, 7.0_f32);
-            test(9_i64, 2.0, 7.0);
-            test_err(9_i64, "hello");
-            test(9_i64, 2, 7_i64);
-            test(9_i64, 2_i64, 7_i64);
+            assert_has_variable!(interpret("X& = 5 - 2.1"), "X&", 3_i64);
+            assert_has_variable!(interpret("X& = 6 - 2.5"), "X&", 4_i64);
+            assert_has_variable!(interpret("X& = 5 - 2.1#"), "X&", 3_i64);
+            assert_has_variable!(interpret("X& = 5 - 2"), "X&", 3_i64);
+            assert_eq!(
+                interpret_err("X& = 1 - \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 8))
+            );
         }
+    }
+
+    macro_rules! assert_condition {
+        ($condition:expr) => {
+            let program = format!(
+                "
+            IF {} THEN
+            ELSE
+                PRINT \"hi\"
+            END IF
+            ",
+                $condition
+            );
+            if interpret(program).stdlib.output.len() > 0 {
+                panic!(format!(
+                    "Expected condition to be true but was false: {}",
+                    $condition
+                ))
+            }
+        };
+    }
+
+    macro_rules! assert_condition_false {
+        ($condition:expr) => {
+            let program = format!(
+                "
+            IF {} THEN
+                PRINT \"hi\"
+            END IF
+            ",
+                $condition
+            );
+            if interpret(program).stdlib.output.len() > 0 {
+                panic!(format!(
+                    "Expected condition to be false but was true: {}",
+                    $condition
+                ))
+            }
+        };
+    }
+
+    macro_rules! assert_condition_err {
+        ($condition:expr) => {
+            let program = format!(
+                "
+            IF {} THEN
+                PRINT \"hi\"
+            END IF
+            ",
+                $condition
+            );
+            let e = interpret_err(program);
+            assert_eq!("Type mismatch", e.message());
+        };
     }
 
     mod less {
         use super::*;
 
-        fn test<TLeft, TRight, TResult>(left: TLeft, right: TRight, expected: TResult)
-        where
-            Expression: From<TLeft>,
-            Expression: From<TRight>,
-            Variant: From<TResult>,
-        {
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
-            assert_eq!(
-                eval_expr(
-                    &mut interpreter,
-                    Expression::less(Expression::from(left), Expression::from(right))
-                )
-                .unwrap(),
-                Variant::from(expected)
-            );
-        }
-
-        fn test_err<TLeft, TRight>(left: TLeft, right: TRight)
-        where
-            Expression: From<TLeft>,
-            Expression: From<TRight>,
-        {
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
-            assert_eq!(
-                eval_expr(
-                    &mut interpreter,
-                    Expression::less(Expression::from(left), Expression::from(right))
-                )
-                .unwrap_err(),
-                InterpreterError::new_with_pos("Type mismatch", Location::zero())
-            );
-        }
-
         #[test]
         fn test_left_float() {
-            test(9.0_f32, 2.0_f32, V_FALSE);
-            test(9.0_f32, 9.0_f32, V_FALSE);
-            test(9.0_f32, 19.0_f32, V_TRUE);
+            assert_condition_false!("9.1 < 2.1");
+            assert_condition_false!("9.1 < 9.1");
+            assert_condition!("9.1 < 19.1");
 
-            test(9.0_f32, 2.0, V_FALSE);
-            test(9.0_f32, 9.0, V_FALSE);
-            test(9.0_f32, 19.0, V_TRUE);
+            assert_condition_false!("9.1 < 2");
+            assert_condition_false!("9.1 < 9");
+            assert_condition!("9.1 < 19");
 
-            test_err(9.0_f32, "hello");
+            assert_condition_err!("9.1 < \"hello\"");
 
-            test(9.0_f32, 2, V_FALSE);
-            test(9.0_f32, 9, V_FALSE);
-            test(9.0_f32, 19, V_TRUE);
-
-            test(9.0_f32, 2_i64, V_FALSE);
-            test(9.0_f32, 9_i64, V_FALSE);
-            test(9.0_f32, 19_i64, V_TRUE);
+            assert_condition_false!("9.1 < 2.1#");
+            assert_condition_false!("9.1 < 9.1#");
+            assert_condition!("9.1 < 19.1#");
         }
 
         #[test]
         fn test_left_double() {
-            test(9.0, 2.0_f32, V_FALSE);
-            test(9.0, 9.0_f32, V_FALSE);
-            test(9.0, 19.0_f32, V_TRUE);
+            assert_condition_false!("9.1# < 2.1");
+            assert_condition_false!("9.1# < 9.1");
+            assert_condition!("9.1# < 19.1");
 
-            test(9.0, 2.0, V_FALSE);
-            test(9.0, 9.0, V_FALSE);
-            test(9.0, 19.0, V_TRUE);
+            assert_condition_false!("9.1# < 2");
+            assert_condition_false!("9.1# < 9");
+            assert_condition!("9.1# < 19");
 
-            test_err(9.0, "hello");
+            assert_condition_err!("9.1# < \"hello\"");
 
-            test(9.0, 2, V_FALSE);
-            test(9.0, 9, V_FALSE);
-            test(9.0, 19, V_TRUE);
-
-            test(9.0, 2_i64, V_FALSE);
-            test(9.0, 9_i64, V_FALSE);
-            test(9.0, 19_i64, V_TRUE);
+            assert_condition_false!("9.1# < 2.1#");
+            assert_condition_false!("9.1# < 9.1#");
+            assert_condition!("9.1# < 19.1#");
         }
 
         #[test]
         fn test_left_string() {
-            test_err("hello", 3.14_f32);
-            test_err("hello", 3.14);
-            test("def", "abc", V_FALSE);
-            test("def", "def", V_FALSE);
-            test("def", "xyz", V_TRUE);
-            test_err("hello", 42);
-            test_err("hello", 42_i64);
+            assert_condition_err!("\"hello\" < 3.14");
+            assert_condition_err!("\"hello\" < 3");
+            assert_condition_err!("\"hello\" < 3.14#");
+
+            assert_condition_false!("\"def\" < \"abc\"");
+            assert_condition_false!("\"def\" < \"def\"");
+            assert_condition!("\"def\" < \"xyz\"");
         }
 
         #[test]
         fn test_left_integer() {
-            test(9, 2.0_f32, V_FALSE);
-            test(9, 8.9_f32, V_FALSE);
-            test(9, 9.0_f32, V_FALSE);
-            test(9, 9.1_f32, V_TRUE);
-            test(9, 19.0_f32, V_TRUE);
+            assert_condition_false!("9 < 2.1");
+            assert_condition_false!("9 < 8.9");
+            assert_condition_false!("9 < 9.0");
+            assert_condition!("9 < 9.1");
+            assert_condition!("9 < 19.1");
 
-            test(9, 2.0, V_FALSE);
-            test(9, 9.0, V_FALSE);
-            test(9, 19.0, V_TRUE);
+            assert_condition_false!("9 < 2");
+            assert_condition_false!("9 < 9");
+            assert_condition!("9 < 19");
 
-            test_err(9, "hello");
+            assert_condition_err!("9 < \"hello\"");
 
-            test(9, 2, V_FALSE);
-            test(9, 9, V_FALSE);
-            test(9, 19, V_TRUE);
-
-            test(9, 2_i64, V_FALSE);
-            test(9, 9_i64, V_FALSE);
-            test(9, 19_i64, V_TRUE);
-        }
-
-        #[test]
-        fn test_left_long() {
-            test(9_i64, 2.0_f32, V_FALSE);
-            test(9_i64, 8.9_f32, V_FALSE);
-            test(9_i64, 9.0_f32, V_FALSE);
-            test(9_i64, 9.1_f32, V_TRUE);
-            test(9_i64, 19.0_f32, V_TRUE);
-
-            test(9_i64, 2.0, V_FALSE);
-            test(9_i64, 9.0, V_FALSE);
-            test(9_i64, 19.0, V_TRUE);
-
-            test_err(9_i64, "hello");
-
-            test(9_i64, 2, V_FALSE);
-            test(9_i64, 9, V_FALSE);
-            test(9_i64, 19, V_TRUE);
-
-            test(9_i64, 2_i64, V_FALSE);
-            test(9_i64, 9_i64, V_FALSE);
-            test(9_i64, 19_i64, V_TRUE);
+            assert_condition_false!("9 < 2.1#");
+            assert_condition!("9 < 9.1#");
+            assert_condition!("9 < 19.1#");
         }
     }
 
     mod lte {
         use super::*;
 
-        fn test<TLeft, TRight, TResult>(left: TLeft, right: TRight, expected: TResult)
-        where
-            Expression: From<TLeft>,
-            Expression: From<TRight>,
-            Variant: From<TResult>,
-        {
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
-            assert_eq!(
-                eval_expr(
-                    &mut interpreter,
-                    Expression::lte(Expression::from(left), Expression::from(right))
-                )
-                .unwrap(),
-                Variant::from(expected)
-            );
-        }
-
-        fn test_err<TLeft, TRight>(left: TLeft, right: TRight)
-        where
-            Expression: From<TLeft>,
-            Expression: From<TRight>,
-        {
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
-            assert_eq!(
-                eval_expr(
-                    &mut interpreter,
-                    Expression::lte(Expression::from(left), Expression::from(right))
-                )
-                .unwrap_err(),
-                InterpreterError::new_with_pos("Type mismatch", Location::zero())
-            );
-        }
-
         #[test]
         fn test_left_float() {
-            test(9.0_f32, 2.0_f32, V_FALSE);
-            test(9.0_f32, 9.0_f32, V_TRUE);
-            test(9.0_f32, 19.0_f32, V_TRUE);
+            assert_condition_false!("9.1 <= 2.1");
+            assert_condition!("9.1 <= 9.1");
+            assert_condition!("9.1 <= 19.1");
 
-            test(9.0_f32, 2.0, V_FALSE);
-            test(9.0_f32, 9.0, V_TRUE);
-            test(9.0_f32, 19.0, V_TRUE);
+            assert_condition_false!("9.1 <= 2");
+            assert_condition_false!("9.1 <= 9");
+            assert_condition!("9.1 <= 19");
 
-            test_err(9.0_f32, "hello");
+            assert_condition_err!("9.1 <= \"hello\"");
 
-            test(9.0_f32, 2, V_FALSE);
-            test(9.0_f32, 9, V_TRUE);
-            test(9.0_f32, 19, V_TRUE);
-
-            test(9.0_f32, 2_i64, V_FALSE);
-            test(9.0_f32, 9_i64, V_TRUE);
-            test(9.0_f32, 19_i64, V_TRUE);
+            assert_condition_false!("9.1 <= 2.1#");
+            assert_condition!("9.1 <= 9.1#");
+            assert_condition!("9.1 <= 19.1#");
         }
 
         #[test]
         fn test_left_double() {
-            test(9.0, 2.0_f32, V_FALSE);
-            test(9.0, 9.0_f32, V_TRUE);
-            test(9.0, 19.0_f32, V_TRUE);
+            assert_condition_false!("9.1# <= 2.1");
+            assert_condition!("9.1# <= 9.1");
+            assert_condition!("9.1# <= 19.1");
 
-            test(9.0, 2.0, V_FALSE);
-            test(9.0, 9.0, V_TRUE);
-            test(9.0, 19.0, V_TRUE);
+            assert_condition_false!("9.1# <= 2");
+            assert_condition_false!("9.1# <= 9");
+            assert_condition!("9.1# <= 19");
 
-            test_err(9.0, "hello");
+            assert_condition_err!("9.1# <= \"hello\"");
 
-            test(9.0, 2, V_FALSE);
-            test(9.0, 9, V_TRUE);
-            test(9.0, 19, V_TRUE);
-
-            test(9.0, 2_i64, V_FALSE);
-            test(9.0, 9_i64, V_TRUE);
-            test(9.0, 19_i64, V_TRUE);
+            assert_condition_false!("9.1# <= 2.1#");
+            assert_condition!("9.1# <= 9.1#");
+            assert_condition!("9.1# <= 19.1#");
         }
 
         #[test]
         fn test_left_string() {
-            test_err("hello", 3.14_f32);
-            test_err("hello", 3.14);
-            test("def", "abc", V_FALSE);
-            test("def", "def", V_TRUE);
-            test("def", "xyz", V_TRUE);
-            test_err("hello", 42);
-            test_err("hello", 42_i64);
+            assert_condition_err!("\"hello\" <= 3.14");
+            assert_condition_err!("\"hello\" <= 3");
+            assert_condition_err!("\"hello\" <= 3.14#");
+
+            assert_condition_false!("\"def\" <= \"abc\"");
+            assert_condition!("\"def\" <= \"def\"");
+            assert_condition!("\"def\" <= \"xyz\"");
         }
 
         #[test]
         fn test_left_integer() {
-            test(9, 2.0_f32, V_FALSE);
-            test(9, 8.9_f32, V_FALSE);
-            test(9, 9.0_f32, V_TRUE);
-            test(9, 9.1_f32, V_TRUE);
-            test(9, 19.0_f32, V_TRUE);
+            assert_condition_false!("9 <= 2.1");
+            assert_condition_false!("9 <= 8.9");
+            assert_condition!("9 <= 9.0");
+            assert_condition!("9 <= 9.1");
+            assert_condition!("9 <= 19.1");
 
-            test(9, 2.0, V_FALSE);
-            test(9, 9.0, V_TRUE);
-            test(9, 19.0, V_TRUE);
+            assert_condition_false!("9 <= 2");
+            assert_condition!("9 <= 9");
+            assert_condition!("9 <= 19");
 
-            test_err(9, "hello");
+            assert_condition_err!("9 <= \"hello\"");
 
-            test(9, 2, V_FALSE);
-            test(9, 9, V_TRUE);
-            test(9, 19, V_TRUE);
-
-            test(9, 2_i64, V_FALSE);
-            test(9, 9_i64, V_TRUE);
-            test(9, 19_i64, V_TRUE);
-        }
-
-        #[test]
-        fn test_left_long() {
-            test(9_i64, 2.0_f32, V_FALSE);
-            test(9_i64, 8.9_f32, V_FALSE);
-            test(9_i64, 9.0_f32, V_TRUE);
-            test(9_i64, 9.1_f32, V_TRUE);
-            test(9_i64, 19.0_f32, V_TRUE);
-
-            test(9_i64, 2.0, V_FALSE);
-            test(9_i64, 9.0, V_TRUE);
-            test(9_i64, 19.0, V_TRUE);
-
-            test_err(9_i64, "hello");
-
-            test(9_i64, 2, V_FALSE);
-            test(9_i64, 9, V_TRUE);
-            test(9_i64, 19, V_TRUE);
-
-            test(9_i64, 2_i64, V_FALSE);
-            test(9_i64, 9_i64, V_TRUE);
-            test(9_i64, 19_i64, V_TRUE);
+            assert_condition_false!("9 <= 2.1#");
+            assert_condition!("9 <= 9.1#");
+            assert_condition!("9 <= 19.1#");
         }
     }
 }

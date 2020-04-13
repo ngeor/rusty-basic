@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::Display;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Variant {
     VSingle(f32),
     VDouble(f64),
@@ -15,13 +15,33 @@ pub enum Variant {
 pub const V_TRUE: Variant = Variant::VInteger(-1);
 pub const V_FALSE: Variant = Variant::VInteger(0);
 
-fn partial_cmp_to_result<T>(left: &T, right: &T) -> Result<Ordering, String>
-where
-    T: PartialOrd + Display + Copy,
-{
-    match left.partial_cmp(right) {
-        Some(o) => Ok(o),
-        _ => Err(format!("Could not compare {} with {}", left, right)),
+trait ApproximateCmp {
+    fn cmp(left: &Self, right: &Self) -> Ordering;
+}
+
+impl ApproximateCmp for f32 {
+    fn cmp(left: &f32, right: &f32) -> Ordering {
+        let diff = left - right;
+        if diff < -0.00001 {
+            Ordering::Less
+        } else if diff > 0.00001 {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
+impl ApproximateCmp for f64 {
+    fn cmp(left: &f64, right: &f64) -> Ordering {
+        let diff = left - right;
+        if diff < -0.00001 {
+            Ordering::Less
+        } else if diff > 0.00001 {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
     }
 }
 
@@ -36,16 +56,16 @@ impl Variant {
     pub fn cmp(&self, other: &Self) -> Result<Ordering, String> {
         match self {
             Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => partial_cmp_to_result(f_left, f_right),
-                Variant::VDouble(d_right) => partial_cmp_to_result(&(*f_left as f64), d_right),
-                Variant::VInteger(i_right) => partial_cmp_to_result(f_left, &(*i_right as f32)),
-                Variant::VLong(l_right) => partial_cmp_to_result(f_left, &(*l_right as f32)),
+                Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
+                Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(&(*f_left as f64), d_right)),
+                Variant::VInteger(i_right) => Ok(ApproximateCmp::cmp(f_left, &(*i_right as f32))),
+                Variant::VLong(l_right) => Ok(ApproximateCmp::cmp(f_left, &(*l_right as f32))),
                 _ => other.cmp(self).map(|x| x.reverse()),
             },
             Variant::VDouble(d_left) => match other {
-                Variant::VDouble(d_right) => partial_cmp_to_result(d_left, d_right),
-                Variant::VInteger(i_right) => partial_cmp_to_result(d_left, &(*i_right as f64)),
-                Variant::VLong(l_right) => partial_cmp_to_result(d_left, &(*l_right as f64)),
+                Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
+                Variant::VInteger(i_right) => Ok(ApproximateCmp::cmp(d_left, &(*i_right as f64))),
+                Variant::VLong(l_right) => Ok(ApproximateCmp::cmp(d_left, &(*l_right as f64))),
                 _ => other.cmp(self).map(|x| x.reverse()),
             },
             Variant::VString(s_left) => match other {
@@ -54,12 +74,37 @@ impl Variant {
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
-                Variant::VLong(l_right) => partial_cmp_to_result(&(*i_left as i64), l_right),
+                Variant::VLong(l_right) => Ok((*i_left as i64).cmp(l_right)),
                 _ => other.cmp(self).map(|x| x.reverse()),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => other.cmp(self).map(|x| x.reverse()),
+            },
+        }
+    }
+
+    fn cmp_same_type_only(&self, other: &Self) -> Result<Ordering, String> {
+        match self {
+            Variant::VSingle(f_left) => match other {
+                Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
+                _ => Err("Type mismatch".to_string()),
+            },
+            Variant::VDouble(d_left) => match other {
+                Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
+                _ => Err("Type mismatch".to_string()),
+            },
+            Variant::VString(s_left) => match other {
+                Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
+                _ => Err("Type mismatch".to_string()),
+            },
+            Variant::VInteger(i_left) => match other {
+                Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
+                _ => Err("Type mismatch".to_string()),
+            },
+            Variant::VLong(l_left) => match other {
+                Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
+                _ => Err("Type mismatch".to_string()),
             },
         }
     }
@@ -169,6 +214,15 @@ impl Variant {
     }
 }
 
+impl PartialEq for Variant {
+    fn eq(&self, other: &Self) -> bool {
+        match self.cmp_same_type_only(other) {
+            Ok(ord) => ord == Ordering::Equal,
+            _ => false,
+        }
+    }
+}
+
 impl From<f32> for Variant {
     fn from(f: f32) -> Self {
         Variant::VSingle(f)
@@ -257,7 +311,6 @@ impl Display for Variant {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use super::*;
 
     mod fmt {
@@ -322,17 +375,17 @@ mod tests {
 
             #[test]
             fn test_single() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VSingle(1.1).plus(&Variant::VSingle(2.4)).unwrap(),
-                    Variant::VSingle(3.5),
+                    Variant::VSingle(3.5)
                 );
             }
 
             #[test]
             fn test_double() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VSingle(1.1).plus(&Variant::VDouble(2.4)).unwrap(),
-                    Variant::VDouble(3.5),
+                    Variant::VDouble(3.5)
                 );
             }
 
@@ -345,17 +398,17 @@ mod tests {
 
             #[test]
             fn test_integer() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VSingle(1.1).plus(&Variant::VInteger(2)).unwrap(),
-                    Variant::VSingle(3.1),
+                    Variant::VSingle(3.1)
                 );
             }
 
             #[test]
             fn test_long() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VSingle(1.1).plus(&Variant::VLong(2)).unwrap(),
-                    Variant::VSingle(3.1),
+                    Variant::VSingle(3.1)
                 );
             }
         }
@@ -365,17 +418,17 @@ mod tests {
 
             #[test]
             fn test_single() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VDouble(1.1).plus(&Variant::VSingle(2.4)).unwrap(),
-                    Variant::VDouble(3.5),
+                    Variant::VDouble(3.5)
                 );
             }
 
             #[test]
             fn test_double() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VDouble(1.1).plus(&Variant::VDouble(2.4)).unwrap(),
-                    Variant::VDouble(3.5),
+                    Variant::VDouble(3.5)
                 );
             }
 
@@ -388,17 +441,17 @@ mod tests {
 
             #[test]
             fn test_integer() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VDouble(1.1).plus(&Variant::VInteger(2)).unwrap(),
-                    Variant::VDouble(3.1),
+                    Variant::VDouble(3.1)
                 );
             }
 
             #[test]
             fn test_long() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VDouble(1.1).plus(&Variant::VLong(2)).unwrap(),
-                    Variant::VDouble(3.1),
+                    Variant::VDouble(3.1)
                 );
             }
         }
@@ -541,17 +594,17 @@ mod tests {
 
             #[test]
             fn test_single() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VSingle(5.9).minus(&Variant::VSingle(2.4)).unwrap(),
-                    Variant::VSingle(3.5),
+                    Variant::VSingle(3.5)
                 );
             }
 
             #[test]
             fn test_double() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VSingle(5.9).minus(&Variant::VDouble(2.4)).unwrap(),
-                    Variant::VDouble(3.5),
+                    Variant::VDouble(3.5)
                 );
             }
 
@@ -564,17 +617,17 @@ mod tests {
 
             #[test]
             fn test_integer() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VSingle(5.1).minus(&Variant::VInteger(2)).unwrap(),
-                    Variant::VSingle(3.1),
+                    Variant::VSingle(3.1)
                 );
             }
 
             #[test]
             fn test_long() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VSingle(5.1).minus(&Variant::VLong(2)).unwrap(),
-                    Variant::VSingle(3.1),
+                    Variant::VSingle(3.1)
                 );
             }
         }
@@ -584,17 +637,17 @@ mod tests {
 
             #[test]
             fn test_single() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VDouble(5.9).minus(&Variant::VSingle(2.4)).unwrap(),
-                    Variant::VDouble(3.5),
+                    Variant::VDouble(3.5)
                 );
             }
 
             #[test]
             fn test_double() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VDouble(5.9).minus(&Variant::VDouble(2.4)).unwrap(),
-                    Variant::VDouble(3.5),
+                    Variant::VDouble(3.5)
                 );
             }
 
@@ -607,17 +660,17 @@ mod tests {
 
             #[test]
             fn test_integer() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VDouble(5.1).minus(&Variant::VInteger(2)).unwrap(),
-                    Variant::VDouble(3.1),
+                    Variant::VDouble(3.1)
                 );
             }
 
             #[test]
             fn test_long() {
-                assert_close_enough(
+                assert_eq!(
                     Variant::VDouble(5.1).minus(&Variant::VLong(2)).unwrap(),
-                    Variant::VDouble(3.1),
+                    Variant::VDouble(3.1)
                 );
             }
         }

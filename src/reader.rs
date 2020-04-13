@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor, Result};
 
 #[derive(Debug)]
-pub struct CharOrEofReader<T> {
+pub struct CharOrEofReader<T: BufRead> {
     reader: T,
     _buffer: Vec<Option<char>>,
 }

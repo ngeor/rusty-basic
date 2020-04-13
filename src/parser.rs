@@ -28,7 +28,7 @@ pub use self::types::*;
 use parse_result::ParseResult;
 
 #[derive(Debug)]
-pub struct Parser<T> {
+pub struct Parser<T: BufRead> {
     pub buf_lexer: BufLexer<T>,
 }
 
@@ -105,6 +105,7 @@ impl From<File> for Parser<BufReader<File>> {
 mod tests {
     use super::test_utils::*;
     use super::*;
+    use crate::common::Location;
 
     #[test]
     fn test_parse_fixture_fib() {
@@ -113,79 +114,107 @@ mod tests {
             program,
             vec![
                 // DECLARE FUNCTION Fib! (N!)
-                TopLevelToken::FunctionDeclaration(Name::from("Fib!"), vec![Name::from("N!")]),
+                TopLevelTokenNode::FunctionDeclaration(FunctionDeclarationNode::new(
+                    "Fib!".as_name(1, 18),
+                    vec!["N!".as_name(1, 24)],
+                    Location::new(1, 1)
+                )),
                 // PRINT "Enter the number of fibonacci to calculate"
-                top_sub_call(
-                    "PRINT",
-                    vec![Expression::from(
-                        "Enter the number of fibonacci to calculate",
-                    )],
-                ),
+                TopLevelTokenNode::Statement(StatementNode::SubCall(
+                    "PRINT".as_name(2, 1),
+                    vec!["Enter the number of fibonacci to calculate".as_lit_expr(2, 7)],
+                )),
                 // INPUT N
-                top_sub_call("INPUT", vec![Expression::variable_name("N")]),
+                TopLevelTokenNode::Statement(StatementNode::SubCall(
+                    "INPUT".as_name(3, 1),
+                    vec!["N".as_var_expr(3, 7)]
+                )),
                 // FOR I = 0 TO N
-                TopLevelToken::Statement(Statement::ForLoop(ForLoop {
-                    variable_name: Name::from("I"),
-                    lower_bound: Expression::IntegerLiteral(0),
-                    upper_bound: Expression::variable_name("N"),
+                TopLevelTokenNode::Statement(StatementNode::ForLoop(ForLoopNode {
+                    variable_name: "I".as_name(4, 5),
+                    lower_bound: 0.as_lit_expr(4, 9),
+                    upper_bound: "N".as_var_expr(4, 14),
                     step: None,
                     statements: vec![
                         // PRINT "Fibonacci of ", I, " is ", Fib(I)
-                        sub_call(
-                            "PRINT",
+                        StatementNode::SubCall(
+                            "PRINT".as_name(5, 5),
                             vec![
-                                Expression::from("Fibonacci of"),
-                                Expression::variable_name("I"),
-                                Expression::from("is"),
-                                Expression::FunctionCall(
-                                    Name::from("Fib"),
-                                    vec![Expression::variable_name("I")],
+                                "Fibonacci of".as_lit_expr(5, 11),
+                                "I".as_var_expr(5, 27),
+                                "is".as_lit_expr(5, 30),
+                                ExpressionNode::FunctionCall(
+                                    "Fib".as_name(5, 36),
+                                    vec!["I".as_var_expr(5, 40)],
                                 ),
                             ],
                         ),
                     ],
                     next_counter: None,
+                    pos: Location::new(4, 1)
                 })),
                 // FUNCTION Fib (N)
-                TopLevelToken::FunctionImplementation(
-                    Name::from("Fib"),
-                    vec![Name::from("N")],
-                    vec![
+                TopLevelTokenNode::FunctionImplementation(FunctionImplementationNode {
+                    name: "Fib".as_name(8, 10),
+                    parameters: vec!["N".as_name(8, 15)],
+                    block: vec![
                         // IF N <= 1 THEN
-                        Statement::IfBlock(new_if_else(
-                            // N <= 1
-                            Expression::lte(
-                                Expression::variable_name("N"),
-                                Expression::IntegerLiteral(1),
-                            ),
-                            // Fib = N
-                            vec![Statement::Assignment(
-                                Name::from("Fib"),
-                                Expression::variable_name("N"),
-                            )],
-                            // ELSE Fib = Fib(N - 1) + Fib(N - 2)
-                            vec![Statement::Assignment(
-                                Name::from("Fib"),
-                                Expression::plus(
-                                    Expression::FunctionCall(
-                                        Name::from("Fib"),
-                                        vec![Expression::minus(
-                                            Expression::variable_name("N"),
-                                            Expression::IntegerLiteral(1),
-                                        )],
+                        StatementNode::IfBlock(IfBlockNode {
+                            if_block: ConditionalBlockNode {
+                                // N <= 1
+                                condition: ExpressionNode::BinaryExpression(
+                                    OperandNode::new(
+                                        Operand::LessOrEqualThan,
+                                        Location::new(9, 10)
                                     ),
-                                    Expression::FunctionCall(
-                                        Name::from("Fib"),
-                                        vec![Expression::minus(
-                                            Expression::variable_name("N"),
-                                            Expression::IntegerLiteral(2),
-                                        )],
-                                    ),
+                                    Box::new("N".as_var_expr(9, 8)),
+                                    Box::new(1.as_lit_expr(9, 13))
                                 ),
-                            )],
-                        )),
+                                block: vec![
+                                    // Fib = N
+                                    StatementNode::Assignment(
+                                        "Fib".as_name(10, 9),
+                                        "N".as_var_expr(10, 15)
+                                    )
+                                ],
+                                pos: Location::new(9, 5)
+                            },
+                            else_if_blocks: vec![],
+                            else_block: Some(vec![
+                                // ELSE Fib = Fib(N - 1) + Fib(N - 2)
+                                StatementNode::Assignment(
+                                    "Fib".as_name(12, 9),
+                                    ExpressionNode::BinaryExpression(
+                                        OperandNode::new(Operand::Plus, Location::new(12, 26)),
+                                        Box::new(ExpressionNode::FunctionCall(
+                                            "Fib".as_name(12, 15),
+                                            vec![ExpressionNode::BinaryExpression(
+                                                OperandNode::new(
+                                                    Operand::Minus,
+                                                    Location::new(12, 21)
+                                                ),
+                                                Box::new("N".as_var_expr(12, 19)),
+                                                Box::new(1.as_lit_expr(12, 23)),
+                                            )]
+                                        )),
+                                        Box::new(ExpressionNode::FunctionCall(
+                                            "Fib".as_name(12, 28),
+                                            vec![ExpressionNode::BinaryExpression(
+                                                OperandNode::new(
+                                                    Operand::Minus,
+                                                    Location::new(12, 34)
+                                                ),
+                                                Box::new("N".as_var_expr(12, 32)),
+                                                Box::new(2.as_lit_expr(12, 36)),
+                                            )]
+                                        ))
+                                    )
+                                )
+                            ])
+                        })
                     ],
-                ),
+                    pos: Location::new(8, 1)
+                }),
             ],
         );
     }

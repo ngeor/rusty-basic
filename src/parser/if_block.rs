@@ -70,24 +70,21 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
-    use crate::common::StripLocation;
-    use crate::parser::{ConditionalBlock, Expression, IfBlock, Statement};
 
     #[test]
     fn test_if() {
         let input = "IF X THEN\r\nPRINT X\r\nEND IF";
-        let mut parser = Parser::from(input);
-        let if_block = parser
-            .try_parse_if_block()
-            .unwrap()
-            .unwrap()
-            .strip_location();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlock {
-                if_block: ConditionalBlock::new(
-                    Expression::variable_name("X"),
-                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
+            StatementNode::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode::new(
+                    "X".as_var_expr(1, 4),
+                    vec![StatementNode::SubCall(
+                        "PRINT".as_name(2, 1),
+                        vec!["X".as_var_expr(2, 7)]
+                    )],
+                    Location::new(1, 1)
                 ),
                 else_if_blocks: vec![],
                 else_block: None,
@@ -102,23 +99,22 @@ mod tests {
 ELSE
     PRINT Y
 END IF"#;
-        let mut parser = Parser::from(input);
-        let if_block = parser
-            .try_parse_if_block()
-            .unwrap()
-            .unwrap()
-            .strip_location();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlock {
-                if_block: ConditionalBlock::new(
-                    Expression::variable_name("X"),
-                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
+            StatementNode::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode::new(
+                    "X".as_var_expr(1, 4),
+                    vec![StatementNode::SubCall(
+                        "PRINT".as_name(2, 5),
+                        vec!["X".as_var_expr(2, 11)]
+                    )],
+                    Location::new(1, 1)
                 ),
                 else_if_blocks: vec![],
-                else_block: Some(vec![sub_call(
-                    "PRINT",
-                    vec![Expression::variable_name("Y")],
+                else_block: Some(vec![StatementNode::SubCall(
+                    "PRINT".as_name(4, 5),
+                    vec!["Y".as_var_expr(4, 11)]
                 )]),
             }),
         );
@@ -131,22 +127,25 @@ END IF"#;
 ELSEIF Y THEN
     PRINT Y
 END IF"#;
-        let mut parser = Parser::from(input);
-        let if_block = parser
-            .try_parse_if_block()
-            .unwrap()
-            .unwrap()
-            .strip_location();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlock {
-                if_block: ConditionalBlock::new(
-                    Expression::variable_name("X"),
-                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
+            StatementNode::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode::new(
+                    "X".as_var_expr(1, 4),
+                    vec![StatementNode::SubCall(
+                        "PRINT".as_name(2, 5),
+                        vec!["X".as_var_expr(2, 11)]
+                    )],
+                    Location::new(1, 1)
                 ),
-                else_if_blocks: vec![ConditionalBlock::new(
-                    Expression::variable_name("Y"),
-                    vec![sub_call("PRINT", vec![Expression::variable_name("Y")],)],
+                else_if_blocks: vec![ConditionalBlockNode::new(
+                    "Y".as_var_expr(3, 8),
+                    vec![StatementNode::SubCall(
+                        "PRINT".as_name(4, 5),
+                        vec!["Y".as_var_expr(4, 11)]
+                    )],
+                    Location::new(3, 1)
                 )],
                 else_block: None,
             }),
@@ -162,27 +161,34 @@ ELSEIF Y THEN
 ELSEIF Z THEN
     PRINT Z
 END IF"#;
-        let mut parser = Parser::from(input);
-        let if_block = parser
-            .try_parse_if_block()
-            .unwrap()
-            .unwrap()
-            .strip_location();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlock {
-                if_block: ConditionalBlock::new(
-                    Expression::variable_name("X"),
-                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
+            StatementNode::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode::new(
+                    "X".as_var_expr(1, 4),
+                    vec![StatementNode::SubCall(
+                        "PRINT".as_name(2, 5),
+                        vec!["X".as_var_expr(2, 11)]
+                    )],
+                    Location::new(1, 1)
                 ),
                 else_if_blocks: vec![
-                    ConditionalBlock::new(
-                        Expression::variable_name("Y"),
-                        vec![sub_call("PRINT", vec![Expression::variable_name("Y")],)],
+                    ConditionalBlockNode::new(
+                        "Y".as_var_expr(3, 8),
+                        vec![StatementNode::SubCall(
+                            "PRINT".as_name(4, 5),
+                            vec!["Y".as_var_expr(4, 11)]
+                        )],
+                        Location::new(3, 1)
                     ),
-                    ConditionalBlock::new(
-                        Expression::variable_name("Z"),
-                        vec![sub_call("PRINT", vec![Expression::variable_name("Z")],)],
+                    ConditionalBlockNode::new(
+                        "Z".as_var_expr(5, 8),
+                        vec![StatementNode::SubCall(
+                            "PRINT".as_name(6, 5),
+                            vec!["Z".as_var_expr(6, 11)]
+                        )],
+                        Location::new(5, 1)
                     ),
                 ],
                 else_block: None,
@@ -199,28 +205,31 @@ ELSEIF Y THEN
 ELSE
     PRINT Z
 END IF"#;
-        let mut parser = Parser::from(input);
-        let if_block = parser
-            .try_parse_if_block()
-            .unwrap()
-            .unwrap()
-            .strip_location();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlock {
-                if_block: ConditionalBlock::new(
-                    Expression::variable_name("X"),
-                    vec![sub_call("PRINT", vec![Expression::variable_name("X")],)],
+            StatementNode::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode::new(
+                    "X".as_var_expr(1, 4),
+                    vec![StatementNode::SubCall(
+                        "PRINT".as_name(2, 5),
+                        vec!["X".as_var_expr(2, 11)]
+                    )],
+                    Location::new(1, 1)
                 ),
-                else_if_blocks: vec![ConditionalBlock::new(
-                    Expression::variable_name("Y"),
-                    vec![sub_call("PRINT", vec![Expression::variable_name("Y")],)],
+                else_if_blocks: vec![ConditionalBlockNode::new(
+                    "Y".as_var_expr(3, 8),
+                    vec![StatementNode::SubCall(
+                        "PRINT".as_name(4, 5),
+                        vec!["Y".as_var_expr(4, 11)]
+                    )],
+                    Location::new(3, 1)
                 )],
-                else_block: Some(vec![sub_call(
-                    "PRINT",
-                    vec![Expression::variable_name("Z")],
+                else_block: Some(vec![StatementNode::SubCall(
+                    "PRINT".as_name(6, 5),
+                    vec!["Z".as_var_expr(6, 11)]
                 )]),
-            }),
+            })
         );
     }
 
@@ -233,28 +242,31 @@ elseif y then
 else
     print z
 end if"#;
-        let mut parser = Parser::from(input);
-        let if_block = parser
-            .try_parse_if_block()
-            .unwrap()
-            .unwrap()
-            .strip_location();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlock {
-                if_block: ConditionalBlock::new(
-                    Expression::variable_name("x"),
-                    vec![sub_call("print", vec![Expression::variable_name("x")],)],
+            StatementNode::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode::new(
+                    "x".as_var_expr(1, 4),
+                    vec![StatementNode::SubCall(
+                        "print".as_name(2, 5),
+                        vec!["x".as_var_expr(2, 11)]
+                    )],
+                    Location::new(1, 1)
                 ),
-                else_if_blocks: vec![ConditionalBlock::new(
-                    Expression::variable_name("y"),
-                    vec![sub_call("print", vec![Expression::variable_name("y")],)],
+                else_if_blocks: vec![ConditionalBlockNode::new(
+                    "y".as_var_expr(3, 8),
+                    vec![StatementNode::SubCall(
+                        "print".as_name(4, 5),
+                        vec!["y".as_var_expr(4, 11)]
+                    )],
+                    Location::new(3, 1)
                 )],
-                else_block: Some(vec![sub_call(
-                    "print",
-                    vec![Expression::variable_name("z")],
+                else_block: Some(vec![StatementNode::SubCall(
+                    "print".as_name(6, 5),
+                    vec!["z".as_var_expr(6, 11)]
                 )]),
-            }),
+            })
         );
     }
 }

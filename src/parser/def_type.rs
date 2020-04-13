@@ -109,7 +109,7 @@ mod tests {
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {
         ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
-            match parse_single_top_level_token_node($input) {
+            match parse($input).demand_single() {
                 TopLevelTokenNode::DefType(x) => {
                     assert_eq!(x.qualifier(), $expected_qualifier);
                     assert_eq!(x.ranges(), &$expected_ranges);

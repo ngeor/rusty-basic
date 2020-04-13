@@ -1,9 +1,20 @@
-use super::*;
-use crate::common::{Location, StripLocation};
-use crate::parser::Parser;
+use crate::common::Location;
+use crate::interpreter::variant::Variant;
+use crate::interpreter::{Interpreter, InterpreterError, Result, Stdlib, VariableGetter};
+use crate::parser::{Name, NameNode, Parser};
 use std::fs::File;
 
-pub fn interpret<T, TStdlib>(input: T, stdlib: TStdlib) -> Result<Interpreter<TStdlib>>
+pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>
+where
+    T: AsRef<[u8]>,
+{
+    let mut parser = Parser::from(input);
+    let program = parser.parse().unwrap();
+    let mut interpreter = Interpreter::new(MockStdlib::new());
+    interpreter.interpret(program).map(|_| interpreter).unwrap()
+}
+
+pub fn interpret_with_stdlib<T, TStdlib>(input: T, stdlib: TStdlib) -> Interpreter<TStdlib>
 where
     T: AsRef<[u8]>,
     TStdlib: Stdlib,
@@ -11,7 +22,17 @@ where
     let mut parser = Parser::from(input);
     let program = parser.parse().unwrap();
     let mut interpreter = Interpreter::new(stdlib);
-    interpreter.interpret(program).map(|_| interpreter)
+    interpreter.interpret(program).map(|_| interpreter).unwrap()
+}
+
+pub fn interpret_err<T>(input: T) -> InterpreterError
+where
+    T: AsRef<[u8]>,
+{
+    let mut parser = Parser::from(input);
+    let program = parser.parse().unwrap();
+    let mut interpreter = Interpreter::new(MockStdlib::new());
+    interpreter.interpret(program).unwrap_err()
 }
 
 pub fn interpret_file<S, TStdlib>(filename: S, stdlib: TStdlib) -> Result<Interpreter<TStdlib>>
@@ -71,54 +92,14 @@ impl Stdlib for MockStdlib {
     }
 }
 
-pub trait InterpreterAssertions {
-    fn has_variable<TVar>(&self, variable_name: &str, expected_value: TVar)
-    where
-        Variant: From<TVar>;
-
-    fn has_variable_close_enough(&self, variable_name: &str, expected_value: f64);
-}
-
-const EPSILON_SINGLE: f32 = 0.000001;
-const EPSILON_DOUBLE: f64 = 0.000001;
-
-impl<S: Stdlib> InterpreterAssertions for Interpreter<S> {
-    fn has_variable<TVar>(&self, variable_name: &str, expected_value: TVar)
-    where
-        Variant: From<TVar>,
-    {
+#[macro_export]
+macro_rules! assert_has_variable {
+    ($int:expr, $name:expr, $expected_value:expr) => {
         assert_eq!(
-            self.get_variable(variable_name).unwrap(),
-            &Variant::from(expected_value)
+            $int.get_variable($name).unwrap(),
+            &Variant::from($expected_value)
         );
-    }
-
-    fn has_variable_close_enough(&self, variable_name: &str, expected_value: f64) {
-        match self.get_variable(variable_name).unwrap() {
-            Variant::VDouble(actual_value) => {
-                assert!((expected_value - actual_value).abs() <= EPSILON_DOUBLE);
-            }
-            _ => panic!("Expected double variable"),
-        }
-    }
-}
-
-pub fn assert_close_enough(actual: Variant, expected: Variant) {
-    match actual {
-        Variant::VSingle(a) => match expected {
-            Variant::VSingle(e) => {
-                assert!((e - a).abs() <= EPSILON_SINGLE);
-            }
-            _ => panic!("Type mismatch"),
-        },
-        Variant::VDouble(a) => match expected {
-            Variant::VDouble(e) => {
-                assert!((e - a).abs() <= EPSILON_DOUBLE);
-            }
-            _ => panic!("Type mismatch"),
-        },
-        _ => unimplemented!(),
-    }
+    };
 }
 
 pub struct AssignmentBuilder {
@@ -129,18 +110,14 @@ pub struct AssignmentBuilder {
 impl AssignmentBuilder {
     pub fn new(variable_literal: &str) -> AssignmentBuilder {
         AssignmentBuilder {
-            variable_name: NameNode::from(variable_literal),
+            variable_name: NameNode::new(Name::from(variable_literal), Location::new(1, 1)),
             program: String::new(),
         }
     }
 
     pub fn literal(&mut self, expression_literal: &str) -> &mut Self {
         if self.program.is_empty() {
-            self.program = format!(
-                "{} = {}",
-                self.variable_name.clone().strip_location(),
-                expression_literal
-            );
+            self.program = format!("{} = {}", self.variable_name.element(), expression_literal);
             self
         } else {
             panic!("Cannot re-assign program")
@@ -154,7 +131,7 @@ impl AssignmentBuilder {
         if self.program.is_empty() {
             panic!("Program was not set")
         } else {
-            let interpreter = interpret(&self.program, MockStdlib::new()).unwrap();
+            let interpreter = interpret(&self.program);
             assert_eq!(
                 interpreter.get_variable(&self.variable_name).unwrap(),
                 &Variant::from(expected_value)
@@ -167,7 +144,7 @@ impl AssignmentBuilder {
             panic!("Program was not set");
         } else {
             assert_eq!(
-                interpret(&self.program, MockStdlib::new()).unwrap_err(),
+                interpret_err(&self.program),
                 InterpreterError::new_with_pos("Type mismatch", Location::new(1, 1))
             );
         }
@@ -185,6 +162,6 @@ where
     let mut stdlib = MockStdlib::new();
     stdlib.add_next_input(raw_input);
     let input = format!("INPUT {}", variable_name);
-    let interpreter = interpret(input, stdlib).unwrap();
-    interpreter.has_variable(variable_name, expected_value);
+    let interpreter = interpret_with_stdlib(input, stdlib);
+    assert_has_variable!(interpreter, variable_name, expected_value);
 }

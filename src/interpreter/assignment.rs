@@ -1,4 +1,5 @@
-use super::{Interpreter, Result, Stdlib, VariableSetter, Variant};
+use super::variable_setter::VariableSetter;
+use super::{Interpreter, Result, Stdlib, Variant};
 use crate::parser::{ExpressionNode, NameNode};
 
 impl<S: Stdlib> Interpreter<S> {
@@ -15,7 +16,9 @@ impl<S: Stdlib> Interpreter<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assert_has_variable;
     use crate::interpreter::test_utils::*;
+    use crate::interpreter::VariableGetter;
 
     mod assignment {
         use super::*;
@@ -93,28 +96,27 @@ mod tests {
 
         #[test]
         fn test_assign_same_variable_name_different_qualifiers() {
-            let stdlib = MockStdlib::new();
             let input = "A = 0.1
 A# = 3.14
 A$ = \"Hello\"
 A% = 1
 A& = 100";
-            let interpreter = interpret(input, stdlib).unwrap();
-            interpreter.has_variable("A", 0.1_f32);
-            interpreter.has_variable("A!", 0.1_f32);
-            interpreter.has_variable_close_enough("A#", 3.14);
-            interpreter.has_variable("A$", "Hello");
-            interpreter.has_variable("A%", 1);
-            interpreter.has_variable("A&", 100_i64);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", 0.1_f32);
+            assert_has_variable!(interpreter, "A!", 0.1_f32);
+            assert_has_variable!(interpreter, "A#", 3.14);
+            assert_has_variable!(interpreter, "A$", "Hello");
+            assert_has_variable!(interpreter, "A%", 1);
+            assert_has_variable!(interpreter, "A&", 100_i64);
         }
 
         #[test]
         fn test_assign_negated_variable() {
             let input = "A = -42
 B = -A";
-            let interpreter = interpret(input, MockStdlib::new()).unwrap();
-            interpreter.has_variable("A", -42.0_f32);
-            interpreter.has_variable("B", 42.0_f32);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", -42.0_f32);
+            assert_has_variable!(interpreter, "B", 42.0_f32);
         }
 
         #[test]
@@ -123,11 +125,11 @@ B = -A";
             A = 42
             b = 12
             ";
-            let interpreter = interpret(input, MockStdlib::new()).unwrap();
-            interpreter.has_variable("A", 42.0_f32);
-            interpreter.has_variable("a", 42.0_f32);
-            interpreter.has_variable("B", 12.0_f32);
-            interpreter.has_variable("b", 12.0_f32);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", 42.0_f32);
+            assert_has_variable!(interpreter, "a", 42.0_f32);
+            assert_has_variable!(interpreter, "B", 12.0_f32);
+            assert_has_variable!(interpreter, "b", 12.0_f32);
         }
 
         #[test]
@@ -136,11 +138,11 @@ B = -A";
             A% = 42
             b% = 12
             ";
-            let interpreter = interpret(input, MockStdlib::new()).unwrap();
-            interpreter.has_variable("A%", 42);
-            interpreter.has_variable("a%", 42);
-            interpreter.has_variable("B%", 12);
-            interpreter.has_variable("b%", 12);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A%", 42);
+            assert_has_variable!(interpreter, "a%", 42);
+            assert_has_variable!(interpreter, "B%", 12);
+            assert_has_variable!(interpreter, "b%", 12);
         }
 
         #[test]
@@ -151,11 +153,11 @@ B = -A";
             b = 12
             B = b + 1
             ";
-            let interpreter = interpret(input, MockStdlib::new()).unwrap();
-            interpreter.has_variable("A", 43_f32);
-            interpreter.has_variable("a", 43_f32);
-            interpreter.has_variable("B", 13_f32);
-            interpreter.has_variable("b", 13_f32);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", 43_f32);
+            assert_has_variable!(interpreter, "a", 43_f32);
+            assert_has_variable!(interpreter, "B", 13_f32);
+            assert_has_variable!(interpreter, "b", 13_f32);
         }
 
         #[test]
@@ -166,80 +168,75 @@ B = -A";
             b% = 12
             B% = b% + 1
             ";
-            let interpreter = interpret(input, MockStdlib::new()).unwrap();
-            interpreter.has_variable("A%", 43);
-            interpreter.has_variable("a%", 43);
-            interpreter.has_variable("B%", 13);
-            interpreter.has_variable("b%", 13);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A%", 43);
+            assert_has_variable!(interpreter, "a%", 43);
+            assert_has_variable!(interpreter, "B%", 13);
+            assert_has_variable!(interpreter, "b%", 13);
         }
 
         #[test]
         fn test_assign_with_def_dbl() {
-            let stdlib = MockStdlib::new();
             let input = "
             DEFDBL A-Z
             A = 6.28
             A! = 3.14
             ";
-            let interpreter = interpret(input, stdlib).unwrap();
-            interpreter.has_variable_close_enough("A", 6.28_f64);
-            interpreter.has_variable("A!", 3.14_f32);
-            interpreter.has_variable_close_enough("A#", 6.28_f64);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", 6.28_f64);
+            assert_has_variable!(interpreter, "A!", 3.14_f32);
+            assert_has_variable!(interpreter, "A#", 6.28_f64);
         }
 
         #[test]
         fn test_assign_with_def_int() {
-            let stdlib = MockStdlib::new();
             let input = "
             DEFINT A-Z
             A = 42
             A! = 3.14
             ";
-            let interpreter = interpret(input, stdlib).unwrap();
-            interpreter.has_variable("A", 42);
-            interpreter.has_variable("A!", 3.14_f32);
-            interpreter.has_variable("A%", 42);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", 42);
+            assert_has_variable!(interpreter, "A!", 3.14_f32);
+            assert_has_variable!(interpreter, "A%", 42);
         }
 
         #[test]
         fn test_assign_with_def_lng() {
-            let stdlib = MockStdlib::new();
             let input = "
             DEFLNG A-Z
             A = 42
             A! = 3.14
             ";
-            let interpreter = interpret(input, stdlib).unwrap();
-            interpreter.has_variable("A", 42_i64);
-            interpreter.has_variable("A!", 3.14_f32);
-            interpreter.has_variable("A&", 42_i64);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", 42_i64);
+            assert_has_variable!(interpreter, "A!", 3.14_f32);
+            assert_has_variable!(interpreter, "A&", 42_i64);
         }
 
         #[test]
         fn test_assign_with_def_sng() {
-            let stdlib = MockStdlib::new();
             let input = "
             DEFSNG A-Z
             A = 42
             A! = 3.14
             ";
-            let interpreter = interpret(input, stdlib).unwrap();
-            interpreter.has_variable("A", 3.14_f32);
-            interpreter.has_variable("A!", 3.14_f32);
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", 3.14_f32);
+            assert_has_variable!(interpreter, "A!", 3.14_f32);
         }
 
         #[test]
         fn test_assign_with_def_str() {
-            let stdlib = MockStdlib::new();
             let input = r#"
             DEFSTR A-Z
             A = "hello"
             A! = 3.14
             "#;
-            let interpreter = interpret(input, stdlib).unwrap();
-            interpreter.has_variable("A", "hello");
-            interpreter.has_variable("A!", 3.14_f32);
-            interpreter.has_variable("A$", "hello");
+            let interpreter = interpret(input);
+            assert_has_variable!(interpreter, "A", "hello");
+            assert_has_variable!(interpreter, "A!", 3.14_f32);
+            assert_has_variable!(interpreter, "A$", "hello");
         }
     }
 }

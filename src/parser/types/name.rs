@@ -1,4 +1,6 @@
-use super::{HasBareName, QualifiedName};
+use super::{
+    HasBareName, HasQualifier, QualifiedName, ResolvesQualifier, TypeQualifier, TypeResolver,
+};
 use crate::common::CaseInsensitiveString;
 use std::fmt::Display;
 
@@ -6,6 +8,34 @@ use std::fmt::Display;
 pub enum Name {
     Bare(CaseInsensitiveString),
     Typed(QualifiedName),
+}
+
+impl Name {
+    pub fn to_qualified_name(&self, resolver: &dyn TypeResolver) -> QualifiedName {
+        match self {
+            Self::Bare(s) => QualifiedName::new(s.clone(), resolver.resolve(s)),
+            Self::Typed(t) => t.clone(),
+        }
+    }
+
+    pub fn to_qualified_name_into(self, resolver: &dyn TypeResolver) -> QualifiedName {
+        match self {
+            Self::Bare(s) => {
+                let qualifier = resolver.resolve(&s);
+                QualifiedName::new(s, qualifier)
+            }
+            Self::Typed(t) => t,
+        }
+    }
+}
+
+impl Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Name::Bare(s) => write!(f, "{}", s),
+            Name::Typed(t) => write!(f, "{}", t),
+        }
+    }
 }
 
 impl HasBareName for Name {
@@ -24,8 +54,15 @@ impl HasBareName for Name {
     }
 }
 
-#[cfg(test)]
-use super::TypeQualifier;
+impl ResolvesQualifier for Name {
+    fn qualifier(&self, resolver: &dyn TypeResolver) -> TypeQualifier {
+        match self {
+            Self::Bare(b) => resolver.resolve(b),
+            Self::Typed(t) => t.qualifier(),
+        }
+    }
+}
+
 #[cfg(test)]
 use std::convert::TryFrom;
 
@@ -43,15 +80,6 @@ impl Name {
                 buf.push(last_ch);
                 Name::Bare(CaseInsensitiveString::new(buf))
             }
-        }
-    }
-}
-
-impl Display for Name {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Name::Bare(s) => write!(f, "{}", s),
-            Name::Typed(t) => write!(f, "{}", t),
         }
     }
 }

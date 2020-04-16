@@ -1,9 +1,9 @@
-use super::{BlockNode, ForLoopNode, Parser, StatementNode};
-use crate::lexer::{Keyword, LexerError};
+use super::{BlockNode, ForLoopNode, Parser, ParserError, StatementNode};
+use crate::lexer::Keyword;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_for_loop(&mut self) -> Result<Option<StatementNode>, LexerError> {
+    pub fn try_parse_for_loop(&mut self) -> Result<Option<StatementNode>, ParserError> {
         let opt_pos = self.buf_lexer.try_consume_keyword(Keyword::For)?;
         if let Some(pos) = opt_pos {
             self.buf_lexer.demand_whitespace()?;

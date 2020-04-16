@@ -200,4 +200,28 @@ mod tests {
         ";
         assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
     }
+
+    #[test]
+    fn test_single_line_if() {
+        let input = r#"
+        IF 1 THEN PRINT "hello"
+        "#;
+        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
+        let input = r#"
+        IF 0 THEN PRINT "hello"
+        "#;
+        assert_eq!(interpret(input).stdlib.output.len(), 0);
+        let input = r#"
+        PRINT "before"
+        IF 1 THEN PRINT "hello"
+        PRINT "after"
+        "#;
+        assert_eq!(interpret(input).stdlib.output, vec!["before", "hello", "after"]);
+        let input = r#"
+        PRINT "before"
+        IF 0 THEN PRINT "hello"
+        PRINT "after"
+        "#;
+        assert_eq!(interpret(input).stdlib.output, vec!["before", "after"]);
+    }
 }

@@ -1,6 +1,6 @@
 [package]
-name = "basic-interpreter-rust"
-version = "0.1.0"
+name = "basic_interpreter_rust"
+version = "0.2.0"
 authors = ["Nikolaos Georgiou <nikolaos.georgiou@gmail.com>"]
 edition = "2018"
 

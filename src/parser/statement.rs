@@ -1,48 +1,49 @@
-use super::parse_result::ParseResult;
-use super::{BlockNode, Parser, StatementNode};
-use crate::lexer::LexerError;
+use super::{BlockNode, Parser, ParserError, StatementNode};
 use std::io::BufRead;
 
-impl From<StatementNode> for ParseResult<StatementNode> {
-    fn from(expr: StatementNode) -> ParseResult<StatementNode> {
-        ParseResult::Match(expr)
-    }
-}
-
-impl From<StatementNode> for Result<ParseResult<StatementNode>, LexerError> {
-    fn from(expr: StatementNode) -> Result<ParseResult<StatementNode>, LexerError> {
-        Ok(expr.into())
-    }
-}
-
 impl<T: BufRead> Parser<T> {
-    pub fn demand_statement(&mut self) -> Result<StatementNode, LexerError> {
-        match self.try_parse_statement() {
-            Ok(x) => x.demand("Expected statement"),
-            Err(err) => Err(err),
-        }
-    }
-
-    pub fn try_parse_statement(&mut self) -> Result<ParseResult<StatementNode>, LexerError> {
+    pub fn demand_statement(&mut self) -> Result<StatementNode, ParserError> {
         if let Some(s) = self.try_parse_for_loop()? {
-            s.into()
+            Ok(s)
         } else if let Some(s) = self.try_parse_if_block()? {
-            s.into()
+            Ok(s)
         } else if let Some(s) = self.try_parse_assignment()? {
-            s.into()
+            Ok(s)
         } else if let Some(s) = self.try_parse_sub_call()? {
-            s.into()
+            Ok(s)
         } else {
-            self.buf_lexer.read()?.into()
+            Err(ParserError::NotFound(
+                "Expected statement".to_string(),
+                self.buf_lexer.read()?,
+            ))
         }
     }
 
-    pub fn parse_block(&mut self) -> Result<BlockNode, LexerError> {
+    pub fn demand_single_line_statement(&mut self) -> Result<StatementNode, ParserError> {
+        if let Some(s) = self.try_parse_assignment()? {
+            Ok(s)
+        } else if let Some(s) = self.try_parse_sub_call()? {
+            Ok(s)
+        } else {
+            Err(ParserError::NotFound(
+                "Expected single line statement".to_string(),
+                self.buf_lexer.read()?,
+            ))
+        }
+    }
+
+    pub fn try_parse_statement(&mut self) -> Result<Option<StatementNode>, ParserError> {
+        self.demand_statement()
+            .map(|x| Some(x))
+            .or_else(|e| e.not_found_to_none())
+    }
+
+    pub fn parse_block(&mut self) -> Result<BlockNode, ParserError> {
         let mut statements: BlockNode = vec![];
         loop {
             self.buf_lexer.skip_whitespace_and_eol()?;
             match self.try_parse_statement()? {
-                ParseResult::Match(s) => statements.push(s),
+                Some(s) => statements.push(s),
                 _ => break,
             }
         }

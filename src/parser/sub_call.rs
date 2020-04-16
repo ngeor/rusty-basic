@@ -1,16 +1,16 @@
-use super::{ExpressionNode, NameNode, Parser, StatementNode};
-use crate::lexer::{LexemeNode, LexerError};
+use super::{ExpressionNode, NameNode, Parser, ParserError, StatementNode};
+use crate::lexer::LexemeNode;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_sub_call(&mut self) -> Result<Option<StatementNode>, LexerError> {
+    pub fn try_parse_sub_call(&mut self) -> Result<Option<StatementNode>, ParserError> {
         match self.buf_lexer.read_ref()? {
             LexemeNode::Word(_, _) => Ok(Some(self._parse_sub_call()?)),
             _ => Ok(None),
         }
     }
 
-    fn _parse_sub_call(&mut self) -> Result<StatementNode, LexerError> {
+    fn _parse_sub_call(&mut self) -> Result<StatementNode, ParserError> {
         let (sub_name, pos) = self.buf_lexer.demand_any_word()?;
         let found_whitespace = self.buf_lexer.skip_whitespace()?;
         let args: Vec<ExpressionNode> = if found_whitespace {

@@ -1,68 +1,47 @@
-use super::parse_result::ParseResult;
-use super::{ExpressionNode, NameNode, Operand, OperandNode, Parser, UnaryOperand};
+use super::{ExpressionNode, NameNode, Operand, OperandNode, Parser, ParserError, UnaryOperand};
 use crate::common::{Locatable, Location};
-use crate::lexer::{LexemeNode, LexerError};
+use crate::lexer::LexemeNode;
 use std::convert::TryFrom;
 use std::io::BufRead;
 
-impl From<ExpressionNode> for ParseResult<ExpressionNode> {
-    fn from(expr: ExpressionNode) -> ParseResult<ExpressionNode> {
-        ParseResult::Match(expr)
-    }
-}
-
 impl<T: BufRead> Parser<T> {
-    pub fn demand_expression(&mut self) -> Result<ExpressionNode, LexerError> {
-        match self.try_parse_expression() {
-            Ok(x) => x.demand("Expected expression"),
-            Err(err) => Err(err),
-        }
+    pub fn demand_expression(&mut self) -> Result<ExpressionNode, ParserError> {
+        let first = self._demand_single_expression()?;
+        self._try_parse_second_expression(first)
     }
 
-    pub fn try_parse_expression(&mut self) -> Result<ParseResult<ExpressionNode>, LexerError> {
-        let first = self._try_parse_single_expression()?;
-        match first {
-            ParseResult::Match(e) => self
-                ._try_parse_second_expression(e)
-                .map(|x| ParseResult::Match(x)),
-            _ => Ok(first),
-        }
+    pub fn try_parse_expression(&mut self) -> Result<Option<ExpressionNode>, ParserError> {
+        self.demand_expression()
+            .map(|x| Some(x))
+            .or_else(|e| e.not_found_to_none())
     }
 
-    fn _try_parse_single_expression(&mut self) -> Result<ParseResult<ExpressionNode>, LexerError> {
+    fn _demand_single_expression(&mut self) -> Result<ExpressionNode, ParserError> {
         let next = self.buf_lexer.read()?;
         match next {
-            LexemeNode::Symbol('"', _) => {
-                self._parse_string_literal().map(|x| ParseResult::Match(x))
-            }
-            LexemeNode::Word(word, pos) => {
-                self._parse_word(word, pos).map(|x| ParseResult::Match(x))
-            }
-            LexemeNode::Digits(digits, pos) => self
-                ._parse_number_literal(digits, pos)
-                .map(|x| ParseResult::Match(x)),
-            LexemeNode::Symbol('.', pos) => self
-                ._parse_floating_point_literal(0, pos)
-                .map(|x| ParseResult::Match(x)),
+            LexemeNode::Symbol('"', _) => self._parse_string_literal(),
+            LexemeNode::Word(word, pos) => self._parse_word(word, pos),
+            LexemeNode::Digits(digits, pos) => self._parse_number_literal(digits, pos),
+            LexemeNode::Symbol('.', pos) => self._parse_floating_point_literal(0, pos),
             LexemeNode::Symbol('-', minus_pos) => {
                 self.buf_lexer.consume();
-                let opt_child = self._try_parse_single_expression()?;
-                Ok(match opt_child {
-                    ParseResult::Match(e) => ParseResult::Match(ExpressionNode::unary_minus(
-                        Locatable::new(UnaryOperand::Minus, minus_pos),
-                        e,
-                    )),
-                    _ => opt_child,
-                })
+                let child = self.demand_expression()?;
+                Ok(ExpressionNode::unary_minus(
+                    Locatable::new(UnaryOperand::Minus, minus_pos),
+                    child,
+                ))
             }
-            _ => Ok(ParseResult::NoMatch(next)),
+            _ => Err(ParserError::NotFound(
+                "Expected expression".to_string(),
+                next,
+            )),
         }
     }
 
     fn _try_parse_second_expression(
         &mut self,
         left_side: ExpressionNode,
-    ) -> Result<ExpressionNode, LexerError> {
+    ) -> Result<ExpressionNode, ParserError> {
         let operand = self._try_parse_operand()?;
         match operand {
             Some(op) => {
@@ -79,10 +58,10 @@ impl<T: BufRead> Parser<T> {
     }
 
     /// Parses a comma separated list of expressions.
-    pub fn parse_expression_list(&mut self) -> Result<Vec<ExpressionNode>, LexerError> {
+    pub fn parse_expression_list(&mut self) -> Result<Vec<ExpressionNode>, ParserError> {
         let mut args: Vec<ExpressionNode> = vec![];
         let optional_first_arg = self.try_parse_expression()?;
-        if let ParseResult::Match(first_arg) = optional_first_arg {
+        if let Some(first_arg) = optional_first_arg {
             args.push(first_arg);
             while self._read_comma_between_arguments()? {
                 self.buf_lexer.skip_whitespace()?;
@@ -94,13 +73,13 @@ impl<T: BufRead> Parser<T> {
         Ok(args)
     }
 
-    fn _read_comma_between_arguments(&mut self) -> Result<bool, LexerError> {
+    fn _read_comma_between_arguments(&mut self) -> Result<bool, ParserError> {
         // skip whitespace after previous arg
         self.buf_lexer.skip_whitespace()?;
         self.buf_lexer.try_consume_symbol(',').map(|x| x.is_some())
     }
 
-    fn _parse_string_literal(&mut self) -> Result<ExpressionNode, LexerError> {
+    fn _parse_string_literal(&mut self) -> Result<ExpressionNode, ParserError> {
         // verify we read a double quote
         let pos = self.buf_lexer.demand_symbol('"')?;
 
@@ -113,13 +92,13 @@ impl<T: BufRead> Parser<T> {
             match l {
                 LexemeNode::Symbol('"', _) => break,
                 LexemeNode::EOF(_) => {
-                    return Err(LexerError::Unexpected(
+                    return Err(ParserError::Unexpected(
                         format!("EOF while looking for end of string"),
                         l,
                     ))
                 }
                 LexemeNode::EOL(_, _) => {
-                    return Err(LexerError::Unexpected(
+                    return Err(ParserError::Unexpected(
                         format!("Unexpected new line while looking for end of string"),
                         l,
                     ))
@@ -135,7 +114,7 @@ impl<T: BufRead> Parser<T> {
         &mut self,
         digits: u32,
         pos: Location,
-    ) -> Result<ExpressionNode, LexerError> {
+    ) -> Result<ExpressionNode, ParserError> {
         // consume digits
         self.buf_lexer.consume();
         let next = self.buf_lexer.read()?;
@@ -145,20 +124,20 @@ impl<T: BufRead> Parser<T> {
                 // no decimal point, just integer
                 match i32::try_from(digits) {
                     Ok(i) => Ok(ExpressionNode::IntegerLiteral(i, pos)),
-                    Err(err) => Err(LexerError::Internal(err.to_string(), pos)),
+                    Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
                 }
             }
         }
     }
 
-    fn _demand_digits(&mut self) -> Result<u32, LexerError> {
+    fn _demand_digits(&mut self) -> Result<u32, ParserError> {
         let next = self.buf_lexer.read()?;
         match next {
             LexemeNode::Digits(digits, _) => {
                 self.buf_lexer.consume();
                 Ok(digits)
             }
-            _ => Err(LexerError::Unexpected(format!("Expected digits"), next)),
+            _ => Err(ParserError::Unexpected(format!("Expected digits"), next)),
         }
     }
 
@@ -166,7 +145,7 @@ impl<T: BufRead> Parser<T> {
         &mut self,
         integer_digits: u32,
         pos: Location,
-    ) -> Result<ExpressionNode, LexerError> {
+    ) -> Result<ExpressionNode, ParserError> {
         // consume dot
         self.buf_lexer.consume();
         let fraction_digits = self._demand_digits()?;
@@ -174,17 +153,17 @@ impl<T: BufRead> Parser<T> {
         if is_double {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
                 Ok(f) => Ok(ExpressionNode::DoubleLiteral(f, pos)),
-                Err(err) => Err(LexerError::Internal(err.to_string(), pos)),
+                Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
             }
         } else {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
                 Ok(f) => Ok(ExpressionNode::SingleLiteral(f, pos)),
-                Err(err) => Err(LexerError::Internal(err.to_string(), pos)),
+                Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
             }
         }
     }
 
-    fn _parse_word(&mut self, word: String, pos: Location) -> Result<ExpressionNode, LexerError> {
+    fn _parse_word(&mut self, word: String, pos: Location) -> Result<ExpressionNode, ParserError> {
         self.buf_lexer.consume();
         // is it maybe a qualified variable name
         let qualifier = self.try_parse_type_qualifier()?;
@@ -203,7 +182,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _try_parse_operand(&mut self) -> Result<Option<OperandNode>, LexerError> {
+    fn _try_parse_operand(&mut self) -> Result<Option<OperandNode>, ParserError> {
         self.buf_lexer.mark();
         self.buf_lexer.skip_whitespace()?;
         match self
@@ -229,7 +208,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _less_or_lte(&mut self) -> Result<Operand, LexerError> {
+    fn _less_or_lte(&mut self) -> Result<Operand, ParserError> {
         if self.buf_lexer.try_consume_symbol('=')?.is_some() {
             Ok(Operand::LessOrEqualThan)
         } else {

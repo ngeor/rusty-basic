@@ -1,16 +1,18 @@
-use crate::lexer::{BufLexer, LexemeNode, LexerError};
+use crate::common::ResultOptionHelper;
+use crate::lexer::LexemeNode;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
 mod assignment;
+mod buf_lexer;
 mod declaration;
 mod def_type;
+mod error;
 mod expression;
 mod for_loop;
 mod function_implementation;
 mod if_block;
 mod name;
-mod parse_result;
 mod statement;
 mod sub_call;
 mod types;
@@ -18,14 +20,14 @@ mod types;
 #[cfg(test)]
 mod test_utils;
 
+pub use self::buf_lexer::*;
+pub use self::error::*;
 pub use self::expression::*;
 pub use self::for_loop::*;
 pub use self::if_block::*;
 pub use self::name::*;
 pub use self::statement::*;
 pub use self::types::*;
-
-use parse_result::ParseResult;
 
 #[derive(Debug)]
 pub struct Parser<T: BufRead> {
@@ -37,7 +39,7 @@ impl<T: BufRead> Parser<T> {
         Parser { buf_lexer }
     }
 
-    pub fn parse(&mut self) -> Result<ProgramNode, LexerError> {
+    pub fn parse(&mut self) -> Result<ProgramNode, ParserError> {
         let mut v: Vec<TopLevelTokenNode> = vec![];
         loop {
             self.buf_lexer.skip_whitespace_and_eol()?;
@@ -50,7 +52,7 @@ impl<T: BufRead> Parser<T> {
         Ok(v)
     }
 
-    fn _parse_top_level_token(&mut self) -> Result<Option<TopLevelTokenNode>, LexerError> {
+    fn _parse_top_level_token(&mut self) -> Result<Option<TopLevelTokenNode>, ParserError> {
         if let Some(d) = self.try_parse_declaration()? {
             Ok(Some(d))
         } else if let Some(f) = self.try_parse_function_implementation()? {
@@ -66,7 +68,7 @@ impl<T: BufRead> Parser<T> {
                     self.buf_lexer.consume();
                     Ok(None)
                 }
-                _ => Err(LexerError::Unexpected(
+                _ => Err(ParserError::Unexpected(
                     format!("Unexpected top-level token"),
                     lexeme,
                 )),
@@ -76,11 +78,9 @@ impl<T: BufRead> Parser<T> {
 
     fn _try_parse_statement_as_top_level_token(
         &mut self,
-    ) -> Result<Option<TopLevelTokenNode>, LexerError> {
-        match self.try_parse_statement()? {
-            ParseResult::Match(s) => Ok(Some(TopLevelTokenNode::Statement(s))),
-            _ => Ok(None),
-        }
+    ) -> Result<Option<TopLevelTokenNode>, ParserError> {
+        self.try_parse_statement()
+            .opt_map(|s| Ok(TopLevelTokenNode::Statement(s)))
     }
 }
 

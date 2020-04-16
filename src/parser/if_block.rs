@@ -1,52 +1,99 @@
-use super::{ConditionalBlockNode, ExpressionNode, IfBlockNode, Parser, StatementNode};
-use crate::common::Location;
-use crate::lexer::{Keyword, LexerError};
+
+use super::{
+    ConditionalBlockNode, ExpressionNode, IfBlockNode, Parser, ParserError, StatementNode,
+};
+use crate::common::{Location, ResultOptionHelper};
+use crate::lexer::Keyword;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_if_block(&mut self) -> Result<Option<StatementNode>, LexerError> {
-        let opt_if_pos = self.buf_lexer.try_consume_keyword(Keyword::If)?;
-        if let Some(if_pos) = opt_if_pos {
-            // parse main if block
-            let if_block = self._demand_conditional_block(if_pos)?;
+    pub fn try_parse_if_block(&mut self) -> Result<Option<StatementNode>, ParserError> {
+        self.buf_lexer
+            .try_consume_keyword(Keyword::If)
+            .opt_map(|x| self._consume_if_block(x))
+    }
 
-            // parse additional elseif blocks
-            let mut else_if_blocks: Vec<ConditionalBlockNode> = vec![];
-            loop {
-                let opt_else_if_pos = self.buf_lexer.try_consume_keyword(Keyword::ElseIf)?;
-                if let Some(else_if_pos) = opt_else_if_pos {
-                    else_if_blocks.push(self._demand_conditional_block(else_if_pos)?);
-                } else {
-                    break;
-                }
-            }
+    fn _consume_if_block(&mut self, if_pos: Location) -> Result<StatementNode, ParserError> {
+        // parse main if block
+        self.buf_lexer.demand_whitespace()?;
+        let if_condition = self.demand_expression()?;
+        self.buf_lexer.demand_whitespace()?;
+        self.buf_lexer.demand_keyword(Keyword::Then)?;
+        let found_whitespace_after_then: bool = self.buf_lexer.skip_whitespace()?;
+        let found_eol: bool = self.buf_lexer.try_consume_eol()?;
 
-            // parse else block
-            let else_block = if self.buf_lexer.try_consume_keyword(Keyword::Else)?.is_some() {
-                self.buf_lexer.demand_eol()?;
-                Some(self.parse_block()?)
-            } else {
-                None
-            };
-            // parse end if
-            self.buf_lexer.demand_keyword(Keyword::End)?;
-            self.buf_lexer.demand_whitespace()?;
-            self.buf_lexer.demand_keyword(Keyword::If)?;
-            self.buf_lexer.demand_eol_or_eof()?;
-            Ok(Some(StatementNode::IfBlock(IfBlockNode {
-                if_block: if_block,
-                else_if_blocks: else_if_blocks,
-                else_block: else_block,
-            })))
+        if found_eol {
+            self._consume_if_block_multi_line(if_pos, if_condition)
         } else {
-            Ok(None)
+            if found_whitespace_after_then {
+                self._consume_if_block_single_line(if_pos, if_condition)
+            } else {
+                Err(ParserError::Unexpected(
+                    "Expected statement after THEN".to_string(),
+                    self.buf_lexer.read()?,
+                ))
+            }
         }
+    }
+
+    fn _consume_if_block_single_line(
+        &mut self,
+        if_pos: Location,
+        if_condition: ExpressionNode,
+    ) -> Result<StatementNode, ParserError> {
+        let if_block = ConditionalBlockNode {
+            condition: if_condition,
+            pos: if_pos,
+            block: vec![self.demand_single_line_statement()?],
+        };
+        Ok(StatementNode::IfBlock(IfBlockNode {
+            if_block: if_block,
+            else_if_blocks: vec![],
+            else_block: None,
+        }))
+    }
+
+    fn _consume_if_block_multi_line(
+        &mut self,
+        if_pos: Location,
+        if_condition: ExpressionNode,
+    ) -> Result<StatementNode, ParserError> {
+        let if_block = ConditionalBlockNode::new(if_condition, self.parse_block()?, if_pos);
+
+        // parse additional elseif blocks
+        let mut else_if_blocks: Vec<ConditionalBlockNode> = vec![];
+        loop {
+            let opt_else_if_pos = self.buf_lexer.try_consume_keyword(Keyword::ElseIf)?;
+            if let Some(else_if_pos) = opt_else_if_pos {
+                else_if_blocks.push(self._demand_conditional_block(else_if_pos)?);
+            } else {
+                break;
+            }
+        }
+
+        // parse else block
+        let else_block = if self.buf_lexer.try_consume_keyword(Keyword::Else)?.is_some() {
+            self.buf_lexer.demand_eol()?;
+            Some(self.parse_block()?)
+        } else {
+            None
+        };
+        // parse end if
+        self.buf_lexer.demand_keyword(Keyword::End)?;
+        self.buf_lexer.demand_whitespace()?;
+        self.buf_lexer.demand_keyword(Keyword::If)?;
+        self.buf_lexer.demand_eol_or_eof()?;
+        Ok(StatementNode::IfBlock(IfBlockNode {
+            if_block: if_block,
+            else_if_blocks: else_if_blocks,
+            else_block: else_block,
+        }))
     }
 
     fn _demand_conditional_block(
         &mut self,
         pos: Location,
-    ) -> Result<ConditionalBlockNode, LexerError> {
+    ) -> Result<ConditionalBlockNode, ParserError> {
         let condition = self._demand_condition()?;
         let block = self.parse_block()?;
         Ok(ConditionalBlockNode {
@@ -56,7 +103,7 @@ impl<T: BufRead> Parser<T> {
         })
     }
 
-    fn _demand_condition(&mut self) -> Result<ExpressionNode, LexerError> {
+    fn _demand_condition(&mut self) -> Result<ExpressionNode, ParserError> {
         self.buf_lexer.demand_whitespace()?;
         let condition = self.demand_expression()?;
         self.buf_lexer.demand_whitespace()?;
@@ -70,6 +117,8 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
+    use crate::{assert_var_expr, assert_top_sub_call, assert_sub_call};
+    use crate::parser::{TopLevelTokenNode};
 
     #[test]
     fn test_if() {
@@ -90,6 +139,31 @@ mod tests {
                 else_block: None,
             }),
         );
+    }
+
+    #[test]
+    fn test_if_single_line() {
+        let input = "
+        IF X THEN PRINT X
+        SYSTEM
+        ";
+        let program = parse(input);
+        assert_eq!(2, program.len());
+        match &program[0] {
+            TopLevelTokenNode::Statement(StatementNode::IfBlock(i)) => {
+                // if condition
+                assert_var_expr!(i.if_block.condition, "X");
+                // if block
+                assert_eq!(1, i.if_block.block.len());
+                assert_sub_call!(i.if_block.block[0], "PRINT", "X");
+                // no else_if
+                assert_eq!(0, i.else_if_blocks.len());
+                // no else
+                assert_eq!(i.else_block, None);
+            }
+            _ => panic!("unexpected"),
+        };
+        assert_top_sub_call!(program[1], "SYSTEM");
     }
 
     #[test]

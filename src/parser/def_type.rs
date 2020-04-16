@@ -1,10 +1,10 @@
-use super::{DefTypeNode, LetterRangeNode, Parser, TopLevelTokenNode, TypeQualifier};
+use super::{DefTypeNode, LetterRangeNode, Parser, ParserError, TopLevelTokenNode, TypeQualifier};
 use crate::common::Location;
-use crate::lexer::{Keyword, LexemeNode, LexerError};
+use crate::lexer::{Keyword, LexemeNode};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_def_type(&mut self) -> Result<Option<TopLevelTokenNode>, LexerError> {
+    pub fn try_parse_def_type(&mut self) -> Result<Option<TopLevelTokenNode>, ParserError> {
         let next = self.buf_lexer.read()?;
         match next {
             LexemeNode::Keyword(k, _, pos) => self._try_parse(k, pos),
@@ -16,7 +16,7 @@ impl<T: BufRead> Parser<T> {
         &mut self,
         keyword: Keyword,
         pos: Location,
-    ) -> Result<Option<TopLevelTokenNode>, LexerError> {
+    ) -> Result<Option<TopLevelTokenNode>, ParserError> {
         let opt_qualifier = match keyword {
             Keyword::DefDbl => Some(TypeQualifier::HashDouble),
             Keyword::DefInt => Some(TypeQualifier::PercentInteger),
@@ -39,7 +39,7 @@ impl<T: BufRead> Parser<T> {
         &mut self,
         qualifier: TypeQualifier,
         pos: Location,
-    ) -> Result<TopLevelTokenNode, LexerError> {
+    ) -> Result<TopLevelTokenNode, ParserError> {
         self.buf_lexer.demand_whitespace()?;
         let mut has_more = true;
         let mut ranges: Vec<LetterRangeNode> = vec![];
@@ -63,13 +63,13 @@ impl<T: BufRead> Parser<T> {
         )))
     }
 
-    fn _add_letter_range(&mut self, letter1: char) -> Result<LetterRangeNode, LexerError> {
+    fn _add_letter_range(&mut self, letter1: char) -> Result<LetterRangeNode, ParserError> {
         // range, like A-Z
         self.buf_lexer.skip_whitespace()?;
         let (letter2, pos) = self._demand_letter()?;
         self.buf_lexer.skip_whitespace()?;
         if letter1 > letter2 {
-            Err(LexerError::Unexpected(
+            Err(ParserError::Unexpected(
                 "Invalid letter range".to_string(),
                 LexemeNode::Word(letter2.to_string(), pos),
             ))
@@ -78,7 +78,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _demand_letter(&mut self) -> Result<(char, Location), LexerError> {
+    fn _demand_letter(&mut self) -> Result<(char, Location), ParserError> {
         let next = self.buf_lexer.read()?;
         self.buf_lexer.consume();
         match &next {
@@ -86,13 +86,13 @@ impl<T: BufRead> Parser<T> {
                 if s.len() == 1 {
                     Ok((s.chars().next().unwrap(), *pos))
                 } else {
-                    Err(LexerError::Unexpected(
+                    Err(ParserError::Unexpected(
                         "Expected single character".to_string(),
                         next,
                     ))
                 }
             }
-            _ => Err(LexerError::Unexpected(
+            _ => Err(ParserError::Unexpected(
                 "Expected single character".to_string(),
                 next,
             )),
@@ -167,21 +167,21 @@ mod tests {
     fn test_parse_def_int_word_instead_of_letter() {
         assert_eq!(
             parse_err("DEFINT HELLO"),
-            LexerError::Unexpected(
+            ParserError::Unexpected(
                 "Expected single character".to_string(),
                 LexemeNode::Word("HELLO".to_string(), Location::new(1, 8))
             )
         );
         assert_eq!(
             parse_err("DEFINT HELLO,Z"),
-            LexerError::Unexpected(
+            ParserError::Unexpected(
                 "Expected single character".to_string(),
                 LexemeNode::Word("HELLO".to_string(), Location::new(1, 8))
             )
         );
         assert_eq!(
             parse_err("DEFINT A,HELLO"),
-            LexerError::Unexpected(
+            ParserError::Unexpected(
                 "Expected single character".to_string(),
                 LexemeNode::Word("HELLO".to_string(), Location::new(1, 10))
             )
@@ -192,7 +192,7 @@ mod tests {
     fn test_parse_def_int_reverse_range() {
         assert_eq!(
             parse_err("DEFINT Z-A"),
-            LexerError::Unexpected(
+            ParserError::Unexpected(
                 "Invalid letter range".to_string(),
                 LexemeNode::Word("A".to_string(), Location::new(1, 10))
             )

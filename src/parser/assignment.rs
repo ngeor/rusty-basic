@@ -1,9 +1,9 @@
-use super::{NameNode, Parser, StatementNode};
-use crate::lexer::LexerError;
+use super::{NameNode, Parser, ParserError, StatementNode};
+use crate::common::ResultOptionHelper;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_assignment(&mut self) -> Result<Option<StatementNode>, LexerError> {
+    pub fn try_parse_assignment(&mut self) -> Result<Option<StatementNode>, ParserError> {
         self.buf_lexer.mark();
         let left_side = self._try_parse_left_side_of_assignment()?;
         match left_side {
@@ -21,19 +21,16 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _try_parse_left_side_of_assignment(&mut self) -> Result<Option<NameNode>, LexerError> {
-        match self.try_parse_name_with_type_qualifier()? {
-            Some(n) => {
+    fn _try_parse_left_side_of_assignment(&mut self) -> Result<Option<NameNode>, ParserError> {
+        self.try_parse_name_with_type_qualifier().opt_filter(|_| {
+            self.buf_lexer.skip_whitespace()?;
+            if self.buf_lexer.try_consume_symbol('=')?.is_some() {
                 self.buf_lexer.skip_whitespace()?;
-                if self.buf_lexer.try_consume_symbol('=')?.is_some() {
-                    self.buf_lexer.skip_whitespace()?;
-                    Ok(Some(n))
-                } else {
-                    Ok(None)
-                }
+                Ok(true)
+            } else {
+                Ok(false)
             }
-            None => Ok(None),
-        }
+        })
     }
 }
 
@@ -66,7 +63,7 @@ mod tests {
     fn test_numeric_assignment_to_keyword_not_allowed() {
         assert_eq!(
             parse_err("FOR = 42"),
-            LexerError::Unexpected(
+            ParserError::Unexpected(
                 "Expected word".to_string(),
                 LexemeNode::Symbol('=', Location::new(1, 5))
             )

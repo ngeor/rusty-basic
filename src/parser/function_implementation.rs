@@ -1,11 +1,11 @@
-use super::{FunctionImplementationNode, NameNode, Parser, TopLevelTokenNode};
-use crate::lexer::{Keyword, LexerError};
+use super::{FunctionImplementationNode, NameNode, Parser, ParserError, TopLevelTokenNode};
+use crate::lexer::Keyword;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn try_parse_function_implementation(
         &mut self,
-    ) -> Result<Option<TopLevelTokenNode>, LexerError> {
+    ) -> Result<Option<TopLevelTokenNode>, ParserError> {
         let opt_pos = self.buf_lexer.try_consume_keyword(Keyword::Function)?;
         if let Some(pos) = opt_pos {
             // function name

@@ -1,20 +1,19 @@
-use super::{FunctionDeclarationNode, NameNode, Parser, TopLevelTokenNode};
-use crate::common::Location;
-use crate::lexer::{Keyword, LexemeNode, LexerError};
+use super::{FunctionDeclarationNode, NameNode, Parser, ParserError, TopLevelTokenNode};
+use crate::common::{Location, ResultOptionHelper};
+use crate::lexer::{Keyword, LexemeNode};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_declaration(&mut self) -> Result<Option<TopLevelTokenNode>, LexerError> {
-        match self.buf_lexer.try_consume_keyword(Keyword::Declare)? {
-            Some(pos) => self._parse_declaration(pos).map(|x| Some(x)),
-            None => Ok(None),
-        }
+    pub fn try_parse_declaration(&mut self) -> Result<Option<TopLevelTokenNode>, ParserError> {
+        self.buf_lexer
+            .try_consume_keyword(Keyword::Declare)
+            .opt_map(|pos| self._parse_declaration(pos))
     }
 
     fn _parse_declaration(
         &mut self,
         declare_pos: Location,
-    ) -> Result<TopLevelTokenNode, LexerError> {
+    ) -> Result<TopLevelTokenNode, ParserError> {
         self.buf_lexer.demand_whitespace()?;
         let next = self.buf_lexer.read()?;
         match next {
@@ -29,14 +28,14 @@ impl<T: BufRead> Parser<T> {
                     FunctionDeclarationNode::new(function_name, function_arguments, declare_pos),
                 ))
             }
-            _ => Err(LexerError::Unexpected(
+            _ => Err(ParserError::Unexpected(
                 "Unknown declaration".to_string(),
                 next,
             )),
         }
     }
 
-    pub fn parse_declaration_parameters(&mut self) -> Result<Vec<NameNode>, LexerError> {
+    pub fn parse_declaration_parameters(&mut self) -> Result<Vec<NameNode>, ParserError> {
         let mut function_arguments: Vec<NameNode> = vec![];
         if self.buf_lexer.try_consume_symbol('(')?.is_some() {
             self.buf_lexer.skip_whitespace()?;

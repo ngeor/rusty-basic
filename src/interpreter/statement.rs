@@ -10,6 +10,7 @@ impl<S: Stdlib> Interpreter<S> {
             StatementNode::Assignment(left_side, right_side) => {
                 self.assignment(left_side, right_side).map(|_| ())
             }
+            StatementNode::While(w) => self.while_wend(w),
         }
     }
 

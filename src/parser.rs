@@ -1,5 +1,4 @@
-use crate::common::ResultOptionHelper;
-use crate::lexer::LexemeNode;
+use crate::lexer::{Keyword, LexemeNode};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
@@ -16,6 +15,7 @@ mod name;
 mod statement;
 mod sub_call;
 mod types;
+mod while_wend;
 
 #[cfg(test)]
 mod test_utils;
@@ -41,47 +41,131 @@ impl<T: BufRead> Parser<T> {
 
     pub fn parse(&mut self) -> Result<ProgramNode, ParserError> {
         let mut v: Vec<TopLevelTokenNode> = vec![];
-        loop {
-            self.buf_lexer.skip_whitespace_and_eol()?;
-            let x = self._parse_top_level_token()?;
-            match x {
-                Some(t) => v.push(t),
-                _ => break,
-            };
+        let mut next = self.read_skipping_whitespace_and_eol()?;
+        while !next.is_eof() {
+            v.push(self._parse_top_level_token(next)?);
+            next = self.read_skipping_whitespace_and_eol()?
         }
         Ok(v)
     }
 
-    fn _parse_top_level_token(&mut self) -> Result<Option<TopLevelTokenNode>, ParserError> {
-        if let Some(d) = self.try_parse_declaration()? {
-            Ok(Some(d))
-        } else if let Some(f) = self.try_parse_function_implementation()? {
-            Ok(Some(f))
-        } else if let Some(x) = self.try_parse_def_type()? {
-            Ok(Some(x))
-        } else if let Some(s) = self._try_parse_statement_as_top_level_token()? {
-            Ok(Some(s))
-        } else {
-            let lexeme = self.buf_lexer.read()?;
-            match lexeme {
-                LexemeNode::EOF(_) => {
-                    self.buf_lexer.consume();
-                    Ok(None)
-                }
-                _ => Err(ParserError::Unexpected(
-                    format!("Unexpected top-level token"),
-                    lexeme,
-                )),
-            }
+    fn _parse_top_level_token(
+        &mut self,
+        next: LexemeNode,
+    ) -> Result<TopLevelTokenNode, ParserError> {
+        match next {
+            LexemeNode::Keyword(k, _, pos) => match k {
+                Keyword::Declare => self.demand_declaration(pos),
+                Keyword::DefDbl
+                | Keyword::DefInt
+                | Keyword::DefLng
+                | Keyword::DefSng
+                | Keyword::DefStr => self.demand_def_type(k, pos),
+                Keyword::Function => self.demand_function_implementation(pos),
+                Keyword::If | Keyword::For | Keyword::While => self
+                    .demand_statement(next)
+                    .map(|s| TopLevelTokenNode::Statement(s)),
+                _ => unexpected("Unexpected top level token", next),
+            },
+            _ => self
+                .demand_statement(next)
+                .map(|s| TopLevelTokenNode::Statement(s)),
         }
     }
 
-    fn _try_parse_statement_as_top_level_token(
-        &mut self,
-    ) -> Result<Option<TopLevelTokenNode>, ParserError> {
-        self.try_parse_statement()
-            .opt_map(|s| Ok(TopLevelTokenNode::Statement(s)))
+    // whitespace and eol
+
+    fn read_skipping_whitespace_and_eol(&mut self) -> Result<LexemeNode, ParserError> {
+        let next = self.buf_lexer.read()?;
+        self.skip_whitespace_and_eol(next)
     }
+
+    fn skip_whitespace_and_eol(&mut self, lexeme: LexemeNode) -> Result<LexemeNode, ParserError> {
+        match lexeme {
+            LexemeNode::Whitespace(_, _) | LexemeNode::EOL(_, _) => {
+                self.read_skipping_whitespace_and_eol()
+            }
+            _ => Ok(lexeme),
+        }
+    }
+
+    // whitespace
+
+    fn read_skipping_whitespace(&mut self) -> Result<LexemeNode, ParserError> {
+        let next = self.buf_lexer.read()?;
+        self.skip_whitespace(next)
+    }
+
+    fn skip_whitespace(&mut self, lexeme: LexemeNode) -> Result<LexemeNode, ParserError> {
+        if lexeme.is_whitespace() {
+            self.read_skipping_whitespace()
+        } else {
+            Ok(lexeme)
+        }
+    }
+
+    fn read_demand_whitespace<S: AsRef<str>>(&mut self, msg: S) -> Result<(), ParserError> {
+        let next = self.buf_lexer.read()?;
+        match next {
+            LexemeNode::Whitespace(_, _) => Ok(()),
+            _ => unexpected(msg, next),
+        }
+    }
+
+    fn read_preserve_whitespace(
+        &mut self,
+    ) -> Result<(Option<LexemeNode>, LexemeNode), ParserError> {
+        let first = self.buf_lexer.read()?;
+        if first.is_whitespace() {
+            Ok((Some(first), self.buf_lexer.read()?))
+        } else {
+            Ok((None, first))
+        }
+    }
+
+    // eol
+
+    fn read_demand_eol_skipping_whitespace(&mut self) -> Result<(), ParserError> {
+        let next = self.read_skipping_whitespace()?;
+        match next {
+            LexemeNode::EOL(_, _) => Ok(()),
+            _ => unexpected("Expected EOL", next),
+        }
+    }
+
+    fn read_demand_eol_or_eof_skipping_whitespace(&mut self) -> Result<(), ParserError> {
+        let next = self.read_skipping_whitespace()?;
+        match next {
+            LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => Ok(()),
+            _ => unexpected("Expected EOL or EOF", next),
+        }
+    }
+
+    // symbol
+
+    fn read_demand_symbol_skipping_whitespace(&mut self, ch: char) -> Result<(), ParserError> {
+        let next = self.read_skipping_whitespace()?;
+        if next.is_symbol(ch) {
+            Ok(())
+        } else {
+            unexpected(format!("Expected {}", ch), next)
+        }
+    }
+
+    // keyword
+
+    fn read_demand_keyword(&mut self, keyword: Keyword) -> Result<(), ParserError> {
+        let next = self.buf_lexer.read()?;
+        if next.is_keyword(keyword) {
+            Ok(())
+        } else {
+            unexpected("Expected keyword", next)
+        }
+    }
+}
+
+fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, ParserError> {
+    Err(ParserError::Unexpected(msg.as_ref().to_string(), lexeme))
 }
 
 // bytes || &str -> Parser
@@ -161,6 +245,7 @@ mod tests {
                         // IF N <= 1 THEN
                         StatementNode::IfBlock(IfBlockNode {
                             if_block: ConditionalBlockNode {
+                                pos: Location::new(9, 5),
                                 // N <= 1
                                 condition: ExpressionNode::BinaryExpression(
                                     OperandNode::new(
@@ -170,14 +255,13 @@ mod tests {
                                     Box::new("N".as_var_expr(9, 8)),
                                     Box::new(1.as_lit_expr(9, 13))
                                 ),
-                                block: vec![
+                                statements: vec![
                                     // Fib = N
                                     StatementNode::Assignment(
                                         "Fib".as_name(10, 9),
                                         "N".as_var_expr(10, 15)
                                     )
                                 ],
-                                pos: Location::new(9, 5)
                             },
                             else_if_blocks: vec![],
                             else_block: Some(vec![

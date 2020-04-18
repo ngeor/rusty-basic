@@ -1,32 +1,28 @@
 use super::{FunctionImplementationNode, NameNode, Parser, ParserError, TopLevelTokenNode};
+use crate::common::Location;
 use crate::lexer::Keyword;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_function_implementation(
+    pub fn demand_function_implementation(
         &mut self,
-    ) -> Result<Option<TopLevelTokenNode>, ParserError> {
-        let opt_pos = self.buf_lexer.try_consume_keyword(Keyword::Function)?;
-        if let Some(pos) = opt_pos {
-            // function name
-            self.buf_lexer.demand_whitespace()?;
-            let name = self.demand_name_with_type_qualifier()?;
-            // function parameters
-            self.buf_lexer.skip_whitespace()?;
-            let function_arguments: Vec<NameNode> = self.parse_declaration_parameters()?;
-            self.buf_lexer.demand_eol_or_eof()?;
-            let block = self.parse_block()?;
-            self.buf_lexer.demand_keyword(Keyword::End)?;
-            self.buf_lexer.demand_whitespace()?;
-            self.buf_lexer.demand_keyword(Keyword::Function)?;
-            self.buf_lexer.demand_eol_or_eof()?;
+        pos: Location,
+    ) -> Result<TopLevelTokenNode, ParserError> {
+        // function name
+        self.read_demand_whitespace("Expected whitespace after FUNCTION keyword")?;
+        let name = self.read_demand_name_with_type_qualifier("Expected function name")?;
+        // function parameters
+        let function_arguments: Vec<NameNode> = self.parse_declaration_parameters()?;
+        // function body
+        let (block, _) =
+            self.parse_statements(|x| x.is_keyword(Keyword::End), "Function without End")?;
+        self.read_demand_whitespace("Expected whitespace after END keyword")?;
+        self.read_demand_keyword(Keyword::Function)?;
+        self.read_demand_eol_or_eof_skipping_whitespace()?;
 
-            Ok(Some(TopLevelTokenNode::FunctionImplementation(
-                FunctionImplementationNode::new(name, function_arguments, block, pos),
-            )))
-        } else {
-            Ok(None)
-        }
+        Ok(TopLevelTokenNode::FunctionImplementation(
+            FunctionImplementationNode::new(name, function_arguments, block, pos),
+        ))
     }
 }
 

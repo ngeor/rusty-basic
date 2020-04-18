@@ -1,36 +1,25 @@
-use super::*;
-use crate::parser::IfBlockNode;
-use std::convert::TryInto;
+use super::{Interpreter, Result, Stdlib};
+use crate::parser::{BlockNode, IfBlockNode};
 
 impl<S: Stdlib> Interpreter<S> {
-    pub fn if_block(&mut self, if_block: &IfBlockNode) -> Result<()> {
-        if self._conditional_block(&if_block.if_block)? {
-            return Ok(());
-        }
-
-        for else_if_block in &if_block.else_if_blocks {
-            if self._conditional_block(else_if_block)? {
-                return Ok(());
-            }
-        }
-
-        match &if_block.else_block {
-            Some(e) => self.statements(&e),
+    pub fn if_block(&mut self, if_block_node: &IfBlockNode) -> Result<()> {
+        match self._find_block(if_block_node)? {
+            Some(statements) => self.statements(statements),
             None => Ok(()),
         }
     }
 
-    fn _conditional_block(&mut self, conditional_block: &ConditionalBlockNode) -> Result<bool> {
-        let condition_expr: &ExpressionNode = &conditional_block.condition;
-        let condition_value: Variant = self.evaluate_expression(condition_expr)?;
-        let is_true: bool = condition_value
-            .try_into()
-            .map_err(|e| InterpreterError::new_with_pos(e, conditional_block.pos))?;
-        if is_true {
-            self.statements(&conditional_block.block)?;
-            Ok(true)
+    fn _find_block<'a>(&mut self, if_block_node: &'a IfBlockNode) -> Result<Option<&'a BlockNode>> {
+        if self.evaluate_condition(&if_block_node.if_block)? {
+            Ok(Some(&if_block_node.if_block.statements))
         } else {
-            Ok(false)
+            for else_if_block in &if_block_node.else_if_blocks {
+                if self.evaluate_condition(else_if_block)? {
+                    return Ok(Some(&else_if_block.statements));
+                }
+            }
+
+            Ok(if_block_node.else_block.as_ref())
         }
     }
 }
@@ -216,7 +205,10 @@ mod tests {
         IF 1 THEN PRINT "hello"
         PRINT "after"
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["before", "hello", "after"]);
+        assert_eq!(
+            interpret(input).stdlib.output,
+            vec!["before", "hello", "after"]
+        );
         let input = r#"
         PRINT "before"
         IF 0 THEN PRINT "hello"

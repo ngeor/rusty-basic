@@ -1,102 +1,98 @@
-use super::{DefTypeNode, LetterRangeNode, Parser, ParserError, TopLevelTokenNode, TypeQualifier};
+use super::{
+    unexpected, DefTypeNode, LetterRangeNode, Parser, ParserError, TopLevelTokenNode, TypeQualifier,
+};
 use crate::common::Location;
 use crate::lexer::{Keyword, LexemeNode};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_def_type(&mut self) -> Result<Option<TopLevelTokenNode>, ParserError> {
-        let next = self.buf_lexer.read()?;
-        match next {
-            LexemeNode::Keyword(k, _, pos) => self._try_parse(k, pos),
-            _ => Ok(None),
-        }
-    }
-
-    fn _try_parse(
+    pub fn demand_def_type(
         &mut self,
         keyword: Keyword,
         pos: Location,
-    ) -> Result<Option<TopLevelTokenNode>, ParserError> {
-        let opt_qualifier = match keyword {
-            Keyword::DefDbl => Some(TypeQualifier::HashDouble),
-            Keyword::DefInt => Some(TypeQualifier::PercentInteger),
-            Keyword::DefLng => Some(TypeQualifier::AmpersandLong),
-            Keyword::DefSng => Some(TypeQualifier::BangSingle),
-            Keyword::DefStr => Some(TypeQualifier::DollarString),
-            _ => None,
+    ) -> Result<TopLevelTokenNode, ParserError> {
+        let qualifier = match keyword {
+            Keyword::DefDbl => TypeQualifier::HashDouble,
+            Keyword::DefInt => TypeQualifier::PercentInteger,
+            Keyword::DefLng => TypeQualifier::AmpersandLong,
+            Keyword::DefSng => TypeQualifier::BangSingle,
+            Keyword::DefStr => TypeQualifier::DollarString,
+            _ => panic!(format!(
+                "Unexpected keyword {}, should be one of DEF*",
+                keyword
+            )),
         };
 
-        match opt_qualifier {
-            Some(qualifier) => {
-                self.buf_lexer.consume();
-                self._parse_def_type(qualifier, pos).map(|x| Some(x))
-            }
-            None => Ok(None),
-        }
-    }
-
-    fn _parse_def_type(
-        &mut self,
-        qualifier: TypeQualifier,
-        pos: Location,
-    ) -> Result<TopLevelTokenNode, ParserError> {
-        self.buf_lexer.demand_whitespace()?;
-        let mut has_more = true;
+        self.read_demand_whitespace("Expected whitespace after DEF* keyword")?;
         let mut ranges: Vec<LetterRangeNode> = vec![];
-        while has_more {
-            let (letter1, _) = self._demand_letter()?;
-            self.buf_lexer.skip_whitespace()?;
-            if self.buf_lexer.try_consume_symbol('-')?.is_some() {
-                // range, like A-Z
-                ranges.push(self._add_letter_range(letter1)?);
-            } else {
-                // single letter
-                ranges.push(LetterRangeNode::Single(letter1));
+        const STATE_INITIAL: u8 = 0;
+        const STATE_FIRST_LETTER: u8 = 1;
+        const STATE_DASH: u8 = 2;
+        const STATE_SECOND_LETTER: u8 = 3;
+        const STATE_COMMA: u8 = 4;
+        const STATE_EOL: u8 = 5;
+        let mut state = STATE_INITIAL;
+        let mut first_letter = ' ';
+        let mut second_letter = ' ';
+        while state != STATE_EOL {
+            let next = self.read_skipping_whitespace()?;
+            match &next {
+                LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => {
+                    if state == STATE_DASH {
+                        return unexpected("Expected letter after dash", next);
+                    } else if state == STATE_COMMA {
+                        return unexpected("Expected letter range after comma", next);
+                    } else if state == STATE_FIRST_LETTER {
+                        ranges.push(LetterRangeNode::Single(first_letter));
+                        state = STATE_EOL;
+                    } else if state == STATE_SECOND_LETTER {
+                        ranges.push(LetterRangeNode::Range(first_letter, second_letter));
+                        state = STATE_EOL;
+                    } else {
+                        return unexpected("Expected at least one letter range", next);
+                    }
+                }
+                LexemeNode::Word(w, _) => {
+                    if w.len() != 1 {
+                        return unexpected("Expected single character", next);
+                    }
+                    if state == STATE_INITIAL || state == STATE_COMMA {
+                        first_letter = w.chars().next().unwrap();
+                        state = STATE_FIRST_LETTER;
+                    } else if state == STATE_DASH {
+                        second_letter = w.chars().next().unwrap();
+                        if first_letter > second_letter {
+                            return unexpected("Invalid letter range".to_string(), next);
+                        }
+                        state = STATE_SECOND_LETTER;
+                    } else {
+                        return unexpected("Syntax error", next);
+                    }
+                }
+                LexemeNode::Symbol('-', _) => {
+                    if state == STATE_FIRST_LETTER {
+                        state = STATE_DASH;
+                    } else {
+                        return unexpected("Syntax error", next);
+                    }
+                }
+                LexemeNode::Symbol(',', _) => {
+                    if state == STATE_FIRST_LETTER {
+                        ranges.push(LetterRangeNode::Single(first_letter));
+                        state = STATE_COMMA;
+                    } else if state == STATE_SECOND_LETTER {
+                        ranges.push(LetterRangeNode::Range(first_letter, second_letter));
+                        state = STATE_COMMA;
+                    } else {
+                        return unexpected("Syntax error", next);
+                    }
+                }
+                _ => return unexpected("Syntax error", next),
             }
-
-            has_more = self.buf_lexer.try_consume_symbol(',')?.is_some();
-            self.buf_lexer.skip_whitespace()?;
         }
-        self.buf_lexer.demand_eol_or_eof()?;
         Ok(TopLevelTokenNode::DefType(DefTypeNode::new(
             qualifier, ranges, pos,
         )))
-    }
-
-    fn _add_letter_range(&mut self, letter1: char) -> Result<LetterRangeNode, ParserError> {
-        // range, like A-Z
-        self.buf_lexer.skip_whitespace()?;
-        let (letter2, pos) = self._demand_letter()?;
-        self.buf_lexer.skip_whitespace()?;
-        if letter1 > letter2 {
-            Err(ParserError::Unexpected(
-                "Invalid letter range".to_string(),
-                LexemeNode::Word(letter2.to_string(), pos),
-            ))
-        } else {
-            Ok(LetterRangeNode::Range(letter1, letter2))
-        }
-    }
-
-    fn _demand_letter(&mut self) -> Result<(char, Location), ParserError> {
-        let next = self.buf_lexer.read()?;
-        self.buf_lexer.consume();
-        match &next {
-            LexemeNode::Word(s, pos) => {
-                if s.len() == 1 {
-                    Ok((s.chars().next().unwrap(), *pos))
-                } else {
-                    Err(ParserError::Unexpected(
-                        "Expected single character".to_string(),
-                        next,
-                    ))
-                }
-            }
-            _ => Err(ParserError::Unexpected(
-                "Expected single character".to_string(),
-                next,
-            )),
-        }
     }
 }
 

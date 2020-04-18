@@ -124,7 +124,10 @@ macro_rules! assert_var_expr {
     ($left: expr, $expected_var_name: literal) => {
         match &$left {
             ExpressionNode::VariableName(v) => assert_eq!(v, $expected_var_name),
-            _ => panic!(format!("Expected variable name {}, found {:?}", $expected_var_name, $left))
+            _ => panic!(format!(
+                "Expected variable name {}, found {:?}",
+                $expected_var_name, $left
+            )),
         }
     };
 }
@@ -138,8 +141,11 @@ macro_rules! assert_sub_call {
             StatementNode::SubCall(n, args) => {
                 assert_eq!(n, $name);
                 assert_eq!(0, args.len());
-            },
-            _ => panic!(format!("Expected sub call {} without args, found {:?}", $name, $left))
+            }
+            _ => panic!(format!(
+                "Expected sub call {} without args, found {:?}",
+                $name, $left
+            )),
         }
     };
     // one variable name arg
@@ -149,8 +155,11 @@ macro_rules! assert_sub_call {
                 assert_eq!(n, $name);
                 assert_eq!(1, args.len());
                 assert_var_expr!(args[0], $arg);
-            },
-            _ => panic!(format!("Expected sub call {} with one arg, found {:?}", $name, $left))
+            }
+            _ => panic!(format!(
+                "Expected sub call {} with one arg, found {:?}",
+                $name, $left
+            )),
         }
     };
 }
@@ -163,8 +172,11 @@ macro_rules! assert_top_sub_call {
             TopLevelTokenNode::Statement(StatementNode::SubCall(n, args)) => {
                 assert_eq!(n, $name);
                 assert_eq!(0, args.len());
-            },
-            _ => panic!(format!("Expected top-level sub call {}, found {:?}", $name, $left))
+            }
+            _ => panic!(format!(
+                "Expected top-level sub call {}, found {:?}",
+                $name, $left
+            )),
         }
     };
 }

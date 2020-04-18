@@ -1,5 +1,5 @@
 use super::Keyword;
-use crate::common::*;
+use crate::common::{HasLocation, Location};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LexemeNode {
@@ -27,12 +27,45 @@ pub enum LexemeNode {
 }
 
 impl LexemeNode {
-    pub fn push_to(&self, buf: &mut String) {
+    pub fn is_eof(&self) -> bool {
         match self {
-            Self::Keyword(_, s, _) | Self::Word(s, _) | Self::Whitespace(s, _) => buf.push_str(s),
-            Self::Symbol(c, _) => buf.push(*c),
-            Self::Digits(d, _) => buf.push_str(&format!("{}", d)),
-            _ => panic!(format!("Cannot push {:?}", self)),
+            LexemeNode::EOF(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_eol(&self) -> bool {
+        match self {
+            LexemeNode::EOL(_, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_eol_or_eof(&self) -> bool {
+        match self {
+            LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_symbol(&self, ch: char) -> bool {
+        match self {
+            LexemeNode::Symbol(c, _) => *c == ch,
+            _ => false,
+        }
+    }
+
+    pub fn is_keyword(&self, keyword: Keyword) -> bool {
+        match self {
+            LexemeNode::Keyword(k, _, _) => *k == keyword,
+            _ => false,
+        }
+    }
+
+    pub fn is_whitespace(&self) -> bool {
+        match self {
+            LexemeNode::Whitespace(_, _) => true,
+            _ => false,
         }
     }
 }

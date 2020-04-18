@@ -11,16 +11,4 @@ pub enum ParserError {
 
     /// Unexpected token
     Unexpected(String, LexemeNode),
-
-    /// A specific token was not found.
-    NotFound(String, LexemeNode),
-}
-
-impl ParserError {
-    pub fn not_found_to_none<T>(self) -> Result<Option<T>, ParserError> {
-        match self {
-            Self::NotFound(_, _) => Ok(None),
-            _ => Err(self),
-        }
-    }
 }

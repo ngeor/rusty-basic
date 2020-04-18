@@ -9,6 +9,7 @@ pub enum StatementNode {
     ForLoop(ForLoopNode),
     IfBlock(IfBlockNode),
     Assignment(NameNode, ExpressionNode),
+    While(ConditionalBlockNode),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -24,17 +25,21 @@ pub struct ForLoopNode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConditionalBlockNode {
-    pub condition: ExpressionNode,
-    pub block: BlockNode,
     pub pos: Location,
+    pub condition: ExpressionNode,
+    pub statements: BlockNode,
 }
 
 impl ConditionalBlockNode {
-    pub fn new(condition: ExpressionNode, block: BlockNode, pos: Location) -> ConditionalBlockNode {
+    pub fn new(
+        pos: Location,
+        condition: ExpressionNode,
+        statements: BlockNode,
+    ) -> ConditionalBlockNode {
         ConditionalBlockNode {
-            condition,
-            block,
             pos,
+            condition,
+            statements,
         }
     }
 }

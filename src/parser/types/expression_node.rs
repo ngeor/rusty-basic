@@ -26,6 +26,7 @@ pub enum ExpressionNode {
     DoubleLiteral(f64, Location),
     StringLiteral(String, Location),
     IntegerLiteral(i32, Location),
+    #[allow(dead_code)]
     LongLiteral(i64, Location),
     VariableName(NameNode),
     FunctionCall(NameNode, Vec<ExpressionNode>),

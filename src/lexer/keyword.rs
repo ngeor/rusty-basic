@@ -36,6 +36,10 @@ pub enum Keyword {
     Then,
     /// TO
     To,
+    /// WEND
+    Wend,
+    /// WHILE
+    While,
 }
 
 const STR_DECLARE: &str = "DECLARE";
@@ -54,8 +58,10 @@ const STR_NEXT: &str = "NEXT";
 const STR_STEP: &str = "STEP";
 const STR_THEN: &str = "THEN";
 const STR_TO: &str = "TO";
+const STR_WEND: &str = "WEND";
+const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 16] = [
+const SORTED_KEYWORDS_STR: [&str; 18] = [
     STR_DECLARE,
     STR_DEFDBL,
     STR_DEFINT,
@@ -72,9 +78,11 @@ const SORTED_KEYWORDS_STR: [&str; 16] = [
     STR_STEP,
     STR_THEN,
     STR_TO,
+    STR_WEND,
+    STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 16] = [
+const SORTED_KEYWORDS: [Keyword; 18] = [
     Keyword::Declare,
     Keyword::DefDbl,
     Keyword::DefInt,
@@ -91,6 +99,8 @@ const SORTED_KEYWORDS: [Keyword; 16] = [
     Keyword::Step,
     Keyword::Then,
     Keyword::To,
+    Keyword::Wend,
+    Keyword::While,
 ];
 
 impl Display for Keyword {
@@ -112,6 +122,8 @@ impl Display for Keyword {
             Self::Step => STR_STEP.fmt(f),
             Self::Then => STR_THEN.fmt(f),
             Self::To => STR_TO.fmt(f),
+            Self::Wend => STR_WEND.fmt(f),
+            Self::While => STR_WHILE.fmt(f),
         }
     }
 }
@@ -148,6 +160,8 @@ mod tests {
         assert_eq!(Keyword::Step.to_string(), "STEP");
         assert_eq!(Keyword::Then.to_string(), "THEN");
         assert_eq!(Keyword::To.to_string(), "TO");
+        assert_eq!(Keyword::Wend.to_string(), "WEND");
+        assert_eq!(Keyword::While.to_string(), "WHILE");
     }
 
     #[test]
@@ -168,6 +182,8 @@ mod tests {
         assert_eq!(Keyword::Step, "STEP".parse().unwrap());
         assert_eq!(Keyword::Then, "THEN".parse().unwrap());
         assert_eq!(Keyword::To, "TO".parse().unwrap());
+        assert_eq!(Keyword::Wend, "WEND".parse().unwrap());
+        assert_eq!(Keyword::While, "WHILE".parse().unwrap());
     }
 
     #[test]
@@ -188,6 +204,8 @@ mod tests {
         assert_eq!(Keyword::Step, "step".parse().unwrap());
         assert_eq!(Keyword::Then, "then".parse().unwrap());
         assert_eq!(Keyword::To, "to".parse().unwrap());
+        assert_eq!(Keyword::Wend, "wend".parse().unwrap());
+        assert_eq!(Keyword::While, "while".parse().unwrap());
     }
 
     #[test]

@@ -1,28 +1,49 @@
-use super::{ExpressionNode, NameNode, Parser, ParserError, StatementNode};
+use super::{unexpected, ExpressionNode, NameNode, Parser, ParserError, StatementNode};
 use crate::lexer::LexemeNode;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_sub_call(&mut self) -> Result<Option<StatementNode>, ParserError> {
-        match self.buf_lexer.read_ref()? {
-            LexemeNode::Word(_, _) => Ok(Some(self._parse_sub_call()?)),
-            _ => Ok(None),
+    pub fn demand_sub_call(
+        &mut self,
+        name: NameNode,
+        initial: LexemeNode,
+    ) -> Result<StatementNode, ParserError> {
+        let mut args: Vec<ExpressionNode> = vec![];
+        const STATE_INITIAL: u8 = 0;
+        const STATE_EOL_OR_EOF: u8 = 1;
+        const STATE_ARG: u8 = 2;
+        const STATE_COMMA: u8 = 3;
+        let mut state = STATE_INITIAL;
+        let mut next = initial;
+        while state != STATE_EOL_OR_EOF {
+            match next {
+                LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => {
+                    if state == STATE_INITIAL || state == STATE_ARG {
+                        state = STATE_EOL_OR_EOF;
+                    } else {
+                        return unexpected("Expected argument after comma", next);
+                    }
+                }
+                LexemeNode::Symbol(',', _) => {
+                    if state == STATE_ARG {
+                        state = STATE_COMMA;
+                        next = self.read_skipping_whitespace()?;
+                    } else {
+                        return unexpected("Syntax error", next);
+                    }
+                }
+                _ => {
+                    if state == STATE_INITIAL || state == STATE_COMMA {
+                        args.push(self.demand_expression(next)?);
+                        state = STATE_ARG;
+                        next = self.read_skipping_whitespace()?;
+                    } else {
+                        return unexpected("Expected comma or EOL", next);
+                    }
+                }
+            }
         }
-    }
-
-    fn _parse_sub_call(&mut self) -> Result<StatementNode, ParserError> {
-        let (sub_name, pos) = self.buf_lexer.demand_any_word()?;
-        let found_whitespace = self.buf_lexer.skip_whitespace()?;
-        let args: Vec<ExpressionNode> = if found_whitespace {
-            self.parse_expression_list()?
-        } else {
-            vec![]
-        };
-        self.buf_lexer.demand_eol_or_eof()?;
-        Ok(StatementNode::SubCall(
-            NameNode::from(sub_name, None, pos),
-            args,
-        ))
+        Ok(StatementNode::SubCall(name, args))
     }
 }
 

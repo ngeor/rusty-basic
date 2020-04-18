@@ -1,67 +1,124 @@
-use super::{BlockNode, ForLoopNode, Parser, ParserError, StatementNode};
-use crate::lexer::Keyword;
+use super::{
+    unexpected, ExpressionNode, ForLoopNode, NameNode, Parser, ParserError, StatementNode,
+};
+use crate::common::Location;
+use crate::lexer::{Keyword, LexemeNode};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn try_parse_for_loop(&mut self) -> Result<Option<StatementNode>, ParserError> {
-        let opt_pos = self.buf_lexer.try_consume_keyword(Keyword::For)?;
-        if let Some(pos) = opt_pos {
-            self.buf_lexer.demand_whitespace()?;
-            let for_counter_variable = self.demand_name_with_type_qualifier()?;
-            self.buf_lexer.skip_whitespace()?;
-            self.buf_lexer.demand_symbol('=')?;
-            self.buf_lexer.skip_whitespace()?;
-            let lower_bound = self.demand_expression()?;
-            self.buf_lexer.demand_whitespace()?;
-            self.buf_lexer.demand_keyword(Keyword::To)?;
-            self.buf_lexer.demand_whitespace()?;
-            let upper_bound = self.demand_expression()?;
+    pub fn demand_for_loop(&mut self, pos: Location) -> Result<StatementNode, ParserError> {
+        self.read_demand_whitespace("Expected whitespace after FOR keyword")?;
+        let for_counter_variable =
+            self.read_demand_name_with_type_qualifier("Expected FOR counter variable")?;
+        self.read_demand_symbol_skipping_whitespace('=')?;
+        let lower_bound = self.read_demand_expression_skipping_whitespace()?;
+        self.read_demand_whitespace("Expected whitespace before TO keyword")?;
+        self.read_demand_keyword(Keyword::To)?;
+        self.read_demand_whitespace("Expected whitespace after TO keyword")?;
+        let upper_bound = self.read_demand_expression()?;
+        let optional_step = self.try_parse_step()?;
 
-            let optional_step = if self.buf_lexer.skip_whitespace()? {
-                // might have "STEP" keyword
-                if self.buf_lexer.try_consume_keyword(Keyword::Step)?.is_some() {
-                    self.buf_lexer.demand_whitespace()?;
-                    Some(self.demand_expression()?)
-                } else {
-                    None
+        let (statements, _) =
+            self.parse_statements(|x| x.is_keyword(Keyword::Next), "FOR without NEXT")?;
+
+        // we are past the "NEXT", maybe there is a variable name e.g. NEXT I
+        let next_counter = self.try_parse_next_counter()?;
+
+        Ok(StatementNode::ForLoop(ForLoopNode {
+            variable_name: for_counter_variable,
+            lower_bound,
+            upper_bound,
+            step: optional_step,
+            statements,
+            next_counter,
+            pos,
+        }))
+    }
+
+    fn try_parse_step(&mut self) -> Result<Option<ExpressionNode>, ParserError> {
+        const STATE_UPPER_BOUND: u8 = 0;
+        const STATE_WHITESPACE_BEFORE_STEP: u8 = 1;
+        const STATE_STEP: u8 = 2;
+        const STATE_WHITESPACE_AFTER_STEP: u8 = 3;
+        const STATE_STEP_EXPR: u8 = 4;
+        const STATE_WHITESPACE_BEFORE_EOL: u8 = 5;
+        const STATE_EOL: u8 = 6;
+        let mut state = STATE_UPPER_BOUND;
+        let mut expr: Option<ExpressionNode> = None;
+        while state != STATE_EOL {
+            let next = self.buf_lexer.read()?;
+            match next {
+                LexemeNode::Whitespace(_, _) => {
+                    if state == STATE_UPPER_BOUND {
+                        state = STATE_WHITESPACE_BEFORE_STEP;
+                    } else if state == STATE_STEP {
+                        state = STATE_WHITESPACE_AFTER_STEP;
+                    } else if state == STATE_STEP_EXPR {
+                        state = STATE_WHITESPACE_BEFORE_EOL;
+                    } else {
+                        return unexpected("Unexpected whitespace", next);
+                    }
                 }
-            } else {
-                None
-            };
-
-            self.buf_lexer.skip_whitespace()?;
-            self.buf_lexer.demand_eol()?;
-            self.buf_lexer.skip_whitespace_and_eol()?;
-
-            let mut statements: BlockNode = vec![];
-
-            // might have a dummy empty for loop
-            while self.buf_lexer.try_consume_keyword(Keyword::Next)?.is_none() {
-                statements.push(self.demand_statement()?);
-                self.buf_lexer.skip_whitespace_and_eol()?;
+                LexemeNode::EOF(_) => return unexpected("FOR without NEXT", next),
+                LexemeNode::EOL(_, _) => {
+                    if state == STATE_STEP || state == STATE_WHITESPACE_AFTER_STEP {
+                        return unexpected("Expected expression after STEP", next);
+                    }
+                    state = STATE_EOL;
+                }
+                LexemeNode::Keyword(Keyword::Step, _, _) => {
+                    if state == STATE_WHITESPACE_BEFORE_STEP {
+                        state = STATE_STEP;
+                    } else {
+                        return unexpected("Syntax error", next);
+                    }
+                }
+                _ => {
+                    if state == STATE_WHITESPACE_AFTER_STEP {
+                        expr = Some(self.demand_expression(next)?);
+                        state = STATE_STEP_EXPR;
+                    } else {
+                        return unexpected("Syntax error", next);
+                    }
+                }
             }
-
-            // we are past the "NEXT", maybe there is a variable name e.g. NEXT I
-            let next_counter = if self.buf_lexer.skip_whitespace()? {
-                self.try_parse_name_with_type_qualifier()?
-            } else {
-                None
-            };
-
-            self.buf_lexer.demand_eol_or_eof()?;
-
-            Ok(Some(StatementNode::ForLoop(ForLoopNode {
-                variable_name: for_counter_variable,
-                lower_bound,
-                upper_bound,
-                step: optional_step,
-                statements,
-                next_counter,
-                pos,
-            })))
-        } else {
-            Ok(None)
         }
+        Ok(expr)
+    }
+
+    fn try_parse_next_counter(&mut self) -> Result<Option<NameNode>, ParserError> {
+        const STATE_NEXT: u8 = 0;
+        const STATE_WHITESPACE_AFTER_NEXT: u8 = 1;
+        const STATE_EOL_OR_EOF: u8 = 2;
+        const STATE_WORD: u8 = 3;
+        let mut state = STATE_NEXT;
+        let mut name: Option<NameNode> = None;
+        while state != STATE_EOL_OR_EOF {
+            let next = self.buf_lexer.read()?;
+            match next {
+                LexemeNode::Whitespace(_, _) => {
+                    if state == STATE_NEXT {
+                        state = STATE_WHITESPACE_AFTER_NEXT;
+                    }
+                }
+                LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => {
+                    state = STATE_EOL_OR_EOF;
+                }
+                LexemeNode::Word(_, _) => {
+                    if state == STATE_WHITESPACE_AFTER_NEXT {
+                        name = Some(self.demand_name_with_type_qualifier(
+                            next,
+                            "Expected NEXT counter variable",
+                        )?);
+                        state = STATE_WORD;
+                    } else {
+                        return unexpected("Syntax error", next);
+                    }
+                }
+                _ => return unexpected("Expected variable or EOL or EOF", next),
+            }
+        }
+        Ok(name)
     }
 }
 

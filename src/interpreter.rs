@@ -15,6 +15,7 @@ mod stdlib;
 mod sub_call;
 mod variable_setter;
 mod variant;
+mod while_wend;
 
 #[cfg(test)]
 mod test_utils;
@@ -24,6 +25,7 @@ pub use self::function_context::*;
 pub use self::interpreter_error::*;
 pub use self::stdlib::*;
 pub use self::variant::*;
+use std::convert::TryInto;
 
 #[derive(Debug)]
 pub struct Interpreter<S> {
@@ -112,6 +114,14 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 LetterRangeNode::Range(start, stop) => self.resolver_helper.set(start, stop, q),
             }
         }
+    }
+
+    /// Evaluates the condition of the given conditional block.
+    fn evaluate_condition(&mut self, conditional_block: &ConditionalBlockNode) -> Result<bool> {
+        let condition_value = self.evaluate_expression(&conditional_block.condition)?;
+        condition_value
+            .try_into()
+            .map_err(|e| InterpreterError::new_with_pos(e, conditional_block.pos))
     }
 }
 

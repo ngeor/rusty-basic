@@ -1,7 +1,9 @@
 use crate::common::Location;
+use crate::interpreter::variable_getter::VariableGetter;
 use crate::interpreter::variant::Variant;
-use crate::interpreter::{Interpreter, InterpreterError, Result, Stdlib, VariableGetter};
+use crate::interpreter::{Interpreter, InterpreterError, Result, Stdlib};
 use crate::parser::{Name, NameNode, Parser};
+use std::collections::HashMap;
 use std::fs::File;
 
 pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>
@@ -51,6 +53,7 @@ where
 pub struct MockStdlib {
     next_input: Vec<String>,
     pub output: Vec<String>,
+    pub env: HashMap<String, String>,
 }
 
 impl MockStdlib {
@@ -58,6 +61,7 @@ impl MockStdlib {
         MockStdlib {
             next_input: vec![],
             output: vec![],
+            env: HashMap::new(),
         }
     }
 
@@ -90,13 +94,32 @@ impl Stdlib for MockStdlib {
     fn input(&mut self) -> std::io::Result<String> {
         Ok(self.next_input.remove(0))
     }
+
+    fn get_env_var(&self, name: &String) -> String {
+        match self.env.get(name) {
+            Some(x) => x.clone(),
+            None => String::new(),
+        }
+    }
+
+    fn set_env_var(&mut self, name: String, value: String) {
+        self.env.insert(name, value);
+    }
+}
+
+impl<S: Stdlib> Interpreter<S> {
+    pub fn get_variable_str(&self, name: &str) -> Result<&Variant> {
+        let pos = Location::start();
+        let n = Name::from(name);
+        self.get_variable(&NameNode::new(n, pos))
+    }
 }
 
 #[macro_export]
 macro_rules! assert_has_variable {
     ($int:expr, $name:expr, $expected_value:expr) => {
         assert_eq!(
-            $int.get_variable($name).unwrap(),
+            $int.get_variable_str($name).unwrap(),
             &Variant::from($expected_value)
         );
     };

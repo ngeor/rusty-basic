@@ -12,3 +12,7 @@ pub enum ParserError {
     /// Unexpected token
     Unexpected(String, LexemeNode),
 }
+
+pub fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, ParserError> {
+    Err(ParserError::Unexpected(msg.as_ref().to_string(), lexeme))
+}

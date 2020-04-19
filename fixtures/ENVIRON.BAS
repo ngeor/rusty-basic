@@ -1,0 +1,1 @@
+PRINT ENVIRON$("PATH")

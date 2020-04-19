@@ -10,6 +10,12 @@ pub trait Stdlib {
     /// Implementation of INPUT
     /// Mutable because of the test implementation
     fn input(&mut self) -> std::io::Result<String>;
+
+    /// Gets an environment variable (used by built-in function ENVIRON$)
+    fn get_env_var(&self, name: &String) -> String;
+
+    /// Sets an environment variable (used by built-in sub ENVIRON)
+    fn set_env_var(&mut self, name: String, value: String);
 }
 
 pub struct DefaultStdlib {}
@@ -33,5 +39,16 @@ impl Stdlib for DefaultStdlib {
             Ok(_) => Ok(line.trim_end().to_string()),
             Err(x) => Err(x),
         }
+    }
+
+    fn get_env_var(&self, name: &String) -> String {
+        match std::env::var(name) {
+            Ok(x) => x,
+            Err(_) => String::new(),
+        }
+    }
+
+    fn set_env_var(&mut self, name: String, value: String) {
+        std::env::set_var(name, value);
     }
 }

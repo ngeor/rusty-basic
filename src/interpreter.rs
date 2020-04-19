@@ -1,4 +1,4 @@
-use crate::common::{CaseInsensitiveString, HasLocation, Location};
+use crate::common::CaseInsensitiveString;
 use crate::parser::*;
 
 mod assignment;
@@ -13,6 +13,7 @@ mod interpreter_error;
 mod statement;
 mod stdlib;
 mod sub_call;
+mod variable_getter;
 mod variable_setter;
 mod variant;
 mod while_wend;
@@ -25,6 +26,8 @@ pub use self::function_context::*;
 pub use self::interpreter_error::*;
 pub use self::stdlib::*;
 pub use self::variant::*;
+use crate::interpreter::function_context::LookupImplementation;
+use crate::interpreter::statement::StatementRunner;
 use std::convert::TryInto;
 
 #[derive(Debug)]
@@ -36,6 +39,21 @@ pub struct Interpreter<S> {
 }
 
 pub type Result<T> = std::result::Result<T, InterpreterError>;
+
+pub trait PushPopContext {
+    fn push_context(&mut self, result_name: QualifiedName);
+
+    fn pop_context(&mut self);
+}
+
+impl<S: Stdlib> LookupImplementation for Interpreter<S> {
+    fn lookup_implementation(
+        &self,
+        function_name: &NameNode,
+    ) -> Result<Option<QualifiedFunctionImplementationNode>> {
+        self.function_context.lookup_implementation(function_name)
+    }
+}
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     pub fn new(stdlib: TStdlib) -> Interpreter<TStdlib> {
@@ -66,15 +84,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
         }
         self._search_for_unimplemented_declarations()?;
-        self.statements(&statements)
-    }
-
-    pub fn push_context(&mut self, result_name: QualifiedName) {
-        self.context = self.context.take().map(|x| x.push(result_name));
-    }
-
-    pub fn pop_context(&mut self) {
-        self.context = self.context.take().map(|x| x.pop());
+        self.run(&statements)
     }
 
     fn _search_for_unimplemented_declarations(&mut self) -> Result<()> {
@@ -125,6 +135,16 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     }
 }
 
+impl<S: Stdlib> PushPopContext for Interpreter<S> {
+    fn push_context(&mut self, result_name: QualifiedName) {
+        self.context = self.context.take().map(|x| x.push(result_name));
+    }
+
+    fn pop_context(&mut self) {
+        self.context = self.context.take().map(|x| x.pop());
+    }
+}
+
 #[derive(Debug)]
 struct ResolverHelper {
     ranges: [TypeQualifier; 26],
@@ -166,49 +186,6 @@ impl TypeResolver for ResolverHelper {
 impl<TStdlib: Stdlib> TypeResolver for Interpreter<TStdlib> {
     fn resolve(&self, name: &CaseInsensitiveString) -> TypeQualifier {
         self.resolver_helper.resolve(name)
-    }
-}
-
-//
-// VariableGetter
-//
-
-trait VariableGetter<T> {
-    fn get_variable(&self, variable_name: T) -> std::result::Result<&Variant, InterpreterError>;
-}
-
-impl<S: Stdlib> VariableGetter<(&QualifiedName, Location)> for Interpreter<S> {
-    fn get_variable(
-        &self,
-        variable_name_node: (&QualifiedName, Location),
-    ) -> std::result::Result<&Variant, InterpreterError> {
-        let (qualified_name, location) = variable_name_node;
-        match self.context_ref().get(qualified_name) {
-            Some(v) => Ok(v),
-            None => Err(InterpreterError::new_with_pos(
-                format!("Variable {} not defined", qualified_name),
-                location,
-            )),
-        }
-    }
-}
-
-impl<S: Stdlib> VariableGetter<&NameNode> for Interpreter<S> {
-    fn get_variable(
-        &self,
-        variable_name_node: &NameNode,
-    ) -> std::result::Result<&Variant, InterpreterError> {
-        let pos = variable_name_node.location();
-        let q = variable_name_node.element().to_qualified_name(self);
-        self.get_variable((&q, pos))
-    }
-}
-
-#[cfg(test)]
-impl<S: Stdlib> VariableGetter<&str> for Interpreter<S> {
-    fn get_variable(&self, variable_name: &str) -> std::result::Result<&Variant, InterpreterError> {
-        let qualified_name = Name::from(variable_name).to_qualified_name_into(self);
-        self.get_variable((&qualified_name, Location::new(1, 1)))
     }
 }
 

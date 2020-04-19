@@ -44,7 +44,7 @@ mod tests {
                         Box::new("A".as_var_expr(2, 15)),
                         Box::new(5.as_lit_expr(2, 19))
                     ),
-                    vec![StatementNode::SubCall("SYSTEM".as_name(3, 13), vec![])]
+                    vec![StatementNode::SubCall("SYSTEM".as_bare_name(3, 13), vec![])]
                 )
             ))]
         );

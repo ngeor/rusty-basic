@@ -1,6 +1,7 @@
 use super::variant::{V_FALSE, V_TRUE};
-use super::{Interpreter, InterpreterError, Result, Stdlib, VariableGetter, Variant};
+use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
+use crate::interpreter::variable_getter::VariableGetter;
 use crate::parser::{ExpressionNode, Operand, OperandNode, UnaryOperand, UnaryOperandNode};
 
 impl<S: Stdlib> Interpreter<S> {
@@ -11,8 +12,8 @@ impl<S: Stdlib> Interpreter<S> {
             ExpressionNode::StringLiteral(s, _) => Ok(Variant::from(s)),
             ExpressionNode::IntegerLiteral(i, _) => Ok(Variant::from(*i)),
             ExpressionNode::LongLiteral(i, _) => Ok(Variant::from(*i)),
-            ExpressionNode::VariableName(qn) => self.get_variable(qn).map(|x| x.clone()),
-            ExpressionNode::FunctionCall(name, args) => self.evaluate_function_call(name, args),
+            ExpressionNode::VariableName(n) => self.get_variable(n).map(|x| x.clone()),
+            ExpressionNode::FunctionCall(n, args) => self.evaluate_function_call(n, args),
             ExpressionNode::BinaryExpression(op, left, right) => {
                 self._evaluate_binary_expression(op, left, right)
             }

@@ -148,7 +148,7 @@ mod tests {
                     Location::new(1, 1),
                     "X".as_var_expr(1, 4),
                     vec![StatementNode::SubCall(
-                        "PRINT".as_name(2, 1),
+                        "PRINT".as_bare_name(2, 1),
                         vec!["X".as_var_expr(2, 7)]
                     )],
                 ),
@@ -198,13 +198,13 @@ END IF"#;
                     Location::new(1, 1),
                     "X".as_var_expr(1, 4),
                     vec![StatementNode::SubCall(
-                        "PRINT".as_name(2, 5),
+                        "PRINT".as_bare_name(2, 5),
                         vec!["X".as_var_expr(2, 11)]
                     )],
                 ),
                 else_if_blocks: vec![],
                 else_block: Some(vec![StatementNode::SubCall(
-                    "PRINT".as_name(4, 5),
+                    "PRINT".as_bare_name(4, 5),
                     vec!["Y".as_var_expr(4, 11)]
                 )]),
             }),
@@ -226,7 +226,7 @@ END IF"#;
                     Location::new(1, 1),
                     "X".as_var_expr(1, 4),
                     vec![StatementNode::SubCall(
-                        "PRINT".as_name(2, 5),
+                        "PRINT".as_bare_name(2, 5),
                         vec!["X".as_var_expr(2, 11)]
                     )],
                 ),
@@ -234,7 +234,7 @@ END IF"#;
                     Location::new(3, 1),
                     "Y".as_var_expr(3, 8),
                     vec![StatementNode::SubCall(
-                        "PRINT".as_name(4, 5),
+                        "PRINT".as_bare_name(4, 5),
                         vec!["Y".as_var_expr(4, 11)]
                     )],
                 )],
@@ -260,7 +260,7 @@ END IF"#;
                     Location::new(1, 1),
                     "X".as_var_expr(1, 4),
                     vec![StatementNode::SubCall(
-                        "PRINT".as_name(2, 5),
+                        "PRINT".as_bare_name(2, 5),
                         vec!["X".as_var_expr(2, 11)]
                     )],
                 ),
@@ -269,7 +269,7 @@ END IF"#;
                         Location::new(3, 1),
                         "Y".as_var_expr(3, 8),
                         vec![StatementNode::SubCall(
-                            "PRINT".as_name(4, 5),
+                            "PRINT".as_bare_name(4, 5),
                             vec!["Y".as_var_expr(4, 11)]
                         )],
                     ),
@@ -277,7 +277,7 @@ END IF"#;
                         Location::new(5, 1),
                         "Z".as_var_expr(5, 8),
                         vec![StatementNode::SubCall(
-                            "PRINT".as_name(6, 5),
+                            "PRINT".as_bare_name(6, 5),
                             vec!["Z".as_var_expr(6, 11)]
                         )],
                     ),
@@ -304,7 +304,7 @@ END IF"#;
                     Location::new(1, 1),
                     "X".as_var_expr(1, 4),
                     vec![StatementNode::SubCall(
-                        "PRINT".as_name(2, 5),
+                        "PRINT".as_bare_name(2, 5),
                         vec!["X".as_var_expr(2, 11)]
                     )],
                 ),
@@ -312,12 +312,12 @@ END IF"#;
                     Location::new(3, 1),
                     "Y".as_var_expr(3, 8),
                     vec![StatementNode::SubCall(
-                        "PRINT".as_name(4, 5),
+                        "PRINT".as_bare_name(4, 5),
                         vec!["Y".as_var_expr(4, 11)]
                     )],
                 )],
                 else_block: Some(vec![StatementNode::SubCall(
-                    "PRINT".as_name(6, 5),
+                    "PRINT".as_bare_name(6, 5),
                     vec!["Z".as_var_expr(6, 11)]
                 )]),
             })
@@ -341,7 +341,7 @@ end if"#;
                     Location::new(1, 1),
                     "x".as_var_expr(1, 4),
                     vec![StatementNode::SubCall(
-                        "print".as_name(2, 5),
+                        "print".as_bare_name(2, 5),
                         vec!["x".as_var_expr(2, 11)]
                     )],
                 ),
@@ -349,12 +349,12 @@ end if"#;
                     Location::new(3, 1),
                     "y".as_var_expr(3, 8),
                     vec![StatementNode::SubCall(
-                        "print".as_name(4, 5),
+                        "print".as_bare_name(4, 5),
                         vec!["y".as_var_expr(4, 11)]
                     )],
                 )],
                 else_block: Some(vec![StatementNode::SubCall(
-                    "print".as_name(6, 5),
+                    "print".as_bare_name(6, 5),
                     vec!["z".as_var_expr(6, 11)]
                 )]),
             })

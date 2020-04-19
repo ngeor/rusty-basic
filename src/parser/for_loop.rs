@@ -141,7 +141,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![StatementNode::SubCall(
-                    "PRINT".as_name(2, 1),
+                    "PRINT".as_bare_name(2, 1),
                     vec!["I".as_var_expr(2, 7)]
                 )],
                 next_counter: None,
@@ -162,7 +162,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![StatementNode::SubCall(
-                    "print".as_name(2, 1),
+                    "print".as_bare_name(2, 1),
                     vec!["i".as_var_expr(2, 7)]
                 )],
                 next_counter: None,
@@ -182,7 +182,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![StatementNode::SubCall(
-                    "PRINT".as_name(2, 5),
+                    "PRINT".as_bare_name(2, 5),
                     vec!["Hello".as_lit_expr(2, 11), "I".as_var_expr(2, 20)]
                 )],
                 next_counter: None,
@@ -198,7 +198,7 @@ mod tests {
             result,
             vec![
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "PRINT".as_name(1, 1),
+                    "PRINT".as_bare_name(1, 1),
                     vec!["Before the outer loop".as_lit_expr(1, 7)]
                 )),
                 TopLevelTokenNode::Statement(StatementNode::ForLoop(ForLoopNode {
@@ -208,7 +208,7 @@ mod tests {
                     step: None,
                     statements: vec![
                         StatementNode::SubCall(
-                            "PRINT".as_name(3, 5),
+                            "PRINT".as_bare_name(3, 5),
                             vec![
                                 "Before the inner loop".as_lit_expr(3, 11),
                                 "I".as_var_expr(3, 36)
@@ -220,7 +220,7 @@ mod tests {
                             upper_bound: 10.as_lit_expr(4, 18),
                             step: None,
                             statements: vec![StatementNode::SubCall(
-                                "PRINT".as_name(5, 9),
+                                "PRINT".as_bare_name(5, 9),
                                 vec![
                                     "Inner loop".as_lit_expr(5, 15),
                                     "I".as_var_expr(5, 29),
@@ -231,7 +231,7 @@ mod tests {
                             pos: Location::new(4, 5)
                         }),
                         StatementNode::SubCall(
-                            "PRINT".as_name(7, 5),
+                            "PRINT".as_bare_name(7, 5),
                             vec![
                                 "After the inner loop".as_lit_expr(7, 11),
                                 "I".as_var_expr(7, 35)
@@ -242,7 +242,7 @@ mod tests {
                     pos: Location::new(2, 1)
                 })),
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "PRINT".as_name(9, 1),
+                    "PRINT".as_bare_name(9, 1),
                     vec!["After the outer loop".as_lit_expr(9, 7)]
                 )),
             ]

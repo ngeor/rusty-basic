@@ -18,7 +18,6 @@ mod tests {
     use super::*;
     use crate::assert_has_variable;
     use crate::interpreter::test_utils::*;
-    use crate::interpreter::VariableGetter;
 
     mod assignment {
         use super::*;

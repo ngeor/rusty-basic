@@ -34,13 +34,6 @@ impl LexemeNode {
         }
     }
 
-    pub fn is_eol(&self) -> bool {
-        match self {
-            LexemeNode::EOL(_, _) => true,
-            _ => false,
-        }
-    }
-
     pub fn is_eol_or_eof(&self) -> bool {
         match self {
             LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => true,

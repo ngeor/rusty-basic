@@ -164,10 +164,6 @@ impl<T: BufRead> Parser<T> {
     }
 }
 
-fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, ParserError> {
-    Err(ParserError::Unexpected(msg.as_ref().to_string(), lexeme))
-}
-
 // bytes || &str -> Parser
 impl<T> From<T> for Parser<BufReader<Cursor<T>>>
 where
@@ -205,12 +201,12 @@ mod tests {
                 )),
                 // PRINT "Enter the number of fibonacci to calculate"
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "PRINT".as_name(2, 1),
+                    "PRINT".as_bare_name(2, 1),
                     vec!["Enter the number of fibonacci to calculate".as_lit_expr(2, 7)],
                 )),
                 // INPUT N
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "INPUT".as_name(3, 1),
+                    "INPUT".as_bare_name(3, 1),
                     vec!["N".as_var_expr(3, 7)]
                 )),
                 // FOR I = 0 TO N
@@ -222,7 +218,7 @@ mod tests {
                     statements: vec![
                         // PRINT "Fibonacci of ", I, " is ", Fib(I)
                         StatementNode::SubCall(
-                            "PRINT".as_name(5, 5),
+                            "PRINT".as_bare_name(5, 5),
                             vec![
                                 "Fibonacci of".as_lit_expr(5, 11),
                                 "I".as_var_expr(5, 27),

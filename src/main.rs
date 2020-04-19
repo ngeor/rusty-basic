@@ -17,6 +17,14 @@ fn main() {
         .expect("The first argument should be the program to run");
     let f = File::open(&filename).expect(format!("Could not find program {}", filename).as_ref());
     let mut parser = Parser::from(f);
-    let mut interpreter = Interpreter::new(DefaultStdlib {});
-    interpreter.interpret(parser.parse().unwrap()).unwrap();
+    match parser.parse() {
+        Ok(program) => {
+            let mut interpreter = Interpreter::new(DefaultStdlib {});
+            match interpreter.interpret(program) {
+                Ok(_) => (),
+                Err(e) => eprintln!("Runtime error. {:?}", e),
+            }
+        }
+        Err(e) => eprintln!("Could not parse program. {:?}", e),
+    }
 }

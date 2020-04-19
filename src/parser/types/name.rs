@@ -2,6 +2,7 @@ use super::{
     HasBareName, HasQualifier, QualifiedName, ResolvesQualifier, TypeQualifier, TypeResolver,
 };
 use crate::common::CaseInsensitiveString;
+use std::convert::TryFrom;
 use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -11,20 +12,35 @@ pub enum Name {
 }
 
 impl Name {
-    pub fn to_qualified_name(&self, resolver: &dyn TypeResolver) -> QualifiedName {
+    pub fn to_qualified_name<T: TypeResolver>(&self, resolver: &T) -> QualifiedName {
         match self {
             Self::Bare(s) => QualifiedName::new(s.clone(), resolver.resolve(s)),
             Self::Typed(t) => t.clone(),
         }
     }
 
-    pub fn to_qualified_name_into(self, resolver: &dyn TypeResolver) -> QualifiedName {
+    pub fn to_qualified_name_into<T: TypeResolver>(self, resolver: &T) -> QualifiedName {
         match self {
             Self::Bare(s) => {
                 let qualifier = resolver.resolve(&s);
                 QualifiedName::new(s, qualifier)
             }
             Self::Typed(t) => t,
+        }
+    }
+
+    pub fn from<S: AsRef<str>>(s: S) -> Self {
+        let mut buf = s.as_ref().to_string();
+        let last_ch: char = buf.pop().unwrap();
+        match TypeQualifier::try_from(last_ch) {
+            Ok(qualifier) => Name::Typed(QualifiedName::new(
+                CaseInsensitiveString::new(buf),
+                qualifier,
+            )),
+            _ => {
+                buf.push(last_ch);
+                Name::Bare(CaseInsensitiveString::new(buf))
+            }
         }
     }
 }
@@ -55,31 +71,10 @@ impl HasBareName for Name {
 }
 
 impl ResolvesQualifier for Name {
-    fn qualifier(&self, resolver: &dyn TypeResolver) -> TypeQualifier {
+    fn qualifier<T: TypeResolver>(&self, resolver: &T) -> TypeQualifier {
         match self {
             Self::Bare(b) => resolver.resolve(b),
             Self::Typed(t) => t.qualifier(),
-        }
-    }
-}
-
-#[cfg(test)]
-use std::convert::TryFrom;
-
-#[cfg(test)]
-impl Name {
-    pub fn from<S: AsRef<str>>(s: S) -> Self {
-        let mut buf = s.as_ref().to_string();
-        let last_ch: char = buf.pop().unwrap();
-        match TypeQualifier::try_from(last_ch) {
-            Ok(qualifier) => Name::Typed(QualifiedName::new(
-                CaseInsensitiveString::new(buf),
-                qualifier,
-            )),
-            _ => {
-                buf.push(last_ch);
-                Name::Bare(CaseInsensitiveString::new(buf))
-            }
         }
     }
 }

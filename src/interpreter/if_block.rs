@@ -1,25 +1,19 @@
 use super::{Interpreter, Result, Stdlib};
-use crate::parser::{BlockNode, IfBlockNode};
+use crate::interpreter::statement::StatementRunner;
+use crate::parser::IfBlockNode;
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn if_block(&mut self, if_block_node: &IfBlockNode) -> Result<()> {
-        match self._find_block(if_block_node)? {
-            Some(statements) => self.statements(statements),
-            None => Ok(()),
-        }
-    }
-
-    fn _find_block<'a>(&mut self, if_block_node: &'a IfBlockNode) -> Result<Option<&'a BlockNode>> {
         if self.evaluate_condition(&if_block_node.if_block)? {
-            Ok(Some(&if_block_node.if_block.statements))
+            self.run(&if_block_node.if_block.statements)
         } else {
             for else_if_block in &if_block_node.else_if_blocks {
                 if self.evaluate_condition(else_if_block)? {
-                    return Ok(Some(&else_if_block.statements));
+                    return self.run(&else_if_block.statements);
                 }
             }
 
-            Ok(if_block_node.else_block.as_ref())
+            self.run(&if_block_node.else_block)
         }
     }
 }

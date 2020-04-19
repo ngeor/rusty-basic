@@ -1,11 +1,11 @@
 use super::variable_setter::VariableSetter;
 use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
-use crate::parser::{ExpressionNode, HasBareName, NameNode, ResolvesQualifier, TypeQualifier};
+use crate::parser::{BareNameNode, ExpressionNode, NameNode, ResolvesQualifier, TypeQualifier};
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
-    pub fn sub_call(&mut self, name: &NameNode, args: &Vec<ExpressionNode>) -> Result<()> {
-        let raw_name = name.bare_name();
+    pub fn sub_call(&mut self, name: &BareNameNode, args: &Vec<ExpressionNode>) -> Result<()> {
+        let raw_name = name.element();
         if raw_name == "PRINT" {
             self._do_print(args)
         } else if raw_name == "INPUT" {
@@ -13,6 +13,8 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         } else if raw_name == "SYSTEM" {
             self.stdlib.system();
             Ok(())
+        } else if raw_name == "ENVIRON" {
+            self._do_environ_sub(name, args)
         } else {
             Err(InterpreterError::new_with_pos(
                 format!("Unknown sub {}", raw_name),
@@ -71,6 +73,40 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         };
         self.set_variable(var_name, variable_value).map(|_| ())
     }
+
+    fn _do_environ_sub(
+        &mut self,
+        sub_name_node: &BareNameNode,
+        args: &Vec<ExpressionNode>,
+    ) -> Result<()> {
+        if args.len() != 1 {
+            return Err(InterpreterError::new_with_pos(
+                "ENVIRON requires exactly 1 argument",
+                sub_name_node.location(),
+            ));
+        }
+
+        let arg_value = self.evaluate_expression(&args[0])?;
+        match arg_value {
+            Variant::VString(arg_string_value) => {
+                let parts: Vec<&str> = arg_string_value.split("=").collect();
+                if parts.len() != 2 {
+                    Err(InterpreterError::new_with_pos(
+                        "Invalid expression. Must be name=value.",
+                        args[0].location(),
+                    ))
+                } else {
+                    self.stdlib
+                        .set_env_var(parts[0].to_string(), parts[1].to_string());
+                    Ok(())
+                }
+            }
+            _ => Err(InterpreterError::new_with_pos(
+                "Type mismatch",
+                args[0].location(),
+            )),
+        }
+    }
 }
 
 fn parse_single_input(s: String) -> std::result::Result<f32, String> {
@@ -93,6 +129,9 @@ fn parse_int_input(s: String) -> std::result::Result<i32, String> {
 
 #[cfg(test)]
 mod tests {
+    use crate::interpreter::test_utils::*;
+    use crate::interpreter::Stdlib;
+
     mod input {
         mod unqualified_var {
             use crate::interpreter::test_utils::*;
@@ -145,5 +184,14 @@ mod tests {
                 assert_input("42", "A%", 42);
             }
         }
+    }
+
+    #[test]
+    fn test_sub_call_environ() {
+        let program = r#"
+        ENVIRON "FOO=BAR"
+        "#;
+        let interpreter = interpret(program);
+        assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
     }
 }

@@ -1,10 +1,11 @@
 use super::{Interpreter, Result, Stdlib};
+use crate::interpreter::statement::StatementRunner;
 use crate::parser::ConditionalBlockNode;
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn while_wend(&mut self, while_wend_block: &ConditionalBlockNode) -> Result<()> {
         while self.evaluate_condition(while_wend_block)? {
-            self.statements(&while_wend_block.statements)?;
+            self.run(&while_wend_block.statements)?;
         }
         Ok(())
     }

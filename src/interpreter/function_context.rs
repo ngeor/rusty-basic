@@ -14,7 +14,7 @@ pub struct QualifiedFunctionDeclarationNode {
 }
 
 impl QualifiedFunctionDeclarationNode {
-    fn from(d: FunctionDeclarationNode, resolver: &dyn TypeResolver) -> Self {
+    fn from<T: TypeResolver>(d: FunctionDeclarationNode, resolver: &T) -> Self {
         QualifiedFunctionDeclarationNode {
             name: d.name.element_into().to_qualified_name_into(resolver),
             parameters: d
@@ -46,7 +46,7 @@ pub struct QualifiedFunctionImplementationNode {
 }
 
 impl QualifiedFunctionImplementationNode {
-    fn from(d: FunctionImplementationNode, resolver: &dyn TypeResolver) -> Self {
+    fn from<T: TypeResolver>(d: FunctionImplementationNode, resolver: &T) -> Self {
         QualifiedFunctionImplementationNode {
             name: d.name.element_into().to_qualified_name_into(resolver),
             parameters: d
@@ -86,10 +86,10 @@ impl FunctionContext {
         }
     }
 
-    pub fn add_function_declaration(
+    pub fn add_function_declaration<T: TypeResolver>(
         &mut self,
         f: FunctionDeclarationNode,
-        resolver: &dyn TypeResolver,
+        resolver: &T,
     ) -> Result<()> {
         match self._validate_against_existing_declaration(
             &f.name,
@@ -108,10 +108,10 @@ impl FunctionContext {
         }
     }
 
-    pub fn add_function_implementation(
+    pub fn add_function_implementation<T: TypeResolver>(
         &mut self,
         f: FunctionImplementationNode,
-        resolver: &dyn TypeResolver,
+        resolver: &T,
     ) -> Result<()> {
         if self._contains_implementation(&f.name) {
             Err(InterpreterError::new_with_pos(
@@ -128,12 +128,12 @@ impl FunctionContext {
         }
     }
 
-    fn _validate_against_existing_declaration(
+    fn _validate_against_existing_declaration<T: TypeResolver>(
         &self,
         function_name: &NameNode,
         parameters: &Vec<NameNode>,
         pos: Location,
-        resolver: &dyn TypeResolver,
+        resolver: &T,
     ) -> Result<Option<&QualifiedFunctionDeclarationNode>> {
         match self.function_declaration_map.get(function_name.bare_name()) {
             Some(existing_declaration) => {
@@ -183,21 +183,6 @@ impl FunctionContext {
             .contains_key(function_name.bare_name())
     }
 
-    pub fn lookup_implementation(
-        &self,
-        function_name: &NameNode,
-    ) -> Result<Option<QualifiedFunctionImplementationNode>> {
-        match function_name.element() {
-            Name::Bare(bare_function_name) => {
-                Ok(self.get_function_implementation(bare_function_name))
-            }
-            Name::Typed(qualified_function_name) => self._lookup_implementation_qualified(
-                qualified_function_name,
-                function_name.location(),
-            ),
-        }
-    }
-
     fn _lookup_implementation_qualified(
         &self,
         function_name: &QualifiedName,
@@ -218,11 +203,35 @@ impl FunctionContext {
     }
 }
 
-fn _are_parameters_same(
+pub trait LookupImplementation {
+    fn lookup_implementation(
+        &self,
+        function_name: &NameNode,
+    ) -> Result<Option<QualifiedFunctionImplementationNode>>;
+}
+
+impl LookupImplementation for FunctionContext {
+    fn lookup_implementation(
+        &self,
+        function_name: &NameNode,
+    ) -> Result<Option<QualifiedFunctionImplementationNode>> {
+        match function_name.element() {
+            Name::Bare(bare_function_name) => {
+                Ok(self.get_function_implementation(bare_function_name))
+            }
+            Name::Typed(qualified_function_name) => self._lookup_implementation_qualified(
+                qualified_function_name,
+                function_name.location(),
+            ),
+        }
+    }
+}
+
+fn _are_parameters_same<T: TypeResolver>(
     existing: &Vec<QualifiedName>,
     parameters: &Vec<NameNode>,
     pos: Location,
-    resolver: &dyn TypeResolver,
+    resolver: &T,
 ) -> Result<()> {
     if existing.len() != parameters.len() {
         return Err(InterpreterError::new_with_pos(

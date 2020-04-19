@@ -1,11 +1,11 @@
-use super::{unexpected, ExpressionNode, NameNode, Parser, ParserError, StatementNode};
+use super::{unexpected, BareNameNode, ExpressionNode, Parser, ParserError, StatementNode};
 use crate::lexer::LexemeNode;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
     pub fn demand_sub_call(
         &mut self,
-        name: NameNode,
+        name_node: BareNameNode,
         initial: LexemeNode,
     ) -> Result<StatementNode, ParserError> {
         let mut args: Vec<ExpressionNode> = vec![];
@@ -43,7 +43,7 @@ impl<T: BufRead> Parser<T> {
                 }
             }
         }
-        Ok(StatementNode::SubCall(name, args))
+        Ok(StatementNode::SubCall(name_node, args))
     }
 }
 
@@ -59,7 +59,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            StatementNode::SubCall("PRINT".as_name(1, 1), vec![])
+            StatementNode::SubCall("PRINT".as_bare_name(1, 1), vec![])
         );
     }
 
@@ -70,7 +70,7 @@ mod tests {
         assert_eq!(
             program,
             StatementNode::SubCall(
-                "PRINT".as_name(1, 1),
+                "PRINT".as_bare_name(1, 1),
                 vec!["Hello, world!".as_lit_expr(1, 7)]
             )
         );
@@ -82,7 +82,7 @@ mod tests {
         assert_eq!(
             program,
             StatementNode::SubCall(
-                "PRINT".as_name(1, 1),
+                "PRINT".as_bare_name(1, 1),
                 vec!["Hello, world!".as_lit_expr(1, 7)]
             )
         );
@@ -94,7 +94,7 @@ mod tests {
         assert_eq!(
             program,
             StatementNode::SubCall(
-                "PRINT".as_name(1, 1),
+                "PRINT".as_bare_name(1, 1),
                 vec!["Hello".as_lit_expr(1, 7), "world!".as_lit_expr(1, 16)]
             )
         );
@@ -107,11 +107,11 @@ mod tests {
             program,
             vec![
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "PRINT".as_name(1, 1),
+                    "PRINT".as_bare_name(1, 1),
                     vec!["Hello, world!".as_lit_expr(1, 7)]
                 )),
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "SYSTEM".as_name(2, 1),
+                    "SYSTEM".as_bare_name(2, 1),
                     vec![]
                 )),
             ],
@@ -125,14 +125,29 @@ mod tests {
             program,
             vec![
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "INPUT".as_name(1, 1),
+                    "INPUT".as_bare_name(1, 1),
                     vec!["N".as_var_expr(1, 7)]
                 )),
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "PRINT".as_name(2, 1),
+                    "PRINT".as_bare_name(2, 1),
                     vec!["N".as_var_expr(2, 7)]
                 )),
             ],
+        );
+    }
+
+    #[test]
+    fn test_parse_fixture_environ() {
+        let program = parse_file("ENVIRON.BAS");
+        assert_eq!(
+            program,
+            vec![TopLevelTokenNode::Statement(StatementNode::SubCall(
+                "PRINT".as_bare_name(1, 1),
+                vec![ExpressionNode::FunctionCall(
+                    "ENVIRON$".as_name(1, 7),
+                    vec!["PATH".as_lit_expr(1, 16)]
+                )]
+            ))]
         );
     }
 }

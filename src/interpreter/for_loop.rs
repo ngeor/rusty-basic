@@ -1,6 +1,8 @@
 use super::variable_setter::VariableSetter;
-use super::{Interpreter, InterpreterError, Result, Stdlib, VariableGetter, Variant};
+use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
+use crate::interpreter::statement::StatementRunner;
+use crate::interpreter::variable_getter::VariableGetter;
 use crate::parser::{ForLoopNode, NameNode};
 use std::cmp::Ordering;
 
@@ -45,7 +47,7 @@ impl<S: Stdlib> Interpreter<S> {
             Ordering::Greater => {
                 self.set_variable(counter_var_name, start)?;
                 while self._is_less_or_equal(counter_var_name, &stop)? {
-                    self.statements(statements)?;
+                    self.run(statements)?;
                     self._inc_variable(counter_var_name.clone(), &step)?;
                 }
                 Ok(())
@@ -53,7 +55,7 @@ impl<S: Stdlib> Interpreter<S> {
             Ordering::Less => {
                 self.set_variable(counter_var_name, start)?;
                 while self._is_greater_or_equal(counter_var_name, &stop)? {
-                    self.statements(statements)?;
+                    self.run(statements)?;
                     self._inc_variable(counter_var_name.clone(), &step)?;
                 }
                 Ok(())

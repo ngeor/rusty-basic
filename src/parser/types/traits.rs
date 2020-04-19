@@ -15,5 +15,5 @@ pub trait HasQualifier {
 }
 
 pub trait ResolvesQualifier {
-    fn qualifier(&self, resolver: &dyn TypeResolver) -> TypeQualifier;
+    fn qualifier<T: TypeResolver>(&self, resolver: &T) -> TypeQualifier;
 }

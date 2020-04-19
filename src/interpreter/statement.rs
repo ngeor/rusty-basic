@@ -1,8 +1,12 @@
 use super::{Interpreter, Result, Stdlib};
 use crate::parser::{BlockNode, StatementNode};
 
-impl<S: Stdlib> Interpreter<S> {
-    pub fn statement(&mut self, statement: &StatementNode) -> Result<()> {
+pub trait StatementRunner<T> {
+    fn run(&mut self, statement: &T) -> Result<()>;
+}
+
+impl<S: Stdlib> StatementRunner<StatementNode> for Interpreter<S> {
+    fn run(&mut self, statement: &StatementNode) -> Result<()> {
         match statement {
             StatementNode::SubCall(name, args) => self.sub_call(name, args),
             StatementNode::ForLoop(f) => self.for_loop(f),
@@ -13,14 +17,25 @@ impl<S: Stdlib> Interpreter<S> {
             StatementNode::While(w) => self.while_wend(w),
         }
     }
+}
 
-    pub fn statements(&mut self, statements: &BlockNode) -> Result<()> {
+impl<T: StatementRunner<StatementNode>> StatementRunner<BlockNode> for T {
+    fn run(&mut self, statements: &BlockNode) -> Result<()> {
         for statement in statements {
-            match self.statement(statement) {
+            match self.run(statement) {
                 Err(e) => return Err(e),
                 Ok(_) => (),
             }
         }
         Ok(())
+    }
+}
+
+impl<T: StatementRunner<BlockNode>> StatementRunner<Option<BlockNode>> for T {
+    fn run(&mut self, statements: &Option<BlockNode>) -> Result<()> {
+        match statements {
+            Some(x) => self.run(x),
+            None => Ok(()),
+        }
     }
 }

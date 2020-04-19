@@ -1,11 +1,11 @@
-use super::{ExpressionNode, NameNode};
+use super::{BareNameNode, ExpressionNode, NameNode};
 use crate::common::Location;
 
 pub type BlockNode = Vec<StatementNode>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum StatementNode {
-    SubCall(NameNode, Vec<ExpressionNode>),
+    SubCall(BareNameNode, Vec<ExpressionNode>),
     ForLoop(ForLoopNode),
     IfBlock(IfBlockNode),
     Assignment(NameNode, ExpressionNode),

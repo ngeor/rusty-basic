@@ -2,6 +2,7 @@ use super::{HasBareName, Name, QualifiedName, ResolvesQualifier, TypeQualifier, 
 use crate::common::{CaseInsensitiveString, Locatable, Location};
 
 pub type NameNode = Locatable<Name>;
+pub type BareNameNode = Locatable<CaseInsensitiveString>;
 
 impl NameNode {
     pub fn from(
@@ -29,12 +30,11 @@ impl HasBareName for NameNode {
 }
 
 impl ResolvesQualifier for NameNode {
-    fn qualifier(&self, resolver: &dyn TypeResolver) -> TypeQualifier {
+    fn qualifier<T: TypeResolver>(&self, resolver: &T) -> TypeQualifier {
         self.element().qualifier(resolver)
     }
 }
 
-#[cfg(test)]
 impl PartialEq<Name> for NameNode {
     fn eq(&self, other: &Name) -> bool {
         self.element() == other
@@ -45,5 +45,12 @@ impl PartialEq<Name> for NameNode {
 impl PartialEq<str> for NameNode {
     fn eq(&self, other: &str) -> bool {
         self == &Name::from(other)
+    }
+}
+
+#[cfg(test)]
+impl PartialEq<str> for BareNameNode {
+    fn eq(&self, other: &str) -> bool {
+        self.element() == other
     }
 }

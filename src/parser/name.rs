@@ -1,18 +1,40 @@
-use super::{unexpected, NameNode, Parser, ParserError, TypeQualifier};
+use super::{unexpected, BareNameNode, NameNode, Parser, ParserError, TypeQualifier};
+use crate::common::CaseInsensitiveString;
 use crate::lexer::LexemeNode;
 use std::convert::TryFrom;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn read_demand_name_with_type_qualifier<S: AsRef<str>>(
+    pub fn read_demand_bare_name_node<S: AsRef<str>>(
+        &mut self,
+        msg: S,
+    ) -> Result<BareNameNode, ParserError> {
+        let next = self.buf_lexer.read()?;
+        self.demand_bare_name_node(next, msg)
+    }
+
+    pub fn read_demand_name_node<S: AsRef<str>>(
         &mut self,
         msg: S,
     ) -> Result<NameNode, ParserError> {
         let next = self.buf_lexer.read()?;
-        self.demand_name_with_type_qualifier(next, msg)
+        self.demand_name_node(next, msg)
     }
 
-    pub fn demand_name_with_type_qualifier<S: AsRef<str>>(
+    pub fn demand_bare_name_node<S: AsRef<str>>(
+        &mut self,
+        next: LexemeNode,
+        msg: S,
+    ) -> Result<BareNameNode, ParserError> {
+        match next {
+            LexemeNode::Word(word, pos) => {
+                Ok(BareNameNode::new(CaseInsensitiveString::new(word), pos))
+            }
+            _ => unexpected(msg, next),
+        }
+    }
+
+    pub fn demand_name_node<S: AsRef<str>>(
         &mut self,
         next: LexemeNode,
         msg: S,

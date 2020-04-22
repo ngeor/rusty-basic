@@ -1,6 +1,6 @@
 use crate::common::{HasLocation, Location};
 use crate::interpreter::{Interpreter, InterpreterError, Result, Stdlib, Variant};
-use crate::parser::{NameNode, QualifiedName};
+use crate::parser::{NameNode, QualifiedName, ResolveIntoRef};
 
 pub trait VariableGetter {
     fn get_variable_at(&self, name: &QualifiedName, pos: Location) -> Result<&Variant>;
@@ -20,7 +20,7 @@ impl<S: Stdlib> VariableGetter for Interpreter<S> {
 
     fn get_variable(&self, name: &NameNode) -> Result<&Variant> {
         let pos = name.location();
-        let qualified_name = name.element().to_qualified_name(self);
+        let qualified_name: QualifiedName = name.resolve_into(self);
         self.get_variable_at(&qualified_name, pos)
     }
 }

@@ -1,4 +1,4 @@
-use super::{HasBareName, HasQualifier, TypeQualifier};
+use super::{HasQualifier, TypeQualifier};
 use crate::common::CaseInsensitiveString;
 use std::fmt::Display;
 
@@ -12,21 +12,15 @@ impl QualifiedName {
     pub fn new(name: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
         QualifiedName { name, qualifier }
     }
+
+    pub fn bare_name(&self) -> &CaseInsensitiveString {
+        &self.name
+    }
 }
 
 impl HasQualifier for QualifiedName {
     fn qualifier(&self) -> TypeQualifier {
         self.qualifier
-    }
-}
-
-impl HasBareName for QualifiedName {
-    fn bare_name(&self) -> &CaseInsensitiveString {
-        &self.name
-    }
-
-    fn bare_name_into(self) -> CaseInsensitiveString {
-        self.name
     }
 }
 

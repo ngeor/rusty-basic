@@ -1,6 +1,7 @@
-use super::{Interpreter, Result, Stdlib, TypeResolver, Variant};
-use crate::common::{CaseInsensitiveString, HasLocation, Location};
-use crate::parser::{Name, NameNode, QualifiedName};
+use super::casting::cast;
+use super::{Interpreter, InterpreterError, Result, Stdlib, TypeResolver, Variant};
+use crate::common::{CaseInsensitiveString, Location};
+use crate::parser::{HasQualifier, Name, NameNode, QualifiedName};
 
 pub trait VariableSetter<T> {
     fn set_variable(
@@ -16,9 +17,11 @@ impl<S: Stdlib> VariableSetter<NameNode> for Interpreter<S> {
         variable_name: NameNode,
         variable_value: Variant,
     ) -> Result<Option<Variant>> {
-        let pos = variable_name.location();
-        let name = variable_name.element_into();
-        _set_variable_name_pos(self, name, pos, variable_value)
+        let (name, pos) = variable_name.consume();
+        match name {
+            Name::Bare(bare_name) => for_bare::set(self, bare_name, pos, variable_value),
+            Name::Typed(q) => for_typed::set(self, q, pos, variable_value),
+        }
     }
 }
 
@@ -32,54 +35,84 @@ impl<T: VariableSetter<NameNode>> VariableSetter<&NameNode> for T {
     }
 }
 
-fn _set_variable_name_pos<S: Stdlib>(
-    interpreter: &mut Interpreter<S>,
-    name: Name,
-    pos: Location,
-    variable_value: Variant,
-) -> Result<Option<Variant>> {
-    match name {
-        Name::Bare(bare_name) => {
-            _set_variable_bare_name_pos(interpreter, bare_name, pos, variable_value)
+mod for_bare {
+    use super::{cast_insert, resolve_and_set, Interpreter, Result, Stdlib, Variant};
+    use crate::common::{CaseInsensitiveString, Location};
+    use crate::interpreter::context::Context;
+
+    pub fn set<S: Stdlib>(
+        interpreter: &mut Interpreter<S>,
+        name: CaseInsensitiveString,
+        pos: Location,
+        variable_value: Variant,
+    ) -> Result<Option<Variant>> {
+        match interpreter.context_ref() {
+            Context::Function(_, result_name, _) => {
+                if result_name.bare_name() != &name {
+                    // different names, it does not match with the result name
+                    resolve_and_set(interpreter, name, pos, variable_value)
+                } else {
+                    // names match
+                    // promote the bare name node to a qualified
+                    let result_name_copy = result_name.clone();
+                    cast_insert(interpreter, result_name_copy, variable_value, pos)
+                }
+            }
+            _ => resolve_and_set(interpreter, name, pos, variable_value),
         }
-        Name::Typed(q) => _set_variable_typed_pos(interpreter, q, pos, variable_value),
     }
 }
 
-fn _set_variable_bare_name_pos<S: Stdlib>(
+fn resolve_and_set<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
     name: CaseInsensitiveString,
     pos: Location,
-    variable_value: Variant,
+    value: Variant,
 ) -> Result<Option<Variant>> {
-    match interpreter.context_ref().resolve_result_name_bare(name) {
-        Name::Typed(result_name) => {
-            // assigning the return value to a function using an unqualified name
-            interpreter
-                .context_mut()
-                .cast_insert(result_name, variable_value, pos)
-        }
-        Name::Bare(bare_name) => {
-            let effective_type_qualifier = interpreter.resolve(&bare_name);
-            let qualified_name = QualifiedName::new(bare_name, effective_type_qualifier);
-            interpreter
-                .context_mut()
-                .cast_insert(qualified_name, variable_value, pos)
-        }
-    }
+    let effective_type_qualifier = interpreter.resolve(&name);
+    let qualified_name = QualifiedName::new(name, effective_type_qualifier);
+    cast_insert(interpreter, qualified_name, value, pos)
 }
 
-fn _set_variable_typed_pos<S: Stdlib>(
+fn cast_insert<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
-    qualified_name: QualifiedName,
+    name: QualifiedName,
+    value: Variant,
     pos: Location,
-    variable_value: Variant,
 ) -> Result<Option<Variant>> {
-    // make sure that if the name matches the function name then the type matches too
-    interpreter
-        .context_ref()
-        .resolve_result_name_typed(&qualified_name, pos)?;
-    interpreter
-        .context_mut()
-        .cast_insert(qualified_name, variable_value, pos)
+    cast(value, name.qualifier())
+        .map_err(|e| InterpreterError::new_with_pos(e, pos))
+        .map(|casted| interpreter.context_mut().insert(name, casted))
+}
+
+mod for_typed {
+    use super::{cast_insert, Interpreter, InterpreterError, Result, Stdlib, Variant};
+    use crate::common::Location;
+    use crate::interpreter::context::Context;
+    use crate::parser::{HasQualifier, QualifiedName};
+
+    pub fn set<S: Stdlib>(
+        interpreter: &mut Interpreter<S>,
+        qualified_name: QualifiedName,
+        pos: Location,
+        variable_value: Variant,
+    ) -> Result<Option<Variant>> {
+        // make sure that if the name matches the function name then the type matches too
+        match interpreter.context_ref() {
+            Context::Function(_, result_name, _) => {
+                if result_name.bare_name() != qualified_name.bare_name() {
+                    // different names, it does not match with the result name
+                    cast_insert(interpreter, qualified_name, variable_value, pos)
+                } else {
+                    // names match
+                    if qualified_name.qualifier() == result_name.qualifier() {
+                        cast_insert(interpreter, qualified_name, variable_value, pos)
+                    } else {
+                        Err(InterpreterError::new_with_pos("Duplicate definition", pos))
+                    }
+                }
+            }
+            _ => cast_insert(interpreter, qualified_name, variable_value, pos),
+        }
+    }
 }

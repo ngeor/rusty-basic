@@ -8,8 +8,7 @@ use std::io::BufRead;
 impl<T: BufRead> Parser<T> {
     pub fn demand_for_loop(&mut self, pos: Location) -> Result<StatementNode, ParserError> {
         self.read_demand_whitespace("Expected whitespace after FOR keyword")?;
-        let for_counter_variable =
-            self.read_demand_name_with_type_qualifier("Expected FOR counter variable")?;
+        let for_counter_variable = self.read_demand_name_node("Expected FOR counter variable")?;
         self.read_demand_symbol_skipping_whitespace('=')?;
         let lower_bound = self.read_demand_expression_skipping_whitespace()?;
         self.read_demand_whitespace("Expected whitespace before TO keyword")?;
@@ -106,10 +105,7 @@ impl<T: BufRead> Parser<T> {
                 }
                 LexemeNode::Word(_, _) => {
                     if state == STATE_WHITESPACE_AFTER_NEXT {
-                        name = Some(self.demand_name_with_type_qualifier(
-                            next,
-                            "Expected NEXT counter variable",
-                        )?);
+                        name = Some(self.demand_name_node(next, "Expected NEXT counter variable")?);
                         state = STATE_WORD;
                     } else {
                         return unexpected("Syntax error", next);

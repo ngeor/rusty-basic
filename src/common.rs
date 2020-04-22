@@ -40,12 +40,14 @@ impl<T: std::fmt::Debug + Sized> Locatable<T> {
         Locatable { element, location }
     }
 
-    pub fn element(&self) -> &T {
-        &self.element
+    pub fn consume(self) -> (T, Location) {
+        (self.element, self.location)
     }
+}
 
-    pub fn element_into(self) -> T {
-        self.element
+impl<T: std::fmt::Debug + Sized> AsRef<T> for Locatable<T> {
+    fn as_ref(&self) -> &T {
+        &self.element
     }
 }
 

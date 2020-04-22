@@ -5,15 +5,14 @@ pub trait TypeResolver {
     fn resolve(&self, name: &CaseInsensitiveString) -> TypeQualifier;
 }
 
-pub trait HasBareName {
-    fn bare_name(&self) -> &CaseInsensitiveString;
-    fn bare_name_into(self) -> CaseInsensitiveString;
-}
-
 pub trait HasQualifier {
     fn qualifier(&self) -> TypeQualifier;
 }
 
-pub trait ResolvesQualifier {
-    fn qualifier<T: TypeResolver>(&self, resolver: &T) -> TypeQualifier;
+pub trait ResolveIntoRef<TInto> {
+    fn resolve_into<T: TypeResolver>(&self, resolver: &T) -> TInto;
+}
+
+pub trait ResolveInto<TInto> {
+    fn resolve_into<T: TypeResolver>(self, resolver: &T) -> TInto;
 }

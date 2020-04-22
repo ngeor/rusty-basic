@@ -9,7 +9,6 @@ mod def_type;
 mod error;
 mod expression;
 mod for_loop;
-mod function_implementation;
 mod if_block;
 mod name;
 mod statement;
@@ -62,6 +61,7 @@ impl<T: BufRead> Parser<T> {
                 | Keyword::DefSng
                 | Keyword::DefStr => self.demand_def_type(k, pos),
                 Keyword::Function => self.demand_function_implementation(pos),
+                Keyword::Sub => self.demand_sub_implementation(pos),
                 Keyword::If | Keyword::For | Keyword::While => self
                     .demand_statement(next)
                     .map(|s| TopLevelTokenNode::Statement(s)),
@@ -194,11 +194,11 @@ mod tests {
             program,
             vec![
                 // DECLARE FUNCTION Fib! (N!)
-                TopLevelTokenNode::FunctionDeclaration(FunctionDeclarationNode::new(
+                TopLevelTokenNode::FunctionDeclaration(
                     "Fib!".as_name(1, 18),
                     vec!["N!".as_name(1, 24)],
                     Location::new(1, 1)
-                )),
+                ),
                 // PRINT "Enter the number of fibonacci to calculate"
                 TopLevelTokenNode::Statement(StatementNode::SubCall(
                     "PRINT".as_bare_name(2, 1),
@@ -234,10 +234,10 @@ mod tests {
                     pos: Location::new(4, 1)
                 })),
                 // FUNCTION Fib (N)
-                TopLevelTokenNode::FunctionImplementation(FunctionImplementationNode {
-                    name: "Fib".as_name(8, 10),
-                    parameters: vec!["N".as_name(8, 15)],
-                    block: vec![
+                TopLevelTokenNode::FunctionImplementation(
+                    "Fib".as_name(8, 10),
+                    vec!["N".as_name(8, 15)],
+                    vec![
                         // IF N <= 1 THEN
                         StatementNode::IfBlock(IfBlockNode {
                             if_block: ConditionalBlockNode {
@@ -293,8 +293,8 @@ mod tests {
                             ])
                         })
                     ],
-                    pos: Location::new(8, 1)
-                }),
+                    Location::new(8, 1)
+                ),
             ],
         );
     }

@@ -1,8 +1,7 @@
-use super::{HasBareName, Name, QualifiedName, ResolvesQualifier, TypeQualifier, TypeResolver};
+use super::{Name, QualifiedName, ResolveInto, ResolveIntoRef, TypeQualifier, TypeResolver};
 use crate::common::{CaseInsensitiveString, Locatable, Location};
 
 pub type NameNode = Locatable<Name>;
-pub type BareNameNode = Locatable<CaseInsensitiveString>;
 
 impl NameNode {
     pub fn from(
@@ -19,25 +18,44 @@ impl NameNode {
     }
 }
 
-impl HasBareName for NameNode {
-    fn bare_name(&self) -> &CaseInsensitiveString {
-        self.element().bare_name()
-    }
-
-    fn bare_name_into(self) -> CaseInsensitiveString {
-        self.element_into().bare_name_into()
+impl AsRef<CaseInsensitiveString> for NameNode {
+    fn as_ref(&self) -> &CaseInsensitiveString {
+        let name: &Name = self.as_ref();
+        name.as_ref()
     }
 }
 
-impl ResolvesQualifier for NameNode {
-    fn qualifier<T: TypeResolver>(&self, resolver: &T) -> TypeQualifier {
-        self.element().qualifier(resolver)
+impl ResolveIntoRef<TypeQualifier> for NameNode {
+    fn resolve_into<T: TypeResolver>(&self, resolver: &T) -> TypeQualifier {
+        let name: &Name = self.as_ref();
+        name.resolve_into(resolver)
+    }
+}
+
+impl ResolveIntoRef<QualifiedName> for NameNode {
+    fn resolve_into<T: TypeResolver>(&self, resolver: &T) -> QualifiedName {
+        let name: &Name = self.as_ref();
+        name.resolve_into(resolver)
+    }
+}
+
+impl ResolveInto<QualifiedName> for NameNode {
+    fn resolve_into<T: TypeResolver>(self, resolver: &T) -> QualifiedName {
+        let name: Name = self.into();
+        name.resolve_into(resolver)
     }
 }
 
 impl PartialEq<Name> for NameNode {
     fn eq(&self, other: &Name) -> bool {
-        self.element() == other
+        let my_name: &Name = self.as_ref();
+        my_name == other
+    }
+}
+
+impl From<NameNode> for Name {
+    fn from(n: NameNode) -> Name {
+        n.consume().0
     }
 }
 
@@ -45,12 +63,5 @@ impl PartialEq<Name> for NameNode {
 impl PartialEq<str> for NameNode {
     fn eq(&self, other: &str) -> bool {
         self == &Name::from(other)
-    }
-}
-
-#[cfg(test)]
-impl PartialEq<str> for BareNameNode {
-    fn eq(&self, other: &str) -> bool {
-        self.element() == other
     }
 }

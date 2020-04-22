@@ -1,57 +1,12 @@
 use super::{Interpreter, Result, Stdlib, Variant};
+use crate::interpreter::built_in_functions;
+use crate::interpreter::user_defined_function;
 use crate::parser::{ExpressionNode, NameNode};
-
-mod built_in_function {
-    use crate::common::HasLocation;
-    use crate::interpreter::{InterpreterError, Result, Stdlib, Variant};
-    use crate::parser::{ExpressionNode, Name, NameNode};
-
-    fn _do_environ_function<S: Stdlib>(
-        stdlib: &S,
-        function_name: &NameNode,
-        args: &Vec<ExpressionNode>,
-        arg_values: Vec<Variant>,
-    ) -> Result<Variant> {
-        if arg_values.len() != 1 {
-            Err(InterpreterError::new_with_pos(
-                "ENVIRON$ expected exactly one argument",
-                function_name.location(),
-            ))
-        } else {
-            match &arg_values[0] {
-                Variant::VString(env_var_name) => {
-                    Ok(Variant::VString(stdlib.get_env_var(env_var_name)))
-                }
-                _ => Err(InterpreterError::new_with_pos(
-                    "Type mismatch at ENVIRON$",
-                    args[0].location(),
-                )),
-            }
-        }
-    }
-
-    pub fn supports(function_name: &NameNode) -> bool {
-        function_name == &Name::from("ENVIRON$")
-    }
-
-    pub fn call<S: Stdlib>(
-        stdlib: &S,
-        function_name: &NameNode,
-        args: &Vec<ExpressionNode>,
-        arg_values: Vec<Variant>,
-    ) -> Result<Variant> {
-        if function_name == &Name::from("ENVIRON$") {
-            _do_environ_function(stdlib, function_name, args, arg_values)
-        } else {
-            panic!("should not have been called");
-        }
-    }
-}
 
 mod undefined_function {
     use crate::common::HasLocation;
     use crate::interpreter::{InterpreterError, Result, Variant};
-    use crate::parser::{ExpressionNode, HasBareName, NameNode, TypeResolver};
+    use crate::parser::{ExpressionNode, NameNode, TypeResolver};
 
     pub fn call<TR: TypeResolver>(
         resolver: &mut TR,
@@ -73,98 +28,8 @@ mod undefined_function {
             }
         }
         Ok(Variant::default_variant(
-            resolver.resolve(function_name.bare_name()),
+            resolver.resolve(function_name.as_ref()),
         ))
-    }
-}
-
-mod user_function {
-    use crate::common::{HasLocation, Location};
-    use crate::interpreter::function_context::LookupImplementation;
-    use crate::interpreter::statement::StatementRunner;
-    use crate::interpreter::variable_getter::VariableGetter;
-    use crate::interpreter::variable_setter::VariableSetter;
-    use crate::interpreter::{InterpreterError, PushPopContext, Result, Variant};
-    use crate::parser::{BlockNode, ExpressionNode, HasQualifier, Name, NameNode, QualifiedName};
-
-    fn _populate_new_context<VS: VariableSetter<NameNode>>(
-        variable_setter: &mut VS,
-        mut parameter_names: Vec<QualifiedName>,
-        mut arguments: Vec<Variant>,
-        call_pos: Location,
-    ) -> Result<()> {
-        while !parameter_names.is_empty() {
-            let variable_name = parameter_names.pop().unwrap();
-            let name_node = NameNode::new(Name::Typed(variable_name), call_pos);
-            variable_setter.set_variable(name_node, arguments.pop().unwrap())?;
-        }
-        Ok(())
-    }
-
-    fn _get_variable_name_or_default<VG: VariableGetter>(
-        variable_getter: &VG,
-        function_name: &QualifiedName,
-        pos: Location,
-    ) -> Variant {
-        match variable_getter.get_variable_at(function_name, pos) {
-            Ok(v) => v.clone(),
-            Err(_) => Variant::default_variant(function_name.qualifier()),
-        }
-    }
-
-    pub fn supports<LI: LookupImplementation>(
-        function_context: &LI,
-        function_name: &NameNode,
-    ) -> Result<bool> {
-        function_context
-            .lookup_implementation(function_name)
-            .map(|x| x.is_some())
-    }
-
-    pub fn call<TI>(
-        interpreter: &mut TI,
-        function_name: &NameNode,
-        args: &Vec<ExpressionNode>,
-        arg_values: Vec<Variant>,
-    ) -> Result<Variant>
-    where
-        TI: VariableGetter
-            + VariableSetter<NameNode>
-            + PushPopContext
-            + StatementRunner<BlockNode>
-            + LookupImplementation,
-    {
-        let function_implementation = interpreter.lookup_implementation(function_name)?.unwrap();
-        let function_parameters: Vec<QualifiedName> = function_implementation.parameters;
-        if function_parameters.len() != args.len() {
-            Err(InterpreterError::new_with_pos(
-                format!(
-                    "Function {} expected {} parameters but {} were given",
-                    function_implementation.name,
-                    function_parameters.len(),
-                    args.len()
-                ),
-                function_name.location(),
-            ))
-        } else {
-            interpreter.push_context(function_implementation.name.clone());
-            _populate_new_context(
-                interpreter,
-                function_parameters,
-                arg_values,
-                function_name.location(),
-            )?;
-            interpreter
-                .run(&function_implementation.block)
-                .map_err(|e| e.merge_pos(function_name.location()))?;
-            let result = _get_variable_name_or_default(
-                interpreter,
-                &function_implementation.name,
-                function_name.location(),
-            );
-            interpreter.pop_context();
-            Ok(result)
-        }
     }
 }
 
@@ -174,20 +39,20 @@ impl<S: Stdlib> Interpreter<S> {
         function_name: &NameNode,
         args: &Vec<ExpressionNode>,
     ) -> Result<Variant> {
-        let arg_values: Vec<Variant> = self._evaluate_arguments(args)?;
+        let arg_values: Vec<Variant> = self.evaluate_arguments(args)?;
 
-        if built_in_function::supports(function_name) {
-            built_in_function::call(&self.stdlib, function_name, args, arg_values)
+        if built_in_functions::supports_function(function_name) {
+            built_in_functions::call_function(&self.stdlib, function_name, args, arg_values)
         } else {
-            if user_function::supports(self, function_name)? {
-                user_function::call(self, function_name, args, arg_values)
+            if user_defined_function::supports_function(self, function_name) {
+                user_defined_function::call_function(self, function_name, args, arg_values)
             } else {
                 undefined_function::call(self, function_name, args, arg_values)
             }
         }
     }
 
-    fn _evaluate_arguments(&mut self, args: &Vec<ExpressionNode>) -> Result<Vec<Variant>> {
+    pub fn evaluate_arguments(&mut self, args: &Vec<ExpressionNode>) -> Result<Vec<Variant>> {
         let mut result: Vec<Variant> = vec![];
         for arg in args.iter() {
             let variable_value = self.evaluate_expression(arg)?;

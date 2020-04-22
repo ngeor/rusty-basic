@@ -1,25 +1,33 @@
 use super::variable_setter::VariableSetter;
 use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
-use crate::parser::{BareNameNode, ExpressionNode, NameNode, ResolvesQualifier, TypeQualifier};
+use crate::interpreter::built_in_subs;
+use crate::interpreter::user_defined_sub;
+use crate::parser::{BareNameNode, ExpressionNode, NameNode, ResolveIntoRef, TypeQualifier};
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
-    pub fn sub_call(&mut self, name: &BareNameNode, args: &Vec<ExpressionNode>) -> Result<()> {
-        let raw_name = name.element();
-        if raw_name == "PRINT" {
+    pub fn sub_call(&mut self, name_node: &BareNameNode, args: &Vec<ExpressionNode>) -> Result<()> {
+        let bare_name = name_node.as_ref();
+        if bare_name == "PRINT" {
             self._do_print(args)
-        } else if raw_name == "INPUT" {
+        } else if bare_name == "INPUT" {
             self._do_input(args)
-        } else if raw_name == "SYSTEM" {
+        } else if bare_name == "SYSTEM" {
             self.stdlib.system();
             Ok(())
-        } else if raw_name == "ENVIRON" {
-            self._do_environ_sub(name, args)
+        } else if built_in_subs::supports_sub(name_node) {
+            let arg_values: Vec<Variant> = self.evaluate_arguments(args)?;
+            built_in_subs::call_sub(&mut self.stdlib, name_node, args, arg_values)
         } else {
-            Err(InterpreterError::new_with_pos(
-                format!("Unknown sub {}", raw_name),
-                name.location(),
-            ))
+            if user_defined_sub::supports_sub(self, name_node) {
+                let arg_values: Vec<Variant> = self.evaluate_arguments(args)?;
+                user_defined_sub::call_sub(self, name_node, args, arg_values)
+            } else {
+                Err(InterpreterError::new_with_pos(
+                    format!("Unknown sub {}", bare_name),
+                    name_node.location(),
+                ))
+            }
         }
     }
 
@@ -59,7 +67,8 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             .stdlib
             .input()
             .map_err(|e| InterpreterError::new_with_pos(e.to_string(), var_name.location()))?;
-        let variable_value = match var_name.qualifier(self) {
+        let q: TypeQualifier = var_name.resolve_into(self);
+        let variable_value = match q {
             TypeQualifier::BangSingle => Variant::from(
                 parse_single_input(raw_input)
                     .map_err(|e| InterpreterError::new_with_pos(e, var_name.location()))?,
@@ -72,40 +81,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             _ => unimplemented!(),
         };
         self.set_variable(var_name, variable_value).map(|_| ())
-    }
-
-    fn _do_environ_sub(
-        &mut self,
-        sub_name_node: &BareNameNode,
-        args: &Vec<ExpressionNode>,
-    ) -> Result<()> {
-        if args.len() != 1 {
-            return Err(InterpreterError::new_with_pos(
-                "ENVIRON requires exactly 1 argument",
-                sub_name_node.location(),
-            ));
-        }
-
-        let arg_value = self.evaluate_expression(&args[0])?;
-        match arg_value {
-            Variant::VString(arg_string_value) => {
-                let parts: Vec<&str> = arg_string_value.split("=").collect();
-                if parts.len() != 2 {
-                    Err(InterpreterError::new_with_pos(
-                        "Invalid expression. Must be name=value.",
-                        args[0].location(),
-                    ))
-                } else {
-                    self.stdlib
-                        .set_env_var(parts[0].to_string(), parts[1].to_string());
-                    Ok(())
-                }
-            }
-            _ => Err(InterpreterError::new_with_pos(
-                "Type mismatch",
-                args[0].location(),
-            )),
-        }
     }
 }
 
@@ -190,6 +165,32 @@ mod tests {
     fn test_sub_call_environ() {
         let program = r#"
         ENVIRON "FOO=BAR"
+        "#;
+        let interpreter = interpret(program);
+        assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
+    }
+
+    #[test]
+    fn test_interpret_sub_call_user_defined_no_args() {
+        let program = r#"
+        DECLARE SUB Hello
+        Hello
+        SUB Hello
+            ENVIRON "FOO=BAR"
+        END SUB
+        "#;
+        let interpreter = interpret(program);
+        assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
+    }
+
+    #[test]
+    fn test_interpret_sub_call_user_defined_two_args() {
+        let program = r#"
+        DECLARE SUB Hello(N$, V$)
+        Hello "FOO", "BAR"
+        SUB Hello(N$, V$)
+            ENVIRON N$ + "=" + V$
+        END SUB
         "#;
         let interpreter = interpret(program);
         assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");

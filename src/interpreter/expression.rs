@@ -31,7 +31,7 @@ impl<S: Stdlib> Interpreter<S> {
     ) -> Result<Variant> {
         let left_var: Variant = self.evaluate_expression(left)?;
         let right_var: Variant = self.evaluate_expression(right)?;
-        match op.element() {
+        match op.as_ref() {
             Operand::LessOrEqualThan => {
                 let cmp = left_var
                     .cmp(&right_var)
@@ -65,7 +65,7 @@ impl<S: Stdlib> Interpreter<S> {
         child: &Box<ExpressionNode>,
     ) -> Result<Variant> {
         let child_var: Variant = self.evaluate_expression(child)?;
-        match op.element() {
+        match op.as_ref() {
             // UnaryOperand::Plus => Ok(child_var),
             UnaryOperand::Minus => Ok(child_var.negate()),
             // UnaryOperand::Not => Ok(if bool::try_from(child_var)? {

@@ -3,7 +3,7 @@ use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
 use crate::interpreter::statement::StatementRunner;
 use crate::interpreter::variable_getter::VariableGetter;
-use crate::parser::{ForLoopNode, NameNode};
+use crate::parser::{ForLoopNode, NameNode, QualifiedName, ResolveIntoRef};
 use std::cmp::Ordering;
 
 impl<S: Stdlib> Interpreter<S> {
@@ -108,8 +108,8 @@ impl<S: Stdlib> Interpreter<S> {
     }
 
     fn _are_different_variable(&self, left: &NameNode, right: &NameNode) -> bool {
-        let left_qualified_name = left.element().to_qualified_name(self);
-        let right_qualified_name = right.element().to_qualified_name(self);
+        let left_qualified_name: QualifiedName = left.resolve_into(self);
+        let right_qualified_name: QualifiedName = right.resolve_into(self);
         left_qualified_name != right_qualified_name
     }
 }

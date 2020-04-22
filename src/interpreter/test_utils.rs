@@ -126,21 +126,22 @@ macro_rules! assert_has_variable {
 }
 
 pub struct AssignmentBuilder {
-    variable_name: NameNode,
+    variable_name_node: NameNode,
     program: String,
 }
 
 impl AssignmentBuilder {
     pub fn new(variable_literal: &str) -> AssignmentBuilder {
         AssignmentBuilder {
-            variable_name: NameNode::new(Name::from(variable_literal), Location::new(1, 1)),
+            variable_name_node: NameNode::new(Name::from(variable_literal), Location::new(1, 1)),
             program: String::new(),
         }
     }
 
     pub fn literal(&mut self, expression_literal: &str) -> &mut Self {
         if self.program.is_empty() {
-            self.program = format!("{} = {}", self.variable_name.element(), expression_literal);
+            let variable_name: &Name = self.variable_name_node.as_ref();
+            self.program = format!("{} = {}", variable_name, expression_literal);
             self
         } else {
             panic!("Cannot re-assign program")
@@ -156,7 +157,7 @@ impl AssignmentBuilder {
         } else {
             let interpreter = interpret(&self.program);
             assert_eq!(
-                interpreter.get_variable(&self.variable_name).unwrap(),
+                interpreter.get_variable(&self.variable_name_node).unwrap(),
                 &Variant::from(expected_value)
             );
         }

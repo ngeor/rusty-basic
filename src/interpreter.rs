@@ -1,9 +1,9 @@
-use crate::common::CaseInsensitiveString;
-use crate::parser::*;
-
 mod assignment;
+mod built_in_functions;
+mod built_in_subs;
 mod casting;
 mod context;
+mod context_owner;
 mod expression;
 mod for_loop;
 mod function_call;
@@ -13,6 +13,11 @@ mod interpreter_error;
 mod statement;
 mod stdlib;
 mod sub_call;
+mod sub_context;
+mod subprogram_context;
+mod type_resolver_impl;
+mod user_defined_function;
+mod user_defined_sub;
 mod variable_getter;
 mod variable_setter;
 mod variant;
@@ -21,13 +26,18 @@ mod while_wend;
 #[cfg(test)]
 mod test_utils;
 
-pub use self::context::*;
-pub use self::function_context::*;
 pub use self::interpreter_error::*;
 pub use self::stdlib::*;
 pub use self::variant::*;
-use crate::interpreter::function_context::LookupImplementation;
+
+use crate::common::{CaseInsensitiveString, HasLocation};
+use crate::interpreter::context::Context;
+use crate::interpreter::function_context::{FunctionContext, QualifiedFunctionImplementationNode};
 use crate::interpreter::statement::StatementRunner;
+use crate::interpreter::sub_context::{QualifiedSubImplementationNode, SubContext};
+use crate::interpreter::type_resolver_impl::TypeResolverImpl;
+use crate::parser::*;
+
 use std::convert::TryInto;
 
 #[derive(Debug)]
@@ -35,25 +45,11 @@ pub struct Interpreter<S> {
     stdlib: S,
     context: Option<Context>, // declared as option to be able to use Option.take; it should always have Some value
     function_context: FunctionContext,
-    resolver_helper: ResolverHelper,
+    sub_context: SubContext,
+    type_resolver: TypeResolverImpl,
 }
 
 pub type Result<T> = std::result::Result<T, InterpreterError>;
-
-pub trait PushPopContext {
-    fn push_context(&mut self, result_name: QualifiedName);
-
-    fn pop_context(&mut self);
-}
-
-impl<S: Stdlib> LookupImplementation for Interpreter<S> {
-    fn lookup_implementation(
-        &self,
-        function_name: &NameNode,
-    ) -> Result<Option<QualifiedFunctionImplementationNode>> {
-        self.function_context.lookup_implementation(function_name)
-    }
-}
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     pub fn new(stdlib: TStdlib) -> Interpreter<TStdlib> {
@@ -61,7 +57,8 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             stdlib,
             context: Some(Context::new()),
             function_context: FunctionContext::new(),
-            resolver_helper: ResolverHelper::new(),
+            sub_context: SubContext::new(),
+            type_resolver: TypeResolverImpl::new(),
         }
     }
 
@@ -69,13 +66,39 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         let mut statements: BlockNode = vec![];
         for top_level_token in program {
             match top_level_token {
-                TopLevelTokenNode::FunctionDeclaration(f) => {
-                    self.function_context
-                        .add_function_declaration(f, &self.resolver_helper)?;
+                TopLevelTokenNode::FunctionDeclaration(f_name, f_params, f_pos) => {
+                    self.function_context.add_declaration(
+                        f_name,
+                        f_params,
+                        f_pos,
+                        &self.type_resolver,
+                    )?;
                 }
-                TopLevelTokenNode::FunctionImplementation(f) => {
-                    self.function_context
-                        .add_function_implementation(f, &self.resolver_helper)?;
+                TopLevelTokenNode::SubDeclaration(s_name, s_params, s_pos) => {
+                    self.sub_context.add_declaration(
+                        s_name,
+                        s_params,
+                        s_pos,
+                        &self.type_resolver,
+                    )?;
+                }
+                TopLevelTokenNode::FunctionImplementation(f_name, f_params, f_body, f_pos) => {
+                    self.function_context.add_implementation(
+                        f_name,
+                        f_params,
+                        f_body,
+                        f_pos,
+                        &self.type_resolver,
+                    )?;
+                }
+                TopLevelTokenNode::SubImplementation(s_name, s_params, s_body, s_pos) => {
+                    self.sub_context.add_implementation(
+                        s_name,
+                        s_params,
+                        s_body,
+                        s_pos,
+                        &self.type_resolver,
+                    )?;
                 }
                 TopLevelTokenNode::Statement(s) => {
                     statements.push(s);
@@ -88,17 +111,10 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     }
 
     fn _search_for_unimplemented_declarations(&mut self) -> Result<()> {
-        for name in self.function_context.get_function_declarations() {
-            if let None = self.function_context.get_function_implementation(name) {
-                return Err(InterpreterError::new_with_pos(
-                    "Subprogram not defined",
-                    self.function_context
-                        .get_function_declaration_pos(name)
-                        .unwrap(),
-                ));
-            }
-        }
-
+        self.function_context
+            .ensure_all_declared_programs_are_implemented()?;
+        self.sub_context
+            .ensure_all_declared_programs_are_implemented()?;
         Ok(())
     }
 
@@ -117,11 +133,11 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     }
 
     fn handle_def_type(&mut self, x: DefTypeNode) {
-        let q = x.qualifier();
+        let q: TypeQualifier = x.qualifier();
         for r in x.ranges() {
             match *r {
-                LetterRangeNode::Single(c) => self.resolver_helper.set(c, c, q),
-                LetterRangeNode::Range(start, stop) => self.resolver_helper.set(start, stop, q),
+                LetterRangeNode::Single(c) => self.type_resolver.set(c, c, q),
+                LetterRangeNode::Range(start, stop) => self.type_resolver.set(start, stop, q),
             }
         }
     }
@@ -135,57 +151,73 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     }
 }
 
-impl<S: Stdlib> PushPopContext for Interpreter<S> {
-    fn push_context(&mut self, result_name: QualifiedName) {
-        self.context = self.context.take().map(|x| x.push(result_name));
-    }
-
-    fn pop_context(&mut self) {
-        self.context = self.context.take().map(|x| x.pop());
-    }
-}
-
-#[derive(Debug)]
-struct ResolverHelper {
-    ranges: [TypeQualifier; 26],
-}
-
-fn char_to_alphabet_index(ch: char) -> usize {
-    let upper = ch.to_ascii_uppercase();
-    if upper >= 'A' && upper <= 'Z' {
-        ((upper as u8) - ('A' as u8)) as usize
-    } else {
-        panic!(format!("Not a latin letter {}", ch))
-    }
-}
-
-impl ResolverHelper {
-    pub fn new() -> Self {
-        ResolverHelper {
-            ranges: [TypeQualifier::BangSingle; 26],
-        }
-    }
-
-    pub fn set(&mut self, start: char, stop: char, qualifier: TypeQualifier) {
-        let mut x: usize = char_to_alphabet_index(start);
-        let y: usize = char_to_alphabet_index(stop);
-        while x <= y {
-            self.ranges[x] = qualifier;
-            x += 1;
-        }
-    }
-}
-
-impl TypeResolver for ResolverHelper {
-    fn resolve(&self, name: &CaseInsensitiveString) -> TypeQualifier {
-        let x = char_to_alphabet_index(name.first_char());
-        self.ranges[x]
-    }
-}
-
 impl<TStdlib: Stdlib> TypeResolver for Interpreter<TStdlib> {
     fn resolve(&self, name: &CaseInsensitiveString) -> TypeQualifier {
-        self.resolver_helper.resolve(name)
+        self.type_resolver.resolve(name)
+    }
+}
+
+pub trait LookupFunctionImplementation {
+    fn has_function(&self, function_name: &NameNode) -> bool;
+
+    fn lookup_function_implementation(
+        &self,
+        function_name: &NameNode,
+    ) -> Result<QualifiedFunctionImplementationNode>;
+}
+
+impl<S: Stdlib> LookupFunctionImplementation for Interpreter<S> {
+    fn has_function(&self, function_name: &NameNode) -> bool {
+        self.function_context
+            .has_implementation(function_name.as_ref())
+    }
+
+    fn lookup_function_implementation(
+        &self,
+        function_name: &NameNode,
+    ) -> Result<QualifiedFunctionImplementationNode> {
+        let bare_name: &CaseInsensitiveString = function_name.as_ref();
+        self.function_context
+            .get_implementation(bare_name)
+            .ok_or(InterpreterError::new_with_pos(
+                "Unknown function",
+                function_name.location(),
+            ))
+            .and_then(|implementation| {
+                match function_name.as_ref() {
+                    Name::Bare(_) => Ok(implementation),
+                    Name::Typed(qualified_function_name) => {
+                        if implementation.name.qualifier() != qualified_function_name.qualifier() {
+                            // the function is defined as A#
+                            // but is being called as A!
+                            Err(InterpreterError::new_with_pos(
+                                "Duplicate definition",
+                                function_name.location(),
+                            ))
+                        } else {
+                            Ok(implementation)
+                        }
+                    }
+                }
+            })
+    }
+}
+
+pub trait LookupSubImplementation {
+    fn has_sub(&self, sub_name: &BareNameNode) -> bool;
+
+    fn get_sub(&self, sub_name: &BareNameNode) -> QualifiedSubImplementationNode;
+}
+
+impl<S: Stdlib> LookupSubImplementation for Interpreter<S> {
+    fn has_sub(&self, sub_name: &BareNameNode) -> bool {
+        self.sub_context.has_implementation(sub_name.as_ref())
+    }
+
+    fn get_sub(&self, sub_name: &BareNameNode) -> QualifiedSubImplementationNode {
+        self.sub_context
+            .get_implementation(sub_name.as_ref())
+            .unwrap()
     }
 }
 

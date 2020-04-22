@@ -51,7 +51,8 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
-    use crate::parser::TopLevelTokenNode;
+    use crate::common::Location;
+    use crate::parser::{Operand, OperandNode, TopLevelTokenNode};
 
     #[test]
     fn test_parse_sub_call_no_args() {
@@ -148,6 +149,90 @@ mod tests {
                     vec!["PATH".as_lit_expr(1, 16)]
                 )]
             ))]
+        );
+    }
+
+    #[test]
+    fn test_parse_sub_call_user_defined_no_args() {
+        let input = r#"
+        DECLARE SUB Hello
+        Hello
+        SUB Hello
+            ENVIRON "FOO=BAR"
+        END SUB
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                // DECLARE SUB Hello
+                TopLevelTokenNode::SubDeclaration(
+                    "Hello".as_bare_name(2, 21),
+                    vec![],
+                    Location::new(2, 9)
+                ),
+                // Hello
+                TopLevelTokenNode::Statement(StatementNode::SubCall(
+                    "Hello".as_bare_name(3, 9),
+                    vec![]
+                )),
+                // SUB Hello
+                TopLevelTokenNode::SubImplementation(
+                    "Hello".as_bare_name(4, 13),
+                    vec![],
+                    vec![StatementNode::SubCall(
+                        "ENVIRON".as_bare_name(5, 13),
+                        vec!["FOO=BAR".as_lit_expr(5, 21)]
+                    )],
+                    Location::new(4, 9)
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_sub_call_user_defined_two_args() {
+        let input = r#"
+        DECLARE SUB Hello(N$, V$)
+        Hello "FOO", "BAR"
+        SUB Hello(N$, V$)
+            ENVIRON N$ + "=" + V$
+        END SUB
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                // DECLARE SUB Hello
+                TopLevelTokenNode::SubDeclaration(
+                    "Hello".as_bare_name(2, 21),
+                    vec!["N$".as_name(2, 27), "V$".as_name(2, 31)],
+                    Location::new(2, 9)
+                ),
+                // Hello
+                TopLevelTokenNode::Statement(StatementNode::SubCall(
+                    "Hello".as_bare_name(3, 9),
+                    vec!["FOO".as_lit_expr(3, 15), "BAR".as_lit_expr(3, 22)]
+                )),
+                // SUB Hello
+                TopLevelTokenNode::SubImplementation(
+                    "Hello".as_bare_name(4, 13),
+                    vec!["N$".as_name(4, 19), "V$".as_name(4, 23)],
+                    vec![StatementNode::SubCall(
+                        "ENVIRON".as_bare_name(5, 13),
+                        vec![ExpressionNode::BinaryExpression(
+                            OperandNode::new(Operand::Plus, Location::new(5, 24)),
+                            Box::new("N$".as_var_expr(5, 21)),
+                            Box::new(ExpressionNode::BinaryExpression(
+                                OperandNode::new(Operand::Plus, Location::new(5, 30)),
+                                Box::new("=".as_lit_expr(5, 26)),
+                                Box::new("V$".as_var_expr(5, 32))
+                            ))
+                        )]
+                    )],
+                    Location::new(4, 9)
+                )
+            ]
         );
     }
 }

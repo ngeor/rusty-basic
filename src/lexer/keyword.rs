@@ -4,6 +4,8 @@ use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Keyword {
+    /// CONST
+    Const,
     /// DECLARE
     Declare,
     /// DEFDBL
@@ -44,6 +46,7 @@ pub enum Keyword {
     While,
 }
 
+const STR_CONST: &str = "CONST";
 const STR_DECLARE: &str = "DECLARE";
 const STR_DEFDBL: &str = "DEFDBL";
 const STR_DEFINT: &str = "DEFINT";
@@ -64,7 +67,8 @@ const STR_TO: &str = "TO";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 19] = [
+const SORTED_KEYWORDS_STR: [&str; 20] = [
+    STR_CONST,
     STR_DECLARE,
     STR_DEFDBL,
     STR_DEFINT,
@@ -86,7 +90,8 @@ const SORTED_KEYWORDS_STR: [&str; 19] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 19] = [
+const SORTED_KEYWORDS: [Keyword; 20] = [
+    Keyword::Const,
     Keyword::Declare,
     Keyword::DefDbl,
     Keyword::DefInt,
@@ -111,6 +116,7 @@ const SORTED_KEYWORDS: [Keyword; 19] = [
 impl Display for Keyword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
+            Self::Const => STR_CONST.fmt(f),
             Self::Declare => STR_DECLARE.fmt(f),
             Self::DefDbl => STR_DEFDBL.fmt(f),
             Self::DefInt => STR_DEFINT.fmt(f),
@@ -150,6 +156,7 @@ mod tests {
 
     #[test]
     fn test_to_string() {
+        assert_eq!(Keyword::Const.to_string(), "CONST");
         assert_eq!(Keyword::Declare.to_string(), "DECLARE");
         assert_eq!(Keyword::DefDbl.to_string(), "DEFDBL");
         assert_eq!(Keyword::DefInt.to_string(), "DEFINT");
@@ -173,6 +180,7 @@ mod tests {
 
     #[test]
     fn test_from_string() {
+        assert_eq!(Keyword::Const, "CONST".parse().unwrap());
         assert_eq!(Keyword::Declare, "DECLARE".parse().unwrap());
         assert_eq!(Keyword::DefDbl, "DEFDBL".parse().unwrap());
         assert_eq!(Keyword::DefInt, "DEFINT".parse().unwrap());
@@ -196,6 +204,7 @@ mod tests {
 
     #[test]
     fn test_from_string_lowercase() {
+        assert_eq!(Keyword::Const, "const".parse().unwrap());
         assert_eq!(Keyword::Declare, "declare".parse().unwrap());
         assert_eq!(Keyword::DefDbl, "defdbl".parse().unwrap());
         assert_eq!(Keyword::DefInt, "defint".parse().unwrap());

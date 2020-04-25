@@ -1,8 +1,7 @@
-use super::variable_setter::VariableSetter;
 use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
+use crate::interpreter::context::VariableSetter;
 use crate::interpreter::statement::StatementRunner;
-use crate::interpreter::variable_getter::VariableGetter;
 use crate::parser::{ForLoopNode, NameNode, QualifiedName, ResolveIntoRef};
 use std::cmp::Ordering;
 
@@ -45,7 +44,7 @@ impl<S: Stdlib> Interpreter<S> {
 
         match step_sign {
             Ordering::Greater => {
-                self.set_variable(counter_var_name, start)?;
+                self.context.set(counter_var_name, start)?;
                 while self._is_less_or_equal(counter_var_name, &stop)? {
                     self.run(statements)?;
                     self._inc_variable(counter_var_name.clone(), &step)?;
@@ -53,7 +52,7 @@ impl<S: Stdlib> Interpreter<S> {
                 Ok(())
             }
             Ordering::Less => {
-                self.set_variable(counter_var_name, start)?;
+                self.context.set(counter_var_name, start)?;
                 while self._is_greater_or_equal(counter_var_name, &stop)? {
                     self.run(statements)?;
                     self._inc_variable(counter_var_name.clone(), &step)?;
@@ -68,22 +67,24 @@ impl<S: Stdlib> Interpreter<S> {
     }
 
     fn _inc_variable(&mut self, variable_name: NameNode, step: &Variant) -> Result<()> {
-        let existing_value = self.get_variable(&variable_name)?;
+        let existing_value = self.context.get(&variable_name)?;
         let new_value = existing_value
             .plus(step)
             .map_err(|e| InterpreterError::new_with_pos(e, variable_name.location()))?;
-        self.set_variable(variable_name, new_value).map(|_| ())
+        self.context.set(variable_name, new_value)
     }
 
     fn _is_less_or_equal(&self, variable_name: &NameNode, stop: &Variant) -> Result<bool> {
-        self.get_variable(variable_name)?
+        self.context
+            .get(variable_name)?
             .cmp(&stop)
             .map(|o| o != std::cmp::Ordering::Greater)
             .map_err(|e| InterpreterError::new_with_pos(e, variable_name.location()))
     }
 
     fn _is_greater_or_equal(&self, variable_name: &NameNode, stop: &Variant) -> Result<bool> {
-        self.get_variable(variable_name)?
+        self.context
+            .get(variable_name)?
             .cmp(&stop)
             .map(|o| o != std::cmp::Ordering::Less)
             .map_err(|e| InterpreterError::new_with_pos(e, variable_name.location()))
@@ -108,8 +109,8 @@ impl<S: Stdlib> Interpreter<S> {
     }
 
     fn _are_different_variable(&self, left: &NameNode, right: &NameNode) -> bool {
-        let left_qualified_name: QualifiedName = left.resolve_into(self);
-        let right_qualified_name: QualifiedName = right.resolve_into(self);
+        let left_qualified_name: QualifiedName = left.resolve_into(&self.type_resolver);
+        let right_qualified_name: QualifiedName = right.resolve_into(&self.type_resolver);
         left_qualified_name != right_qualified_name
     }
 }

@@ -13,24 +13,25 @@ impl<T: BufRead> Parser<T> {
             LexemeNode::Keyword(Keyword::For, _, pos) => self.demand_for_loop(pos),
             LexemeNode::Keyword(Keyword::If, _, pos) => self.demand_if_block(pos),
             LexemeNode::Keyword(Keyword::While, _, pos) => self.demand_while_block(pos),
-            _ => self.demand_single_line_statement(next),
+            LexemeNode::Keyword(Keyword::Const, _, pos) => self.demand_const(pos),
+            _ => self.demand_assignment_or_sub_call(next),
         }
     }
 
-    pub fn demand_single_line_statement(
+    pub fn demand_assignment_or_sub_call(
         &mut self,
         next: LexemeNode,
     ) -> Result<StatementNode, ParserError> {
         // read bare name
         match next {
             LexemeNode::Word(w, p) => {
-                self._demand_single_line_statement_with_bare_name(CaseInsensitiveString::new(w), p)
+                self._demand_assignment_or_sub_call_with_bare_name(CaseInsensitiveString::new(w), p)
             }
             _ => unexpected("Expected word for assignment or sub-call", next),
         }
     }
 
-    fn _demand_single_line_statement_with_bare_name(
+    fn _demand_assignment_or_sub_call_with_bare_name(
         &mut self,
         bare_name: CaseInsensitiveString,
         bare_name_pos: Location,
@@ -43,7 +44,7 @@ impl<T: BufRead> Parser<T> {
             }
             LexemeNode::Whitespace(_, _) => {
                 // not allowed to parse qualifier after space
-                self._demand_single_line_statement_with_bare_name_whitespace(
+                self._demand_assignment_or_sub_call_with_bare_name_whitespace(
                     bare_name,
                     bare_name_pos,
                 )
@@ -56,7 +57,7 @@ impl<T: BufRead> Parser<T> {
                 ))
             }
             LexemeNode::Symbol(ch, _) => match TypeQualifier::try_from(ch) {
-                Ok(q) => self._demand_single_line_statement_with_qualified_name(NameNode::new(
+                Ok(q) => self._demand_assignment_or_sub_call_with_qualified_name(NameNode::new(
                     Name::Typed(QualifiedName::new(bare_name, q)),
                     bare_name_pos,
                 )),
@@ -66,7 +67,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _demand_single_line_statement_with_bare_name_whitespace(
+    fn _demand_assignment_or_sub_call_with_bare_name_whitespace(
         &mut self,
         bare_name: CaseInsensitiveString,
         bare_name_pos: Location,
@@ -81,7 +82,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _demand_single_line_statement_with_qualified_name(
+    fn _demand_assignment_or_sub_call_with_qualified_name(
         &mut self,
         name_node: NameNode,
     ) -> Result<StatementNode, ParserError> {

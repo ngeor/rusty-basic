@@ -36,7 +36,7 @@ impl<T: BufRead> Parser<T> {
         let if_block = ConditionalBlockNode {
             condition: if_condition,
             pos: if_pos,
-            statements: vec![self.demand_single_line_statement(next)?],
+            statements: vec![self.demand_assignment_or_sub_call(next)?],
         };
         Ok(StatementNode::IfBlock(IfBlockNode {
             if_block: if_block,

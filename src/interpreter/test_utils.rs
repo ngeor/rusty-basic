@@ -1,5 +1,4 @@
 use crate::common::Location;
-use crate::interpreter::variable_getter::VariableGetter;
 use crate::interpreter::variant::Variant;
 use crate::interpreter::{Interpreter, InterpreterError, Result, Stdlib};
 use crate::parser::{Name, NameNode, Parser};
@@ -111,7 +110,7 @@ impl<S: Stdlib> Interpreter<S> {
     pub fn get_variable_str(&self, name: &str) -> Result<&Variant> {
         let pos = Location::start();
         let n = Name::from(name);
-        self.get_variable(&NameNode::new(n, pos))
+        self.context.get(&NameNode::new(n, pos))
     }
 }
 
@@ -157,7 +156,7 @@ impl AssignmentBuilder {
         } else {
             let interpreter = interpret(&self.program);
             assert_eq!(
-                interpreter.get_variable(&self.variable_name_node).unwrap(),
+                interpreter.context.get(&self.variable_name_node).unwrap(),
                 &Variant::from(expected_value)
             );
         }

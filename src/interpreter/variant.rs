@@ -1,4 +1,4 @@
-use crate::parser::TypeQualifier;
+use crate::parser::{HasQualifier, TypeQualifier};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -210,6 +210,18 @@ impl Variant {
                 Variant::VLong(_) => true,
                 _ => false,
             },
+        }
+    }
+}
+
+impl HasQualifier for Variant {
+    fn qualifier(&self) -> TypeQualifier {
+        match self {
+            Variant::VSingle(_) => TypeQualifier::BangSingle,
+            Variant::VDouble(_) => TypeQualifier::HashDouble,
+            Variant::VString(_) => TypeQualifier::DollarString,
+            Variant::VInteger(_) => TypeQualifier::PercentInteger,
+            Variant::VLong(_) => TypeQualifier::AmpersandLong,
         }
     }
 }

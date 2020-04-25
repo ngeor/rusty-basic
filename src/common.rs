@@ -186,62 +186,6 @@ impl CmpIgnoreAsciiCase for &CaseInsensitiveString {
     }
 }
 
-/// Helper operations for a Result of an Option.
-pub trait ResultOptionHelper<T, E> {
-    /// Maps this Result of an Option<T> into a Result of an Option<U>
-    /// using the given closure.
-    fn opt_map<F, U>(self, f: F) -> Result<Option<U>, E>
-    where
-        F: FnMut(T) -> Result<U, E>;
-
-    /// Filters this Result of an Option<T>. If the predicate closure
-    /// returns true, the object is returned unmodified,
-    /// otherwise it returns Ok(None).
-    fn opt_filter<F>(self, f: F) -> Result<Option<T>, E>
-    where
-        F: FnMut(&T) -> Result<bool, E>;
-}
-
-impl<T, E> ResultOptionHelper<T, E> for Result<Option<T>, E> {
-    fn opt_map<F, U>(self, mut f: F) -> Result<Option<U>, E>
-    where
-        F: FnMut(T) -> Result<U, E>,
-    {
-        match self {
-            Ok(opt_x) => match opt_x {
-                Some(x) => match f(x) {
-                    Ok(r) => Ok(Some(r)),
-                    Err(e) => Err(e),
-                },
-                None => Ok(None),
-            },
-            Err(e) => Err(e),
-        }
-    }
-
-    fn opt_filter<F>(self, mut f: F) -> Result<Option<T>, E>
-    where
-        F: FnMut(&T) -> Result<bool, E>,
-    {
-        match self {
-            Ok(opt_x) => match opt_x {
-                Some(x) => match f(&x) {
-                    Ok(filter_result) => {
-                        if filter_result {
-                            Ok(Some(x))
-                        } else {
-                            Ok(None)
-                        }
-                    }
-                    Err(e) => Err(e),
-                },
-                None => Ok(None),
-            },
-            Err(e) => Err(e),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

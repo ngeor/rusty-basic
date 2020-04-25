@@ -1,15 +1,11 @@
-use super::variable_setter::VariableSetter;
 use super::{Interpreter, Result, Stdlib, Variant};
+use crate::interpreter::context::VariableSetter;
 use crate::parser::{ExpressionNode, NameNode};
 
 impl<S: Stdlib> Interpreter<S> {
-    pub fn assignment(
-        &mut self,
-        left_side: &NameNode,
-        right_side: &ExpressionNode,
-    ) -> Result<Option<Variant>> {
+    pub fn assignment(&mut self, left_side: &NameNode, right_side: &ExpressionNode) -> Result<()> {
         let val: Variant = self.evaluate_expression(right_side)?;
-        self.set_variable(left_side, val)
+        self.context.set(left_side, val)
     }
 }
 

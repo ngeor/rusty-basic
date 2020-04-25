@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader, Cursor};
 
 mod assignment;
 mod buf_lexer;
+mod constant;
 mod declaration;
 mod def_type;
 mod error;
@@ -62,7 +63,7 @@ impl<T: BufRead> Parser<T> {
                 | Keyword::DefStr => self.demand_def_type(k, pos),
                 Keyword::Function => self.demand_function_implementation(pos),
                 Keyword::Sub => self.demand_sub_implementation(pos),
-                Keyword::If | Keyword::For | Keyword::While => self
+                Keyword::If | Keyword::For | Keyword::While | Keyword::Const => self
                     .demand_statement(next)
                     .map(|s| TopLevelTokenNode::Statement(s)),
                 _ => unexpected("Unexpected top level token", next),

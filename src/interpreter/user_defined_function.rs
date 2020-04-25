@@ -1,21 +1,8 @@
-use crate::common::{HasLocation, Location};
+use crate::common::HasLocation;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::statement::StatementRunner;
-use crate::interpreter::variable_getter::VariableGetter;
-use crate::interpreter::variable_setter::VariableSetter;
 use crate::interpreter::{InterpreterError, LookupFunctionImplementation, Result, Variant};
-use crate::parser::{BlockNode, ExpressionNode, HasQualifier, NameNode, QualifiedName};
-
-fn _get_variable_name_or_default<VG: VariableGetter>(
-    variable_getter: &VG,
-    function_name: &QualifiedName,
-    pos: Location,
-) -> Variant {
-    match variable_getter.get_variable_at(function_name, pos) {
-        Ok(v) => v.clone(),
-        Err(_) => Variant::default_variant(function_name.qualifier()),
-    }
-}
+use crate::parser::{BlockNode, ExpressionNode, NameNode, QualifiedName};
 
 pub fn supports_function<LI: LookupFunctionImplementation>(
     subprogram_context: &LI,
@@ -31,11 +18,7 @@ pub fn call_function<TI>(
     arg_values: Vec<Variant>,
 ) -> Result<Variant>
 where
-    TI: VariableGetter
-        + VariableSetter<NameNode>
-        + ContextOwner
-        + StatementRunner<BlockNode>
-        + LookupFunctionImplementation,
+    TI: ContextOwner + StatementRunner<BlockNode> + LookupFunctionImplementation,
 {
     let function_implementation = interpreter.lookup_function_implementation(function_name)?;
     let function_parameters: Vec<QualifiedName> = function_implementation.parameters;
@@ -55,11 +38,9 @@ where
         interpreter
             .run(&function_implementation.block)
             .map_err(|e| e.merge_pos(function_name.location()))?;
-        let result = _get_variable_name_or_default(
-            interpreter,
-            &function_implementation.name,
-            function_name.location(),
-        );
+        let result = interpreter
+            .context_ref()
+            .get_function_result(function_name.location());
         interpreter.pop();
         Ok(result)
     }

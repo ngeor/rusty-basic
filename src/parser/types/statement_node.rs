@@ -10,6 +10,7 @@ pub enum StatementNode {
     IfBlock(IfBlockNode),
     Assignment(NameNode, ExpressionNode),
     While(ConditionalBlockNode),
+    Const(NameNode, ExpressionNode, Location),
 }
 
 #[derive(Clone, Debug, PartialEq)]

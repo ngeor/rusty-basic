@@ -16,6 +16,10 @@ impl QualifiedName {
     pub fn bare_name(&self) -> &CaseInsensitiveString {
         &self.name
     }
+
+    pub fn consume(self) -> (CaseInsensitiveString, TypeQualifier) {
+        (self.name, self.qualifier)
+    }
 }
 
 impl HasQualifier for QualifiedName {

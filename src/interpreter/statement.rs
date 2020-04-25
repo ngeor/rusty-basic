@@ -12,9 +12,10 @@ impl<S: Stdlib> StatementRunner<StatementNode> for Interpreter<S> {
             StatementNode::ForLoop(f) => self.for_loop(f),
             StatementNode::IfBlock(i) => self.if_block(i),
             StatementNode::Assignment(left_side, right_side) => {
-                self.assignment(left_side, right_side).map(|_| ())
+                self.assignment(left_side, right_side)
             }
             StatementNode::While(w) => self.while_wend(w),
+            StatementNode::Const(left, right, _) => self.handle_const(left, right),
         }
     }
 }

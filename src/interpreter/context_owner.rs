@@ -1,6 +1,7 @@
 use super::{Interpreter, Result, Stdlib, Variant};
 use crate::common::Location;
-use crate::interpreter::variable_setter::VariableSetter;
+use crate::interpreter::context::{Context, VariableSetter};
+use crate::interpreter::type_resolver_impl::TypeResolverImpl;
 use crate::parser::{Name, NameNode, QualifiedName};
 
 /// Represents the owner of a variable context.
@@ -20,19 +21,21 @@ pub trait ContextOwner {
         values: Vec<Variant>,
         call_pos: Location,
     ) -> Result<()>;
+
+    fn context_ref(&self) -> &Context<TypeResolverImpl>;
 }
 
 impl<S: Stdlib> ContextOwner for Interpreter<S> {
     fn push_function(&mut self, result_name: QualifiedName) {
-        self.context = self.context.take().map(|x| x.push_function(result_name));
+        self.context = std::mem::take(&mut self.context).push_function(result_name);
     }
 
     fn push_sub(&mut self) {
-        self.context = self.context.take().map(|x| x.push_sub());
+        self.context = std::mem::take(&mut self.context).push_sub();
     }
 
     fn pop(&mut self) {
-        self.context = self.context.take().map(|x| x.pop());
+        self.context = std::mem::take(&mut self.context).pop();
     }
 
     fn populate(
@@ -44,8 +47,12 @@ impl<S: Stdlib> ContextOwner for Interpreter<S> {
         for x in names.into_iter().zip(values.into_iter()) {
             let (qualified_name, value) = x;
             let name_node = NameNode::new(Name::Typed(qualified_name), call_pos);
-            self.set_variable(name_node, value)?;
+            self.context.set(name_node, value)?;
         }
         Ok(())
+    }
+
+    fn context_ref(&self) -> &Context<TypeResolverImpl> {
+        &self.context
     }
 }

@@ -9,7 +9,7 @@ mod undefined_function {
     use crate::parser::{ExpressionNode, NameNode, TypeResolver};
 
     pub fn call<TR: TypeResolver>(
-        resolver: &mut TR,
+        resolver: &TR,
         function_name: &NameNode,
         args: &Vec<ExpressionNode>,
         arg_values: Vec<Variant>,
@@ -47,7 +47,7 @@ impl<S: Stdlib> Interpreter<S> {
             if user_defined_function::supports_function(self, function_name) {
                 user_defined_function::call_function(self, function_name, args, arg_values)
             } else {
-                undefined_function::call(self, function_name, args, arg_values)
+                undefined_function::call(&self.type_resolver, function_name, args, arg_values)
             }
         }
     }

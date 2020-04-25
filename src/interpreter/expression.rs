@@ -1,24 +1,50 @@
 use super::variant::{V_FALSE, V_TRUE};
 use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
-use crate::interpreter::variable_getter::VariableGetter;
 use crate::parser::{ExpressionNode, Operand, OperandNode, UnaryOperand, UnaryOperandNode};
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn evaluate_expression(&mut self, e: &ExpressionNode) -> Result<Variant> {
+        self._evaluate_expression(e, false)
+    }
+
+    pub fn evaluate_const_expression(&mut self, e: &ExpressionNode) -> Result<Variant> {
+        self._evaluate_expression(e, true)
+    }
+
+    fn _evaluate_expression(
+        &mut self,
+        e: &ExpressionNode,
+        only_constants: bool,
+    ) -> Result<Variant> {
         match e {
             ExpressionNode::SingleLiteral(n, _) => Ok(Variant::from(*n)),
             ExpressionNode::DoubleLiteral(n, _) => Ok(Variant::from(*n)),
             ExpressionNode::StringLiteral(s, _) => Ok(Variant::from(s)),
             ExpressionNode::IntegerLiteral(i, _) => Ok(Variant::from(*i)),
             ExpressionNode::LongLiteral(i, _) => Ok(Variant::from(*i)),
-            ExpressionNode::VariableName(n) => self.get_variable(n).map(|x| x.clone()),
-            ExpressionNode::FunctionCall(n, args) => self.evaluate_function_call(n, args),
+            ExpressionNode::VariableName(n) => {
+                if only_constants {
+                    self.context.get_const(n).map(|x| x.clone())
+                } else {
+                    self.context.get_or_default(n)
+                }
+            }
+            ExpressionNode::FunctionCall(n, args) => {
+                if only_constants {
+                    Err(InterpreterError::new_with_pos(
+                        "Invalid constant",
+                        e.location(),
+                    ))
+                } else {
+                    self.evaluate_function_call(n, args)
+                }
+            }
             ExpressionNode::BinaryExpression(op, left, right) => {
-                self._evaluate_binary_expression(op, left, right)
+                self._evaluate_binary_expression(op, left, right, only_constants)
             }
             ExpressionNode::UnaryExpression(op, child) => {
-                self._evaluate_unary_expression(op, child)
+                self._evaluate_unary_expression(op, child, only_constants)
             }
         }
     }
@@ -28,9 +54,10 @@ impl<S: Stdlib> Interpreter<S> {
         op: &OperandNode,
         left: &Box<ExpressionNode>,
         right: &Box<ExpressionNode>,
+        only_constants: bool,
     ) -> Result<Variant> {
-        let left_var: Variant = self.evaluate_expression(left)?;
-        let right_var: Variant = self.evaluate_expression(right)?;
+        let left_var: Variant = self._evaluate_expression(left, only_constants)?;
+        let right_var: Variant = self._evaluate_expression(right, only_constants)?;
         match op.as_ref() {
             Operand::LessOrEqualThan => {
                 let cmp = left_var
@@ -63,8 +90,9 @@ impl<S: Stdlib> Interpreter<S> {
         &mut self,
         op: &UnaryOperandNode,
         child: &Box<ExpressionNode>,
+        only_constants: bool,
     ) -> Result<Variant> {
-        let child_var: Variant = self.evaluate_expression(child)?;
+        let child_var: Variant = self._evaluate_expression(child, only_constants)?;
         match op.as_ref() {
             // UnaryOperand::Plus => Ok(child_var),
             UnaryOperand::Minus => Ok(child_var.negate()),

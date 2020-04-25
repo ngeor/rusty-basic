@@ -2,6 +2,7 @@ mod assignment;
 mod built_in_functions;
 mod built_in_subs;
 mod casting;
+mod constant;
 mod context;
 mod context_owner;
 mod expression;
@@ -18,8 +19,6 @@ mod subprogram_context;
 mod type_resolver_impl;
 mod user_defined_function;
 mod user_defined_sub;
-mod variable_getter;
-mod variable_setter;
 mod variant;
 mod while_wend;
 
@@ -38,28 +37,38 @@ use crate::interpreter::sub_context::{QualifiedSubImplementationNode, SubContext
 use crate::interpreter::type_resolver_impl::TypeResolverImpl;
 use crate::parser::*;
 
+use std::cell::RefCell;
 use std::convert::TryInto;
+use std::rc::Rc;
+
+impl<T: TypeResolver> TypeResolver for Rc<RefCell<T>> {
+    fn resolve(&self, name: &CaseInsensitiveString) -> TypeQualifier {
+        self.as_ref().borrow().resolve(name)
+    }
+}
 
 #[derive(Debug)]
-pub struct Interpreter<S> {
+pub struct Interpreter<S: Stdlib> {
     stdlib: S,
-    context: Option<Context>, // declared as option to be able to use Option.take; it should always have Some value
+    context: Context<TypeResolverImpl>,
     function_context: FunctionContext,
     sub_context: SubContext,
-    type_resolver: TypeResolverImpl,
+    type_resolver: Rc<RefCell<TypeResolverImpl>>,
 }
 
 pub type Result<T> = std::result::Result<T, InterpreterError>;
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
-    pub fn new(stdlib: TStdlib) -> Interpreter<TStdlib> {
-        Interpreter {
+    pub fn new(stdlib: TStdlib) -> Self {
+        let tr = Rc::new(RefCell::new(TypeResolverImpl::new()));
+        let result = Interpreter {
             stdlib,
-            context: Some(Context::new()),
+            context: Context::new(Rc::clone(&tr)),
             function_context: FunctionContext::new(),
             sub_context: SubContext::new(),
-            type_resolver: TypeResolverImpl::new(),
-        }
+            type_resolver: tr,
+        };
+        result
     }
 
     pub fn interpret(&mut self, program: ProgramNode) -> Result<()> {
@@ -118,26 +127,14 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         Ok(())
     }
 
-    fn context_ref(&self) -> &Context {
-        match self.context.as_ref() {
-            Some(x) => x,
-            None => panic!("Stack underflow"),
-        }
-    }
-
-    fn context_mut(&mut self) -> &mut Context {
-        match self.context.as_mut() {
-            Some(x) => x,
-            None => panic!("Stack underflow"),
-        }
-    }
-
     fn handle_def_type(&mut self, x: DefTypeNode) {
         let q: TypeQualifier = x.qualifier();
         for r in x.ranges() {
             match *r {
-                LetterRangeNode::Single(c) => self.type_resolver.set(c, c, q),
-                LetterRangeNode::Range(start, stop) => self.type_resolver.set(start, stop, q),
+                LetterRangeNode::Single(c) => self.type_resolver.borrow_mut().set(c, c, q),
+                LetterRangeNode::Range(start, stop) => {
+                    self.type_resolver.borrow_mut().set(start, stop, q)
+                }
             }
         }
     }
@@ -148,12 +145,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         condition_value
             .try_into()
             .map_err(|e| InterpreterError::new_with_pos(e, conditional_block.pos))
-    }
-}
-
-impl<TStdlib: Stdlib> TypeResolver for Interpreter<TStdlib> {
-    fn resolve(&self, name: &CaseInsensitiveString) -> TypeQualifier {
-        self.type_resolver.resolve(name)
     }
 }
 

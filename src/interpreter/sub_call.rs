@@ -1,7 +1,7 @@
-use super::variable_setter::VariableSetter;
 use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
 use crate::common::HasLocation;
 use crate::interpreter::built_in_subs;
+use crate::interpreter::context::VariableSetter;
 use crate::interpreter::user_defined_sub;
 use crate::parser::{BareNameNode, ExpressionNode, NameNode, ResolveIntoRef, TypeQualifier};
 
@@ -67,7 +67,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             .stdlib
             .input()
             .map_err(|e| InterpreterError::new_with_pos(e.to_string(), var_name.location()))?;
-        let q: TypeQualifier = var_name.resolve_into(self);
+        let q: TypeQualifier = var_name.resolve_into(&self.type_resolver);
         let variable_value = match q {
             TypeQualifier::BangSingle => Variant::from(
                 parse_single_input(raw_input)
@@ -80,7 +80,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             ),
             _ => unimplemented!(),
         };
-        self.set_variable(var_name, variable_value).map(|_| ())
+        self.context.set(var_name, variable_value)
     }
 }
 

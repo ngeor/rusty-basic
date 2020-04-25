@@ -6,6 +6,12 @@ pub struct TypeResolverImpl {
     ranges: [TypeQualifier; 26],
 }
 
+impl Default for TypeResolverImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn char_to_alphabet_index(ch: char) -> usize {
     let upper = ch.to_ascii_uppercase();
     if upper >= 'A' && upper <= 'Z' {

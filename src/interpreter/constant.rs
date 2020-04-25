@@ -234,6 +234,17 @@ mod tests {
         }
 
         #[test]
+        fn unary_not() {
+            let program = r#"
+            CONST TRUE = -1
+            CONST FALSE = NOT TRUE
+            PRINT FALSE
+            "#;
+            let interpreter = interpret(program);
+            assert_eq!(interpreter.stdlib.output, vec!["0"]);
+        }
+
+        #[test]
         fn function_call_not_allowed() {
             let program = r#"
             CONST X = Add(1, 2)

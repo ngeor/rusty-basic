@@ -95,12 +95,12 @@ impl<S: Stdlib> Interpreter<S> {
         let child_var: Variant = self._evaluate_expression(child, only_constants)?;
         match op.as_ref() {
             // UnaryOperand::Plus => Ok(child_var),
-            UnaryOperand::Minus => Ok(child_var.negate()),
-            // UnaryOperand::Not => Ok(if bool::try_from(child_var)? {
-            //     V_FALSE
-            // } else {
-            //     V_TRUE
-            // }),
+            UnaryOperand::Minus => child_var
+                .negate()
+                .map_err(|e| InterpreterError::new_with_pos(e, op.location())),
+            UnaryOperand::Not => child_var
+                .unary_not()
+                .map_err(|e| InterpreterError::new_with_pos(e, op.location())),
         }
     }
 }
@@ -121,7 +121,7 @@ mod tests {
         assert_has_variable!(interpret("X& = 42"), "X&", 42_i64);
     }
 
-    mod plus {
+    mod binary_plus {
         use super::*;
 
         #[test]
@@ -188,7 +188,7 @@ mod tests {
         }
     }
 
-    mod minus {
+    mod binary_minus {
         use super::*;
 
         #[test]
@@ -254,6 +254,60 @@ mod tests {
             assert_eq!(
                 interpret_err("X& = 1 - \"hello\""),
                 InterpreterError::new_with_pos("Type mismatch", Location::new(1, 8))
+            );
+        }
+    }
+
+    mod unary_minus {
+        use super::*;
+
+        #[test]
+        fn test_unary_minus_float() {
+            assert_has_variable!(interpret("X = -1.1"), "X", -1.1_f32);
+            assert_has_variable!(interpret("X = -1.1#"), "X", -1.1_f32);
+            assert_has_variable!(interpret("X = -1"), "X", -1.0_f32);
+            assert_eq!(
+                interpret_err("X = -\"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 5))
+            );
+        }
+
+        #[test]
+        fn test_unary_minus_integer() {
+            assert_has_variable!(interpret("X% = -1.1"), "X%", -1);
+            assert_has_variable!(interpret("X% = -1.1#"), "X%", -1);
+            assert_has_variable!(interpret("X% = -1"), "X%", -1);
+            assert_eq!(
+                interpret_err("X% = -\"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 6))
+            );
+        }
+    }
+
+    mod unary_not {
+        use super::*;
+
+        #[test]
+        fn test_unary_not_float() {
+            assert_has_variable!(interpret("X = NOT 3.14"), "X", -4.0_f32);
+            assert_has_variable!(interpret("X = NOT 3.5#"), "X", -5.0_f32);
+            assert_has_variable!(interpret("X = NOT -1.1"), "X", 0.0_f32);
+            assert_has_variable!(interpret("X = NOT -1.5"), "X", 1.0_f32);
+            assert_eq!(
+                interpret_err("X = NOT \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 5))
+            );
+        }
+
+        #[test]
+        fn test_unary_not_integer() {
+            assert_has_variable!(interpret("X% = NOT 1"), "X%", -2);
+            assert_has_variable!(interpret("X% = NOT 0"), "X%", -1);
+            assert_has_variable!(interpret("X% = NOT -1"), "X%", 0);
+            assert_has_variable!(interpret("X% = NOT -2"), "X%", 1);
+            assert_eq!(
+                interpret_err("X% = NOT \"hello\""),
+                InterpreterError::new_with_pos("Type mismatch", Location::new(1, 6))
             );
         }
     }

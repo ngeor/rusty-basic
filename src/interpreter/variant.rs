@@ -109,13 +109,23 @@ impl Variant {
         }
     }
 
-    pub fn negate(&self) -> Self {
+    pub fn negate(&self) -> Result<Self, String> {
         match self {
-            Variant::VSingle(n) => Variant::VSingle(-n),
-            Variant::VDouble(n) => Variant::VDouble(-n),
-            Variant::VInteger(n) => Variant::VInteger(-n),
-            Variant::VLong(n) => Variant::VLong(-n),
-            _ => unimplemented!(),
+            Variant::VSingle(n) => Ok(Variant::VSingle(-n)),
+            Variant::VDouble(n) => Ok(Variant::VDouble(-n)),
+            Variant::VString(_) => Err("Type mismatch".to_string()),
+            Variant::VInteger(n) => Ok(Variant::VInteger(-n)),
+            Variant::VLong(n) => Ok(Variant::VLong(-n)),
+        }
+    }
+
+    pub fn unary_not(&self) -> Result<Self, String> {
+        match self {
+            Variant::VSingle(f) => Ok(Variant::VSingle(-f.round() - 1.0)),
+            Variant::VDouble(d) => Ok(Variant::VDouble(-d.round() - 1.0)),
+            Variant::VString(_) => Err("Type mismatch".to_string()),
+            Variant::VInteger(n) => Ok(Variant::VInteger(-n - 1)),
+            Variant::VLong(n) => Ok(Variant::VLong(-n - 1)),
         }
     }
 
@@ -157,23 +167,23 @@ impl Variant {
                 Variant::VDouble(d_right) => Ok(Variant::VDouble(*f_left as f64 - *d_right)),
                 Variant::VInteger(i_right) => Ok(Variant::VSingle(*f_left - *i_right as f32)),
                 Variant::VLong(l_right) => Ok(Variant::VSingle(*f_left - *l_right as f32)),
-                _ => other.minus(self).map(|x| x.negate()),
+                _ => other.minus(self).and_then(|x| x.negate()),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VDouble(d_right) => Ok(Variant::VDouble(*d_left - *d_right)),
                 Variant::VInteger(i_right) => Ok(Variant::VDouble(*d_left - *i_right as f64)),
                 Variant::VLong(l_right) => Ok(Variant::VDouble(*d_left - *l_right as f64)),
-                _ => other.minus(self).map(|x| x.negate()),
+                _ => other.minus(self).and_then(|x| x.negate()),
             },
             Variant::VString(_) => Err("Type mismatch".to_string()),
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(Variant::VInteger(*i_left - *i_right)),
                 Variant::VLong(l_right) => Ok(Variant::VLong(*i_left as i64 - *l_right)),
-                _ => other.minus(self).map(|x| x.negate()),
+                _ => other.minus(self).and_then(|x| x.negate()),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(Variant::VLong(*l_left - *l_right)),
-                _ => other.minus(self).map(|x| x.negate()),
+                _ => other.minus(self).and_then(|x| x.negate()),
             },
         }
     }

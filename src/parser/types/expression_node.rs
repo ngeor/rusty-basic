@@ -13,7 +13,7 @@ pub enum Operand {
 pub enum UnaryOperand {
     // Plus,
     Minus,
-    // Not,
+    Not,
 }
 
 pub type OperandNode = Locatable<Operand>;

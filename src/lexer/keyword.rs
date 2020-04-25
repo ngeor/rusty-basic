@@ -32,6 +32,8 @@ pub enum Keyword {
     If,
     /// NEXT
     Next,
+    /// NOT
+    Not,
     /// STEP
     Step,
     /// SUB
@@ -60,6 +62,7 @@ const STR_FOR: &str = "FOR";
 const STR_FUNCTION: &str = "FUNCTION";
 const STR_IF: &str = "IF";
 const STR_NEXT: &str = "NEXT";
+const STR_NOT: &str = "NOT";
 const STR_STEP: &str = "STEP";
 const STR_SUB: &str = "SUB";
 const STR_THEN: &str = "THEN";
@@ -67,7 +70,7 @@ const STR_TO: &str = "TO";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 20] = [
+const SORTED_KEYWORDS_STR: [&str; 21] = [
     STR_CONST,
     STR_DECLARE,
     STR_DEFDBL,
@@ -82,6 +85,7 @@ const SORTED_KEYWORDS_STR: [&str; 20] = [
     STR_FUNCTION,
     STR_IF,
     STR_NEXT,
+    STR_NOT,
     STR_STEP,
     STR_SUB,
     STR_THEN,
@@ -90,7 +94,7 @@ const SORTED_KEYWORDS_STR: [&str; 20] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 20] = [
+const SORTED_KEYWORDS: [Keyword; 21] = [
     Keyword::Const,
     Keyword::Declare,
     Keyword::DefDbl,
@@ -105,6 +109,7 @@ const SORTED_KEYWORDS: [Keyword; 20] = [
     Keyword::Function,
     Keyword::If,
     Keyword::Next,
+    Keyword::Not,
     Keyword::Step,
     Keyword::Sub,
     Keyword::Then,
@@ -130,6 +135,7 @@ impl Display for Keyword {
             Self::Function => STR_FUNCTION.fmt(f),
             Self::If => STR_IF.fmt(f),
             Self::Next => STR_NEXT.fmt(f),
+            Self::Not => STR_NOT.fmt(f),
             Self::Step => STR_STEP.fmt(f),
             Self::Sub => STR_SUB.fmt(f),
             Self::Then => STR_THEN.fmt(f),
@@ -170,6 +176,7 @@ mod tests {
         assert_eq!(Keyword::Function.to_string(), "FUNCTION");
         assert_eq!(Keyword::If.to_string(), "IF");
         assert_eq!(Keyword::Next.to_string(), "NEXT");
+        assert_eq!(Keyword::Not.to_string(), "NOT");
         assert_eq!(Keyword::Step.to_string(), "STEP");
         assert_eq!(Keyword::Sub.to_string(), "SUB");
         assert_eq!(Keyword::Then.to_string(), "THEN");
@@ -194,6 +201,7 @@ mod tests {
         assert_eq!(Keyword::Function, "FUNCTION".parse().unwrap());
         assert_eq!(Keyword::If, "IF".parse().unwrap());
         assert_eq!(Keyword::Next, "NEXT".parse().unwrap());
+        assert_eq!(Keyword::Not, "NOT".parse().unwrap());
         assert_eq!(Keyword::Step, "STEP".parse().unwrap());
         assert_eq!(Keyword::Sub, "SUB".parse().unwrap());
         assert_eq!(Keyword::Then, "THEN".parse().unwrap());
@@ -218,6 +226,7 @@ mod tests {
         assert_eq!(Keyword::Function, "function".parse().unwrap());
         assert_eq!(Keyword::If, "if".parse().unwrap());
         assert_eq!(Keyword::Next, "next".parse().unwrap());
+        assert_eq!(Keyword::Not, "not".parse().unwrap());
         assert_eq!(Keyword::Step, "step".parse().unwrap());
         assert_eq!(Keyword::Sub, "sub".parse().unwrap());
         assert_eq!(Keyword::Then, "then".parse().unwrap());

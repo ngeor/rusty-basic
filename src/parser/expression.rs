@@ -1,8 +1,9 @@
 use super::{
     unexpected, ExpressionNode, NameNode, Operand, OperandNode, Parser, ParserError, UnaryOperand,
+    UnaryOperandNode,
 };
 use crate::common::{Locatable, Location};
-use crate::lexer::LexemeNode;
+use crate::lexer::{Keyword, LexemeNode};
 use std::convert::TryFrom;
 use std::io::BufRead;
 
@@ -38,6 +39,14 @@ impl<T: BufRead> Parser<T> {
                 Ok(ExpressionNode::unary_minus(
                     Locatable::new(UnaryOperand::Minus, minus_pos),
                     child,
+                ))
+            }
+            LexemeNode::Keyword(Keyword::Not, _, not_pos) => {
+                self.read_demand_whitespace("Expected whitespace after NOT")?;
+                let child = self.read_demand_expression()?;
+                Ok(ExpressionNode::UnaryExpression(
+                    UnaryOperandNode::new(UnaryOperand::Not, not_pos),
+                    Box::new(child),
                 ))
             }
             _ => unexpected("Expected expression", next),

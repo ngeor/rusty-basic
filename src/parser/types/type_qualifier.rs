@@ -18,6 +18,15 @@ pub enum TypeQualifier {
     AmpersandLong,
 }
 
+impl TypeQualifier {
+    pub fn can_cast_to(&self, other: Self) -> bool {
+        match self {
+            Self::DollarString => other == Self::DollarString,
+            _ => other != Self::DollarString,
+        }
+    }
+}
+
 impl Display for TypeQualifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

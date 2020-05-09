@@ -1,51 +1,42 @@
-use super::{
-    HasQualifier, QualifiedName, ResolveInto, ResolveIntoRef, TypeQualifier, TypeResolver,
-};
+use super::{HasQualifier, NameTrait, QualifiedName, TypeQualifier};
 use crate::common::CaseInsensitiveString;
 use std::convert::TryFrom;
-use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Name {
     Bare(CaseInsensitiveString),
-    Typed(QualifiedName),
+    Qualified(QualifiedName),
 }
 
-impl AsRef<CaseInsensitiveString> for Name {
-    fn as_ref(&self) -> &CaseInsensitiveString {
-        match self {
-            Self::Bare(s) => s,
-            Self::Typed(t) => t.bare_name(),
+impl Name {
+    pub fn new<S: AsRef<str>>(word: S, optional_type_qualifier: Option<TypeQualifier>) -> Self {
+        match optional_type_qualifier {
+            Some(q) => Self::new_qualified(word, q),
+            None => Self::new_bare(word),
         }
+    }
+
+    pub fn new_bare<S: AsRef<str>>(word: S) -> Self {
+        Name::Bare(CaseInsensitiveString::new(word.as_ref().to_string()))
+    }
+
+    pub fn new_qualified<S: AsRef<str>>(word: S, qualifier: TypeQualifier) -> Self {
+        Name::Qualified(QualifiedName::new(word, qualifier))
     }
 }
 
-impl ResolveIntoRef<TypeQualifier> for Name {
-    fn resolve_into<T: TypeResolver>(&self, resolver: &T) -> TypeQualifier {
+impl NameTrait for Name {
+    fn bare_name(&self) -> &CaseInsensitiveString {
         match self {
-            Name::Bare(b) => resolver.resolve(b),
-            Name::Typed(t) => t.qualifier(),
+            Self::Bare(b) => b,
+            Self::Qualified(t) => t.bare_name(),
         }
     }
-}
 
-impl ResolveIntoRef<QualifiedName> for Name {
-    fn resolve_into<T: TypeResolver>(&self, resolver: &T) -> QualifiedName {
+    fn opt_qualifier(&self) -> Option<TypeQualifier> {
         match self {
-            Name::Bare(s) => QualifiedName::new(s.clone(), resolver.resolve(s)),
-            Name::Typed(t) => t.clone(),
-        }
-    }
-}
-
-impl ResolveInto<QualifiedName> for Name {
-    fn resolve_into<T: TypeResolver>(self, resolver: &T) -> QualifiedName {
-        match self {
-            Name::Bare(s) => {
-                let qualifier = resolver.resolve(&s);
-                QualifiedName::new(s, qualifier)
-            }
-            Name::Typed(t) => t,
+            Self::Bare(_) => None,
+            Self::Qualified(t) => Some(t.qualifier()),
         }
     }
 }
@@ -55,7 +46,7 @@ impl<S: AsRef<str>> From<S> for Name {
         let mut buf = s.as_ref().to_string();
         let last_ch: char = buf.pop().unwrap();
         match TypeQualifier::try_from(last_ch) {
-            Ok(qualifier) => Name::Typed(QualifiedName::new(
+            Ok(qualifier) => Name::Qualified(QualifiedName::new(
                 CaseInsensitiveString::new(buf),
                 qualifier,
             )),
@@ -63,15 +54,6 @@ impl<S: AsRef<str>> From<S> for Name {
                 buf.push(last_ch);
                 Name::Bare(CaseInsensitiveString::new(buf))
             }
-        }
-    }
-}
-
-impl Display for Name {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Name::Bare(s) => write!(f, "{}", s),
-            Name::Typed(t) => write!(f, "{}", t),
         }
     }
 }
@@ -85,7 +67,7 @@ mod tests {
         assert_eq!(Name::from("A"), Name::Bare("A".into()));
         assert_eq!(
             Name::from("Pos%"),
-            Name::Typed(QualifiedName::new(
+            Name::Qualified(QualifiedName::new(
                 CaseInsensitiveString::new("Pos".to_string()),
                 TypeQualifier::PercentInteger
             ))

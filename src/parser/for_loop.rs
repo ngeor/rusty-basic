@@ -1,12 +1,9 @@
-use super::{
-    unexpected, ExpressionNode, ForLoopNode, NameNode, Parser, ParserError, StatementNode,
-};
-use crate::common::Location;
+use super::{unexpected, ExpressionNode, ForLoopNode, NameNode, Parser, ParserError, Statement};
 use crate::lexer::{Keyword, LexemeNode};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn demand_for_loop(&mut self, pos: Location) -> Result<StatementNode, ParserError> {
+    pub fn demand_for_loop(&mut self) -> Result<Statement, ParserError> {
         self.read_demand_whitespace("Expected whitespace after FOR keyword")?;
         let for_counter_variable = self.read_demand_name_node("Expected FOR counter variable")?;
         self.read_demand_symbol_skipping_whitespace('=')?;
@@ -23,14 +20,13 @@ impl<T: BufRead> Parser<T> {
         // we are past the "NEXT", maybe there is a variable name e.g. NEXT I
         let next_counter = self.try_parse_next_counter()?;
 
-        Ok(StatementNode::ForLoop(ForLoopNode {
+        Ok(Statement::ForLoop(ForLoopNode {
             variable_name: for_counter_variable,
             lower_bound,
             upper_bound,
             step: optional_step,
             statements,
             next_counter,
-            pos,
         }))
     }
 
@@ -121,9 +117,8 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use super::*;
-    use crate::common::Location;
-    use crate::parser::TopLevelTokenNode;
+    use crate::common::*;
+    use crate::parser::*;
 
     #[test]
     fn test_for_loop() {
@@ -131,17 +126,15 @@ mod tests {
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
-            StatementNode::ForLoop(ForLoopNode {
+            Statement::ForLoop(ForLoopNode {
                 variable_name: "I".as_name(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
-                statements: vec![StatementNode::SubCall(
-                    "PRINT".as_bare_name(2, 1),
-                    vec!["I".as_var_expr(2, 7)]
-                )],
+                statements: vec![
+                    Statement::SubCall("PRINT".into(), vec!["I".as_var_expr(2, 7)]).at_rc(2, 1)
+                ],
                 next_counter: None,
-                pos: Location::new(1, 1)
             })
         );
     }
@@ -152,17 +145,15 @@ mod tests {
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
-            StatementNode::ForLoop(ForLoopNode {
+            Statement::ForLoop(ForLoopNode {
                 variable_name: "i".as_name(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
-                statements: vec![StatementNode::SubCall(
-                    "print".as_bare_name(2, 1),
-                    vec!["i".as_var_expr(2, 7)]
-                )],
+                statements: vec![
+                    Statement::SubCall("print".into(), vec!["i".as_var_expr(2, 7)]).at_rc(2, 1)
+                ],
                 next_counter: None,
-                pos: Location::new(1, 1)
             })
         );
     }
@@ -172,73 +163,75 @@ mod tests {
         let result = parse_file("FOR_PRINT_10.BAS").demand_single_statement();
         assert_eq!(
             result,
-            StatementNode::ForLoop(ForLoopNode {
+            Statement::ForLoop(ForLoopNode {
                 variable_name: "I".as_name(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
-                statements: vec![StatementNode::SubCall(
-                    "PRINT".as_bare_name(2, 5),
+                statements: vec![Statement::SubCall(
+                    "PRINT".into(),
                     vec!["Hello".as_lit_expr(2, 11), "I".as_var_expr(2, 20)]
-                )],
+                )
+                .at_rc(2, 5)],
                 next_counter: None,
-                pos: Location::new(1, 1)
             })
         );
     }
 
     #[test]
     fn fn_fixture_for_nested() {
-        let result = parse_file("FOR_NESTED.BAS");
+        let result = parse_file("FOR_NESTED.BAS").strip_location();
         assert_eq!(
             result,
             vec![
-                TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "PRINT".as_bare_name(1, 1),
+                TopLevelToken::Statement(Statement::SubCall(
+                    "PRINT".into(),
                     vec!["Before the outer loop".as_lit_expr(1, 7)]
                 )),
-                TopLevelTokenNode::Statement(StatementNode::ForLoop(ForLoopNode {
+                TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
                     variable_name: "I".as_name(2, 5),
                     lower_bound: 1.as_lit_expr(2, 9),
                     upper_bound: 10.as_lit_expr(2, 14),
                     step: None,
                     statements: vec![
-                        StatementNode::SubCall(
-                            "PRINT".as_bare_name(3, 5),
+                        Statement::SubCall(
+                            "PRINT".into(),
                             vec![
                                 "Before the inner loop".as_lit_expr(3, 11),
                                 "I".as_var_expr(3, 36)
                             ]
-                        ),
-                        StatementNode::ForLoop(ForLoopNode {
+                        )
+                        .at_rc(3, 5),
+                        Statement::ForLoop(ForLoopNode {
                             variable_name: "J".as_name(4, 9),
                             lower_bound: 1.as_lit_expr(4, 13),
                             upper_bound: 10.as_lit_expr(4, 18),
                             step: None,
-                            statements: vec![StatementNode::SubCall(
-                                "PRINT".as_bare_name(5, 9),
+                            statements: vec![Statement::SubCall(
+                                "PRINT".into(),
                                 vec![
                                     "Inner loop".as_lit_expr(5, 15),
                                     "I".as_var_expr(5, 29),
                                     "J".as_var_expr(5, 32)
                                 ]
-                            )],
+                            )
+                            .at_rc(5, 9)],
                             next_counter: None,
-                            pos: Location::new(4, 5)
-                        }),
-                        StatementNode::SubCall(
-                            "PRINT".as_bare_name(7, 5),
+                        })
+                        .at_rc(4, 5),
+                        Statement::SubCall(
+                            "PRINT".into(),
                             vec![
                                 "After the inner loop".as_lit_expr(7, 11),
                                 "I".as_var_expr(7, 35)
                             ]
                         )
+                        .at_rc(7, 5)
                     ],
                     next_counter: None,
-                    pos: Location::new(2, 1)
                 })),
-                TopLevelTokenNode::Statement(StatementNode::SubCall(
-                    "PRINT".as_bare_name(9, 1),
+                TopLevelToken::Statement(Statement::SubCall(
+                    BareName::from("PRINT"),
                     vec!["After the outer loop".as_lit_expr(9, 7)]
                 )),
             ]

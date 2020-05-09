@@ -1,5 +1,5 @@
 use super::Keyword;
-use crate::common::{HasLocation, Location};
+use crate::common::Location;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LexemeNode {
@@ -59,20 +59,6 @@ impl LexemeNode {
         match self {
             LexemeNode::Whitespace(_, _) => true,
             _ => false,
-        }
-    }
-}
-
-impl HasLocation for LexemeNode {
-    fn location(&self) -> Location {
-        match self {
-            LexemeNode::EOF(pos)
-            | LexemeNode::EOL(_, pos)
-            | LexemeNode::Keyword(_, _, pos)
-            | LexemeNode::Word(_, pos)
-            | LexemeNode::Whitespace(_, pos)
-            | LexemeNode::Symbol(_, pos)
-            | LexemeNode::Digits(_, pos) => *pos,
         }
     }
 }

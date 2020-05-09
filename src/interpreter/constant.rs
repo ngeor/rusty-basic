@@ -1,35 +1,8 @@
-use super::{Interpreter, InterpreterError, Result, Stdlib, Variant};
-use crate::common::HasLocation;
-use crate::interpreter::casting::cast;
-use crate::parser::{ExpressionNode, HasQualifier, Name, NameNode};
-
-impl<S: Stdlib> Interpreter<S> {
-    pub fn handle_const(&mut self, left: &NameNode, right: &ExpressionNode) -> Result<()> {
-        let value: Variant = self.evaluate_const_expression(right)?;
-        let name: &Name = left.as_ref();
-        match name {
-            Name::Bare(bare_name) => {
-                self.context
-                    .set_const(bare_name.clone(), value, left.location())
-            }
-            Name::Typed(qualified_name) => {
-                let casted_value = cast(value, qualified_name.qualifier())
-                    .map_err(|msg| InterpreterError::new_with_pos(msg, left.location()))?;
-                self.context.set_const(
-                    qualified_name.bare_name().clone(),
-                    casted_value,
-                    left.location(),
-                )
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::common::Location;
-    use crate::interpreter::InterpreterError;
+    use crate::assert_linter_err;
+    use crate::linter::LinterError;
 
     mod unqualified_integer_declaration {
         use super::*;
@@ -60,10 +33,7 @@ mod tests {
             CONST X = 42
             PRINT X!
             ";
-            assert_eq!(
-                interpret_err(program),
-                InterpreterError::new_with_pos("Duplicate definition", Location::new(3, 19))
-            );
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
 
         #[test]
@@ -73,10 +43,16 @@ mod tests {
             CONST X = 32
             PRINT X
             ";
-            assert_eq!(
-                interpret_err(program),
-                InterpreterError::new_with_pos("Duplicate definition", Location::new(3, 19))
-            );
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+        }
+
+        #[test]
+        fn variable_already_exists_as_sub_call_param() {
+            let program = "
+            INPUT X%
+            CONST X = 1
+            ";
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
 
         #[test]
@@ -86,10 +62,7 @@ mod tests {
             CONST X = 33
             PRINT X
             ";
-            assert_eq!(
-                interpret_err(program),
-                InterpreterError::new_with_pos("Duplicate definition", Location::new(3, 19))
-            );
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
     }
 
@@ -122,10 +95,7 @@ mod tests {
             CONST X = 3.14
             X = 6.28
             ";
-            assert_eq!(
-                interpret_err(program),
-                InterpreterError::new_with_pos("Duplicate definition", Location::new(3, 13))
-            );
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
         }
     }
 
@@ -179,6 +149,15 @@ mod tests {
             let interpreter = interpret(program);
             assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
         }
+
+        #[test]
+        fn qualified_usage_from_string_literal() {
+            let program = r#"
+            CONST X! = "hello"
+            PRINT X!
+            "#;
+            assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
+        }
     }
 
     mod qualified_integer_declaration {
@@ -190,10 +169,7 @@ mod tests {
             CONST X% = "hello"
             PRINT X
             "#;
-            assert_eq!(
-                interpret_err(program),
-                InterpreterError::new_with_pos("Type mismatch", Location::new(2, 19))
-            );
+            assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
         }
     }
 
@@ -250,10 +226,7 @@ mod tests {
             CONST X = Add(1, 2)
             PRINT X
             "#;
-            assert_eq!(
-                interpret_err(program),
-                InterpreterError::new_with_pos("Invalid constant", Location::new(2, 23))
-            );
+            assert_linter_err!(program, LinterError::InvalidConstant, 2, 23);
         }
 
         #[test]
@@ -263,10 +236,7 @@ mod tests {
             CONST A = X + 1
             PRINT A
             "#;
-            assert_eq!(
-                interpret_err(program),
-                InterpreterError::new_with_pos("Invalid constant", Location::new(3, 23))
-            );
+            assert_linter_err!(program, LinterError::InvalidConstant, 3, 23);
         }
     }
 
@@ -285,6 +255,7 @@ mod tests {
                 PRINT X
             END SUB
             "#;
+
             let interpreter = interpret(program);
             assert_eq!(interpreter.stdlib.output, vec!["42"]);
         }
@@ -322,6 +293,26 @@ mod tests {
             "#;
             let interpreter = interpret(program);
             assert_eq!(interpreter.stdlib.output, vec!["42", "100", "42"]);
+        }
+
+        #[test]
+        fn nested_sub() {
+            let program = "
+            CONST X = 42
+            Sub1
+
+            SUB Sub1
+                CONST X = 3
+                PRINT X
+                Sub2
+            END SUB
+
+            SUB Sub2
+                PRINT X
+            END SUB
+            ";
+            let interpreter = interpret(program);
+            assert_eq!(interpreter.stdlib.output, vec!["3", "42"]);
         }
     }
 }

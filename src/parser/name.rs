@@ -1,5 +1,5 @@
-use super::{unexpected, BareNameNode, NameNode, Parser, ParserError, TypeQualifier};
-use crate::common::CaseInsensitiveString;
+use super::{unexpected, BareNameNode, Name, NameNode, Parser, ParserError, TypeQualifier};
+use crate::common::*;
 use crate::lexer::LexemeNode;
 use std::convert::TryFrom;
 use std::io::BufRead;
@@ -42,7 +42,7 @@ impl<T: BufRead> Parser<T> {
         match next {
             LexemeNode::Word(word, pos) => {
                 let optional_type_qualifier = self.try_parse_type_qualifier()?;
-                Ok(NameNode::from(word, optional_type_qualifier, pos))
+                Ok(Name::new(word, optional_type_qualifier).at(pos))
             }
             _ => unexpected(msg, next),
         }

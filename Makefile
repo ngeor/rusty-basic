@@ -14,3 +14,6 @@ watch:
 
 wc:
 	find . -type f -iname "*.rs" -exec wc -l \{\} \; | sort -n
+
+coverage:
+	docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin cargo tarpaulin -o Html

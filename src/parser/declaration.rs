@@ -1,10 +1,9 @@
-use super::{unexpected, NameNode, Parser, ParserError, TopLevelTokenNode};
-use crate::common::Location;
+use super::{unexpected, NameNode, Parser, ParserError, TopLevelToken};
 use crate::lexer::{Keyword, LexemeNode};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn demand_declaration(&mut self, pos: Location) -> Result<TopLevelTokenNode, ParserError> {
+    pub fn demand_declaration(&mut self) -> Result<TopLevelToken, ParserError> {
         self.read_demand_whitespace("Expected whitespace after DECLARE keyword")?;
         let next = self.buf_lexer.read()?;
         match next {
@@ -12,26 +11,22 @@ impl<T: BufRead> Parser<T> {
                 self.read_demand_whitespace("Expected whitespace after FUNCTION keyword")?;
                 let function_name = self.read_demand_name_node("Expected function name")?;
                 let parameters = self.parse_declaration_parameters()?;
-                Ok(TopLevelTokenNode::FunctionDeclaration(
+                Ok(TopLevelToken::FunctionDeclaration(
                     function_name,
                     parameters,
-                    pos,
                 ))
             }
             LexemeNode::Keyword(Keyword::Sub, _, _) => {
                 self.read_demand_whitespace("Expected whitespace after SUB keyword")?;
                 let sub_name = self.read_demand_bare_name_node("Expected sub name")?;
                 let parameters = self.parse_declaration_parameters()?;
-                Ok(TopLevelTokenNode::SubDeclaration(sub_name, parameters, pos))
+                Ok(TopLevelToken::SubDeclaration(sub_name, parameters))
             }
             _ => unexpected("Unknown declaration", next),
         }
     }
 
-    pub fn demand_function_implementation(
-        &mut self,
-        pos: Location,
-    ) -> Result<TopLevelTokenNode, ParserError> {
+    pub fn demand_function_implementation(&mut self) -> Result<TopLevelToken, ParserError> {
         // function name
         self.read_demand_whitespace("Expected whitespace after FUNCTION keyword")?;
         let name = self.read_demand_name_node("Expected function name")?;
@@ -44,15 +39,10 @@ impl<T: BufRead> Parser<T> {
         self.read_demand_keyword(Keyword::Function)?;
         self.read_demand_eol_or_eof_skipping_whitespace()?;
 
-        Ok(TopLevelTokenNode::FunctionImplementation(
-            name, params, block, pos,
-        ))
+        Ok(TopLevelToken::FunctionImplementation(name, params, block))
     }
 
-    pub fn demand_sub_implementation(
-        &mut self,
-        pos: Location,
-    ) -> Result<TopLevelTokenNode, ParserError> {
+    pub fn demand_sub_implementation(&mut self) -> Result<TopLevelToken, ParserError> {
         // sub name
         self.read_demand_whitespace("Expected whitespace after SUB keyword")?;
         let name = self.read_demand_bare_name_node("Expected sub name")?;
@@ -64,9 +54,7 @@ impl<T: BufRead> Parser<T> {
         self.read_demand_whitespace("Expected whitespace after END keyword")?;
         self.read_demand_keyword(Keyword::Sub)?;
         self.read_demand_eol_or_eof_skipping_whitespace()?;
-        Ok(TopLevelTokenNode::SubImplementation(
-            name, params, block, pos,
-        ))
+        Ok(TopLevelToken::SubImplementation(name, params, block))
     }
 
     fn parse_declaration_parameters(&mut self) -> Result<Vec<NameNode>, ParserError> {
@@ -128,14 +116,14 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::common::Location;
-    use crate::parser::{ExpressionNode, Operand, OperandNode, StatementNode, TopLevelTokenNode};
+    use crate::common::*;
+    use crate::parser::{Expression, Operand, Statement, TopLevelToken};
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
-            match parse($input).demand_single() {
-                TopLevelTokenNode::FunctionDeclaration(name, parameters, _) => {
-                    assert_eq!(&name, $expected_function_name, "Function name mismatch");
+            match parse($input).demand_single().as_ref() {
+                TopLevelToken::FunctionDeclaration(name, parameters) => {
+                    assert_eq!(name, $expected_function_name, "Function name mismatch");
                     let x = $expected_params;
                     assert_eq!(parameters.len(), x.len(), "Parameter count mismatch");
                     for i in 0..x.len() {
@@ -167,19 +155,21 @@ mod tests {
         let result = parse(input).demand_single();
         assert_eq!(
             result,
-            TopLevelTokenNode::FunctionImplementation(
+            TopLevelToken::FunctionImplementation(
                 "Add".as_name(2, 18),
                 vec!["A".as_name(2, 22), "B".as_name(2, 25)],
-                vec![StatementNode::Assignment(
-                    "Add".as_name(3, 13),
-                    ExpressionNode::BinaryExpression(
-                        OperandNode::new(Operand::Plus, Location::new(3, 21)),
+                vec![Statement::Assignment(
+                    "Add".into(),
+                    Expression::BinaryExpression(
+                        Operand::Plus,
                         Box::new("A".as_var_expr(3, 19)),
                         Box::new("B".as_var_expr(3, 23))
                     )
-                )],
-                Location::new(2, 9)
+                    .at(Location::new(3, 21))
+                )
+                .at_rc(3, 13)],
             )
+            .at_rc(2, 9)
         );
     }
 
@@ -193,19 +183,21 @@ mod tests {
         let result = parse(input).demand_single();
         assert_eq!(
             result,
-            TopLevelTokenNode::FunctionImplementation(
+            TopLevelToken::FunctionImplementation(
                 "add".as_name(2, 18),
                 vec!["a".as_name(2, 22), "b".as_name(2, 25)],
-                vec![StatementNode::Assignment(
-                    "add".as_name(3, 13),
-                    ExpressionNode::BinaryExpression(
-                        OperandNode::new(Operand::Plus, Location::new(3, 21)),
+                vec![Statement::Assignment(
+                    "add".into(),
+                    Expression::BinaryExpression(
+                        Operand::Plus,
                         Box::new("a".as_var_expr(3, 19)),
                         Box::new("b".as_var_expr(3, 23))
                     )
-                )],
-                Location::new(2, 9)
+                    .at_rc(3, 21)
+                )
+                .at_rc(3, 13)],
             )
+            .at_rc(2, 9)
         );
     }
 }

@@ -1,23 +1,3 @@
-use super::{Interpreter, Result, Stdlib};
-use crate::interpreter::statement::StatementRunner;
-use crate::parser::IfBlockNode;
-
-impl<S: Stdlib> Interpreter<S> {
-    pub fn if_block(&mut self, if_block_node: &IfBlockNode) -> Result<()> {
-        if self.evaluate_condition(&if_block_node.if_block)? {
-            self.run(&if_block_node.if_block.statements)
-        } else {
-            for else_if_block in &if_block_node.else_if_blocks {
-                if self.evaluate_condition(else_if_block)? {
-                    return self.run(&else_if_block.statements);
-                }
-            }
-
-            self.run(&if_block_node.else_block)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;

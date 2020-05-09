@@ -24,16 +24,24 @@ pub enum Keyword {
     ElseIf,
     /// END
     End,
+    /// ERROR
+    Error,
     /// FOR
     For,
     /// FUNCTION
     Function,
+    /// GOTO
+    GoTo,
     /// IF
     If,
+    /// INPUT
+    Input,
     /// NEXT
     Next,
     /// NOT
     Not,
+    /// ON
+    On,
     /// STEP
     Step,
     /// SUB
@@ -58,11 +66,15 @@ const STR_DEFSTR: &str = "DEFSTR";
 const STR_ELSE: &str = "ELSE";
 const STR_ELSEIF: &str = "ELSEIF";
 const STR_END: &str = "END";
+const STR_ERROR: &str = "ERROR";
 const STR_FOR: &str = "FOR";
 const STR_FUNCTION: &str = "FUNCTION";
+const STR_GOTO: &str = "GOTO";
 const STR_IF: &str = "IF";
+const STR_INPUT: &str = "INPUT";
 const STR_NEXT: &str = "NEXT";
 const STR_NOT: &str = "NOT";
+const STR_ON: &str = "ON";
 const STR_STEP: &str = "STEP";
 const STR_SUB: &str = "SUB";
 const STR_THEN: &str = "THEN";
@@ -70,7 +82,7 @@ const STR_TO: &str = "TO";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 21] = [
+const SORTED_KEYWORDS_STR: [&str; 25] = [
     STR_CONST,
     STR_DECLARE,
     STR_DEFDBL,
@@ -81,11 +93,15 @@ const SORTED_KEYWORDS_STR: [&str; 21] = [
     STR_ELSE,
     STR_ELSEIF,
     STR_END,
+    STR_ERROR,
     STR_FOR,
     STR_FUNCTION,
+    STR_GOTO,
     STR_IF,
+    STR_INPUT,
     STR_NEXT,
     STR_NOT,
+    STR_ON,
     STR_STEP,
     STR_SUB,
     STR_THEN,
@@ -94,7 +110,7 @@ const SORTED_KEYWORDS_STR: [&str; 21] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 21] = [
+const SORTED_KEYWORDS: [Keyword; 25] = [
     Keyword::Const,
     Keyword::Declare,
     Keyword::DefDbl,
@@ -105,11 +121,15 @@ const SORTED_KEYWORDS: [Keyword; 21] = [
     Keyword::Else,
     Keyword::ElseIf,
     Keyword::End,
+    Keyword::Error,
     Keyword::For,
     Keyword::Function,
+    Keyword::GoTo,
     Keyword::If,
+    Keyword::Input,
     Keyword::Next,
     Keyword::Not,
+    Keyword::On,
     Keyword::Step,
     Keyword::Sub,
     Keyword::Then,
@@ -131,11 +151,15 @@ impl Display for Keyword {
             Self::Else => STR_ELSE.fmt(f),
             Self::ElseIf => STR_ELSEIF.fmt(f),
             Self::End => STR_END.fmt(f),
+            Self::Error => STR_ERROR.fmt(f),
             Self::For => STR_FOR.fmt(f),
             Self::Function => STR_FUNCTION.fmt(f),
+            Self::GoTo => STR_GOTO.fmt(f),
             Self::If => STR_IF.fmt(f),
+            Self::Input => STR_INPUT.fmt(f),
             Self::Next => STR_NEXT.fmt(f),
             Self::Not => STR_NOT.fmt(f),
+            Self::On => STR_ON.fmt(f),
             Self::Step => STR_STEP.fmt(f),
             Self::Sub => STR_SUB.fmt(f),
             Self::Then => STR_THEN.fmt(f),
@@ -158,81 +182,32 @@ impl FromStr for Keyword {
 
 #[cfg(test)]
 mod tests {
-    use super::Keyword;
+    use super::*;
 
     #[test]
-    fn test_to_string() {
-        assert_eq!(Keyword::Const.to_string(), "CONST");
-        assert_eq!(Keyword::Declare.to_string(), "DECLARE");
-        assert_eq!(Keyword::DefDbl.to_string(), "DEFDBL");
-        assert_eq!(Keyword::DefInt.to_string(), "DEFINT");
-        assert_eq!(Keyword::DefLng.to_string(), "DEFLNG");
-        assert_eq!(Keyword::DefSng.to_string(), "DEFSNG");
-        assert_eq!(Keyword::DefStr.to_string(), "DEFSTR");
-        assert_eq!(Keyword::Else.to_string(), "ELSE");
-        assert_eq!(Keyword::ElseIf.to_string(), "ELSEIF");
-        assert_eq!(Keyword::End.to_string(), "END");
-        assert_eq!(Keyword::For.to_string(), "FOR");
-        assert_eq!(Keyword::Function.to_string(), "FUNCTION");
-        assert_eq!(Keyword::If.to_string(), "IF");
-        assert_eq!(Keyword::Next.to_string(), "NEXT");
-        assert_eq!(Keyword::Not.to_string(), "NOT");
-        assert_eq!(Keyword::Step.to_string(), "STEP");
-        assert_eq!(Keyword::Sub.to_string(), "SUB");
-        assert_eq!(Keyword::Then.to_string(), "THEN");
-        assert_eq!(Keyword::To.to_string(), "TO");
-        assert_eq!(Keyword::Wend.to_string(), "WEND");
-        assert_eq!(Keyword::While.to_string(), "WHILE");
-    }
-
-    #[test]
-    fn test_from_string() {
-        assert_eq!(Keyword::Const, "CONST".parse().unwrap());
-        assert_eq!(Keyword::Declare, "DECLARE".parse().unwrap());
-        assert_eq!(Keyword::DefDbl, "DEFDBL".parse().unwrap());
-        assert_eq!(Keyword::DefInt, "DEFINT".parse().unwrap());
-        assert_eq!(Keyword::DefLng, "DEFLNG".parse().unwrap());
-        assert_eq!(Keyword::DefSng, "DEFSNG".parse().unwrap());
-        assert_eq!(Keyword::DefStr, "DEFSTR".parse().unwrap());
-        assert_eq!(Keyword::Else, "ELSE".parse().unwrap());
-        assert_eq!(Keyword::ElseIf, "ELSEIF".parse().unwrap());
-        assert_eq!(Keyword::End, "END".parse().unwrap());
-        assert_eq!(Keyword::For, "FOR".parse().unwrap());
-        assert_eq!(Keyword::Function, "FUNCTION".parse().unwrap());
-        assert_eq!(Keyword::If, "IF".parse().unwrap());
-        assert_eq!(Keyword::Next, "NEXT".parse().unwrap());
-        assert_eq!(Keyword::Not, "NOT".parse().unwrap());
-        assert_eq!(Keyword::Step, "STEP".parse().unwrap());
-        assert_eq!(Keyword::Sub, "SUB".parse().unwrap());
-        assert_eq!(Keyword::Then, "THEN".parse().unwrap());
-        assert_eq!(Keyword::To, "TO".parse().unwrap());
-        assert_eq!(Keyword::Wend, "WEND".parse().unwrap());
-        assert_eq!(Keyword::While, "WHILE".parse().unwrap());
-    }
-
-    #[test]
-    fn test_from_string_lowercase() {
-        assert_eq!(Keyword::Const, "const".parse().unwrap());
-        assert_eq!(Keyword::Declare, "declare".parse().unwrap());
-        assert_eq!(Keyword::DefDbl, "defdbl".parse().unwrap());
-        assert_eq!(Keyword::DefInt, "defint".parse().unwrap());
-        assert_eq!(Keyword::DefLng, "deflng".parse().unwrap());
-        assert_eq!(Keyword::DefSng, "defsng".parse().unwrap());
-        assert_eq!(Keyword::DefStr, "defstr".parse().unwrap());
-        assert_eq!(Keyword::Else, "else".parse().unwrap());
-        assert_eq!(Keyword::ElseIf, "elseif".parse().unwrap());
-        assert_eq!(Keyword::End, "end".parse().unwrap());
-        assert_eq!(Keyword::For, "for".parse().unwrap());
-        assert_eq!(Keyword::Function, "function".parse().unwrap());
-        assert_eq!(Keyword::If, "if".parse().unwrap());
-        assert_eq!(Keyword::Next, "next".parse().unwrap());
-        assert_eq!(Keyword::Not, "not".parse().unwrap());
-        assert_eq!(Keyword::Step, "step".parse().unwrap());
-        assert_eq!(Keyword::Sub, "sub".parse().unwrap());
-        assert_eq!(Keyword::Then, "then".parse().unwrap());
-        assert_eq!(Keyword::To, "to".parse().unwrap());
-        assert_eq!(Keyword::Wend, "wend".parse().unwrap());
-        assert_eq!(Keyword::While, "while".parse().unwrap());
+    fn keyword_sanity_checks() {
+        // equal size of the two arrays
+        assert_eq!(SORTED_KEYWORDS.len(), SORTED_KEYWORDS_STR.len());
+        for i in 0..SORTED_KEYWORDS.len() {
+            // canonical form is uppercase
+            assert_eq!(
+                SORTED_KEYWORDS_STR[i].to_uppercase(),
+                SORTED_KEYWORDS_STR[i]
+            );
+            // can convert keyword to string
+            assert_eq!(SORTED_KEYWORDS[i].to_string(), SORTED_KEYWORDS_STR[i]);
+            // can parse string to keyword
+            assert_eq!(SORTED_KEYWORDS[i], SORTED_KEYWORDS_STR[i].parse().unwrap());
+            // can parse lowercase string to keyword
+            assert_eq!(
+                SORTED_KEYWORDS[i],
+                SORTED_KEYWORDS_STR[i].to_lowercase().parse().unwrap()
+            );
+        }
+        // sort order is correct
+        for i in 1..SORTED_KEYWORDS.len() {
+            assert!(SORTED_KEYWORDS_STR[i] > SORTED_KEYWORDS_STR[i - 1]);
+        }
     }
 
     #[test]

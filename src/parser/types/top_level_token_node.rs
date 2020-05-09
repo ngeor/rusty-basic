@@ -1,25 +1,33 @@
-use super::{BareNameNode, BlockNode, DefTypeNode, NameNode, StatementNode};
-use crate::common::Location;
+use super::{BareNameNode, DefType, NameNode, Statement, StatementNodes};
+use crate::common::*;
 
 pub type ProgramNode = Vec<TopLevelTokenNode>;
+pub type TopLevelTokenNode = Locatable<TopLevelToken>;
+pub type ParamNodes = Vec<NameNode>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum TopLevelTokenNode {
+pub enum TopLevelToken {
     /// A default type definition, e.g. `DEFINT A-Z.`
-    DefType(DefTypeNode),
+    DefType(DefType),
 
     /// A function declaration, e.g. `DECLARE FUNCTION Add(A, B)`
-    FunctionDeclaration(NameNode, Vec<NameNode>, Location),
+    FunctionDeclaration(NameNode, ParamNodes),
 
     /// A function implementation
-    FunctionImplementation(NameNode, Vec<NameNode>, BlockNode, Location),
+    FunctionImplementation(NameNode, ParamNodes, StatementNodes),
 
     /// A simple or compound statement
-    Statement(StatementNode),
+    Statement(Statement),
 
     /// A sub declaration, e.g. `DECLARE SUB Connect`
-    SubDeclaration(BareNameNode, Vec<NameNode>, Location),
+    SubDeclaration(BareNameNode, ParamNodes),
 
     /// A sub implementation
-    SubImplementation(BareNameNode, Vec<NameNode>, BlockNode, Location),
+    SubImplementation(BareNameNode, ParamNodes, StatementNodes),
+}
+
+impl From<Statement> for TopLevelToken {
+    fn from(s: Statement) -> Self {
+        TopLevelToken::Statement(s)
+    }
 }

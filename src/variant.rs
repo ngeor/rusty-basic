@@ -46,13 +46,6 @@ impl ApproximateCmp for f64 {
 }
 
 impl Variant {
-    pub fn is_numeric(&self) -> bool {
-        match self {
-            Variant::VString(_) => false,
-            _ => true,
-        }
-    }
-
     pub fn cmp(&self, other: &Self) -> Result<Ordering, String> {
         match self {
             Variant::VSingle(f_left) => match other {
@@ -195,31 +188,6 @@ impl Variant {
             TypeQualifier::DollarString => Variant::VString(String::new()),
             TypeQualifier::PercentInteger => Variant::VInteger(0),
             TypeQualifier::AmpersandLong => Variant::VLong(0),
-        }
-    }
-
-    pub fn is_same_type(&self, other: &Variant) -> bool {
-        match self {
-            Variant::VSingle(_) => match other {
-                Variant::VSingle(_) => true,
-                _ => false,
-            },
-            Variant::VDouble(_) => match other {
-                Variant::VDouble(_) => true,
-                _ => false,
-            },
-            Variant::VString(_) => match other {
-                Variant::VString(_) => true,
-                _ => false,
-            },
-            Variant::VInteger(_) => match other {
-                Variant::VInteger(_) => true,
-                _ => false,
-            },
-            Variant::VLong(_) => match other {
-                Variant::VLong(_) => true,
-                _ => false,
-            },
         }
     }
 }

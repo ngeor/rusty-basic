@@ -1,44 +1,70 @@
-use crate::common::HasLocation;
-use crate::interpreter::{InterpreterError, Result, Stdlib, Variant};
-use crate::parser::{ExpressionNode, Name, NameNode};
+use crate::common::*;
+use crate::interpreter::context_owner::ContextOwner;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::{QualifiedName, TypeQualifier};
+use crate::variant::Variant;
 
-fn _do_environ_function<S: Stdlib>(
-    stdlib: &S,
-    function_name: &NameNode,
-    args: &Vec<ExpressionNode>,
-    arg_values: Vec<Variant>,
-) -> Result<Variant> {
-    if arg_values.len() != 1 {
-        Err(InterpreterError::new_with_pos(
-            "ENVIRON$ expected exactly one argument",
-            function_name.location(),
-        ))
-    } else {
-        match &arg_values[0] {
-            Variant::VString(env_var_name) => {
-                Ok(Variant::VString(stdlib.get_env_var(env_var_name)))
+impl<S: Stdlib> Interpreter<S> {
+    pub fn run_built_in_function(&mut self, function_name: &QualifiedName, _pos: Location) -> () {
+        if function_name == &QualifiedName::new("ENVIRON", TypeQualifier::DollarString) {
+            let v = self.context_mut().demand_sub().pop_front_unnamed();
+            match v {
+                Variant::VString(env_var_name) => {
+                    let result = self.stdlib.get_env_var(&env_var_name);
+                    self.function_result = Variant::VString(result);
+                }
+                _ => panic!("Type mismatch at ENVIRON$",),
             }
-            _ => Err(InterpreterError::new_with_pos(
-                "Type mismatch at ENVIRON$",
-                args[0].location(),
-            )),
+        } else {
+            panic!("Unknown function {:?}", function_name);
         }
     }
 }
 
-pub fn supports_function(function_name: &NameNode) -> bool {
-    function_name == &Name::from("ENVIRON$")
-}
+#[cfg(test)]
+mod tests {
+    use super::super::test_utils::*;
+    use crate::assert_has_variable;
+    use crate::assert_linter_err;
+    use crate::interpreter::Stdlib;
+    use crate::linter::LinterError;
+    use crate::variant::Variant;
 
-pub fn call_function<S: Stdlib>(
-    stdlib: &S,
-    function_name: &NameNode,
-    args: &Vec<ExpressionNode>,
-    arg_values: Vec<Variant>,
-) -> Result<Variant> {
-    if function_name == &Name::from("ENVIRON$") {
-        _do_environ_function(stdlib, function_name, args, arg_values)
-    } else {
-        panic!("should not have been called");
+    #[test]
+    fn test_function_call_environ() {
+        let program = r#"
+        X$ = ENVIRON$("abc")
+        Y$ = ENVIRON$("def")
+        "#;
+        let mut stdlib = MockStdlib::new();
+        stdlib.set_env_var("abc".to_string(), "foo".to_string());
+        let interpreter = interpret_with_stdlib(program, stdlib);
+        assert_has_variable!(interpreter, "X$", "foo");
+        assert_has_variable!(interpreter, "Y$", "");
+    }
+
+    #[test]
+    fn test_function_call_environ_no_args_linter_err() {
+        assert_linter_err!("X$ = ENVIRON$()", LinterError::ArgumentCountMismatch, 1, 6);
+    }
+
+    #[test]
+    fn test_function_call_environ_two_args_linter_err() {
+        assert_linter_err!(
+            r#"X$ = ENVIRON$("hi", "bye")"#,
+            LinterError::ArgumentCountMismatch,
+            1,
+            6
+        );
+    }
+
+    #[test]
+    fn test_function_call_environ_numeric_arg_linter_err() {
+        assert_linter_err!(
+            "X$ = ENVIRON$(42)",
+            LinterError::ArgumentTypeMismatch,
+            1,
+            15
+        );
     }
 }

@@ -1,30 +1,27 @@
-use super::{ConditionalBlockNode, Parser, ParserError, StatementNode};
-use crate::common::Location;
+use super::{ConditionalBlockNode, Parser, ParserError, Statement};
 use crate::lexer::Keyword;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn demand_while_block(&mut self, pos: Location) -> Result<StatementNode, ParserError> {
+    pub fn demand_while_block(&mut self) -> Result<Statement, ParserError> {
         self.read_demand_whitespace("Expected whitespace after WHILE keyword")?;
         let condition = self.read_demand_expression()?;
         self.read_demand_eol_skipping_whitespace()?;
         let (statements, _) =
             self.parse_statements(|x| x.is_keyword(Keyword::Wend), "While without Wend")?;
         self.read_demand_eol_or_eof_skipping_whitespace()?;
-        Ok(StatementNode::While(ConditionalBlockNode::new(
-            pos, condition, statements,
-        )))
+        Ok(Statement::While(ConditionalBlockNode {
+            condition,
+            statements,
+        }))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::common::Location;
+    use crate::common::*;
     use crate::parser::test_utils::*;
-    use crate::parser::{
-        ConditionalBlockNode, ExpressionNode, Operand, OperandNode, StatementNode,
-        TopLevelTokenNode,
-    };
+    use crate::parser::{BareName, ConditionalBlockNode, Expression, Operand, Statement};
 
     #[test]
     fn test_while_wend() {
@@ -33,20 +30,18 @@ mod tests {
             SYSTEM
         WEND
         ";
-        let program = parse(input);
+        let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            vec![TopLevelTokenNode::Statement(StatementNode::While(
-                ConditionalBlockNode::new(
-                    Location::new(2, 9),
-                    ExpressionNode::BinaryExpression(
-                        OperandNode::new(Operand::LessThan, Location::new(2, 17)),
-                        Box::new("A".as_var_expr(2, 15)),
-                        Box::new(5.as_lit_expr(2, 19))
-                    ),
-                    vec![StatementNode::SubCall("SYSTEM".as_bare_name(3, 13), vec![])]
+            Statement::While(ConditionalBlockNode {
+                condition: Expression::BinaryExpression(
+                    Operand::LessThan,
+                    Box::new("A".as_var_expr(2, 15)),
+                    Box::new(5.as_lit_expr(2, 19))
                 )
-            ))]
+                .at_rc(2, 17),
+                statements: vec![Statement::SubCall(BareName::from("SYSTEM"), vec![]).at_rc(3, 13)]
+            })
         );
     }
 }

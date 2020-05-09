@@ -1,9 +1,8 @@
-use super::{
-    unexpected, ExpressionNode, NameNode, Operand, OperandNode, Parser, ParserError, UnaryOperand,
-    UnaryOperandNode,
-};
-use crate::common::{Locatable, Location};
+use crate::common::*;
 use crate::lexer::{Keyword, LexemeNode};
+use crate::parser::{
+    unexpected, Expression, ExpressionNode, Name, Operand, Parser, ParserError, UnaryOperand,
+};
 use std::convert::TryFrom;
 use std::io::BufRead;
 
@@ -21,51 +20,44 @@ impl<T: BufRead> Parser<T> {
     }
 
     pub fn demand_expression(&mut self, next: LexemeNode) -> Result<ExpressionNode, ParserError> {
-        let first = self._demand_single_expression(next)?;
-        self._try_parse_second_expression(first)
+        let first = self.demand_single_expression(next)?;
+        self.try_parse_second_expression(first)
     }
 
-    fn _demand_single_expression(
+    fn demand_single_expression(
         &mut self,
         next: LexemeNode,
     ) -> Result<ExpressionNode, ParserError> {
         match next {
-            LexemeNode::Symbol('"', pos) => self._parse_string_literal(pos),
-            LexemeNode::Word(word, pos) => self._parse_word(word, pos),
-            LexemeNode::Digits(digits, pos) => self._parse_number_literal(digits, pos),
-            LexemeNode::Symbol('.', pos) => self._parse_floating_point_literal(0, pos),
+            LexemeNode::Symbol('"', pos) => self.parse_string_literal(pos),
+            LexemeNode::Word(word, pos) => self.parse_word(word, pos),
+            LexemeNode::Digits(digits, pos) => self.parse_number_literal(digits, pos),
+            LexemeNode::Symbol('.', pos) => self.parse_floating_point_literal(0, pos),
             LexemeNode::Symbol('-', minus_pos) => {
                 let child = self.read_demand_expression()?;
-                Ok(ExpressionNode::unary_minus(
-                    Locatable::new(UnaryOperand::Minus, minus_pos),
-                    child,
-                ))
+                Ok(Expression::unary_minus(child).at(minus_pos))
             }
             LexemeNode::Keyword(Keyword::Not, _, not_pos) => {
                 self.read_demand_whitespace("Expected whitespace after NOT")?;
                 let child = self.read_demand_expression()?;
-                Ok(ExpressionNode::UnaryExpression(
-                    UnaryOperandNode::new(UnaryOperand::Not, not_pos),
-                    Box::new(child),
-                ))
+                Ok(Expression::UnaryExpression(UnaryOperand::Not, Box::new(child)).at(not_pos))
             }
             _ => unexpected("Expected expression", next),
         }
     }
 
-    fn _try_parse_second_expression(
+    fn try_parse_second_expression(
         &mut self,
         left_side: ExpressionNode,
     ) -> Result<ExpressionNode, ParserError> {
-        let operand = self._try_parse_operand()?;
+        let operand = self.try_parse_operand()?;
         match operand {
-            Some(op) => {
+            Some((op, pos)) => {
                 let right_side = self.read_demand_expression_skipping_whitespace()?;
-                Ok(ExpressionNode::BinaryExpression(
-                    op,
-                    Box::new(left_side),
-                    Box::new(right_side),
-                ))
+                Ok(
+                    Expression::BinaryExpression(op, Box::new(left_side), Box::new(right_side))
+                        .at(pos),
+                )
             }
             None => Ok(left_side),
         }
@@ -113,7 +105,7 @@ impl<T: BufRead> Parser<T> {
         Ok(args)
     }
 
-    fn _parse_string_literal(&mut self, pos: Location) -> Result<ExpressionNode, ParserError> {
+    fn parse_string_literal(&mut self, pos: Location) -> Result<ExpressionNode, ParserError> {
         let mut buf: String = String::new();
 
         // read until we hit the next double quote
@@ -138,10 +130,10 @@ impl<T: BufRead> Parser<T> {
             }
         }
 
-        Ok(ExpressionNode::StringLiteral(buf, pos))
+        Ok(Expression::StringLiteral(buf).at(pos))
     }
 
-    fn _parse_number_literal(
+    fn parse_number_literal(
         &mut self,
         digits: u32,
         pos: Location,
@@ -149,17 +141,17 @@ impl<T: BufRead> Parser<T> {
         // consume digits
         let found_decimal_point = self.buf_lexer.skip_if(|lexeme| lexeme.is_symbol('.'))?;
         if found_decimal_point {
-            self._parse_floating_point_literal(digits, pos)
+            self.parse_floating_point_literal(digits, pos)
         } else {
             // no decimal point, just integer
             match i32::try_from(digits) {
-                Ok(i) => Ok(ExpressionNode::IntegerLiteral(i, pos)),
+                Ok(i) => Ok(Expression::IntegerLiteral(i).at(pos)),
                 Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
             }
         }
     }
 
-    fn _demand_digits(&mut self) -> Result<u32, ParserError> {
+    fn demand_digits(&mut self) -> Result<u32, ParserError> {
         let next = self.buf_lexer.read()?;
         match next {
             LexemeNode::Digits(digits, _) => Ok(digits),
@@ -167,52 +159,47 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _parse_floating_point_literal(
+    fn parse_floating_point_literal(
         &mut self,
         integer_digits: u32,
         pos: Location,
     ) -> Result<ExpressionNode, ParserError> {
-        let fraction_digits = self._demand_digits()?;
+        let fraction_digits = self.demand_digits()?;
         let is_double = self.buf_lexer.skip_if(|lexeme| lexeme.is_symbol('#'))?;
         if is_double {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
-                Ok(f) => Ok(ExpressionNode::DoubleLiteral(f, pos)),
+                Ok(f) => Ok(Expression::DoubleLiteral(f).at(pos)),
                 Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
             }
         } else {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
-                Ok(f) => Ok(ExpressionNode::SingleLiteral(f, pos)),
+                Ok(f) => Ok(Expression::SingleLiteral(f).at(pos)),
                 Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
             }
         }
     }
 
-    fn _parse_word(&mut self, word: String, pos: Location) -> Result<ExpressionNode, ParserError> {
+    fn parse_word(&mut self, word: String, pos: Location) -> Result<ExpressionNode, ParserError> {
         // is it maybe a qualified variable name
         let qualifier = self.try_parse_type_qualifier()?;
         // it could be a function call?
         let found_opening_parenthesis = self.buf_lexer.skip_if(|lexeme| lexeme.is_symbol('('))?;
         if found_opening_parenthesis {
             let args = self.parse_expression_list_with_parentheses()?;
-            Ok(ExpressionNode::FunctionCall(
-                NameNode::from(word, qualifier, pos),
-                args,
-            ))
+            Ok(Expression::FunctionCall(Name::new(word, qualifier), args).at(pos))
         } else {
-            Ok(ExpressionNode::VariableName(NameNode::from(
-                word, qualifier, pos,
-            )))
+            Ok(Expression::VariableName(Name::new(word, qualifier)).at(pos))
         }
     }
 
-    fn _try_parse_operand(&mut self) -> Result<Option<OperandNode>, ParserError> {
+    fn try_parse_operand(&mut self) -> Result<Option<(Operand, Location)>, ParserError> {
         // if we can't find an operand, we need to restore the whitespace as it was,
         // in case there is a next call that will be demanding for it
         let (opt_space, next) = self.read_preserve_whitespace()?;
         match next {
-            LexemeNode::Symbol('<', pos) => Ok(Some(OperandNode::new(self._less_or_lte()?, pos))),
-            LexemeNode::Symbol('+', pos) => Ok(Some(OperandNode::new(Operand::Plus, pos))),
-            LexemeNode::Symbol('-', pos) => Ok(Some(OperandNode::new(Operand::Minus, pos))),
+            LexemeNode::Symbol('<', pos) => Ok(Some((self.less_or_lte()?, pos))),
+            LexemeNode::Symbol('+', pos) => Ok(Some((Operand::Plus, pos))),
+            LexemeNode::Symbol('-', pos) => Ok(Some((Operand::Minus, pos))),
             _ => {
                 self.buf_lexer.undo(next);
                 match opt_space {
@@ -224,7 +211,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _less_or_lte(&mut self) -> Result<Operand, ParserError> {
+    fn less_or_lte(&mut self) -> Result<Operand, ParserError> {
         self.buf_lexer
             .skip_if(|lexeme| lexeme.is_symbol('='))
             .map(|found_equal_sign| {
@@ -240,18 +227,16 @@ impl<T: BufRead> Parser<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::common::Location;
-    use crate::parser::{
-        ExpressionNode, Operand, OperandNode, StatementNode, UnaryOperand, UnaryOperandNode,
-    };
+    use crate::common::*;
+    use crate::parser::{Expression, Name, Operand, Statement, UnaryOperand};
 
     macro_rules! assert_expression {
         ($left:expr, $right:expr) => {
             let program = parse(&format!("PRINT {}", $left)).demand_single_statement();
             match program {
-                StatementNode::SubCall(_, args) => {
+                Statement::SubCall(_, args) => {
                     assert_eq!(1, args.len());
-                    assert_eq!(args[0], $right);
+                    assert_eq!(args[0].clone().strip_location(), $right);
                 }
                 _ => panic!("Expected sub-call"),
             }
@@ -260,13 +245,13 @@ mod tests {
 
     macro_rules! assert_literal_expression {
         ($left:expr, $right:expr) => {
-            assert_expression!($left, $right.as_lit_expr(1, 7));
+            assert_expression!($left, Expression::from($right));
         };
     }
 
     macro_rules! assert_variable_expression {
         ($left:expr, $right:expr) => {
-            assert_expression!($left, $right.as_var_expr(1, 7));
+            assert_expression!($left, Expression::VariableName(Name::from($right)));
         };
     }
 
@@ -290,7 +275,7 @@ mod tests {
     fn test_function_call_expression_no_args() {
         assert_expression!(
             "IsValid()",
-            ExpressionNode::FunctionCall("IsValid".as_name(1, 7), vec![])
+            Expression::FunctionCall(Name::from("IsValid"), vec![])
         );
     }
 
@@ -298,7 +283,7 @@ mod tests {
     fn test_function_call_qualified_expression_no_args() {
         assert_expression!(
             "IsValid%()",
-            ExpressionNode::FunctionCall("IsValid%".as_name(1, 7), vec![])
+            Expression::FunctionCall(Name::from("IsValid%"), vec![])
         );
     }
 
@@ -306,7 +291,7 @@ mod tests {
     fn test_function_call_expression_one_arg() {
         assert_expression!(
             "IsValid(42)",
-            ExpressionNode::FunctionCall("IsValid".as_name(1, 7), vec![42.as_lit_expr(1, 15)])
+            Expression::FunctionCall(Name::from("IsValid"), vec![42.as_lit_expr(1, 15)])
         );
     }
 
@@ -314,8 +299,8 @@ mod tests {
     fn test_function_call_expression_two_args() {
         assert_expression!(
             "CheckProperty(42, \"age\")",
-            ExpressionNode::FunctionCall(
-                "CheckProperty".as_name(1, 7),
+            Expression::FunctionCall(
+                Name::from("CheckProperty"),
                 vec![42.as_lit_expr(1, 21), "age".as_lit_expr(1, 25)]
             )
         );
@@ -325,14 +310,15 @@ mod tests {
     fn test_function_call_in_function_call() {
         assert_expression!(
             "CheckProperty(LookupName(\"age\"), Confirm())",
-            ExpressionNode::FunctionCall(
-                "CheckProperty".as_name(1, 7),
+            Expression::FunctionCall(
+                Name::from("CheckProperty"),
                 vec![
-                    ExpressionNode::FunctionCall(
-                        "LookupName".as_name(1, 21),
+                    Expression::FunctionCall(
+                        Name::from("LookupName"),
                         vec!["age".as_lit_expr(1, 32)]
-                    ),
-                    ExpressionNode::FunctionCall("Confirm".as_name(1, 40), vec![])
+                    )
+                    .at_rc(1, 21),
+                    Expression::FunctionCall(Name::from("Confirm"), vec![]).at_rc(1, 40)
                 ]
             )
         );
@@ -342,8 +328,8 @@ mod tests {
     fn test_lte() {
         assert_expression!(
             "N <= 1",
-            ExpressionNode::BinaryExpression(
-                OperandNode::new(Operand::LessOrEqualThan, Location::new(1, 9)),
+            Expression::BinaryExpression(
+                Operand::LessOrEqualThan,
                 Box::new("N".as_var_expr(1, 7)),
                 Box::new(1.as_lit_expr(1, 12)),
             )
@@ -354,8 +340,8 @@ mod tests {
     fn test_less_than() {
         assert_expression!(
             "A < B",
-            ExpressionNode::BinaryExpression(
-                OperandNode::new(Operand::LessThan, Location::new(1, 9)),
+            Expression::BinaryExpression(
+                Operand::LessThan,
                 Box::new("A".as_var_expr(1, 7)),
                 Box::new("B".as_var_expr(1, 11)),
             )
@@ -366,8 +352,8 @@ mod tests {
     fn test_plus() {
         assert_expression!(
             "N + 1",
-            ExpressionNode::BinaryExpression(
-                OperandNode::new(Operand::Plus, Location::new(1, 9)),
+            Expression::BinaryExpression(
+                Operand::Plus,
                 Box::new("N".as_var_expr(1, 7)),
                 Box::new(1.as_lit_expr(1, 11)),
             )
@@ -378,8 +364,8 @@ mod tests {
     fn test_minus() {
         assert_expression!(
             "N - 2",
-            ExpressionNode::BinaryExpression(
-                OperandNode::new(Operand::Minus, Location::new(1, 9)),
+            Expression::BinaryExpression(
+                Operand::Minus,
                 Box::new("N".as_var_expr(1, 7)),
                 Box::new(2.as_lit_expr(1, 11)),
             )
@@ -390,43 +376,45 @@ mod tests {
     fn test_negated_variable() {
         assert_expression!(
             "-N",
-            ExpressionNode::UnaryExpression(
-                UnaryOperandNode::new(UnaryOperand::Minus, Location::new(1, 7)),
-                Box::new("N".as_var_expr(1, 8))
-            )
+            Expression::UnaryExpression(UnaryOperand::Minus, Box::new("N".as_var_expr(1, 8)))
         );
     }
 
     #[test]
-    fn test_negated_number() {
-        assert_expression!(
-            "-42",
-            ExpressionNode::IntegerLiteral(-42, Location::new(1, 7))
-        );
+    fn test_negated_number_literal_resolved_eagerly_during_parsing() {
+        assert_expression!("-42", Expression::IntegerLiteral(-42));
     }
 
     #[test]
     fn test_fib_expression() {
         assert_expression!(
             "Fib(N - 1) + Fib(N - 2)",
-            ExpressionNode::BinaryExpression(
-                OperandNode::new(Operand::Plus, Location::new(1, 18)),
-                Box::new(ExpressionNode::FunctionCall(
-                    "Fib".as_name(1, 7),
-                    vec![ExpressionNode::BinaryExpression(
-                        OperandNode::new(Operand::Minus, Location::new(1, 13)),
-                        Box::new("N".as_var_expr(1, 11)),
-                        Box::new(1.as_lit_expr(1, 15)),
-                    )],
-                )),
-                Box::new(ExpressionNode::FunctionCall(
-                    "Fib".as_name(1, 20),
-                    vec![ExpressionNode::BinaryExpression(
-                        OperandNode::new(Operand::Minus, Location::new(1, 26)),
-                        Box::new("N".as_var_expr(1, 24)),
-                        Box::new(2.as_lit_expr(1, 28)),
-                    )],
-                )),
+            Expression::BinaryExpression(
+                Operand::Plus,
+                Box::new(
+                    Expression::FunctionCall(
+                        Name::from("Fib"),
+                        vec![Expression::BinaryExpression(
+                            Operand::Minus,
+                            Box::new("N".as_var_expr(1, 11)),
+                            Box::new(1.as_lit_expr(1, 15)),
+                        )
+                        .at_rc(1, 13)],
+                    )
+                    .at_rc(1, 7)
+                ),
+                Box::new(
+                    Expression::FunctionCall(
+                        Name::from("Fib"),
+                        vec![Expression::BinaryExpression(
+                            Operand::Minus,
+                            Box::new("N".as_var_expr(1, 24)),
+                            Box::new(2.as_lit_expr(1, 28)),
+                        )
+                        .at_rc(1, 26)],
+                    )
+                    .at_rc(1, 20)
+                ),
             )
         );
     }
@@ -435,15 +423,19 @@ mod tests {
     fn test_negated_function_call() {
         assert_expression!(
             "-Fib(-N)",
-            ExpressionNode::UnaryExpression(
-                UnaryOperandNode::new(UnaryOperand::Minus, Location::new(1, 7)),
-                Box::new(ExpressionNode::FunctionCall(
-                    "Fib".as_name(1, 8),
-                    vec![ExpressionNode::UnaryExpression(
-                        UnaryOperandNode::new(UnaryOperand::Minus, Location::new(1, 12)),
-                        Box::new("N".as_var_expr(1, 13)),
-                    )],
-                ))
+            Expression::UnaryExpression(
+                UnaryOperand::Minus,
+                Box::new(
+                    Expression::FunctionCall(
+                        Name::from("Fib"),
+                        vec![Expression::UnaryExpression(
+                            UnaryOperand::Minus,
+                            Box::new("N".as_var_expr(1, 13)),
+                        )
+                        .at_rc(1, 12)],
+                    )
+                    .at_rc(1, 8)
+                )
             )
         );
     }

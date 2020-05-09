@@ -53,6 +53,7 @@ fn _is_symbol(ch: char) -> bool {
         || ch == '#'
         || ch == '&'
         || ch == '\''
+        || ch == ':'
 }
 
 impl<T: BufRead> Lexer<T> {

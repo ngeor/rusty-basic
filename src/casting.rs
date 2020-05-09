@@ -1,5 +1,5 @@
-use super::Variant;
 use crate::parser::TypeQualifier;
+use crate::variant::Variant;
 
 // https://doc.rust-lang.org/nomicon/casts.html
 // 1. casting from an f32 to an f64 is perfect and lossless

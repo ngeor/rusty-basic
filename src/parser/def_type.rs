@@ -1,16 +1,9 @@
-use super::{
-    unexpected, DefTypeNode, LetterRangeNode, Parser, ParserError, TopLevelTokenNode, TypeQualifier,
-};
-use crate::common::Location;
+use super::{unexpected, DefType, LetterRange, Parser, ParserError, TopLevelToken, TypeQualifier};
 use crate::lexer::{Keyword, LexemeNode};
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
-    pub fn demand_def_type(
-        &mut self,
-        keyword: Keyword,
-        pos: Location,
-    ) -> Result<TopLevelTokenNode, ParserError> {
+    pub fn demand_def_type(&mut self, keyword: Keyword) -> Result<TopLevelToken, ParserError> {
         let qualifier = match keyword {
             Keyword::DefDbl => TypeQualifier::HashDouble,
             Keyword::DefInt => TypeQualifier::PercentInteger,
@@ -24,7 +17,7 @@ impl<T: BufRead> Parser<T> {
         };
 
         self.read_demand_whitespace("Expected whitespace after DEF* keyword")?;
-        let mut ranges: Vec<LetterRangeNode> = vec![];
+        let mut ranges: Vec<LetterRange> = vec![];
         const STATE_INITIAL: u8 = 0;
         const STATE_FIRST_LETTER: u8 = 1;
         const STATE_DASH: u8 = 2;
@@ -43,10 +36,10 @@ impl<T: BufRead> Parser<T> {
                     } else if state == STATE_COMMA {
                         return unexpected("Expected letter range after comma", next);
                     } else if state == STATE_FIRST_LETTER {
-                        ranges.push(LetterRangeNode::Single(first_letter));
+                        ranges.push(LetterRange::Single(first_letter));
                         state = STATE_EOL;
                     } else if state == STATE_SECOND_LETTER {
-                        ranges.push(LetterRangeNode::Range(first_letter, second_letter));
+                        ranges.push(LetterRange::Range(first_letter, second_letter));
                         state = STATE_EOL;
                     } else {
                         return unexpected("Expected at least one letter range", next);
@@ -78,10 +71,10 @@ impl<T: BufRead> Parser<T> {
                 }
                 LexemeNode::Symbol(',', _) => {
                     if state == STATE_FIRST_LETTER {
-                        ranges.push(LetterRangeNode::Single(first_letter));
+                        ranges.push(LetterRange::Single(first_letter));
                         state = STATE_COMMA;
                     } else if state == STATE_SECOND_LETTER {
-                        ranges.push(LetterRangeNode::Range(first_letter, second_letter));
+                        ranges.push(LetterRange::Range(first_letter, second_letter));
                         state = STATE_COMMA;
                     } else {
                         return unexpected("Syntax error", next);
@@ -90,9 +83,7 @@ impl<T: BufRead> Parser<T> {
                 _ => return unexpected("Syntax error", next),
             }
         }
-        Ok(TopLevelTokenNode::DefType(DefTypeNode::new(
-            qualifier, ranges, pos,
-        )))
+        Ok(TopLevelToken::DefType(DefType::new(qualifier, ranges)))
     }
 }
 
@@ -100,13 +91,14 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
+    use crate::common::*;
     use crate::parser::HasQualifier;
 
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {
         ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
-            match parse($input).demand_single() {
-                TopLevelTokenNode::DefType(x) => {
+            match parse($input).demand_single().as_ref() {
+                TopLevelToken::DefType(x) => {
                     assert_eq!(x.qualifier(), $expected_qualifier);
                     assert_eq!(x.ranges(), &$expected_ranges);
                 }
@@ -120,7 +112,7 @@ mod tests {
         assert_def_type!(
             "DEFINT A-Z",
             TypeQualifier::PercentInteger,
-            vec![LetterRangeNode::Range('A', 'Z')]
+            vec![LetterRange::Range('A', 'Z')]
         );
     }
 
@@ -129,7 +121,7 @@ mod tests {
         assert_def_type!(
             "DEFINT A",
             TypeQualifier::PercentInteger,
-            vec![LetterRangeNode::Single('A')]
+            vec![LetterRange::Single('A')]
         );
     }
 
@@ -139,9 +131,9 @@ mod tests {
             "DEFSTR A, B,C  ",
             TypeQualifier::DollarString,
             vec![
-                LetterRangeNode::Single('A'),
-                LetterRangeNode::Single('B'),
-                LetterRangeNode::Single('C')
+                LetterRange::Single('A'),
+                LetterRange::Single('B'),
+                LetterRange::Single('C')
             ]
         );
     }
@@ -152,9 +144,9 @@ mod tests {
             "DEFLNG A-I, K-W, Z",
             TypeQualifier::AmpersandLong,
             vec![
-                LetterRangeNode::Range('A', 'I'),
-                LetterRangeNode::Range('K', 'W'),
-                LetterRangeNode::Single('Z')
+                LetterRange::Range('A', 'I'),
+                LetterRange::Range('K', 'W'),
+                LetterRange::Single('Z')
             ]
         );
     }

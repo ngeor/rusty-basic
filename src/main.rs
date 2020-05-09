@@ -1,8 +1,13 @@
+mod casting;
 mod common;
+mod instruction_generator;
 mod interpreter;
 mod lexer;
+mod linter;
 mod parser;
 mod reader;
+mod variant;
+
 use std::env;
 use std::fs::File;
 
@@ -18,13 +23,19 @@ fn main() {
     let f = File::open(&filename).expect(format!("Could not find program {}", filename).as_ref());
     let mut parser = Parser::from(f);
     match parser.parse() {
-        Ok(program) => {
-            let mut interpreter = Interpreter::new(DefaultStdlib {});
-            match interpreter.interpret(program) {
-                Ok(_) => (),
-                Err(e) => eprintln!("Runtime error. {:?}", e),
+        Ok(program) => match linter::lint(program) {
+            Ok(linted_program) => {
+                let mut interpreter = Interpreter::new(DefaultStdlib {});
+                match instruction_generator::generate_instructions(linted_program) {
+                    Ok(instructions) => match interpreter.interpret(instructions) {
+                        Ok(_) => (),
+                        Err(e) => eprintln!("Runtime error. {:?}", e),
+                    },
+                    Err(e) => eprintln!("Could not generate instructions {:?}", e),
+                }
             }
-        }
+            Err(e) => eprintln!("Could not lint program. {:?}", e),
+        },
         Err(e) => eprintln!("Could not parse program. {:?}", e),
     }
 }

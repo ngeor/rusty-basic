@@ -1,8 +1,8 @@
 use super::{
-    BareNameNode, ExpressionNode, Name, NameNode, Parser, ParserError, ProgramNode, StatementNode,
-    TopLevelTokenNode,
+    BareNameNode, Expression, ExpressionNode, Name, NameNode, Parser, ParserError, ProgramNode,
+    Statement, TopLevelToken, TopLevelTokenNode,
 };
-use crate::common::{CaseInsensitiveString, Location};
+use crate::common::*;
 use std::fs::File;
 
 /// Parses the given program and demands success.
@@ -32,7 +32,7 @@ pub trait ProgramNodeHelper {
     /// Return the single top level token node of the parsed program.
     fn demand_single(self) -> TopLevelTokenNode;
 
-    fn demand_single_statement(self) -> StatementNode;
+    fn demand_single_statement(self) -> Statement;
 }
 
 impl ProgramNodeHelper for ProgramNode {
@@ -41,10 +41,10 @@ impl ProgramNodeHelper for ProgramNode {
         self.pop().unwrap()
     }
 
-    fn demand_single_statement(self) -> StatementNode {
-        let t = self.demand_single();
+    fn demand_single_statement(self) -> Statement {
+        let t = self.demand_single().strip_location();
         match t {
-            TopLevelTokenNode::Statement(s) => s,
+            TopLevelToken::Statement(s) => s,
             _ => panic!(format!("Expected statement, found {:?}", t)),
         }
     }
@@ -61,7 +61,7 @@ pub trait NameNodeFactory {
 
 impl NameNodeFactory for str {
     fn as_name(&self, row: u32, col: u32) -> NameNode {
-        NameNode::new(Name::from(self), Location::new(row, col))
+        Name::from(self).at(Location::new(row, col))
     }
 
     fn as_bare_name(&self, row: u32, col: u32) -> BareNameNode {
@@ -83,25 +83,25 @@ pub trait ExpressionNodeLiteralFactory {
 
 impl ExpressionNodeLiteralFactory for &str {
     fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
-        ExpressionNode::StringLiteral(self.to_string(), Location::new(row, col))
+        Expression::StringLiteral(self.to_string()).at_rc(row, col)
     }
 }
 
 impl ExpressionNodeLiteralFactory for i32 {
     fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
-        ExpressionNode::IntegerLiteral(*self, Location::new(row, col))
+        Expression::IntegerLiteral(*self).at_rc(row, col)
     }
 }
 
 impl ExpressionNodeLiteralFactory for f32 {
     fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
-        ExpressionNode::SingleLiteral(*self, Location::new(row, col))
+        Expression::SingleLiteral(*self).at_rc(row, col)
     }
 }
 
 impl ExpressionNodeLiteralFactory for f64 {
     fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
-        ExpressionNode::DoubleLiteral(*self, Location::new(row, col))
+        Expression::DoubleLiteral(*self).at_rc(row, col)
     }
 }
 
@@ -116,75 +116,6 @@ pub trait ExpressionNodeVariableFactory {
 
 impl ExpressionNodeVariableFactory for str {
     fn as_var_expr(&self, row: u32, col: u32) -> ExpressionNode {
-        ExpressionNode::VariableName(self.as_name(row, col))
+        Expression::VariableName(Name::from(self)).at_rc(row, col)
     }
-}
-
-//
-// macros
-//
-
-/// Asserts the the left-side is an Expression Node that holds a Variable Name
-/// of the given literal. The literal can be an untyped string like "A",
-/// or a typed like "A$".
-#[macro_export]
-macro_rules! assert_var_expr {
-    ($left: expr, $expected_var_name: literal) => {
-        match &$left {
-            ExpressionNode::VariableName(v) => assert_eq!(v, $expected_var_name),
-            _ => panic!(format!(
-                "Expected variable name {}, found {:?}",
-                $expected_var_name, $left
-            )),
-        }
-    };
-}
-
-/// Asserts a sub call statement.
-#[macro_export]
-macro_rules! assert_sub_call {
-    // no args
-    ($left: expr, $name: literal) => {
-        match &$left {
-            StatementNode::SubCall(n, args) => {
-                assert_eq!(n, $name);
-                assert_eq!(0, args.len());
-            }
-            _ => panic!(format!(
-                "Expected sub call {} without args, found {:?}",
-                $name, $left
-            )),
-        }
-    };
-    // one variable name arg
-    ($left: expr, $name: literal, $arg: literal) => {
-        match &$left {
-            StatementNode::SubCall(n, args) => {
-                assert_eq!(n, $name);
-                assert_eq!(1, args.len());
-                assert_var_expr!(args[0], $arg);
-            }
-            _ => panic!(format!(
-                "Expected sub call {} with one arg, found {:?}",
-                $name, $left
-            )),
-        }
-    };
-}
-
-/// Asserts a top-level sub call statement.
-#[macro_export]
-macro_rules! assert_top_sub_call {
-    ($left: expr, $name: literal) => {
-        match &$left {
-            TopLevelTokenNode::Statement(StatementNode::SubCall(n, args)) => {
-                assert_eq!(n, $name);
-                assert_eq!(0, args.len());
-            }
-            _ => panic!(format!(
-                "Expected top-level sub call {}, found {:?}",
-                $name, $left
-            )),
-        }
-    };
 }

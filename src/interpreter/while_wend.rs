@@ -1,16 +1,3 @@
-use super::{Interpreter, Result, Stdlib};
-use crate::interpreter::statement::StatementRunner;
-use crate::parser::ConditionalBlockNode;
-
-impl<S: Stdlib> Interpreter<S> {
-    pub fn while_wend(&mut self, while_wend_block: &ConditionalBlockNode) -> Result<()> {
-        while self.evaluate_condition(while_wend_block)? {
-            self.run(&while_wend_block.statements)?;
-        }
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;

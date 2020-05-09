@@ -1,4 +1,5 @@
-use super::{NameNode, Parser, ParserError, StatementNode};
+use super::{NameNode, Parser, ParserError, Statement, StatementNode};
+use crate::common::*;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
@@ -8,7 +9,8 @@ impl<T: BufRead> Parser<T> {
     ) -> Result<StatementNode, ParserError> {
         let right_side = self.read_demand_expression_skipping_whitespace()?;
         self.read_demand_eol_or_eof_skipping_whitespace()?;
-        Ok(StatementNode::Assignment(left_side, right_side))
+        let (name, pos) = left_side.consume();
+        Ok(Statement::Assignment(name, right_side).at(pos))
     }
 }
 
@@ -16,16 +18,15 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use super::*;
-    use crate::common::Location;
     use crate::lexer::LexemeNode;
-    use crate::parser::StatementNode;
+    use crate::parser::{Expression, Name};
 
     macro_rules! assert_top_level_assignment {
         ($input:expr, $name:expr, $value:expr) => {
             match parse($input).demand_single_statement() {
-                StatementNode::Assignment(n, v) => {
-                    assert_eq!(&n, $name);
-                    assert_eq!(v, $value);
+                Statement::Assignment(n, v) => {
+                    assert_eq!(n, Name::from($name));
+                    assert_eq!(v.strip_location(), Expression::IntegerLiteral($value));
                 }
                 _ => panic!("expected assignment"),
             }

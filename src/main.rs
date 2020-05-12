@@ -26,12 +26,10 @@ fn main() {
         Ok(program) => match linter::lint(program) {
             Ok(linted_program) => {
                 let mut interpreter = Interpreter::new(DefaultStdlib {});
-                match instruction_generator::generate_instructions(linted_program) {
-                    Ok(instructions) => match interpreter.interpret(instructions) {
-                        Ok(_) => (),
-                        Err(e) => eprintln!("Runtime error. {:?}", e),
-                    },
-                    Err(e) => eprintln!("Could not generate instructions {:?}", e),
+                let instructions = instruction_generator::generate_instructions(linted_program);
+                match interpreter.interpret(instructions) {
+                    Ok(_) => (),
+                    Err(e) => eprintln!("Runtime error. {:?}", e),
                 }
             }
             Err(e) => eprintln!("Could not lint program. {:?}", e),

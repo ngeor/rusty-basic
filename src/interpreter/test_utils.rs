@@ -15,7 +15,7 @@ where
     let mut parser = Parser::from(input);
     let program = parser.parse().unwrap();
     let linted_program = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program).unwrap();
+    let instructions = instruction_generator::generate_instructions(linted_program);
     // for i in instructions.iter() {
     //     println!("{:?}", i.as_ref());
     // }
@@ -34,7 +34,7 @@ where
     let mut parser = Parser::from(input);
     let program = parser.parse().unwrap();
     let linted_program = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program).unwrap();
+    let instructions = instruction_generator::generate_instructions(linted_program);
     let mut interpreter = Interpreter::new(stdlib);
     interpreter
         .interpret(instructions)
@@ -58,7 +58,7 @@ where
     let mut parser = Parser::from(input);
     let program = parser.parse().unwrap();
     let linted_program = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program).unwrap();
+    let instructions = instruction_generator::generate_instructions(linted_program);
     let mut interpreter = Interpreter::new(MockStdlib::new());
     interpreter.interpret(instructions).unwrap_err()
 }
@@ -72,7 +72,7 @@ where
     let mut parser = Parser::from(File::open(file_path).expect("Could not read bas file"));
     let program = parser.parse().unwrap();
     let linted_program = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program).unwrap();
+    let instructions = instruction_generator::generate_instructions(linted_program);
     let mut interpreter = Interpreter::new(stdlib);
     interpreter.interpret(instructions).map(|_| interpreter)
 }
@@ -171,19 +171,6 @@ macro_rules! assert_err {
             interpret_err($program),
             InterpreterError::new_with_pos(
                 $expected_msg,
-                Location::new($expected_row, $expected_col)
-            )
-        );
-    };
-}
-
-#[macro_export]
-macro_rules! assert_instruction_generator_err {
-    ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
-        assert_eq!(
-            instruction_generator_err($program),
-            Locatable::new(
-                format!("[IG] {}", $expected_msg),
                 Location::new($expected_row, $expected_col)
             )
         );

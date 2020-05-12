@@ -65,21 +65,22 @@ pub trait ExpressionReducer {
 
     fn visit_statement(&self, s: Statement) -> Result<Statement, Error> {
         match s {
-            Statement::SubCall(b, e) => self
-                .visit_sub_call(b, e)
-                .map(|(reduced_name, reduced_expr)| Statement::SubCall(reduced_name, reduced_expr)),
-            Statement::ForLoop(f) => self.visit_for_loop(f).map(|x| Statement::ForLoop(x)),
-            Statement::IfBlock(i) => self.visit_if_block(i).map(|x| Statement::IfBlock(x)),
             Statement::Assignment(left, right) => {
                 self.visit_assignment(left, right)
                     .map(|(reduced_left, reduced_right)| {
                         Statement::Assignment(reduced_left, reduced_right)
                     })
             }
-            Statement::While(w) => self.visit_conditional_block(w).map(|x| Statement::While(x)),
             Statement::Const(left, right) => self
                 .visit_const(left, right)
                 .map(|(reduced_left, reduced_right)| Statement::Const(reduced_left, reduced_right)),
+            Statement::SubCall(b, e) => self
+                .visit_sub_call(b, e)
+                .map(|(reduced_name, reduced_expr)| Statement::SubCall(reduced_name, reduced_expr)),
+            Statement::IfBlock(i) => self.visit_if_block(i).map(|x| Statement::IfBlock(x)),
+            Statement::SelectCase(s) => self.visit_select_case(s).map(|x| Statement::SelectCase(x)),
+            Statement::ForLoop(f) => self.visit_for_loop(f).map(|x| Statement::ForLoop(x)),
+            Statement::While(w) => self.visit_conditional_block(w).map(|x| Statement::While(x)),
             Statement::ErrorHandler(label) => Ok(Statement::ErrorHandler(label)),
             Statement::Label(label) => Ok(Statement::Label(label)),
             Statement::GoTo(label) => Ok(Statement::GoTo(label)),
@@ -143,6 +144,45 @@ pub trait ExpressionReducer {
             else_if_blocks,
             else_block,
         })
+    }
+
+    fn visit_select_case(&self, s: SelectCaseNode) -> Result<SelectCaseNode, Error> {
+        let else_block: Option<StatementNodes> = match s.else_block {
+            Some(x) => Some(self.visit_statement_nodes(x)?),
+            None => None,
+        };
+        let case_blocks: Vec<CaseBlockNode> = s
+            .case_blocks
+            .into_iter()
+            .map(|x| self.visit_case_block(x))
+            .collect::<Result<Vec<CaseBlockNode>, Error>>()?;
+        Ok(SelectCaseNode {
+            expr: self.visit_expression_node(s.expr)?,
+            case_blocks,
+            else_block,
+        })
+    }
+
+    fn visit_case_block(&self, s: CaseBlockNode) -> Result<CaseBlockNode, Error> {
+        Ok(CaseBlockNode {
+            expr: self.visit_case_expression(s.expr)?,
+            statements: self.visit_statement_nodes(s.statements)?,
+        })
+    }
+
+    fn visit_case_expression(&self, s: CaseExpression) -> Result<CaseExpression, Error> {
+        match s {
+            CaseExpression::Simple(e) => self
+                .visit_expression_node(e)
+                .map(|x| CaseExpression::Simple(x)),
+            CaseExpression::Is(op, e) => self
+                .visit_expression_node(e)
+                .map(|x| CaseExpression::Is(op, x)),
+            CaseExpression::Range(from, to) => self.visit_expression_node(from).and_then(|x| {
+                self.visit_expression_node(to)
+                    .map(|y| CaseExpression::Range(x, y))
+            }),
+        }
     }
 
     fn visit_conditional_block(

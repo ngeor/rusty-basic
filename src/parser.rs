@@ -9,6 +9,7 @@ mod for_loop;
 mod if_block;
 mod name;
 mod parser;
+mod select_case;
 mod statement;
 mod sub_call;
 pub mod type_resolver_impl;

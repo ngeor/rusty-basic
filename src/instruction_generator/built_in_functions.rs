@@ -1,4 +1,4 @@
-use super::{Instruction, InstructionGenerator, Result};
+use super::{Instruction, InstructionGenerator};
 use crate::common::*;
 use crate::linter::{ExpressionNode, QNameNode};
 
@@ -7,14 +7,13 @@ impl InstructionGenerator {
         &mut self,
         function_name: QNameNode,
         args: Vec<ExpressionNode>,
-    ) -> Result<()> {
+    ) {
         let pos = function_name.location();
-        self.generate_push_unnamed_args_instructions(args, pos)?;
+        self.generate_push_unnamed_args_instructions(args, pos);
         self.push(Instruction::PushStack, pos);
         self.push(
             Instruction::BuiltInFunction(function_name.strip_location()),
             pos,
         );
-        Ok(())
     }
 }

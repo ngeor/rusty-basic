@@ -1,4 +1,4 @@
-use super::{ArgumentNodes, BareName, ExpressionNode, Name, NameNode};
+use super::{ArgumentNodes, BareName, ExpressionNode, Name, NameNode, Operand};
 use crate::common::*;
 
 pub type StatementNodes = Vec<StatementNode>;
@@ -6,12 +6,16 @@ pub type StatementNode = Locatable<Statement>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    SubCall(BareName, ArgumentNodes),
-    ForLoop(ForLoopNode),
-    IfBlock(IfBlockNode),
     Assignment(Name, ExpressionNode),
-    While(ConditionalBlockNode),
     Const(NameNode, ExpressionNode),
+    SubCall(BareName, ArgumentNodes),
+
+    IfBlock(IfBlockNode),
+    SelectCase(SelectCaseNode),
+
+    ForLoop(ForLoopNode),
+    While(ConditionalBlockNode),
+
     ErrorHandler(CaseInsensitiveString),
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
@@ -38,4 +42,27 @@ pub struct IfBlockNode {
     pub if_block: ConditionalBlockNode,
     pub else_if_blocks: Vec<ConditionalBlockNode>,
     pub else_block: Option<StatementNodes>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SelectCaseNode {
+    /// The expression been matched
+    pub expr: ExpressionNode,
+    /// The case statements
+    pub case_blocks: Vec<CaseBlockNode>,
+    /// An optional CASE ELSE block
+    pub else_block: Option<StatementNodes>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CaseBlockNode {
+    pub expr: CaseExpression,
+    pub statements: StatementNodes,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CaseExpression {
+    Simple(ExpressionNode),
+    Is(Operand, ExpressionNode),
+    Range(ExpressionNode, ExpressionNode),
 }

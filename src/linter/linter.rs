@@ -221,6 +221,9 @@ impl Converter<parser::ProgramNode, ProgramNode> for Linter {
         let linter = super::user_defined_sub_linter::UserDefinedSubLinter { subs: &self.subs };
         linter.visit_program(&result)?;
 
+        let linter = super::select_case_linter::SelectCaseLinter {};
+        linter.visit_program(&result)?;
+
         let mut linter = super::label_linter::LabelLinter::new();
         linter.visit_program(&result)?;
         linter.switch_to_validating_mode();
@@ -296,9 +299,6 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for Linter {
 impl Converter<parser::Statement, Statement> for Linter {
     fn convert(&mut self, a: parser::Statement) -> Result<Statement, Error> {
         match a {
-            parser::Statement::SubCall(n, args) => Ok(Statement::SubCall(n, self.convert(args)?)),
-            parser::Statement::ForLoop(f) => Ok(Statement::ForLoop(self.convert(f)?)),
-            parser::Statement::IfBlock(i) => Ok(Statement::IfBlock(self.convert(i)?)),
             parser::Statement::Assignment(n, e) => {
                 if self
                     .context
@@ -347,7 +347,6 @@ impl Converter<parser::Statement, Statement> for Linter {
                     }
                 }
             }
-            parser::Statement::While(c) => Ok(Statement::While(self.convert(c)?)),
             parser::Statement::Const(n, e) => {
                 let (name, pos) = n.consume();
                 if self.context.variables.contains_bare(&name)
@@ -380,6 +379,11 @@ impl Converter<parser::Statement, Statement> for Linter {
                     }
                 }
             }
+            parser::Statement::SubCall(n, args) => Ok(Statement::SubCall(n, self.convert(args)?)),
+            parser::Statement::IfBlock(i) => Ok(Statement::IfBlock(self.convert(i)?)),
+            parser::Statement::SelectCase(s) => Ok(Statement::SelectCase(self.convert(s)?)),
+            parser::Statement::ForLoop(f) => Ok(Statement::ForLoop(self.convert(f)?)),
+            parser::Statement::While(c) => Ok(Statement::While(self.convert(c)?)),
             parser::Statement::ErrorHandler(l) => Ok(Statement::ErrorHandler(l)),
             parser::Statement::Label(l) => Ok(Statement::Label(l)),
             parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
@@ -505,5 +509,36 @@ impl Converter<parser::IfBlockNode, IfBlockNode> for Linter {
             else_if_blocks: self.convert(a.else_if_blocks)?,
             else_block: self.convert(a.else_block)?,
         })
+    }
+}
+
+impl Converter<parser::SelectCaseNode, SelectCaseNode> for Linter {
+    fn convert(&mut self, a: parser::SelectCaseNode) -> Result<SelectCaseNode, Error> {
+        Ok(SelectCaseNode {
+            expr: self.convert(a.expr)?,
+            case_blocks: self.convert(a.case_blocks)?,
+            else_block: self.convert(a.else_block)?,
+        })
+    }
+}
+
+impl Converter<parser::CaseBlockNode, CaseBlockNode> for Linter {
+    fn convert(&mut self, a: parser::CaseBlockNode) -> Result<CaseBlockNode, Error> {
+        Ok(CaseBlockNode {
+            expr: self.convert(a.expr)?,
+            statements: self.convert(a.statements)?,
+        })
+    }
+}
+
+impl Converter<parser::CaseExpression, CaseExpression> for Linter {
+    fn convert(&mut self, a: parser::CaseExpression) -> Result<CaseExpression, Error> {
+        match a {
+            parser::CaseExpression::Simple(e) => self.convert(e).map(|x| CaseExpression::Simple(x)),
+            parser::CaseExpression::Is(op, e) => self.convert(e).map(|x| CaseExpression::Is(op, x)),
+            parser::CaseExpression::Range(from, to) => self
+                .convert(from)
+                .and_then(|x| self.convert(to).map(|y| CaseExpression::Range(x, y))),
+        }
     }
 }

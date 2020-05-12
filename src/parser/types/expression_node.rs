@@ -3,8 +3,11 @@ use crate::common::Locatable;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Operand {
-    LessOrEqualThan,
-    LessThan,
+    Less,
+    LessOrEqual,
+    Equal,
+    GreaterOrEqual,
+    Greater,
     Plus,
     Minus,
 }

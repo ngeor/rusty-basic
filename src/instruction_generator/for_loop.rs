@@ -1,10 +1,10 @@
-use super::{Instruction, InstructionGenerator, Result};
+use super::{Instruction, InstructionGenerator};
 use crate::common::*;
 use crate::linter::{ForLoopNode, QualifiedName, StatementNodes};
 use crate::variant::Variant;
 
 impl InstructionGenerator {
-    pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) -> Result<()> {
+    pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) {
         let ForLoopNode {
             variable_name,
             lower_bound,
@@ -15,11 +15,11 @@ impl InstructionGenerator {
         } = f;
         let counter_var_name = variable_name.strip_location();
         // lower bound to A
-        self.generate_expression_instructions(lower_bound)?;
+        self.generate_expression_instructions(lower_bound);
         // A to variable
         self.push(Instruction::Store(counter_var_name.clone()), pos);
         // upper bound to A
-        self.generate_expression_instructions(upper_bound)?;
+        self.generate_expression_instructions(upper_bound);
         // A to C (upper bound to C)
         self.push(Instruction::CopyAToC, pos);
         // load the step expression
@@ -30,11 +30,11 @@ impl InstructionGenerator {
                 self.push(Instruction::Load(Variant::VInteger(0)), pos);
                 self.push(Instruction::CopyAToB, pos);
                 // load step to A
-                self.generate_expression_instructions(s)?;
+                self.generate_expression_instructions(s);
                 // A to D (step is in D)
                 self.push(Instruction::CopyAToD, pos);
                 // is step < 0 ?
-                self.push(Instruction::LessThan, pos);
+                self.push(Instruction::Less, pos);
                 self.jump_if_false("test-positive-or-zero", pos);
                 // negative step
                 self.generate_for_loop_instructions_positive_or_negative_step(
@@ -42,7 +42,7 @@ impl InstructionGenerator {
                     statements.clone(),
                     false,
                     pos,
-                )?;
+                );
                 // jump out
                 self.jump("out-of-for", pos);
                 // PositiveOrZero: ?
@@ -50,7 +50,7 @@ impl InstructionGenerator {
                 // need to load it again into A because the previous "LessThan" op overwrote A
                 self.push(Instruction::CopyDToA, pos);
                 // is step > 0 ?
-                self.push(Instruction::GreaterThan, pos);
+                self.push(Instruction::Greater, pos);
                 self.jump_if_false("zero", pos);
                 // positive step
                 self.generate_for_loop_instructions_positive_or_negative_step(
@@ -58,7 +58,7 @@ impl InstructionGenerator {
                     statements,
                     true,
                     pos,
-                )?;
+                );
                 // jump out
                 self.jump("out-of-for", pos);
                 // Zero step
@@ -68,7 +68,6 @@ impl InstructionGenerator {
                     step_location,
                 );
                 self.label("out-of-for", pos);
-                Ok(())
             }
             None => {
                 self.push(Instruction::Load(Variant::VInteger(1)), pos);
@@ -79,9 +78,8 @@ impl InstructionGenerator {
                     statements,
                     true,
                     pos,
-                )?;
+                );
                 self.label("out-of-for", pos);
-                Ok(())
             }
         }
     }
@@ -92,7 +90,7 @@ impl InstructionGenerator {
         statements: StatementNodes,
         is_positive: bool,
         pos: Location,
-    ) -> Result<()> {
+    ) {
         let loop_label = if is_positive {
             "positive-loop"
         } else {
@@ -105,15 +103,15 @@ impl InstructionGenerator {
         // counter to A
         self.push(Instruction::CopyVarToA(counter_var_name.clone()), pos);
         if is_positive {
-            self.push(Instruction::LessOrEqualThan, pos);
+            self.push(Instruction::LessOrEqual, pos);
         } else {
-            self.push(Instruction::GreaterOrEqualThan, pos);
+            self.push(Instruction::GreaterOrEqual, pos);
         }
         self.jump_if_false("out-of-for", pos);
 
         self.push(Instruction::PushRegisters, pos);
         // run loop body
-        self.generate_block_instructions(statements)?;
+        self.generate_block_instructions(statements);
         self.push(Instruction::PopRegisters, pos);
 
         // increment step
@@ -125,6 +123,5 @@ impl InstructionGenerator {
 
         // back to loop
         self.jump(loop_label, pos);
-        Ok(())
     }
 }

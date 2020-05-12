@@ -1,4 +1,3 @@
-use super::error::Result;
 use super::instruction::*;
 use crate::common::*;
 use crate::linter::*;
@@ -44,12 +43,12 @@ pub struct InstructionGenerator {
     pub sub_context: ParamMap,
 }
 
-pub fn generate_instructions(program: ProgramNode) -> Result<Vec<InstructionNode>> {
+pub fn generate_instructions(program: ProgramNode) -> Vec<InstructionNode> {
     let (f, s) = collect_parameter_names(&program);
     let mut generator = InstructionGenerator::new(f, s);
-    generator.generate_unresolved(program)?;
+    generator.generate_unresolved(program);
     generator.resolve_instructions();
-    Ok(generator.instructions)
+    generator.instructions
 }
 
 fn collect_labels(instructions: &Vec<InstructionNode>) -> HashMap<CaseInsensitiveString, usize> {
@@ -71,7 +70,7 @@ impl InstructionGenerator {
         }
     }
 
-    pub fn generate_unresolved(&mut self, program: ProgramNode) -> Result<()> {
+    pub fn generate_unresolved(&mut self, program: ProgramNode) {
         let mut functions: Vec<(FunctionImplementation, Location)> = vec![];
         let mut subs: Vec<(SubImplementation, Location)> = vec![];
 
@@ -79,7 +78,7 @@ impl InstructionGenerator {
             let (top_level_token, pos) = t.consume();
             match top_level_token {
                 TopLevelToken::Statement(s) => {
-                    self.generate_statement_node_instructions(s.at(pos))?;
+                    self.generate_statement_node_instructions(s.at(pos));
                 }
                 TopLevelToken::FunctionImplementation(f) => functions.push((f, pos)),
                 TopLevelToken::SubImplementation(s) => subs.push((s, pos)),
@@ -103,7 +102,7 @@ impl InstructionGenerator {
                 pos,
             );
             self.push(Instruction::StoreAToResult, pos);
-            self.generate_block_instructions(block)?;
+            self.generate_block_instructions(block);
             self.push(Instruction::PopRet, pos);
         }
 
@@ -112,11 +111,9 @@ impl InstructionGenerator {
             let name = s.name;
             let block = s.body;
             self.sub_label(name.bare_name(), pos);
-            self.generate_block_instructions(block)?;
+            self.generate_block_instructions(block);
             self.push(Instruction::PopRet, pos);
         }
-
-        Ok(())
     }
 
     pub fn resolve_instructions(&mut self) {
@@ -212,14 +209,9 @@ impl InstructionGenerator {
         );
     }
 
-    pub fn generate_assignment_instructions(
-        &mut self,
-        l: QNameNode,
-        r: ExpressionNode,
-    ) -> Result<()> {
-        self.generate_expression_instructions(r)?;
+    pub fn generate_assignment_instructions(&mut self, l: QNameNode, r: ExpressionNode) {
+        self.generate_expression_instructions(r);
         let pos = l.location();
         self.push(Instruction::Store(l.strip_location()), pos);
-        Ok(())
     }
 }

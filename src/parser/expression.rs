@@ -216,9 +216,9 @@ impl<T: BufRead> Parser<T> {
             .skip_if(|lexeme| lexeme.is_symbol('='))
             .map(|found_equal_sign| {
                 if found_equal_sign {
-                    Operand::LessOrEqualThan
+                    Operand::LessOrEqual
                 } else {
-                    Operand::LessThan
+                    Operand::Less
                 }
             })
     }
@@ -329,7 +329,7 @@ mod tests {
         assert_expression!(
             "N <= 1",
             Expression::BinaryExpression(
-                Operand::LessOrEqualThan,
+                Operand::LessOrEqual,
                 Box::new("N".as_var_expr(1, 7)),
                 Box::new(1.as_lit_expr(1, 12)),
             )
@@ -341,7 +341,7 @@ mod tests {
         assert_expression!(
             "A < B",
             Expression::BinaryExpression(
-                Operand::LessThan,
+                Operand::Less,
                 Box::new("A".as_var_expr(1, 7)),
                 Box::new("B".as_var_expr(1, 11)),
             )

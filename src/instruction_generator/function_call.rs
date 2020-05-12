@@ -1,5 +1,5 @@
 use super::instruction::*;
-use super::{InstructionGenerator, Result};
+use super::InstructionGenerator;
 use crate::common::*;
 use crate::linter::*;
 
@@ -8,16 +8,16 @@ impl InstructionGenerator {
         &mut self,
         function_name: QNameNode,
         args: Vec<ExpressionNode>,
-    ) -> Result<()> {
+    ) {
         let pos = function_name.location();
 
         if is_built_in_function(function_name.as_ref().bare_name()) {
-            self.generate_built_in_function_call_instructions(function_name, args)?;
+            self.generate_built_in_function_call_instructions(function_name, args);
         } else {
             let pos = function_name.location();
             let bare_name: &CaseInsensitiveString = function_name.bare_name();
             let function_parameters = self.function_context.get(bare_name).unwrap().clone();
-            self.generate_push_named_args_instructions(function_parameters, args, pos)?;
+            self.generate_push_named_args_instructions(function_parameters, args, pos);
             self.push(Instruction::PushStack, pos);
             let idx = self.instructions.len();
             self.push(Instruction::PushRet(idx + 2), pos);
@@ -25,7 +25,6 @@ impl InstructionGenerator {
         }
         self.push(Instruction::PopStack, pos);
         self.push(Instruction::CopyResultToA, pos);
-        Ok(())
     }
 
     pub fn generate_push_named_args_instructions(
@@ -33,7 +32,7 @@ impl InstructionGenerator {
         param_names: Vec<QualifiedName>,
         expressions: Vec<ExpressionNode>,
         pos: Location,
-    ) -> Result<()> {
+    ) {
         self.push(Instruction::PreparePush, pos);
         for (n, e_node) in param_names.into_iter().zip(expressions.into_iter()) {
             let (e, pos) = e_node.consume();
@@ -48,19 +47,18 @@ impl InstructionGenerator {
                     );
                 }
                 _ => {
-                    self.generate_expression_instructions(e.at(pos))?;
+                    self.generate_expression_instructions(e.at(pos));
                     self.push(Instruction::SetNamedValParam(n), pos);
                 }
             }
         }
-        Ok(())
     }
 
     pub fn generate_push_unnamed_args_instructions(
         &mut self,
         expressions: Vec<ExpressionNode>,
         pos: Location,
-    ) -> Result<()> {
+    ) {
         self.push(Instruction::PreparePush, pos);
         for e_node in expressions.into_iter() {
             let (e, pos) = e_node.consume();
@@ -69,11 +67,10 @@ impl InstructionGenerator {
                     self.push(Instruction::PushUnnamedRefParam(v_name), pos);
                 }
                 _ => {
-                    self.generate_expression_instructions(e.at(pos))?;
+                    self.generate_expression_instructions(e.at(pos));
                     self.push(Instruction::PushUnnamedValParam, pos);
                 }
             }
         }
-        Ok(())
     }
 }

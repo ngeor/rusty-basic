@@ -40,13 +40,14 @@ impl<T: BufRead> Parser<T> {
                 | Keyword::DefStr => self.demand_def_type(k).map(|x| x.at(pos)),
                 Keyword::Function => self.demand_function_implementation().map(|x| x.at(pos)),
                 Keyword::Sub => self.demand_sub_implementation().map(|x| x.at(pos)),
-                Keyword::If
-                | Keyword::Input
+                Keyword::Const
                 | Keyword::For
-                | Keyword::While
-                | Keyword::Const
+                | Keyword::GoTo
+                | Keyword::If
+                | Keyword::Input
                 | Keyword::On
-                | Keyword::GoTo => self
+                | Keyword::Select
+                | Keyword::While => self
                     .demand_statement(next)
                     .map(|s| s.consume())
                     .map(|(s, p)| TopLevelToken::from(s).at(p)),
@@ -66,10 +67,7 @@ impl<T: BufRead> Parser<T> {
         self.skip_whitespace_and_eol(next)
     }
 
-    pub fn skip_whitespace_and_eol(
-        &mut self,
-        lexeme: LexemeNode,
-    ) -> Result<LexemeNode, ParserError> {
+    fn skip_whitespace_and_eol(&mut self, lexeme: LexemeNode) -> Result<LexemeNode, ParserError> {
         match lexeme {
             LexemeNode::Whitespace(_, _) | LexemeNode::EOL(_, _) => {
                 self.read_skipping_whitespace_and_eol()
@@ -232,7 +230,7 @@ mod tests {
                             if_block: ConditionalBlockNode {
                                 // N <= 1
                                 condition: Expression::BinaryExpression(
-                                    Operand::LessOrEqualThan,
+                                    Operand::LessOrEqual,
                                     Box::new("N".as_var_expr(9, 8)),
                                     Box::new(1.as_lit_expr(9, 13))
                                 )

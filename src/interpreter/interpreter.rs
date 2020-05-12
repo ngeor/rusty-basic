@@ -203,7 +203,16 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     None => panic!("Variable {:?} undefined at {:?}", n, pos),
                 }
             }
-            Instruction::LessThan => {
+            Instruction::Equal => {
+                let a = self.get_a();
+                let b = self.get_b();
+                let order = a
+                    .cmp(&b)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let is_true = order == Ordering::Equal;
+                self.set_a(is_true.into());
+            }
+            Instruction::Less => {
                 let a = self.get_a();
                 let b = self.get_b();
                 let order = a
@@ -212,7 +221,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let is_true = order == Ordering::Less;
                 self.set_a(is_true.into());
             }
-            Instruction::GreaterThan => {
+            Instruction::Greater => {
                 let a = self.get_a();
                 let b = self.get_b();
                 let order = a
@@ -221,7 +230,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let is_true = order == Ordering::Greater;
                 self.set_a(is_true.into());
             }
-            Instruction::LessOrEqualThan => {
+            Instruction::LessOrEqual => {
                 let a = self.get_a();
                 let b = self.get_b();
                 let order = a
@@ -230,7 +239,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let is_true = order == Ordering::Less || order == Ordering::Equal;
                 self.set_a(is_true.into());
             }
-            Instruction::GreaterOrEqualThan => {
+            Instruction::GreaterOrEqual => {
                 let a = self.get_a();
                 let b = self.get_b();
                 let order = a

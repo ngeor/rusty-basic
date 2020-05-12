@@ -36,9 +36,11 @@ impl Expression {
                 if q_left.can_cast_to(q_right) {
                     match op {
                         Operand::Plus | Operand::Minus => Ok(q_left),
-                        Operand::LessThan | Operand::LessOrEqualThan => {
-                            Ok(TypeQualifier::PercentInteger)
-                        }
+                        Operand::Less
+                        | Operand::LessOrEqual
+                        | Operand::Equal
+                        | Operand::GreaterOrEqual
+                        | Operand::Greater => Ok(TypeQualifier::PercentInteger),
                     }
                 } else {
                     err(LinterError::TypeMismatch, r.as_ref().location())
@@ -83,16 +85,44 @@ pub struct IfBlockNode {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct SelectCaseNode {
+    /// The expression been matched
+    pub expr: ExpressionNode,
+    /// The case statements
+    pub case_blocks: Vec<CaseBlockNode>,
+    /// An optional CASE ELSE block
+    pub else_block: Option<StatementNodes>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CaseBlockNode {
+    pub expr: CaseExpression,
+    pub statements: StatementNodes,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CaseExpression {
+    Simple(ExpressionNode),
+    Is(Operand, ExpressionNode),
+    Range(ExpressionNode, ExpressionNode),
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    SubCall(BareName, Vec<ExpressionNode>),
-    ForLoop(ForLoopNode),
-    IfBlock(IfBlockNode),
     Assignment(QualifiedName, ExpressionNode),
-    While(ConditionalBlockNode),
     Const(QNameNode, ExpressionNode),
+    SubCall(BareName, Vec<ExpressionNode>),
+
+    IfBlock(IfBlockNode),
+    SelectCase(SelectCaseNode),
+
+    ForLoop(ForLoopNode),
+    While(ConditionalBlockNode),
+
     ErrorHandler(CaseInsensitiveString),
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
+
     SetReturnValue(ExpressionNode),
 }
 

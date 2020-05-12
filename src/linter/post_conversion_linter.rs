@@ -41,12 +41,13 @@ pub trait PostConversionLinter {
 
     fn visit_statement(&self, s: &Statement) -> Result<(), Error> {
         match s {
-            Statement::SubCall(b, e) => self.visit_sub_call(b, e),
-            Statement::ForLoop(f) => self.visit_for_loop(f),
-            Statement::IfBlock(i) => self.visit_if_block(i),
             Statement::Assignment(left, right) => self.visit_assignment(left, right),
-            Statement::While(w) => self.visit_conditional_block(w),
             Statement::Const(left, right) => self.visit_const(left, right),
+            Statement::SubCall(b, e) => self.visit_sub_call(b, e),
+            Statement::IfBlock(i) => self.visit_if_block(i),
+            Statement::SelectCase(s) => self.visit_select_case(s),
+            Statement::ForLoop(f) => self.visit_for_loop(f),
+            Statement::While(w) => self.visit_conditional_block(w),
             Statement::ErrorHandler(label) => self.visit_error_handler(label),
             Statement::Label(label) => self.visit_label(label),
             Statement::GoTo(label) => self.visit_go_to(label),
@@ -94,6 +95,29 @@ pub trait PostConversionLinter {
             self.visit_conditional_block(else_if_block)?;
         }
         match &i.else_block {
+            Some(x) => self.visit_statement_nodes(x),
+            None => Ok(()),
+        }
+    }
+
+    fn visit_select_case(&self, s: &SelectCaseNode) -> Result<(), Error> {
+        self.visit_expression(&s.expr)?;
+        for c in s.case_blocks.iter() {
+            match &c.expr {
+                CaseExpression::Simple(e) => {
+                    self.visit_expression(e)?;
+                }
+                CaseExpression::Is(_, e) => {
+                    self.visit_expression(e)?;
+                }
+                CaseExpression::Range(from, to) => {
+                    self.visit_expression(from)?;
+                    self.visit_expression(to)?;
+                }
+            }
+            self.visit_statement_nodes(&c.statements)?;
+        }
+        match &s.else_block {
             Some(x) => self.visit_statement_nodes(x),
             None => Ok(()),
         }

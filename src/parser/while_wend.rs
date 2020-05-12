@@ -35,7 +35,7 @@ mod tests {
             program,
             Statement::While(ConditionalBlockNode {
                 condition: Expression::BinaryExpression(
-                    Operand::LessThan,
+                    Operand::Less,
                     Box::new("A".as_var_expr(2, 15)),
                     Box::new(5.as_lit_expr(2, 19))
                 )

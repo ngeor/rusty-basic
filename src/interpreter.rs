@@ -11,6 +11,7 @@ mod go_to;
 mod if_block;
 mod interpreter;
 mod interpreter_error;
+mod select_case;
 mod stdlib;
 mod sub_call;
 mod while_wend;

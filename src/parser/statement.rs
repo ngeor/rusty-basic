@@ -8,15 +8,18 @@ use std::io::BufRead;
 impl<T: BufRead> Parser<T> {
     pub fn demand_statement(&mut self, next: LexemeNode) -> Result<StatementNode, ParserError> {
         match next {
+            LexemeNode::Keyword(Keyword::Const, _, pos) => self.demand_const().map(|x| x.at(pos)),
             LexemeNode::Keyword(Keyword::For, _, pos) => self.demand_for_loop().map(|x| x.at(pos)),
+            LexemeNode::Keyword(Keyword::GoTo, _, pos) => self.demand_go_to().map(|x| x.at(pos)),
             LexemeNode::Keyword(Keyword::If, _, pos) => self.demand_if_block().map(|x| x.at(pos)),
+            LexemeNode::Keyword(Keyword::Input, w, pos) => self.demand_input(w, pos),
+            LexemeNode::Keyword(Keyword::On, _, pos) => self.demand_on().map(|x| x.at(pos)),
+            LexemeNode::Keyword(Keyword::Select, _, pos) => {
+                self.demand_select_case().map(|x| x.at(pos))
+            }
             LexemeNode::Keyword(Keyword::While, _, pos) => {
                 self.demand_while_block().map(|x| x.at(pos))
             }
-            LexemeNode::Keyword(Keyword::Const, _, pos) => self.demand_const().map(|x| x.at(pos)),
-            LexemeNode::Keyword(Keyword::On, _, pos) => self.demand_on().map(|x| x.at(pos)),
-            LexemeNode::Keyword(Keyword::GoTo, _, pos) => self.demand_go_to().map(|x| x.at(pos)),
-            LexemeNode::Keyword(Keyword::Input, w, pos) => self.demand_input(w, pos),
             _ => self.demand_assignment_or_sub_call_or_label(next, true),
         }
     }

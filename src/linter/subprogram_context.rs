@@ -1,6 +1,5 @@
-use super::built_in_function_linter::is_built_in_function;
-use super::built_in_sub_linter::is_built_in_sub;
 use super::error::*;
+use super::types::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::parser;
 use crate::parser::type_resolver_impl::TypeResolverImpl;
@@ -160,7 +159,8 @@ impl PostVisitor<parser::ProgramNode> for FunctionContext {
         }
 
         for (k, v) in self.implementations.iter() {
-            if is_built_in_function(k) {
+            let opt_built_in: Option<BuiltInFunction> = k.into();
+            if opt_built_in.is_some() {
                 return err(LinterError::DuplicateDefinition, v.2);
             }
         }
@@ -288,7 +288,8 @@ impl PostVisitor<parser::ProgramNode> for SubContext {
         }
 
         for (k, v) in self.implementations.iter() {
-            if is_built_in_sub(k) {
+            let opt_built_in: Option<BuiltInSub> = k.into();
+            if opt_built_in.is_some() {
                 return err(LinterError::DuplicateDefinition, v.1);
             }
         }

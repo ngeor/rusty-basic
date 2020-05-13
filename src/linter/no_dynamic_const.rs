@@ -8,9 +8,9 @@ impl NoDynamicConst {
     fn visit_const_expr(&self, e_node: &ExpressionNode) -> Result<(), Error> {
         let e: &Expression = e_node.as_ref();
         match e {
-            Expression::FunctionCall(_, _) | Expression::Variable(_) => {
-                err_l(LinterError::InvalidConstant, e_node)
-            }
+            Expression::FunctionCall(_, _)
+            | Expression::BuiltInFunctionCall(_, _)
+            | Expression::Variable(_) => err_l(LinterError::InvalidConstant, e_node),
             Expression::BinaryExpression(_, left, right) => {
                 let unboxed_left: &ExpressionNode = left;
                 let unboxed_right: &ExpressionNode = right;

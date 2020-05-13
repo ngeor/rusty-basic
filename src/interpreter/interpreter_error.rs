@@ -65,6 +65,6 @@ mod tests {
         let input = r#"
         ON ERROR GOTO ErrTrap
         "#;
-        assert_linter_err!(input, LinterError::LabelNotFound, 2, 9);
+        assert_linter_err!(input, LinterError::LabelNotDefined, 2, 9);
     }
 }

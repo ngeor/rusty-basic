@@ -32,6 +32,9 @@ impl InstructionGenerator {
                 let name_node = n.at(pos);
                 self.generate_function_call_instructions(name_node, args);
             }
+            Expression::BuiltInFunctionCall(n, args) => {
+                self.generate_built_in_function_call_instructions(n, args, pos);
+            }
             Expression::BinaryExpression(op, left, right) => {
                 self.push(Instruction::PushRegisters, pos);
                 self.generate_expression_instructions(*left);

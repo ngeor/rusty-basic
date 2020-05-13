@@ -50,7 +50,7 @@ mod tests {
         let input = "
         GOTO Jump
         ";
-        assert_linter_err!(input, LinterError::LabelNotFound, 2, 9);
+        assert_linter_err!(input, LinterError::LabelNotDefined, 2, 9);
     }
 
     #[test]
@@ -60,6 +60,6 @@ mod tests {
         Jump:
         Jump:
         ";
-        assert_linter_err!(input, LinterError::DuplicateDefinition, 4, 9);
+        assert_linter_err!(input, LinterError::DuplicateLabel, 4, 9);
     }
 }

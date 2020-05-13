@@ -11,18 +11,14 @@ impl InstructionGenerator {
     ) {
         let pos = function_name.location();
 
-        if is_built_in_function(function_name.as_ref().bare_name()) {
-            self.generate_built_in_function_call_instructions(function_name, args);
-        } else {
-            let pos = function_name.location();
-            let bare_name: &CaseInsensitiveString = function_name.bare_name();
-            let function_parameters = self.function_context.get(bare_name).unwrap().clone();
-            self.generate_push_named_args_instructions(function_parameters, args, pos);
-            self.push(Instruction::PushStack, pos);
-            let idx = self.instructions.len();
-            self.push(Instruction::PushRet(idx + 2), pos);
-            self.jump_to_function(bare_name, pos);
-        }
+        let bare_name: &CaseInsensitiveString = function_name.bare_name();
+        let function_parameters = self.function_context.get(bare_name).unwrap().clone();
+        self.generate_push_named_args_instructions(function_parameters, args, pos);
+        self.push(Instruction::PushStack, pos);
+        let idx = self.instructions.len();
+        self.push(Instruction::PushRet(idx + 2), pos);
+        self.jump_to_function(bare_name, pos);
+
         self.push(Instruction::PopStack, pos);
         self.push(Instruction::CopyResultToA, pos);
     }

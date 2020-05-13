@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::QualifiedName;
+use crate::linter::{BuiltInFunction, BuiltInSub, QualifiedName};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
@@ -33,8 +33,8 @@ pub enum Instruction {
     UnresolvedJump(CaseInsensitiveString),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
     CopyVarToA(QualifiedName),
-    BuiltInSub(CaseInsensitiveString),
-    BuiltInFunction(QualifiedName),
+    BuiltInSub(BuiltInSub),
+    BuiltInFunction(BuiltInFunction),
     Halt,
 
     PushRegisters,

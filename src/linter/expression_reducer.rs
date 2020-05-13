@@ -77,6 +77,12 @@ pub trait ExpressionReducer {
             Statement::SubCall(b, e) => self
                 .visit_sub_call(b, e)
                 .map(|(reduced_name, reduced_expr)| Statement::SubCall(reduced_name, reduced_expr)),
+            Statement::BuiltInSubCall(b, e) => {
+                self.visit_built_in_sub_call(b, e)
+                    .map(|(reduced_name, reduced_expr)| {
+                        Statement::BuiltInSubCall(reduced_name, reduced_expr)
+                    })
+            }
             Statement::IfBlock(i) => self.visit_if_block(i).map(|x| Statement::IfBlock(x)),
             Statement::SelectCase(s) => self.visit_select_case(s).map(|x| Statement::SelectCase(x)),
             Statement::ForLoop(f) => self.visit_for_loop(f).map(|x| Statement::ForLoop(x)),
@@ -95,11 +101,15 @@ pub trait ExpressionReducer {
         name: CaseInsensitiveString,
         args: Vec<ExpressionNode>,
     ) -> Result<(CaseInsensitiveString, Vec<ExpressionNode>), Error> {
-        let r_args: Vec<ExpressionNode> = args
-            .into_iter()
-            .map(|e| self.visit_expression_node(e))
-            .collect::<Result<Vec<ExpressionNode>, Error>>()?;
-        Ok((name, r_args))
+        Ok((name, self.visit_expression_nodes(args)?))
+    }
+
+    fn visit_built_in_sub_call(
+        &self,
+        name: BuiltInSub,
+        args: Vec<ExpressionNode>,
+    ) -> Result<(BuiltInSub, Vec<ExpressionNode>), Error> {
+        Ok((name, self.visit_expression_nodes(args)?))
     }
 
     fn visit_assignment(
@@ -210,5 +220,14 @@ pub trait ExpressionReducer {
 
     fn visit_expression(&self, expression: Expression) -> Result<Expression, Error> {
         Ok(expression)
+    }
+
+    fn visit_expression_nodes(
+        &self,
+        args: Vec<ExpressionNode>,
+    ) -> Result<Vec<ExpressionNode>, Error> {
+        args.into_iter()
+            .map(|a| self.visit_expression_node(a))
+            .collect::<Result<Vec<ExpressionNode>, Error>>()
     }
 }

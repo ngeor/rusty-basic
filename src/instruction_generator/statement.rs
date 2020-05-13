@@ -17,6 +17,9 @@ impl InstructionGenerator {
             }
             Statement::Const(n, e) => self.generate_const_instructions(n, e),
             Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at(pos), args),
+            Statement::BuiltInSubCall(n, args) => {
+                self.generate_built_in_sub_call_instructions(n, args, pos)
+            }
             Statement::IfBlock(i) => self.generate_if_block_instructions(i, pos),
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),
             Statement::ForLoop(f) => self.generate_for_loop_instructions(f, pos),

@@ -2,61 +2,19 @@ use super::error::*;
 use super::post_conversion_linter::PostConversionLinter;
 use super::types::*;
 use crate::common::*;
-use crate::parser::{HasQualifier, NameTrait, QualifiedName, TypeQualifier};
-use std::convert::TryFrom;
+use crate::parser::TypeQualifier;
 
 pub struct BuiltInFunctionLinter;
-
-enum BuiltInFunction {
-    /// ENVIRON$
-    Environ,
-}
-
-impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
-    fn from(s: &CaseInsensitiveString) -> Option<BuiltInFunction> {
-        if s == "ENVIRON" {
-            Some(BuiltInFunction::Environ)
-        } else {
-            None
-        }
-    }
-}
-
-impl TryFrom<&QualifiedName> for Option<BuiltInFunction> {
-    type Error = Error;
-    fn try_from(q: &QualifiedName) -> Result<Option<BuiltInFunction>, Self::Error> {
-        let opt_built_in: Option<BuiltInFunction> = q.bare_name().into();
-        match opt_built_in {
-            Some(b) => match b {
-                BuiltInFunction::Environ => {
-                    if q.qualifier() == TypeQualifier::DollarString {
-                        Ok(Some(b))
-                    } else {
-                        err_no_pos(LinterError::TypeMismatch)
-                    }
-                }
-            },
-            None => Ok(None),
-        }
-    }
-}
-
-pub fn is_built_in_function(function_name: &CaseInsensitiveString) -> bool {
-    let opt_built_in: Option<BuiltInFunction> = function_name.into();
-    opt_built_in.is_some()
-}
 
 impl BuiltInFunctionLinter {
     fn visit_function(
         &self,
-        name: &QualifiedName,
+        name: &BuiltInFunction,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), Error> {
-        match Option::<BuiltInFunction>::try_from(name)? {
-            Some(b) => match b {
-                BuiltInFunction::Environ => self.visit_environ(args),
-            },
-            None => Ok(()),
+        match name {
+            BuiltInFunction::Environ => self.visit_environ(args),
+            BuiltInFunction::Len => self.visit_len(args),
         }
     }
 
@@ -72,6 +30,25 @@ impl BuiltInFunctionLinter {
             }
         }
     }
+
+    fn visit_len(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+        if args.len() != 1 {
+            err_no_pos(LinterError::ArgumentCountMismatch)
+        } else {
+            let arg: &Expression = args[0].as_ref();
+            match arg {
+                Expression::Variable(_) => Ok(()),
+                _ => {
+                    let q = arg.try_qualifier()?;
+                    if q != TypeQualifier::DollarString {
+                        err_l(LinterError::VariableRequired, &args[0])
+                    } else {
+                        Ok(())
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl PostConversionLinter for BuiltInFunctionLinter {
@@ -79,7 +56,7 @@ impl PostConversionLinter for BuiltInFunctionLinter {
         let pos = expr_node.location();
         let e = expr_node.as_ref();
         match e {
-            Expression::FunctionCall(n, args) => {
+            Expression::BuiltInFunctionCall(n, args) => {
                 for x in args {
                     self.visit_expression(x)?;
                 }

@@ -35,14 +35,14 @@ impl PostConversionLinter for LabelLinter {
         if self.collecting || self.labels.borrow().contains(label) {
             Ok(())
         } else {
-            err_no_pos(LinterError::LabelNotFound)
+            err_no_pos(LinterError::LabelNotDefined)
         }
     }
 
     fn visit_label(&self, label: &CaseInsensitiveString) -> Result<(), Error> {
         if self.collecting {
             if self.labels.borrow().contains(label) {
-                err_no_pos(LinterError::DuplicateDefinition)
+                err_no_pos(LinterError::DuplicateLabel)
             } else {
                 self.labels.borrow_mut().insert(label.clone());
                 Ok(())
@@ -56,7 +56,7 @@ impl PostConversionLinter for LabelLinter {
         if self.collecting || self.labels.borrow().contains(label) {
             Ok(())
         } else {
-            err_no_pos(LinterError::LabelNotFound)
+            err_no_pos(LinterError::LabelNotDefined)
         }
     }
 }

@@ -2,29 +2,28 @@ use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{err, Interpreter, InterpreterError, Result, Stdlib};
-use crate::linter::{HasQualifier, QualifiedName, TypeQualifier};
+use crate::linter::{BuiltInSub, HasQualifier, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
 impl<S: Stdlib> Interpreter<S> {
-    pub fn run_built_in_sub(&mut self, name: &CaseInsensitiveString, pos: Location) -> Result<()> {
-        if name == "PRINT" {
-            let mut print_args: Vec<String> = vec![];
-            loop {
-                match self.context_mut().demand_sub().try_pop_front_unnamed() {
-                    Some(v) => print_args.push(v.to_string()),
-                    None => {
-                        break;
+    pub fn run_built_in_sub(&mut self, name: &BuiltInSub, pos: Location) -> Result<()> {
+        match name {
+            BuiltInSub::Print => {
+                let mut print_args: Vec<String> = vec![];
+                loop {
+                    match self.context_mut().demand_sub().try_pop_front_unnamed() {
+                        Some(v) => print_args.push(v.to_string()),
+                        None => {
+                            break;
+                        }
                     }
                 }
+                self.stdlib.print(print_args);
+                Ok(())
             }
-            self.stdlib.print(print_args);
-            Ok(())
-        } else if name == "ENVIRON" {
-            self.do_environ_sub(pos)
-        } else if name == "INPUT" {
-            self.do_input(pos)
-        } else {
-            panic!("Unknown sub {}", name)
+            BuiltInSub::Environ => self.do_environ_sub(pos),
+            BuiltInSub::Input => self.do_input(pos),
+            BuiltInSub::System => panic!("Should have been handled at the IG level"),
         }
     }
 

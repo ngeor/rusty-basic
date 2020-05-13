@@ -1,8 +1,94 @@
 use super::error::*;
 use crate::common::*;
 use crate::parser::*;
+use std::convert::TryFrom;
 
 pub type QNameNode = Locatable<QualifiedName>;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BuiltInFunction {
+    /// ENVIRON$
+    Environ,
+    /// LEN
+    Len,
+}
+
+impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
+    fn from(s: &CaseInsensitiveString) -> Option<BuiltInFunction> {
+        if s == "ENVIRON" {
+            Some(BuiltInFunction::Environ)
+        } else if s == "LEN" {
+            Some(BuiltInFunction::Len)
+        } else {
+            None
+        }
+    }
+}
+
+impl TryFrom<&Name> for Option<BuiltInFunction> {
+    type Error = Error;
+    fn try_from(name: &Name) -> Result<Option<BuiltInFunction>, Self::Error> {
+        let opt_built_in: Option<BuiltInFunction> = name.bare_name().into();
+        match opt_built_in {
+            Some(b) => match b {
+                BuiltInFunction::Environ => {
+                    // ENVIRON$ must be qualified
+                    match name {
+                        Name::Bare(_) => err_no_pos(LinterError::SyntaxError),
+                        Name::Qualified(q) => {
+                            if q.qualifier() == TypeQualifier::DollarString {
+                                Ok(Some(b))
+                            } else {
+                                err_no_pos(LinterError::TypeMismatch)
+                            }
+                        }
+                    }
+                }
+                BuiltInFunction::Len => {
+                    // LEN must be unqualified
+                    match name {
+                        Name::Bare(_) => Ok(Some(b)),
+                        Name::Qualified(_) => err_no_pos(LinterError::SyntaxError),
+                    }
+                }
+            },
+            None => Ok(None),
+        }
+    }
+}
+
+impl HasQualifier for BuiltInFunction {
+    fn qualifier(&self) -> TypeQualifier {
+        match self {
+            Self::Environ => TypeQualifier::DollarString,
+            Self::Len => TypeQualifier::PercentInteger,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BuiltInSub {
+    Environ,
+    Input,
+    Print,
+    System,
+}
+
+impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
+    fn from(s: &CaseInsensitiveString) -> Option<BuiltInSub> {
+        if s == "ENVIRON" {
+            Some(BuiltInSub::Environ)
+        } else if s == "INPUT" {
+            Some(BuiltInSub::Input)
+        } else if s == "PRINT" {
+            Some(BuiltInSub::Print)
+        } else if s == "SYSTEM" {
+            Some(BuiltInSub::System)
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -15,6 +101,7 @@ pub enum Expression {
     Constant(QualifiedName),
     Variable(QualifiedName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
+    BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperand, Box<ExpressionNode>),
 }
@@ -30,6 +117,7 @@ impl Expression {
             Self::Variable(name) | Self::Constant(name) | Self::FunctionCall(name, _) => {
                 Ok(name.qualifier())
             }
+            Self::BuiltInFunctionCall(f, _) => Ok(f.qualifier()),
             Self::BinaryExpression(op, l, r) => {
                 let q_left = l.as_ref().as_ref().try_qualifier()?;
                 let q_right = r.as_ref().as_ref().try_qualifier()?;
@@ -112,6 +200,7 @@ pub enum Statement {
     Assignment(QualifiedName, ExpressionNode),
     Const(QNameNode, ExpressionNode),
     SubCall(BareName, Vec<ExpressionNode>),
+    BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),
 
     IfBlock(IfBlockNode),
     SelectCase(SelectCaseNode),

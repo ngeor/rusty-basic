@@ -1,4 +1,3 @@
-use super::built_in_sub_linter::is_built_in_sub;
 use super::error::*;
 use super::post_conversion_linter::PostConversionLinter;
 use super::subprogram_context::SubMap;
@@ -16,13 +15,9 @@ impl<'a> PostConversionLinter for UserDefinedSubLinter<'a> {
         name: &CaseInsensitiveString,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), Error> {
-        if is_built_in_sub(name) {
-            Ok(())
-        } else {
-            match self.subs.get(name) {
-                Some((param_types, _)) => lint_call_args(args, param_types),
-                None => err_no_pos(LinterError::SubprogramNotDefined),
-            }
+        match self.subs.get(name) {
+            Some((param_types, _)) => lint_call_args(args, param_types),
+            None => err_no_pos(LinterError::SubprogramNotDefined),
         }
     }
 }

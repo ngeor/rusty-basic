@@ -1,4 +1,3 @@
-use super::built_in_function_linter::is_built_in_function;
 use super::error::*;
 use super::post_conversion_linter::PostConversionLinter;
 use super::subprogram_context::FunctionMap;
@@ -42,20 +41,16 @@ pub fn lint_call_args(args: &ExpressionNodes, param_types: &TypeQualifiers) -> R
 
 impl<'a> UserDefinedFunctionLinter<'a> {
     fn visit_function(&self, name: &QualifiedName, args: &Vec<ExpressionNode>) -> Result {
-        if is_built_in_function(name.bare_name()) {
-            Ok(())
-        } else {
-            let bare_name = name.bare_name();
-            match self.functions.get(bare_name) {
-                Some((return_type, param_types, _)) => {
-                    if *return_type != name.qualifier() {
-                        err_no_pos(LinterError::TypeMismatch)
-                    } else {
-                        lint_call_args(args, param_types)
-                    }
+        let bare_name = name.bare_name();
+        match self.functions.get(bare_name) {
+            Some((return_type, param_types, _)) => {
+                if *return_type != name.qualifier() {
+                    err_no_pos(LinterError::TypeMismatch)
+                } else {
+                    lint_call_args(args, param_types)
                 }
-                None => self.handle_undefined_function(args),
             }
+            None => self.handle_undefined_function(args),
         }
     }
 

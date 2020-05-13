@@ -20,6 +20,7 @@ use crate::parser::{
     HasQualifier, Name, NameTrait, Operand, QualifiedName, TypeQualifier, TypeResolver,
 };
 use std::collections::{HashMap, HashSet};
+use std::convert::TryInto;
 
 //
 // Converter trait
@@ -379,7 +380,14 @@ impl Converter<parser::Statement, Statement> for Linter {
                     }
                 }
             }
-            parser::Statement::SubCall(n, args) => Ok(Statement::SubCall(n, self.convert(args)?)),
+            parser::Statement::SubCall(n, args) => {
+                let converted_args = self.convert(args)?;
+                let opt_built_in: Option<BuiltInSub> = (&n).into();
+                match opt_built_in {
+                    Some(b) => Ok(Statement::BuiltInSubCall(b, converted_args)),
+                    None => Ok(Statement::SubCall(n, converted_args)),
+                }
+            }
             parser::Statement::IfBlock(i) => Ok(Statement::IfBlock(self.convert(i)?)),
             parser::Statement::SelectCase(s) => Ok(Statement::SelectCase(self.convert(s)?)),
             parser::Statement::ForLoop(f) => Ok(Statement::ForLoop(self.convert(f)?)),
@@ -429,13 +437,12 @@ impl Converter<parser::Expression, Expression> for Linter {
                 }
             }
             parser::Expression::FunctionCall(n, args) => {
-                // validate arg count, arg types, name type
-                // for built-in and for user-defined
-                // for undefined, resolve to literal 0, as long as the arguments do not contain a string
-                Ok(Expression::FunctionCall(
-                    self.convert(n)?,
-                    self.convert(args)?,
-                ))
+                let converted_args = self.convert(args)?;
+                let opt_built_in: Option<BuiltInFunction> = (&n).try_into()?;
+                match opt_built_in {
+                    Some(b) => Ok(Expression::BuiltInFunctionCall(b, converted_args)),
+                    None => Ok(Expression::FunctionCall(self.convert(n)?, converted_args)),
+                }
             }
             parser::Expression::BinaryExpression(op, l, r) => {
                 // unbox them

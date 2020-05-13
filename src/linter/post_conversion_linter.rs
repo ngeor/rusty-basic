@@ -44,6 +44,7 @@ pub trait PostConversionLinter {
             Statement::Assignment(left, right) => self.visit_assignment(left, right),
             Statement::Const(left, right) => self.visit_const(left, right),
             Statement::SubCall(b, e) => self.visit_sub_call(b, e),
+            Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, e),
             Statement::IfBlock(i) => self.visit_if_block(i),
             Statement::SelectCase(s) => self.visit_select_case(s),
             Statement::ForLoop(f) => self.visit_for_loop(f),
@@ -70,6 +71,14 @@ pub trait PostConversionLinter {
     fn visit_sub_call(
         &self,
         _name: &CaseInsensitiveString,
+        args: &Vec<ExpressionNode>,
+    ) -> Result<(), Error> {
+        args.iter().map(|e| self.visit_expression(e)).collect()
+    }
+
+    fn visit_built_in_sub_call(
+        &self,
+        _name: &BuiltInSub,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), Error> {
         args.iter().map(|e| self.visit_expression(e)).collect()

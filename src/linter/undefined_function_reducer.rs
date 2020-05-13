@@ -1,4 +1,3 @@
-use super::built_in_function_linter::is_built_in_function;
 use super::error::*;
 use super::expression_reducer::*;
 use super::subprogram_context::FunctionMap;
@@ -26,19 +25,20 @@ impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
                 Ok(Expression::UnaryExpression(op, Box::new(mapped_child)))
             }
             Expression::FunctionCall(name, args) => {
-                if is_built_in_function(name.bare_name())
-                    || self.functions.contains_key(name.bare_name())
-                {
-                    let r_args: Vec<ExpressionNode> = args
-                        .into_iter()
-                        .map(|a| self.visit_expression_node(a))
-                        .collect::<Result<Vec<ExpressionNode>, Error>>()?;
-                    Ok(Expression::FunctionCall(name, r_args))
+                if self.functions.contains_key(name.bare_name()) {
+                    Ok(Expression::FunctionCall(
+                        name,
+                        self.visit_expression_nodes(args)?,
+                    ))
                 } else {
                     // the user_defined_function_linter already ensures that the args are valid
                     Ok(Expression::IntegerLiteral(0))
                 }
             }
+            Expression::BuiltInFunctionCall(name, args) => Ok(Expression::BuiltInFunctionCall(
+                name,
+                self.visit_expression_nodes(args)?,
+            )),
             _ => Ok(expression),
         }
     }

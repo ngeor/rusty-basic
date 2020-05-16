@@ -11,6 +11,10 @@ pub enum BuiltInFunction {
     Environ,
     /// LEN
     Len,
+    /// STR$
+    Str,
+    /// VAL
+    Val,
 }
 
 impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
@@ -19,6 +23,10 @@ impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
             Some(BuiltInFunction::Environ)
         } else if s == "LEN" {
             Some(BuiltInFunction::Len)
+        } else if s == "STR" {
+            Some(BuiltInFunction::Str)
+        } else if s == "VAL" {
+            Some(BuiltInFunction::Val)
         } else {
             None
         }
@@ -51,6 +59,27 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                         Name::Qualified(_) => err_no_pos(LinterError::SyntaxError),
                     }
                 }
+                BuiltInFunction::Str => {
+                    // STR$ or otherwise it's undefined
+                    match name {
+                        // confirmed that even with DEFSTR A-Z it won't work as unqualified
+                        Name::Bare(_) => Ok(None),
+                        Name::Qualified(q) => {
+                            if q.qualifier() == TypeQualifier::DollarString {
+                                Ok(Some(b))
+                            } else {
+                                Ok(None)
+                            }
+                        }
+                    }
+                }
+                BuiltInFunction::Val => {
+                    // VAL must be unqualified
+                    match name {
+                        Name::Bare(_) => Ok(Some(b)),
+                        Name::Qualified(_) => err_no_pos(LinterError::SyntaxError),
+                    }
+                }
             },
             None => Ok(None),
         }
@@ -62,6 +91,8 @@ impl HasQualifier for BuiltInFunction {
         match self {
             Self::Environ => TypeQualifier::DollarString,
             Self::Len => TypeQualifier::PercentInteger,
+            Self::Str => TypeQualifier::DollarString,
+            Self::Val => TypeQualifier::BangSingle,
         }
     }
 }

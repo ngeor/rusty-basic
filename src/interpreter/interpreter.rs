@@ -139,11 +139,15 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
             Instruction::Store(n) => {
                 let v = self.get_a();
-                self.context_mut().set_variable(n.clone(), v);
+                self.context_mut()
+                    .set_variable(n.clone(), v)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
-                self.context_mut().set_constant(n.clone(), v);
+                self.context_mut()
+                    .set_constant(n.clone(), v)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
             }
             Instruction::CopyAToB => {
                 self.registers_mut().copy_a_to_b();
@@ -273,32 +277,36 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::PushUnnamedRefParam(name) => {
                 self.context_mut()
                     .demand_args()
-                    .push_back_unnamed_ref_parameter(name.clone());
+                    .push_back_unnamed_ref_parameter(name.clone())
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
             }
             Instruction::PushUnnamedValParam => {
                 let v = self.get_a();
 
                 self.context_mut()
                     .demand_args()
-                    .push_back_unnamed_val_parameter(v);
+                    .push_back_unnamed_val_parameter(v)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
             }
             Instruction::SetNamedRefParam(named_ref_param) => {
                 self.context_mut()
                     .demand_args()
-                    .set_named_ref_parameter(named_ref_param);
+                    .set_named_ref_parameter(named_ref_param)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
             }
             Instruction::SetNamedValParam(param_q_name) => {
                 let v = self.get_a();
 
                 self.context_mut()
                     .demand_args()
-                    .set_named_val_parameter(param_q_name, v);
+                    .set_named_val_parameter(param_q_name, v)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
             }
             Instruction::BuiltInSub(n) => {
                 self.run_built_in_sub(n, pos)?;
             }
             Instruction::BuiltInFunction(n) => {
-                self.run_built_in_function(n, pos);
+                self.run_built_in_function(n, pos)?;
             }
             Instruction::UnresolvedJump(_)
             | Instruction::UnresolvedJumpIfFalse(_)

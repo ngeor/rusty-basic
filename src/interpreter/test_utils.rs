@@ -169,9 +169,9 @@ macro_rules! assert_err {
     ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             interpret_err($program),
-            InterpreterError::new_with_pos(
+            crate::interpreter::InterpreterError::new_with_pos(
                 $expected_msg,
-                Location::new($expected_row, $expected_col)
+                crate::common::Location::new($expected_row, $expected_col)
             )
         );
     };

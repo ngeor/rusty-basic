@@ -1,4 +1,5 @@
 use crate::parser::TypeQualifier;
+use crate::variant;
 use crate::variant::Variant;
 
 // https://doc.rust-lang.org/nomicon/casts.html
@@ -22,10 +23,10 @@ impl QBNumberCast<i32> for f32 {
     fn try_cast(&self) -> Result<i32, String> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (std::i32::MIN as f32) && r <= (std::i32::MAX as f32) {
+            if r >= (variant::MIN_INTEGER as f32) && r <= (variant::MAX_INTEGER as f32) {
                 Ok(r as i32)
             } else {
-                Err(format!("Overflow {}", self))
+                Err("Overflow".to_string())
             }
         } else {
             Err(format!("Cannot cast {} to i32", self))
@@ -37,10 +38,10 @@ impl QBNumberCast<i64> for f32 {
     fn try_cast(&self) -> Result<i64, String> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (std::i64::MIN as f32) && r <= (std::i64::MAX as f32) {
+            if r >= (variant::MIN_LONG as f32) && r <= (variant::MAX_LONG as f32) {
                 Ok(r as i64)
             } else {
-                Err(format!("Overflow {}", self))
+                Err("Overflow".to_string())
             }
         } else {
             Err(format!("Cannot cast {} to i64", self))
@@ -58,10 +59,10 @@ impl QBNumberCast<i32> for f64 {
     fn try_cast(&self) -> Result<i32, String> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (std::i32::MIN as f64) && r <= (std::i32::MAX as f64) {
+            if r >= (variant::MIN_INTEGER as f64) && r <= (variant::MAX_INTEGER as f64) {
                 Ok(r as i32)
             } else {
-                Err(format!("Overflow {}", self))
+                Err("Overflow".to_string())
             }
         } else {
             Err(format!("Cannot cast {} to i32", self))
@@ -73,10 +74,10 @@ impl QBNumberCast<i64> for f64 {
     fn try_cast(&self) -> Result<i64, String> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (std::i64::MIN as f64) && r <= (std::i64::MAX as f64) {
+            if r >= (variant::MIN_LONG as f64) && r <= (variant::MAX_LONG as f64) {
                 Ok(r as i64)
             } else {
-                Err(format!("Overflow {}", self))
+                Err("Overflow".to_string())
             }
         } else {
             Err(format!("Cannot cast {} to i64", self))
@@ -116,10 +117,10 @@ impl QBNumberCast<f64> for i64 {
 
 impl QBNumberCast<i32> for i64 {
     fn try_cast(&self) -> Result<i32, String> {
-        if *self >= (std::i32::MIN as i64) && *self <= (std::i32::MAX as i64) {
+        if *self >= (variant::MIN_INTEGER as i64) && *self <= (variant::MAX_INTEGER as i64) {
             Ok(*self as i32)
         } else {
-            Err(format!("Overflow {}", self))
+            Err("Overflow".to_string())
         }
     }
 }

@@ -1,5 +1,6 @@
 use super::Name;
 use crate::common::Locatable;
+use crate::variant;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Operand {
@@ -82,8 +83,20 @@ impl Expression {
         match child.as_ref() {
             Self::SingleLiteral(n) => Self::SingleLiteral(-n),
             Self::DoubleLiteral(n) => Self::DoubleLiteral(-n),
-            Self::IntegerLiteral(n) => Self::IntegerLiteral(-n),
-            Self::LongLiteral(n) => Self::LongLiteral(-n),
+            Self::IntegerLiteral(n) => {
+                if *n <= variant::MIN_INTEGER {
+                    Self::LongLiteral(-n as i64)
+                } else {
+                    Self::IntegerLiteral(-n)
+                }
+            }
+            Self::LongLiteral(n) => {
+                if *n <= variant::MIN_LONG {
+                    Self::DoubleLiteral(-n as f64)
+                } else {
+                    Self::LongLiteral(-n)
+                }
+            }
             _ => Self::unary(UnaryOperand::Minus, child),
         }
     }

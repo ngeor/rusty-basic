@@ -3,7 +3,7 @@ use crate::lexer::{Keyword, LexemeNode};
 use crate::parser::{
     unexpected, Expression, ExpressionNode, Name, Operand, Parser, ParserError, UnaryOperand,
 };
-use std::convert::TryFrom;
+use crate::variant;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
@@ -32,7 +32,7 @@ impl<T: BufRead> Parser<T> {
             LexemeNode::Symbol('"', pos) => self.parse_string_literal(pos),
             LexemeNode::Word(word, pos) => self.parse_word(word, pos),
             LexemeNode::Digits(digits, pos) => self.parse_number_literal(digits, pos),
-            LexemeNode::Symbol('.', pos) => self.parse_floating_point_literal(0, pos),
+            LexemeNode::Symbol('.', pos) => self.parse_floating_point_literal("0".to_string(), pos),
             LexemeNode::Symbol('-', minus_pos) => {
                 let child = self.read_demand_expression()?;
                 Ok(Expression::unary_minus(child).at(minus_pos))
@@ -135,7 +135,7 @@ impl<T: BufRead> Parser<T> {
 
     fn parse_number_literal(
         &mut self,
-        digits: u32,
+        digits: String,
         pos: Location,
     ) -> Result<ExpressionNode, ParserError> {
         // consume digits
@@ -144,14 +144,11 @@ impl<T: BufRead> Parser<T> {
             self.parse_floating_point_literal(digits, pos)
         } else {
             // no decimal point, just integer
-            match i32::try_from(digits) {
-                Ok(i) => Ok(Expression::IntegerLiteral(i).at(pos)),
-                Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
-            }
+            integer_literal_to_expression_node(digits, pos)
         }
     }
 
-    fn demand_digits(&mut self) -> Result<u32, ParserError> {
+    fn demand_digits(&mut self) -> Result<String, ParserError> {
         let next = self.buf_lexer.read()?;
         match next {
             LexemeNode::Digits(digits, _) => Ok(digits),
@@ -161,7 +158,7 @@ impl<T: BufRead> Parser<T> {
 
     fn parse_floating_point_literal(
         &mut self,
-        integer_digits: u32,
+        integer_digits: String,
         pos: Location,
     ) -> Result<ExpressionNode, ParserError> {
         let fraction_digits = self.demand_digits()?;
@@ -221,6 +218,24 @@ impl<T: BufRead> Parser<T> {
                     Operand::Less
                 }
             })
+    }
+}
+
+fn integer_literal_to_expression_node(
+    s: String,
+    pos: Location,
+) -> Result<ExpressionNode, ParserError> {
+    match s.parse::<u32>() {
+        Ok(u) => {
+            if u <= variant::MAX_INTEGER as u32 {
+                Ok(Expression::IntegerLiteral(u as i32).at(pos))
+            } else if u <= variant::MAX_LONG as u32 {
+                Ok(Expression::LongLiteral(u as i64).at(pos))
+            } else {
+                Ok(Expression::DoubleLiteral(u as f64).at(pos))
+            }
+        }
+        Err(e) => Err(ParserError::Internal(e.to_string(), pos)),
     }
 }
 

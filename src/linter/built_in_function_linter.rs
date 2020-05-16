@@ -15,20 +15,13 @@ impl BuiltInFunctionLinter {
         match name {
             BuiltInFunction::Environ => self.visit_environ(args),
             BuiltInFunction::Len => self.visit_len(args),
+            BuiltInFunction::Str => self.visit_str(args),
+            BuiltInFunction::Val => self.visit_val(args),
         }
     }
 
     fn visit_environ(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
-        if args.len() != 1 {
-            err_no_pos(LinterError::ArgumentCountMismatch)
-        } else {
-            let q = args[0].as_ref().try_qualifier()?;
-            if q != TypeQualifier::DollarString {
-                err_l(LinterError::ArgumentTypeMismatch, &args[0])
-            } else {
-                Ok(())
-            }
-        }
+        self.require_single_string_argument(args)
     }
 
     fn visit_len(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
@@ -46,6 +39,36 @@ impl BuiltInFunctionLinter {
                         Ok(())
                     }
                 }
+            }
+        }
+    }
+
+    fn visit_str(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+        if args.len() != 1 {
+            err_no_pos(LinterError::ArgumentCountMismatch)
+        } else {
+            let q = args[0].as_ref().try_qualifier()?;
+            if q == TypeQualifier::DollarString {
+                err_l(LinterError::ArgumentTypeMismatch, &args[0])
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    fn visit_val(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+        self.require_single_string_argument(args)
+    }
+
+    fn require_single_string_argument(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+        if args.len() != 1 {
+            err_no_pos(LinterError::ArgumentCountMismatch)
+        } else {
+            let q = args[0].as_ref().try_qualifier()?;
+            if q != TypeQualifier::DollarString {
+                err_l(LinterError::ArgumentTypeMismatch, &args[0])
+            } else {
+                Ok(())
             }
         }
     }

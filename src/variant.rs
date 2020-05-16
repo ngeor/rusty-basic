@@ -15,6 +15,11 @@ pub enum Variant {
 pub const V_TRUE: Variant = Variant::VInteger(-1);
 pub const V_FALSE: Variant = Variant::VInteger(0);
 
+pub const MIN_INTEGER: i32 = -32768;
+pub const MAX_INTEGER: i32 = 32767;
+pub const MIN_LONG: i64 = -2147483648;
+pub const MAX_LONG: i64 = 2147483647;
+
 trait ApproximateCmp {
     fn cmp(left: &Self, right: &Self) -> Ordering;
 }
@@ -107,8 +112,21 @@ impl Variant {
             Variant::VSingle(n) => Ok(Variant::VSingle(-n)),
             Variant::VDouble(n) => Ok(Variant::VDouble(-n)),
             Variant::VString(_) => Err("Type mismatch".to_string()),
-            Variant::VInteger(n) => Ok(Variant::VInteger(-n)),
-            Variant::VLong(n) => Ok(Variant::VLong(-n)),
+            Variant::VInteger(n) => {
+                if *n <= MIN_INTEGER {
+                    // prevent converting -32768 to 32768
+                    Err("Overflow".to_string())
+                } else {
+                    Ok(Variant::VInteger(-n))
+                }
+            }
+            Variant::VLong(n) => {
+                if *n <= MIN_LONG {
+                    Err("Overflow".to_string())
+                } else {
+                    Ok(Variant::VLong(-n))
+                }
+            }
         }
     }
 

@@ -10,6 +10,8 @@ pub struct InterpreterError {
     stacktrace: Stacktrace,
 }
 
+// TODO add runtime errors like Overflow with the correct error code
+
 pub type Result<T> = std::result::Result<T, InterpreterError>;
 
 impl InterpreterError {

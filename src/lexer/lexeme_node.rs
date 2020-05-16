@@ -23,7 +23,7 @@ pub enum LexemeNode {
     Symbol(char, Location),
 
     /// An integer number
-    Digits(u32, Location),
+    Digits(String, Location),
 }
 
 impl LexemeNode {

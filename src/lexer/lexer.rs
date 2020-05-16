@@ -85,8 +85,7 @@ impl<T: BufRead> Lexer<T> {
             Ok(LexemeNode::Whitespace(buf, pos))
         } else if _is_digit(ch) {
             let buf = self._read_while(_is_digit)?;
-            let num: u32 = self._parse_digits(buf)?;
-            Ok(LexemeNode::Digits(num, pos))
+            Ok(LexemeNode::Digits(buf, pos))
         } else if _is_eol(ch) {
             let buf = self._read_while_eol()?;
             Ok(LexemeNode::EOL(buf, pos))
@@ -97,11 +96,6 @@ impl<T: BufRead> Lexer<T> {
         } else {
             Err(LexerError::UnsupportedCharacter(ch, pos))
         }
-    }
-
-    fn _parse_digits(&self, buf: String) -> Result<u32, LexerError> {
-        buf.parse::<u32>()
-            .map_err(|e| LexerError::Internal(e.to_string(), self.pos))
     }
 
     fn _read_one(&mut self) -> Result<Option<char>, LexerError> {
@@ -253,7 +247,7 @@ mod tests {
         );
         assert_eq!(
             lexer.read().unwrap(),
-            LexemeNode::Digits(123, Location::new(2, 1))
+            LexemeNode::Digits("123".to_string(), Location::new(2, 1))
         );
         assert_eq!(lexer.read().unwrap(), LexemeNode::EOF(Location::new(2, 4)));
     }

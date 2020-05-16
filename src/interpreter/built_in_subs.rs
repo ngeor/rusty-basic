@@ -81,8 +81,8 @@ impl<S: Stdlib> Interpreter<S> {
         };
         self.context_mut()
             .demand_sub()
-            .set_value_to_popped_arg(a, variable_value);
-        Ok(())
+            .set_value_to_popped_arg(a, variable_value)
+            .map_err(|e| InterpreterError::new_with_pos(e, pos))
     }
 }
 

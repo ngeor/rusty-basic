@@ -34,26 +34,7 @@ fn _is_eol(ch: char) -> bool {
 }
 
 fn _is_symbol(ch: char) -> bool {
-    ch == '"'
-        || ch == '\''
-        || ch == '!'
-        || ch == ','
-        || ch == '$'
-        || ch == '%'
-        || ch == '+'
-        || ch == '-'
-        || ch == '*'
-        || ch == '/'
-        || ch == '('
-        || ch == ')'
-        || ch == '='
-        || ch == '<'
-        || ch == '>'
-        || ch == '.'
-        || ch == '#'
-        || ch == '&'
-        || ch == '\''
-        || ch == ':'
+    (ch > ' ' && ch < '0') || (ch > '9' && ch < 'A') || (ch > 'Z' && ch < 'a') || (ch > 'z' && ch <= '~')
 }
 
 impl<T: BufRead> Lexer<T> {

@@ -30,7 +30,7 @@ impl<T: BufRead> Parser<T> {
     ) -> Result<StatementNode, ParserError> {
         // read bare name
         match next {
-            LexemeNode::Word(w, p) => self._demand_assignment_or_sub_call_with_bare_name(
+            LexemeNode::Word(w, p) => self.demand_assignment_or_sub_call_with_bare_name(
                 CaseInsensitiveString::new(w),
                 p,
                 false,
@@ -48,7 +48,7 @@ impl<T: BufRead> Parser<T> {
     ) -> Result<StatementNode, ParserError> {
         // read bare name
         match next {
-            LexemeNode::Word(w, p) => self._demand_assignment_or_sub_call_with_bare_name(
+            LexemeNode::Word(w, p) => self.demand_assignment_or_sub_call_with_bare_name(
                 CaseInsensitiveString::new(w),
                 p,
                 labels_allowed,
@@ -57,7 +57,7 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _demand_assignment_or_sub_call_with_bare_name(
+    fn demand_assignment_or_sub_call_with_bare_name(
         &mut self,
         bare_name: CaseInsensitiveString,
         bare_name_pos: Location,
@@ -90,6 +90,10 @@ impl<T: BufRead> Parser<T> {
                 } else {
                     unexpected("Expected type qualifier", next)
                 }
+            }
+            LexemeNode::Symbol('(', _) => {
+                // parenthesis e.g. Log("message")
+                self.demand_sub_call(BareNameNode::new(bare_name, bare_name_pos), next)
             }
             LexemeNode::Symbol(ch, _) => match TypeQualifier::try_from(ch) {
                 Ok(q) => self._demand_assignment_or_sub_call_with_qualified_name(

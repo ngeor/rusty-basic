@@ -62,6 +62,9 @@ impl InstructionGenerator {
                     self.push(Instruction::NegateA, pos);
                 }
             },
+            Expression::Parenthesis(child) => {
+                self.generate_expression_instructions(*child);
+            }
         }
     }
 }

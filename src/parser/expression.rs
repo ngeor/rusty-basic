@@ -42,6 +42,16 @@ impl<T: BufRead> Parser<T> {
                 let child = self.read_demand_expression()?;
                 Ok(Expression::UnaryExpression(UnaryOperand::Not, Box::new(child)).at(not_pos))
             }
+            LexemeNode::Symbol('(', pos) => {
+                let inner = self.read_demand_expression_skipping_whitespace()?;
+                let closing = self.read_skipping_whitespace()?;
+                match closing {
+                    LexemeNode::Symbol(')', _) => {
+                        Ok(Expression::Parenthesis(Box::new(inner)).at(pos))
+                    }
+                    _ => unexpected("Expected closing parenthesis", closing)
+                }
+            }
             _ => unexpected("Expected expression", next),
         }
     }
@@ -54,12 +64,39 @@ impl<T: BufRead> Parser<T> {
         match operand {
             Some((op, pos)) => {
                 let right_side = self.read_demand_expression_skipping_whitespace()?;
-                Ok(
-                    Expression::BinaryExpression(op, Box::new(left_side), Box::new(right_side))
-                        .at(pos),
-                )
+                Ok(Self::apply_priority_order(left_side, right_side, op, pos))
             }
             None => Ok(left_side),
+        }
+    }
+
+    fn apply_priority_order(
+        left_side: ExpressionNode,
+        right_side: ExpressionNode,
+        op: Operand,
+        pos: Location,
+    ) -> ExpressionNode {
+        match right_side.as_ref() {
+            Expression::BinaryExpression(r_op, r_left, r_right) => {
+                let should_flip = op == Operand::Plus && *r_op == Operand::Less;
+                if should_flip {
+                    Expression::BinaryExpression(
+                        *r_op,
+                        Box::new(
+                            Expression::BinaryExpression(op, Box::new(left_side), r_left.clone())
+                                .at(pos),
+                        ),
+                        r_right.clone(),
+                    )
+                    .at(right_side.location())
+                } else {
+                    Expression::BinaryExpression(op, Box::new(left_side), Box::new(right_side))
+                        .at(pos)
+                }
+            }
+            _ => {
+                Expression::BinaryExpression(op, Box::new(left_side), Box::new(right_side)).at(pos)
+            }
         }
     }
 
@@ -286,57 +323,61 @@ mod tests {
         assert_variable_expression!("A", "A");
     }
 
-    #[test]
-    fn test_function_call_expression_no_args() {
-        assert_expression!(
-            "IsValid()",
-            Expression::FunctionCall(Name::from("IsValid"), vec![])
-        );
-    }
+    mod function_call {
+        use super::*;
 
-    #[test]
-    fn test_function_call_qualified_expression_no_args() {
-        assert_expression!(
-            "IsValid%()",
-            Expression::FunctionCall(Name::from("IsValid%"), vec![])
-        );
-    }
+        #[test]
+        fn test_function_call_expression_no_args() {
+            assert_expression!(
+                "IsValid()",
+                Expression::FunctionCall(Name::from("IsValid"), vec![])
+            );
+        }
 
-    #[test]
-    fn test_function_call_expression_one_arg() {
-        assert_expression!(
-            "IsValid(42)",
-            Expression::FunctionCall(Name::from("IsValid"), vec![42.as_lit_expr(1, 15)])
-        );
-    }
+        #[test]
+        fn test_function_call_qualified_expression_no_args() {
+            assert_expression!(
+                "IsValid%()",
+                Expression::FunctionCall(Name::from("IsValid%"), vec![])
+            );
+        }
 
-    #[test]
-    fn test_function_call_expression_two_args() {
-        assert_expression!(
-            "CheckProperty(42, \"age\")",
-            Expression::FunctionCall(
-                Name::from("CheckProperty"),
-                vec![42.as_lit_expr(1, 21), "age".as_lit_expr(1, 25)]
-            )
-        );
-    }
+        #[test]
+        fn test_function_call_expression_one_arg() {
+            assert_expression!(
+                "IsValid(42)",
+                Expression::FunctionCall(Name::from("IsValid"), vec![42.as_lit_expr(1, 15)])
+            );
+        }
 
-    #[test]
-    fn test_function_call_in_function_call() {
-        assert_expression!(
-            "CheckProperty(LookupName(\"age\"), Confirm())",
-            Expression::FunctionCall(
-                Name::from("CheckProperty"),
-                vec![
-                    Expression::FunctionCall(
-                        Name::from("LookupName"),
-                        vec!["age".as_lit_expr(1, 32)]
-                    )
-                    .at_rc(1, 21),
-                    Expression::FunctionCall(Name::from("Confirm"), vec![]).at_rc(1, 40)
-                ]
-            )
-        );
+        #[test]
+        fn test_function_call_expression_two_args() {
+            assert_expression!(
+                "CheckProperty(42, \"age\")",
+                Expression::FunctionCall(
+                    Name::from("CheckProperty"),
+                    vec![42.as_lit_expr(1, 21), "age".as_lit_expr(1, 25)]
+                )
+            );
+        }
+
+        #[test]
+        fn test_function_call_in_function_call() {
+            assert_expression!(
+                "CheckProperty(LookupName(\"age\"), Confirm())",
+                Expression::FunctionCall(
+                    Name::from("CheckProperty"),
+                    vec![
+                        Expression::FunctionCall(
+                            Name::from("LookupName"),
+                            vec!["age".as_lit_expr(1, 32)]
+                        )
+                        .at_rc(1, 21),
+                        Expression::FunctionCall(Name::from("Confirm"), vec![]).at_rc(1, 40)
+                    ]
+                )
+            );
+        }
     }
 
     #[test]
@@ -363,16 +404,125 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_plus() {
-        assert_expression!(
-            "N + 1",
-            Expression::BinaryExpression(
-                Operand::Plus,
-                Box::new("N".as_var_expr(1, 7)),
-                Box::new(1.as_lit_expr(1, 11)),
-            )
-        );
+    mod priority {
+        use super::*;
+
+        #[test]
+        fn test_a_plus_b_less_than_c() {
+            assert_expression!(
+                "A + B < C",
+                Expression::BinaryExpression(
+                    Operand::Less,
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Plus,
+                            Box::new("A".as_var_expr(1, 7)),
+                            Box::new("B".as_var_expr(1, 11))
+                        )
+                        .at_rc(1, 9)
+                    ),
+                    Box::new("C".as_var_expr(1, 15))
+                )
+            );
+        }
+
+        #[test]
+        fn test_a_plus_parenthesis_b_less_than_c() {
+            assert_expression!(
+                "A + (B < C)",
+                Expression::BinaryExpression(
+                    Operand::Plus,
+                    Box::new("A".as_var_expr(1, 7)),
+                    Box::new(
+                        Expression::Parenthesis(Box::new(
+                            Expression::BinaryExpression(
+                                Operand::Less,
+                                Box::new("B".as_var_expr(1, 12)),
+                                Box::new("C".as_var_expr(1, 16))
+                            )
+                            .at_rc(1, 14)
+                        ))
+                        .at_rc(1, 11)
+                    )
+                )
+            );
+        }
+
+        #[test]
+        fn test_a_less_than_b_plus_c() {
+            assert_expression!(
+                "A < B + C",
+                Expression::BinaryExpression(
+                    Operand::Less,
+                    Box::new("A".as_var_expr(1, 7)),
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Plus,
+                            Box::new("B".as_var_expr(1, 11)),
+                            Box::new("C".as_var_expr(1, 15))
+                        )
+                        .at_rc(1, 13)
+                    )
+                )
+            );
+        }
+
+        #[test]
+        fn test_parenthesis_a_less_than_b_end_parenthesis_plus_c() {
+            assert_expression!(
+                "(A < B) + C",
+                Expression::BinaryExpression(
+                    Operand::Plus,
+                    Box::new(
+                        Expression::Parenthesis(Box::new(
+                            Expression::BinaryExpression(
+                                Operand::Less,
+                                Box::new("A".as_var_expr(1, 8)),
+                                Box::new("B".as_var_expr(1, 12))
+                            )
+                            .at_rc(1, 10)
+                        ))
+                        .at_rc(1, 7)
+                    ),
+                    Box::new("C".as_var_expr(1, 17)),
+                )
+            );
+        }
+    }
+
+    mod binary_plus {
+        use super::*;
+
+        #[test]
+        fn test_plus() {
+            assert_expression!(
+                "N + 1",
+                Expression::BinaryExpression(
+                    Operand::Plus,
+                    Box::new("N".as_var_expr(1, 7)),
+                    Box::new(1.as_lit_expr(1, 11)),
+                )
+            );
+        }
+
+        #[test]
+        fn test_plus_three() {
+            assert_expression!(
+                "N + 1 + 2",
+                Expression::BinaryExpression(
+                    Operand::Plus,
+                    Box::new("N".as_var_expr(1, 7)),
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Plus,
+                            Box::new(1.as_lit_expr(1, 11)),
+                            Box::new(2.as_lit_expr(1, 15))
+                        )
+                        .at_rc(1, 13)
+                    )
+                )
+            );
+        }
     }
 
     #[test]

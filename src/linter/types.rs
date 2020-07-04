@@ -135,6 +135,7 @@ pub enum Expression {
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperand, Box<ExpressionNode>),
+    Parenthesis(Box<ExpressionNode>),
 }
 
 impl Expression {
@@ -174,6 +175,7 @@ impl Expression {
                     Ok(q_child)
                 }
             }
+            Self::Parenthesis(c) => c.as_ref().as_ref().try_qualifier(),
         }
     }
 }

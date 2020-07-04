@@ -34,6 +34,7 @@ pub enum Expression {
     FunctionCall(Name, ArgumentNodes),
     BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperand, Box<ExpressionNode>),
+    Parenthesis(Box<ExpressionNode>),
 }
 
 pub type ExpressionNode = Locatable<Expression>;

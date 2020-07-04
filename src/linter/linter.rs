@@ -483,6 +483,11 @@ impl Converter<parser::Expression, Expression> for Linter {
                     Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
                 }
             }
+            parser::Expression::Parenthesis(c) => {
+                let unboxed_child = *c;
+                let converted_child = self.convert(unboxed_child)?;
+                Ok(Expression::Parenthesis(Box::new(converted_child)))
+            }
         }
     }
 }

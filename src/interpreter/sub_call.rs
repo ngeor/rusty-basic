@@ -290,4 +290,17 @@ mod tests {
         let interpreter = interpret(program);
         assert_eq!(interpreter.stdlib.output, vec!["42"]);
     }
+
+    #[test]
+    fn test_sub_call_parenthesis() {
+        let program = "
+        Hello(1)
+
+        SUB Hello(N)
+            PRINT N
+        END SUB
+        ";
+        let interpreter = interpret(program);
+        assert_eq!(interpreter.stdlib.output, vec!["1"]);
+    }
 }

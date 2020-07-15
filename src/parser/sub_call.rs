@@ -222,4 +222,17 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_close_file_handle() {
+        let input = "CLOSE #1";
+        let program = parse(input).strip_location();
+        assert_eq!(
+            program,
+            vec![TopLevelToken::Statement(Statement::SubCall(
+                "CLOSE".into(),
+                vec![Expression::FileHandle(1.into()).at_rc(1, 7)]
+            ))]
+        );
+    }
 }

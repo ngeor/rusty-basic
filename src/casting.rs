@@ -130,16 +130,16 @@ pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, Strin
         Variant::VSingle(f) => match target_type {
             TypeQualifier::BangSingle => Ok(value),
             TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
-            TypeQualifier::DollarString => Err("Type mismatch".to_string()),
             TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
             TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
+            _ => Err("Type mismatch".to_string()),
         },
         Variant::VDouble(f) => match target_type {
             TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
             TypeQualifier::HashDouble => Ok(value),
-            TypeQualifier::DollarString => Err("Type mismatch".to_string()),
             TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
             TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
+            _ => Err("Type mismatch".to_string()),
         },
         Variant::VString(_) => match target_type {
             TypeQualifier::DollarString => Ok(value),
@@ -148,16 +148,20 @@ pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, Strin
         Variant::VInteger(f) => match target_type {
             TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
             TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
-            TypeQualifier::DollarString => Err("Type mismatch".to_string()),
             TypeQualifier::PercentInteger => Ok(value),
             TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
+            _ => Err("Type mismatch".to_string()),
         },
         Variant::VLong(f) => match target_type {
             TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
             TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
-            TypeQualifier::DollarString => Err("Type mismatch".to_string()),
             TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
             TypeQualifier::AmpersandLong => Ok(value),
+            _ => Err("Type mismatch".to_string()),
+        },
+        Variant::VFileHandle(_) => match target_type {
+            TypeQualifier::FileHandle => Ok(value),
+            _ => Err("Type mismatch".to_string()),
         },
     }
 }

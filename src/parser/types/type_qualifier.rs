@@ -16,13 +16,16 @@ pub enum TypeQualifier {
     PercentInteger,
     /// & Long-integer
     AmpersandLong,
+    /// Not an actual type, but to be able to call PRINT #1, "hello", we define the file handle type
+    FileHandle,
 }
 
 impl TypeQualifier {
     pub fn can_cast_to(&self, other: Self) -> bool {
         match self {
             Self::DollarString => other == Self::DollarString,
-            _ => other != Self::DollarString,
+            Self::FileHandle => other == Self::FileHandle,
+            _ => other != Self::DollarString && other != Self::FileHandle,
         }
     }
 }
@@ -35,6 +38,7 @@ impl Display for TypeQualifier {
             TypeQualifier::DollarString => write!(f, "$"),
             TypeQualifier::PercentInteger => write!(f, "%"),
             TypeQualifier::AmpersandLong => write!(f, "&"),
+            TypeQualifier::FileHandle => write!(f, "~"),
         }
     }
 }

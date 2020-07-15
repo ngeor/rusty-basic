@@ -1,3 +1,4 @@
+use crate::common::FileHandle;
 use crate::parser::{HasQualifier, TypeQualifier};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
@@ -10,6 +11,7 @@ pub enum Variant {
     VString(String),
     VInteger(i32),
     VLong(i64),
+    VFileHandle(FileHandle),
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
@@ -79,6 +81,10 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => other.cmp(self).map(|x| x.reverse()),
             },
+            Variant::VFileHandle(s_left) => match other {
+                Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
+                _ => Err("Type mismatch".to_string()),
+            },
         }
     }
 
@@ -104,6 +110,10 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => Err("Type mismatch".to_string()),
             },
+            Variant::VFileHandle(s_left) => match other {
+                Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
+                _ => Err("Type mismatch".to_string()),
+            },
         }
     }
 
@@ -111,7 +121,6 @@ impl Variant {
         match self {
             Variant::VSingle(n) => Ok(Variant::VSingle(-n)),
             Variant::VDouble(n) => Ok(Variant::VDouble(-n)),
-            Variant::VString(_) => Err("Type mismatch".to_string()),
             Variant::VInteger(n) => {
                 if *n <= MIN_INTEGER {
                     // prevent converting -32768 to 32768
@@ -127,6 +136,7 @@ impl Variant {
                     Ok(Variant::VLong(-n))
                 }
             }
+            _ => Err("Type mismatch".to_string()),
         }
     }
 
@@ -134,9 +144,9 @@ impl Variant {
         match self {
             Variant::VSingle(f) => Ok(Variant::VSingle(-f.round() - 1.0)),
             Variant::VDouble(d) => Ok(Variant::VDouble(-d.round() - 1.0)),
-            Variant::VString(_) => Err("Type mismatch".to_string()),
             Variant::VInteger(n) => Ok(Variant::VInteger(-n - 1)),
             Variant::VLong(n) => Ok(Variant::VLong(-n - 1)),
+            _ => Err("Type mismatch".to_string()),
         }
     }
 
@@ -168,6 +178,7 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VLong(*l_left + *l_right)),
                 _ => other.plus(self),
             },
+            _ => Err("Type mismatch".to_string()),
         }
     }
 
@@ -186,7 +197,6 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VDouble(*d_left - *l_right as f64)),
                 _ => other.minus(self).and_then(|x| x.negate()),
             },
-            Variant::VString(_) => Err("Type mismatch".to_string()),
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(Variant::VInteger(*i_left - *i_right)),
                 Variant::VLong(l_right) => Ok(Variant::VLong(*i_left as i64 - *l_right)),
@@ -196,6 +206,7 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VLong(*l_left - *l_right)),
                 _ => other.minus(self).and_then(|x| x.negate()),
             },
+            _ => Err("Type mismatch".to_string()),
         }
     }
 
@@ -206,6 +217,30 @@ impl Variant {
             TypeQualifier::DollarString => Variant::VString(String::new()),
             TypeQualifier::PercentInteger => Variant::VInteger(0),
             TypeQualifier::AmpersandLong => Variant::VLong(0),
+            TypeQualifier::FileHandle => Variant::VFileHandle(FileHandle::default()),
+        }
+    }
+
+    /// Demands that the variant holds an integer and returns the integer value.
+    /// Panics if the variant is not an integer.
+    pub fn demand_integer(self) -> i32 {
+        match self {
+            Variant::VInteger(v) => v,
+            _ => panic!("not an integer variant"),
+        }
+    }
+
+    pub fn demand_file_handle(self) -> FileHandle {
+        match self {
+            Variant::VFileHandle(v) => v,
+            _ => panic!("not a file handle variant"),
+        }
+    }
+
+    pub fn demand_string(self) -> String {
+        match self {
+            Variant::VString(s) => s,
+            _ => panic!("not a string variant"),
         }
     }
 }
@@ -218,6 +253,7 @@ impl HasQualifier for Variant {
             Variant::VString(_) => TypeQualifier::DollarString,
             Variant::VInteger(_) => TypeQualifier::PercentInteger,
             Variant::VLong(_) => TypeQualifier::AmpersandLong,
+            Variant::VFileHandle(_) => TypeQualifier::FileHandle,
         }
     }
 }
@@ -290,9 +326,9 @@ impl TryFrom<&Variant> for bool {
         match value {
             Variant::VSingle(n) => Ok(*n != 0.0),
             Variant::VDouble(n) => Ok(*n != 0.0),
-            Variant::VString(_) => Err("Type mismatch".to_string()),
             Variant::VInteger(n) => Ok(*n != 0),
             Variant::VLong(n) => Ok(*n != 0),
+            _ => Err("Type mismatch".to_string()),
         }
     }
 }
@@ -313,6 +349,7 @@ impl Display for Variant {
             Variant::VString(s) => write!(f, "{}", s),
             Variant::VInteger(n) => write!(f, "{}", n),
             Variant::VLong(n) => write!(f, "{}", n),
+            _ => Err(std::fmt::Error),
         }
     }
 }

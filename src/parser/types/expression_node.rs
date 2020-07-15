@@ -1,5 +1,5 @@
 use super::Name;
-use crate::common::Locatable;
+use crate::common::{FileHandle, Locatable};
 use crate::variant;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -35,6 +35,9 @@ pub enum Expression {
     BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperand, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
+
+    /// A file handle is used in built-in subs such as CLOSE #1
+    FileHandle(FileHandle),
 }
 
 pub type ExpressionNode = Locatable<Expression>;

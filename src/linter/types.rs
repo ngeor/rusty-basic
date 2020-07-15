@@ -7,6 +7,8 @@ pub type QNameNode = Locatable<QualifiedName>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BuiltInFunction {
+    /// EOF
+    Eof,
     /// ENVIRON$
     Environ,
     /// LEN
@@ -19,7 +21,9 @@ pub enum BuiltInFunction {
 
 impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
     fn from(s: &CaseInsensitiveString) -> Option<BuiltInFunction> {
-        if s == "ENVIRON" {
+        if s == "EOF" {
+            Some(BuiltInFunction::Eof)
+        } else if s == "ENVIRON" {
             Some(BuiltInFunction::Environ)
         } else if s == "LEN" {
             Some(BuiltInFunction::Len)
@@ -33,12 +37,25 @@ impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
     }
 }
 
+fn demand_unqualified(
+    built_in: BuiltInFunction,
+    name: &Name,
+) -> Result<Option<BuiltInFunction>, Error> {
+    match name {
+        Name::Bare(_) => Ok(Some(built_in)),
+        Name::Qualified(_) => err_no_pos(LinterError::SyntaxError),
+    }
+}
+
 impl TryFrom<&Name> for Option<BuiltInFunction> {
     type Error = Error;
     fn try_from(name: &Name) -> Result<Option<BuiltInFunction>, Self::Error> {
         let opt_built_in: Option<BuiltInFunction> = name.bare_name().into();
         match opt_built_in {
             Some(b) => match b {
+                BuiltInFunction::Eof | BuiltInFunction::Len | BuiltInFunction::Val => {
+                    demand_unqualified(b, name)
+                }
                 BuiltInFunction::Environ => {
                     // ENVIRON$ must be qualified
                     match name {
@@ -50,13 +67,6 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                                 err_no_pos(LinterError::TypeMismatch)
                             }
                         }
-                    }
-                }
-                BuiltInFunction::Len => {
-                    // LEN must be unqualified
-                    match name {
-                        Name::Bare(_) => Ok(Some(b)),
-                        Name::Qualified(_) => err_no_pos(LinterError::SyntaxError),
                     }
                 }
                 BuiltInFunction::Str => {
@@ -73,13 +83,6 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                         }
                     }
                 }
-                BuiltInFunction::Val => {
-                    // VAL must be unqualified
-                    match name {
-                        Name::Bare(_) => Ok(Some(b)),
-                        Name::Qualified(_) => err_no_pos(LinterError::SyntaxError),
-                    }
-                }
             },
             None => Ok(None),
         }
@@ -89,6 +92,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
 impl HasQualifier for BuiltInFunction {
     fn qualifier(&self) -> TypeQualifier {
         match self {
+            Self::Eof => TypeQualifier::PercentInteger,
             Self::Environ => TypeQualifier::DollarString,
             Self::Len => TypeQualifier::PercentInteger,
             Self::Str => TypeQualifier::DollarString,
@@ -103,6 +107,9 @@ pub enum BuiltInSub {
     Input,
     Print,
     System,
+    Close,
+    Open,
+    LineInput,
 }
 
 impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
@@ -115,6 +122,12 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
             Some(BuiltInSub::Print)
         } else if s == "SYSTEM" {
             Some(BuiltInSub::System)
+        } else if s == "CLOSE" {
+            Some(BuiltInSub::Close)
+        } else if s == "OPEN" {
+            Some(BuiltInSub::Open)
+        } else if s == "LINE INPUT" {
+            Some(BuiltInSub::LineInput)
         } else {
             None
         }
@@ -136,6 +149,7 @@ pub enum Expression {
     BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperand, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
+    FileHandle(FileHandle),
 }
 
 impl Expression {
@@ -176,6 +190,7 @@ impl Expression {
                 }
             }
             Self::Parenthesis(c) => c.as_ref().as_ref().try_qualifier(),
+            Self::FileHandle(_) => err(LinterError::TypeMismatch, Location::start()), // TODO fix location
         }
     }
 }

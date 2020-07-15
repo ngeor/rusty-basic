@@ -49,7 +49,15 @@ impl<T: BufRead> Parser<T> {
                     LexemeNode::Symbol(')', _) => {
                         Ok(Expression::Parenthesis(Box::new(inner)).at(pos))
                     }
-                    _ => unexpected("Expected closing parenthesis", closing)
+                    _ => unexpected("Expected closing parenthesis", closing),
+                }
+            }
+            LexemeNode::Symbol('#', pos) => {
+                // file handle e.g. CLOSE #1
+                let digits = self.demand_digits()?;
+                match digits.parse::<u32>() {
+                    Ok(d) => Ok(Expression::FileHandle(d.into()).at(pos)),
+                    Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
                 }
             }
             _ => unexpected("Expected expression", next),

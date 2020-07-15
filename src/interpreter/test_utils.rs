@@ -1,4 +1,5 @@
 use crate::instruction_generator;
+use crate::instruction_generator::InstructionNode;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, InterpreterError, Result, Stdlib};
 use crate::linter;
@@ -8,14 +9,21 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
 
-pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>
+pub fn generate_instructions<T>(input: T) -> Vec<InstructionNode>
 where
     T: AsRef<[u8]>,
 {
     let mut parser = Parser::from(input);
     let program = parser.parse().unwrap();
     let linted_program = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program);
+    instruction_generator::generate_instructions(linted_program)
+}
+
+pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>
+where
+    T: AsRef<[u8]>,
+{
+    let instructions = generate_instructions(input);
     // for i in instructions.iter() {
     //     println!("{:?}", i.as_ref());
     // }
@@ -31,10 +39,7 @@ where
     T: AsRef<[u8]>,
     TStdlib: Stdlib,
 {
-    let mut parser = Parser::from(input);
-    let program = parser.parse().unwrap();
-    let linted_program = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program);
+    let instructions = generate_instructions(input);
     let mut interpreter = Interpreter::new(stdlib);
     interpreter
         .interpret(instructions)
@@ -55,10 +60,7 @@ pub fn interpret_err<T>(input: T) -> InterpreterError
 where
     T: AsRef<[u8]>,
 {
-    let mut parser = Parser::from(input);
-    let program = parser.parse().unwrap();
-    let linted_program = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program);
+    let instructions = generate_instructions(input);
     let mut interpreter = Interpreter::new(MockStdlib::new());
     interpreter.interpret(instructions).unwrap_err()
 }

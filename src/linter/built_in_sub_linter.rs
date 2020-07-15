@@ -40,6 +40,16 @@ impl PostConversionLinter for BuiltInSubLinter {
                         .collect()
                 }
             }
+            BuiltInSub::Close => {
+                if args.len() != 1 {
+                    err_no_pos(LinterError::ArgumentCountMismatch)
+                } else {
+                    match args[0].as_ref() {
+                        Expression::FileHandle(_) => Ok(()),
+                        _ => err_l(LinterError::ArgumentTypeMismatch, &args[0]),
+                    }
+                }
+            }
             _ => Ok(()),
         }
     }

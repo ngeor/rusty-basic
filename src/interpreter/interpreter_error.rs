@@ -15,18 +15,22 @@ pub struct InterpreterError {
 pub type Result<T> = std::result::Result<T, InterpreterError>;
 
 impl InterpreterError {
-    pub fn new<S: AsRef<str>>(msg: S, stacktrace: Stacktrace) -> InterpreterError {
+    pub fn new<S: AsRef<str>>(msg: S, stacktrace: Stacktrace) -> Self {
         InterpreterError {
             message: msg.as_ref().to_string(),
             stacktrace,
         }
     }
 
-    pub fn new_with_pos<S: AsRef<str>>(msg: S, pos: Location) -> InterpreterError {
+    pub fn new_no_pos<S: AsRef<str>>(msg: S) -> Self {
+        InterpreterError::new(msg, vec![])
+    }
+
+    pub fn new_with_pos<S: AsRef<str>>(msg: S, pos: Location) -> Self {
         InterpreterError::new(msg, vec![pos])
     }
 
-    pub fn with_existing_stacktrace(self, stacktrace: &Stacktrace) -> InterpreterError {
+    pub fn with_existing_stacktrace(self, stacktrace: &Stacktrace) -> Self {
         let mut new_vec = vec![];
         for x in self.stacktrace {
             new_vec.push(x);
@@ -36,10 +40,18 @@ impl InterpreterError {
         }
         InterpreterError::new(self.message, new_vec)
     }
+
+    pub fn at(self, pos: Location) -> Self {
+        InterpreterError::new_with_pos(self.message, pos)
+    }
 }
 
 pub fn err<T, S: AsRef<str>>(msg: S, pos: Location) -> Result<T> {
     Err(InterpreterError::new_with_pos(msg, pos))
+}
+
+pub fn err_no_pos<T, S: AsRef<str>>(msg: S) -> Result<T> {
+    Err(InterpreterError::new_no_pos(msg))
 }
 
 #[cfg(test)]

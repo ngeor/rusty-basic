@@ -4,6 +4,12 @@ use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Keyword {
+    /// ACCESS
+    Access,
+    /// APPEND
+    Append,
+    /// AS
+    As,
     /// CASE
     Case,
     /// CONST
@@ -40,12 +46,20 @@ pub enum Keyword {
     Input,
     /// IS
     Is,
+    /// LINE
+    Line,
     /// NEXT
     Next,
     /// NOT
     Not,
     /// ON
     On,
+    /// OPEN
+    Open,
+    /// OUTPUT
+    Output,
+    /// READ
+    Read,
     /// SELECT
     Select,
     /// STEP
@@ -62,6 +76,9 @@ pub enum Keyword {
     While,
 }
 
+const STR_ACCESS: &str = "ACCESS";
+const STR_APPEND: &str = "APPEND";
+const STR_AS: &str = "AS";
 const STR_CASE: &str = "CASE";
 const STR_CONST: &str = "CONST";
 const STR_DECLARE: &str = "DECLARE";
@@ -80,9 +97,13 @@ const STR_GOTO: &str = "GOTO";
 const STR_IF: &str = "IF";
 const STR_INPUT: &str = "INPUT";
 const STR_IS: &str = "IS";
+const STR_LINE: &str = "LINE";
 const STR_NEXT: &str = "NEXT";
 const STR_NOT: &str = "NOT";
 const STR_ON: &str = "ON";
+const STR_OPEN: &str = "OPEN";
+const STR_OUTPUT: &str = "OUTPUT";
+const STR_READ: &str = "READ";
 const STR_SELECT: &str = "SELECT";
 const STR_STEP: &str = "STEP";
 const STR_SUB: &str = "SUB";
@@ -91,7 +112,10 @@ const STR_TO: &str = "TO";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 28] = [
+const SORTED_KEYWORDS_STR: [&str; 35] = [
+    STR_ACCESS,
+    STR_APPEND,
+    STR_AS,
     STR_CASE,
     STR_CONST,
     STR_DECLARE,
@@ -110,9 +134,13 @@ const SORTED_KEYWORDS_STR: [&str; 28] = [
     STR_IF,
     STR_INPUT,
     STR_IS,
+    STR_LINE,
     STR_NEXT,
     STR_NOT,
     STR_ON,
+    STR_OPEN,
+    STR_OUTPUT,
+    STR_READ,
     STR_SELECT,
     STR_STEP,
     STR_SUB,
@@ -122,7 +150,10 @@ const SORTED_KEYWORDS_STR: [&str; 28] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 28] = [
+const SORTED_KEYWORDS: [Keyword; 35] = [
+    Keyword::Access,
+    Keyword::Append,
+    Keyword::As,
     Keyword::Case,
     Keyword::Const,
     Keyword::Declare,
@@ -141,9 +172,13 @@ const SORTED_KEYWORDS: [Keyword; 28] = [
     Keyword::If,
     Keyword::Input,
     Keyword::Is,
+    Keyword::Line,
     Keyword::Next,
     Keyword::Not,
     Keyword::On,
+    Keyword::Open,
+    Keyword::Output,
+    Keyword::Read,
     Keyword::Select,
     Keyword::Step,
     Keyword::Sub,
@@ -156,6 +191,9 @@ const SORTED_KEYWORDS: [Keyword; 28] = [
 impl Display for Keyword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
+            Self::Access => STR_ACCESS.fmt(f),
+            Self::Append => STR_APPEND.fmt(f),
+            Self::As => STR_AS.fmt(f),
             Self::Case => STR_CASE.fmt(f),
             Self::Const => STR_CONST.fmt(f),
             Self::Declare => STR_DECLARE.fmt(f),
@@ -174,9 +212,13 @@ impl Display for Keyword {
             Self::If => STR_IF.fmt(f),
             Self::Input => STR_INPUT.fmt(f),
             Self::Is => STR_IS.fmt(f),
+            Self::Line => STR_LINE.fmt(f),
             Self::Next => STR_NEXT.fmt(f),
             Self::Not => STR_NOT.fmt(f),
             Self::On => STR_ON.fmt(f),
+            Self::Open => STR_OPEN.fmt(f),
+            Self::Output => STR_OUTPUT.fmt(f),
+            Self::Read => STR_READ.fmt(f),
             Self::Select => STR_SELECT.fmt(f),
             Self::Step => STR_STEP.fmt(f),
             Self::Sub => STR_SUB.fmt(f),

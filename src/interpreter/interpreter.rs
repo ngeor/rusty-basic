@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
 use crate::interpreter::context::*;
 use crate::interpreter::context_owner::ContextOwner;
+use crate::interpreter::io::FileManager;
 use crate::interpreter::{InterpreterError, Result, Stdlib};
 
 use crate::variant::Variant;
@@ -79,6 +80,7 @@ pub struct Interpreter<S: Stdlib> {
     return_stack: Vec<usize>,
     stacktrace: Vec<Location>,
     pub function_result: Variant,
+    pub file_manager: FileManager,
 }
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
@@ -90,6 +92,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             register_stack: VecDeque::new(),
             stacktrace: vec![],
             function_result: Variant::VInteger(0),
+            file_manager: FileManager::new(),
         };
         result.register_stack.push_back(Registers::new());
         result
@@ -366,11 +369,37 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     fn throw(&mut self, msg: &String, pos: Location) -> Result<()> {
         Err(InterpreterError::new_with_pos(msg, pos))
     }
+
+    // shortcuts to common context_mut operations
+
+    /// Pops the next unnamed argument, starting from the beginning.
+    pub fn pop_unnamed_arg(&mut self) -> Option<Argument> {
+        self.context_mut().demand_sub().pop_unnamed_arg()
+    }
+
+    /// Pops the value of the next unnamed argument, starting from the beginning.
+    pub fn pop_unnamed_val(&mut self) -> Option<Variant> {
+        self.context_mut().demand_sub().pop_unnamed_val()
+    }
+
+    pub fn pop_string(&mut self) -> String {
+        self.pop_unnamed_val().unwrap().demand_string()
+    }
+
+    pub fn pop_integer(&mut self) -> i32 {
+        self.pop_unnamed_val().unwrap().demand_integer()
+    }
+
+    pub fn pop_file_handle(&mut self) -> FileHandle {
+        self.pop_unnamed_val().unwrap().demand_file_handle()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::interpreter::stdlib::DefaultStdlib;
+    use crate::interpreter::Interpreter;
 
     #[test]
     fn test_interpret_print_hello_world_one_arg() {
@@ -462,5 +491,67 @@ mod tests {
         let mut stdlib = MockStdlib::new();
         stdlib.add_next_input("");
         interpret_file("INPUT.BAS", stdlib).unwrap();
+    }
+
+    #[test]
+    fn test_can_create_file() {
+        let input = r#"
+        OPEN "TEST1.TXT" FOR APPEND AS #1
+        PRINT #1, "Hello, world"
+        CLOSE #1
+        "#;
+        let instructions = generate_instructions(input);
+        let mut interpreter = Interpreter::new(DefaultStdlib {});
+        interpreter.interpret(instructions).unwrap_or_default();
+        let contents = std::fs::read_to_string("TEST1.TXT").unwrap_or("".to_string());
+        std::fs::remove_file("TEST1.TXT").unwrap_or(());
+        assert_eq!("Hello, world\r\n", contents);
+    }
+
+    #[test]
+    fn test_can_read_file() {
+        let input = r#"
+        OPEN "TEST2A.TXT" FOR APPEND AS #1
+        PRINT #1, "Hello, world"
+        CLOSE #1
+        OPEN "TEST2A.TXT" FOR INPUT AS #1
+        LINE INPUT #1, T$
+        CLOSE #1
+        OPEN "TEST2B.TXT" FOR APPEND AS #1
+        PRINT #1, T$
+        CLOSE #1
+        "#;
+        let instructions = generate_instructions(input);
+        let mut interpreter = Interpreter::new(DefaultStdlib {});
+        interpreter.interpret(instructions).unwrap_or_default();
+        let contents = std::fs::read_to_string("TEST2B.TXT").unwrap_or("".to_string());
+        std::fs::remove_file("TEST2A.TXT").unwrap_or(());
+        std::fs::remove_file("TEST2B.TXT").unwrap_or(());
+        assert_eq!("Hello, world\r\n", contents);
+    }
+
+    #[test]
+    fn test_can_read_file_until_eof() {
+        let input = r#"
+        OPEN "TEST3.TXT" FOR APPEND AS #1
+        PRINT #1, "Hello, world"
+        PRINT #1, "Hello, again"
+        CLOSE #1
+        OPEN "TEST3.TXT" FOR INPUT AS #1
+        WHILE NOT EOF(1)
+        LINE INPUT #1, T$
+        PRINT T$
+        WEND
+        CLOSE #1
+        "#;
+        let instructions = generate_instructions(input);
+        let stdlib = MockStdlib::new();
+        let mut interpreter = Interpreter::new(stdlib);
+        interpreter.interpret(instructions).unwrap_or_default();
+        std::fs::remove_file("TEST3.TXT").unwrap_or(());
+        assert_eq!(
+            interpreter.stdlib.output,
+            vec!["Hello, world", "Hello, again"]
+        );
     }
 }

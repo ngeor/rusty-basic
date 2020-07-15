@@ -335,19 +335,17 @@ impl SubContext {
         self.constants.insert(name, value)
     }
 
-    pub fn pop_front_unnamed(&mut self) -> Variant {
-        self.try_pop_front_unnamed().unwrap()
+    /// Pops the next unnamed argument, starting from the beginning.
+    pub fn pop_unnamed_arg(&mut self) -> Option<Argument> {
+        self.variables.pop_front()
     }
 
-    pub fn try_pop_front_unnamed(&mut self) -> Option<Variant> {
-        match self.pop_front_unnamed_arg() {
+    /// Pops the value of the next unnamed argument, starting from the beginning.
+    pub fn pop_unnamed_val(&mut self) -> Option<Variant> {
+        match self.pop_unnamed_arg() {
             Some(arg) => self.evaluate_argument(&arg),
             None => None,
         }
-    }
-
-    pub fn pop_front_unnamed_arg(&mut self) -> Option<Argument> {
-        self.variables.pop_front()
     }
 
     pub fn set_value_to_popped_arg(

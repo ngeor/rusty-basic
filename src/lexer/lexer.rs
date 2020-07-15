@@ -1,6 +1,6 @@
 use super::error::*;
 use super::{Keyword, LexemeNode};
-use crate::common::Location;
+use crate::common::*;
 use crate::reader::*;
 use std::convert::From;
 use std::fs::File;
@@ -13,28 +13,31 @@ pub struct Lexer<T: BufRead> {
     pos: Location,
 }
 
-fn _is_letter(ch: char) -> bool {
+fn is_letter(ch: char) -> bool {
     (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
 }
 
-fn _is_digit(ch: char) -> bool {
+fn is_digit(ch: char) -> bool {
     ch >= '0' && ch <= '9'
 }
 
-fn _is_alphanumeric(ch: char) -> bool {
-    _is_letter(ch) || _is_digit(ch)
+fn is_alphanumeric(ch: char) -> bool {
+    is_letter(ch) || is_digit(ch)
 }
 
-fn _is_whitespace(ch: char) -> bool {
+fn is_whitespace(ch: char) -> bool {
     ch == ' ' || ch == '\t'
 }
 
-fn _is_eol(ch: char) -> bool {
+fn is_eol(ch: char) -> bool {
     ch == '\r' || ch == '\n'
 }
 
-fn _is_symbol(ch: char) -> bool {
-    (ch > ' ' && ch < '0') || (ch > '9' && ch < 'A') || (ch > 'Z' && ch < 'a') || (ch > 'z' && ch <= '~')
+fn is_symbol(ch: char) -> bool {
+    (ch > ' ' && ch < '0')
+        || (ch > '9' && ch < 'A')
+        || (ch > 'Z' && ch < 'a')
+        || (ch > 'z' && ch <= '~')
 }
 
 impl<T: BufRead> Lexer<T> {
@@ -46,32 +49,32 @@ impl<T: BufRead> Lexer<T> {
     }
 
     pub fn read(&mut self) -> Result<LexemeNode, LexerError> {
-        let x = self._read_one()?;
+        let x = self.read_one()?;
         match x {
             None => Ok(LexemeNode::EOF(self.pos)),
-            Some(ch) => self._read_char(ch),
+            Some(ch) => self.read_char(ch),
         }
     }
 
-    fn _read_char(&mut self, ch: char) -> Result<LexemeNode, LexerError> {
+    fn read_char(&mut self, ch: char) -> Result<LexemeNode, LexerError> {
         let pos = self.pos;
-        if _is_letter(ch) {
-            let buf = self._read_while(_is_alphanumeric)?;
+        if is_letter(ch) {
+            let buf = self.read_while(is_alphanumeric)?;
             match Keyword::from_str(&buf) {
                 Ok(k) => Ok(LexemeNode::Keyword(k, buf, pos)),
                 Err(_) => Ok(LexemeNode::Word(buf, pos)),
             }
-        } else if _is_whitespace(ch) {
-            let buf = self._read_while(_is_whitespace)?;
+        } else if is_whitespace(ch) {
+            let buf = self.read_while(is_whitespace)?;
             Ok(LexemeNode::Whitespace(buf, pos))
-        } else if _is_digit(ch) {
-            let buf = self._read_while(_is_digit)?;
+        } else if is_digit(ch) {
+            let buf = self.read_while(is_digit)?;
             Ok(LexemeNode::Digits(buf, pos))
-        } else if _is_eol(ch) {
-            let buf = self._read_while_eol()?;
+        } else if is_eol(ch) {
+            let buf = self.read_while_eol()?;
             Ok(LexemeNode::EOL(buf, pos))
-        } else if _is_symbol(ch) {
-            self._consume();
+        } else if is_symbol(ch) {
+            self.consume();
             self.pos.inc_col();
             Ok(LexemeNode::Symbol(ch, pos))
         } else {
@@ -79,35 +82,35 @@ impl<T: BufRead> Lexer<T> {
         }
     }
 
-    fn _read_one(&mut self) -> Result<Option<char>, LexerError> {
+    fn read_one(&mut self) -> Result<Option<char>, LexerError> {
         self.reader
             .read()
             .map_err(|e| LexerError::Internal(e.to_string(), self.pos))
     }
 
-    fn _consume(&mut self) -> Option<char> {
+    fn consume(&mut self) -> Option<char> {
         self.reader.consume()
     }
 
-    fn _read_while(&mut self, predicate: fn(char) -> bool) -> Result<String, LexerError> {
+    fn read_while(&mut self, predicate: fn(char) -> bool) -> Result<String, LexerError> {
         let mut result: String = String::new();
 
-        let mut next = self._consume_if(predicate)?;
+        let mut next = self.consume_if(predicate)?;
         while next.is_some() {
             result.push(next.unwrap());
-            next = self._consume_if(predicate)?;
+            next = self.consume_if(predicate)?;
         }
 
         Ok(result)
     }
 
-    fn _consume_if(&mut self, predicate: fn(char) -> bool) -> Result<Option<char>, LexerError> {
+    fn consume_if(&mut self, predicate: fn(char) -> bool) -> Result<Option<char>, LexerError> {
         self.reader
             .read()
             .map(|opt| {
                 opt.and_then(|ch| {
                     if predicate(ch) {
-                        self._consume();
+                        self.consume();
                         self.pos.inc_col();
                         Some(ch)
                     } else {
@@ -118,17 +121,17 @@ impl<T: BufRead> Lexer<T> {
             .map_err(|e| LexerError::Internal(e.to_string(), self.pos))
     }
 
-    fn _read_while_eol(&mut self) -> Result<String, LexerError> {
+    fn read_while_eol(&mut self) -> Result<String, LexerError> {
         let mut result: String = String::new();
         let mut previous_was_cr = false;
         loop {
-            let x = self._read_one()?;
+            let x = self.read_one()?;
             match x {
                 Some(ch) => {
                     if ch == '\n' {
                         // \n
                         result.push(ch);
-                        self._consume();
+                        self.consume();
                         if previous_was_cr {
                             previous_was_cr = false;
                         } else {
@@ -137,7 +140,7 @@ impl<T: BufRead> Lexer<T> {
                     } else if ch == '\r' {
                         // \r\?
                         result.push(ch);
-                        self._consume();
+                        self.consume();
                         self.pos.inc_row();
                         previous_was_cr = true;
                     } else {

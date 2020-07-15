@@ -65,6 +65,9 @@ impl InstructionGenerator {
             Expression::Parenthesis(child) => {
                 self.generate_expression_instructions(*child);
             }
+            Expression::FileHandle(i) => {
+                self.push(Instruction::Load(Variant::VFileHandle(i)), pos);
+            }
         }
     }
 }

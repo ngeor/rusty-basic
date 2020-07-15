@@ -1,6 +1,5 @@
 use crate::common::*;
-use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterError, Result, Stdlib};
+use crate::interpreter::{err, Interpreter, InterpreterError, Result, Stdlib};
 use crate::linter::BuiltInFunction;
 use crate::variant;
 use crate::variant::Variant;
@@ -13,8 +12,9 @@ impl<S: Stdlib> Interpreter<S> {
         pos: Location,
     ) -> Result<()> {
         match function_name {
+            BuiltInFunction::Eof => self.run_eof(pos),
             BuiltInFunction::Environ => self.run_environ(),
-            BuiltInFunction::Len => self.run_len(),
+            BuiltInFunction::Len => self.run_len(pos),
             BuiltInFunction::Str => self.run_str(),
             BuiltInFunction::Val => self
                 .run_val()
@@ -22,8 +22,25 @@ impl<S: Stdlib> Interpreter<S> {
         }
     }
 
+    fn run_eof(&mut self, pos: Location) -> Result<()> {
+        let v: Variant = self.pop_unnamed_val().unwrap();
+        let file_handle: FileHandle = match v {
+            Variant::VFileHandle(f) => f,
+            Variant::VInteger(i) => (i as u32).into(),
+            _ => {
+                return err("Invalid file handle in EOF", pos);
+            }
+        };
+        let is_eof: bool = self
+            .file_manager
+            .eof(file_handle)
+            .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))?;
+        self.function_result = is_eof.into();
+        Ok(())
+    }
+
     fn run_environ(&mut self) -> Result<()> {
-        let v = self.context_mut().demand_sub().pop_front_unnamed();
+        let v = self.pop_unnamed_val().unwrap();
         match v {
             Variant::VString(env_var_name) => {
                 let result = self.stdlib.get_env_var(&env_var_name);
@@ -34,32 +51,35 @@ impl<S: Stdlib> Interpreter<S> {
         }
     }
 
-    fn run_len(&mut self) -> Result<()> {
-        let v = self.context_mut().demand_sub().pop_front_unnamed();
+    fn run_len(&mut self, pos: Location) -> Result<()> {
+        let v = self.pop_unnamed_val().unwrap();
         self.function_result = match v {
             Variant::VSingle(_) => Variant::VInteger(4),
             Variant::VDouble(_) => Variant::VInteger(8),
             Variant::VString(v) => Variant::VInteger(v.len().try_into().unwrap()),
             Variant::VInteger(_) => Variant::VInteger(2),
             Variant::VLong(_) => Variant::VInteger(4),
+            _ => {
+                return err("Not supported", pos);
+            }
         };
         Ok(())
     }
 
     fn run_str(&mut self) -> Result<()> {
-        let v = self.context_mut().demand_sub().pop_front_unnamed();
+        let v = self.pop_unnamed_val().unwrap();
         self.function_result = match v {
             Variant::VSingle(f) => Variant::VString(format!("{}", f)),
             Variant::VDouble(f) => Variant::VString(format!("{}", f)),
-            Variant::VString(_) => panic!("unexpected arg to STR$"),
             Variant::VInteger(f) => Variant::VString(format!("{}", f)),
             Variant::VLong(f) => Variant::VString(format!("{}", f)),
+            _ => panic!("unexpected arg to STR$"),
         };
         Ok(())
     }
 
     fn run_val(&mut self) -> std::result::Result<(), String> {
-        let v = self.context_mut().demand_sub().pop_front_unnamed();
+        let v = self.pop_unnamed_val().unwrap();
         self.function_result = match v {
             Variant::VString(s) => val(s)?,
             _ => panic!("unexpected arg to VAL"),

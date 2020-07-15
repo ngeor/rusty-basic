@@ -48,7 +48,7 @@ impl<T: BufRead> BufLexer<T> {
 
     pub fn try_read<F, TR, E>(&mut self, f: F) -> Result<Option<TR>, ParserError>
     where
-        F: Fn(&LexemeNode) -> Result<TR, E>,
+        F: Fn(&LexemeNode) -> std::result::Result<TR, E>,
     {
         let next = self.read()?;
         match f(&next) {

@@ -13,7 +13,9 @@ impl<T: BufRead> Parser<T> {
             LexemeNode::Keyword(Keyword::GoTo, _, pos) => self.demand_go_to().map(|x| x.at(pos)),
             LexemeNode::Keyword(Keyword::If, _, pos) => self.demand_if_block().map(|x| x.at(pos)),
             LexemeNode::Keyword(Keyword::Input, w, pos) => self.demand_input(w, pos),
+            LexemeNode::Keyword(Keyword::Line, _, pos) => self.demand_line_input(pos),
             LexemeNode::Keyword(Keyword::On, _, pos) => self.demand_on().map(|x| x.at(pos)),
+            LexemeNode::Keyword(Keyword::Open, _, pos) => self.demand_open().map(|x| x.at(pos)),
             LexemeNode::Keyword(Keyword::Select, _, pos) => {
                 self.demand_select_case().map(|x| x.at(pos))
             }
@@ -186,5 +188,66 @@ impl<T: BufRead> Parser<T> {
             BareNameNode::new(CaseInsensitiveString::new(raw_name), bare_name_pos),
             next,
         )
+    }
+
+    fn demand_line_input(&mut self, pos: Location) -> Result<StatementNode, ParserError> {
+        self.read_demand_whitespace("Expected space after LINE")?;
+        self.read_demand_keyword(Keyword::Input)?;
+        self.read_demand_whitespace("Expected space after INPUT")?;
+        let next = self.buf_lexer.read()?;
+        self.demand_sub_call(BareNameNode::new("LINE INPUT".into(), pos), next)
+    }
+
+    fn demand_open(&mut self) -> Result<Statement, ParserError> {
+        self.read_demand_whitespace("Expected space after OPEN")?;
+        let file_name_expr = self.read_demand_expression()?;
+        self.read_demand_whitespace("Expected space after filename")?;
+        self.read_demand_keyword(Keyword::For)?;
+        self.read_demand_whitespace("Expected space after FOR")?;
+        let mode: i32 = self.read_demand_file_mode()?.into();
+        self.read_demand_whitespace("Expected space after file mode")?;
+        let mut next = self.buf_lexer.read()?;
+        let mut access: i32 = FileAccess::Unspecified.into();
+        if next.is_keyword(Keyword::Access) {
+            self.read_demand_whitespace("Expected space after ACCESS")?;
+            access = self.read_demand_file_access()?.into();
+            self.read_demand_whitespace("Expected space after file access")?;
+            next = self.buf_lexer.read()?;
+        }
+        if next.is_keyword(Keyword::As) {
+            self.read_demand_whitespace("Expected space after AS")?;
+            let file_handle = self.read_demand_expression()?;
+            let bare_name: BareName = "OPEN".into();
+
+            Ok(Statement::SubCall(
+                bare_name,
+                vec![
+                    file_name_expr,
+                    Expression::IntegerLiteral(mode).at(Location::start()),
+                    Expression::IntegerLiteral(access).at(Location::start()),
+                    file_handle,
+                ],
+            ))
+        } else {
+            unexpected("Expected AS", next)
+        }
+    }
+
+    fn read_demand_file_mode(&mut self) -> Result<FileMode, ParserError> {
+        let next = self.buf_lexer.read()?;
+        match next {
+            LexemeNode::Keyword(Keyword::Input, _, _) => Ok(FileMode::Input),
+            LexemeNode::Keyword(Keyword::Output, _, _) => Ok(FileMode::Output),
+            LexemeNode::Keyword(Keyword::Append, _, _) => Ok(FileMode::Append),
+            _ => unexpected("Expected INPUT|OUTPUT|APPEND after FOR", next),
+        }
+    }
+
+    fn read_demand_file_access(&mut self) -> Result<FileAccess, ParserError> {
+        let next = self.buf_lexer.read()?;
+        match next {
+            LexemeNode::Keyword(Keyword::Read, _, _) => Ok(FileAccess::Read),
+            _ => unexpected("Expected READ after ACCESS", next),
+        }
     }
 }

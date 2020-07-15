@@ -45,7 +45,9 @@ impl<T: BufRead> Parser<T> {
                 | Keyword::GoTo
                 | Keyword::If
                 | Keyword::Input
+                | Keyword::Line
                 | Keyword::On
+                | Keyword::Open
                 | Keyword::Select
                 | Keyword::While => self
                     .demand_statement(next)
@@ -146,7 +148,7 @@ impl<T: BufRead> Parser<T> {
         if next.is_keyword(keyword) {
             Ok(())
         } else {
-            unexpected("Expected keyword", next)
+            unexpected(format!("Expected keyword {}", keyword), next)
         }
     }
 }

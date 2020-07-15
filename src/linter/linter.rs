@@ -488,6 +488,7 @@ impl Converter<parser::Expression, Expression> for Linter {
                 let converted_child = self.convert(unboxed_child)?;
                 Ok(Expression::Parenthesis(Box::new(converted_child)))
             }
+            parser::Expression::FileHandle(i) => Ok(Expression::FileHandle(i)),
         }
     }
 }

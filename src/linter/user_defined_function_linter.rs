@@ -20,7 +20,7 @@ pub fn lint_call_args(args: &ExpressionNodes, param_types: &TypeQualifiers) -> R
 
     for (arg_node, param_type) in args.iter().zip(param_types.iter()) {
         let arg = arg_node.as_ref();
-        let arg_q = arg.try_qualifier()?;
+        let arg_q = arg_node.try_qualifier()?;
         match arg {
             Expression::Variable(_) => {
                 // it's by ref, it needs to match exactly
@@ -57,8 +57,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
     fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
-            let arg = arg_node.as_ref();
-            let arg_q = arg.try_qualifier()?;
+            let arg_q = arg_node.try_qualifier()?;
             if arg_q == TypeQualifier::DollarString {
                 return err_l(LinterError::ArgumentTypeMismatch, arg_node);
             }

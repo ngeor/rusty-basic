@@ -5,6 +5,8 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::{InterpreterError, Result, Stdlib};
 
+use crate::parser::TypeQualifier;
+use crate::variant::cast;
 use crate::variant::Variant;
 
 use std::cmp::Ordering;
@@ -177,7 +179,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let a = self.get_a();
                 let b = self.get_b();
                 let c = a
-                    .plus(&b)
+                    .plus(b)
                     .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
                 self.set_a(c);
             }
@@ -185,7 +187,23 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let a = self.get_a();
                 let b = self.get_b();
                 let c = a
-                    .minus(&b)
+                    .minus(b)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                self.set_a(c);
+            }
+            Instruction::Multiply => {
+                let a = self.get_a();
+                let b = self.get_b();
+                let c = a
+                    .multiply(b)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                self.set_a(c);
+            }
+            Instruction::Divide => {
+                let a = self.get_a();
+                let b = self.get_b();
+                let c = a
+                    .divide(b)
                     .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
                 self.set_a(c);
             }
@@ -217,6 +235,15 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     .cmp(&b)
                     .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
                 let is_true = order == Ordering::Equal;
+                self.set_a(is_true.into());
+            }
+            Instruction::NotEqual => {
+                let a = self.get_a();
+                let b = self.get_b();
+                let order = a
+                    .cmp(&b)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let is_true = order != Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::Less => {
@@ -254,6 +281,26 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
                 let is_true = order == Ordering::Greater || order == Ordering::Equal;
                 self.set_a(is_true.into());
+            }
+            Instruction::And => {
+                let a = cast(self.get_a(), TypeQualifier::PercentInteger)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let b = cast(self.get_b(), TypeQualifier::PercentInteger)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                self.set_a(
+                    a.and(b)
+                        .map_err(|e| InterpreterError::new_with_pos(e, pos))?,
+                );
+            }
+            Instruction::Or => {
+                let a = cast(self.get_a(), TypeQualifier::PercentInteger)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let b = cast(self.get_b(), TypeQualifier::PercentInteger)
+                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                self.set_a(
+                    a.or(b)
+                        .map_err(|e| InterpreterError::new_with_pos(e, pos))?,
+                );
             }
             Instruction::JumpIfFalse(resolved_idx) => {
                 let a = self.get_a();
@@ -398,19 +445,20 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::assert_prints;
     use crate::interpreter::stdlib::DefaultStdlib;
     use crate::interpreter::Interpreter;
 
     #[test]
     fn test_interpret_print_hello_world_one_arg() {
         let input = "PRINT \"Hello, world!\"";
-        assert_eq!(interpret(input).stdlib.output, vec!["Hello, world!"]);
+        assert_prints!(input, "Hello, world!");
     }
 
     #[test]
     fn test_interpret_print_hello_world_two_args() {
         let input = r#"PRINT "Hello", "world!""#;
-        assert_eq!(interpret(input).stdlib.output, vec!["Hello world!"]);
+        assert_prints!(input, "Hello world!");
     }
 
     #[test]
@@ -421,7 +469,7 @@ mod tests {
             Test = N + 1
         END FUNCTION
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["Hello 2"]);
+        assert_prints!(input, "Hello 2");
     }
 
     #[test]

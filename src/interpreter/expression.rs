@@ -2,9 +2,9 @@
 mod tests {
     use crate::assert_has_variable;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::interpreter::test_utils::*;
     use crate::linter::LinterError;
-    use crate::variant::Variant;
 
     #[test]
     fn test_literals() {
@@ -71,8 +71,7 @@ mod tests {
                 Sum = A + B
             END FUNCTION
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["4"]);
+            assert_prints!(program, "4");
         }
 
         #[test]
@@ -86,8 +85,7 @@ mod tests {
                 Sum = A + B
             END FUNCTION
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["4"]);
+            assert_prints!(program, "4");
         }
     }
 
@@ -134,6 +132,34 @@ mod tests {
             assert_has_variable!(interpret("X& = 5 - 2.1#"), "X&", 3_i64);
             assert_has_variable!(interpret("X& = 5 - 2"), "X&", 3_i64);
             assert_linter_err!("X& = 1 - \"hello\"", LinterError::TypeMismatch, 1, 10);
+        }
+    }
+
+    mod multiply {
+        use super::*;
+
+        #[test]
+        fn test_multiply() {
+            assert_prints!("PRINT 6 * 7", "42");
+        }
+
+        #[test]
+        fn test_multiply_string_linter_err() {
+            assert_linter_err!(r#"PRINT "hello" * 5"#, LinterError::TypeMismatch, 1, 17);
+        }
+    }
+
+    mod divide {
+        use super::*;
+
+        #[test]
+        fn test_divide() {
+            assert_prints!("PRINT 10 / 2", "5");
+        }
+
+        #[test]
+        fn test_divide_string_linter_err() {
+            assert_linter_err!(r#"PRINT "hello" / 5"#, LinterError::TypeMismatch, 1, 17);
         }
     }
 
@@ -365,6 +391,208 @@ mod tests {
             assert_condition_false!("9 <= 2.1#");
             assert_condition!("9 <= 9.1#");
             assert_condition!("9 <= 19.1#");
+        }
+    }
+
+    mod eq {
+        use super::*;
+
+        #[test]
+        fn test_equality() {
+            assert_condition!("1 = 1");
+            assert_condition_false!("1 = 2");
+        }
+    }
+
+    mod geq {
+        use super::*;
+
+        #[test]
+        fn test_greater_or_equal() {
+            assert_condition!("1 >= 1");
+            assert_condition!("2 >= 1");
+            assert_condition_false!("1 >= 2");
+        }
+    }
+
+    mod gt {
+        use super::*;
+
+        #[test]
+        fn test_greater() {
+            assert_condition!("2 > 1");
+            assert_condition_false!("2 > 2");
+            assert_condition_false!("1 > 2");
+        }
+    }
+
+    mod ne {
+        use super::*;
+
+        #[test]
+        fn test_not_equals() {
+            assert_condition!("2 <> 1");
+            assert_condition_false!("1 <> 1");
+        }
+    }
+
+    mod and {
+        use super::*;
+
+        #[test]
+        fn test_and_positive_ones_zeroes() {
+            assert_condition!("1 AND 1");
+            assert_condition_false!("1 AND 0");
+            assert_condition_false!("0 AND 1");
+            assert_condition_false!("0 AND 0");
+        }
+
+        #[test]
+        fn test_and_negative_ones_zeroes() {
+            assert_condition!("-1 AND -1");
+            assert_condition_false!("-1 AND 0");
+            assert_condition_false!("0 AND -1");
+            assert_condition_false!("0 AND 0");
+        }
+
+        #[test]
+        fn test_and_binary_arithmetic_positive_positive() {
+            assert_prints!("PRINT 5 AND 2", "0");
+            assert_prints!("PRINT 5 AND 1", "1");
+            assert_prints!("PRINT 1 AND 1", "1");
+            assert_prints!("PRINT 7 AND 1", "1");
+            assert_prints!("PRINT 7 AND 2", "2");
+            assert_prints!("PRINT 7 AND 6", "6");
+            assert_prints!("PRINT 6 AND 7", "6");
+        }
+
+        #[test]
+        fn test_and_binary_arithmetic_positive_negative() {
+            assert_prints!("PRINT 5 AND -2", "4");
+            assert_prints!("PRINT -5 AND 2", "2");
+            assert_prints!("PRINT 5 AND -1", "5");
+            assert_prints!("PRINT -5 AND 1", "1");
+        }
+
+        #[test]
+        fn test_and_binary_arithmetic_negative_negative() {
+            assert_prints!("PRINT -5 AND -2", "-6");
+            assert_prints!("PRINT -5 AND -1", "-5");
+        }
+
+        #[test]
+        fn test_and_linter_error_for_strings() {
+            assert_linter_err!(r#"PRINT 1 AND "hello""#, LinterError::TypeMismatch, 1, 13);
+            assert_linter_err!(r#"PRINT "hello" AND 1"#, LinterError::TypeMismatch, 1, 19);
+            assert_linter_err!(
+                r#"PRINT "hello" AND "bye""#,
+                LinterError::TypeMismatch,
+                1,
+                19
+            );
+        }
+
+        #[test]
+        fn test_and_linter_error_for_file_handle() {
+            assert_linter_err!(r#"PRINT 1 AND #1"#, LinterError::TypeMismatch, 1, 13);
+            assert_linter_err!(r#"PRINT #1 AND 1"#, LinterError::TypeMismatch, 1, 7);
+            assert_linter_err!(r#"PRINT #1 AND #1"#, LinterError::TypeMismatch, 1, 7);
+        }
+    }
+
+    mod or {
+        use super::*;
+
+        #[test]
+        fn test_or_positive_ones_zeroes() {
+            assert_condition!("1 OR 1");
+            assert_condition!("1 OR 0");
+            assert_condition!("0 OR 1");
+            assert_condition_false!("0 OR 0");
+        }
+
+        #[test]
+        fn test_or_negative_ones_zeroes() {
+            assert_condition!("-1 OR -1");
+            assert_condition!("-1 OR 0");
+            assert_condition!("0 OR -1");
+            assert_condition_false!("0 OR 0");
+        }
+
+        #[test]
+        fn test_or_binary_arithmetic() {
+            assert_prints!("PRINT 1 OR 1", "1");
+            assert_prints!("PRINT 1 OR 0", "1");
+            assert_prints!("PRINT 1 OR 2", "3");
+            assert_prints!("PRINT -1 OR -1", "-1");
+            assert_prints!("PRINT -1 OR 0", "-1");
+            assert_prints!("PRINT -1 OR 1", "-1");
+        }
+    }
+
+    mod priority {
+        use super::*;
+
+        #[test]
+        fn test_and_has_priority_over_or() {
+            assert_prints!("PRINT 1 OR 1 AND 0", "1");
+            assert_prints!("PRINT 1 OR (1 AND 0)", "1");
+            assert_prints!("PRINT (1 OR 1) AND 0", "0");
+
+            assert_prints!("PRINT 1 OR 0 AND 0", "1");
+            assert_prints!("PRINT 1 OR (0 AND 0)", "1");
+            assert_prints!("PRINT (1 OR 0) AND 0", "0");
+
+            assert_prints!("PRINT 0 AND 0 OR 1", "1");
+            assert_prints!("PRINT (0 AND 0) OR 1", "1");
+            assert_prints!("PRINT 0 AND (0 OR 1)", "0");
+        }
+
+        #[test]
+        fn test_relational_has_priority_over_binary() {
+            assert_prints!("PRINT 1 OR 2 > 1 AND 2", "3");
+            assert_prints!("PRINT 1 OR (2 > 1) AND 2", "3");
+            assert_prints!("PRINT 1 OR ((2 > 1) AND 2)", "3");
+            assert_prints!("PRINT (1 OR 2) > (1 AND 2)", "-1");
+        }
+
+        #[test]
+        fn test_arithmetic_has_priority_over_relational() {
+            assert_prints!("PRINT 1 + 1 > 2", "0");
+            assert_prints!("PRINT 1 + (1 > 2)", "1");
+        }
+
+        #[test]
+        fn test_arithmetic_has_priority_over_binary() {
+            assert_prints!("PRINT 1 + 2 OR 1", "3");
+            assert_prints!("PRINT 1 + (2 OR 1)", "4");
+        }
+
+        #[test]
+        fn test_binary_not_short_circuit() {
+            let program = r#"
+            DECLARE FUNCTION Echo(X)
+
+            PRINT Echo(1) OR Echo(0)
+
+            FUNCTION Echo(X)
+                PRINT X
+                Echo = X
+            END FUNCTION
+            "#;
+            assert_prints!(program, "1", "0", "1");
+        }
+
+        #[test]
+        fn test_multiply_divide_have_priority_over_plus_minus() {
+            assert_prints!("PRINT 2 * 3 + 4", "10");
+            assert_prints!("PRINT 2 + 3 * 4", "14");
+            assert_prints!("PRINT 2 * 3 - 4", "2");
+            assert_prints!("PRINT 2 - 3 * 4", "-10");
+            assert_prints!("PRINT 6 / 3 + 4", "6");
+            assert_prints!("PRINT 2 + 8 / 4", "4");
+            assert_prints!("PRINT 6 / 3 - 4", "-2");
+            assert_prints!("PRINT 2 - 12 / 4", "-1");
         }
     }
 }

@@ -153,7 +153,7 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn try_qualifier(&self) -> Result<TypeQualifier, Error> {
+    pub fn try_qualifier(&self, pos: Location) -> Result<TypeQualifier, Error> {
         match self {
             Self::SingleLiteral(_) => Ok(TypeQualifier::BangSingle),
             Self::DoubleLiteral(_) => Ok(TypeQualifier::HashDouble),
@@ -165,37 +165,29 @@ impl Expression {
             }
             Self::BuiltInFunctionCall(f, _) => Ok(f.qualifier()),
             Self::BinaryExpression(op, l, r) => {
-                let q_left = l.as_ref().as_ref().try_qualifier()?;
-                let q_right = r.as_ref().as_ref().try_qualifier()?;
-                if q_left.can_cast_to(q_right) {
-                    match op {
-                        Operand::Plus | Operand::Minus => Ok(q_left),
-                        Operand::Less
-                        | Operand::LessOrEqual
-                        | Operand::Equal
-                        | Operand::GreaterOrEqual
-                        | Operand::Greater => Ok(TypeQualifier::PercentInteger),
-                    }
-                } else {
-                    err(LinterError::TypeMismatch, r.as_ref().location())
-                }
+                let q_left = l.as_ref().try_qualifier()?;
+                let q_right = r.as_ref().try_qualifier()?;
+                super::operand_type::cast_binary_op(*op, q_left, q_right)
+                    .ok_or_else(|| LinterError::TypeMismatch.at(r.as_ref().location()).into())
             }
-            Self::UnaryExpression(_, c) => {
-                let q_child = c.as_ref().as_ref().try_qualifier()?;
-                if q_child == TypeQualifier::DollarString {
-                    // no unary operator currently applicable to strings
-                    err(LinterError::TypeMismatch, c.as_ref().location())
-                } else {
-                    Ok(q_child)
-                }
+            Self::UnaryExpression(op, c) => {
+                let q_child = c.as_ref().try_qualifier()?;
+                super::operand_type::cast_unary_op(*op, q_child)
+                    .ok_or_else(|| LinterError::TypeMismatch.at(c.as_ref().location()).into())
             }
-            Self::Parenthesis(c) => c.as_ref().as_ref().try_qualifier(),
-            Self::FileHandle(_) => err(LinterError::TypeMismatch, Location::start()), // TODO fix location
+            Self::Parenthesis(c) => c.as_ref().try_qualifier(),
+            Self::FileHandle(_) => err(LinterError::TypeMismatch, pos),
         }
     }
 }
 
 pub type ExpressionNode = Locatable<Expression>;
+
+impl ExpressionNode {
+    pub fn try_qualifier(&self) -> Result<TypeQualifier, Error> {
+        self.as_ref().try_qualifier(self.location())
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {

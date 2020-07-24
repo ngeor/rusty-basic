@@ -147,7 +147,10 @@ impl<S: Stdlib> Interpreter<S> {
 #[macro_export]
 macro_rules! assert_has_variable {
     ($int:expr, $name:expr, $expected_value:expr) => {
-        assert_eq!($int.get_variable_str($name), Variant::from($expected_value));
+        assert_eq!(
+            $int.get_variable_str($name),
+            crate::variant::Variant::from($expected_value)
+        );
     };
 }
 
@@ -170,7 +173,7 @@ pub fn assert_input<T>(
 macro_rules! assert_err {
     ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
-            interpret_err($program),
+            crate::interpreter::test_utils::interpret_err($program),
             crate::interpreter::InterpreterError::new_with_pos(
                 $expected_msg,
                 crate::common::Location::new($expected_row, $expected_col)
@@ -182,11 +185,26 @@ macro_rules! assert_err {
 #[macro_export]
 macro_rules! assert_linter_err {
     ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
-        let (actual_err, actual_pos) = linter_err($program).consume();
+        let (actual_err, actual_pos) =
+            crate::interpreter::test_utils::linter_err($program).consume();
         assert_eq!(actual_err, $expected_msg);
         assert_eq!(
             actual_pos.unwrap(),
             crate::common::Location::new($expected_row, $expected_col)
         );
     };
+}
+
+#[macro_export]
+macro_rules! assert_prints {
+    ($program:expr; nothing) => {
+        let interpreter = crate::interpreter::test_utils::interpret($program);
+        assert_eq!(interpreter.stdlib.output, Vec::<String>::new());
+    };
+    ($program:expr, $($x:expr),+) => (
+        let interpreter = crate::interpreter::test_utils::interpret($program);
+        assert_eq!(interpreter.stdlib.output, vec![$($x),+]);
+    );
+    //($program:expr, $($x:expr,)*) => ($crate::assert_prints![$program, $($x),*])
+
 }

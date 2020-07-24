@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::test_utils::*;
     use crate::interpreter::{InterpreterError, Stdlib};
@@ -106,8 +107,7 @@ mod tests {
             X = 42
         END SUB
         "#;
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["1"]);
+        assert_prints!(program, "1");
     }
 
     #[test]
@@ -121,8 +121,7 @@ mod tests {
             X = 42
         END SUB
         "#;
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["42"]);
+        assert_prints!(program, "42");
     }
 
     #[test]
@@ -136,8 +135,7 @@ mod tests {
             A = 42
         END SUB
         ";
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["1"]);
+        assert_prints!(program, "1");
     }
 
     #[test]
@@ -216,8 +214,7 @@ mod tests {
             PRINT N
         END SUB
         ";
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["42", "43", "42"]);
+        assert_prints!(program, "42", "43", "42");
     }
 
     #[test]
@@ -231,8 +228,7 @@ mod tests {
             PRINT N%
         END SUB
         ";
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["3", "4"]);
+        assert_prints!(program, "3", "4");
     }
 
     #[test]
@@ -268,8 +264,7 @@ mod tests {
             N = N + P
         END SUB
         ";
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["42"]);
+        assert_prints!(program, "42");
     }
 
     #[test]
@@ -287,8 +282,7 @@ mod tests {
             A = 42
         END SUB
         ";
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["42"]);
+        assert_prints!(program, "42");
     }
 
     #[test]
@@ -300,7 +294,6 @@ mod tests {
             PRINT N
         END SUB
         ";
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["1"]);
+        assert_prints!(program, "1");
     }
 }

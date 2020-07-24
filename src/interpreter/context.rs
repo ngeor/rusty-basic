@@ -1,7 +1,7 @@
-use crate::casting;
 use crate::common::CaseInsensitiveString;
 use crate::instruction_generator::NamedRefParam;
 use crate::linter::*;
+use crate::variant;
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
 
@@ -36,7 +36,7 @@ trait Cast {
 
 impl Cast for Variant {
     fn cast(self, qualifier: TypeQualifier) -> Result<Self, String> {
-        casting::cast(self, qualifier)
+        variant::cast(self, qualifier)
     }
 }
 
@@ -44,7 +44,7 @@ impl Cast for Argument {
     fn cast(self, qualifier: TypeQualifier) -> Result<Self, String> {
         match self {
             Self::ByRef(n) => Ok(Self::ByRef(n)),
-            Self::ByVal(v) => casting::cast(v, qualifier).map(|x| Self::ByVal(x)),
+            Self::ByVal(v) => variant::cast(v, qualifier).map(|x| Self::ByVal(x)),
         }
     }
 }

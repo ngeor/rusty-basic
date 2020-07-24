@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::linter::LinterError;
 
     #[test]
@@ -13,8 +13,7 @@ mod tests {
         Jump:
         PRINT "c"
         "#;
-        let interpreter = interpret(input);
-        assert_eq!(interpreter.stdlib.output, vec!["a", "c"]);
+        assert_prints!(input, "a", "c");
     }
 
     #[test]
@@ -28,8 +27,7 @@ mod tests {
             GOTO Jump
         END IF
         "#;
-        let interpreter = interpret(input);
-        assert_eq!(interpreter.stdlib.output, vec!["0", "1"]);
+        assert_prints!(input, "0", "1");
     }
 
     #[test]
@@ -41,8 +39,7 @@ mod tests {
         X = X + 1
         IF X <= 1 THEN GOTO Jump
         "#;
-        let interpreter = interpret(input);
-        assert_eq!(interpreter.stdlib.output, vec!["0", "1"]);
+        assert_prints!(input, "0", "1");
     }
 
     #[test]

@@ -179,9 +179,9 @@ mod tests {
     use super::super::test_utils::*;
     use crate::assert_has_variable;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::interpreter::Stdlib;
     use crate::linter::LinterError;
-    use crate::variant::Variant;
 
     mod environ {
         use super::*;
@@ -230,8 +230,7 @@ mod tests {
         #[test]
         fn test_len_string() {
             let program = r#"PRINT LEN("hello")"#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["5"]);
+            assert_prints!(program, "5");
         }
 
         #[test]
@@ -240,8 +239,7 @@ mod tests {
             A = 3.14
             PRINT LEN(A)
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["4"]);
+            assert_prints!(program, "4");
         }
 
         #[test]
@@ -250,8 +248,7 @@ mod tests {
             A# = 3.14
             PRINT LEN(A#)
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["8"]);
+            assert_prints!(program, "8");
         }
 
         #[test]
@@ -260,8 +257,7 @@ mod tests {
             A% = 42
             PRINT LEN(A%)
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["2"]);
+            assert_prints!(program, "2");
         }
 
         #[test]
@@ -270,8 +266,7 @@ mod tests {
             A& = 42
             PRINT LEN(A&)
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["4"]);
+            assert_prints!(program, "4");
         }
 
         #[test]
@@ -314,8 +309,7 @@ mod tests {
         #[test]
         fn test_str_float() {
             let program = r#"PRINT STR$(3.14)"#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+            assert_prints!(program, "3.14");
         }
     }
 
@@ -325,46 +319,37 @@ mod tests {
         #[test]
         fn test_val_float() {
             let program = r#"PRINT VAL("3.14")"#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+            assert_prints!(program, "3.14");
         }
 
         #[test]
         fn test_val_integer() {
             let program = r#"PRINT VAL("42")"#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+            assert_prints!(program, "42");
         }
 
         #[test]
         fn test_val_invalid_string_gives_zero() {
             let program = r#"PRINT VAL("oops")"#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["0"]);
+            assert_prints!(program, "0");
         }
 
         #[test]
         fn test_val_partial_parse() {
             let program = r#"PRINT VAL("3.14oops")"#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+            assert_prints!(program, "3.14");
         }
 
         #[test]
         fn test_val_partial_parse_ignores_spaces() {
             let program = r#"PRINT VAL("  -    4   . 2   ")"#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["-4.2"]);
+            assert_prints!(program, "-4.2");
         }
 
         #[test]
         fn test_val_no_overflow() {
             let program = r#"PRINT VAL("1234567890123456789012345678901234567890")"#;
-            let interpreter = interpret(program);
-            assert_eq!(
-                interpreter.stdlib.output,
-                vec!["1234567890123456800000000000000000000000"]
-            );
+            assert_prints!(program, "1234567890123456800000000000000000000000");
         }
     }
 }

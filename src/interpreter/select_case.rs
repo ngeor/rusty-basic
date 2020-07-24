@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::linter::LinterError;
 
     #[test]
@@ -14,7 +14,7 @@ mod tests {
                 PRINT "two"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["one"]);
+        assert_prints!(input, "one");
     }
 
     #[test]
@@ -27,7 +27,7 @@ mod tests {
                 PRINT "two"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["two"]);
+        assert_prints!(input, "two");
     }
 
     #[test]
@@ -40,7 +40,7 @@ mod tests {
                 PRINT "two"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, Vec::<String>::new());
+        assert_prints!(input; nothing);
     }
 
     #[test]
@@ -53,7 +53,7 @@ mod tests {
                 PRINT "one"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["one"]);
+        assert_prints!(input, "one");
     }
 
     #[test]
@@ -66,7 +66,7 @@ mod tests {
                 PRINT "something else"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["something else"]);
+        assert_prints!(input, "something else");
     }
 
     #[test]
@@ -77,7 +77,7 @@ mod tests {
                 PRINT "always blue"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["always blue"]);
+        assert_prints!(input, "always blue");
     }
 
     #[test]
@@ -88,7 +88,7 @@ mod tests {
                 PRINT "greater than 2"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["greater than 2"]);
+        assert_prints!(input, "greater than 2");
     }
 
     #[test]
@@ -99,7 +99,7 @@ mod tests {
                 PRINT "greater than 5"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, Vec::<String>::new());
+        assert_prints!(input; nothing);
     }
 
     #[test]
@@ -110,7 +110,7 @@ mod tests {
                 PRINT "between 2 and 4"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["between 2 and 4"]);
+        assert_prints!(input, "between 2 and 4");
     }
 
     #[test]
@@ -121,7 +121,7 @@ mod tests {
                 PRINT "between 2 and 3"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, Vec::<String>::new());
+        assert_prints!(input; nothing);
     }
 
     #[test]
@@ -132,7 +132,7 @@ mod tests {
                 PRINT "between 2 and 3"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, Vec::<String>::new());
+        assert_prints!(input; nothing);
     }
 
     #[test]
@@ -145,7 +145,7 @@ mod tests {
                 PRINT "oops"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["one"]);
+        assert_prints!(input, "one");
     }
 
     #[test]
@@ -158,7 +158,7 @@ mod tests {
                 PRINT "oops"
         END SELECT
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["pi"]);
+        assert_prints!(input, "pi");
     }
 
     #[test]

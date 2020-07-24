@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::linter::LinterError;
 
     mod unqualified_integer_declaration {
@@ -13,8 +13,7 @@ mod tests {
             CONST X = 42
             PRINT X
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+            assert_prints!(program, "42");
         }
 
         #[test]
@@ -23,8 +22,7 @@ mod tests {
             CONST X = 42
             PRINT X%
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+            assert_prints!(program, "42");
         }
 
         #[test]
@@ -75,8 +73,7 @@ mod tests {
             CONST X = 3.14
             PRINT X
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+            assert_prints!(program, "3.14");
         }
 
         #[test]
@@ -85,8 +82,7 @@ mod tests {
             CONST X = 3.14
             PRINT X!
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+            assert_prints!(program, "3.14");
         }
 
         #[test]
@@ -108,8 +104,7 @@ mod tests {
             CONST X = 3.14#
             PRINT X
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+            assert_prints!(program, "3.14");
         }
     }
 
@@ -122,8 +117,7 @@ mod tests {
             CONST X = "hello"
             PRINT X
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["hello"]);
+            assert_prints!(program, "hello");
         }
     }
 
@@ -136,8 +130,7 @@ mod tests {
             CONST X! = 42
             PRINT X!
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+            assert_prints!(program, "42");
         }
 
         #[test]
@@ -146,8 +139,7 @@ mod tests {
             CONST X! = 3.14
             PRINT X!
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+            assert_prints!(program, "3.14");
         }
 
         #[test]
@@ -183,8 +175,7 @@ mod tests {
             CONST Y = X + 2
             PRINT Y
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3"]);
+            assert_prints!(program, "3");
         }
 
         #[test]
@@ -194,8 +185,7 @@ mod tests {
             CONST Y = X - 2
             PRINT Y
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["1"]);
+            assert_prints!(program, "1");
         }
 
         #[test]
@@ -205,8 +195,7 @@ mod tests {
             CONST Y = -X
             PRINT Y
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["-3"]);
+            assert_prints!(program, "-3");
         }
 
         #[test]
@@ -216,8 +205,7 @@ mod tests {
             CONST FALSE = NOT TRUE
             PRINT FALSE
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["0"]);
+            assert_prints!(program, "0");
         }
 
         #[test]
@@ -256,8 +244,7 @@ mod tests {
             END SUB
             "#;
 
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+            assert_prints!(program, "42");
         }
 
         #[test]
@@ -272,8 +259,7 @@ mod tests {
                 PRINT X
             END SUB
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["5"]);
+            assert_prints!(program, "5");
         }
 
         #[test]
@@ -291,8 +277,7 @@ mod tests {
                 PRINT X
             END SUB
             "#;
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["42", "100", "42"]);
+            assert_prints!(program, "42", "100", "42");
         }
 
         #[test]
@@ -311,8 +296,7 @@ mod tests {
                 PRINT X
             END SUB
             ";
-            let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.output, vec!["3", "42"]);
+            assert_prints!(program, "3", "42");
         }
     }
 }

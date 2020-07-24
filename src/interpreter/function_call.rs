@@ -4,7 +4,6 @@ mod tests {
     use crate::assert_has_variable;
     use crate::assert_linter_err;
     use crate::linter::LinterError;
-    use crate::variant::Variant;
 
     #[test]
     fn test_function_call_declared_and_implemented() {

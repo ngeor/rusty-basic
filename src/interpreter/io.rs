@@ -30,6 +30,7 @@ impl FileManager {
         handle: FileHandle,
         file_name: &str,
         file_mode: FileMode,
+        _file_access: FileAccess,
     ) -> std::io::Result<()> {
         if self.handle_map.contains_key(&handle) {
             return Err(std::io::Error::from(std::io::ErrorKind::AddrInUse));

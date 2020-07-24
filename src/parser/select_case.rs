@@ -3,6 +3,7 @@ use super::{
     SelectCaseNode, Statement, StatementNodes,
 };
 use crate::lexer::{Keyword, LexemeNode};
+use crate::parser::buf_lexer::BufLexerUndo;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {

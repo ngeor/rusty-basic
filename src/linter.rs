@@ -6,6 +6,7 @@ mod for_next_counter_match;
 mod label_linter;
 mod linter;
 mod no_dynamic_const;
+mod operand_type;
 mod post_conversion_linter;
 mod select_case_linter;
 mod subprogram_context;

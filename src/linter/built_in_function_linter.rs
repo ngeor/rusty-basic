@@ -37,7 +37,7 @@ impl BuiltInFunctionLinter {
             match arg {
                 Expression::Variable(_) => Ok(()),
                 _ => {
-                    let q = arg.try_qualifier()?;
+                    let q = args[0].try_qualifier()?;
                     if q != TypeQualifier::DollarString {
                         err_l(LinterError::VariableRequired, &args[0])
                     } else {
@@ -60,7 +60,7 @@ impl BuiltInFunctionLinter {
         if args.len() != 1 {
             err_no_pos(LinterError::ArgumentCountMismatch)
         } else {
-            let q = args[0].as_ref().try_qualifier()?;
+            let q = args[0].try_qualifier()?;
             if q != TypeQualifier::DollarString {
                 err_l(LinterError::ArgumentTypeMismatch, &args[0])
             } else {
@@ -73,7 +73,7 @@ impl BuiltInFunctionLinter {
         if args.len() != 1 {
             err_no_pos(LinterError::ArgumentCountMismatch)
         } else {
-            let q = args[0].as_ref().try_qualifier()?;
+            let q = args[0].try_qualifier()?;
             if q == TypeQualifier::DollarString || q == TypeQualifier::FileHandle {
                 err_l(LinterError::ArgumentTypeMismatch, &args[0])
             } else {

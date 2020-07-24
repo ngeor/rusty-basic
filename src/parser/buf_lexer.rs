@@ -7,14 +7,14 @@ use std::io::{BufRead, BufReader, Cursor};
 #[derive(Debug)]
 pub struct BufLexer<T: BufRead> {
     lexer: Lexer<T>,
-    _history: VecDeque<LexemeNode>,
+    history: VecDeque<LexemeNode>,
 }
 
 impl<T: BufRead> BufLexer<T> {
     pub fn new(lexer: Lexer<T>) -> BufLexer<T> {
         BufLexer {
             lexer: lexer,
-            _history: VecDeque::new(),
+            history: VecDeque::new(),
         }
     }
 
@@ -23,14 +23,10 @@ impl<T: BufRead> BufLexer<T> {
     }
 
     pub fn read(&mut self) -> Result<LexemeNode, ParserError> {
-        match self._history.pop_front() {
+        match self.history.pop_front() {
             Some(x) => Ok(x),
             None => self._lexer_read(),
         }
-    }
-
-    pub fn undo(&mut self, lexeme: LexemeNode) {
-        self._history.push_front(lexeme);
     }
 
     pub fn skip_if<F>(&mut self, f: F) -> Result<bool, ParserError>
@@ -75,5 +71,24 @@ where
 impl From<File> for BufLexer<BufReader<File>> {
     fn from(input: File) -> Self {
         BufLexer::new(Lexer::from(input))
+    }
+}
+
+pub trait BufLexerUndo<T> {
+    fn undo(&mut self, lexeme_like: T);
+}
+
+impl<T: BufRead> BufLexerUndo<LexemeNode> for BufLexer<T> {
+    fn undo(&mut self, lexeme: LexemeNode) {
+        self.history.push_front(lexeme);
+    }
+}
+
+impl<T: BufRead> BufLexerUndo<Option<LexemeNode>> for BufLexer<T> {
+    fn undo(&mut self, opt_lexeme: Option<LexemeNode>) {
+        match opt_lexeme {
+            Some(lexeme) => self.undo(lexeme),
+            None => (),
+        }
     }
 }

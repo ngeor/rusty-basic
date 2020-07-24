@@ -16,9 +16,7 @@ use super::types::*;
 use crate::common::*;
 use crate::parser;
 use crate::parser::type_resolver_impl::TypeResolverImpl;
-use crate::parser::{
-    HasQualifier, Name, NameTrait, Operand, QualifiedName, TypeQualifier, TypeResolver,
-};
+use crate::parser::{HasQualifier, Name, NameTrait, QualifiedName, TypeQualifier, TypeResolver};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 
@@ -312,7 +310,7 @@ impl Converter<parser::Statement, Statement> for Linter {
                     let function_type: TypeQualifier = self.functions.get(n.bare_name()).unwrap().0;
                     if n.bare_or_eq(function_type) {
                         let converted_expr: ExpressionNode = self.convert(e)?;
-                        let result_q: TypeQualifier = converted_expr.as_ref().try_qualifier()?;
+                        let result_q: TypeQualifier = converted_expr.try_qualifier()?;
                         if result_q.can_cast_to(function_type) {
                             Ok(Statement::SetReturnValue(converted_expr))
                         } else {
@@ -338,7 +336,7 @@ impl Converter<parser::Statement, Statement> for Linter {
                     } else {
                         let converted_name = self.convert(n)?;
                         let converted_expr: ExpressionNode = self.convert(e)?;
-                        let result_q: TypeQualifier = converted_expr.as_ref().try_qualifier()?;
+                        let result_q: TypeQualifier = converted_expr.try_qualifier()?;
                         if result_q.can_cast_to(converted_name.qualifier()) {
                             self.context.variables.insert(converted_name.clone());
                             Ok(Statement::Assignment(converted_name, converted_expr))
@@ -357,7 +355,7 @@ impl Converter<parser::Statement, Statement> for Linter {
                     err(LinterError::DuplicateDefinition, pos)
                 } else {
                     let converted_expression_node = self.convert(e)?;
-                    let e_type = converted_expression_node.as_ref().try_qualifier()?;
+                    let e_type = converted_expression_node.try_qualifier()?;
                     match name {
                         Name::Bare(b) => {
                             // bare name resolves from right side, not resolver
@@ -452,17 +450,11 @@ impl Converter<parser::Expression, Expression> for Linter {
                 let converted_left = self.convert(unboxed_left)?;
                 let converted_right = self.convert(unboxed_right)?;
                 // get the types
-                let q_left = converted_left.as_ref().try_qualifier()?;
-                let q_right = converted_right.as_ref().try_qualifier()?;
-                // can we cast from right to left?
-                let can_cast = q_right.can_cast_to(q_left);
-                // plus extra checks
-                let is_valid_op = match op {
-                    // you can't do "A" - "B"
-                    Operand::Minus => can_cast && q_left != TypeQualifier::DollarString,
-                    _ => can_cast,
-                };
-                if is_valid_op {
+                let q_left = converted_left.try_qualifier()?;
+                let q_right = converted_right.try_qualifier()?;
+                // get the cast type
+                let result_type = super::operand_type::cast_binary_op(op, q_left, q_right);
+                if result_type.is_some() {
                     Ok(Expression::BinaryExpression(
                         op,
                         Box::new(converted_left),
@@ -475,8 +467,8 @@ impl Converter<parser::Expression, Expression> for Linter {
             parser::Expression::UnaryExpression(op, c) => {
                 let unboxed_child = *c;
                 let converted_child = self.convert(unboxed_child)?;
-                let converted_q = converted_child.as_ref().try_qualifier()?;
-                if converted_q == TypeQualifier::DollarString {
+                let converted_q = converted_child.try_qualifier()?;
+                if super::operand_type::cast_unary_op(op, converted_q).is_none() {
                     // no unary operation works for strings
                     err_l(LinterError::TypeMismatch, &converted_child)
                 } else {

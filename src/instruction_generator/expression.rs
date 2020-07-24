@@ -44,11 +44,16 @@ impl InstructionGenerator {
                 match op {
                     Operand::Plus => self.push(Instruction::Plus, pos),
                     Operand::Minus => self.push(Instruction::Minus, pos),
+                    Operand::Multiply => self.push(Instruction::Multiply, pos),
+                    Operand::Divide => self.push(Instruction::Divide, pos),
                     Operand::Less => self.push(Instruction::Less, pos),
                     Operand::LessOrEqual => self.push(Instruction::LessOrEqual, pos),
                     Operand::Equal => self.push(Instruction::Equal, pos),
                     Operand::GreaterOrEqual => self.push(Instruction::GreaterOrEqual, pos),
                     Operand::Greater => self.push(Instruction::Greater, pos),
+                    Operand::NotEqual => self.push(Instruction::NotEqual, pos),
+                    Operand::And => self.push(Instruction::And, pos),
+                    Operand::Or => self.push(Instruction::Or, pos),
                 }
                 self.push(Instruction::PopRegisters, pos);
             }

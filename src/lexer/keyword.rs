@@ -6,6 +6,8 @@ use std::str::FromStr;
 pub enum Keyword {
     /// ACCESS
     Access,
+    /// AND
+    And,
     /// APPEND
     Append,
     /// AS
@@ -56,6 +58,8 @@ pub enum Keyword {
     On,
     /// OPEN
     Open,
+    /// OR
+    Or,
     /// OUTPUT
     Output,
     /// READ
@@ -77,6 +81,7 @@ pub enum Keyword {
 }
 
 const STR_ACCESS: &str = "ACCESS";
+const STR_AND: &str = "AND";
 const STR_APPEND: &str = "APPEND";
 const STR_AS: &str = "AS";
 const STR_CASE: &str = "CASE";
@@ -102,6 +107,7 @@ const STR_NEXT: &str = "NEXT";
 const STR_NOT: &str = "NOT";
 const STR_ON: &str = "ON";
 const STR_OPEN: &str = "OPEN";
+const STR_OR: &str = "OR";
 const STR_OUTPUT: &str = "OUTPUT";
 const STR_READ: &str = "READ";
 const STR_SELECT: &str = "SELECT";
@@ -112,8 +118,9 @@ const STR_TO: &str = "TO";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 35] = [
+const SORTED_KEYWORDS_STR: [&str; 37] = [
     STR_ACCESS,
+    STR_AND,
     STR_APPEND,
     STR_AS,
     STR_CASE,
@@ -139,6 +146,7 @@ const SORTED_KEYWORDS_STR: [&str; 35] = [
     STR_NOT,
     STR_ON,
     STR_OPEN,
+    STR_OR,
     STR_OUTPUT,
     STR_READ,
     STR_SELECT,
@@ -150,8 +158,9 @@ const SORTED_KEYWORDS_STR: [&str; 35] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 35] = [
+const SORTED_KEYWORDS: [Keyword; 37] = [
     Keyword::Access,
+    Keyword::And,
     Keyword::Append,
     Keyword::As,
     Keyword::Case,
@@ -177,6 +186,7 @@ const SORTED_KEYWORDS: [Keyword; 35] = [
     Keyword::Not,
     Keyword::On,
     Keyword::Open,
+    Keyword::Or,
     Keyword::Output,
     Keyword::Read,
     Keyword::Select,
@@ -192,6 +202,7 @@ impl Display for Keyword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Access => STR_ACCESS.fmt(f),
+            Self::And => STR_AND.fmt(f),
             Self::Append => STR_APPEND.fmt(f),
             Self::As => STR_AS.fmt(f),
             Self::Case => STR_CASE.fmt(f),
@@ -217,6 +228,7 @@ impl Display for Keyword {
             Self::Not => STR_NOT.fmt(f),
             Self::On => STR_ON.fmt(f),
             Self::Open => STR_OPEN.fmt(f),
+            Self::Or => STR_OR.fmt(f),
             Self::Output => STR_OUTPUT.fmt(f),
             Self::Read => STR_READ.fmt(f),
             Self::Select => STR_SELECT.fmt(f),

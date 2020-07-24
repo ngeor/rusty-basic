@@ -22,7 +22,7 @@ impl PostConversionLinter for BuiltInSubLinter {
             BuiltInSub::Environ => {
                 if args.len() != 1 {
                     err_no_pos(LinterError::ArgumentCountMismatch)
-                } else if args[0].as_ref().try_qualifier()? != TypeQualifier::DollarString {
+                } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
                     err_l(LinterError::ArgumentTypeMismatch, &args[0])
                 } else {
                     Ok(())

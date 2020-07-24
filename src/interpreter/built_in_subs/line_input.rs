@@ -70,7 +70,7 @@ impl<S: Stdlib> Interpreter<S> {
         }
     }
 
-    fn line_input_one_stdin(&mut self, arg: &Argument, n: &QualifiedName) -> Result<()> {
+    fn line_input_one_stdin(&mut self, _arg: &Argument, _n: &QualifiedName) -> Result<()> {
         unimplemented!()
     }
 }

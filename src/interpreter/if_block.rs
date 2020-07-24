@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::assert_prints;
 
     #[test]
     fn test_if_block_true() {
@@ -9,7 +10,7 @@ mod tests {
             PRINT \"hello\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
+        assert_prints!(input, "hello");
     }
 
     #[test]
@@ -19,7 +20,7 @@ mod tests {
             PRINT \"hello\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, Vec::<String>::new());
+        assert_prints!(input; nothing);
     }
 
     #[test]
@@ -31,7 +32,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
+        assert_prints!(input, "hello");
     }
 
     #[test]
@@ -43,7 +44,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
+        assert_prints!(input, "bye");
     }
 
     #[test]
@@ -55,7 +56,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
+        assert_prints!(input, "hello");
     }
 
     #[test]
@@ -67,7 +68,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
+        assert_prints!(input, "hello");
     }
 
     #[test]
@@ -79,7 +80,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
+        assert_prints!(input, "bye");
     }
 
     #[test]
@@ -91,7 +92,7 @@ mod tests {
             PRINT \"bye\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, Vec::<String>::new());
+        assert_prints!(input; nothing);
     }
 
     #[test]
@@ -105,7 +106,7 @@ mod tests {
             PRINT \"else\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
+        assert_prints!(input, "hello");
     }
 
     #[test]
@@ -119,7 +120,7 @@ mod tests {
             PRINT \"else\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
+        assert_prints!(input, "hello");
     }
 
     #[test]
@@ -133,7 +134,7 @@ mod tests {
             PRINT \"else\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
+        assert_prints!(input, "bye");
     }
 
     #[test]
@@ -161,7 +162,7 @@ mod tests {
             PRINT \"else if 2\"
         END IF
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["bye"]);
+        assert_prints!(input, "bye");
     }
 
     #[test]
@@ -169,11 +170,11 @@ mod tests {
         let input = r#"
         IF 1 THEN PRINT "hello"
         "#;
-        assert_eq!(interpret(input).stdlib.output, vec!["hello"]);
+        assert_prints!(input, "hello");
         let input = r#"
         IF 0 THEN PRINT "hello"
         "#;
-        assert_eq!(interpret(input).stdlib.output.len(), 0);
+        assert_prints!(input; nothing);
         let input = r#"
         PRINT "before"
         IF 1 THEN PRINT "hello"

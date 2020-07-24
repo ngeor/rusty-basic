@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::lexer::{Keyword, LexemeNode};
+use crate::parser::buf_lexer::BufLexerUndo;
 use crate::parser::{
     unexpected, Expression, ExpressionNode, Name, Operand, Parser, ParserError, UnaryOperand,
 };
@@ -22,6 +23,7 @@ impl<T: BufRead> Parser<T> {
     pub fn demand_expression(&mut self, next: LexemeNode) -> Result<ExpressionNode, ParserError> {
         let first = self.demand_single_expression(next)?;
         self.try_parse_second_expression(first)
+            .map(|x| x.simplify_unary_minus_literals())
     }
 
     fn demand_single_expression(
@@ -35,12 +37,20 @@ impl<T: BufRead> Parser<T> {
             LexemeNode::Symbol('.', pos) => self.parse_floating_point_literal("0".to_string(), pos),
             LexemeNode::Symbol('-', minus_pos) => {
                 let child = self.read_demand_expression()?;
-                Ok(Expression::unary_minus(child).at(minus_pos))
+                Ok(Self::apply_unary_priority_order(
+                    child,
+                    UnaryOperand::Minus,
+                    minus_pos,
+                ))
             }
             LexemeNode::Keyword(Keyword::Not, _, not_pos) => {
                 self.read_demand_whitespace("Expected whitespace after NOT")?;
                 let child = self.read_demand_expression()?;
-                Ok(Expression::UnaryExpression(UnaryOperand::Not, Box::new(child)).at(not_pos))
+                Ok(Self::apply_unary_priority_order(
+                    child,
+                    UnaryOperand::Not,
+                    not_pos,
+                ))
             }
             LexemeNode::Symbol('(', pos) => {
                 let inner = self.read_demand_expression_skipping_whitespace()?;
@@ -68,7 +78,7 @@ impl<T: BufRead> Parser<T> {
         &mut self,
         left_side: ExpressionNode,
     ) -> Result<ExpressionNode, ParserError> {
-        let operand = self.try_parse_operand()?;
+        let operand = self.try_parse_operand(&left_side)?;
         match operand {
             Some((op, pos)) => {
                 let right_side = self.read_demand_expression_skipping_whitespace()?;
@@ -86,7 +96,11 @@ impl<T: BufRead> Parser<T> {
     ) -> ExpressionNode {
         match right_side.as_ref() {
             Expression::BinaryExpression(r_op, r_left, r_right) => {
-                let should_flip = op == Operand::Plus && *r_op == Operand::Less;
+                let should_flip = op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
+                    || op.is_relational() && r_op.is_binary()
+                    || op == Operand::And && *r_op == Operand::Or
+                    || (op == Operand::Multiply || op == Operand::Divide)
+                        && (*r_op == Operand::Plus || *r_op == Operand::Minus);
                 if should_flip {
                     Expression::BinaryExpression(
                         *r_op,
@@ -105,6 +119,29 @@ impl<T: BufRead> Parser<T> {
             _ => {
                 Expression::BinaryExpression(op, Box::new(left_side), Box::new(right_side)).at(pos)
             }
+        }
+    }
+
+    fn apply_unary_priority_order(
+        child: ExpressionNode,
+        op: UnaryOperand,
+        pos: Location,
+    ) -> ExpressionNode {
+        match child.as_ref() {
+            Expression::BinaryExpression(r_op, r_left, r_right) => {
+                let should_flip = op == UnaryOperand::Minus || r_op.is_binary();
+                if should_flip {
+                    Expression::BinaryExpression(
+                        *r_op,
+                        Box::new(Expression::UnaryExpression(op, r_left.clone()).at(pos)),
+                        r_right.clone(),
+                    )
+                    .at(child.location())
+                } else {
+                    Expression::UnaryExpression(op, Box::new(child)).at(pos)
+                }
+            }
+            _ => Expression::UnaryExpression(op, Box::new(child)).at(pos),
         }
     }
 
@@ -234,33 +271,67 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn try_parse_operand(&mut self) -> Result<Option<(Operand, Location)>, ParserError> {
+    fn try_parse_operand(
+        &mut self,
+        left_side: &ExpressionNode,
+    ) -> Result<Option<(Operand, Location)>, ParserError> {
         // if we can't find an operand, we need to restore the whitespace as it was,
         // in case there is a next call that will be demanding for it
         let (opt_space, next) = self.read_preserve_whitespace()?;
         match next {
-            LexemeNode::Symbol('<', pos) => Ok(Some((self.less_or_lte()?, pos))),
+            LexemeNode::Symbol('<', pos) => Ok(Some((self.less_or_lte_or_ne()?, pos))),
+            LexemeNode::Symbol('>', pos) => Ok(Some((self.greater_or_gte()?, pos))),
+            LexemeNode::Symbol('=', pos) => Ok(Some((Operand::Equal, pos))),
             LexemeNode::Symbol('+', pos) => Ok(Some((Operand::Plus, pos))),
             LexemeNode::Symbol('-', pos) => Ok(Some((Operand::Minus, pos))),
+            LexemeNode::Symbol('*', pos) => Ok(Some((Operand::Multiply, pos))),
+            LexemeNode::Symbol('/', pos) => Ok(Some((Operand::Divide, pos))),
+            LexemeNode::Keyword(Keyword::And, _, pos) => {
+                if opt_space.is_some() || left_side.is_parenthesis() {
+                    Ok(Some((Operand::And, pos)))
+                } else {
+                    self.buf_lexer.undo(next);
+                    self.buf_lexer.undo(opt_space);
+                    Ok(None)
+                }
+            }
+            LexemeNode::Keyword(Keyword::Or, _, pos) => {
+                if opt_space.is_some() || left_side.is_parenthesis() {
+                    Ok(Some((Operand::Or, pos)))
+                } else {
+                    self.buf_lexer.undo(next);
+                    self.buf_lexer.undo(opt_space);
+                    Ok(None)
+                }
+            }
             _ => {
                 self.buf_lexer.undo(next);
-                match opt_space {
-                    Some(x) => self.buf_lexer.undo(x),
-                    _ => (),
-                }
+                self.buf_lexer.undo(opt_space);
                 Ok(None)
             }
         }
     }
 
-    fn less_or_lte(&mut self) -> Result<Operand, ParserError> {
+    fn less_or_lte_or_ne(&mut self) -> Result<Operand, ParserError> {
+        let next = self.buf_lexer.read()?;
+        match next {
+            LexemeNode::Symbol('=', _) => Ok(Operand::LessOrEqual),
+            LexemeNode::Symbol('>', _) => Ok(Operand::NotEqual),
+            _ => {
+                self.buf_lexer.undo(next);
+                Ok(Operand::Less)
+            }
+        }
+    }
+
+    fn greater_or_gte(&mut self) -> Result<Operand, ParserError> {
         self.buf_lexer
             .skip_if(|lexeme| lexeme.is_symbol('='))
             .map(|found_equal_sign| {
                 if found_equal_sign {
-                    Operand::LessOrEqual
+                    Operand::GreaterOrEqual
                 } else {
-                    Operand::Less
+                    Operand::Greater
                 }
             })
     }
@@ -288,7 +359,8 @@ fn integer_literal_to_expression_node(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Expression, Name, Operand, Statement, UnaryOperand};
+    use crate::lexer::{Keyword, LexemeNode};
+    use crate::parser::{Expression, Name, Operand, ParserError, Statement, UnaryOperand};
 
     macro_rules! assert_expression {
         ($left:expr, $right:expr) => {
@@ -496,6 +568,99 @@ mod tests {
                 )
             );
         }
+
+        #[test]
+        fn test_a_gt_0_and_b_lt_1() {
+            assert_expression!(
+                "A > 0 AND B < 1",
+                Expression::BinaryExpression(
+                    Operand::And,
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Greater,
+                            Box::new("A".as_var_expr(1, 7)),
+                            Box::new(0.as_lit_expr(1, 11)),
+                        )
+                        .at_rc(1, 9)
+                    ),
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Less,
+                            Box::new("B".as_var_expr(1, 17)),
+                            Box::new(1.as_lit_expr(1, 21)),
+                        )
+                        .at_rc(1, 19)
+                    )
+                )
+            );
+        }
+
+        #[test]
+        fn test_not_eof_1_and_id_gt_0() {
+            assert_expression!(
+                "NOT EOF(1) AND ID > 0",
+                Expression::BinaryExpression(
+                    Operand::And,
+                    Box::new(
+                        Expression::UnaryExpression(
+                            UnaryOperand::Not,
+                            Box::new(
+                                Expression::FunctionCall(
+                                    Name::from("EOF"),
+                                    vec![1.as_lit_expr(1, 15)]
+                                )
+                                .at_rc(1, 11)
+                            )
+                        )
+                        .at_rc(1, 7)
+                    ),
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Greater,
+                            Box::new("ID".as_var_expr(1, 22)),
+                            Box::new(0.as_lit_expr(1, 27))
+                        )
+                        .at_rc(1, 25)
+                    )
+                )
+            );
+        }
+
+        #[test]
+        fn test_negated_number_and_positive_number() {
+            assert_expression!(
+                "-5 AND 2",
+                Expression::BinaryExpression(
+                    Operand::And,
+                    Box::new((-5_i32).as_lit_expr(1, 7)),
+                    Box::new(2.as_lit_expr(1, 14))
+                )
+            );
+        }
+
+        #[test]
+        fn test_negated_number_plus_positive_number() {
+            assert_expression!(
+                "-5 + 2",
+                Expression::BinaryExpression(
+                    Operand::Plus,
+                    Box::new((-5_i32).as_lit_expr(1, 7)),
+                    Box::new(2.as_lit_expr(1, 12))
+                )
+            );
+        }
+
+        #[test]
+        fn test_negated_number_lt_positive_number() {
+            assert_expression!(
+                "-5 < 2",
+                Expression::BinaryExpression(
+                    Operand::Less,
+                    Box::new((-5_i32).as_lit_expr(1, 7)),
+                    Box::new(2.as_lit_expr(1, 12))
+                )
+            );
+        }
     }
 
     mod binary_plus {
@@ -609,6 +774,76 @@ mod tests {
                     )
                     .at_rc(1, 8)
                 )
+            )
+        );
+    }
+
+    #[test]
+    fn test_and_or_leading_whitespace() {
+        assert_expression!(
+            "1 AND 2",
+            Expression::BinaryExpression(
+                Operand::And,
+                Box::new(1.as_lit_expr(1, 7)),
+                Box::new(2.as_lit_expr(1, 13))
+            )
+        );
+        assert_eq!(
+            parse_err("PRINT 1AND 2"),
+            ParserError::Unexpected(
+                "Expected comma or EOL".to_string(),
+                LexemeNode::Keyword(Keyword::And, "AND".to_string(), Location::new(1, 8))
+            )
+        );
+        assert_expression!(
+            "(1 OR 2)AND 3",
+            Expression::BinaryExpression(
+                Operand::And,
+                Box::new(
+                    Expression::Parenthesis(Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Or,
+                            Box::new(1.as_lit_expr(1, 8)),
+                            Box::new(2.as_lit_expr(1, 13))
+                        )
+                        .at_rc(1, 10)
+                    ))
+                    .at_rc(1, 7)
+                ),
+                Box::new(3.as_lit_expr(1, 19))
+            )
+        );
+        assert_expression!(
+            "1 OR 2",
+            Expression::BinaryExpression(
+                Operand::Or,
+                Box::new(1.as_lit_expr(1, 7)),
+                Box::new(2.as_lit_expr(1, 12))
+            )
+        );
+        assert_eq!(
+            parse_err("PRINT 1OR 2"),
+            ParserError::Unexpected(
+                "Expected comma or EOL".to_string(),
+                LexemeNode::Keyword(Keyword::Or, "OR".to_string(), Location::new(1, 8))
+            )
+        );
+        assert_expression!(
+            "(1 AND 2)OR 3",
+            Expression::BinaryExpression(
+                Operand::Or,
+                Box::new(
+                    Expression::Parenthesis(Box::new(
+                        Expression::BinaryExpression(
+                            Operand::And,
+                            Box::new(1.as_lit_expr(1, 8)),
+                            Box::new(2.as_lit_expr(1, 14))
+                        )
+                        .at_rc(1, 10)
+                    ))
+                    .at_rc(1, 7)
+                ),
+                Box::new(3.as_lit_expr(1, 19))
             )
         );
     }

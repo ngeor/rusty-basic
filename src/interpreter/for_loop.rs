@@ -3,10 +3,10 @@ mod tests {
     use super::super::test_utils::*;
     use crate::assert_has_variable;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::InterpreterError;
     use crate::linter::LinterError;
-    use crate::variant::Variant;
 
     #[test]
     fn test_simple_for_loop_untyped() {
@@ -15,9 +15,7 @@ mod tests {
             PRINT I
         NEXT
         ";
-        let interpreter = interpret(input);
-        let stdlib = interpreter.stdlib;
-        assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
+        assert_prints!(input, "1", "2", "3", "4", "5");
     }
 
     #[test]
@@ -27,9 +25,7 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input);
-        let stdlib = interpreter.stdlib;
-        assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
+        assert_prints!(input, "1", "2", "3", "4", "5");
     }
 
     #[test]
@@ -39,9 +35,7 @@ mod tests {
             PRINT I%
         NEXT
         ";
-        let interpreter = interpret(input);
-        let stdlib = interpreter.stdlib;
-        assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
+        assert_prints!(input, "1", "2", "3", "4", "5");
     }
 
     #[test]
@@ -75,9 +69,7 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input);
-        let stdlib = interpreter.stdlib;
-        assert_eq!(stdlib.output, vec!["1", "3", "5", "7"]);
+        assert_prints!(input, "1", "3", "5", "7");
     }
 
     #[test]
@@ -87,9 +79,7 @@ mod tests {
             PRINT i%
         NEXT
         ";
-        let interpreter = interpret(input);
-        let stdlib = interpreter.stdlib;
-        assert_eq!(stdlib.output, vec!["7", "4", "1", "-2", "-5"]);
+        assert_prints!(input, "7", "4", "1", "-2", "-5");
     }
 
     #[test]
@@ -125,9 +115,7 @@ mod tests {
             PRINT i%
         NEXT i%
         ";
-        let interpreter = interpret(input);
-        let stdlib = interpreter.stdlib;
-        assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
+        assert_prints!(input, "1", "2", "3", "4", "5");
     }
 
     #[test]
@@ -137,9 +125,7 @@ mod tests {
             PRINT i%
         NEXT I%
         ";
-        let interpreter = interpret(input);
-        let stdlib = interpreter.stdlib;
-        assert_eq!(stdlib.output, vec!["1", "2", "3", "4", "5"]);
+        assert_prints!(input, "1", "2", "3", "4", "5");
     }
 
     #[test]
@@ -177,7 +163,6 @@ mod tests {
         NEXT
         NEXT
         ";
-        let interpreter = interpret(input);
-        assert_eq!(interpreter.stdlib.output, vec!["1 3", "1 4", "2 3", "2 4"]);
+        assert_prints!(input, "1 3", "1 4", "2 3", "2 4");
     }
 }

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
+    use crate::assert_prints;
 
     #[test]
     fn test_while_wend() {
@@ -11,6 +11,6 @@ mod tests {
             A = A + 1
         WEND
         ";
-        assert_eq!(interpret(input).stdlib.output, vec!["1", "2", "3", "4"]);
+        assert_prints!(input, "1", "2", "3", "4");
     }
 }

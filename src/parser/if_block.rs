@@ -35,10 +35,25 @@ impl<T: BufRead> Parser<T> {
             condition: if_condition,
             statements: vec![self.demand_single_line_then_statement(next)?],
         };
+
+        let next = self.read_skipping_whitespace()?;
+        let mut else_block: Option<StatementNodes> = None;
+
+        match next {
+            LexemeNode::Keyword(Keyword::Else, _, _) => {
+                self.read_demand_whitespace("Expected whitespace after ELSE keyword")?;
+                let next2 = self.buf_lexer.read()?;
+                else_block = Some(vec![self.demand_single_line_then_statement(next2)?]);
+                self.read_demand_eol_or_eof_skipping_whitespace()?;
+            }
+            LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => {}
+            _ => return unexpected("Expected ELSE or EOL or EOF", next),
+        }
+
         Ok(Statement::IfBlock(IfBlockNode {
             if_block: if_block,
             else_if_blocks: vec![],
-            else_block: None,
+            else_block,
         }))
     }
 
@@ -132,7 +147,9 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{ConditionalBlockNode, IfBlockNode, Statement, TopLevelToken};
+    use crate::parser::{
+        ConditionalBlockNode, Expression, IfBlockNode, Operand, Statement, TopLevelToken,
+    };
 
     #[test]
     fn test_if() {
@@ -361,5 +378,33 @@ end if"#;
                 .at_rc(6, 5)]),
             })
         );
+    }
+
+    #[test]
+    fn test_single_line_if_else() {
+        let input = "IF ID = 0 THEN A$ = B$ ELSE A$ = C$";
+        let if_block = parse(input).demand_single_statement();
+        assert_eq!(
+            if_block,
+            Statement::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode {
+                    condition: Expression::BinaryExpression(
+                        Operand::Equal,
+                        Box::new("ID".as_var_expr(1, 4)),
+                        Box::new(0.as_lit_expr(1, 9))
+                    )
+                    .at_rc(1, 7),
+                    statements: vec![
+                        Statement::Assignment("A$".into(), "B$".as_var_expr(1, 21)).at_rc(1, 16)
+                    ]
+                },
+                else_if_blocks: vec![],
+                else_block: Some(vec![Statement::Assignment(
+                    "A$".into(),
+                    "C$".as_var_expr(1, 34)
+                )
+                .at_rc(1, 29)])
+            })
+        )
     }
 }

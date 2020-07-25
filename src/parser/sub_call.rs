@@ -1,8 +1,10 @@
 use super::{
-    unexpected, BareNameNode, ExpressionNode, Parser, ParserError, Statement, StatementNode,
+    unexpected, BareNameNode, ExpressionNode, Parser, ParserError, Statement, StatementContext,
+    StatementNode,
 };
 use crate::common::*;
-use crate::lexer::LexemeNode;
+use crate::lexer::{Keyword, LexemeNode};
+use crate::parser::buf_lexer::BufLexerUndo;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
@@ -10,6 +12,7 @@ impl<T: BufRead> Parser<T> {
         &mut self,
         name_node: BareNameNode,
         initial: LexemeNode,
+        context: StatementContext,
     ) -> Result<StatementNode, ParserError> {
         let mut args: Vec<ExpressionNode> = vec![];
         const STATE_INITIAL: u8 = 0;
@@ -23,6 +26,10 @@ impl<T: BufRead> Parser<T> {
                 LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => {
                     if state == STATE_INITIAL || state == STATE_ARG {
                         state = STATE_EOL_OR_EOF;
+                        if context == StatementContext::SingleLineIf {
+                            // TODO refactor so we return back the last retrieved lexeme node instead of undoing it
+                            self.buf_lexer.undo(next.clone());
+                        }
                     } else {
                         return unexpected("Expected argument after comma", next);
                     }
@@ -31,6 +38,18 @@ impl<T: BufRead> Parser<T> {
                     if state == STATE_ARG {
                         state = STATE_COMMA;
                         next = self.read_skipping_whitespace()?;
+                    } else {
+                        return unexpected("Syntax error", next);
+                    }
+                }
+                LexemeNode::Keyword(Keyword::Else, _, _) => {
+                    if context == StatementContext::SingleLineIf
+                        && (state == STATE_INITIAL || state == STATE_ARG)
+                    {
+                        // we are in single-line if mode. ELSE is an acceptable exit keyword
+                        state = STATE_EOL_OR_EOF;
+                        // but we need to put it back into the buffer, because the if block will be reading it
+                        self.buf_lexer.undo(next.clone());
                     } else {
                         return unexpected("Syntax error", next);
                     }

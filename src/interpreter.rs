@@ -18,7 +18,7 @@ mod sub_call;
 mod while_wend;
 
 #[cfg(test)]
-mod test_utils;
+pub mod test_utils;
 
 pub use self::interpreter::Interpreter;
 pub use self::interpreter_error::*;

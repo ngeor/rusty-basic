@@ -1,4 +1,4 @@
-use super::{NameNode, Parser, ParserError, Statement, StatementNode};
+use super::{NameNode, Parser, ParserError, Statement, StatementContext, StatementNode};
 use crate::common::*;
 use std::io::BufRead;
 
@@ -6,9 +6,13 @@ impl<T: BufRead> Parser<T> {
     pub fn read_demand_assignment_skipping_whitespace(
         &mut self,
         left_side: NameNode,
+        context: StatementContext,
     ) -> Result<StatementNode, ParserError> {
         let right_side = self.read_demand_expression_skipping_whitespace()?;
-        self.read_demand_eol_or_eof_skipping_whitespace()?;
+        // if multi-line, demand eol/eof -- otherwise, let the single-line if statement sort it out (might be ELSE following)
+        if context == StatementContext::Normal {
+            self.read_demand_eol_or_eof_skipping_whitespace()?;
+        }
         let (name, pos) = left_side.consume();
         Ok(Statement::Assignment(name, right_side).at(pos))
     }

@@ -110,6 +110,7 @@ pub enum BuiltInSub {
     Close,
     Open,
     LineInput,
+    Name,
 }
 
 impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
@@ -128,6 +129,8 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
             Some(BuiltInSub::Open)
         } else if s == "LINE INPUT" {
             Some(BuiltInSub::LineInput)
+        } else if s == "NAME" {
+            Some(BuiltInSub::Name)
         } else {
             None
         }

@@ -50,6 +50,8 @@ pub enum Keyword {
     Is,
     /// LINE
     Line,
+    /// NAME
+    Name,
     /// NEXT
     Next,
     /// NOT
@@ -103,6 +105,7 @@ const STR_IF: &str = "IF";
 const STR_INPUT: &str = "INPUT";
 const STR_IS: &str = "IS";
 const STR_LINE: &str = "LINE";
+const STR_NAME: &str = "NAME";
 const STR_NEXT: &str = "NEXT";
 const STR_NOT: &str = "NOT";
 const STR_ON: &str = "ON";
@@ -118,7 +121,7 @@ const STR_TO: &str = "TO";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 37] = [
+const SORTED_KEYWORDS_STR: [&str; 38] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -142,6 +145,7 @@ const SORTED_KEYWORDS_STR: [&str; 37] = [
     STR_INPUT,
     STR_IS,
     STR_LINE,
+    STR_NAME,
     STR_NEXT,
     STR_NOT,
     STR_ON,
@@ -158,7 +162,7 @@ const SORTED_KEYWORDS_STR: [&str; 37] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 37] = [
+const SORTED_KEYWORDS: [Keyword; 38] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -182,6 +186,7 @@ const SORTED_KEYWORDS: [Keyword; 37] = [
     Keyword::Input,
     Keyword::Is,
     Keyword::Line,
+    Keyword::Name,
     Keyword::Next,
     Keyword::Not,
     Keyword::On,
@@ -224,6 +229,7 @@ impl Display for Keyword {
             Self::Input => STR_INPUT.fmt(f),
             Self::Is => STR_IS.fmt(f),
             Self::Line => STR_LINE.fmt(f),
+            Self::Name => STR_NAME.fmt(f),
             Self::Next => STR_NEXT.fmt(f),
             Self::Not => STR_NOT.fmt(f),
             Self::On => STR_ON.fmt(f),

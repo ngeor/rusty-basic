@@ -1,3 +1,4 @@
+use crate::built_ins;
 use crate::common::*;
 use crate::lexer::{Keyword, LexemeNode};
 use crate::parser::types::*;
@@ -5,24 +6,39 @@ use crate::parser::{unexpected, Parser, ParserError};
 use std::convert::TryFrom;
 use std::io::BufRead;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StatementContext {
+    Normal,
+    SingleLineIf,
+}
+
 impl<T: BufRead> Parser<T> {
     pub fn demand_statement(&mut self, next: LexemeNode) -> Result<StatementNode, ParserError> {
         match next {
             LexemeNode::Keyword(Keyword::Const, _, pos) => self.demand_const().map(|x| x.at(pos)),
             LexemeNode::Keyword(Keyword::For, _, pos) => self.demand_for_loop().map(|x| x.at(pos)),
-            LexemeNode::Keyword(Keyword::GoTo, _, pos) => self.demand_go_to().map(|x| x.at(pos)),
+            LexemeNode::Keyword(Keyword::GoTo, _, pos) => self
+                .demand_go_to(StatementContext::Normal)
+                .map(|x| x.at(pos)),
             LexemeNode::Keyword(Keyword::If, _, pos) => self.demand_if_block().map(|x| x.at(pos)),
-            LexemeNode::Keyword(Keyword::Input, w, pos) => self.demand_input(w, pos),
-            LexemeNode::Keyword(Keyword::Line, _, pos) => self.demand_line_input(pos),
+            LexemeNode::Keyword(Keyword::Input, w, pos) => {
+                self.demand_input(w, StatementContext::Normal, pos)
+            }
+            LexemeNode::Keyword(Keyword::Line, _, pos) => {
+                self.demand_line_input(StatementContext::Normal, pos)
+            }
             LexemeNode::Keyword(Keyword::On, _, pos) => self.demand_on().map(|x| x.at(pos)),
             LexemeNode::Keyword(Keyword::Open, _, pos) => self.demand_open().map(|x| x.at(pos)),
+            LexemeNode::Keyword(Keyword::Name, _, pos) => {
+                built_ins::name::demand(self).map(|x| x.at(pos))
+            }
             LexemeNode::Keyword(Keyword::Select, _, pos) => {
                 self.demand_select_case().map(|x| x.at(pos))
             }
             LexemeNode::Keyword(Keyword::While, _, pos) => {
                 self.demand_while_block().map(|x| x.at(pos))
             }
-            _ => self.demand_assignment_or_sub_call_or_label(next, true),
+            _ => self.demand_assignment_or_sub_call_or_label(next, StatementContext::Normal),
         }
     }
 
@@ -35,10 +51,15 @@ impl<T: BufRead> Parser<T> {
             LexemeNode::Word(w, p) => self.demand_assignment_or_sub_call_with_bare_name(
                 CaseInsensitiveString::new(w),
                 p,
-                false,
+                StatementContext::SingleLineIf,
             ),
-            LexemeNode::Keyword(Keyword::GoTo, _, pos) => self.demand_go_to().map(|x| x.at(pos)),
-            LexemeNode::Keyword(Keyword::Input, w, pos) => self.demand_input(w, pos),
+            LexemeNode::Keyword(Keyword::GoTo, _, pos) => self
+                .demand_go_to(StatementContext::SingleLineIf)
+                .map(|x| x.at(pos)),
+            LexemeNode::Keyword(Keyword::Input, w, pos) => {
+                self.demand_input(w, StatementContext::SingleLineIf, pos)
+            }
+            // TODO accept more built-in subs here e.g. NAME, LINE INPUT
             _ => unexpected("Expected assignment, sub-call or GOTO after THEN", next),
         }
     }
@@ -46,14 +67,14 @@ impl<T: BufRead> Parser<T> {
     fn demand_assignment_or_sub_call_or_label(
         &mut self,
         next: LexemeNode,
-        labels_allowed: bool, // don't allow labels if we're doing `IF X THEN Y:`
+        context: StatementContext, // don't allow labels if we're doing `IF X THEN Y:`
     ) -> Result<StatementNode, ParserError> {
         // read bare name
         match next {
             LexemeNode::Word(w, p) => self.demand_assignment_or_sub_call_with_bare_name(
                 CaseInsensitiveString::new(w),
                 p,
-                labels_allowed,
+                context,
             ),
             _ => unexpected("Expected word for assignment or sub-call", next),
         }
@@ -63,30 +84,32 @@ impl<T: BufRead> Parser<T> {
         &mut self,
         bare_name: CaseInsensitiveString,
         bare_name_pos: Location,
-        labels_allowed: bool, // don't allow labels if we're doing `IF X THEN Y:`
+        context: StatementContext, // don't allow labels if we're doing `IF X THEN Y:`
     ) -> Result<StatementNode, ParserError> {
         // next allowed eof, eol, space, equal sign, type qualifier
         let next = self.buf_lexer.read()?;
         match next {
             LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => {
-                self.demand_sub_call(BareNameNode::new(bare_name, bare_name_pos), next)
+                self.demand_sub_call(BareNameNode::new(bare_name, bare_name_pos), next, context)
             }
             LexemeNode::Whitespace(_, _) => {
                 // not allowed to parse qualifier after space
-                self._demand_assignment_or_sub_call_with_bare_name_whitespace(
+                self.demand_assignment_or_sub_call_with_bare_name_whitespace(
                     bare_name,
                     bare_name_pos,
+                    context,
                 )
             }
             LexemeNode::Symbol('=', _) => {
                 // assignment, left-side unqualified name node
                 self.read_demand_assignment_skipping_whitespace(
                     Name::new_bare(bare_name).at(bare_name_pos),
+                    context,
                 )
             }
             LexemeNode::Symbol(':', _) => {
                 // label
-                if labels_allowed {
+                if context == StatementContext::Normal {
                     self.read_demand_eol_or_eof_skipping_whitespace()?;
                     Ok(Statement::Label(bare_name).at(bare_name_pos))
                 } else {
@@ -95,11 +118,12 @@ impl<T: BufRead> Parser<T> {
             }
             LexemeNode::Symbol('(', _) => {
                 // parenthesis e.g. Log("message")
-                self.demand_sub_call(BareNameNode::new(bare_name, bare_name_pos), next)
+                self.demand_sub_call(BareNameNode::new(bare_name, bare_name_pos), next, context)
             }
             LexemeNode::Symbol(ch, _) => match TypeQualifier::try_from(ch) {
-                Ok(q) => self._demand_assignment_or_sub_call_with_qualified_name(
+                Ok(q) => self.demand_assignment_or_sub_call_with_qualified_name(
                     Name::new_qualified(bare_name, q).at(bare_name_pos),
+                    context,
                 ),
                 Err(_) => unexpected("Expected type qualifier", next),
             },
@@ -107,30 +131,33 @@ impl<T: BufRead> Parser<T> {
         }
     }
 
-    fn _demand_assignment_or_sub_call_with_bare_name_whitespace(
+    fn demand_assignment_or_sub_call_with_bare_name_whitespace(
         &mut self,
         bare_name: CaseInsensitiveString,
         bare_name_pos: Location,
+        context: StatementContext,
     ) -> Result<StatementNode, ParserError> {
         // next allowed eof, eol, equal sign
         let next = self.buf_lexer.read()?;
         match next {
             LexemeNode::Symbol('=', _) => self.read_demand_assignment_skipping_whitespace(
                 Name::new_bare(bare_name).at(bare_name_pos),
+                context,
             ),
-            _ => self.demand_sub_call(BareNameNode::new(bare_name, bare_name_pos), next),
+            _ => self.demand_sub_call(BareNameNode::new(bare_name, bare_name_pos), next, context),
         }
     }
 
-    fn _demand_assignment_or_sub_call_with_qualified_name(
+    fn demand_assignment_or_sub_call_with_qualified_name(
         &mut self,
         name_node: NameNode,
+        context: StatementContext,
     ) -> Result<StatementNode, ParserError> {
         // next allowed space and assignment
         let next = self.read_skipping_whitespace()?;
         match next {
             LexemeNode::Symbol('=', _) => {
-                self.read_demand_assignment_skipping_whitespace(name_node)
+                self.read_demand_assignment_skipping_whitespace(name_node, context)
             }
             _ => unexpected("Syntax error", next),
         }
@@ -170,16 +197,20 @@ impl<T: BufRead> Parser<T> {
         Ok(Statement::ErrorHandler(name))
     }
 
-    fn demand_go_to(&mut self) -> Result<Statement, ParserError> {
+    fn demand_go_to(&mut self, context: StatementContext) -> Result<Statement, ParserError> {
         self.read_demand_whitespace("Expected space after GOTO")?;
         let name_node = self.read_demand_bare_name_node("Expected label name")?;
         let (name, _) = name_node.consume();
+        if context == StatementContext::Normal {
+            self.read_demand_eol_or_eof_skipping_whitespace()?;
+        }
         Ok(Statement::GoTo(name))
     }
 
     fn demand_input(
         &mut self,
         raw_name: String,
+        context: StatementContext,
         bare_name_pos: Location,
     ) -> Result<StatementNode, ParserError> {
         self.read_demand_whitespace("Expected space after INPUT")?;
@@ -187,15 +218,20 @@ impl<T: BufRead> Parser<T> {
         self.demand_sub_call(
             BareNameNode::new(CaseInsensitiveString::new(raw_name), bare_name_pos),
             next,
+            context,
         )
     }
 
-    fn demand_line_input(&mut self, pos: Location) -> Result<StatementNode, ParserError> {
+    fn demand_line_input(
+        &mut self,
+        context: StatementContext,
+        pos: Location,
+    ) -> Result<StatementNode, ParserError> {
         self.read_demand_whitespace("Expected space after LINE")?;
         self.read_demand_keyword(Keyword::Input)?;
         self.read_demand_whitespace("Expected space after INPUT")?;
         let next = self.buf_lexer.read()?;
-        self.demand_sub_call(BareNameNode::new("LINE INPUT".into(), pos), next)
+        self.demand_sub_call(BareNameNode::new("LINE INPUT".into(), pos), next, context)
     }
 
     fn demand_open(&mut self) -> Result<Statement, ParserError> {

@@ -15,7 +15,7 @@ mod undefined_function_reducer;
 mod user_defined_function_linter;
 mod user_defined_sub_linter;
 
-pub use self::error::{Error, LinterError};
+pub use self::error::{err_l, err_no_pos, Error, LinterError};
 pub use self::linter::*;
 pub use self::types::*;
 

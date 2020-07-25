@@ -48,6 +48,7 @@ impl<T: BufRead> Parser<T> {
                 | Keyword::Line
                 | Keyword::On
                 | Keyword::Open
+                | Keyword::Name
                 | Keyword::Select
                 | Keyword::While => self
                     .demand_statement(next)

@@ -1,6 +1,7 @@
 use super::error::*;
 use super::post_conversion_linter::PostConversionLinter;
 use super::types::*;
+use crate::built_ins;
 use crate::parser::TypeQualifier;
 
 pub struct BuiltInSubLinter;
@@ -50,6 +51,7 @@ impl PostConversionLinter for BuiltInSubLinter {
                     }
                 }
             }
+            BuiltInSub::Name => built_ins::name::lint(args),
             _ => Ok(()),
         }
     }

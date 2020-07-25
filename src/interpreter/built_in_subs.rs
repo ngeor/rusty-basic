@@ -1,3 +1,4 @@
+use crate::built_ins;
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
@@ -64,6 +65,7 @@ impl<S: Stdlib> Interpreter<S> {
                     })
             }
             BuiltInSub::LineInput => self.line_input().map_err(|e| e.at(pos)),
+            BuiltInSub::Name => built_ins::name::run(self, pos),
         }
     }
 

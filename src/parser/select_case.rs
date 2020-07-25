@@ -1,6 +1,6 @@
 use super::{
     unexpected, CaseBlockNode, CaseExpression, ExpressionNode, Operand, Parser, ParserError,
-    SelectCaseNode, Statement, StatementNodes,
+    SelectCaseNode, Statement, StatementContext, StatementNodes,
 };
 use crate::lexer::{Keyword, LexemeNode};
 use crate::parser::buf_lexer::BufLexerUndo;
@@ -13,7 +13,7 @@ impl<T: BufRead> Parser<T> {
         self.read_demand_keyword(Keyword::Case)?;
         self.read_demand_whitespace("Expected space after CASE")?;
         let expr: ExpressionNode = self.read_demand_expression()?;
-        self.read_demand_eol_skipping_whitespace()?;
+        let inline_comment = self.read_optional_comment()?;
 
         let mut case_blocks: Vec<CaseBlockNode> = vec![];
         let mut next = self.read_skipping_whitespace_and_eol()?;
@@ -25,7 +25,7 @@ impl<T: BufRead> Parser<T> {
                     // END SELECT
                     self.read_demand_whitespace("Expected space after END")?;
                     self.read_demand_keyword(Keyword::Select)?;
-                    self.read_demand_eol_or_eof_skipping_whitespace()?;
+                    self.finish_line(StatementContext::Normal)?;
                     has_more = false;
                 }
                 LexemeNode::Keyword(Keyword::Case, _, _) => {
@@ -37,6 +37,7 @@ impl<T: BufRead> Parser<T> {
         }
 
         Ok(Statement::SelectCase(SelectCaseNode {
+            inline_comment,
             expr,
             case_blocks,
             else_block,
@@ -114,7 +115,7 @@ impl<T: BufRead> Parser<T> {
             // already set CASE ELSE...
             return unexpected("CASE ELSE already defined", next);
         }
-        self.read_demand_eol_skipping_whitespace()?;
+        self.finish_line(StatementContext::Normal)?;
         let (statements, exit_lexeme) = self.parse_statements(
             |x| match x {
                 LexemeNode::Keyword(Keyword::End, _, _) => true,
@@ -148,7 +149,7 @@ impl<T: BufRead> Parser<T> {
         } else {
             self.buf_lexer.undo(next2);
         }
-        self.read_demand_eol_skipping_whitespace()?;
+        self.finish_line(StatementContext::Normal)?;
         let case_expr = match upper_expr {
             Some(u) => CaseExpression::Range(expr, u),
             None => CaseExpression::Simple(expr),
@@ -171,5 +172,52 @@ impl<T: BufRead> Parser<T> {
         )?;
         case_blocks.push(CaseBlockNode { expr, statements });
         Ok(exit_lexeme)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::test_utils::*;
+    use crate::common::*;
+    use crate::parser::*;
+
+    #[test]
+    fn test_inline_comment() {
+        let input = r#"
+        SELECT CASE X ' testing for x
+        CASE 1        ' is it one?
+        PRINT "One"   ' print it
+        CASE ELSE     ' something else?
+        PRINT "Nope"  ' print nope
+        END SELECT    ' end of select
+        "#;
+        let result = parse(input);
+        assert_eq!(
+            result,
+            vec![
+                TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
+                    expr: "X".as_var_expr(2, 21),
+                    inline_comment: Some(" testing for x".to_string().at_rc(2, 23)),
+                    case_blocks: vec![CaseBlockNode {
+                        expr: CaseExpression::Simple(1.as_lit_expr(3, 14)),
+                        statements: vec![
+                            Statement::Comment(" is it one?".to_string()).at_rc(3, 23),
+                            Statement::SubCall("PRINT".into(), vec!["One".as_lit_expr(4, 15)])
+                                .at_rc(4, 9),
+                            Statement::Comment(" print it".to_string()).at_rc(4, 23),
+                        ]
+                    }],
+                    else_block: Some(vec![
+                        Statement::Comment(" something else?".to_string()).at_rc(5, 23),
+                        Statement::SubCall("PRINT".into(), vec!["Nope".as_lit_expr(6, 15)])
+                            .at_rc(6, 9),
+                        Statement::Comment(" print nope".to_string()).at_rc(6, 23),
+                    ]),
+                }))
+                .at_rc(2, 9),
+                TopLevelToken::Statement(Statement::Comment(" end of select".to_string()))
+                    .at_rc(7, 23)
+            ]
+        );
     }
 }

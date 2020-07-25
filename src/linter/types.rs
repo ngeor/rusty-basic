@@ -256,6 +256,7 @@ pub enum Statement {
     GoTo(CaseInsensitiveString),
 
     SetReturnValue(ExpressionNode),
+    Comment(String),
 }
 
 pub type StatementNode = Locatable<Statement>;

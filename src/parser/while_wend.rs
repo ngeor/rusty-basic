@@ -1,4 +1,4 @@
-use super::{ConditionalBlockNode, Parser, ParserError, Statement};
+use super::{ConditionalBlockNode, Parser, ParserError, Statement, StatementContext};
 use crate::lexer::Keyword;
 use std::io::BufRead;
 
@@ -6,10 +6,10 @@ impl<T: BufRead> Parser<T> {
     pub fn demand_while_block(&mut self) -> Result<Statement, ParserError> {
         self.read_demand_whitespace("Expected whitespace after WHILE keyword")?;
         let condition = self.read_demand_expression()?;
-        self.read_demand_eol_skipping_whitespace()?;
+        self.finish_line(StatementContext::Normal)?;
         let (statements, _) =
             self.parse_statements(|x| x.is_keyword(Keyword::Wend), "While without Wend")?;
-        self.read_demand_eol_or_eof_skipping_whitespace()?;
+        self.finish_line(StatementContext::Normal)?;
         Ok(Statement::While(ConditionalBlockNode {
             condition,
             statements,
@@ -21,7 +21,9 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
-    use crate::parser::{BareName, ConditionalBlockNode, Expression, Operand, Statement};
+    use crate::parser::{
+        BareName, ConditionalBlockNode, Expression, Operand, Statement, TopLevelToken,
+    };
 
     #[test]
     fn test_while_wend() {
@@ -42,6 +44,32 @@ mod tests {
                 .at_rc(2, 17),
                 statements: vec![Statement::SubCall(BareName::from("SYSTEM"), vec![]).at_rc(3, 13)]
             })
+        );
+    }
+
+    #[test]
+    fn test_inline_comment() {
+        let input = "
+        WHILE A    ' keep looping
+            SYSTEM ' exit
+        WEND       ' end of loop
+        ";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::Statement(Statement::While(ConditionalBlockNode {
+                    condition: "A".as_var_expr(2, 15),
+                    statements: vec![
+                        Statement::Comment(" keep looping".to_string()).at_rc(2, 20),
+                        Statement::SubCall(BareName::from("SYSTEM"), vec![]).at_rc(3, 13),
+                        Statement::Comment(" exit".to_string()).at_rc(3, 20)
+                    ]
+                }))
+                .at_rc(2, 9),
+                TopLevelToken::Statement(Statement::Comment(" end of loop".to_string()))
+                    .at_rc(4, 20)
+            ]
         );
     }
 }

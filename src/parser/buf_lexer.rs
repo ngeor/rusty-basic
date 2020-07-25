@@ -55,6 +55,12 @@ impl<T: BufRead> BufLexer<T> {
             }
         }
     }
+
+    pub fn undo_if_comment(&mut self, l: LexemeNode) {
+        if l.is_symbol('\'') {
+            self.undo(l);
+        }
+    }
 }
 
 // bytes || &str -> BufLexer

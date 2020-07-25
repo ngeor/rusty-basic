@@ -298,6 +298,7 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for Linter {
 impl Converter<parser::Statement, Statement> for Linter {
     fn convert(&mut self, a: parser::Statement) -> Result<Statement, Error> {
         match a {
+            parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
             parser::Statement::Assignment(n, e) => {
                 if self
                     .context

@@ -23,10 +23,10 @@ impl<T: BufRead> Parser<T> {
         let mut next = initial;
         while state != STATE_EOL_OR_EOF {
             match next {
-                LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => {
+                LexemeNode::EOF(_) | LexemeNode::EOL(_, _) | LexemeNode::Symbol('\'', _) => {
                     if state == STATE_INITIAL || state == STATE_ARG {
                         state = STATE_EOL_OR_EOF;
-                        if context == StatementContext::SingleLineIf {
+                        if context == StatementContext::SingleLineIf || !next.is_eol_or_eof() {
                             // TODO refactor so we return back the last retrieved lexeme node instead of undoing it
                             self.buf_lexer.undo(next.clone());
                         }
@@ -252,6 +252,24 @@ mod tests {
                 "CLOSE".into(),
                 vec![Expression::FileHandle(1.into()).at_rc(1, 7)]
             ))]
+        );
+    }
+
+    #[test]
+    fn test_inline_comment() {
+        let input = "CLOSE #1 ' closes the file";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::Statement(Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![Expression::FileHandle(1.into()).at_rc(1, 7)]
+                ))
+                .at_rc(1, 1),
+                TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))
+                    .at_rc(1, 10)
+            ]
         );
     }
 }

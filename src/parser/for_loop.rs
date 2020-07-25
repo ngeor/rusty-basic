@@ -55,11 +55,12 @@ impl<T: BufRead> Parser<T> {
                     }
                 }
                 LexemeNode::EOF(_) => return unexpected("FOR without NEXT", next),
-                LexemeNode::EOL(_, _) => {
+                LexemeNode::EOL(_, _) | LexemeNode::Symbol('\'', _) => {
                     if state == STATE_STEP || state == STATE_WHITESPACE_AFTER_STEP {
                         return unexpected("Expected expression after STEP", next);
                     }
                     state = STATE_EOL;
+                    self.buf_lexer.undo_if_comment(next);
                 }
                 LexemeNode::Keyword(Keyword::Step, _, _) => {
                     if state == STATE_WHITESPACE_BEFORE_STEP {
@@ -96,8 +97,9 @@ impl<T: BufRead> Parser<T> {
                         state = STATE_WHITESPACE_AFTER_NEXT;
                     }
                 }
-                LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => {
+                LexemeNode::EOL(_, _) | LexemeNode::EOF(_) | LexemeNode::Symbol('\'', _) => {
                     state = STATE_EOL_OR_EOF;
+                    self.buf_lexer.undo_if_comment(next);
                 }
                 LexemeNode::Word(_, _) => {
                     if state == STATE_WHITESPACE_AFTER_NEXT {
@@ -234,6 +236,37 @@ mod tests {
                     BareName::from("PRINT"),
                     vec!["After the outer loop".as_lit_expr(9, 7)]
                 )),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_inline_comment() {
+        let input = r#"
+        FOR I = 1 TO 10 ' for loop
+        PRINT I ' print it
+        NEXT ' end of loop
+        "#;
+        let result = parse(input);
+        assert_eq!(
+            result,
+            vec![
+                TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
+                    variable_name: "I".as_name(2, 13),
+                    lower_bound: 1.as_lit_expr(2, 17),
+                    upper_bound: 10.as_lit_expr(2, 22),
+                    step: None,
+                    statements: vec![
+                        Statement::Comment(" for loop".to_string()).at_rc(2, 25),
+                        Statement::SubCall("PRINT".into(), vec!["I".as_var_expr(3, 15)])
+                            .at_rc(3, 9),
+                        Statement::Comment(" print it".to_string()).at_rc(3, 17),
+                    ],
+                    next_counter: None,
+                }))
+                .at_rc(2, 9),
+                TopLevelToken::Statement(Statement::Comment(" end of loop".to_string()))
+                    .at_rc(4, 14)
             ]
         );
     }

@@ -30,7 +30,7 @@ impl<T: BufRead> Parser<T> {
         while state != STATE_EOL {
             let next = self.read_skipping_whitespace()?;
             match &next {
-                LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => {
+                LexemeNode::EOF(_) | LexemeNode::EOL(_, _) | LexemeNode::Symbol('\'', _) => {
                     if state == STATE_DASH {
                         return unexpected("Expected letter after dash", next);
                     } else if state == STATE_COMMA {
@@ -38,9 +38,11 @@ impl<T: BufRead> Parser<T> {
                     } else if state == STATE_FIRST_LETTER {
                         ranges.push(LetterRange::Single(first_letter));
                         state = STATE_EOL;
+                        self.buf_lexer.undo_if_comment(next);
                     } else if state == STATE_SECOND_LETTER {
                         ranges.push(LetterRange::Range(first_letter, second_letter));
                         state = STATE_EOL;
+                        self.buf_lexer.undo_if_comment(next);
                     } else {
                         return unexpected("Expected at least one letter range", next);
                     }
@@ -92,7 +94,7 @@ mod tests {
     use super::super::test_utils::*;
     use super::*;
     use crate::common::*;
-    use crate::parser::HasQualifier;
+    use crate::parser::{HasQualifier, Statement};
 
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {
@@ -184,6 +186,26 @@ mod tests {
                 "Invalid letter range".to_string(),
                 LexemeNode::Word("A".to_string(), Location::new(1, 10))
             )
+        );
+    }
+
+    #[test]
+    fn test_inline_comment() {
+        let input = r#"
+        DEFINT A-Z ' Improve performance
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::DefType(DefType::new(
+                    TypeQualifier::PercentInteger,
+                    vec![LetterRange::Range('A', 'Z')]
+                ))
+                .at_rc(2, 9),
+                TopLevelToken::Statement(Statement::Comment(" Improve performance".to_string()))
+                    .at_rc(2, 20),
+            ]
         );
     }
 }

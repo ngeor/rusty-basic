@@ -1,10 +1,18 @@
 use crate::common::*;
 use crate::lexer::{Keyword, LexemeNode};
 use crate::parser::buf_lexer::BufLexer;
+use crate::parser::buf_lexer::BufLexerUndo;
 use crate::parser::error::*;
 use crate::parser::types::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
+
+// TODO refactor parser to be reusable and that this enum is not needed
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StatementContext {
+    Normal,
+    SingleLineIf,
+}
 
 #[derive(Debug)]
 pub struct Parser<T: BufRead> {
@@ -30,36 +38,34 @@ impl<T: BufRead> Parser<T> {
         &mut self,
         next: LexemeNode,
     ) -> Result<TopLevelTokenNode, ParserError> {
+        match self.parse_top_level_token_non_statement(&next)? {
+            Some(token) => Ok(token),
+            None => self
+                .demand_statement(next)
+                .map(|s| s.consume())
+                .map(|(s, p)| TopLevelToken::from(s).at(p)),
+        }
+    }
+
+    fn parse_top_level_token_non_statement(
+        &mut self,
+        next: &LexemeNode,
+    ) -> Result<Option<TopLevelTokenNode>, ParserError> {
         match next {
             LexemeNode::Keyword(k, _, pos) => match k {
-                Keyword::Declare => self.demand_declaration().map(|x| x.at(pos)),
+                Keyword::Declare => self.demand_declaration().map(|x| Some(x.at(*pos))),
                 Keyword::DefDbl
                 | Keyword::DefInt
                 | Keyword::DefLng
                 | Keyword::DefSng
-                | Keyword::DefStr => self.demand_def_type(k).map(|x| x.at(pos)),
-                Keyword::Function => self.demand_function_implementation().map(|x| x.at(pos)),
-                Keyword::Sub => self.demand_sub_implementation().map(|x| x.at(pos)),
-                Keyword::Const
-                | Keyword::For
-                | Keyword::GoTo
-                | Keyword::If
-                | Keyword::Input
-                | Keyword::Line
-                | Keyword::On
-                | Keyword::Open
-                | Keyword::Name
-                | Keyword::Select
-                | Keyword::While => self
-                    .demand_statement(next)
-                    .map(|s| s.consume())
-                    .map(|(s, p)| TopLevelToken::from(s).at(p)),
-                _ => unexpected("Unexpected top level token", next),
+                | Keyword::DefStr => self.demand_def_type(*k).map(|x| Some(x.at(*pos))),
+                Keyword::Function => self
+                    .demand_function_implementation()
+                    .map(|x| Some(x.at(*pos))),
+                Keyword::Sub => self.demand_sub_implementation().map(|x| Some(x.at(*pos))),
+                _ => Ok(None),
             },
-            _ => self
-                .demand_statement(next)
-                .map(|s| s.consume())
-                .map(|(s, p)| TopLevelToken::from(s).at(p)),
+            _ => Ok(None),
         }
     }
 
@@ -115,14 +121,6 @@ impl<T: BufRead> Parser<T> {
 
     // eol
 
-    pub fn read_demand_eol_skipping_whitespace(&mut self) -> Result<(), ParserError> {
-        let next = self.read_skipping_whitespace()?;
-        match next {
-            LexemeNode::EOL(_, _) => Ok(()),
-            _ => unexpected("Expected EOL", next),
-        }
-    }
-
     pub fn read_demand_eol_or_eof_skipping_whitespace(&mut self) -> Result<(), ParserError> {
         let next = self.read_skipping_whitespace()?;
         match next {
@@ -150,6 +148,51 @@ impl<T: BufRead> Parser<T> {
             Ok(())
         } else {
             unexpected(format!("Expected keyword {}", keyword), next)
+        }
+    }
+
+    /// Read until the end of line or end of file. If a comment is encountered,
+    /// backtrack so that the next call will pick it up as the next statement.
+    pub fn finish_line(&mut self, context: StatementContext) -> Result<(), ParserError> {
+        // demand eol eof or comment
+        let next = self.buf_lexer.read()?;
+        match next {
+            LexemeNode::Symbol('\'', _) => {
+                self.buf_lexer.undo(next);
+                Ok(())
+            }
+            LexemeNode::Whitespace(_, _) => self.finish_line(context),
+            LexemeNode::Keyword(Keyword::Else, _, _) => {
+                if context == StatementContext::SingleLineIf {
+                    self.buf_lexer.undo(next);
+                    Ok(())
+                } else {
+                    unexpected("Expected EOL or EOF, found ELSE", next)
+                }
+            }
+            LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => {
+                if context == StatementContext::SingleLineIf {
+                    self.buf_lexer.undo(next);
+                }
+                Ok(())
+            }
+            _ => unexpected("Expected EOL or EOF", next),
+        }
+    }
+
+    pub fn read_optional_comment(&mut self) -> Result<Option<Locatable<String>>, ParserError> {
+        let next = self.buf_lexer.read()?;
+        match next {
+            LexemeNode::Whitespace(_, _) => self.read_optional_comment(),
+            LexemeNode::Symbol('\'', pos) => {
+                // read until end of line
+                match self.demand_comment()? {
+                    Statement::Comment(c) => Ok(Some(c.at(pos))),
+                    _ => panic!("should never happen"),
+                }
+            }
+            LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => Ok(None),
+            _ => unexpected("Expected EOL or EOF or comment", next),
         }
     }
 }

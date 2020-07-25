@@ -1,4 +1,4 @@
-use super::{unexpected, NameNode, Parser, ParserError, TopLevelToken};
+use super::{unexpected, NameNode, Parser, ParserError, StatementContext, TopLevelToken};
 use crate::lexer::{Keyword, LexemeNode};
 use std::io::BufRead;
 
@@ -37,8 +37,7 @@ impl<T: BufRead> Parser<T> {
             self.parse_statements(|x| x.is_keyword(Keyword::End), "Function without End")?;
         self.read_demand_whitespace("Expected whitespace after END keyword")?;
         self.read_demand_keyword(Keyword::Function)?;
-        self.read_demand_eol_or_eof_skipping_whitespace()?;
-
+        self.finish_line(StatementContext::Normal)?;
         Ok(TopLevelToken::FunctionImplementation(name, params, block))
     }
 
@@ -53,7 +52,7 @@ impl<T: BufRead> Parser<T> {
             self.parse_statements(|x| x.is_keyword(Keyword::End), "Sub without End")?;
         self.read_demand_whitespace("Expected whitespace after END keyword")?;
         self.read_demand_keyword(Keyword::Sub)?;
-        self.read_demand_eol_or_eof_skipping_whitespace()?;
+        self.finish_line(StatementContext::Normal)?;
         Ok(TopLevelToken::SubImplementation(name, params, block))
     }
 
@@ -62,7 +61,7 @@ impl<T: BufRead> Parser<T> {
         let next = self.read_skipping_whitespace()?;
         if next.is_symbol('(') {
             self.parse_inside_parentheses(&mut params)?;
-            self.read_demand_eol_or_eof_skipping_whitespace()?;
+            self.finish_line(StatementContext::Normal)?;
             Ok(params)
         } else if next.is_eol_or_eof() {
             // no parentheses e.g. DECLARE FUNCTION hello
@@ -143,6 +142,33 @@ mod tests {
     #[test]
     fn test_lower_case() {
         assert_function_declaration!("declare function echo$(msg$)", "echo$", vec!["msg$"]);
+    }
+
+    #[test]
+    fn test_inline_comment() {
+        let input = r#"
+        DECLARE FUNCTION Echo(X) ' Echoes stuff back
+        FUNCTION Echo(X) ' Implementation of Echo
+        END FUNCTION ' End of implementation
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::FunctionDeclaration("Echo".as_name(2, 26), vec!["X".as_name(2, 31)])
+                    .at_rc(2, 9),
+                TopLevelToken::Statement(Statement::Comment(" Echoes stuff back".to_string()))
+                    .at_rc(2, 34),
+                TopLevelToken::FunctionImplementation(
+                    "Echo".as_name(3, 18),
+                    vec!["X".as_name(3, 23)],
+                    vec![Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)]
+                )
+                .at_rc(3, 9),
+                TopLevelToken::Statement(Statement::Comment(" End of implementation".to_string()))
+                    .at_rc(4, 22),
+            ]
+        );
     }
 
     #[test]

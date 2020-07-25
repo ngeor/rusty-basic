@@ -2,15 +2,9 @@ use crate::built_ins;
 use crate::common::*;
 use crate::lexer::{Keyword, LexemeNode};
 use crate::parser::types::*;
-use crate::parser::{unexpected, Parser, ParserError};
+use crate::parser::{unexpected, Parser, ParserError, StatementContext};
 use std::convert::TryFrom;
 use std::io::BufRead;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum StatementContext {
-    Normal,
-    SingleLineIf,
-}
 
 impl<T: BufRead> Parser<T> {
     pub fn demand_statement(&mut self, next: LexemeNode) -> Result<StatementNode, ParserError> {
@@ -38,15 +32,38 @@ impl<T: BufRead> Parser<T> {
             LexemeNode::Keyword(Keyword::While, _, pos) => {
                 self.demand_while_block().map(|x| x.at(pos))
             }
+            LexemeNode::Symbol('\'', pos) => self.demand_comment().map(|x| x.at(pos)),
             _ => self.demand_assignment_or_sub_call_or_label(next, StatementContext::Normal),
         }
     }
 
-    pub fn demand_single_line_then_statement(
-        &mut self,
-        next: LexemeNode,
-    ) -> Result<StatementNode, ParserError> {
+    pub fn demand_comment(&mut self) -> Result<Statement, ParserError> {
+        let mut next: LexemeNode = self.buf_lexer.read()?;
+        let mut comment: String = String::new();
+        while !next.is_eol_or_eof() {
+            match next {
+                LexemeNode::EOF(_) => {
+                    return unexpected("EOF while looking for end of string", next)
+                }
+                LexemeNode::EOL(_, _) => {
+                    return unexpected("Unexpected new line while looking for end of string", next)
+                }
+                LexemeNode::Keyword(_, s, _)
+                | LexemeNode::Word(s, _)
+                | LexemeNode::Whitespace(s, _) => comment.push_str(&s),
+                LexemeNode::Symbol(c, _) => {
+                    comment.push(c);
+                }
+                LexemeNode::Digits(d, _) => comment.push_str(&format!("{}", d)),
+            }
+            next = self.buf_lexer.read()?;
+        }
+        Ok(Statement::Comment(comment))
+    }
+
+    pub fn demand_single_line_then_statement(&mut self) -> Result<StatementNode, ParserError> {
         // read bare name
+        let next = self.buf_lexer.read()?;
         match next {
             LexemeNode::Word(w, p) => self.demand_assignment_or_sub_call_with_bare_name(
                 CaseInsensitiveString::new(w),
@@ -285,5 +302,25 @@ impl<T: BufRead> Parser<T> {
             LexemeNode::Keyword(Keyword::Read, _, _) => Ok(FileAccess::Read),
             _ => unexpected("Expected READ after ACCESS", next),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::test_utils::*;
+    use crate::common::*;
+    use crate::parser::{Statement, TopLevelToken};
+
+    #[test]
+    fn test_top_level_comment() {
+        let input = "' closes the file";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))
+                    .at_rc(1, 1)
+            ]
+        );
     }
 }

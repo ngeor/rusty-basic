@@ -1,8 +1,9 @@
 use super::{
     unexpected, ConditionalBlockNode, ExpressionNode, IfBlockNode, Parser, ParserError, Statement,
-    StatementNodes,
+    StatementContext, StatementNodes,
 };
 use crate::lexer::{Keyword, LexemeNode};
+use crate::parser::buf_lexer::BufLexerUndo;
 use std::io::BufRead;
 
 impl<T: BufRead> Parser<T> {
@@ -11,16 +12,36 @@ impl<T: BufRead> Parser<T> {
         let if_condition = self.read_demand_expression()?;
         self.read_demand_whitespace("Expected whitespace before THEN keyword")?;
         self.read_demand_keyword(Keyword::Then)?;
-        let (opt_space, next) = self.read_preserve_whitespace()?;
-        match next {
-            // EOL, or whitespace and then EOL
-            LexemeNode::EOL(_, _) => self.consume_if_block_multi_line(if_condition),
-            _ => {
-                match opt_space {
-                    // whitespace and then something which wasn't EOL
-                    Some(_) => self.consume_if_block_single_line(if_condition, next),
-                    // THEN was not followed by space nor EOL
-                    None => unexpected("Expected space or EOL", next),
+        let is_multi_line = self.read_after_then()?;
+        if is_multi_line {
+            self.consume_if_block_multi_line(if_condition)
+        } else {
+            self.consume_if_block_single_line(if_condition)
+        }
+    }
+
+    fn read_after_then(&mut self) -> Result<bool, ParserError> {
+        let mut found_whitespace = false;
+        loop {
+            let next = self.buf_lexer.read()?;
+            match next {
+                LexemeNode::Whitespace(_, _) => {
+                    found_whitespace = true;
+                }
+                LexemeNode::EOL(_, _) | LexemeNode::Symbol('\'', _) => {
+                    // comment, multi-line if
+                    self.buf_lexer.undo_if_comment(next);
+                    return Ok(true);
+                }
+                _ => {
+                    if found_whitespace {
+                        // something which is not EOL nor comment after a space,
+                        // most likely single-line if
+                        self.buf_lexer.undo(next);
+                        return Ok(false);
+                    } else {
+                        return unexpected("Expected space or EOL", next);
+                    }
                 }
             }
         }
@@ -29,11 +50,10 @@ impl<T: BufRead> Parser<T> {
     fn consume_if_block_single_line(
         &mut self,
         if_condition: ExpressionNode,
-        next: LexemeNode,
     ) -> Result<Statement, ParserError> {
         let if_block = ConditionalBlockNode {
             condition: if_condition,
-            statements: vec![self.demand_single_line_then_statement(next)?],
+            statements: vec![self.demand_single_line_then_statement()?],
         };
 
         let next = self.read_skipping_whitespace()?;
@@ -42,8 +62,7 @@ impl<T: BufRead> Parser<T> {
         match next {
             LexemeNode::Keyword(Keyword::Else, _, _) => {
                 self.read_demand_whitespace("Expected whitespace after ELSE keyword")?;
-                let next2 = self.buf_lexer.read()?;
-                else_block = Some(vec![self.demand_single_line_then_statement(next2)?]);
+                else_block = Some(vec![self.demand_single_line_then_statement()?]);
                 self.read_demand_eol_or_eof_skipping_whitespace()?;
             }
             LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => {}
@@ -94,7 +113,7 @@ impl<T: BufRead> Parser<T> {
         // parse end if
         self.read_demand_whitespace("Expected whitespace after END keyword")?;
         self.read_demand_keyword(Keyword::If)?;
-        self.read_demand_eol_or_eof_skipping_whitespace()?;
+        self.finish_line(StatementContext::Normal)?;
         Ok(Statement::IfBlock(IfBlockNode {
             if_block: if_block,
             else_if_blocks: else_if_blocks,
@@ -115,7 +134,7 @@ impl<T: BufRead> Parser<T> {
         let condition = self.read_demand_expression()?;
         self.read_demand_whitespace("Expected whitespace before THEN keyword")?;
         self.read_demand_keyword(Keyword::Then)?;
-        self.read_demand_eol_skipping_whitespace()?;
+        self.finish_line(StatementContext::Normal)?;
         Ok(condition)
     }
 
@@ -134,7 +153,7 @@ impl<T: BufRead> Parser<T> {
     }
 
     fn _demand_else_block(&mut self) -> Result<StatementNodes, ParserError> {
-        self.read_demand_eol_skipping_whitespace()?;
+        self.finish_line(StatementContext::Normal)?;
         self.parse_statements(
             |x| x.is_keyword(Keyword::End),
             "Unexpected EOF while looking for end of ELSE block",
@@ -406,5 +425,52 @@ end if"#;
                 .at_rc(1, 29)])
             })
         )
+    }
+
+    #[test]
+    fn test_inline_comment() {
+        let input = r#"
+        IF A THEN     ' is a true?
+            PRINT A   ' print a
+        ELSEIF B THEN ' is b true?
+            PRINT B   ' print b
+        ELSE          ' nothing is true
+            PRINT C   ' print c
+        END IF        ' end if
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::Statement(Statement::IfBlock(IfBlockNode {
+                    if_block: ConditionalBlockNode {
+                        condition: "A".as_var_expr(2, 12),
+                        statements: vec![
+                            Statement::Comment(" is a true?".to_string()).at_rc(2, 23),
+                            Statement::SubCall("PRINT".into(), vec!["A".as_var_expr(3, 19)])
+                                .at_rc(3, 13),
+                            Statement::Comment(" print a".to_string()).at_rc(3, 23)
+                        ],
+                    },
+                    else_if_blocks: vec![ConditionalBlockNode {
+                        condition: "B".as_var_expr(4, 16),
+                        statements: vec![
+                            Statement::Comment(" is b true?".to_string()).at_rc(4, 23),
+                            Statement::SubCall("PRINT".into(), vec!["B".as_var_expr(5, 19)])
+                                .at_rc(5, 13),
+                            Statement::Comment(" print b".to_string()).at_rc(5, 23)
+                        ],
+                    }],
+                    else_block: Some(vec![
+                        Statement::Comment(" nothing is true".to_string()).at_rc(6, 23),
+                        Statement::SubCall("PRINT".into(), vec!["C".as_var_expr(7, 19)])
+                            .at_rc(7, 13),
+                        Statement::Comment(" print c".to_string()).at_rc(7, 23)
+                    ])
+                }))
+                .at_rc(2, 9),
+                TopLevelToken::Statement(Statement::Comment(" end if".to_string())).at_rc(8, 23)
+            ]
+        );
     }
 }

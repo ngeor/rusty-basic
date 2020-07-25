@@ -37,6 +37,7 @@ impl InstructionGenerator {
                 self.generate_expression_instructions(e);
                 self.push(Instruction::StoreAToResult, pos);
             }
+            Statement::Comment(_) => {}
         }
     }
 }

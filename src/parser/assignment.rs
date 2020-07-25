@@ -10,9 +10,7 @@ impl<T: BufRead> Parser<T> {
     ) -> Result<StatementNode, ParserError> {
         let right_side = self.read_demand_expression_skipping_whitespace()?;
         // if multi-line, demand eol/eof -- otherwise, let the single-line if statement sort it out (might be ELSE following)
-        if context == StatementContext::Normal {
-            self.read_demand_eol_or_eof_skipping_whitespace()?;
-        }
+        self.finish_line(context)?;
         let (name, pos) = left_side.consume();
         Ok(Statement::Assignment(name, right_side).at(pos))
     }
@@ -23,7 +21,7 @@ mod tests {
     use super::super::test_utils::*;
     use super::*;
     use crate::lexer::LexemeNode;
-    use crate::parser::{Expression, Name};
+    use crate::parser::{Expression, Name, TopLevelToken};
 
     macro_rules! assert_top_level_assignment {
         ($input:expr, $name:expr, $value:expr) => {
@@ -56,5 +54,25 @@ mod tests {
     #[test]
     fn test_numeric_assignment_to_keyword_plus_number_allowed() {
         assert_top_level_assignment!("FOR42 = 42", "FOR42", 42);
+    }
+
+    #[test]
+    fn test_inline_comment() {
+        let input = "ANSWER = 42 ' the answer to life, universe, everything";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::Statement(Statement::Assignment(
+                    "ANSWER".into(),
+                    42.as_lit_expr(1, 10)
+                ))
+                .at_rc(1, 1),
+                TopLevelToken::Statement(Statement::Comment(
+                    " the answer to life, universe, everything".to_string(),
+                ))
+                .at_rc(1, 13)
+            ]
+        );
     }
 }

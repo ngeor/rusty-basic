@@ -110,7 +110,6 @@ mod tests {
 
     #[test]
     fn test_instr_linter() {
-        assert_linter_err!("PRINT INSTR()", LinterError::ArgumentCountMismatch, 1, 7);
         assert_linter_err!(
             r#"PRINT INSTR("oops")"#,
             LinterError::ArgumentCountMismatch,

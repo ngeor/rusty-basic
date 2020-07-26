@@ -118,12 +118,6 @@ mod tests {
     }
 
     #[test]
-    fn test_len_no_arguments_error() {
-        let program = "PRINT LEN()";
-        assert_linter_err!(program, LinterError::ArgumentCountMismatch, 1, 7);
-    }
-
-    #[test]
     fn test_len_two_arguments_error() {
         let program = r#"PRINT LEN("a", "b")"#;
         assert_linter_err!(program, LinterError::ArgumentCountMismatch, 1, 7);

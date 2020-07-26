@@ -116,7 +116,6 @@ mod tests {
 
     #[test]
     fn test_mid_linter() {
-        assert_linter_err!("PRINT MID$()", LinterError::ArgumentCountMismatch, 1, 7);
         assert_linter_err!(
             r#"PRINT MID$("oops")"#,
             LinterError::ArgumentCountMismatch,

@@ -36,7 +36,6 @@ mod tests {
     #[test]
     fn test_chr() {
         assert_prints!("PRINT CHR$(33)", "!");
-        assert_linter_err!("PRINT CHR$()", LinterError::ArgumentCountMismatch, 1, 7);
         assert_linter_err!(
             "PRINT CHR$(33, 34)",
             LinterError::ArgumentCountMismatch,

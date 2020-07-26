@@ -20,8 +20,6 @@ pub enum LinterError {
     // 10
     DuplicateDefinition,
 
-    InvalidAssignment,
-
     InvalidConstant,
 
     // 35

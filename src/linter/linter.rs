@@ -255,6 +255,12 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for Linter {
                 let mapped_params = self.convert(params)?;
                 self.push_function_context(mapped_name.bare_name());
                 for q_n_n in mapped_params.iter() {
+                    if self.functions.contains_key(q_n_n.bare_name())
+                        || self.subs.contains_key(q_n_n.bare_name())
+                    {
+                        // not possible to have a param name that clashes with a sub or function
+                        return err_l(LinterError::DuplicateDefinition, q_n_n);
+                    }
                     self.context.variables.insert(q_n_n.as_ref().clone());
                 }
                 let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
@@ -312,29 +318,21 @@ impl Converter<parser::Statement, Statement> for Linter {
                         // trying to assign to the function with an explicit wrong type
                         Err(LinterError::DuplicateDefinition.into())
                     }
-                } else if self
-                    .context
-                    .sub_name
-                    .as_ref()
-                    .map(|x| x == n.bare_name())
-                    .unwrap_or_default()
+                } else if self.functions.contains_key(n.bare_name())
+                    || self.subs.contains_key(n.bare_name())
+                    || self.context.constants.contains_key(n.bare_name())
                 {
-                    // trying to assign to the sub name should always be an error hopefully
-                    Err(LinterError::InvalidAssignment.into())
+                    // trying to assign to a different function, or to a sub, or to overwrite a local constant
+                    Err(LinterError::DuplicateDefinition.into())
                 } else {
-                    if self.context.constants.contains_key(n.bare_name()) {
-                        // cannot overwrite local constant
-                        Err(LinterError::DuplicateDefinition.into())
+                    let converted_name = self.convert(n)?;
+                    let converted_expr: ExpressionNode = self.convert(e)?;
+                    let result_q: TypeQualifier = converted_expr.try_qualifier()?;
+                    if result_q.can_cast_to(converted_name.qualifier()) {
+                        self.context.variables.insert(converted_name.clone());
+                        Ok(Statement::Assignment(converted_name, converted_expr))
                     } else {
-                        let converted_name = self.convert(n)?;
-                        let converted_expr: ExpressionNode = self.convert(e)?;
-                        let result_q: TypeQualifier = converted_expr.try_qualifier()?;
-                        if result_q.can_cast_to(converted_name.qualifier()) {
-                            self.context.variables.insert(converted_name.clone());
-                            Ok(Statement::Assignment(converted_name, converted_expr))
-                        } else {
-                            err_l(LinterError::TypeMismatch, &converted_expr)
-                        }
+                        err_l(LinterError::TypeMismatch, &converted_expr)
                     }
                 }
             }
@@ -342,8 +340,10 @@ impl Converter<parser::Statement, Statement> for Linter {
                 let (name, pos) = n.consume();
                 if self.context.variables.contains_bare(&name)
                     || self.context.constants.contains_key(name.bare_name())
+                    || self.functions.contains_key(name.bare_name())
+                    || self.subs.contains_key(name.bare_name())
                 {
-                    // local variable or local constant already present by that name
+                    // local variable or local constant or function or sub already present by that name
                     err(LinterError::DuplicateDefinition, pos)
                 } else {
                     let converted_expression_node = self.convert(e)?;
@@ -417,9 +417,30 @@ impl Converter<parser::Expression, Expression> for Linter {
                                     q,
                                 ))),
                                 None => {
-                                    // e.g. INPUT N, where N has not been declared in advance
-                                    self.context.variables.insert(converted_name.clone());
-                                    Ok(Expression::Variable(converted_name))
+                                    if self.subs.contains_key(n.bare_name()) {
+                                        // using the name of a sub as a variable expression
+                                        err_no_pos(LinterError::DuplicateDefinition)
+                                    } else if self.functions.contains_key(n.bare_name()) {
+                                        // if the function expects arguments, argument count mismatch
+                                        let (f_type, f_args, _) =
+                                            self.functions.get(n.bare_name()).unwrap();
+                                        if !f_args.is_empty() {
+                                            err_no_pos(LinterError::ArgumentCountMismatch)
+                                        } else if !n.bare_or_eq(*f_type) {
+                                            // if the function is a different type and the name is qualified of a different type, duplication definition
+                                            err_no_pos(LinterError::DuplicateDefinition)
+                                        } else {
+                                            // else convert it to function call
+                                            Ok(Expression::FunctionCall(
+                                                QualifiedName::new(n.bare_name().clone(), *f_type),
+                                                vec![],
+                                            ))
+                                        }
+                                    } else {
+                                        // e.g. INPUT N, where N has not been declared in advance
+                                        self.context.variables.insert(converted_name.clone());
+                                        Ok(Expression::Variable(converted_name))
+                                    }
                                 }
                             }
                         }

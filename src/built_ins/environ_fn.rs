@@ -55,11 +55,6 @@ mod tests {
     }
 
     #[test]
-    fn test_function_call_environ_no_args_linter_err() {
-        assert_linter_err!("X$ = ENVIRON$()", LinterError::ArgumentCountMismatch, 1, 6);
-    }
-
-    #[test]
     fn test_function_call_environ_two_args_linter_err() {
         assert_linter_err!(
             r#"X$ = ENVIRON$("hi", "bye")"#,

@@ -159,8 +159,10 @@ impl<T: BufRead> Parser<T> {
             let next = self.read_skipping_whitespace()?;
             match next {
                 LexemeNode::Symbol(')', _) => {
-                    if state == STATE_OPEN_PARENTHESIS || state == STATE_EXPRESSION {
+                    if state == STATE_EXPRESSION {
                         state = STATE_CLOSE_PARENTHESIS;
+                    } else if state == STATE_OPEN_PARENTHESIS {
+                        return unexpected("Expected expression", next);
                     } else {
                         return unexpected("Expected expression after comma", next);
                     }
@@ -408,17 +410,23 @@ mod tests {
 
         #[test]
         fn test_function_call_expression_no_args() {
-            assert_expression!(
-                "IsValid()",
-                Expression::FunctionCall(Name::from("IsValid"), vec![])
+            assert_eq!(
+                parse_err("PRINT IsValid()"),
+                ParserError::Unexpected(
+                    "Expected expression".to_string(),
+                    LexemeNode::Symbol(')', Location::new(1, 15))
+                )
             );
         }
 
         #[test]
         fn test_function_call_qualified_expression_no_args() {
-            assert_expression!(
-                "IsValid%()",
-                Expression::FunctionCall(Name::from("IsValid%"), vec![])
+            assert_eq!(
+                parse_err("PRINT IsValid%()"),
+                ParserError::Unexpected(
+                    "Expected expression".to_string(),
+                    LexemeNode::Symbol(')', Location::new(1, 16))
+                )
             );
         }
 
@@ -444,7 +452,7 @@ mod tests {
         #[test]
         fn test_function_call_in_function_call() {
             assert_expression!(
-                "CheckProperty(LookupName(\"age\"), Confirm())",
+                "CheckProperty(LookupName(\"age\"), Confirm(1))",
                 Expression::FunctionCall(
                     Name::from("CheckProperty"),
                     vec![
@@ -453,7 +461,8 @@ mod tests {
                             vec!["age".as_lit_expr(1, 32)]
                         )
                         .at_rc(1, 21),
-                        Expression::FunctionCall(Name::from("Confirm"), vec![]).at_rc(1, 40)
+                        Expression::FunctionCall(Name::from("Confirm"), vec![1.as_lit_expr(1, 48)])
+                            .at_rc(1, 40)
                     ]
                 )
             );

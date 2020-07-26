@@ -3,6 +3,7 @@ mod tests {
     use super::super::test_utils::*;
     use crate::assert_has_variable;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::linter::LinterError;
 
     #[test]
@@ -16,6 +17,71 @@ mod tests {
         ";
         let interpreter = interpret(program);
         assert_has_variable!(interpreter, "X!", 3.0_f32);
+    }
+
+    #[test]
+    fn test_no_args_function_call() {
+        let program = r#"
+        DECLARE FUNCTION GetAction$
+
+        PRINT GetAction$
+
+        FUNCTION GetAction$
+            GetAction$ = "hello"
+        END FUNCTION
+        "#;
+        assert_prints!(program, "hello");
+    }
+
+    #[test]
+    fn test_no_args_function_call_cannot_assign_to_variable() {
+        let program = r#"
+        DECLARE FUNCTION GetAction$
+
+        GetAction% = 42
+
+        FUNCTION GetAction$
+            GetAction$ = "hello"
+        END FUNCTION
+        "#;
+        assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 9);
+    }
+
+    #[test]
+    fn test_parameter_cannot_have_function_name() {
+        let program = r#"
+        FUNCTION GetAction$
+            GetAction$ = "hello"
+        END FUNCTION
+        FUNCTION Echo(GetAction)
+            Echo = 42
+        END FUNCTION
+        "#;
+        assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 23);
+    }
+
+    #[test]
+    fn test_global_const_cannot_have_function_name() {
+        let program = r#"
+        FUNCTION GetAction$
+            GetAction$ = "hello"
+        END FUNCTION
+        CONST GetAction = 42
+        "#;
+        assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 15);
+    }
+
+    #[test]
+    fn test_local_const_cannot_have_function_name() {
+        let program = r#"
+        FUNCTION GetAction$
+            GetAction$ = "hello"
+        END FUNCTION
+        FUNCTION Echo(X)
+            CONST GetAction = 42
+        END FUNCTION
+        "#;
+        assert_linter_err!(program, LinterError::DuplicateDefinition, 6, 19);
     }
 
     #[test]

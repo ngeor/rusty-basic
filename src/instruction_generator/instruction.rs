@@ -1,5 +1,6 @@
+use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{BuiltInFunction, BuiltInSub, QualifiedName};
+use crate::linter::QualifiedName;
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]

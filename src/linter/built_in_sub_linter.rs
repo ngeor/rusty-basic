@@ -1,8 +1,7 @@
 use super::error::*;
 use super::post_conversion_linter::PostConversionLinter;
 use super::types::*;
-use crate::built_ins;
-use crate::parser::TypeQualifier;
+use crate::built_ins::{BuiltInLint, BuiltInSub};
 
 pub struct BuiltInSubLinter;
 
@@ -12,47 +11,6 @@ impl PostConversionLinter for BuiltInSubLinter {
         n: &BuiltInSub,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), Error> {
-        match n {
-            BuiltInSub::System => {
-                if args.len() != 0 {
-                    err_no_pos(LinterError::ArgumentCountMismatch)
-                } else {
-                    Ok(())
-                }
-            }
-            BuiltInSub::Environ => {
-                if args.len() != 1 {
-                    err_no_pos(LinterError::ArgumentCountMismatch)
-                } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
-                    err_l(LinterError::ArgumentTypeMismatch, &args[0])
-                } else {
-                    Ok(())
-                }
-            }
-            BuiltInSub::Input => {
-                if args.len() == 0 {
-                    err_no_pos(LinterError::ArgumentCountMismatch)
-                } else {
-                    args.iter()
-                        .map(|a| match a.as_ref() {
-                            Expression::Variable(_) => Ok(()),
-                            _ => err_l(LinterError::VariableRequired, a),
-                        })
-                        .collect()
-                }
-            }
-            BuiltInSub::Close => {
-                if args.len() != 1 {
-                    err_no_pos(LinterError::ArgumentCountMismatch)
-                } else {
-                    match args[0].as_ref() {
-                        Expression::FileHandle(_) => Ok(()),
-                        _ => err_l(LinterError::ArgumentTypeMismatch, &args[0]),
-                    }
-                }
-            }
-            BuiltInSub::Name => built_ins::name::lint(args),
-            _ => Ok(()),
-        }
+        n.lint(args)
     }
 }

@@ -1,5 +1,5 @@
 use super::error::*;
-use super::types::{BuiltInFunction, BuiltInSub};
+use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::parser;
 use crate::parser::type_resolver_impl::TypeResolverImpl;

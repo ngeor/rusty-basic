@@ -1,6 +1,7 @@
 use super::{Instruction, InstructionGenerator};
+use crate::built_ins::BuiltInSub;
 use crate::common::Location;
-use crate::linter::{BuiltInSub, ExpressionNode};
+use crate::linter::ExpressionNode;
 
 impl InstructionGenerator {
     pub fn generate_built_in_sub_call_instructions(

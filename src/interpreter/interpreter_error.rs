@@ -22,10 +22,6 @@ impl InterpreterError {
         }
     }
 
-    pub fn new_no_pos<S: AsRef<str>>(msg: S) -> Self {
-        InterpreterError::new(msg, vec![])
-    }
-
     pub fn new_with_pos<S: AsRef<str>>(msg: S, pos: Location) -> Self {
         InterpreterError::new(msg, vec![pos])
     }
@@ -40,18 +36,10 @@ impl InterpreterError {
         }
         InterpreterError::new(self.message, new_vec)
     }
-
-    pub fn at(self, pos: Location) -> Self {
-        InterpreterError::new_with_pos(self.message, pos)
-    }
 }
 
 pub fn err<T, S: AsRef<str>>(msg: S, pos: Location) -> Result<T> {
     Err(InterpreterError::new_with_pos(msg, pos))
-}
-
-pub fn err_no_pos<T, S: AsRef<str>>(msg: S) -> Result<T> {
-    Err(InterpreterError::new_no_pos(msg))
 }
 
 #[cfg(test)]

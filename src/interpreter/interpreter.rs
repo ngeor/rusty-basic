@@ -1,10 +1,10 @@
+use crate::built_ins::BuiltInRun;
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
 use crate::interpreter::context::*;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::{InterpreterError, Result, Stdlib};
-
 use crate::parser::TypeQualifier;
 use crate::variant::cast;
 use crate::variant::Variant;
@@ -353,10 +353,10 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
             }
             Instruction::BuiltInSub(n) => {
-                self.run_built_in_sub(n, pos)?;
+                n.run(self, pos)?;
             }
             Instruction::BuiltInFunction(n) => {
-                self.run_built_in_function(n, pos)?;
+                n.run(self, pos)?;
             }
             Instruction::UnresolvedJump(_)
             | Instruction::UnresolvedJumpIfFalse(_)
@@ -445,32 +445,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::assert_prints;
-    use crate::interpreter::stdlib::DefaultStdlib;
-    use crate::interpreter::Interpreter;
-
-    #[test]
-    fn test_interpret_print_hello_world_one_arg() {
-        let input = "PRINT \"Hello, world!\"";
-        assert_prints!(input, "Hello, world!");
-    }
-
-    #[test]
-    fn test_interpret_print_hello_world_two_args() {
-        let input = r#"PRINT "Hello", "world!""#;
-        assert_prints!(input, "Hello world!");
-    }
-
-    #[test]
-    fn test_interpret_print_hello_world_two_args_one_is_function() {
-        let input = r#"
-        PRINT "Hello", Test(1)
-        FUNCTION Test(N)
-            Test = N + 1
-        END FUNCTION
-        "#;
-        assert_prints!(input, "Hello 2");
-    }
 
     #[test]
     fn test_interpreter_fixture_hello1() {
@@ -539,67 +513,5 @@ mod tests {
         let mut stdlib = MockStdlib::new();
         stdlib.add_next_input("");
         interpret_file("INPUT.BAS", stdlib).unwrap();
-    }
-
-    #[test]
-    fn test_can_create_file() {
-        let input = r#"
-        OPEN "TEST1.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        CLOSE #1
-        "#;
-        let instructions = generate_instructions(input);
-        let mut interpreter = Interpreter::new(DefaultStdlib {});
-        interpreter.interpret(instructions).unwrap_or_default();
-        let contents = std::fs::read_to_string("TEST1.TXT").unwrap_or("".to_string());
-        std::fs::remove_file("TEST1.TXT").unwrap_or(());
-        assert_eq!("Hello, world\r\n", contents);
-    }
-
-    #[test]
-    fn test_can_read_file() {
-        let input = r#"
-        OPEN "TEST2A.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        CLOSE #1
-        OPEN "TEST2A.TXT" FOR INPUT AS #1
-        LINE INPUT #1, T$
-        CLOSE #1
-        OPEN "TEST2B.TXT" FOR APPEND AS #1
-        PRINT #1, T$
-        CLOSE #1
-        "#;
-        let instructions = generate_instructions(input);
-        let mut interpreter = Interpreter::new(DefaultStdlib {});
-        interpreter.interpret(instructions).unwrap_or_default();
-        let contents = std::fs::read_to_string("TEST2B.TXT").unwrap_or("".to_string());
-        std::fs::remove_file("TEST2A.TXT").unwrap_or(());
-        std::fs::remove_file("TEST2B.TXT").unwrap_or(());
-        assert_eq!("Hello, world\r\n", contents);
-    }
-
-    #[test]
-    fn test_can_read_file_until_eof() {
-        let input = r#"
-        OPEN "TEST3.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        PRINT #1, "Hello, again"
-        CLOSE #1
-        OPEN "TEST3.TXT" FOR INPUT AS #1
-        WHILE NOT EOF(1)
-        LINE INPUT #1, T$
-        PRINT T$
-        WEND
-        CLOSE #1
-        "#;
-        let instructions = generate_instructions(input);
-        let stdlib = MockStdlib::new();
-        let mut interpreter = Interpreter::new(stdlib);
-        interpreter.interpret(instructions).unwrap_or_default();
-        std::fs::remove_file("TEST3.TXT").unwrap_or(());
-        assert_eq!(
-            interpreter.stdlib.output,
-            vec!["Hello, world", "Hello, again"]
-        );
     }
 }

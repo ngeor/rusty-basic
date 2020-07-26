@@ -1,45 +1,63 @@
-use crate::common::Location;
+// NAME old$ AS new$
+// Renames a file or directory.
+// TODO support directory
+
+use super::{BuiltInLint, BuiltInParse, BuiltInRun};
+use crate::common::{AtLocation, Location};
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
 use crate::lexer::Keyword;
 use crate::linter::{err_l, err_no_pos, Error, ExpressionNode, LinterError};
-use crate::parser::{BareName, Parser, ParserError, Statement, TypeQualifier};
+use crate::parser::{
+    BareName, Parser, ParserError, Statement, StatementContext, StatementNode, TypeQualifier,
+};
 use std::io::BufRead;
 
-pub fn demand<T: BufRead>(parser: &mut Parser<T>) -> Result<Statement, ParserError> {
-    parser.read_demand_whitespace("Expected space after NAME")?;
-    let old_file_name = parser.read_demand_expression()?;
-    parser.read_demand_whitespace("Expected space after filename")?;
-    parser.read_demand_keyword(Keyword::As)?;
-    parser.read_demand_whitespace("Expected space after AS")?;
-    let new_file_name = parser.read_demand_expression()?;
-    parser.read_demand_eol_or_eof_skipping_whitespace()?;
-    let bare_name: BareName = "NAME".into();
-    Ok(Statement::SubCall(
-        bare_name,
-        vec![old_file_name, new_file_name],
-    ))
-}
+pub struct Name {}
 
-pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), Error> {
-    if args.len() != 2 {
-        err_no_pos(LinterError::ArgumentCountMismatch)
-    } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
-        err_l(LinterError::ArgumentTypeMismatch, &args[0])
-    } else if args[1].try_qualifier()? != TypeQualifier::DollarString {
-        err_l(LinterError::ArgumentTypeMismatch, &args[1])
-    } else {
-        Ok(())
+impl BuiltInParse for Name {
+    fn demand<T: BufRead>(
+        &self,
+        parser: &mut Parser<T>,
+        pos: Location,
+        _context: StatementContext,
+    ) -> Result<StatementNode, ParserError> {
+        parser.read_demand_whitespace("Expected space after NAME")?;
+        let old_file_name = parser.read_demand_expression()?;
+        parser.read_demand_whitespace("Expected space after filename")?;
+        parser.read_demand_keyword(Keyword::As)?;
+        parser.read_demand_whitespace("Expected space after AS")?;
+        let new_file_name = parser.read_demand_expression()?;
+        parser.read_demand_eol_or_eof_skipping_whitespace()?;
+        let bare_name: BareName = "NAME".into();
+        Ok(Statement::SubCall(bare_name, vec![old_file_name, new_file_name]).at(pos))
     }
 }
 
-pub fn run<S: Stdlib>(
-    interpreter: &mut Interpreter<S>,
-    pos: Location,
-) -> Result<(), InterpreterError> {
-    let old_file_name = interpreter.pop_string();
-    let new_file_name = interpreter.pop_string();
-    std::fs::rename(old_file_name, new_file_name)
-        .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))
+impl BuiltInLint for Name {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+        if args.len() != 2 {
+            err_no_pos(LinterError::ArgumentCountMismatch)
+        } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
+            err_l(LinterError::ArgumentTypeMismatch, &args[0])
+        } else if args[1].try_qualifier()? != TypeQualifier::DollarString {
+            err_l(LinterError::ArgumentTypeMismatch, &args[1])
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl BuiltInRun for Name {
+    fn run<S: Stdlib>(
+        &self,
+        interpreter: &mut Interpreter<S>,
+        pos: Location,
+    ) -> Result<(), InterpreterError> {
+        let old_file_name = interpreter.pop_string();
+        let new_file_name = interpreter.pop_string();
+        std::fs::rename(old_file_name, new_file_name)
+            .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))
+    }
 }
 
 #[cfg(test)]

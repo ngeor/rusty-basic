@@ -1,18 +1,9 @@
-// Convert assignment to set return value (needs resolver)
-// No function in const
-// For - Next match (needs resolver)
-
-// Stage 1 : convert program node into (statements, subprograms)
-// all subs known
-// all functions known
-
-// Mission: remove the need for TypeResolver in Interpreter
-
 use super::error::*;
 use super::expression_reducer::ExpressionReducer;
 use super::post_conversion_linter::PostConversionLinter;
 use super::subprogram_context::{collect_subprograms, FunctionMap, SubMap};
 use super::types::*;
+use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::parser;
 use crate::parser::type_resolver_impl::TypeResolverImpl;

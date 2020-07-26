@@ -1,9 +1,7 @@
 mod assignment;
-mod built_in_functions;
-mod built_in_subs;
 mod constant;
-mod context;
-mod context_owner;
+pub mod context;
+pub mod context_owner;
 mod expression;
 mod for_loop;
 mod function_call;

@@ -5,6 +5,7 @@ mod environ_sub;
 mod eof;
 mod input;
 mod instr;
+mod kill;
 mod len;
 mod line_input;
 mod mid;
@@ -56,6 +57,7 @@ pub enum BuiltInSub {
     System,
     Close,
     Open,
+    Kill,
     LineInput,
     Name,
 }
@@ -89,6 +91,7 @@ static ENVIRON_SUB: environ_sub::Environ = environ_sub::Environ {};
 static EOF: eof::Eof = eof::Eof {};
 static INPUT: input::Input = input::Input {};
 static INSTR: instr::InStr = instr::InStr {};
+static KILL: kill::Kill = kill::Kill {};
 static LEN: len::Len = len::Len {};
 static LINE_INPUT: line_input::LineInput = line_input::LineInput {};
 static MID: mid::Mid = mid::Mid {};
@@ -120,6 +123,7 @@ impl BuiltInLint for BuiltInSub {
             Self::Close => CLOSE.lint(args),
             Self::Environ => ENVIRON_SUB.lint(args),
             Self::Input => INPUT.lint(args),
+            Self::Kill => KILL.lint(args),
             Self::LineInput => LINE_INPUT.lint(args),
             Self::Name => NAME.lint(args),
             Self::Open => OPEN.lint(args),
@@ -158,6 +162,7 @@ impl BuiltInRun for BuiltInSub {
             Self::Close => CLOSE.run(interpreter, pos),
             Self::Environ => ENVIRON_SUB.run(interpreter, pos),
             Self::Input => INPUT.run(interpreter, pos),
+            Self::Kill => KILL.run(interpreter, pos),
             Self::LineInput => LINE_INPUT.run(interpreter, pos),
             Self::Name => NAME.run(interpreter, pos),
             Self::Open => OPEN.run(interpreter, pos),
@@ -277,6 +282,8 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
             Some(BuiltInSub::LineInput)
         } else if s == "NAME" {
             Some(BuiltInSub::Name)
+        } else if s == "KILL" {
+            Some(BuiltInSub::Kill)
         } else {
             None
         }

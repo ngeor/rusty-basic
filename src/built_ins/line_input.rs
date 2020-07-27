@@ -111,12 +111,20 @@ fn line_input_one_file<S: Stdlib>(
 }
 
 fn line_input_one_stdin<S: Stdlib>(
-    _interpreter: &mut Interpreter<S>,
-    _pos: Location,
-    _arg: &Argument,
+    interpreter: &mut Interpreter<S>,
+    pos: Location,
+    arg: &Argument,
     _n: &QualifiedName,
 ) -> Result<(), InterpreterError> {
-    unimplemented!()
+    let s = interpreter
+        .stdlib
+        .input()
+        .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))?;
+    interpreter
+        .context_mut()
+        .demand_sub()
+        .set_value_to_popped_arg(arg, Variant::VString(s))
+        .map_err(|e| InterpreterError::new_with_pos(e, pos))
 }
 
 // TODO: remove Result aliases, always use Result<T, E>

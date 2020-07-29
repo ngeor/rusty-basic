@@ -1,0 +1,22 @@
+language: rust
+rust:
+- stable
+before_script:
+- rustup target add x86_64-pc-windows-gnu
+script:
+- cargo build --verbose
+- cargo build --verbose --target x86_64-pc-windows-gnu
+- cargo test --verbose
+- cargo build --release --verbose
+- cargo build --release --verbose --target x86_64-pc-windows-gnu
+deploy:
+  provider: releases
+  api_key:
+    secure: HyakLLsiZi5cKj/MYNj3Bgzee3dVscn1EbGZ/GSI8lEKLLLGp+zbViQmBPB8WdIFECJgx3Wo/nwYPBz+KyVIQ25JZ055eAL2RLen6lLB2IjF4i7ZTruH8ZJ3U+Rd+fo4aoo8URs//IHSM2F8wRjKXZkRc9PXL/BTjbNbU2pPCzBoeIJE6GOdVZOAvlh3XdjUHdL+SfUYnHymA9T4QApTE3LTKxCAS6Q0qkHWqXFlIMcB5ufQW55CYo/urnEd2u24pZynoLx2RL4NCHaSFlliXKUn6KT50qPJW2IxgO3/75jheSioREHClFbxuAeGIsHJ2qN+PXY+ArBGBNz2KICX+LkqZ1+jEgYsnq7f8qr+ngWrKqYRrCG6hoE9Kz4ExGOW0hmc5FLqDa7dUelnl7fBvqn9DC3UpAKkz4YsFgZajPkMunyRDDEUKd/OXSSE45OOyW6OrArTJtfG41RTK8X/yWfYhBRacJ1ooz8+IfxbbKRZRclkw0zpZlThpF/civ2RZMT6cHhm22tsbzSGS+vkIrR5b99ZBR59nQZECrQgXI2JnyjxnE/DbxrxE4DWuhTNCmGZHY3zqg+miauCqGW5vL4BjSNfEkAw5oaxm4HHPsYnBTcSZT5cTVF7J993/JcNNLTJxhG5VpDGH5P+3TumeMKIf8VT+0CWpQOU/ZzRVFY=
+  file:
+  - "./target/release/rusty_basic"
+  - "./target/x86_64-pc-windows-gnu/release/rusty_basic.exe"
+  skip_cleanup: true
+  draft: true
+  on:
+    tags: true

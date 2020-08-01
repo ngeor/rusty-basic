@@ -26,3 +26,9 @@ impl HasLocation for ParserError {
         }
     }
 }
+
+impl From<LexerError> for ParserError {
+    fn from(lexer_error: LexerError) -> Self {
+        Self::LexerError(lexer_error)
+    }
+}

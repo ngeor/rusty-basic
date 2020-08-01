@@ -19,6 +19,12 @@ impl CaseInsensitiveString {
     }
 }
 
+impl From<String> for CaseInsensitiveString {
+    fn from(x: String) -> CaseInsensitiveString {
+        CaseInsensitiveString::new(x)
+    }
+}
+
 impl From<&str> for CaseInsensitiveString {
     fn from(x: &str) -> CaseInsensitiveString {
         CaseInsensitiveString::new(x.to_owned())

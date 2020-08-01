@@ -4,49 +4,53 @@ use std::io::{BufRead, BufReader, Cursor, Result};
 #[derive(Debug)]
 pub struct CharOrEofReader<T: BufRead> {
     reader: T,
-    _buffer: Vec<Option<char>>,
+    buffer: Vec<Option<char>>,
+    seen_eof: bool,
 }
 
 impl<T: BufRead> CharOrEofReader<T> {
     pub fn new(reader: T) -> CharOrEofReader<T> {
         CharOrEofReader {
             reader,
-            _buffer: vec![],
+            buffer: vec![],
+            seen_eof: false
         }
+    }
+
+    pub fn peek(&mut self) -> Result<Option<char>> {
+        self.fill_buffer_if_empty()?;
+        Ok(self.buffer[0])
     }
 
     pub fn read(&mut self) -> Result<Option<char>> {
-        self._fill_buffer_if_empty()?;
-        Ok(self._buffer[0])
+        self.fill_buffer_if_empty()?;
+        Ok(self.buffer.remove(0))
     }
 
-    pub fn consume(&mut self) -> Option<char> {
-        if self._buffer.is_empty() {
-            panic!("Buffer underrun")
-        } else {
-            self._buffer.remove(0)
-        }
-    }
-
-    fn _fill_buffer_if_empty(&mut self) -> Result<()> {
-        if self._buffer.is_empty() {
-            self._fill_buffer()
+    fn fill_buffer_if_empty(&mut self) -> Result<()> {
+        if self.buffer.is_empty() {
+            self.fill_buffer()
         } else {
             Ok(())
         }
     }
 
-    fn _fill_buffer(&mut self) -> Result<()> {
+    fn fill_buffer(&mut self) -> Result<()> {
         let mut line = String::new();
         let bytes_read = self.reader.read_line(&mut line)?;
         if bytes_read <= 0 {
-            self._buffer.push(None);
+            if self.seen_eof {
+                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+            } else {
+                self.buffer.push(None);
+                self.seen_eof = true;
+            }
         } else {
             for c in line.chars() {
-                self._buffer.push(Some(c))
+                self.buffer.push(Some(c))
             }
-            if self._buffer.is_empty() {
-                panic!("Should have found at least one character")
+            if self.buffer.is_empty() {
+                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
             }
         }
         Ok(())
@@ -67,5 +71,20 @@ where
 impl From<File> for CharOrEofReader<BufReader<File>> {
     fn from(input: File) -> Self {
         CharOrEofReader::new(BufReader::new(input))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_eof_is_only_once() {
+        let mut reader: CharOrEofReader<BufReader<Cursor<&str>>> = "123".into();
+        assert_eq!(reader.read().unwrap().unwrap(), '1');
+        assert_eq!(reader.read().unwrap().unwrap(), '2');
+        assert_eq!(reader.read().unwrap().unwrap(), '3');
+        assert_eq!(reader.read().unwrap(), None);
+        assert_eq!(reader.read().is_err(), true);
     }
 }

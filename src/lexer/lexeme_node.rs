@@ -13,7 +13,7 @@ pub enum LexemeNode {
     /// The string contains the original text representation (i.e. case sensitive).
     Keyword(Keyword, String, Location),
 
-    /// A sequence of letters (A-Z or a-z)
+    /// A sequence of letters (A-Z or a-z) and numbers. The first character is a letter.
     Word(String, Location),
 
     /// A sequence of whitespace (spaces and tabs)

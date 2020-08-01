@@ -290,11 +290,16 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
     }
 }
 
+/// The parse result of parse_special.
+/// TODO: Refactor into regular Option<StatementNode> by removing the need of having LexemeNode in the "No" enum
 pub enum ParseResult {
+    /// Parsing was successful. Holds the parsed statement node.
     Ok(crate::parser::StatementNode),
+    /// Parsing did not match. Holds the original lexeme node before parsing.
     No(LexemeNode),
 }
 
+/// Parses built-in subs which have a special syntax.
 pub fn parse_special<T: BufRead>(
     parser: &mut Parser<T>,
     next: LexemeNode,

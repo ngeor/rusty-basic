@@ -1,6 +1,9 @@
 use crate::common::{HasLocation, Location};
 use crate::lexer::{LexemeNode, LexerError};
 
+// TODO clarify when we use Unexpected | Unterminated or SyntaxError
+// TODO go over all sub-parsers and make sure they honor those semantics and don't backtrack if they aren't supposed do
+// TODO add tests for more user friendly errors e.g. "ELSE without IF"
 #[derive(Debug, PartialEq)]
 pub enum ParserError {
     /// An error occurred in the lexer.

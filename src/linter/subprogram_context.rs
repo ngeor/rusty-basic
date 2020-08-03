@@ -6,30 +6,22 @@ use crate::parser::type_resolver_impl::TypeResolverImpl;
 use crate::parser::{NameNode, NameTrait, TypeQualifier, TypeResolver};
 use std::collections::HashMap;
 
-//
-// Visitor trait
-//
-
-/// A visitor visits an object. It might update itself on each visit.
-trait Visitor<A> {
-    fn visit(&mut self, a: &A) -> Result<(), Error>;
-}
-
-trait PostVisitor<A> {
-    fn post_visit(&mut self, a: &A) -> Result<(), Error>;
-}
-
-/// Blanket visitor implementation for vectors.
-impl<T, A> Visitor<Vec<A>> for T
-where
-    T: Visitor<A> + PostVisitor<Vec<A>>,
-{
-    fn visit(&mut self, a: &Vec<A>) -> Result<(), Error> {
-        for x in a.iter() {
-            self.visit(x)?;
-        }
-        self.post_visit(a)
+/// Collects subprograms of the given program.
+/// Ensures that:
+/// - All declared subprograms are implemented
+/// - No duplicate implementations
+/// - No conflicts between declarations and implementations
+/// - Resolves types of parameters and functions
+pub fn collect_subprograms(p: &parser::ProgramNode) -> Result<(FunctionMap, SubMap), Error> {
+    let mut f_c = FunctionContext::new();
+    let mut s_c = SubContext::new();
+    for t in p {
+        f_c.visit(t)?;
+        s_c.visit(t)?;
     }
+    f_c.post_visit()?;
+    s_c.post_visit()?;
+    Ok((f_c.implementations, s_c.implementations))
 }
 
 pub type ParamTypes = Vec<TypeQualifier>;
@@ -129,10 +121,8 @@ impl FunctionContext {
         }
         Ok(())
     }
-}
 
-impl Visitor<parser::TopLevelTokenNode> for FunctionContext {
-    fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
+    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
         let pos = a.location();
         match a.as_ref() {
             parser::TopLevelToken::DefType(d) => {
@@ -148,10 +138,8 @@ impl Visitor<parser::TopLevelTokenNode> for FunctionContext {
             _ => Ok(()),
         }
     }
-}
 
-impl PostVisitor<parser::ProgramNode> for FunctionContext {
-    fn post_visit(&mut self, _: &parser::ProgramNode) -> Result<(), Error> {
+    pub fn post_visit(&mut self) -> Result<(), Error> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return err(LinterError::SubprogramNotDefined, v.2);
@@ -258,10 +246,8 @@ impl SubContext {
         }
         Ok(())
     }
-}
 
-impl Visitor<parser::TopLevelTokenNode> for SubContext {
-    fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
+    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
         let pos = a.location();
         match a.as_ref() {
             parser::TopLevelToken::DefType(d) => {
@@ -277,10 +263,8 @@ impl Visitor<parser::TopLevelTokenNode> for SubContext {
             _ => Ok(()),
         }
     }
-}
 
-impl PostVisitor<parser::ProgramNode> for SubContext {
-    fn post_visit(&mut self, _: &parser::ProgramNode) -> Result<(), Error> {
+    pub fn post_visit(&mut self) -> Result<(), Error> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return err(LinterError::SubprogramNotDefined, v.1);
@@ -296,18 +280,4 @@ impl PostVisitor<parser::ProgramNode> for SubContext {
 
         Ok(())
     }
-}
-
-/// Collects subprograms of the given program.
-/// Ensures that:
-/// - All declared subprograms are implemented
-/// - No duplicate implementations
-/// - No conflicts between declarations and implementations
-/// - Resolves types of parameters and functions
-pub fn collect_subprograms(p: &parser::ProgramNode) -> Result<(FunctionMap, SubMap), Error> {
-    let mut f_c = FunctionContext::new();
-    f_c.visit(p)?;
-    let mut s_c = SubContext::new();
-    s_c.visit(p)?;
-    Ok((f_c.implementations, s_c.implementations))
 }

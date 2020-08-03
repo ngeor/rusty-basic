@@ -4,6 +4,8 @@ use super::types::*;
 use crate::built_ins::BuiltInLint;
 use crate::common::*;
 
+/// Lints built-in functions. Delegates responsibility to the built-in functions
+/// themselves in the built_ins module.
 pub struct BuiltInFunctionLinter;
 
 impl PostConversionLinter for BuiltInFunctionLinter {
@@ -11,11 +13,11 @@ impl PostConversionLinter for BuiltInFunctionLinter {
         let pos = expr_node.location();
         let e = expr_node.as_ref();
         match e {
-            Expression::BuiltInFunctionCall(n, args) => {
+            Expression::BuiltInFunctionCall(built_in_function, args) => {
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                n.lint(args).with_err_pos(pos)
+                built_in_function.lint(args).with_err_pos(pos)
             }
             Expression::BinaryExpression(_, left, right) => {
                 self.visit_expression(left)?;

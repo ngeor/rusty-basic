@@ -25,7 +25,26 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         // demand whitespace
         read_whitespace(lexer)?;
         // demand type name
-        let var_type = read_word_or_keyword(lexer)?;
+        let next = lexer.read()?;
+        let var_type = match next {
+            LexemeNode::Keyword(Keyword::Double, _, _) => {
+                DimType::BuiltInType(TypeQualifier::HashDouble)
+            }
+            LexemeNode::Keyword(Keyword::Integer, _, _) => {
+                DimType::BuiltInType(TypeQualifier::PercentInteger)
+            }
+            LexemeNode::Keyword(Keyword::Long, _, _) => {
+                DimType::BuiltInType(TypeQualifier::AmpersandLong)
+            }
+            LexemeNode::Keyword(Keyword::Single, _, _) => {
+                DimType::BuiltInType(TypeQualifier::BangSingle)
+            }
+            LexemeNode::Keyword(Keyword::String_, _, _) => {
+                DimType::BuiltInType(TypeQualifier::DollarString)
+            }
+            LexemeNode::Word(w, _) => DimType::UserDefinedType(w.into()),
+            _ => return Err(ParserError::SyntaxError(next)),
+        };
         Ok(Statement::Dim(var_name, var_type).at(pos)).map(|x| Some(x))
     } else {
         Ok(None)
@@ -44,18 +63,11 @@ mod tests {
         let p = parse(input);
         assert_eq!(
             p,
-            vec![TopLevelToken::Statement(Statement::Dim("X".into(), "STRING".into())).at_rc(1, 1)]
+            vec![TopLevelToken::Statement(Statement::Dim(
+                "X".into(),
+                DimType::BuiltInType(TypeQualifier::DollarString)
+            ))
+            .at_rc(1, 1)]
         );
-    }
-
-    #[test]
-    fn test_type_mismatch() {
-        // TODO move to linter
-        let input = r#"
-        X = 1
-        IF X = 0 THEN DIM A AS STRING
-        A = 42 <-- type mismatch
-        "#;
-        unimplemented!();
     }
 }

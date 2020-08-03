@@ -125,7 +125,7 @@ pub enum Statement {
 
     SetReturnValue(ExpressionNode),
     Comment(String),
-    Dim(BareName, BareName),
+    Dim(BareName, DimType),
 }
 
 pub type StatementNode = Locatable<Statement>;

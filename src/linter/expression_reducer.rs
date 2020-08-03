@@ -4,6 +4,9 @@ use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::parser::QualifiedName;
 
+/// Visits the converted program and transforms it into a different program.
+///
+/// The default implementation of the trait simply clones all visited elements.
 pub trait ExpressionReducer {
     fn visit_program(&self, p: ProgramNode) -> Result<ProgramNode, Error> {
         p.into_iter()

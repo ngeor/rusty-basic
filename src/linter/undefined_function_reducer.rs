@@ -4,6 +4,7 @@ use super::subprogram_context::FunctionMap;
 use super::types::*;
 use crate::parser::NameTrait;
 
+/// Finds undefined functions and converts them to zeroes.
 pub struct UndefinedFunctionReducer<'a> {
     pub functions: &'a FunctionMap,
 }

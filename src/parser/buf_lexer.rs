@@ -116,18 +116,6 @@ pub fn read_bare_name<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<BareName, P
     }
 }
 
-pub fn read_word_or_keyword<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<BareName, ParserError> {
-    let x = lexer.read()?;
-    match x {
-        LexemeNode::Word(w, _) => Ok(w.into()),
-        LexemeNode::Keyword(_, w, _) => Ok(w.into()),
-        _ => Err(ParserError::Unexpected(
-            format!("Expected word or keyword"),
-            x,
-        )),
-    }
-}
-
 // peek but do not read
 pub fn peek_keyword<T: BufRead>(
     lexer: &mut BufLexer<T>,

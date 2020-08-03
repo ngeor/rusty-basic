@@ -4,6 +4,14 @@ use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::parser::QualifiedName;
 
+/// Invoked after the conversion to fully typed program.
+/// The default implementation of the trait simply visits all program elements.
+///
+/// The PostConversionLinter does not modify the elements it visits, which is
+/// why it works with references.
+///
+/// Methods return Ok(()) to indicate an element passes the check or
+/// Err() to indicate a problem.
 pub trait PostConversionLinter {
     fn visit_program(&self, p: &ProgramNode) -> Result<(), Error> {
         p.iter()

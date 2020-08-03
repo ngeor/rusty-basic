@@ -11,6 +11,7 @@ pub struct LinterContext {
     variables: VariableSet,
     function_name: Option<CaseInsensitiveString>,
     sub_name: Option<CaseInsensitiveString>,
+    dim_variables: HashMap<CaseInsensitiveString, TypeQualifier>,
 }
 
 impl LinterContext {
@@ -66,6 +67,10 @@ impl LinterContext {
 
     pub fn constants(&mut self) -> &mut HashMap<CaseInsensitiveString, TypeQualifier> {
         &mut self.constants
+    }
+
+    pub fn dim_variables(&mut self) -> &mut HashMap<CaseInsensitiveString, TypeQualifier> {
+        &mut self.dim_variables
     }
 
     pub fn is_function_context(&self, name: &Name) -> bool {

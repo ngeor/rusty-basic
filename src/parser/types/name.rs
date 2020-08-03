@@ -23,6 +23,13 @@ impl Name {
     pub fn new_qualified<S: AsRef<str>>(word: S, qualifier: TypeQualifier) -> Self {
         Name::Qualified(QualifiedName::new(word, qualifier))
     }
+
+    pub fn is_bare(&self) -> bool {
+        match self {
+            Self::Bare(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl NameTrait for Name {

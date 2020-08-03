@@ -6,7 +6,9 @@ use crate::common::*;
 use crate::linter::linter_context::LinterContext;
 use crate::parser;
 use crate::parser::type_resolver_impl::TypeResolverImpl;
-use crate::parser::{HasQualifier, Name, NameTrait, QualifiedName, TypeQualifier, TypeResolver};
+use crate::parser::{
+    DimType, HasQualifier, Name, NameTrait, QualifiedName, TypeQualifier, TypeResolver,
+};
 use std::convert::TryInto;
 
 //
@@ -58,14 +60,14 @@ where
 //
 
 #[derive(Debug, Default)]
-struct Converter2 {
+struct ConverterImpl {
     resolver: TypeResolverImpl,
     context: LinterContext,
     functions: FunctionMap,
     subs: SubMap,
 }
 
-impl Converter2 {
+impl ConverterImpl {
     pub fn push_function_context(&mut self, name: &CaseInsensitiveString) {
         let old = std::mem::take(&mut self.context);
         self.context = old.push_function_context(name);
@@ -87,7 +89,7 @@ impl Converter2 {
 }
 
 pub fn convert(program: parser::ProgramNode) -> Result<(ProgramNode, FunctionMap, SubMap), Error> {
-    let mut linter = Converter2::default();
+    let mut linter = ConverterImpl::default();
     let (f_c, s_c) = collect_subprograms(&program)?;
     linter.functions = f_c;
     linter.subs = s_c;
@@ -96,7 +98,7 @@ pub fn convert(program: parser::ProgramNode) -> Result<(ProgramNode, FunctionMap
     Ok((result, f, s))
 }
 
-impl Converter<parser::ProgramNode, ProgramNode> for Converter2 {
+impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
     fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, Error> {
         let mut result: Vec<TopLevelTokenNode> = vec![];
         for top_level_token_node in a.into_iter() {
@@ -115,7 +117,7 @@ impl Converter<parser::ProgramNode, ProgramNode> for Converter2 {
     }
 }
 
-impl Converter<Name, QualifiedName> for Converter2 {
+impl Converter<Name, QualifiedName> for ConverterImpl {
     fn convert(&mut self, a: Name) -> Result<QualifiedName, Error> {
         match a {
             Name::Bare(b) => {
@@ -128,7 +130,7 @@ impl Converter<Name, QualifiedName> for Converter2 {
 }
 
 // Option because we filter out DefType
-impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for Converter2 {
+impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
     fn convert(&mut self, a: parser::TopLevelToken) -> Result<Option<TopLevelToken>, Error> {
         match a {
             parser::TopLevelToken::DefType(d) => {
@@ -179,7 +181,7 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for Converter2 {
     }
 }
 
-impl Converter<parser::Statement, Statement> for Converter2 {
+impl Converter<parser::Statement, Statement> for ConverterImpl {
     fn convert(&mut self, a: parser::Statement) -> Result<Statement, Error> {
         match a {
             parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
@@ -205,6 +207,21 @@ impl Converter<parser::Statement, Statement> for Converter2 {
                 {
                     // trying to assign to a different function, or to a sub, or to overwrite a local constant
                     Err(LinterError::DuplicateDefinition.into())
+                } else if n.is_bare() && self.context.dim_variables().contains_key(n.bare_name()) {
+                    // intercept assignment to DIM variable e.g.
+                    // DIM A AS STRING
+                    // A = "hello"
+                    let q = *self.context.dim_variables().get(n.bare_name()).unwrap();
+                    let converted_expr: ExpressionNode = self.convert(e)?;
+                    let result_q: TypeQualifier = converted_expr.try_qualifier()?;
+                    if result_q.can_cast_to(q) {
+                        Ok(Statement::Assignment(
+                            QualifiedName::new(n.bare_name(), q),
+                            converted_expr,
+                        ))
+                    } else {
+                        err_l(LinterError::TypeMismatch, &converted_expr)
+                    }
                 } else {
                     let converted_name = self.convert(n)?;
                     let converted_expr: ExpressionNode = self.convert(e)?;
@@ -266,12 +283,22 @@ impl Converter<parser::Statement, Statement> for Converter2 {
             parser::Statement::ErrorHandler(l) => Ok(Statement::ErrorHandler(l)),
             parser::Statement::Label(l) => Ok(Statement::Label(l)),
             parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
-            parser::Statement::Dim(_, _) => unimplemented!(),
+            parser::Statement::Dim(name, dim_type) => {
+                match dim_type {
+                    DimType::BuiltInType(b) => {
+                        self.context.dim_variables().insert(name.clone(), b);
+                    }
+                    DimType::UserDefinedType(_) => {
+                        unimplemented!();
+                    }
+                };
+                Ok(Statement::Dim(name, dim_type))
+            }
         }
     }
 }
 
-impl Converter<parser::Expression, Expression> for Converter2 {
+impl Converter<parser::Expression, Expression> for ConverterImpl {
     fn convert(&mut self, a: parser::Expression) -> Result<Expression, Error> {
         match a {
             parser::Expression::SingleLiteral(f) => Ok(Expression::SingleLiteral(f)),
@@ -380,7 +407,7 @@ impl Converter<parser::Expression, Expression> for Converter2 {
     }
 }
 
-impl Converter<parser::ForLoopNode, ForLoopNode> for Converter2 {
+impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
     fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, Error> {
         Ok(ForLoopNode {
             variable_name: self.convert(a.variable_name)?,
@@ -393,7 +420,7 @@ impl Converter<parser::ForLoopNode, ForLoopNode> for Converter2 {
     }
 }
 
-impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for Converter2 {
+impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for ConverterImpl {
     fn convert(&mut self, a: parser::ConditionalBlockNode) -> Result<ConditionalBlockNode, Error> {
         Ok(ConditionalBlockNode {
             condition: self.convert(a.condition)?,
@@ -402,7 +429,7 @@ impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for Converter
     }
 }
 
-impl Converter<parser::IfBlockNode, IfBlockNode> for Converter2 {
+impl Converter<parser::IfBlockNode, IfBlockNode> for ConverterImpl {
     fn convert(&mut self, a: parser::IfBlockNode) -> Result<IfBlockNode, Error> {
         Ok(IfBlockNode {
             if_block: self.convert(a.if_block)?,
@@ -412,7 +439,7 @@ impl Converter<parser::IfBlockNode, IfBlockNode> for Converter2 {
     }
 }
 
-impl Converter<parser::SelectCaseNode, SelectCaseNode> for Converter2 {
+impl Converter<parser::SelectCaseNode, SelectCaseNode> for ConverterImpl {
     fn convert(&mut self, a: parser::SelectCaseNode) -> Result<SelectCaseNode, Error> {
         Ok(SelectCaseNode {
             expr: self.convert(a.expr)?,
@@ -422,7 +449,7 @@ impl Converter<parser::SelectCaseNode, SelectCaseNode> for Converter2 {
     }
 }
 
-impl Converter<parser::CaseBlockNode, CaseBlockNode> for Converter2 {
+impl Converter<parser::CaseBlockNode, CaseBlockNode> for ConverterImpl {
     fn convert(&mut self, a: parser::CaseBlockNode) -> Result<CaseBlockNode, Error> {
         Ok(CaseBlockNode {
             expr: self.convert(a.expr)?,
@@ -431,7 +458,7 @@ impl Converter<parser::CaseBlockNode, CaseBlockNode> for Converter2 {
     }
 }
 
-impl Converter<parser::CaseExpression, CaseExpression> for Converter2 {
+impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
     fn convert(&mut self, a: parser::CaseExpression) -> Result<CaseExpression, Error> {
         match a {
             parser::CaseExpression::Simple(e) => self.convert(e).map(|x| CaseExpression::Simple(x)),

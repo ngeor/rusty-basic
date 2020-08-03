@@ -68,7 +68,7 @@ mod tests {
             IF X = 0 THEN DIM A AS STRING
             A = 42
             "#;
-            assert_linter_err!(input, LinterError::TypeMismatch, 4, 13);
+            assert_linter_err!(input, LinterError::TypeMismatch, 4, 17);
         }
     }
 }

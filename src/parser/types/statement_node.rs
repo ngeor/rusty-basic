@@ -20,6 +20,8 @@ pub enum Statement {
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
     Comment(String),
+    /// Dim VAR.NAME AS TYPE
+    Dim(BareName, BareName),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -54,7 +56,7 @@ pub struct SelectCaseNode {
     /// An optional CASE ELSE block
     pub else_block: Option<StatementNodes>,
     /// Holds an optional inline comment after SELECT CASE X e.g. SELECT CASE X ' make a choice
-    pub inline_comment: Option<Locatable<String>>,
+    pub inline_comments: Vec<Locatable<String>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

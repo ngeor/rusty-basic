@@ -54,7 +54,7 @@ impl<T: BufRead> Lexer<T> {
             None => {
                 self.read_one()?; // consume it so that next invocation yields unexpected eof error
                 Ok(LexemeNode::EOF(self.pos))
-            },
+            }
             Some(peeked) => self.read_char(peeked),
         }
     }
@@ -119,7 +119,7 @@ impl<T: BufRead> Lexer<T> {
                     Ok(None)
                 }
             }
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
@@ -170,6 +170,13 @@ where
 impl From<File> for Lexer<BufReader<File>> {
     fn from(input: File) -> Self {
         Lexer::new(CharOrEofReader::from(input))
+    }
+}
+
+impl<T: BufRead> HasLocation for Lexer<T> {
+    /// Gets the location of the lexeme that will be read next.
+    fn location(&self) -> Location {
+        self.pos
     }
 }
 
@@ -255,8 +262,32 @@ mod tests {
     #[test]
     fn test_eof_is_only_once() {
         let mut lexer = Lexer::from("Hi");
-        assert_eq!(lexer.read().unwrap(), LexemeNode::Word("Hi".to_string(), Location::new(1, 1)));
+        assert_eq!(
+            lexer.read().unwrap(),
+            LexemeNode::Word("Hi".to_string(), Location::new(1, 1))
+        );
         assert_eq!(lexer.read().unwrap(), LexemeNode::EOF(Location::new(1, 3)));
-        assert_eq!(lexer.read(), Err(LexerError::Internal("unexpected end of file".to_string(), Location::new(1 ,3))));
+        assert_eq!(
+            lexer.read(),
+            Err(LexerError::Internal(
+                "unexpected end of file".to_string(),
+                Location::new(1, 3)
+            ))
+        );
+    }
+
+    #[test]
+    fn test_location() {
+        let mut lexer = Lexer::from("PRINT 1");
+        assert_eq!(lexer.location(), Location::new(1, 1));
+        lexer.read().expect("Read should succeed (PRINT)");
+        assert_eq!(lexer.location(), Location::new(1, 6));
+        lexer.read().expect("Read should succeed (whitespace)");
+        assert_eq!(lexer.location(), Location::new(1, 7));
+        lexer.read().expect("Read should succeed (1)");
+        assert_eq!(lexer.location(), Location::new(1, 8));
+        lexer.read().expect("Read should succeed (EOF)");
+        assert_eq!(lexer.location(), Location::new(1, 8));
+        lexer.read().expect_err("Read should fail");
     }
 }

@@ -1,14 +1,24 @@
-use super::{Parser, ParserError, Statement, StatementContext};
+use super::{ParserError, Statement, StatementNode};
+use crate::common::*;
+use crate::lexer::*;
+use crate::parser::buf_lexer::*;
+use crate::parser::expression;
+use crate::parser::name;
 use std::io::BufRead;
 
-impl<T: BufRead> Parser<T> {
-    pub fn demand_const(&mut self) -> Result<Statement, ParserError> {
-        self.read_demand_whitespace("Expected whitespace after CONST")?;
-        let name_node = self.read_demand_name_node("Expected CONST name")?;
-        self.read_demand_symbol_skipping_whitespace('=')?;
-        let right_side = self.read_demand_expression_skipping_whitespace()?;
-        self.finish_line(StatementContext::Normal)?;
-        Ok(Statement::Const(name_node, right_side))
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+    // try to read DIM, if it succeeds demand it, else return None
+    if peek_keyword(lexer, Keyword::Const)? {
+        let pos = lexer.read()?.location();
+        read_demand_whitespace(lexer, "Expected whitespace after CONST")?;
+        let name_node = demand(lexer, name::try_read, "Expected CONST name")?;
+        skip_whitespace(lexer)?;
+        read_symbol(lexer, '=')?;
+        skip_whitespace(lexer)?;
+        let right_side = demand(lexer, expression::try_read, "Expected CONST expression")?;
+        Ok(Statement::Const(name_node, right_side).at(pos)).map(|x| Some(x))
+    } else {
+        Ok(None)
     }
 }
 

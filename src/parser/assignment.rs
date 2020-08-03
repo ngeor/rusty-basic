@@ -1,19 +1,22 @@
-use super::{NameNode, Parser, ParserError, Statement, StatementContext, StatementNode};
+use super::{ParserError, Statement, StatementNode};
 use crate::common::*;
+use crate::lexer::BufLexer;
+use crate::parser::buf_lexer::*;
+use crate::parser::expression;
+use crate::parser::name;
 use std::io::BufRead;
 
-impl<T: BufRead> Parser<T> {
-    pub fn read_demand_assignment_skipping_whitespace(
-        &mut self,
-        left_side: NameNode,
-        context: StatementContext,
-    ) -> Result<StatementNode, ParserError> {
-        let right_side = self.read_demand_expression_skipping_whitespace()?;
-        // if multi-line, demand eol/eof -- otherwise, let the single-line if statement sort it out (might be ELSE following)
-        self.finish_line(context)?;
-        let (name, pos) = left_side.consume();
-        Ok(Statement::Assignment(name, right_side).at(pos))
-    }
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+    in_transaction(lexer, do_read)
+}
+
+fn do_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, ParserError> {
+    let (name, pos) = demand(lexer, name::try_read, "Expected name")?.consume();
+    skip_whitespace(lexer)?;
+    read_symbol(lexer, '=')?;
+    skip_whitespace(lexer)?;
+    let right_side = demand(lexer, expression::try_read, "Expected expression")?;
+    Ok(Statement::Assignment(name, right_side).at(pos))
 }
 
 #[cfg(test)]

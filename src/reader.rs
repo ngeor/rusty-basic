@@ -13,7 +13,7 @@ impl<T: BufRead> CharOrEofReader<T> {
         CharOrEofReader {
             reader,
             buffer: vec![],
-            seen_eof: false
+            seen_eof: false,
         }
     }
 
@@ -40,7 +40,7 @@ impl<T: BufRead> CharOrEofReader<T> {
         let bytes_read = self.reader.read_line(&mut line)?;
         if bytes_read <= 0 {
             if self.seen_eof {
-                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof));
             } else {
                 self.buffer.push(None);
                 self.seen_eof = true;
@@ -50,7 +50,7 @@ impl<T: BufRead> CharOrEofReader<T> {
                 self.buffer.push(Some(c))
             }
             if self.buffer.is_empty() {
-                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof));
             }
         }
         Ok(())

@@ -2,34 +2,35 @@
 // LINE INPUT [;] ["prompt";] variable$
 // LINE INPUT #file-number%, variable$
 
-use super::{BuiltInLint, BuiltInParse, BuiltInRun};
-use crate::common::{FileHandle, Location};
+use super::{BuiltInLint, BuiltInRun};
+use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{err, Interpreter, InterpreterError, Stdlib};
-use crate::lexer::Keyword;
+use crate::lexer::{BufLexer, Keyword};
 use crate::linter::{Error, ExpressionNode};
+use crate::parser::buf_lexer::*;
+use crate::parser::sub_call;
 use crate::parser::{
-    BareNameNode, HasQualifier, Parser, ParserError, QualifiedName, StatementContext,
-    StatementNode, TypeQualifier,
+    HasQualifier, ParserError, QualifiedName, Statement, StatementNode, TypeQualifier,
 };
 use crate::variant::Variant;
 use std::io::BufRead;
 
+#[derive(Debug)]
 pub struct LineInput {}
 
-impl BuiltInParse for LineInput {
-    fn demand<T: BufRead>(
-        &self,
-        parser: &mut Parser<T>,
-        pos: Location,
-        context: StatementContext,
-    ) -> Result<StatementNode, ParserError> {
-        parser.read_demand_whitespace("Expected space after LINE")?;
-        parser.read_demand_keyword(Keyword::Input)?;
-        parser.read_demand_whitespace("Expected space after INPUT")?;
-        let next = parser.buf_lexer.read()?;
-        parser.demand_sub_call(BareNameNode::new("LINE INPUT".into(), pos), next, context)
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+    let next = lexer.peek()?;
+    if next.is_keyword(Keyword::Line) {
+        let pos = lexer.read()?.location();
+        read_demand_whitespace(lexer, "Expected space after LINE")?;
+        read_demand_keyword(lexer, Keyword::Input)?;
+        read_demand_whitespace(lexer, "Expected space after INPUT")?;
+        let args = sub_call::read_arg_list(lexer)?;
+        Ok(Some(Statement::SubCall("LINE INPUT".into(), args).at(pos)))
+    } else {
+        Ok(None)
     }
 }
 

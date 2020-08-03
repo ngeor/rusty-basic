@@ -1,100 +1,203 @@
-use super::ParserError;
-use crate::lexer::{LexemeNode, Lexer};
-use std::collections::VecDeque;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Cursor};
+use crate::common::*;
+use crate::lexer::*;
+use crate::parser::error::*;
+use crate::parser::types::*;
+use std::io::BufRead;
 
-#[derive(Debug)]
-pub struct BufLexer<T: BufRead> {
-    lexer: Lexer<T>,
-    history: VecDeque<LexemeNode>,
+/// Demands that the given function can parse the next lexeme(s).
+/// If the function returns None, it will be converted to an unexpected parser error.
+pub fn demand<T: BufRead, TResult, F, S: AsRef<str>>(
+    lexer: &mut BufLexer<T>,
+    mut op: F,
+    msg: S,
+) -> Result<TResult, ParserError>
+where
+    F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, ParserError>,
+{
+    let p = lexer.peek()?;
+    match op(lexer) {
+        Ok(opt) => match opt {
+            Some(x) => Ok(x),
+            None => unexpected(msg, p),
+        },
+        Err(e) => Err(e),
+    }
 }
 
-impl<T: BufRead> BufLexer<T> {
-    pub fn new(lexer: Lexer<T>) -> BufLexer<T> {
-        BufLexer {
-            lexer: lexer,
-            history: VecDeque::new(),
+pub fn demand_skipping_whitespace<T: BufRead, TResult, F, S: AsRef<str>>(
+    lexer: &mut BufLexer<T>,
+    op: F,
+    msg: S,
+) -> Result<TResult, ParserError>
+where
+    F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, ParserError>,
+{
+    skip_whitespace(lexer)?;
+    demand(lexer, op, msg)
+}
+
+pub fn in_transaction<T: BufRead, F, TResult>(
+    lexer: &mut BufLexer<T>,
+    mut op: F,
+) -> Result<Option<TResult>, ParserError>
+where
+    F: FnMut(&mut BufLexer<T>) -> Result<TResult, ParserError>,
+{
+    lexer.begin_transaction();
+    match op(lexer) {
+        Ok(s) => {
+            lexer.commit_transaction()?;
+            Ok(Some(s))
         }
-    }
-
-    fn _lexer_read(&mut self) -> Result<LexemeNode, ParserError> {
-        self.lexer.read().map_err(|e| ParserError::LexerError(e))
-    }
-
-    pub fn read(&mut self) -> Result<LexemeNode, ParserError> {
-        match self.history.pop_front() {
-            Some(x) => Ok(x),
-            None => self._lexer_read(),
-        }
-    }
-
-    pub fn skip_if<F>(&mut self, f: F) -> Result<bool, ParserError>
-    where
-        F: Fn(&LexemeNode) -> bool,
-    {
-        let next = self.read()?;
-        if f(&next) {
-            Ok(true)
-        } else {
-            self.undo(next);
-            Ok(false)
-        }
-    }
-
-    pub fn try_read<F, TR, E>(&mut self, f: F) -> Result<Option<TR>, ParserError>
-    where
-        F: Fn(&LexemeNode) -> std::result::Result<TR, E>,
-    {
-        let next = self.read()?;
-        match f(&next) {
-            Ok(x) => Ok(Some(x)),
-            Err(_) => {
-                self.undo(next);
-                Ok(None)
+        Err(err) => {
+            lexer.rollback_transaction()?;
+            match &err {
+                ParserError::Unexpected(_, _) => Ok(None),
+                _ => Err(err),
             }
         }
     }
-
-    pub fn undo_if_comment(&mut self, l: LexemeNode) {
-        if l.is_symbol('\'') {
-            self.undo(l);
-        }
-    }
 }
 
-// bytes || &str -> BufLexer
-impl<T> From<T> for BufLexer<BufReader<Cursor<T>>>
+pub fn skip_if<T: BufRead, F>(lexer: &mut BufLexer<T>, f: F) -> Result<bool, LexerError>
 where
-    T: AsRef<[u8]>,
+    F: Fn(&LexemeNode) -> bool,
 {
-    fn from(input: T) -> Self {
-        BufLexer::new(Lexer::from(input))
+    let next = lexer.peek()?;
+    if f(&next) {
+        lexer.read()?;
+        Ok(true)
+    } else {
+        Ok(false)
     }
 }
 
-// File -> BufLexer
-impl From<File> for BufLexer<BufReader<File>> {
-    fn from(input: File) -> Self {
-        BufLexer::new(Lexer::from(input))
+pub fn read_keyword<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+    keyword: Keyword,
+) -> Result<Location, ParserError> {
+    let x = lexer.read()?;
+    if x.is_keyword(keyword) {
+        Ok(x.location())
+    } else {
+        Err(ParserError::Unexpected(
+            format!("Expected keyword {}", keyword),
+            x,
+        ))
     }
 }
 
-pub trait BufLexerUndo<T> {
-    fn undo(&mut self, lexeme_like: T);
-}
-
-impl<T: BufRead> BufLexerUndo<LexemeNode> for BufLexer<T> {
-    fn undo(&mut self, lexeme: LexemeNode) {
-        self.history.push_front(lexeme);
+pub fn read_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<(), ParserError> {
+    let x = lexer.read()?;
+    if x.is_whitespace() {
+        Ok(())
+    } else {
+        Err(ParserError::Unexpected(format!("Expected whitespace"), x))
     }
 }
 
-impl<T: BufRead> BufLexerUndo<Option<LexemeNode>> for BufLexer<T> {
-    fn undo(&mut self, opt_lexeme: Option<LexemeNode>) {
-        match opt_lexeme {
-            Some(lexeme) => self.undo(lexeme),
-            None => (),
-        }
+pub fn read_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<(), ParserError> {
+    let x = lexer.read()?;
+    if x.is_symbol(symbol) {
+        Ok(())
+    } else {
+        Err(ParserError::Unexpected(
+            format!("Expected symbol {}", symbol),
+            x,
+        ))
+    }
+}
+
+pub fn read_bare_name<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<BareName, ParserError> {
+    let x = lexer.read()?;
+    match x {
+        LexemeNode::Word(w, _) => Ok(w.into()),
+        _ => Err(ParserError::Unexpected(format!("Expected word"), x)),
+    }
+}
+
+pub fn read_word_or_keyword<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<BareName, ParserError> {
+    let x = lexer.read()?;
+    match x {
+        LexemeNode::Word(w, _) => Ok(w.into()),
+        LexemeNode::Keyword(_, w, _) => Ok(w.into()),
+        _ => Err(ParserError::Unexpected(
+            format!("Expected word or keyword"),
+            x,
+        )),
+    }
+}
+
+// peek but do not read
+pub fn peek_keyword<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+    keyword: Keyword,
+) -> Result<bool, ParserError> {
+    let x = lexer.peek()?;
+    Ok(x.is_keyword(keyword))
+}
+
+pub fn peek_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<bool, ParserError> {
+    let x = lexer.peek()?;
+    Ok(x.is_symbol(symbol))
+}
+
+// whitespace
+
+pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<(), ParserError> {
+    while lexer.peek()?.is_whitespace() {
+        lexer.read()?;
+    }
+    Ok(())
+}
+
+pub fn read_demand_whitespace<T: BufRead, S: AsRef<str>>(
+    lexer: &mut BufLexer<T>,
+    msg: S,
+) -> Result<(), ParserError> {
+    let next = lexer.read()?;
+    match next {
+        LexemeNode::Whitespace(_, _) => Ok(()),
+        _ => unexpected(msg, next),
+    }
+}
+
+pub fn read_preserve_whitespace<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<(Option<LexemeNode>, LexemeNode), ParserError> {
+    let first = lexer.read()?;
+    if first.is_whitespace() {
+        Ok((Some(first), lexer.read()?))
+    } else {
+        Ok((None, first))
+    }
+}
+
+// symbol
+
+pub fn read_demand_symbol_skipping_whitespace<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+    ch: char,
+) -> Result<(), ParserError> {
+    skip_whitespace(lexer)?;
+    let next = lexer.read()?;
+    if next.is_symbol(ch) {
+        Ok(())
+    } else {
+        unexpected(format!("Expected {}", ch), next)
+    }
+}
+
+// keyword
+
+pub fn read_demand_keyword<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+    keyword: Keyword,
+) -> Result<(), ParserError> {
+    let next = lexer.read()?;
+    if next.is_keyword(keyword) {
+        Ok(())
+    } else {
+        unexpected(format!("Expected keyword {}", keyword), next)
     }
 }

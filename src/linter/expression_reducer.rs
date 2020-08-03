@@ -95,6 +95,7 @@ pub trait ExpressionReducer {
                 .visit_expression_node(expr)
                 .map(|x| Statement::SetReturnValue(x)),
             Statement::Comment(c) => Ok(Statement::Comment(c)),
+            Statement::Dim(l, r) => Ok(Statement::Dim(l, r)),
         }
     }
 

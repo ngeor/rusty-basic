@@ -1,99 +1,114 @@
-use super::{unexpected, DefType, LetterRange, Parser, ParserError, TopLevelToken, TypeQualifier};
-use crate::lexer::{Keyword, LexemeNode};
+use super::{
+    unexpected, DefType, LetterRange, ParserError, TopLevelToken, TopLevelTokenNode, TypeQualifier,
+};
+use crate::common::*;
+use crate::lexer::{BufLexer, Keyword, LexemeNode};
+use crate::parser::buf_lexer::*;
 use std::io::BufRead;
 
-impl<T: BufRead> Parser<T> {
-    pub fn demand_def_type(&mut self, keyword: Keyword) -> Result<TopLevelToken, ParserError> {
-        let qualifier = match keyword {
-            Keyword::DefDbl => TypeQualifier::HashDouble,
-            Keyword::DefInt => TypeQualifier::PercentInteger,
-            Keyword::DefLng => TypeQualifier::AmpersandLong,
-            Keyword::DefSng => TypeQualifier::BangSingle,
-            Keyword::DefStr => TypeQualifier::DollarString,
-            _ => panic!(format!(
-                "Unexpected keyword {}, should be one of DEF*",
-                keyword
-            )),
-        };
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<TopLevelTokenNode>, ParserError> {
+    let next = lexer.peek()?;
+    let opt_qualifier = match next {
+        LexemeNode::Keyword(keyword, _, _) => match keyword {
+            Keyword::DefDbl => Some(TypeQualifier::HashDouble),
+            Keyword::DefInt => Some(TypeQualifier::PercentInteger),
+            Keyword::DefLng => Some(TypeQualifier::AmpersandLong),
+            Keyword::DefSng => Some(TypeQualifier::BangSingle),
+            Keyword::DefStr => Some(TypeQualifier::DollarString),
+            _ => None,
+        },
+        _ => None,
+    };
+    if opt_qualifier.is_none() {
+        return Ok(None);
+    }
 
-        self.read_demand_whitespace("Expected whitespace after DEF* keyword")?;
-        let mut ranges: Vec<LetterRange> = vec![];
-        const STATE_INITIAL: u8 = 0;
-        const STATE_FIRST_LETTER: u8 = 1;
-        const STATE_DASH: u8 = 2;
-        const STATE_SECOND_LETTER: u8 = 3;
-        const STATE_COMMA: u8 = 4;
-        const STATE_EOL: u8 = 5;
-        let mut state = STATE_INITIAL;
-        let mut first_letter = ' ';
-        let mut second_letter = ' ';
-        while state != STATE_EOL {
-            let next = self.read_skipping_whitespace()?;
-            match &next {
-                LexemeNode::EOF(_) | LexemeNode::EOL(_, _) | LexemeNode::Symbol('\'', _) => {
-                    if state == STATE_DASH {
-                        return unexpected("Expected letter after dash", next);
-                    } else if state == STATE_COMMA {
-                        return unexpected("Expected letter range after comma", next);
-                    } else if state == STATE_FIRST_LETTER {
-                        ranges.push(LetterRange::Single(first_letter));
-                        state = STATE_EOL;
-                        self.buf_lexer.undo_if_comment(next);
-                    } else if state == STATE_SECOND_LETTER {
-                        ranges.push(LetterRange::Range(first_letter, second_letter));
-                        state = STATE_EOL;
-                        self.buf_lexer.undo_if_comment(next);
-                    } else {
-                        return unexpected("Expected at least one letter range", next);
-                    }
+    let pos = lexer.read()?.location(); // read DEF* keyword
+    read_demand_whitespace(lexer, "Expected whitespace after DEF* keyword")?;
+    let mut ranges: Vec<LetterRange> = vec![];
+    const STATE_INITIAL: u8 = 0;
+    const STATE_FIRST_LETTER: u8 = 1;
+    const STATE_DASH: u8 = 2;
+    const STATE_SECOND_LETTER: u8 = 3;
+    const STATE_COMMA: u8 = 4;
+    const STATE_EOL: u8 = 5;
+    let mut state = STATE_INITIAL;
+    let mut first_letter = ' ';
+    let mut second_letter = ' ';
+
+    lexer.begin_transaction();
+    while state != STATE_EOL {
+        skip_whitespace(lexer)?;
+        let next = lexer.peek()?;
+        match &next {
+            LexemeNode::Word(w, _) => {
+                lexer.read()?;
+                if w.len() != 1 {
+                    return unexpected("Expected single character", next);
                 }
-                LexemeNode::Word(w, _) => {
-                    if w.len() != 1 {
-                        return unexpected("Expected single character", next);
+                if state == STATE_INITIAL || state == STATE_COMMA {
+                    first_letter = w.chars().next().unwrap();
+                    state = STATE_FIRST_LETTER;
+                } else if state == STATE_DASH {
+                    second_letter = w.chars().next().unwrap();
+                    if first_letter > second_letter {
+                        return unexpected("Invalid letter range".to_string(), next);
                     }
-                    if state == STATE_INITIAL || state == STATE_COMMA {
-                        first_letter = w.chars().next().unwrap();
-                        state = STATE_FIRST_LETTER;
-                    } else if state == STATE_DASH {
-                        second_letter = w.chars().next().unwrap();
-                        if first_letter > second_letter {
-                            return unexpected("Invalid letter range".to_string(), next);
-                        }
-                        state = STATE_SECOND_LETTER;
-                    } else {
-                        return unexpected("Syntax error", next);
-                    }
+                    state = STATE_SECOND_LETTER;
+                } else {
+                    return unexpected("Syntax error", next);
                 }
-                LexemeNode::Symbol('-', _) => {
-                    if state == STATE_FIRST_LETTER {
-                        state = STATE_DASH;
-                    } else {
-                        return unexpected("Syntax error", next);
-                    }
+            }
+            LexemeNode::Symbol('-', _) => {
+                lexer.read()?;
+                if state == STATE_FIRST_LETTER {
+                    state = STATE_DASH;
+                } else {
+                    return unexpected("Syntax error", next);
                 }
-                LexemeNode::Symbol(',', _) => {
-                    if state == STATE_FIRST_LETTER {
-                        ranges.push(LetterRange::Single(first_letter));
-                        state = STATE_COMMA;
-                    } else if state == STATE_SECOND_LETTER {
-                        ranges.push(LetterRange::Range(first_letter, second_letter));
-                        state = STATE_COMMA;
-                    } else {
-                        return unexpected("Syntax error", next);
-                    }
+            }
+            LexemeNode::Symbol(',', _) => {
+                lexer.read()?;
+                if state == STATE_FIRST_LETTER {
+                    ranges.push(LetterRange::Single(first_letter));
+                    state = STATE_COMMA;
+                } else if state == STATE_SECOND_LETTER {
+                    ranges.push(LetterRange::Range(first_letter, second_letter));
+                    state = STATE_COMMA;
+                } else {
+                    return unexpected("Syntax error", next);
                 }
-                _ => return unexpected("Syntax error", next),
+            }
+            _ => {
+                // bail out
+                if state == STATE_DASH {
+                    return unexpected("Expected letter after dash", next);
+                } else if state == STATE_COMMA {
+                    return unexpected("Expected letter range after comma", next);
+                } else if state == STATE_FIRST_LETTER {
+                    ranges.push(LetterRange::Single(first_letter));
+                    state = STATE_EOL;
+                } else if state == STATE_SECOND_LETTER {
+                    ranges.push(LetterRange::Range(first_letter, second_letter));
+                    state = STATE_EOL;
+                } else {
+                    return unexpected("Expected at least one letter range", next);
+                }
             }
         }
-        Ok(TopLevelToken::DefType(DefType::new(qualifier, ranges)))
     }
+    lexer.commit_transaction()?;
+    Ok(Some(
+        TopLevelToken::DefType(DefType::new(opt_qualifier.unwrap(), ranges)).at(pos),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
     use super::*;
-    use crate::common::*;
     use crate::parser::{HasQualifier, Statement};
 
     /// Asserts that the given input program contains a def type top level token.

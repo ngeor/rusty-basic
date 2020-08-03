@@ -1,165 +1,143 @@
-use super::{
-    unexpected, ConditionalBlockNode, ExpressionNode, IfBlockNode, Parser, ParserError, Statement,
-    StatementContext, StatementNodes,
-};
-use crate::lexer::{Keyword, LexemeNode};
-use crate::parser::buf_lexer::BufLexerUndo;
+use crate::common::*;
+use crate::lexer::*;
+use crate::parser::buf_lexer::*;
+use crate::parser::error::*;
+use crate::parser::expression;
+use crate::parser::statements::*;
+use crate::parser::types::*;
 use std::io::BufRead;
 
-impl<T: BufRead> Parser<T> {
-    pub fn demand_if_block(&mut self) -> Result<Statement, ParserError> {
-        self.read_demand_whitespace("Expected whitespace after IF keyword")?;
-        let if_condition = self.read_demand_expression()?;
-        self.read_demand_whitespace("Expected whitespace before THEN keyword")?;
-        self.read_demand_keyword(Keyword::Then)?;
-        let is_multi_line = self.read_after_then()?;
-        if is_multi_line {
-            self.consume_if_block_multi_line(if_condition)
-        } else {
-            self.consume_if_block_single_line(if_condition)
-        }
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+    if !lexer.peek()?.is_keyword(Keyword::If) {
+        return Ok(None);
     }
 
-    fn read_after_then(&mut self) -> Result<bool, ParserError> {
-        let mut found_whitespace = false;
-        loop {
-            let next = self.buf_lexer.read()?;
-            match next {
-                LexemeNode::Whitespace(_, _) => {
-                    found_whitespace = true;
-                }
-                LexemeNode::EOL(_, _) | LexemeNode::Symbol('\'', _) => {
-                    // comment, multi-line if
-                    self.buf_lexer.undo_if_comment(next);
-                    return Ok(true);
-                }
-                _ => {
-                    if found_whitespace {
-                        // something which is not EOL nor comment after a space,
-                        // most likely single-line if
-                        self.buf_lexer.undo(next);
-                        return Ok(false);
-                    } else {
-                        return unexpected("Expected space or EOL", next);
-                    }
-                }
-            }
+    let pos = lexer.read()?.location();
+    read_demand_whitespace(lexer, "Expected whitespace after IF keyword")?;
+    let if_condition = demand(lexer, expression::try_read, "Expected expression after IF")?;
+    read_demand_whitespace(lexer, "Expected whitespace before THEN keyword")?;
+    read_demand_keyword(lexer, Keyword::Then)?;
+    let is_multi_line = is_multi_line(lexer)?;
+    let if_block = read_if_block(lexer, if_condition, is_multi_line)?;
+    let mut else_if_blocks: Vec<ConditionalBlockNode> = vec![];
+    loop {
+        let else_if_block = try_read_else_if_block(lexer)?;
+        match else_if_block {
+            Some(e) => else_if_blocks.push(e),
+            None => break,
         }
     }
+    let else_block = try_read_else_block(lexer, is_multi_line)?;
+    if is_multi_line {
+        read_demand_keyword(lexer, Keyword::End)?;
+        read_demand_whitespace(lexer, "Expected space after END")?;
+        read_demand_keyword(lexer, Keyword::If)?;
+    }
 
-    fn consume_if_block_single_line(
-        &mut self,
-        if_condition: ExpressionNode,
-    ) -> Result<Statement, ParserError> {
-        let if_block = ConditionalBlockNode {
-            condition: if_condition,
-            statements: vec![self.demand_single_line_then_statement()?],
-        };
-
-        let next = self.read_skipping_whitespace()?;
-        let mut else_block: Option<StatementNodes> = None;
-
-        match next {
-            LexemeNode::Keyword(Keyword::Else, _, _) => {
-                self.read_demand_whitespace("Expected whitespace after ELSE keyword")?;
-                else_block = Some(vec![self.demand_single_line_then_statement()?]);
-                self.read_demand_eol_or_eof_skipping_whitespace()?;
-            }
-            LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => {}
-            _ => return unexpected("Expected ELSE or EOL or EOF", next),
-        }
-
-        Ok(Statement::IfBlock(IfBlockNode {
-            if_block: if_block,
-            else_if_blocks: vec![],
+    Ok(Some(
+        Statement::IfBlock(IfBlockNode {
+            if_block,
+            else_if_blocks,
             else_block,
-        }))
-    }
+        })
+        .at(pos),
+    ))
+}
 
-    fn consume_if_block_multi_line(
-        &mut self,
-        if_condition: ExpressionNode,
-    ) -> Result<Statement, ParserError> {
-        // read if statements
-        let (if_statements, mut exit_lexeme) = self._demand_block_until_else_or_else_if_or_end()?;
-        let if_block = ConditionalBlockNode {
-            condition: if_condition,
-            statements: if_statements,
-        };
-        // parse additional elseif blocks
-        let mut else_if_blocks: Vec<ConditionalBlockNode> = vec![];
-        while exit_lexeme.is_keyword(Keyword::ElseIf) {
-            let (else_if_condition, else_if_statements, else_if_exit_lexeme) =
-                self._demand_else_if_conditional_block()?;
-            else_if_blocks.push(ConditionalBlockNode {
-                condition: else_if_condition,
-                statements: else_if_statements,
-            });
-            exit_lexeme = else_if_exit_lexeme;
-        }
-        // parse else block
-        let else_block: Option<StatementNodes>;
-        match exit_lexeme {
-            LexemeNode::Keyword(Keyword::Else, _, _) => {
-                else_block = self._demand_else_block().map(|x| Some(x))?;
-            }
-            LexemeNode::Keyword(Keyword::End, _, _) => {
-                else_block = None;
-            }
-            _ => {
-                return unexpected("Expected ELSE or END", exit_lexeme);
-            }
-        }
-        // parse end if
-        self.read_demand_whitespace("Expected whitespace after END keyword")?;
-        self.read_demand_keyword(Keyword::If)?;
-        self.finish_line(StatementContext::Normal)?;
-        Ok(Statement::IfBlock(IfBlockNode {
-            if_block: if_block,
-            else_if_blocks: else_if_blocks,
-            else_block: else_block,
-        }))
-    }
-
-    fn _demand_else_if_conditional_block(
-        &mut self,
-    ) -> Result<(ExpressionNode, StatementNodes, LexemeNode), ParserError> {
-        let condition = self._demand_else_if_condition()?;
-        let (statements, next) = self._demand_block_until_else_or_else_if_or_end()?;
-        Ok((condition, statements, next))
-    }
-
-    fn _demand_else_if_condition(&mut self) -> Result<ExpressionNode, ParserError> {
-        self.read_demand_whitespace("Expected whitespace after ELSEIF")?;
-        let condition = self.read_demand_expression()?;
-        self.read_demand_whitespace("Expected whitespace before THEN keyword")?;
-        self.read_demand_keyword(Keyword::Then)?;
-        self.finish_line(StatementContext::Normal)?;
-        Ok(condition)
-    }
-
-    fn _demand_block_until_else_or_else_if_or_end(
-        &mut self,
-    ) -> Result<(StatementNodes, LexemeNode), ParserError> {
-        self.parse_statements(
-            |x| match x {
-                LexemeNode::Keyword(k, _, _) => {
-                    *k == Keyword::Else || *k == Keyword::ElseIf || *k == Keyword::End
-                }
-                _ => false,
+/// Read the IF block, up to the first ELSE IF or ELSE or END IF
+fn read_if_block<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+    condition: ExpressionNode,
+    is_multi_line: bool,
+) -> Result<ConditionalBlockNode, ParserError> {
+    let statements = if is_multi_line {
+        parse_statements(lexer, exit_predicate_if_multi_line, "Unterminated IF")?
+    } else {
+        parse_statements_with_options(
+            lexer,
+            exit_predicate_if_single_line,
+            "Unterminated IF",
+            ParseStatementsOptions {
+                first_statement_separated_by_whitespace: true,
             },
-            "Unexpected EOF while looking for end of ELSEIF",
-        )
-    }
+        )?
+    };
+    Ok(ConditionalBlockNode {
+        condition,
+        statements,
+    })
+}
 
-    fn _demand_else_block(&mut self) -> Result<StatementNodes, ParserError> {
-        self.finish_line(StatementContext::Normal)?;
-        self.parse_statements(
-            |x| x.is_keyword(Keyword::End),
-            "Unexpected EOF while looking for end of ELSE block",
-        )
-        .map(|x| x.0)
+fn try_read_else_if_block<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<ConditionalBlockNode>, ParserError> {
+    if !lexer.peek()?.is_keyword(Keyword::ElseIf) {
+        return Ok(None);
     }
+    lexer.read()?;
+    read_demand_whitespace(lexer, "Expected whitespace after ELSEIF keyword")?;
+    let condition = demand(
+        lexer,
+        expression::try_read,
+        "Expected expression out of ELISEIF",
+    )?;
+    read_demand_whitespace(lexer, "Expected whitespace before THEN keyword")?;
+    read_demand_keyword(lexer, Keyword::Then)?;
+    let statements = parse_statements(lexer, exit_predicate_if_multi_line, "Unterminated IF")?;
+    Ok(Some(ConditionalBlockNode {
+        condition,
+        statements,
+    }))
+}
+
+fn try_read_else_block<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+    is_multi_line: bool,
+) -> Result<Option<StatementNodes>, ParserError> {
+    if !lexer.peek()?.is_keyword(Keyword::Else) {
+        return Ok(None);
+    }
+    lexer.read()?;
+    if is_multi_line {
+        parse_statements(lexer, exit_predicate_else_multi_line, "Unterminated ELSE")
+            .map(|x| Some(x))
+    } else {
+        parse_statements_with_options(
+            lexer,
+            exit_predicate_else_single_line,
+            "Unterminated ELSE",
+            ParseStatementsOptions {
+                first_statement_separated_by_whitespace: true,
+            },
+        )
+        .map(|x| Some(x))
+    }
+}
+
+fn is_multi_line<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserError> {
+    // if we find EOL or comment, it's multi-line
+    lexer.begin_transaction();
+    skip_whitespace(lexer)?;
+    let p = lexer.peek()?;
+    let is_multi_line = p.is_eol() || p.is_symbol('\'');
+    lexer.rollback_transaction()?;
+    Ok(is_multi_line)
+}
+
+fn exit_predicate_if_single_line(l: LexemeNode) -> bool {
+    l.is_eof() || l.is_eol() || l.is_keyword(Keyword::ElseIf) || l.is_keyword(Keyword::Else)
+}
+
+fn exit_predicate_if_multi_line(l: LexemeNode) -> bool {
+    l.is_keyword(Keyword::ElseIf) || l.is_keyword(Keyword::Else) || l.is_keyword(Keyword::End)
+}
+
+fn exit_predicate_else_single_line(l: LexemeNode) -> bool {
+    l.is_eol_or_eof()
+}
+
+fn exit_predicate_else_multi_line(l: LexemeNode) -> bool {
+    l.is_keyword(Keyword::End)
 }
 
 #[cfg(test)]

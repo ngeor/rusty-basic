@@ -13,35 +13,33 @@
 // A semicolon immediately after INPUT keeps the cursor on the same line
 // after the user presses the Enter key.
 
-use super::{BuiltInLint, BuiltInParse, BuiltInRun};
-use crate::common::{CaseInsensitiveString, Location};
+use super::{BuiltInLint, BuiltInRun};
+use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::lexer::*;
 use crate::linter::{err_l, err_no_pos, Error, Expression, ExpressionNode, LinterError};
+use crate::parser::buf_lexer::*;
+use crate::parser::sub_call;
 use crate::parser::{
-    BareNameNode, HasQualifier, Parser, ParserError, QualifiedName, StatementContext,
-    StatementNode, TypeQualifier,
+    HasQualifier, ParserError, QualifiedName, Statement, StatementNode, TypeQualifier,
 };
 use crate::variant::Variant;
 use std::io::BufRead;
 
+#[derive(Debug)]
 pub struct Input {}
 
-impl BuiltInParse for Input {
-    fn demand<T: BufRead>(
-        &self,
-        parser: &mut Parser<T>,
-        pos: Location,
-        context: StatementContext,
-    ) -> Result<StatementNode, ParserError> {
-        parser.read_demand_whitespace("Expected space after INPUT")?;
-        let next = parser.buf_lexer.read()?;
-        parser.demand_sub_call(
-            BareNameNode::new(CaseInsensitiveString::new("INPUT".to_string()), pos),
-            next,
-            context,
-        )
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+    let next = lexer.peek()?;
+    if next.is_keyword(Keyword::Input) {
+        let pos = lexer.read()?.location();
+        read_demand_whitespace(lexer, "Expected space after INPUT")?;
+        let args = sub_call::read_arg_list(lexer)?;
+        Ok(Some(Statement::SubCall("INPUT".into(), args).at(pos)))
+    } else {
+        Ok(None)
     }
 }
 

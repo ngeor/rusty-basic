@@ -55,6 +55,7 @@ pub trait PostConversionLinter {
             Statement::GoTo(label) => self.visit_go_to(label),
             Statement::SetReturnValue(expr) => self.visit_expression(expr),
             Statement::Comment(_) => Ok(()),
+            Statement::Dim(_, _) => unimplemented!(),
         }
     }
 

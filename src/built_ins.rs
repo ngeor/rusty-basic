@@ -18,14 +18,11 @@ mod val;
 // utilities for the built-ins
 mod util;
 
-use crate::common::{CaseInsensitiveString, Location};
+use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
-use crate::lexer::{Keyword, LexemeNode};
+use crate::lexer::BufLexer;
 use crate::linter::{err_no_pos, Error, ExpressionNode, LinterError};
-use crate::parser::{
-    HasQualifier, Name, NameTrait, Parser, ParserError, StatementContext, StatementNode,
-    TypeQualifier,
-};
+use crate::parser::{HasQualifier, Name, NameTrait, ParserError, TypeQualifier};
 use std::convert::TryFrom;
 use std::io::BufRead;
 
@@ -60,16 +57,6 @@ pub enum BuiltInSub {
     Kill,
     LineInput,
     Name,
-}
-
-/// For cases where a SUB has special syntax e.g. PRINT, OPEN, etc
-pub trait BuiltInParse {
-    fn demand<T: BufRead>(
-        &self,
-        parser: &mut Parser<T>,
-        pos: Location,
-        context: StatementContext,
-    ) -> Result<StatementNode, ParserError>;
 }
 
 pub trait BuiltInLint {
@@ -290,34 +277,12 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
     }
 }
 
-/// The parse result of parse_special.
-/// TODO: Refactor into regular Option<StatementNode> by removing the need of having LexemeNode in the "No" enum
-pub enum ParseResult {
-    /// Parsing was successful. Holds the parsed statement node.
-    Ok(crate::parser::StatementNode),
-    /// Parsing did not match. Holds the original lexeme node before parsing.
-    No(LexemeNode),
-}
-
 /// Parses built-in subs which have a special syntax.
-pub fn parse_special<T: BufRead>(
-    parser: &mut Parser<T>,
-    next: LexemeNode,
-    context: StatementContext,
-) -> Result<ParseResult, ParserError> {
-    match next {
-        LexemeNode::Keyword(Keyword::Input, _, pos) => INPUT
-            .demand(parser, pos, context)
-            .map(|x| ParseResult::Ok(x)),
-        LexemeNode::Keyword(Keyword::Line, _, pos) => LINE_INPUT
-            .demand(parser, pos, context)
-            .map(|x| ParseResult::Ok(x)),
-        LexemeNode::Keyword(Keyword::Name, _, pos) => NAME
-            .demand(parser, pos, context)
-            .map(|x| ParseResult::Ok(x)),
-        LexemeNode::Keyword(Keyword::Open, _, pos) => OPEN
-            .demand(parser, pos, context)
-            .map(|x| ParseResult::Ok(x)),
-        _ => Ok(ParseResult::No(next)),
-    }
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<crate::parser::StatementNode>, ParserError> {
+    input::try_read(lexer)
+        .or_try_read(|| line_input::try_read(lexer))
+        .or_try_read(|| name::try_read(lexer))
+        .or_try_read(|| open::try_read(lexer))
 }

@@ -11,6 +11,10 @@ pub enum ParserError {
 
     /// Unexpected token
     Unexpected(String, LexemeNode),
+
+    Unterminated(LexemeNode),
+
+    SyntaxError(LexemeNode),
 }
 
 pub fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, ParserError> {
@@ -22,7 +26,7 @@ impl HasLocation for ParserError {
         match self {
             Self::LexerError(l) => l.location(),
             Self::Internal(_, pos) => pos.clone(),
-            Self::Unexpected(_, l) => l.location(),
+            Self::Unexpected(_, l) | Self::Unterminated(l) | Self::SyntaxError(l) => l.location(),
         }
     }
 }

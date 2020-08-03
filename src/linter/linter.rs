@@ -385,6 +385,7 @@ impl Converter<parser::Statement, Statement> for Linter {
             parser::Statement::ErrorHandler(l) => Ok(Statement::ErrorHandler(l)),
             parser::Statement::Label(l) => Ok(Statement::Label(l)),
             parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
+            parser::Statement::Dim(_, _) => unimplemented!(),
         }
     }
 }

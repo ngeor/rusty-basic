@@ -12,7 +12,6 @@ use std::env;
 use std::fs::File;
 
 use interpreter::{DefaultStdlib, Interpreter};
-use parser::Parser;
 
 fn get_filename() -> String {
     // Normally it should just be the first command line argument.
@@ -34,8 +33,7 @@ fn main() {
     let filename = get_filename();
     set_current_dir(&filename); // Note: only needed to make it work inside Apache.
     let f = File::open(&filename).expect(format!("Could not find program {}", filename).as_ref());
-    let mut parser = Parser::from(f);
-    match parser.parse() {
+    match parser::parse_main_file(f) {
         Ok(program) => match linter::lint(program) {
             Ok(linted_program) => {
                 let mut interpreter = Interpreter::new(DefaultStdlib {});

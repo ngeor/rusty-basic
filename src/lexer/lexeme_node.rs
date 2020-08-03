@@ -34,6 +34,13 @@ impl LexemeNode {
         }
     }
 
+    pub fn is_eol(&self) -> bool {
+        match self {
+            LexemeNode::EOL(_, _) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_eol_or_eof(&self) -> bool {
         match self {
             LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => true,
@@ -61,6 +68,20 @@ impl LexemeNode {
             _ => false,
         }
     }
+
+    pub fn consume_word(self) -> (String, Location) {
+        match self {
+            LexemeNode::Word(w, pos) => (w, pos),
+            _ => panic!("Not a word"),
+        }
+    }
+
+    pub fn consume_digits(self) -> (String, Location) {
+        match self {
+            LexemeNode::Digits(d, pos) => (d, pos),
+            _ => panic!("Not digits"),
+        }
+    }
 }
 
 impl HasLocation for LexemeNode {
@@ -74,5 +95,24 @@ impl HasLocation for LexemeNode {
             | Self::Symbol(_, pos)
             | Self::Digits(_, pos) => pos.clone(),
         }
+    }
+}
+
+#[cfg(test)]
+impl LexemeNode {
+    pub fn word(x: &str, row: u32, col: u32) -> Self {
+        Self::Word(x.to_string(), Location::new(row, col))
+    }
+
+    pub fn whitespace(row: u32, col: u32) -> Self {
+        Self::Whitespace(" ".to_string(), Location::new(row, col))
+    }
+
+    pub fn digits(x: &str, row: u32, col: u32) -> Self {
+        Self::Digits(x.to_string(), Location::new(row, col))
+    }
+
+    pub fn eof(row: u32, col: u32) -> Self {
+        Self::EOF(Location::new(row, col))
     }
 }

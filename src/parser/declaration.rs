@@ -1,115 +1,103 @@
-use super::{unexpected, NameNode, Parser, ParserError, StatementContext, TopLevelToken};
-use crate::lexer::{Keyword, LexemeNode};
+use super::{unexpected, NameNode, ParserError, TopLevelToken, TopLevelTokenNode};
+use crate::common::*;
+use crate::lexer::{BufLexer, Keyword, LexemeNode};
+use crate::parser::buf_lexer::*;
+use crate::parser::name;
 use std::io::BufRead;
 
-impl<T: BufRead> Parser<T> {
-    pub fn demand_declaration(&mut self) -> Result<TopLevelToken, ParserError> {
-        self.read_demand_whitespace("Expected whitespace after DECLARE keyword")?;
-        let next = self.buf_lexer.read()?;
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<TopLevelTokenNode>, ParserError> {
+    if !lexer.peek()?.is_keyword(Keyword::Declare) {
+        return Ok(None);
+    }
+
+    let pos = lexer.read()?.location();
+    read_demand_whitespace(lexer, "Expected whitespace after DECLARE keyword")?;
+    let next = lexer.read()?;
+    match next {
+        LexemeNode::Keyword(Keyword::Function, _, _) => {
+            read_demand_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
+            let function_name = demand(lexer, name::try_read, "Expected function name")?;
+            let parameters = parse_declaration_parameters(lexer)?;
+            Ok(Some(
+                TopLevelToken::FunctionDeclaration(function_name, parameters).at(pos),
+            ))
+        }
+        LexemeNode::Keyword(Keyword::Sub, _, _) => {
+            read_demand_whitespace(lexer, "Expected whitespace after SUB keyword")?;
+            let sub_name = demand(lexer, name::try_read_bare, "Expected sub name")?;
+            let parameters = parse_declaration_parameters(lexer)?;
+            Ok(Some(
+                TopLevelToken::SubDeclaration(sub_name, parameters).at(pos),
+            ))
+        }
+        _ => unexpected("Unknown declaration", next),
+    }
+}
+
+pub fn parse_declaration_parameters<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Vec<NameNode>, ParserError> {
+    let mut params: Vec<NameNode> = vec![];
+    skip_whitespace(lexer)?;
+    let next = lexer.peek()?;
+    if next.is_symbol('(') {
+        lexer.read()?;
+        parse_inside_parentheses(lexer, &mut params)?;
+        Ok(params)
+    } else if next.is_eol_or_eof() {
+        // no parentheses e.g. DECLARE FUNCTION hello
+        Ok(params)
+    } else {
+        unexpected("Expected ( or EOL or EOF after function name", next)
+    }
+}
+
+fn parse_inside_parentheses<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+    params: &mut Vec<NameNode>,
+) -> Result<(), ParserError> {
+    // holds the previous token, which can be one of:
+    // '(' -> opening parenthesis (the starting point)
+    // 'p' -> parameter
+    // ',' -> comma
+    let mut prev = '(';
+    let mut found_close_parenthesis = false;
+    while !found_close_parenthesis {
+        skip_whitespace(lexer)?;
+        let next = lexer.peek()?;
         match next {
-            LexemeNode::Keyword(Keyword::Function, _, _) => {
-                self.read_demand_whitespace("Expected whitespace after FUNCTION keyword")?;
-                let function_name = self.read_demand_name_node("Expected function name")?;
-                let parameters = self.parse_declaration_parameters()?;
-                Ok(TopLevelToken::FunctionDeclaration(
-                    function_name,
-                    parameters,
-                ))
-            }
-            LexemeNode::Keyword(Keyword::Sub, _, _) => {
-                self.read_demand_whitespace("Expected whitespace after SUB keyword")?;
-                let sub_name = self.read_demand_bare_name_node("Expected sub name")?;
-                let parameters = self.parse_declaration_parameters()?;
-                Ok(TopLevelToken::SubDeclaration(sub_name, parameters))
-            }
-            _ => unexpected("Unknown declaration", next),
-        }
-    }
-
-    pub fn demand_function_implementation(&mut self) -> Result<TopLevelToken, ParserError> {
-        // function name
-        self.read_demand_whitespace("Expected whitespace after FUNCTION keyword")?;
-        let name = self.read_demand_name_node("Expected function name")?;
-        // function parameters
-        let params: Vec<NameNode> = self.parse_declaration_parameters()?;
-        // function body
-        let (block, _) =
-            self.parse_statements(|x| x.is_keyword(Keyword::End), "Function without End")?;
-        self.read_demand_whitespace("Expected whitespace after END keyword")?;
-        self.read_demand_keyword(Keyword::Function)?;
-        self.finish_line(StatementContext::Normal)?;
-        Ok(TopLevelToken::FunctionImplementation(name, params, block))
-    }
-
-    pub fn demand_sub_implementation(&mut self) -> Result<TopLevelToken, ParserError> {
-        // sub name
-        self.read_demand_whitespace("Expected whitespace after SUB keyword")?;
-        let name = self.read_demand_bare_name_node("Expected sub name")?;
-        // sub parameters
-        let params: Vec<NameNode> = self.parse_declaration_parameters()?;
-        // body
-        let (block, _) =
-            self.parse_statements(|x| x.is_keyword(Keyword::End), "Sub without End")?;
-        self.read_demand_whitespace("Expected whitespace after END keyword")?;
-        self.read_demand_keyword(Keyword::Sub)?;
-        self.finish_line(StatementContext::Normal)?;
-        Ok(TopLevelToken::SubImplementation(name, params, block))
-    }
-
-    fn parse_declaration_parameters(&mut self) -> Result<Vec<NameNode>, ParserError> {
-        let mut params: Vec<NameNode> = vec![];
-        let next = self.read_skipping_whitespace()?;
-        if next.is_symbol('(') {
-            self.parse_inside_parentheses(&mut params)?;
-            self.finish_line(StatementContext::Normal)?;
-            Ok(params)
-        } else if next.is_eol_or_eof() {
-            // no parentheses e.g. DECLARE FUNCTION hello
-            Ok(params)
-        } else {
-            unexpected("Expected ( or EOL or EOF after function name", next)
-        }
-    }
-
-    fn parse_inside_parentheses(&mut self, params: &mut Vec<NameNode>) -> Result<(), ParserError> {
-        // holds the previous token, which can be one of:
-        // '(' -> opening parenthesis (the starting point)
-        // 'p' -> parameter
-        // ',' -> comma
-        let mut prev = '(';
-        let mut found_close_parenthesis = false;
-        while !found_close_parenthesis {
-            let next = self.read_skipping_whitespace()?;
-            match next {
-                LexemeNode::Symbol(')', _) => {
-                    if prev == ',' {
-                        return unexpected("Expected parameter after comma", next);
-                    } else {
-                        found_close_parenthesis = true;
-                    }
-                }
-                LexemeNode::Symbol(',', _) => {
-                    if prev == 'p' {
-                        prev = ',';
-                    } else {
-                        return unexpected("Unexpected comma", next);
-                    }
-                }
-                LexemeNode::Word(_, _) => {
-                    if prev == '(' || prev == ',' {
-                        params.push(self.demand_name_node(next, "Expected parameter")?);
-                        prev = 'p';
-                    } else {
-                        return unexpected("Unexpected name", next);
-                    }
-                }
-                _ => {
-                    return unexpected("Syntax error", next);
+            LexemeNode::Symbol(')', _) => {
+                lexer.read()?;
+                if prev == ',' {
+                    return unexpected("Expected parameter after comma", next);
+                } else {
+                    found_close_parenthesis = true;
                 }
             }
+            LexemeNode::Symbol(',', _) => {
+                lexer.read()?;
+                if prev == 'p' {
+                    prev = ',';
+                } else {
+                    return unexpected("Unexpected comma", next);
+                }
+            }
+            LexemeNode::Word(_, _) => {
+                if prev == '(' || prev == ',' {
+                    params.push(demand(lexer, name::try_read, "Expected parameter")?);
+                    prev = 'p';
+                } else {
+                    return unexpected("Unexpected name", next);
+                }
+            }
+            _ => {
+                return unexpected("Syntax error", next);
+            }
         }
-        Ok(())
     }
+    Ok(())
 }
 
 #[cfg(test)]

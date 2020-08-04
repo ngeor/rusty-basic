@@ -95,7 +95,10 @@ fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserErr
             found_case_else = lexer.peek()?.is_keyword(Keyword::Else);
         } else {
             // CASE should always be followed by a space so it's okay to throw an error here
-            return Err(ParserError::SyntaxError(lexer.peek()?));
+            return Err(ParserError::SyntaxError(
+                "Expected space after CASE".to_string(),
+                lexer.peek()?.location(),
+            ));
         }
     }
     lexer.rollback_transaction()?;
@@ -159,7 +162,10 @@ fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Opera
             Ok(Operand::Less)
         }
     } else {
-        Err(ParserError::SyntaxError(next))
+        Err(ParserError::SyntaxError(
+            "Expected relational operator".to_string(),
+            next.location(),
+        ))
     }
 }
 

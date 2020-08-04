@@ -2,7 +2,7 @@ use super::error::*;
 use super::types::*;
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::{DimType, QualifiedName};
+use crate::parser::QualifiedName;
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.
@@ -63,7 +63,7 @@ pub trait PostConversionLinter {
             Statement::GoTo(label) => self.visit_go_to(label),
             Statement::SetReturnValue(expr) => self.visit_expression(expr),
             Statement::Comment(c) => self.visit_comment(c),
-            Statement::Dim(name, dim_type) => self.visit_dim(name, dim_type),
+            Statement::Dim(d) => self.visit_dim(d),
         }
     }
 
@@ -71,7 +71,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_dim(&self, _name: &CaseInsensitiveString, _dim_type: &DimType) -> Result<(), Error> {
+    fn visit_dim(&self, _d: &DimDefinition) -> Result<(), Error> {
         Ok(())
     }
 

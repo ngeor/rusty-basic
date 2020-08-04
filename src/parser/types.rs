@@ -1,5 +1,6 @@
 mod bare_name_node;
 mod def_type;
+mod dim_definition;
 mod expression_node;
 mod has_qualifier;
 mod letter_range;
@@ -14,6 +15,7 @@ mod type_resolver;
 
 pub use self::bare_name_node::*;
 pub use self::def_type::*;
+pub use self::dim_definition::*;
 pub use self::expression_node::*;
 pub use self::has_qualifier::*;
 pub use self::letter_range::*;

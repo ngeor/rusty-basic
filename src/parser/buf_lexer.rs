@@ -1,7 +1,6 @@
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::error::*;
-use crate::parser::types::*;
 use std::io::BufRead;
 
 /// Demands that the given function can parse the next lexeme(s).
@@ -106,28 +105,6 @@ pub fn read_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<
             x,
         ))
     }
-}
-
-pub fn read_bare_name<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<BareName, ParserError> {
-    let x = lexer.read()?;
-    match x {
-        LexemeNode::Word(w, _) => Ok(w.into()),
-        _ => Err(ParserError::Unexpected(format!("Expected word"), x)),
-    }
-}
-
-// peek but do not read
-pub fn peek_keyword<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-    keyword: Keyword,
-) -> Result<bool, ParserError> {
-    let x = lexer.peek()?;
-    Ok(x.is_keyword(keyword))
-}
-
-pub fn peek_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<bool, ParserError> {
-    let x = lexer.peek()?;
-    Ok(x.is_symbol(symbol))
 }
 
 // whitespace

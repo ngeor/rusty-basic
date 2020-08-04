@@ -107,6 +107,14 @@ pub enum CaseExpression {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum DimDefinition {
+    /// The DIM statement does not include an AS clause, the type is derived by the name
+    Compact(QualifiedName),
+    /// The DIM statement has an AS clause specifying the type
+    Extended(BareName, DimType),
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
     Assignment(QualifiedName, ExpressionNode),
     Const(QNameNode, ExpressionNode),
@@ -125,7 +133,7 @@ pub enum Statement {
 
     SetReturnValue(ExpressionNode),
     Comment(String),
-    Dim(BareName, DimType),
+    Dim(DimDefinition),
 }
 
 pub type StatementNode = Locatable<Statement>;

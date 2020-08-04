@@ -1,7 +1,5 @@
 use crate::linter;
 use crate::parser::parse_main_str;
-use crate::parser::DimType;
-use std::convert::TryInto;
 
 pub fn linter_ok<T>(input: T) -> linter::ProgramNode
 where
@@ -29,10 +27,4 @@ macro_rules! assert_linter_err {
             crate::common::Location::new($expected_row, $expected_col)
         );
     };
-}
-
-impl From<char> for DimType {
-    fn from(ch: char) -> DimType {
-        DimType::BuiltInType(ch.try_into().unwrap())
-    }
 }

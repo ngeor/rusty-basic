@@ -103,7 +103,11 @@ mod tests {
             assert_eq!(
                 linter_ok(program),
                 vec![
-                    TopLevelToken::Statement(Statement::Dim("A".into(), '$'.into())).at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Dim(DimDefinition::Extended(
+                        "A".into(),
+                        DimType::BuiltInType('$'.try_into().unwrap())
+                    )))
+                    .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
                         "A$".try_into().unwrap(),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
@@ -134,6 +138,63 @@ mod tests {
             CONST A = "hello"
             "#;
             assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+        }
+
+        #[test]
+        fn test_dim_after_variable_assignment_duplicate_definition() {
+            let program = r#"
+            A = 42
+            DIM A AS INTEGER
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_dim_compact_string_duplicate_definition() {
+            let program = r#"
+            DIM A$
+            DIM A$
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_dim_compact_bare_duplicate_definition() {
+            let program = r#"
+            DIM A
+            DIM A
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_dim_compact_single_bare_duplicate_definition() {
+            // single is the default type
+            let program = r#"
+            DIM A!
+            DIM A
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_dim_compact_bare_single_duplicate_definition() {
+            // single is the default type
+            let program = r#"
+            DIM A
+            DIM A!
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_dim_compact_bare_integer_duplicate_definition() {
+            let program = r#"
+            DEFINT A-Z
+            DIM A
+            DIM A%
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
         }
     }
 }

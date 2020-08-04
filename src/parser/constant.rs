@@ -7,19 +7,17 @@ use crate::parser::name;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
-    // try to read DIM, if it succeeds demand it, else return None
-    if peek_keyword(lexer, Keyword::Const)? {
-        let pos = lexer.read()?.location();
-        read_demand_whitespace(lexer, "Expected whitespace after CONST")?;
-        let name_node = demand(lexer, name::try_read, "Expected CONST name")?;
-        skip_whitespace(lexer)?;
-        read_symbol(lexer, '=')?;
-        skip_whitespace(lexer)?;
-        let right_side = demand(lexer, expression::try_read, "Expected CONST expression")?;
-        Ok(Statement::Const(name_node, right_side).at(pos)).map(|x| Some(x))
-    } else {
-        Ok(None)
+    if !lexer.peek()?.is_keyword(Keyword::Const) {
+        return Ok(None);
     }
+    let pos = lexer.read()?.location();
+    read_demand_whitespace(lexer, "Expected whitespace after CONST")?;
+    let name_node = demand(lexer, name::try_read, "Expected CONST name")?;
+    skip_whitespace(lexer)?;
+    read_symbol(lexer, '=')?;
+    skip_whitespace(lexer)?;
+    let right_side = demand(lexer, expression::try_read, "Expected CONST expression")?;
+    Ok(Statement::Const(name_node, right_side).at(pos)).map(|x| Some(x))
 }
 
 #[cfg(test)]

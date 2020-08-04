@@ -16,7 +16,6 @@ mod types;
 mod undefined_function_reducer;
 mod user_defined_function_linter;
 mod user_defined_sub_linter;
-mod variable_set;
 
 #[cfg(test)]
 pub mod test_utils;

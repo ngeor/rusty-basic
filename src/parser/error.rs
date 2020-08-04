@@ -17,7 +17,7 @@ pub enum ParserError {
 
     Unterminated(LexemeNode),
 
-    SyntaxError(LexemeNode),
+    SyntaxError(String, Location),
 }
 
 pub fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, ParserError> {
@@ -28,8 +28,8 @@ impl HasLocation for ParserError {
     fn location(&self) -> Location {
         match self {
             Self::LexerError(l) => l.location(),
-            Self::Internal(_, pos) => pos.clone(),
-            Self::Unexpected(_, l) | Self::Unterminated(l) | Self::SyntaxError(l) => l.location(),
+            Self::Internal(_, pos) | Self::SyntaxError(_, pos) => pos.clone(),
+            Self::Unexpected(_, l) | Self::Unterminated(l) => l.location(),
         }
     }
 }

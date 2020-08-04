@@ -63,12 +63,30 @@ mod tests {
 
         #[test]
         fn test_dim_type_mismatch() {
-            let input = r#"
+            let program = r#"
             X = 1
             IF X = 0 THEN DIM A AS STRING
             A = 42
             "#;
-            assert_linter_err!(input, LinterError::TypeMismatch, 4, 17);
+            assert_linter_err!(program, LinterError::TypeMismatch, 4, 17);
+        }
+
+        #[test]
+        fn test_dim_duplicate_definition_same_builtin_type() {
+            let program = r#"
+            DIM A AS STRING
+            DIM A AS STRING
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_dim_duplicate_definition_different_builtin_type() {
+            let program = r#"
+            DIM A AS STRING
+            DIM A AS INTEGER
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
         }
     }
 }

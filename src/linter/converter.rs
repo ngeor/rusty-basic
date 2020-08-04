@@ -286,7 +286,11 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::Dim(name, dim_type) => {
                 match dim_type {
                     DimType::BuiltInType(b) => {
-                        self.context.dim_variables().insert(name.clone(), b);
+                        if self.context.dim_variables().contains_key(&name) {
+                            return err_no_pos(LinterError::DuplicateDefinition);
+                        } else {
+                            self.context.dim_variables().insert(name.clone(), b);
+                        }
                     }
                     DimType::UserDefinedType(_) => {
                         unimplemented!();

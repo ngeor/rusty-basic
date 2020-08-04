@@ -43,31 +43,6 @@ impl<T: BufRead> BufLexer<T> {
         self.transactions.push(self.index);
     }
 
-    pub fn undo(&mut self) -> Result<(), LexerError> {
-        self.seek(-1)
-    }
-
-    pub fn seek(&mut self, offset: i32) -> Result<(), LexerError> {
-        if self.transactions.is_empty() {
-            Err(LexerError::Internal(
-                "Not in transaction".to_string(),
-                self.location(),
-            ))
-        } else {
-            let start_index: i32 = self.transactions[self.transactions.len() - 1] as i32;
-            let new_index: i32 = (self.index as i32) + offset;
-            if new_index >= start_index && new_index < self.history.len() as i32 {
-                self.index = new_index as usize;
-                Ok(())
-            } else {
-                Err(LexerError::Internal(
-                    "Offset out of range".to_string(),
-                    self.location(),
-                ))
-            }
-        }
-    }
-
     pub fn commit_transaction(&mut self) -> Result<(), LexerError> {
         if self.transactions.is_empty() {
             Err(LexerError::Internal(
@@ -175,43 +150,6 @@ mod tests {
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::eof(1, 8));
         // peek should also fail after eof has been consumed
         assert_eq!(buf_lexer.peek().is_err(), true);
-    }
-
-    #[test]
-    fn test_undo_not_in_transaction() {
-        let input = "PRINT 1";
-        let mut buf_lexer = BufLexer::from(input);
-        assert_eq!(
-            buf_lexer.undo(),
-            Err(LexerError::Internal(
-                "Not in transaction".to_string(),
-                Location::new(1, 1)
-            ))
-        );
-    }
-
-    #[test]
-    fn test_undo_offset_out_of_range() {
-        let input = "PRINT 1";
-        let mut buf_lexer = BufLexer::from(input);
-        buf_lexer.begin_transaction();
-        assert_eq!(
-            buf_lexer.undo(),
-            Err(LexerError::Internal(
-                "Offset out of range".to_string(),
-                Location::new(1, 1)
-            ))
-        );
-    }
-
-    #[test]
-    fn test_undo() {
-        let input = "PRINT 1";
-        let mut buf_lexer = BufLexer::from(input);
-        buf_lexer.begin_transaction();
-        assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
-        buf_lexer.undo().expect("Expected undo to succeed");
-        assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
     }
 
     #[test]

@@ -46,14 +46,6 @@ where
         .unwrap()
 }
 
-pub fn linter_err<T>(input: T) -> linter::Error
-where
-    T: AsRef<[u8]>,
-{
-    let program = parse_main_str(input).unwrap();
-    linter::lint(program).unwrap_err()
-}
-
 pub fn interpret_err<T>(input: T) -> InterpreterError
 where
     T: AsRef<[u8]>,

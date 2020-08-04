@@ -186,52 +186,17 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
         match a {
             parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
             parser::Statement::Assignment(n, e) => {
-                if self.context.is_function_context(&n) {
-                    // trying to assign to the function
-                    let function_type: TypeQualifier = self.functions.get(n.bare_name()).unwrap().0;
-                    if n.bare_or_eq(function_type) {
-                        let converted_expr: ExpressionNode = self.convert(e)?;
-                        let result_q: TypeQualifier = converted_expr.try_qualifier()?;
-                        if result_q.can_cast_to(function_type) {
-                            Ok(Statement::SetReturnValue(converted_expr))
-                        } else {
-                            err_l(LinterError::TypeMismatch, &converted_expr)
-                        }
-                    } else {
-                        // trying to assign to the function with an explicit wrong type
-                        Err(LinterError::DuplicateDefinition.into())
-                    }
-                } else if self.functions.contains_key(n.bare_name())
-                    || self.subs.contains_key(n.bare_name())
-                    || self.context.constants().contains_key(n.bare_name())
-                {
-                    // trying to assign to a different function, or to a sub, or to overwrite a local constant
-                    Err(LinterError::DuplicateDefinition.into())
-                } else if n.is_bare() && self.context.dim_variables().contains_key(n.bare_name()) {
-                    // intercept assignment to DIM variable e.g.
-                    // DIM A AS STRING
-                    // A = "hello"
-                    let q = *self.context.dim_variables().get(n.bare_name()).unwrap();
-                    let converted_expr: ExpressionNode = self.convert(e)?;
-                    let result_q: TypeQualifier = converted_expr.try_qualifier()?;
-                    if result_q.can_cast_to(q) {
-                        Ok(Statement::Assignment(
-                            QualifiedName::new(n.bare_name(), q),
-                            converted_expr,
-                        ))
-                    } else {
-                        err_l(LinterError::TypeMismatch, &converted_expr)
+                let resolved_l_name = self.resolve_name_in_assignment(n)?;
+                let name_type = resolved_l_name.qualifier();
+                let converted_expr: ExpressionNode = self.convert(e)?;
+                let result_q: TypeQualifier = converted_expr.try_qualifier()?;
+                if result_q.can_cast_to(name_type) {
+                    match resolved_l_name {
+                        LName::Variable(q) => Ok(Statement::Assignment(q, converted_expr)),
+                        LName::Function(_) => Ok(Statement::SetReturnValue(converted_expr)),
                     }
                 } else {
-                    let converted_name = self.convert(n)?;
-                    let converted_expr: ExpressionNode = self.convert(e)?;
-                    let result_q: TypeQualifier = converted_expr.try_qualifier()?;
-                    if result_q.can_cast_to(converted_name.qualifier()) {
-                        self.context.variables().insert(converted_name.clone());
-                        Ok(Statement::Assignment(converted_name, converted_expr))
-                    } else {
-                        err_l(LinterError::TypeMismatch, &converted_expr)
-                    }
+                    err_l(LinterError::TypeMismatch, &converted_expr)
                 }
             }
             parser::Statement::Const(n, e) => {
@@ -240,6 +205,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                     || self.context.constants().contains_key(name.bare_name())
                     || self.functions.contains_key(name.bare_name())
                     || self.subs.contains_key(name.bare_name())
+                    || self.context.dim_variables().contains_key(name.bare_name())
                 {
                     // local variable or local constant or function or sub already present by that name
                     err(LinterError::DuplicateDefinition, pos)
@@ -286,7 +252,9 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::Dim(name, dim_type) => {
                 match dim_type {
                     DimType::BuiltInType(b) => {
-                        if self.context.dim_variables().contains_key(&name) {
+                        if self.context.dim_variables().contains_key(&name)
+                            || self.context.constants().contains_key(&name)
+                        {
                             return err_no_pos(LinterError::DuplicateDefinition);
                         } else {
                             self.context.dim_variables().insert(name.clone(), b);
@@ -310,56 +278,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
             parser::Expression::StringLiteral(f) => Ok(Expression::StringLiteral(f)),
             parser::Expression::IntegerLiteral(f) => Ok(Expression::IntegerLiteral(f)),
             parser::Expression::LongLiteral(f) => Ok(Expression::LongLiteral(f)),
-            parser::Expression::VariableName(n) => {
-                // check for a local constant
-                match self.context.get_constant_type(&n)? {
-                    Some(q) => Ok(Expression::Constant(QualifiedName::new(
-                        n.bare_name().clone(),
-                        q,
-                    ))),
-                    None => {
-                        // check for an already defined local variable or parameter
-                        let converted_name = self.convert(n.clone())?;
-                        if self.context.variables().contains_qualified(&converted_name) {
-                            Ok(Expression::Variable(converted_name))
-                        } else {
-                            // parent constant?
-                            match self.context.get_parent_constant_type(&n)? {
-                                Some(q) => Ok(Expression::Constant(QualifiedName::new(
-                                    n.bare_name().clone(),
-                                    q,
-                                ))),
-                                None => {
-                                    if self.subs.contains_key(n.bare_name()) {
-                                        // using the name of a sub as a variable expression
-                                        err_no_pos(LinterError::DuplicateDefinition)
-                                    } else if self.functions.contains_key(n.bare_name()) {
-                                        // if the function expects arguments, argument count mismatch
-                                        let (f_type, f_args, _) =
-                                            self.functions.get(n.bare_name()).unwrap();
-                                        if !f_args.is_empty() {
-                                            err_no_pos(LinterError::ArgumentCountMismatch)
-                                        } else if !n.bare_or_eq(*f_type) {
-                                            // if the function is a different type and the name is qualified of a different type, duplication definition
-                                            err_no_pos(LinterError::DuplicateDefinition)
-                                        } else {
-                                            // else convert it to function call
-                                            Ok(Expression::FunctionCall(
-                                                QualifiedName::new(n.bare_name().clone(), *f_type),
-                                                vec![],
-                                            ))
-                                        }
-                                    } else {
-                                        // e.g. INPUT N, where N has not been declared in advance
-                                        self.context.variables().insert(converted_name.clone());
-                                        Ok(Expression::Variable(converted_name))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            parser::Expression::VariableName(n) => self.resolve_name_in_expression(&n),
             parser::Expression::FunctionCall(n, args) => {
                 let converted_args = self.convert(args)?;
                 let opt_built_in: Option<BuiltInFunction> = (&n).try_into()?;
@@ -470,6 +389,163 @@ impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
             parser::CaseExpression::Range(from, to) => self
                 .convert(from)
                 .and_then(|x| self.convert(to).map(|y| CaseExpression::Range(x, y))),
+        }
+    }
+}
+
+enum LName {
+    Variable(QualifiedName),
+    Function(QualifiedName),
+}
+
+impl HasQualifier for LName {
+    fn qualifier(&self) -> TypeQualifier {
+        match self {
+            Self::Variable(n) | Self::Function(n) => n.qualifier(),
+        }
+    }
+}
+
+impl ConverterImpl {
+    pub fn resolve_name_in_assignment(&mut self, n: parser::Name) -> Result<LName, Error> {
+        if self.context.is_function_context(&n) {
+            // trying to assign to the function
+            let function_type: TypeQualifier = self.functions.get(n.bare_name()).unwrap().0;
+            if n.bare_or_eq(function_type) {
+                Ok(LName::Function(QualifiedName::new(
+                    n.bare_name().clone(),
+                    function_type,
+                )))
+            } else {
+                // trying to assign to the function with an explicit wrong type
+                Err(LinterError::DuplicateDefinition.into())
+            }
+        } else if self.functions.contains_key(n.bare_name())
+            || self.subs.contains_key(n.bare_name())
+            || self.context.constants().contains_key(n.bare_name())
+        {
+            // trying to assign to a different function, or to a sub, or to overwrite a local constant
+            Err(LinterError::DuplicateDefinition.into())
+        } else if n.is_bare() && self.context.dim_variables().contains_key(n.bare_name()) {
+            // intercept assignment to DIM variable e.g.
+            // DIM A AS STRING
+            // A = "hello"
+            let q = *self.context.dim_variables().get(n.bare_name()).unwrap();
+            Ok(LName::Variable(QualifiedName::new(
+                n.bare_name().clone(),
+                q,
+            )))
+        } else {
+            let converted_name = self.convert(n)?;
+            self.context.variables().insert(converted_name.clone());
+            Ok(LName::Variable(converted_name))
+        }
+    }
+
+    pub fn resolve_name_in_expression(&mut self, n: &parser::Name) -> Result<Expression, Error> {
+        self.resolve_name_as_const(n)
+            .or_try_read(|| self.resolve_name_as_existing_var(n))
+            .or_try_read(|| self.resolve_name_as_parent_const(n))
+            .or_try_read(|| self.resolve_name_as_parent_const(n))
+            .or_try_read(|| self.resolve_name_as_subprogram(n))
+            .or_try_read(|| self.resolve_name_as_dim(n))
+            .or_read(|| self.resolve_name_as_new_var(n))
+    }
+
+    fn resolve_name_as_const(&mut self, n: &parser::Name) -> Result<Option<Expression>, Error> {
+        match self.context.get_constant_type(n)? {
+            Some(q) => Ok(Some(Expression::Constant(QualifiedName::new(
+                n.bare_name().clone(),
+                q,
+            )))),
+            None => Ok(None),
+        }
+    }
+
+    fn resolve_name_as_parent_const(
+        &mut self,
+        n: &parser::Name,
+    ) -> Result<Option<Expression>, Error> {
+        match self.context.get_parent_constant_type(n)? {
+            Some(q) => Ok(Some(Expression::Constant(QualifiedName::new(
+                n.bare_name().clone(),
+                q,
+            )))),
+            None => Ok(None),
+        }
+    }
+
+    fn resolve_name_as_existing_var(
+        &mut self,
+        n: &parser::Name,
+    ) -> Result<Option<Expression>, Error> {
+        let converted_name = self.convert(n.clone())?;
+        if self.context.variables().contains_qualified(&converted_name) {
+            Ok(Some(Expression::Variable(converted_name)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn resolve_name_as_new_var(&mut self, n: &parser::Name) -> Result<Expression, Error> {
+        // e.g. INPUT N, where N has not been declared in advance
+        let converted_name = self.convert(n.clone())?;
+        self.context.variables().insert(converted_name.clone());
+        Ok(Expression::Variable(converted_name))
+    }
+
+    fn resolve_name_as_subprogram(
+        &mut self,
+        n: &parser::Name,
+    ) -> Result<Option<Expression>, Error> {
+        if self.subs.contains_key(n.bare_name()) {
+            // using the name of a sub as a variable expression
+            err_no_pos(LinterError::DuplicateDefinition)
+        } else if self.functions.contains_key(n.bare_name()) {
+            // if the function expects arguments, argument count mismatch
+            let (f_type, f_args, _) = self.functions.get(n.bare_name()).unwrap();
+            if !f_args.is_empty() {
+                err_no_pos(LinterError::ArgumentCountMismatch)
+            } else if !n.bare_or_eq(*f_type) {
+                // if the function is a different type and the name is qualified of a different type, duplication definition
+                err_no_pos(LinterError::DuplicateDefinition)
+            } else {
+                // else convert it to function call
+                Ok(Some(Expression::FunctionCall(
+                    QualifiedName::new(n.bare_name().clone(), *f_type),
+                    vec![],
+                )))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn resolve_name_as_dim(&mut self, n: &parser::Name) -> Result<Option<Expression>, Error> {
+        match n {
+            parser::Name::Bare(bare_name) => {
+                match self.context.dim_variables().get(bare_name) {
+                    Some(q) => {
+                        // found it as bare name
+                        Ok(Some(Expression::Variable(QualifiedName::new(
+                            bare_name, *q,
+                        ))))
+                    }
+                    None => Ok(None),
+                }
+            }
+            parser::Name::Qualified(q_name) => {
+                match self.context.dim_variables().get(q_name.bare_name()) {
+                    Some(q) => {
+                        if *q == q_name.qualifier() {
+                            Ok(Some(Expression::Variable(q_name.clone())))
+                        } else {
+                            err_no_pos(LinterError::DuplicateDefinition)
+                        }
+                    }
+                    None => Ok(None),
+                }
+            }
         }
     }
 }

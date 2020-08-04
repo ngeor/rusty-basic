@@ -38,7 +38,7 @@ impl InstructionGenerator {
                 self.push(Instruction::StoreAToResult, pos);
             }
             Statement::Comment(_) => {}
-            Statement::Dim(_, _) => unimplemented!(),
+            Statement::Dim(_, _) => {}
         }
     }
 }

@@ -446,8 +446,8 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
 mod tests {
     use crate::assert_err;
     use crate::assert_has_variable;
-    use crate::assert_prints;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::interpreter::context_owner::ContextOwner;
     use crate::interpreter::test_utils::*;
     use crate::linter::*;
@@ -603,10 +603,10 @@ mod tests {
         #[test]
         fn test_assign_same_variable_name_different_qualifiers() {
             let input = "A = 0.1
-A# = 3.14
-A$ = \"Hello\"
-A% = 1
-A& = 100";
+            A# = 3.14
+            A$ = \"Hello\"
+            A% = 1
+            A& = 100";
             let interpreter = interpret(input);
             assert_has_variable!(interpreter, "A!", 0.1_f32);
             assert_has_variable!(interpreter, "A#", 3.14);
@@ -618,8 +618,7 @@ A& = 100";
         #[test]
         fn test_assign_negated_variable() {
             let input = "A = -42
-B = -A";
-
+            B = -A";
             let interpreter = interpret(input);
             assert_has_variable!(interpreter, "A!", -42.0_f32);
             assert_has_variable!(interpreter, "B!", 42.0_f32);
@@ -769,6 +768,20 @@ B = -A";
             PRINT A%
             "#;
             assert_prints!(program, "hello", "42");
+        }
+    }
+
+    mod dim {
+        use super::*;
+
+        #[test]
+        fn test_dim_string() {
+            let program = r#"
+            DIM A AS STRING
+            A = "hello"
+            PRINT A
+            "#;
+            assert_prints!(program, "hello");
         }
     }
 }

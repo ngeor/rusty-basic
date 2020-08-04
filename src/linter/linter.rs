@@ -56,7 +56,11 @@ fn apply_linters(
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
+    use crate::built_ins::BuiltInSub;
+    use crate::common::*;
+    use crate::linter::test_utils::*;
     use crate::linter::*;
+    use std::convert::TryInto;
 
     mod dim {
         use super::*;
@@ -87,6 +91,49 @@ mod tests {
             DIM A AS INTEGER
             "#;
             assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_dim_string() {
+            let program = r#"
+            DIM A AS STRING
+            A = "hello"
+            PRINT A
+            "#;
+            assert_eq!(
+                linter_ok(program),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim("A".into(), '$'.into())).at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        "A$".try_into().unwrap(),
+                        Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
+                    ))
+                    .at_rc(3, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable("A$".try_into().unwrap()).at_rc(4, 19)]
+                    ))
+                    .at_rc(4, 13)
+                ]
+            );
+        }
+
+        #[test]
+        fn test_dim_after_const_duplicate_definition() {
+            let program = r#"
+            CONST A = "hello"
+            DIM A AS STRING
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_const_after_dim_duplicate_definition() {
+            let program = r#"
+            DIM A AS STRING
+            CONST A = "hello"
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
     }
 }

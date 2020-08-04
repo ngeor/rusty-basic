@@ -1,4 +1,5 @@
-use crate::parser::{DefType, HasQualifier, LetterRange, NameTrait, TypeQualifier, TypeResolver};
+use crate::linter::type_resolver::TypeResolver;
+use crate::parser::{DefType, HasQualifier, LetterRange, NameTrait, TypeQualifier};
 
 #[derive(Debug)]
 pub struct TypeResolverImpl {

@@ -4,11 +4,10 @@ use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::linter::linter_context::LinterContext;
+use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
-use crate::parser::type_resolver_impl::TypeResolverImpl;
-use crate::parser::{
-    DimType, HasQualifier, Name, NameTrait, QualifiedName, TypeQualifier, TypeResolver,
-};
+use crate::parser::{DimType, HasQualifier, Name, NameTrait, QualifiedName, TypeQualifier};
 use std::convert::TryInto;
 
 //

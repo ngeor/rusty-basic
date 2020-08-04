@@ -12,6 +12,8 @@ mod operand_type;
 mod post_conversion_linter;
 mod select_case_linter;
 mod subprogram_context;
+mod type_resolver;
+mod type_resolver_impl;
 mod types;
 mod undefined_function_reducer;
 mod user_defined_function_linter;

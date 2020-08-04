@@ -1,8 +1,9 @@
 use crate::common::*;
 use crate::linter::error::*;
+use crate::linter::type_resolver::TypeResolver;
 use crate::linter::Expression;
 use crate::parser::{
-    BareName, HasQualifier, Name, NameNode, NameTrait, QualifiedName, TypeQualifier, TypeResolver,
+    BareName, HasQualifier, Name, NameNode, NameTrait, QualifiedName, TypeQualifier,
 };
 use std::collections::HashMap;
 

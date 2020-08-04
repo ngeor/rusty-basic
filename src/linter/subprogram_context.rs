@@ -1,9 +1,10 @@
 use super::error::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
+use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
-use crate::parser::type_resolver_impl::TypeResolverImpl;
-use crate::parser::{NameNode, NameTrait, TypeQualifier, TypeResolver};
+use crate::parser::{NameNode, NameTrait, TypeQualifier};
 use std::collections::HashMap;
 
 /// Collects subprograms of the given program.

@@ -11,7 +11,6 @@ mod qualified_name;
 mod statement_node;
 mod top_level_token_node;
 mod type_qualifier;
-mod type_resolver;
 
 pub use self::bare_name_node::*;
 pub use self::def_type::*;
@@ -26,4 +25,3 @@ pub use self::qualified_name::*;
 pub use self::statement_node::*;
 pub use self::top_level_token_node::*;
 pub use self::type_qualifier::*;
-pub use self::type_resolver::*;

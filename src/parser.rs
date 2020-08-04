@@ -20,7 +20,6 @@ pub mod sub_call;
 mod test_utils;
 mod top_level_token;
 mod type_qualifier;
-pub mod type_resolver_impl;
 mod types;
 mod while_wend;
 

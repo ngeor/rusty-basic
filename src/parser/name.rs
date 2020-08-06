@@ -9,7 +9,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>,
         LexemeNode::Word(word, pos) => {
             lexer.read()?;
             let q = type_qualifier::try_read(lexer)?;
-            Ok(Some(Name::new(word, q).at(pos)))
+            Ok(Some(Name::new(word.into(), q).at(pos)))
         }
         _ => Ok(None),
     }

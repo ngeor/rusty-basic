@@ -297,15 +297,15 @@ mod word {
     pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserError> {
         // is it maybe a qualified variable name
         let (word, pos) = lexer.read()?.consume_word();
-
         let qualifier = type_qualifier::try_read(lexer)?;
+        let name = Name::new(word.into(), qualifier);
         // it could be a function call?
         let found_opening_parenthesis = skip_if(lexer, |lexeme| lexeme.is_symbol('('))?;
         if found_opening_parenthesis {
             let args = parse_expression_list_with_parentheses(lexer)?;
-            Ok(Expression::FunctionCall(Name::new(word, qualifier), args).at(pos))
+            Ok(Expression::FunctionCall(name, args).at(pos))
         } else {
-            Ok(Expression::VariableName(Name::new(word, qualifier)).at(pos))
+            Ok(Expression::VariableName(name).at(pos))
         }
     }
 }

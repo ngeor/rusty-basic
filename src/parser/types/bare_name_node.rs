@@ -9,6 +9,10 @@ impl NameTrait for BareName {
         self
     }
 
+    fn consume_bare_name(self) -> CaseInsensitiveString {
+        self
+    }
+
     fn opt_qualifier(&self) -> Option<TypeQualifier> {
         None
     }

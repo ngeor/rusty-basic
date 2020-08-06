@@ -118,13 +118,7 @@ impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
 
 impl Converter<Name, QualifiedName> for ConverterImpl {
     fn convert(&mut self, a: Name) -> Result<QualifiedName, Error> {
-        match a {
-            Name::Bare(b) => {
-                let qualifier = self.resolver.resolve(&b);
-                Ok(QualifiedName::new(b, qualifier))
-            }
-            Name::Qualified(q) => Ok(q),
-        }
+        Ok(self.resolver.to_qualified_name(&a))
     }
 }
 
@@ -213,7 +207,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                         .context
                         .add_const(n, e_type.at(converted_expression_node.location()))?;
                     Ok(Statement::Const(
-                        QualifiedName::new(name.bare_name(), q).at(pos),
+                        name.with_type(q).at(pos),
                         converted_expression_node,
                     ))
                 }
@@ -235,13 +229,13 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
             parser::Statement::Dim(d) => match d {
                 parser::DimDefinition::Compact(n) => {
-                    let q = self.context.add_dim_implicit(n.clone(), &self.resolver)?;
-                    let q_name = QualifiedName::new(n.bare_name().clone(), q);
+                    let q = self.context.add_dim_compact(n.clone(), &self.resolver)?;
+                    let q_name = n.with_type(q);
                     Ok(Statement::Dim(DimDefinition::Compact(q_name)))
                 }
                 parser::DimDefinition::Extended(name, dim_type) => match dim_type {
                     DimType::BuiltInType(q) => {
-                        self.context.add_dim_explicit(name.clone(), q)?;
+                        self.context.add_dim_extended(name.clone(), q)?;
                         Ok(Statement::Dim(DimDefinition::Extended(name, dim_type)))
                     }
                     DimType::UserDefinedType(_) => {
@@ -395,10 +389,7 @@ impl ConverterImpl {
             // trying to assign to the function
             let function_type: TypeQualifier = self.functions.get(n.bare_name()).unwrap().0;
             if n.bare_or_eq(function_type) {
-                Ok(LName::Function(QualifiedName::new(
-                    n.bare_name().clone(),
-                    function_type,
-                )))
+                Ok(LName::Function(n.with_type(function_type)))
             } else {
                 // trying to assign to the function with an explicit wrong type
                 Err(LinterError::DuplicateDefinition.into())
@@ -409,7 +400,7 @@ impl ConverterImpl {
             // trying to assign to a different function, or to a sub
             Err(LinterError::DuplicateDefinition.into())
         } else {
-            let q_name = self.context.resolve_assignment(n, &self.resolver)?;
+            let q_name = self.context.resolve_assignment(&n, &self.resolver)?;
             Ok(LName::Variable(q_name))
         }
     }
@@ -428,8 +419,8 @@ impl ConverterImpl {
         // e.g. INPUT N, where N has not been declared in advance
         let q = self
             .context
-            .add_dim_implicit_implicit(n.clone(), &self.resolver)?;
-        let q_name = QualifiedName::new(n.bare_name().clone(), q);
+            .add_dim_compact_implicit(n, &self.resolver)?;
+        let q_name = n.with_type_ref(q);
         Ok(Expression::Variable(q_name))
     }
 
@@ -451,7 +442,7 @@ impl ConverterImpl {
             } else {
                 // else convert it to function call
                 Ok(Some(Expression::FunctionCall(
-                    QualifiedName::new(n.bare_name().clone(), *f_type),
+                    n.with_type_ref(*f_type),
                     vec![],
                 )))
             }

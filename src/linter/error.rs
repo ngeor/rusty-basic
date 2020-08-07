@@ -82,13 +82,19 @@ pub fn err_no_pos<T>(l: LinterError) -> Result<T, Error> {
     Err(Error(l, None))
 }
 
-pub trait WithErrPos<U> {
-    fn with_err_pos(self, pos: Location) -> U;
+pub trait WithErrPos<U, L> {
+    fn with_err_pos(self, pos: L) -> U;
 }
 
-impl<T> WithErrPos<Result<T, Error>> for Result<T, Error> {
+impl<T> WithErrPos<Result<T, Error>, Location> for Result<T, Error> {
     fn with_err_pos(self, pos: Location) -> Self {
         self.map_err(|x| x.with_pos(pos))
+    }
+}
+
+impl<T, L: HasLocation> WithErrPos<Result<T, Error>, &L> for Result<T, Error> {
+    fn with_err_pos(self, pos: &L) -> Self {
+        self.map_err(|x| x.with_pos(pos.location()))
     }
 }
 

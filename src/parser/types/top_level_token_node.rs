@@ -1,9 +1,8 @@
-use super::{BareNameNode, DefType, NameNode, Statement, StatementNodes};
+use super::{BareNameNode, DeclaredNameNodes, DefType, NameNode, Statement, StatementNodes};
 use crate::common::*;
 
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
-pub type ParamNodes = Vec<NameNode>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TopLevelToken {
@@ -11,19 +10,19 @@ pub enum TopLevelToken {
     DefType(DefType),
 
     /// A function declaration, e.g. `DECLARE FUNCTION Add(A, B)`
-    FunctionDeclaration(NameNode, ParamNodes),
+    FunctionDeclaration(NameNode, DeclaredNameNodes),
 
     /// A function implementation
-    FunctionImplementation(NameNode, ParamNodes, StatementNodes),
+    FunctionImplementation(NameNode, DeclaredNameNodes, StatementNodes),
 
     /// A simple or compound statement
     Statement(Statement),
 
     /// A sub declaration, e.g. `DECLARE SUB Connect`
-    SubDeclaration(BareNameNode, ParamNodes),
+    SubDeclaration(BareNameNode, DeclaredNameNodes),
 
     /// A sub implementation
-    SubImplementation(BareNameNode, ParamNodes, StatementNodes),
+    SubImplementation(BareNameNode, DeclaredNameNodes, StatementNodes),
 }
 
 impl From<Statement> for TopLevelToken {

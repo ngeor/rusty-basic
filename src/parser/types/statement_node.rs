@@ -1,4 +1,4 @@
-use super::{ArgumentNodes, BareName, DimDefinition, ExpressionNode, Name, NameNode, Operand};
+use super::{ArgumentNodes, BareName, DeclaredNameNode, ExpressionNode, Name, NameNode, Operand};
 use crate::common::*;
 
 pub type StatementNodes = Vec<StatementNode>;
@@ -23,7 +23,7 @@ pub enum Statement {
     /// Dim VAR.NAME AS TYPE
     /// or
     /// Dim A$
-    Dim(DimDefinition),
+    Dim(DeclaredNameNode),
 }
 
 #[derive(Clone, Debug, PartialEq)]

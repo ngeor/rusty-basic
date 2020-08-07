@@ -3,6 +3,7 @@ pub mod buf_lexer;
 mod comment;
 mod constant;
 mod declaration;
+mod declared_name;
 mod def_type;
 mod dim_parser;
 mod error;

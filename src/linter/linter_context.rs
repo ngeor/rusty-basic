@@ -3,9 +3,11 @@ use crate::linter::error::*;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::Expression;
 use crate::parser::{
-    BareName, HasQualifier, Name, NameNode, NameTrait, QualifiedName, TypeQualifier,
+    BareName, DeclaredName, HasQualifier, Name, NameNode, NameTrait, QualifiedName, TypeDefinition,
+    TypeQualifier,
 };
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Debug, Default)]
 pub struct LinterContext {
@@ -19,12 +21,8 @@ pub struct LinterContext {
 #[derive(Debug)]
 enum Identifier {
     Constant(TypeQualifier),
-    /// A variable which was declared with DIM X AS type
-    ExtendedVar(TypeQualifier),
-    /// A variable which was declared implicitly e.g. A$ = "hello" or with DIM A$
-    CompactVar(TypeQualifier),
-    /// A sub or function parameter. This can hide constants.
-    Param(TypeQualifier),
+    Variable(TypeDefinition),
+    Param(TypeDefinition),
 }
 
 impl Identifier {
@@ -35,33 +33,63 @@ impl Identifier {
         }
     }
 
-    pub fn is_extended_var(&self) -> bool {
-        match self {
-            Self::ExtendedVar(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_compact_var(&self) -> bool {
-        match self {
-            Self::CompactVar(_) => true,
-            _ => false,
-        }
-    }
-
     pub fn is_param(&self) -> bool {
         match self {
             Self::Param(_) => true,
             _ => false,
         }
     }
+
+    pub fn is_extended_param(&self) -> bool {
+        match self {
+            Self::Param(t) => t.is_extended(),
+            _ => false,
+        }
+    }
+
+    pub fn is_compact_param_of_type(&self, q: TypeQualifier) -> bool {
+        match self {
+            Self::Param(t) => t.is_compact_of_type(q),
+            _ => false,
+        }
+    }
+
+    pub fn is_variable(&self) -> bool {
+        match self {
+            Self::Variable(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_extended_variable(&self) -> bool {
+        match self {
+            Self::Variable(t) => t.is_extended(),
+            _ => false,
+        }
+    }
+
+    pub fn is_compact_variable_of_type(&self, q: TypeQualifier) -> bool {
+        match self {
+            Self::Variable(t) => t.is_compact_of_type(q),
+            _ => false,
+        }
+    }
+}
+
+impl TryFrom<&Identifier> for TypeQualifier {
+    type Error = bool;
+    fn try_from(i: &Identifier) -> Result<TypeQualifier, bool> {
+        match i {
+            Identifier::Constant(q) => Ok(*q),
+            Identifier::Param(type_def) | Identifier::Variable(type_def) => type_def.try_into(),
+        }
+    }
 }
 
 impl HasQualifier for Identifier {
     fn qualifier(&self) -> TypeQualifier {
-        match self {
-            Self::Constant(q) | Self::ExtendedVar(q) | Self::CompactVar(q) | Self::Param(q) => *q,
-        }
+        self.try_into()
+            .expect("Not supported for user defined types")
     }
 }
 
@@ -91,17 +119,52 @@ impl LinterContext {
         self.names.get_mut(n).unwrap()
     }
 
-    pub fn add_param(&mut self, name: QualifiedName) -> Result<(), Error> {
-        let (bare_name, q) = name.consume();
+    pub fn add_param<T: TypeResolver>(
+        &mut self,
+        name: DeclaredName,
+        resolver: &T,
+    ) -> Result<(), Error> {
+        let bare_name = name.bare_name();
         let identifiers = self.get_names(&bare_name);
-        // should not have multiple parameters of the same name
-        // TODO check if it is allowed to have params with same bare name but different qualifier
-        if identifiers.iter().any(|x| x.is_param()) {
-            err_no_pos(LinterError::DuplicateDefinition)
-        } else {
-            identifiers.push(Identifier::Param(q));
-            Ok(())
+        let resolved_q: TypeQualifier;
+        match name.type_definition() {
+            TypeDefinition::Bare => {
+                // need resolver
+                resolved_q = resolver.resolve(bare_name);
+                // it's not allowed to have an extended param of this name or another compact param of the same type
+                if identifiers
+                    .iter()
+                    .any(|x| x.is_extended_param() || x.is_compact_param_of_type(resolved_q))
+                {
+                    return err_no_pos(LinterError::DuplicateDefinition);
+                }
+                identifiers.push(Identifier::Param(TypeDefinition::CompactBuiltIn(
+                    resolved_q,
+                )));
+            }
+            TypeDefinition::CompactBuiltIn(q) => {
+                resolved_q = *q;
+                // it's not allowed to have an extended param of this name or another compact param of the same type
+                if identifiers
+                    .iter()
+                    .any(|x| x.is_extended_param() || x.is_compact_param_of_type(resolved_q))
+                {
+                    return err_no_pos(LinterError::DuplicateDefinition);
+                }
+                identifiers.push(Identifier::Param(TypeDefinition::CompactBuiltIn(
+                    resolved_q,
+                )));
+            }
+            TypeDefinition::ExtendedBuiltIn(q) => {
+                // it's not allowed to have any other params of this name
+                if identifiers.iter().any(|x| x.is_param()) {
+                    return err_no_pos(LinterError::DuplicateDefinition);
+                }
+                identifiers.push(Identifier::Param(TypeDefinition::ExtendedBuiltIn(*q)));
+            }
+            _ => unimplemented!(),
         }
+        Ok(())
     }
 
     pub fn add_const(
@@ -129,19 +192,56 @@ impl LinterContext {
         }
     }
 
-    // e.g. DIM A, DIM A$
-    pub fn add_dim_compact<T: TypeResolver>(
+    // e.g. DIM A, DIM A$, DIM AS STRING
+    pub fn add_dim<T: TypeResolver>(
         &mut self,
-        name: Name,
+        name: &DeclaredName,
         resolver: &T,
-    ) -> Result<TypeQualifier, Error> {
-        let q = resolver.resolve(&name);
-        let identifiers = self.get_names(name.bare_name());
-        if Self::can_add_compact(&identifiers, q)? {
-            identifiers.push(Identifier::CompactVar(q));
-            Ok(q)
-        } else {
-            err_no_pos(LinterError::DuplicateDefinition)
+    ) -> Result<DeclaredName, Error> {
+        let bare_name = name.bare_name();
+        let identifiers = self.get_names(&bare_name);
+        let resolved_q: TypeQualifier;
+
+        match name.type_definition() {
+            TypeDefinition::Bare => {
+                resolved_q = resolver.resolve(bare_name);
+                if identifiers.iter().any(|x| {
+                    x.is_extended_variable()
+                        || x.is_compact_variable_of_type(resolved_q)
+                        || !x.is_variable()
+                }) {
+                    return err_no_pos(LinterError::DuplicateDefinition);
+                }
+                identifiers.push(Identifier::Variable(TypeDefinition::CompactBuiltIn(
+                    resolved_q,
+                )));
+                Ok(DeclaredName::compact(bare_name, resolved_q))
+            }
+            TypeDefinition::CompactBuiltIn(q) => {
+                resolved_q = *q;
+                if identifiers.iter().any(|x| {
+                    x.is_extended_variable()
+                        || x.is_compact_variable_of_type(resolved_q)
+                        || !x.is_variable()
+                }) {
+                    return err_no_pos(LinterError::DuplicateDefinition);
+                }
+                identifiers.push(Identifier::Variable(TypeDefinition::CompactBuiltIn(
+                    resolved_q,
+                )));
+                Ok(DeclaredName::compact(bare_name, resolved_q))
+            }
+            TypeDefinition::ExtendedBuiltIn(q) => {
+                if !identifiers.is_empty() {
+                    return err_no_pos(LinterError::DuplicateDefinition);
+                }
+                identifiers.push(Identifier::Variable(TypeDefinition::ExtendedBuiltIn(*q)));
+                Ok(DeclaredName::new(
+                    bare_name.clone(),
+                    TypeDefinition::ExtendedBuiltIn(*q),
+                ))
+            }
+            _ => unimplemented!(),
         }
     }
 
@@ -152,39 +252,25 @@ impl LinterContext {
     ) -> Result<TypeQualifier, Error> {
         let q = resolver.resolve(name);
         let identifiers = self.get_names(name.bare_name());
-        if Self::can_add_compact(&identifiers, q)? {
-            identifiers.push(Identifier::CompactVar(q));
-        }
-        Ok(q)
-    }
-
-    fn can_add_compact(identifiers: &Vec<Identifier>, new_q: TypeQualifier) -> Result<bool, Error> {
         let mut already_exists = false;
         for i in identifiers.iter() {
             match i {
-                Identifier::Constant(_)
-                | Identifier::ExtendedVar(_)
-                | Identifier::Param(_) => {
-                    return err_no_pos(LinterError::DuplicateDefinition)
-                }
-                Identifier::CompactVar(q_existing) => {
-                    if new_q == *q_existing {
+                Identifier::Constant(_) => return err_no_pos(LinterError::DuplicateDefinition),
+                Identifier::Variable(type_def) | Identifier::Param(type_def) => {
+                    if type_def.is_extended() {
+                        return err_no_pos(LinterError::DuplicateDefinition);
+                    }
+                    if type_def.is_compact_of_type(q) {
                         already_exists = true;
                     }
                 }
             }
         }
-        Ok(!already_exists)
-    }
 
-    pub fn add_dim_extended(&mut self, bare_name: BareName, q: TypeQualifier) -> Result<(), Error> {
-        let identifiers = self.get_names(&bare_name);
-        if identifiers.is_empty() {
-            identifiers.push(Identifier::ExtendedVar(q));
-            Ok(())
-        } else {
-            err_no_pos(LinterError::DuplicateDefinition)
+        if !already_exists {
+            identifiers.push(Identifier::Variable(TypeDefinition::CompactBuiltIn(q)));
         }
+        Ok(q)
     }
 
     pub fn resolve_assignment<T: TypeResolver>(
@@ -195,12 +281,13 @@ impl LinterContext {
         let blank: Vec<Identifier> = vec![];
         let identifiers = self.names.get(n.bare_name()).unwrap_or(&blank);
         Self::resolve_assignment_const(identifiers)
-        .or_try_read(|| Self::resolve_assignment_extended_var(identifiers, n) )
-        .or_try_read(|| Self::resolve_assignment_param(identifiers, n))
-        .or_read(|| self.resolve_assignment_implicit(n, resolver))
+            .or_try_read(|| Self::resolve_assignment_var_or_param(identifiers, n, resolver))
+            .or_read(|| self.resolve_assignment_implicit(n, resolver))
     }
 
-    fn resolve_assignment_const(identifiers: &Vec<Identifier>) -> Result<Option<QualifiedName>, Error> {
+    fn resolve_assignment_const(
+        identifiers: &Vec<Identifier>,
+    ) -> Result<Option<QualifiedName>, Error> {
         if identifiers.iter().any(|x| x.is_constant()) {
             err_no_pos(LinterError::DuplicateDefinition)
         } else {
@@ -208,45 +295,40 @@ impl LinterContext {
         }
     }
 
-    fn resolve_assignment_extended_var(identifiers: &Vec<Identifier>, n: &Name) -> Result<Option<QualifiedName>, Error> {
-        match identifiers.iter().find(|x| x.is_extended_var()) {
-            Some(i) => {
-                let q = i.qualifier();
-                match n {
-                    Name::Bare(_) => Ok(Some(n.with_type_ref(q))),
-                    Name::Qualified(q_name) => {
-                        if q_name.qualifier() == q {
-                            Ok(Some(q_name.clone()))
-                        } else {
-                            err_no_pos(LinterError::DuplicateDefinition)
-                        }
-                    }
-                }
-            }
-            None => Ok(None)
+    fn resolve_assignment_var_or_param<T: TypeResolver>(
+        identifiers: &Vec<Identifier>,
+        n: &Name,
+        resolver: &T,
+    ) -> Result<Option<QualifiedName>, Error> {
+        // try extended params & variables
+        match identifiers
+            .iter()
+            .find(|x| x.is_extended_param() || x.is_extended_variable())
+            .map(|x| x.qualifier())
+        {
+            Some(q) => match n {
+                Name::Bare(_) => return Ok(Some(n.with_type_ref(q))),
+                Name::Qualified(_) => return err_no_pos(LinterError::DuplicateDefinition),
+            },
+            None => {}
+        }
+
+        let q = resolver.resolve(n);
+        match identifiers
+            .iter()
+            .find(|x| x.is_compact_param_of_type(q) || x.is_compact_variable_of_type(q))
+            .map(|x| x.qualifier())
+        {
+            Some(q) => Ok(Some(n.with_type_ref(q))),
+            None => Ok(None),
         }
     }
 
-    fn resolve_assignment_param(identifiers: &Vec<Identifier>, n: &Name) -> Result<Option<QualifiedName>, Error> {
-        match identifiers.iter().find(|x| x.is_param()) {
-            Some(i) => {
-                let q = i.qualifier();
-                match n {
-                    Name::Bare(_) => Ok(Some(n.with_type_ref(q))),
-                    Name::Qualified(q_name) => {
-                        if q_name.qualifier() == q {
-                            Ok(Some(q_name.clone()))
-                        } else {
-                            err_no_pos(LinterError::DuplicateDefinition)
-                        }
-                    }
-                }
-            }
-            None => Ok(None)
-        }
-    }
-
-    fn resolve_assignment_implicit<T: TypeResolver>(&mut self, n: &Name, resolver: &T) -> Result<QualifiedName, Error> {
+    fn resolve_assignment_implicit<T: TypeResolver>(
+        &mut self,
+        n: &Name,
+        resolver: &T,
+    ) -> Result<QualifiedName, Error> {
         let result = resolver.to_qualified_name(n);
         self.add_dim_compact_implicit(n, resolver)?;
         Ok(result)
@@ -257,16 +339,41 @@ impl LinterContext {
         n: &Name,
         resolver: &T,
     ) -> Result<Option<Expression>, Error> {
+        match n {
+            Name::Bare(b) => self
+                .resolve_expression_bare(b, resolver)
+                .or_try_read(|| self.resolve_parent_const_expression(n)),
+            Name::Qualified(q) => self
+                .resolve_expression_qualified(q)
+                .or_try_read(|| self.resolve_parent_const_expression(n)),
+        }
+    }
+
+    fn resolve_expression_bare<T: TypeResolver>(
+        &self,
+        n: &BareName,
+        resolver: &T,
+    ) -> Result<Option<Expression>, Error> {
+        let q_resolved = resolver.resolve(n);
         match self.names.get(n.bare_name()) {
             Some(v) => {
-                // try parameters
-                match v.iter().find(|x| x.is_param()).map(|x| x.qualifier()) {
+                // try extended parameters
+                match v
+                    .iter()
+                    .find(|x| x.is_extended_param())
+                    .map(|x| x.qualifier())
+                {
+                    Some(q) => return Ok(Some(Expression::Variable(n.with_type_ref(q)))),
+                    None => {}
+                }
+                // try compact parameters
+                match v
+                    .iter()
+                    .find(|x| x.is_compact_param_of_type(q_resolved))
+                    .map(|x| x.qualifier())
+                {
                     Some(q) => {
-                        if n.bare_or_eq(q) {
-                            return Ok(Some(Expression::Variable(n.with_type_ref(q))));
-                        } else {
-                            return err_no_pos(LinterError::DuplicateDefinition);
-                        }
+                        return Ok(Some(Expression::Variable(n.with_type_ref(q))));
                     }
                     None => {}
                 }
@@ -284,25 +391,22 @@ impl LinterContext {
                 // try extended variables
                 match v
                     .iter()
-                    .find(|x| x.is_extended_var())
+                    .find(|x| x.is_extended_variable())
                     .map(|x| x.qualifier())
                 {
                     Some(q) => {
-                        if n.bare_or_eq(q) {
-                            return Ok(Some(Expression::Variable(n.with_type_ref(q))));
-                        } else {
-                            return err_no_pos(LinterError::DuplicateDefinition);
-                        }
+                        return Ok(Some(Expression::Variable(n.with_type_ref(q))));
                     }
                     None => {}
                 }
                 // try compact variable
-                match v.iter().find(|x| x.is_compact_var()).map(|x| x.qualifier()) {
+                match v
+                    .iter()
+                    .find(|x| x.is_compact_variable_of_type(q_resolved))
+                    .map(|x| x.qualifier())
+                {
                     Some(q_declared) => {
-                        let q = resolver.resolve(n);
-                        if q == q_declared {
-                            return Ok(Some(Expression::Variable(n.with_type_ref(q))));
-                        }
+                        return Ok(Some(Expression::Variable(n.with_type_ref(q_declared))));
                     }
                     None => {}
                 }
@@ -310,6 +414,74 @@ impl LinterContext {
             None => {}
         }
 
+        Ok(None)
+    }
+
+    fn resolve_expression_qualified(&self, n: &QualifiedName) -> Result<Option<Expression>, Error> {
+        match self.names.get(n.bare_name()) {
+            Some(v) => {
+                // try extended parameters
+                match v
+                    .iter()
+                    .find(|x| x.is_extended_param())
+                    .map(|x| x.qualifier())
+                {
+                    Some(_) => {
+                        return err_no_pos(LinterError::DuplicateDefinition);
+                    }
+                    None => {}
+                }
+                // try compact parameters
+                match v
+                    .iter()
+                    .find(|x| x.is_compact_param_of_type(n.qualifier()))
+                    .map(|x| x.qualifier())
+                {
+                    Some(q) => {
+                        return Ok(Some(Expression::Variable(n.with_type_ref(q))));
+                    }
+                    None => {}
+                }
+                // try constants
+                match v.iter().find(|x| x.is_constant()).map(|x| x.qualifier()) {
+                    Some(q) => {
+                        if n.bare_or_eq(q) {
+                            return Ok(Some(Expression::Constant(n.with_type_ref(q))));
+                        } else {
+                            return err_no_pos(LinterError::DuplicateDefinition);
+                        }
+                    }
+                    None => {}
+                }
+                // try extended variables
+                match v
+                    .iter()
+                    .find(|x| x.is_extended_variable())
+                    .map(|x| x.qualifier())
+                {
+                    Some(_) => {
+                        return err_no_pos(LinterError::DuplicateDefinition);
+                    }
+                    None => {}
+                }
+                // try compact variable
+                match v
+                    .iter()
+                    .find(|x| x.is_compact_variable_of_type(n.qualifier()))
+                    .map(|x| x.qualifier())
+                {
+                    Some(q_declared) => {
+                        return Ok(Some(Expression::Variable(n.with_type_ref(q_declared))));
+                    }
+                    None => {}
+                }
+            }
+            None => {}
+        }
+        Ok(None)
+    }
+
+    fn resolve_parent_const_expression(&self, n: &Name) -> Result<Option<Expression>, Error> {
         // try parent constants
         match &self.parent {
             Some(p) => p.resolve_const_expression(n),
@@ -336,16 +508,19 @@ impl LinterContext {
             None => {}
         }
 
-        // try parent constants
-        match &self.parent {
-            Some(p) => p.resolve_const_expression(n),
-            None => Ok(None),
-        }
+        self.resolve_parent_const_expression(n)
     }
 
     pub fn is_function_context(&self, name: &Name) -> bool {
         match &self.function_name {
             Some(x) => x == name.bare_name(),
+            None => false,
+        }
+    }
+
+    pub fn has_param(&self, name: &Name) -> bool {
+        match self.names.get(name.bare_name()) {
+            Some(v) => v.iter().any(|x| x.is_param()),
             None => false,
         }
     }

@@ -69,6 +69,13 @@ impl LexemeNode {
         }
     }
 
+    pub fn is_word(&self) -> bool {
+        match self {
+            LexemeNode::Word(_, _) => true,
+            _ => false,
+        }
+    }
+
     pub fn consume_word(self) -> (String, Location) {
         match self {
             LexemeNode::Word(w, pos) => (w, pos),

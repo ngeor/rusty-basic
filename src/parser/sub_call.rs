@@ -80,7 +80,9 @@ pub fn read_arg_list<T: BufRead>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Expression, Name, Operand, Statement, TopLevelToken};
+    use crate::parser::{
+        DeclaredName, Expression, Name, Operand, Statement, TopLevelToken, TypeQualifier,
+    };
 
     #[test]
     fn test_parse_sub_call_no_args() {
@@ -215,7 +217,10 @@ mod tests {
                 // DECLARE SUB Hello
                 TopLevelToken::SubDeclaration(
                     "Hello".as_bare_name(2, 21),
-                    vec!["N$".as_name(2, 27), "V$".as_name(2, 31)],
+                    vec![
+                        DeclaredName::compact("N", TypeQualifier::DollarString).at_rc(2, 27),
+                        DeclaredName::compact("V", TypeQualifier::DollarString).at_rc(2, 31)
+                    ],
                 ),
                 // Hello
                 TopLevelToken::Statement(Statement::SubCall(
@@ -225,7 +230,10 @@ mod tests {
                 // SUB Hello
                 TopLevelToken::SubImplementation(
                     "Hello".as_bare_name(4, 13),
-                    vec!["N$".as_name(4, 19), "V$".as_name(4, 23)],
+                    vec![
+                        DeclaredName::compact("N", TypeQualifier::DollarString).at_rc(4, 19),
+                        DeclaredName::compact("V", TypeQualifier::DollarString).at_rc(4, 23)
+                    ],
                     vec![Statement::SubCall(
                         "ENVIRON".into(),
                         vec![Expression::BinaryExpression(

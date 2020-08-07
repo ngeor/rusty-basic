@@ -1,6 +1,6 @@
 mod bare_name_node;
+mod declared_name;
 mod def_type;
-mod dim_definition;
 mod expression_node;
 mod has_qualifier;
 mod letter_range;
@@ -13,8 +13,8 @@ mod top_level_token_node;
 mod type_qualifier;
 
 pub use self::bare_name_node::*;
+pub use self::declared_name::*;
 pub use self::def_type::*;
-pub use self::dim_definition::*;
 pub use self::expression_node::*;
 pub use self::has_qualifier::*;
 pub use self::letter_range::*;

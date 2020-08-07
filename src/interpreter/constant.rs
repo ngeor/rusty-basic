@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::assert_linter_err;
     use crate::assert_prints;
-    use crate::linter::LinterError;
 
     mod unqualified_integer_declaration {
         use super::*;
@@ -23,44 +21,6 @@ mod tests {
             PRINT X%
             ";
             assert_prints!(program, "42");
-        }
-
-        #[test]
-        fn qualified_usage_wrong_type() {
-            let program = "
-            CONST X = 42
-            PRINT X!
-            ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
-        }
-
-        #[test]
-        fn variable_already_exists() {
-            let program = "
-            X = 42
-            CONST X = 32
-            PRINT X
-            ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
-        }
-
-        #[test]
-        fn variable_already_exists_as_sub_call_param() {
-            let program = "
-            INPUT X%
-            CONST X = 1
-            ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
-        }
-
-        #[test]
-        fn const_already_exists() {
-            let program = "
-            CONST X = 32
-            CONST X = 33
-            PRINT X
-            ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
     }
 
@@ -83,15 +43,6 @@ mod tests {
             PRINT X!
             "#;
             assert_prints!(program, "3.14");
-        }
-
-        #[test]
-        fn assign_is_duplicate_definition() {
-            let program = "
-            CONST X = 3.14
-            X = 6.28
-            ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
         }
     }
 
@@ -141,28 +92,6 @@ mod tests {
             ";
             assert_prints!(program, "3.14");
         }
-
-        #[test]
-        fn qualified_usage_from_string_literal() {
-            let program = r#"
-            CONST X! = "hello"
-            PRINT X!
-            "#;
-            assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
-        }
-    }
-
-    mod qualified_integer_declaration {
-        use super::*;
-
-        #[test]
-        fn unqualified_usage_type_mismatch() {
-            let program = r#"
-            CONST X% = "hello"
-            PRINT X
-            "#;
-            assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
-        }
     }
 
     mod expressions {
@@ -206,25 +135,6 @@ mod tests {
             PRINT FALSE
             "#;
             assert_prints!(program, "0");
-        }
-
-        #[test]
-        fn function_call_not_allowed() {
-            let program = r#"
-            CONST X = Add(1, 2)
-            PRINT X
-            "#;
-            assert_linter_err!(program, LinterError::InvalidConstant, 2, 23);
-        }
-
-        #[test]
-        fn variable_not_allowed() {
-            let program = r#"
-            X = 42
-            CONST A = X + 1
-            PRINT A
-            "#;
-            assert_linter_err!(program, LinterError::InvalidConstant, 3, 23);
         }
     }
 

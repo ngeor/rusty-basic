@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
-use crate::parser::declaration::parse_declaration_parameters;
+use crate::parser::declaration::try_read_declaration_parameters;
 use crate::parser::error::*;
 use crate::parser::name;
 use crate::parser::statements::parse_statements;
@@ -30,7 +30,11 @@ pub fn demand_function_implementation<T: BufRead>(
     read_demand_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
     let name = demand(lexer, name::try_read, "Expected function name")?;
     // function parameters
-    let params: Vec<NameNode> = parse_declaration_parameters(lexer)?;
+    let params: DeclaredNameNodes = demand(
+        lexer,
+        try_read_declaration_parameters,
+        "Expected function parameters",
+    )?;
     // function body
     let block = parse_statements(
         lexer,
@@ -50,7 +54,11 @@ pub fn demand_sub_implementation<T: BufRead>(
     read_demand_whitespace(lexer, "Expected whitespace after SUB keyword")?;
     let name = demand(lexer, name::try_read_bare, "Expected sub name")?;
     // sub parameters
-    let params: Vec<NameNode> = parse_declaration_parameters(lexer)?;
+    let params: DeclaredNameNodes = demand(
+        lexer,
+        try_read_declaration_parameters,
+        "Expected sub parameters",
+    )?;
     // body
     let block = parse_statements(lexer, |x| x.is_keyword(Keyword::End), "Sub without End")?;
     read_demand_keyword(lexer, Keyword::End)?;

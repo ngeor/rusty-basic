@@ -4,10 +4,13 @@ use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::linter::linter_context::LinterContext;
-use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
-use crate::parser::{DimType, HasQualifier, Name, NameTrait, QualifiedName, TypeQualifier};
+use crate::parser::{
+    BareNameNode, DeclaredNameNodes, HasQualifier, Name, NameNode, NameTrait, QualifiedName,
+    TypeQualifier,
+};
 use std::convert::TryInto;
 
 //
@@ -122,6 +125,86 @@ impl Converter<Name, QualifiedName> for ConverterImpl {
     }
 }
 
+impl ConverterImpl {
+    fn convert_function_implementation(
+        &mut self,
+        function_name_node: NameNode,
+        params: DeclaredNameNodes,
+        block: parser::StatementNodes,
+    ) -> Result<Option<TopLevelToken>, Error> {
+        let mapped_name = self.convert(function_name_node)?;
+        self.push_function_context(mapped_name.bare_name());
+        let mapped_params = self.convert_function_params(mapped_name.as_ref(), params)?;
+        let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
+            name: mapped_name,
+            params: mapped_params,
+            body: self.convert(block)?,
+        });
+        self.pop_context();
+        Ok(Some(mapped))
+    }
+
+    fn convert_function_params(
+        &mut self,
+        function_name: &QualifiedName,
+        params: DeclaredNameNodes,
+    ) -> Result<Vec<QNameNode>, Error> {
+        let mut result: Vec<QNameNode> = vec![];
+        for p in params.into_iter() {
+            let (declared_name, pos) = p.consume();
+            if self.subs.contains_key(declared_name.bare_name()) {
+                // not possible to have a param name that clashes with a sub (functions are ok)
+                return err(LinterError::DuplicateDefinition, pos);
+            }
+            let q: TypeQualifier = (&declared_name).resolve_into(&self.resolver);
+            if function_name.bare_name() == declared_name.bare_name()
+                && (function_name.qualifier() != q || declared_name.is_extended())
+            {
+                // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
+                return err(LinterError::DuplicateDefinition, pos);
+            }
+            let q_name = QualifiedName::new(declared_name.bare_name().clone(), q);
+            self.context
+                .add_param(declared_name, &self.resolver)
+                .with_err_pos(pos)?;
+            result.push(q_name.at(pos));
+        }
+        Ok(result)
+    }
+
+    fn convert_sub_implementation(
+        &mut self,
+        sub_name_node: BareNameNode,
+        params: DeclaredNameNodes,
+        block: parser::StatementNodes,
+    ) -> Result<Option<TopLevelToken>, Error> {
+        self.push_sub_context(sub_name_node.bare_name());
+
+        let mut mapped_params: Vec<QNameNode> = vec![];
+        for declared_name_node in params.into_iter() {
+            let (declared_name, pos) = declared_name_node.consume();
+            if self.subs.contains_key(declared_name.bare_name()) {
+                // not possible to have a param name that clashes with a sub (functions are ok)
+                return err(LinterError::DuplicateDefinition, pos);
+            }
+            let q: TypeQualifier = (&declared_name).resolve_into(&self.resolver);
+            let q_name = QualifiedName::new(declared_name.bare_name().clone(), q);
+            self.context
+                .add_param(declared_name, &self.resolver)
+                .with_err_pos(pos)?;
+            mapped_params.push(q_name.at(pos));
+        }
+
+        let mapped = TopLevelToken::SubImplementation(SubImplementation {
+            name: sub_name_node,
+            params: mapped_params,
+            body: self.convert(block)?,
+        });
+        self.pop_context();
+        Ok(Some(mapped))
+    }
+}
+
 // Option because we filter out DefType
 impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
     fn convert(&mut self, a: parser::TopLevelToken) -> Result<Option<TopLevelToken>, Error> {
@@ -133,40 +216,10 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
             parser::TopLevelToken::FunctionDeclaration(_, _)
             | parser::TopLevelToken::SubDeclaration(_, _) => Ok(None),
             parser::TopLevelToken::FunctionImplementation(n, params, block) => {
-                let mapped_name = self.convert(n)?;
-                let mapped_params = self.convert(params)?;
-                self.push_function_context(mapped_name.bare_name());
-                for q_n_n in mapped_params.iter() {
-                    if self.functions.contains_key(q_n_n.bare_name())
-                        || self.subs.contains_key(q_n_n.bare_name())
-                    {
-                        // not possible to have a param name that clashes with a sub or function
-                        return err_l(LinterError::DuplicateDefinition, q_n_n);
-                    }
-                    self.context.add_param(q_n_n.as_ref().clone())?;
-                }
-                let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
-                    name: mapped_name,
-                    params: mapped_params,
-                    body: self.convert(block)?,
-                });
-                self.pop_context();
-                Ok(Some(mapped))
+                self.convert_function_implementation(n, params, block)
             }
             parser::TopLevelToken::SubImplementation(n, params, block) => {
-                let mapped_params = self.convert(params)?;
-                self.push_sub_context(n.bare_name());
-                for q_n_n in mapped_params.iter() {
-                    // TODO is it possible to have a param name that clashes with a sub or function here like line 151?
-                    self.context.add_param(q_n_n.as_ref().clone())?;
-                }
-                let mapped = TopLevelToken::SubImplementation(SubImplementation {
-                    name: n,
-                    params: mapped_params,
-                    body: self.convert(block)?,
-                });
-                self.pop_context();
-                Ok(Some(mapped))
+                self.convert_sub_implementation(n, params, block)
             }
             parser::TopLevelToken::Statement(s) => {
                 Ok(Some(TopLevelToken::Statement(self.convert(s)?)))
@@ -227,22 +280,16 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::ErrorHandler(l) => Ok(Statement::ErrorHandler(l)),
             parser::Statement::Label(l) => Ok(Statement::Label(l)),
             parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
-            parser::Statement::Dim(d) => match d {
-                parser::DimDefinition::Compact(n) => {
-                    let q = self.context.add_dim_compact(n.clone(), &self.resolver)?;
-                    let q_name = n.with_type(q);
-                    Ok(Statement::Dim(DimDefinition::Compact(q_name)))
+            parser::Statement::Dim(declared_name_node) => {
+                let (d, pos) = declared_name_node.consume();
+                if self.subs.contains_key(d.bare_name())
+                    || self.functions.contains_key(d.bare_name())
+                {
+                    return err(LinterError::DuplicateDefinition, pos);
                 }
-                parser::DimDefinition::Extended(name, dim_type) => match dim_type {
-                    DimType::BuiltInType(q) => {
-                        self.context.add_dim_extended(name.clone(), q)?;
-                        Ok(Statement::Dim(DimDefinition::Extended(name, dim_type)))
-                    }
-                    DimType::UserDefinedType(_) => {
-                        unimplemented!();
-                    }
-                },
-            },
+                let mapped_declared_name = self.context.add_dim(&d, &self.resolver)?;
+                Ok(Statement::Dim(mapped_declared_name.at(pos)))
+            }
         }
     }
 }
@@ -394,10 +441,11 @@ impl ConverterImpl {
                 // trying to assign to the function with an explicit wrong type
                 Err(LinterError::DuplicateDefinition.into())
             }
-        } else if self.functions.contains_key(n.bare_name())
-            || self.subs.contains_key(n.bare_name())
-        {
-            // trying to assign to a different function, or to a sub
+        } else if self.subs.contains_key(n.bare_name()) {
+            // trying to assign to a sub
+            Err(LinterError::DuplicateDefinition.into())
+        } else if !self.context.has_param(&n) && self.functions.contains_key(n.bare_name()) {
+            // parameter might be hiding a function name so it takes precedence
             Err(LinterError::DuplicateDefinition.into())
         } else {
             let q_name = self.context.resolve_assignment(&n, &self.resolver)?;
@@ -417,9 +465,7 @@ impl ConverterImpl {
 
     fn resolve_name_as_new_var(&mut self, n: &parser::Name) -> Result<Expression, Error> {
         // e.g. INPUT N, where N has not been declared in advance
-        let q = self
-            .context
-            .add_dim_compact_implicit(n, &self.resolver)?;
+        let q = self.context.add_dim_compact_implicit(n, &self.resolver)?;
         let q_name = n.with_type_ref(q);
         Ok(Expression::Variable(q_name))
     }

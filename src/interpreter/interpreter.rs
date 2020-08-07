@@ -446,7 +446,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
 mod tests {
     use crate::assert_err;
     use crate::assert_has_variable;
-    use crate::assert_linter_err;
     use crate::assert_prints;
     use crate::interpreter::context_owner::ContextOwner;
     use crate::interpreter::test_utils::*;
@@ -545,7 +544,6 @@ mod tests {
             assert_assign_ok!("X = -.5", "X!", -0.5_f32);
             assert_assign_ok!("X = 1", "X!", 1.0_f32);
             assert_assign_ok!("X = 3.14#", "X!", 3.14_f32);
-            assert_linter_err!("X = \"hello\"", LinterError::TypeMismatch, 1, 5);
         }
 
         #[test]
@@ -557,7 +555,6 @@ mod tests {
         fn test_assign_literal_to_qualified_float() {
             assert_assign_ok!("X! = 1.0", "X!", 1.0_f32);
             assert_assign_ok!("X! = 1", "X!", 1.0_f32);
-            assert_linter_err!("X! = \"hello\"", LinterError::TypeMismatch, 1, 6);
         }
 
         #[test]
@@ -565,14 +562,10 @@ mod tests {
             assert_assign_ok!("X# = 1.0", "X#", 1.0_f64);
             assert_assign_ok!("X# = 1", "X#", 1.0_f64);
             assert_assign_ok!("X# = 3.14#", "X#", 3.14_f64);
-            assert_linter_err!("X# = \"hello\"", LinterError::TypeMismatch, 1, 6);
         }
 
         #[test]
         fn test_assign_literal_to_qualified_string() {
-            assert_linter_err!("A$ = 1.0", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("A$ = 1", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("A$ = -1", LinterError::TypeMismatch, 1, 6);
             assert_assign_ok!("A$ = \"hello\"", "A$", "hello");
         }
 
@@ -584,7 +577,6 @@ mod tests {
             assert_assign_ok!("X% = 1.9", "X%", 2);
             assert_assign_ok!("X% = 1", "X%", 1);
             assert_assign_ok!("X% = -1", "X%", -1);
-            assert_linter_err!("X% = \"hello\"", LinterError::TypeMismatch, 1, 6);
             assert_assign_ok!("X% = 3.14#", "X%", 3);
         }
 
@@ -596,7 +588,6 @@ mod tests {
             assert_assign_ok!("X& = 1.9", "X&", 2_i64);
             assert_assign_ok!("X& = 1", "X&", 1_i64);
             assert_assign_ok!("X& = -1", "X&", -1_i64);
-            assert_linter_err!("X& = \"hello\"", LinterError::TypeMismatch, 1, 6);
             assert_assign_ok!("X& = 3.14#", "X&", 3_i64);
         }
 
@@ -769,6 +760,21 @@ mod tests {
             "#;
             assert_prints!(program, "hello", "42");
         }
+
+        #[test]
+        fn test_can_assign_to_parameter_hiding_name_of_function() {
+            let program = r#"
+            Hello 41
+            FUNCTION Foo
+            END FUNCTION
+
+            SUB Hello(Foo)
+            Foo = Foo + 1
+            PRINT Foo
+            END SUB
+            "#;
+            assert_prints!(program, "42");
+        }
     }
 
     mod dim {
@@ -807,6 +813,90 @@ mod tests {
             PRINT A%
             "#;
             assert_prints!(program, "hello", "42");
+        }
+    }
+
+    mod function_implementation {
+        use super::*;
+
+        #[test]
+        fn test_function_param_same_as_function_name_allowed() {
+            let program = r#"
+            PRINT Adding(41)
+            FUNCTION Adding(Adding)
+            Adding = Adding + 1
+            END FUNCTION
+            "#;
+            assert_prints!(program, "42");
+        }
+
+        #[test]
+        fn test_function_param_same_as_function_name_compact_single_allowed() {
+            let program = r#"
+            PRINT Adding(41)
+            FUNCTION Adding(Adding!)
+            Adding = Adding + 1
+            END FUNCTION
+            "#;
+            assert_prints!(program, "42");
+        }
+
+        #[test]
+        fn test_function_param_same_as_other_function_allowed() {
+            let program = r#"
+            PRINT Bar(2)
+
+            FUNCTION Foo(Foo)
+                Foo = Foo + 1
+            END FUNCTION
+
+            FUNCTION Bar(Foo)
+                Bar = Foo + Foo(Foo)
+            END FUNCTION
+            "#;
+            assert_prints!(program, "5");
+        }
+    }
+
+    mod sub_implementation {
+        use super::*;
+
+        #[test]
+        fn test_sub_params_same_name_different_qualifier() {
+            let program = r#"
+            Hello 42, "answer"
+            SUB Hello(A%, A$)
+                PRINT A%
+                PRINT A$
+            END SUB
+            "#;
+            assert_prints!(program, "42", "answer");
+        }
+
+        #[test]
+        fn test_sub_param_expression_different_qualifier() {
+            let program = r#"
+            Hello "answer"
+            SUB Hello(A$)
+                A% = 42
+                PRINT A%
+            END SUB
+            "#;
+            assert_prints!(program, "42");
+        }
+
+        #[test]
+        fn test_sub_param_same_as_other_function_allowed() {
+            let program = r#"
+            Hello 2
+            SUB Hello(Foo)
+                PRINT Foo + Foo(Foo)
+            END SUB
+            FUNCTION Foo(Foo)
+                Foo = Foo + 1
+            END FUNCTION
+            "#;
+            assert_prints!(program, "5");
         }
     }
 }

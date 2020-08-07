@@ -1,11 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::assert_linter_err;
     use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::test_utils::*;
     use crate::interpreter::{InterpreterError, Stdlib};
-    use crate::linter::LinterError;
 
     mod input {
         mod unqualified_var {
@@ -165,40 +163,6 @@ mod tests {
                 ]
             )
         );
-    }
-
-    #[test]
-    fn test_cannot_override_built_in_sub_with_declaration() {
-        let program = r#"
-        DECLARE SUB Environ
-        PRINT "Hello"
-        SUB Environ
-        END SUB
-        "#;
-        assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 9);
-    }
-
-    #[test]
-    fn test_cannot_override_built_in_sub_without_declaration() {
-        let program = r#"
-        PRINT "Hello"
-        SUB Environ
-        END SUB
-        "#;
-        assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 9);
-    }
-
-    #[test]
-    fn test_by_ref_parameter_type_mismatch() {
-        let program = "
-        DECLARE SUB Hello(N)
-        A% = 42
-        Hello A%
-        SUB Hello(N)
-            N = N + 1
-        END SUB
-        ";
-        assert_linter_err!(program, LinterError::ArgumentTypeMismatch, 4, 15);
     }
 
     #[test]

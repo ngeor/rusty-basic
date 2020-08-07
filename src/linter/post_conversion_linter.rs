@@ -2,7 +2,7 @@ use super::error::*;
 use super::types::*;
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::QualifiedName;
+use crate::parser::{DeclaredNameNode, QualifiedName};
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.
@@ -20,8 +20,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_top_level_token_node(&self, t: &TopLevelTokenNode) -> Result<(), Error> {
-        self.visit_top_level_token(t.as_ref())
-            .with_err_pos(t.location())
+        self.visit_top_level_token(t.as_ref()).with_err_pos(t)
     }
 
     fn visit_top_level_token(&self, t: &TopLevelToken) -> Result<(), Error> {
@@ -45,7 +44,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_statement_node(&self, t: &StatementNode) -> Result<(), Error> {
-        self.visit_statement(t.as_ref()).with_err_pos(t.location())
+        self.visit_statement(t.as_ref()).with_err_pos(t)
     }
 
     fn visit_statement(&self, s: &Statement) -> Result<(), Error> {
@@ -71,7 +70,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_dim(&self, _d: &DimDefinition) -> Result<(), Error> {
+    fn visit_dim(&self, _d: &DeclaredNameNode) -> Result<(), Error> {
         Ok(())
     }
 

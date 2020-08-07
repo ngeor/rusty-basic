@@ -1,10 +1,10 @@
 use super::error::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
-use crate::parser::{NameNode, NameTrait, TypeQualifier};
+use crate::parser::{DeclaredNameNode, DeclaredNameNodes, NameNode, NameTrait, TypeQualifier};
 use std::collections::HashMap;
 
 /// Collects subprograms of the given program.
@@ -35,6 +35,13 @@ struct FunctionContext {
     implementations: FunctionMap,
 }
 
+fn resolve_declared_name_node<T: TypeResolver>(
+    resolver: &T,
+    p: &DeclaredNameNode,
+) -> TypeQualifier {
+    p.as_ref().resolve_into(resolver)
+}
+
 impl FunctionContext {
     pub fn new() -> Self {
         Self::default()
@@ -43,13 +50,15 @@ impl FunctionContext {
     pub fn add_declaration(
         &mut self,
         name: &NameNode,
-        params: &Vec<NameNode>,
+        params: &DeclaredNameNodes,
         pos: Location,
     ) -> Result<(), Error> {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
-        let q_params: Vec<TypeQualifier> =
-            params.iter().map(|p| self.resolver.resolve(p)).collect();
+        let q_params: Vec<TypeQualifier> = params
+            .iter()
+            .map(|p| resolve_declared_name_node(&self.resolver, p))
+            .collect();
         let q_name: TypeQualifier = self.resolver.resolve(name);
         let bare_name = name.bare_name().clone();
         self.check_implementation_type(&bare_name, &q_name, &q_params, pos)?;
@@ -65,15 +74,17 @@ impl FunctionContext {
     pub fn add_implementation(
         &mut self,
         name: &NameNode,
-        params: &Vec<NameNode>,
+        params: &DeclaredNameNodes,
         pos: Location,
     ) -> Result<(), Error> {
         // type must match declaration
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
-        let q_params: Vec<TypeQualifier> =
-            params.iter().map(|p| self.resolver.resolve(p)).collect();
+        let q_params: Vec<TypeQualifier> = params
+            .iter()
+            .map(|p| resolve_declared_name_node(&self.resolver, p))
+            .collect();
         let q_name: TypeQualifier = self.resolver.resolve(name);
         let bare_name = name.bare_name().clone();
         match self.implementations.get(&bare_name) {
@@ -176,13 +187,15 @@ impl SubContext {
     pub fn add_declaration(
         &mut self,
         name: &CaseInsensitiveString,
-        params: &Vec<NameNode>,
+        params: &DeclaredNameNodes,
         pos: Location,
     ) -> Result<(), Error> {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
-        let q_params: Vec<TypeQualifier> =
-            params.iter().map(|p| self.resolver.resolve(p)).collect();
+        let q_params: Vec<TypeQualifier> = params
+            .iter()
+            .map(|p| resolve_declared_name_node(&self.resolver, p))
+            .collect();
         self.check_implementation_type(name, &q_params, pos)?;
         match self.declarations.get(name) {
             Some(_) => self.check_declaration_type(name, &q_params, pos),
@@ -196,14 +209,16 @@ impl SubContext {
     pub fn add_implementation(
         &mut self,
         name: &CaseInsensitiveString,
-        params: &Vec<NameNode>,
+        params: &DeclaredNameNodes,
         pos: Location,
     ) -> Result<(), Error> {
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
-        let q_params: Vec<TypeQualifier> =
-            params.iter().map(|p| self.resolver.resolve(p)).collect();
+        let q_params: Vec<TypeQualifier> = params
+            .iter()
+            .map(|p| resolve_declared_name_node(&self.resolver, p))
+            .collect();
         match self.implementations.get(name) {
             Some(_) => err(LinterError::DuplicateDefinition, pos),
             None => {

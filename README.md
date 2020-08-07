@@ -59,6 +59,74 @@ instructions (similar to assembly instructions).
 This is the runtime step where the program is being run, interpreted one
 instruction at a time.
 
+## Names
+
+### Bare and qualified names
+
+In QBasic, you can have a simple variable like this `A = 42`.
+
+You can also specify its type like this `A$ = "Hello, world!"`.
+
+In rusty-basic, the first style is called _bare name_ and the second style
+is called _qualified name_. The character that denotes the type is called a
+_type qualifier_.
+
+There are five of these characters, matching the five built-in types:
+
+- `%` for integer
+- `&` for long
+- `!` for single
+- `#` for double
+- `$` for string
+
+Bare names also have a type. By default, it's single. So typing `A` and `A!` will
+point to the same variable.
+
+The default type can be changed to integer with the `DEFINT A-Z` statement. There's
+also `DEFLNG`, `DEFSNG`, `DEFDBL` and `DEFSTR`.
+
+This simple name resolution mechanism gets a bit more complicated with the `AS` keyword.
+
+### Extended names
+
+For the lack of a better name, rusty-basic calls these variables _extended_:
+
+- `DIM A AS INTEGER`
+- `DIM A AS SomeUserDefinedType`
+- `FUNCTION Add(A AS INTEGER, B AS INTEGER)`
+
+These names:
+
+- cannot have a type qualifier (i.e. you can't say `DIM A$ AS INTEGER`)
+- when in scope, you can't have any other qualified name of the same bare name
+
+So it's possible to have this:
+
+```basic
+A = 42 ' this is a single by default name resolution
+A$ = "hello"
+```
+
+But not this:
+
+```basic
+DIM A AS INTEGER
+A = 42 ' this is an integer because it's explicitly defined as such
+A$ = "hello" ' duplicate definition error here
+```
+
+### Constants and constant type resolution
+
+TODO
+
+### Constant inheritance
+
+TODO
+
+### Parameters
+
+TODO
+
 
 ## Design issues
 

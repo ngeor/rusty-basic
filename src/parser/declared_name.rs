@@ -11,7 +11,7 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<DeclaredNameNode>, ParserError> {
-    if !lexer.peek()?.is_word() {
+    if !lexer.peek()?.as_ref().is_word() {
         return Ok(None);
     }
 
@@ -38,23 +38,23 @@ pub fn try_read<T: BufRead>(
     };
     // demand type name
     let next = lexer.read()?;
-    let var_type = match next {
-        LexemeNode::Keyword(Keyword::Double, _, _) => {
+    let var_type = match next.as_ref() {
+        Lexeme::Keyword(Keyword::Double, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)
         }
-        LexemeNode::Keyword(Keyword::Integer, _, _) => {
+        Lexeme::Keyword(Keyword::Integer, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::PercentInteger)
         }
-        LexemeNode::Keyword(Keyword::Long, _, _) => {
+        Lexeme::Keyword(Keyword::Long, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::AmpersandLong)
         }
-        LexemeNode::Keyword(Keyword::Single, _, _) => {
+        Lexeme::Keyword(Keyword::Single, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle)
         }
-        LexemeNode::Keyword(Keyword::String_, _, _) => {
+        Lexeme::Keyword(Keyword::String_, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
         }
-        LexemeNode::Word(w, _) => TypeDefinition::UserDefined(w.into()),
+        Lexeme::Word(w) => TypeDefinition::UserDefined(w.clone().into()),
         _ => {
             return Err(ParserError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),

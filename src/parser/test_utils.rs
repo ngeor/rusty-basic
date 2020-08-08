@@ -1,8 +1,7 @@
-use super::{
-    parse_main_file, parse_main_str, BareNameNode, Expression, ExpressionNode, Name, NameNode,
-    ParserError, ProgramNode, Statement, TopLevelToken, TopLevelTokenNode,
-};
+use super::{parse_main_file, parse_main_str};
 use crate::common::*;
+use crate::parser::error::*;
+use crate::parser::types::*;
 use std::fs::File;
 
 /// Parses the given program and demands success.
@@ -40,9 +39,12 @@ impl ProgramNodeHelper for ProgramNode {
     }
 
     fn demand_single_statement(self) -> Statement {
-        let t = self.demand_single().strip_location();
+        let t = self.demand_single();
         match t {
-            TopLevelToken::Statement(s) => s,
+            Locatable {
+                element: TopLevelToken::Statement(s),
+                ..
+            } => s,
             _ => panic!(format!("Expected statement, found {:?}", t)),
         }
     }

@@ -6,14 +6,17 @@ use crate::variant::Variant;
 impl InstructionGenerator {
     pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) {
         let ForLoopNode {
-            variable_name,
+            variable_name:
+                Locatable {
+                    element: counter_var_name,
+                    ..
+                },
             lower_bound,
             upper_bound,
             step,
             statements,
-            next_counter: _,
+            ..
         } = f;
-        let counter_var_name = variable_name.strip_location();
         // lower bound to A
         self.generate_expression_instructions(lower_bound);
         // A to variable

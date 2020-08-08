@@ -21,9 +21,9 @@ use std::io::BufRead;
 pub struct LineInput {}
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
-    let next = lexer.peek()?;
+    let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Line) {
-        let pos = lexer.read()?.pos();
+        lexer.read()?;
         read_demand_whitespace(lexer, "Expected space after LINE")?;
         read_demand_keyword(lexer, Keyword::Input)?;
         read_demand_whitespace(lexer, "Expected space after INPUT")?;

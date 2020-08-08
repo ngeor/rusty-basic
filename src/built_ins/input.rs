@@ -32,9 +32,9 @@ use std::io::BufRead;
 pub struct Input {}
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
-    let next = lexer.peek()?;
+    let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Input) {
-        let pos = lexer.read()?.pos();
+        lexer.read()?;
         read_demand_whitespace(lexer, "Expected space after INPUT")?;
         let args = sub_call::read_arg_list(lexer)?;
         Ok(Some(Statement::SubCall("INPUT".into(), args).at(pos)))

@@ -23,15 +23,15 @@ fn do_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, ParserE
 mod tests {
     use super::super::test_utils::*;
     use super::*;
-    use crate::lexer::LexemeNode;
+    use crate::lexer::Lexeme;
     use crate::parser::{Expression, Name, TopLevelToken};
 
     macro_rules! assert_top_level_assignment {
         ($input:expr, $name:expr, $value:expr) => {
             match parse($input).demand_single_statement() {
-                Statement::Assignment(n, v) => {
+                Statement::Assignment(n, crate::common::Locatable { element: v, .. }) => {
                     assert_eq!(n, Name::from($name));
-                    assert_eq!(v.strip_location(), Expression::IntegerLiteral($value));
+                    assert_eq!(v, Expression::IntegerLiteral($value));
                 }
                 _ => panic!("expected assignment"),
             }
@@ -49,7 +49,7 @@ mod tests {
             parse_err("FOR = 42"),
             ParserError::Unexpected(
                 "Expected FOR counter variable".to_string(),
-                LexemeNode::Symbol('=', Location::new(1, 5))
+                Lexeme::Symbol('=').at_rc(1, 5)
             )
         );
     }

@@ -9,7 +9,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
-    if !lexer.peek()?.is_keyword(Keyword::Select) {
+    if !lexer.peek()?.as_ref().is_keyword(Keyword::Select) {
         return Ok(None);
     }
     let pos = lexer.read()?.pos();
@@ -67,13 +67,13 @@ fn parse_inline_comments<T: BufRead>(
 
     loop {
         let p = lexer.peek()?;
-        if p.is_keyword(Keyword::Case) {
+        if p.as_ref().is_keyword(Keyword::Case) {
             return Ok(statements);
-        } else if p.is_eof() {
+        } else if p.as_ref().is_eof() {
             return unexpected("Expected CASE", p);
-        } else if p.is_whitespace() || p.is_eol() {
+        } else if p.as_ref().is_whitespace() || p.as_ref().is_eol() {
             lexer.read()?;
-        } else if p.is_symbol('\'') {
+        } else if p.as_ref().is_symbol('\'') {
             // read comment, regardless of whether we've seen the separator or not
             // TODO add unit test where comment reads EOF
             let s = demand(lexer, comment::try_read, "Expected comment")?;
@@ -88,11 +88,11 @@ fn parse_inline_comments<T: BufRead>(
 fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserError> {
     let mut found_case_else = false;
     lexer.begin_transaction();
-    if lexer.peek()?.is_keyword(Keyword::Case) {
+    if lexer.peek()?.as_ref().is_keyword(Keyword::Case) {
         lexer.read()?;
-        if lexer.peek()?.is_whitespace() {
+        if lexer.peek()?.as_ref().is_whitespace() {
             lexer.read()?;
-            found_case_else = lexer.peek()?.is_keyword(Keyword::Else);
+            found_case_else = lexer.peek()?.as_ref().is_keyword(Keyword::Else);
         } else {
             // CASE should always be followed by a space so it's okay to throw an error here
             return Err(ParserError::SyntaxError(
@@ -108,7 +108,7 @@ fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserErr
 fn try_read_case<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<CaseBlockNode>, ParserError> {
-    if !lexer.peek()?.is_keyword(Keyword::Case) {
+    if !lexer.peek()?.as_ref().is_keyword(Keyword::Case) {
         return Ok(None);
     }
     if peek_case_else(lexer)? {
@@ -116,7 +116,7 @@ fn try_read_case<T: BufRead>(
     }
     lexer.read()?; // CASE
     lexer.read()?; // whitespace
-    if lexer.peek()?.is_keyword(Keyword::Is) {
+    if lexer.peek()?.as_ref().is_keyword(Keyword::Is) {
         read_case_is(lexer) // IS
     } else {
         read_case_expr(lexer)
@@ -142,20 +142,20 @@ fn read_case_is<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockN
 
 fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, ParserError> {
     let next = lexer.read()?;
-    if next.is_symbol('=') {
+    if next.as_ref().is_symbol('=') {
         Ok(Operand::Equal)
-    } else if next.is_symbol('>') {
-        if lexer.peek()?.is_symbol('=') {
+    } else if next.as_ref().is_symbol('>') {
+        if lexer.peek()?.as_ref().is_symbol('=') {
             lexer.read()?;
             Ok(Operand::GreaterOrEqual)
         } else {
             Ok(Operand::Greater)
         }
-    } else if next.is_symbol('<') {
-        if lexer.peek()?.is_symbol('=') {
+    } else if next.as_ref().is_symbol('<') {
+        if lexer.peek()?.as_ref().is_symbol('=') {
             lexer.read()?;
             Ok(Operand::LessOrEqual)
-        } else if lexer.peek()?.is_symbol('>') {
+        } else if lexer.peek()?.as_ref().is_symbol('>') {
             lexer.read()?;
             Ok(Operand::NotEqual)
         } else {
@@ -180,7 +180,7 @@ fn read_case_expr<T: BufRead>(
     let mut second_expr: Option<ExpressionNode> = None;
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
-    if lexer.read()?.is_keyword(Keyword::To) {
+    if lexer.read()?.as_ref().is_keyword(Keyword::To) {
         lexer.commit_transaction()?;
         skip_whitespace(lexer)?;
         second_expr =

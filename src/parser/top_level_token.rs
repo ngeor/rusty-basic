@@ -49,7 +49,7 @@ pub fn parse_top_level_tokens<T: BufRead>(
 
     // allowed to start with space, eol, : (e.g. WHILE A < 5:), ' for comment
     loop {
-        let p = lexer.peek()?;
+        let Locatable { element: p, pos } = lexer.peek()?;
         if p.is_eof() {
             return Ok(tokens);
         } else if p.is_whitespace() {
@@ -77,7 +77,7 @@ pub fn parse_top_level_tokens<T: BufRead>(
                 tokens.push(t);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {
-                return Err(ParserError::Unterminated(p));
+                return Err(ParserError::Unterminated(p.at(pos)));
             }
         }
     }

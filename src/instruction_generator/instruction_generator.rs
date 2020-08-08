@@ -213,7 +213,7 @@ impl InstructionGenerator {
 
     pub fn generate_assignment_instructions(&mut self, l: QNameNode, r: ExpressionNode) {
         self.generate_expression_instructions(r);
-        let pos = l.pos();
-        self.push(Instruction::Store(l.strip_location()), pos);
+        let Locatable { element, pos } = l;
+        self.push(Instruction::Store(element), pos);
     }
 }

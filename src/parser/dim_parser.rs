@@ -10,7 +10,7 @@ use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
     // try to read DIM, if it succeeds demand it, else return None
-    if !lexer.peek()?.is_keyword(Keyword::Dim) {
+    if !lexer.peek()?.as_ref().is_keyword(Keyword::Dim) {
         return Ok(None);
     }
     // demand DIM

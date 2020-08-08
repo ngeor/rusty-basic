@@ -30,7 +30,7 @@ impl BuiltInRun for Val {
     }
 }
 
-fn val(s: String) -> std::result::Result<Variant, String> {
+fn val(s: String) -> Result<Variant, String> {
     let mut is_positive = true;
     let mut value: f64 = 0.0;
     let mut frac_power: i32 = 0;

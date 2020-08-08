@@ -127,6 +127,3 @@ fn line_input_one_stdin<S: Stdlib>(
         .set_value_to_popped_arg(arg, Variant::VString(s))
         .map_err(|e| InterpreterError::new_with_pos(e, pos))
 }
-
-// TODO: remove Result aliases, always use Result<T, E>
-// TODO: unify errors

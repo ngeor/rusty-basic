@@ -111,7 +111,7 @@ fn do_input_one_var<S: Stdlib>(
         .map_err(|e| InterpreterError::new_with_pos(e, pos))
 }
 
-fn parse_single_input(s: String) -> std::result::Result<f32, String> {
+fn parse_single_input(s: String) -> Result<f32, String> {
     if s.is_empty() {
         Ok(0.0)
     } else {
@@ -120,7 +120,7 @@ fn parse_single_input(s: String) -> std::result::Result<f32, String> {
     }
 }
 
-fn parse_int_input(s: String) -> std::result::Result<i32, String> {
+fn parse_int_input(s: String) -> Result<i32, String> {
     if s.is_empty() {
         Ok(0)
     } else {

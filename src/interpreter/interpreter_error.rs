@@ -12,8 +12,6 @@ pub struct InterpreterError {
 
 // TODO add runtime errors like Overflow with the correct error code
 
-pub type Result<T> = std::result::Result<T, InterpreterError>;
-
 impl InterpreterError {
     pub fn new<S: AsRef<str>>(msg: S, stacktrace: Stacktrace) -> Self {
         InterpreterError {
@@ -38,7 +36,7 @@ impl InterpreterError {
     }
 }
 
-pub fn err<T, S: AsRef<str>>(msg: S, pos: Location) -> Result<T> {
+pub fn err<T, S: AsRef<str>>(msg: S, pos: Location) -> Result<T, InterpreterError> {
     Err(InterpreterError::new_with_pos(msg, pos))
 }
 

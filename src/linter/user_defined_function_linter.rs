@@ -11,9 +11,8 @@ pub struct UserDefinedFunctionLinter<'a> {
 
 type ExpressionNodes = Vec<ExpressionNode>;
 type TypeQualifiers = Vec<TypeQualifier>;
-type Result = std::result::Result<(), Error>;
 
-pub fn lint_call_args(args: &ExpressionNodes, param_types: &TypeQualifiers) -> Result {
+pub fn lint_call_args(args: &ExpressionNodes, param_types: &TypeQualifiers) -> Result<(), Error> {
     if args.len() != param_types.len() {
         return err_no_pos(LinterError::ArgumentCountMismatch);
     }
@@ -40,7 +39,7 @@ pub fn lint_call_args(args: &ExpressionNodes, param_types: &TypeQualifiers) -> R
 }
 
 impl<'a> UserDefinedFunctionLinter<'a> {
-    fn visit_function(&self, name: &QualifiedName, args: &Vec<ExpressionNode>) -> Result {
+    fn visit_function(&self, name: &QualifiedName, args: &Vec<ExpressionNode>) -> Result<(), Error> {
         let bare_name: &BareName = name.as_ref();
         match self.functions.get(bare_name) {
             Some((return_type, param_types, _)) => {
@@ -54,7 +53,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
         }
     }
 
-    fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result {
+    fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
             let arg_q = arg_node.try_qualifier()?;
@@ -69,7 +68,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
 }
 
 impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
-    fn visit_expression(&self, expr_node: &ExpressionNode) -> Result {
+    fn visit_expression(&self, expr_node: &ExpressionNode) -> Result<(), Error> {
         let Locatable { element: e, pos } = expr_node;
         match e {
             Expression::FunctionCall(n, args) => {

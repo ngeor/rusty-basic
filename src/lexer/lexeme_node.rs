@@ -1,106 +1,101 @@
 use super::Keyword;
-use crate::common::{HasLocation, Location};
+use crate::common::*;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum LexemeNode {
+pub enum Lexeme {
     /// EOF
-    EOF(Location),
+    EOF,
 
     /// CR, LF
-    EOL(String, Location),
+    EOL(String),
 
     /// A keyword e.g. ELSE
     /// The string contains the original text representation (i.e. case sensitive).
-    Keyword(Keyword, String, Location),
+    Keyword(Keyword, String),
 
     /// A sequence of letters (A-Z or a-z) and numbers. The first character is a letter.
-    Word(String, Location),
+    Word(String),
 
     /// A sequence of whitespace (spaces and tabs)
-    Whitespace(String, Location),
+    Whitespace(String),
 
     /// A punctuation symbol
-    Symbol(char, Location),
+    Symbol(char),
 
     /// An integer number
-    Digits(String, Location),
+    Digits(String),
 }
 
-impl LexemeNode {
+pub type LexemeNode = Locatable<Lexeme>;
+
+impl From<LexemeNode> for Lexeme {
+    fn from(n: LexemeNode) -> Lexeme {
+        let Locatable { element, .. } = n;
+        element
+    }
+}
+
+impl Lexeme {
     pub fn is_eof(&self) -> bool {
         match self {
-            LexemeNode::EOF(_) => true,
+            Self::EOF => true,
             _ => false,
         }
     }
 
     pub fn is_eol(&self) -> bool {
         match self {
-            LexemeNode::EOL(_, _) => true,
+            Self::EOL(_) => true,
             _ => false,
         }
     }
 
     pub fn is_eol_or_eof(&self) -> bool {
         match self {
-            LexemeNode::EOF(_) | LexemeNode::EOL(_, _) => true,
+            Self::EOF | Self::EOL(_) => true,
             _ => false,
         }
     }
 
     pub fn is_symbol(&self, ch: char) -> bool {
         match self {
-            LexemeNode::Symbol(c, _) => *c == ch,
+            Self::Symbol(c) => *c == ch,
             _ => false,
         }
     }
 
     pub fn is_keyword(&self, keyword: Keyword) -> bool {
         match self {
-            LexemeNode::Keyword(k, _, _) => *k == keyword,
+            Self::Keyword(k, _) => *k == keyword,
             _ => false,
         }
     }
 
     pub fn is_whitespace(&self) -> bool {
         match self {
-            LexemeNode::Whitespace(_, _) => true,
+            Self::Whitespace(_) => true,
             _ => false,
         }
     }
 
     pub fn is_word(&self) -> bool {
         match self {
-            LexemeNode::Word(_, _) => true,
+            Self::Word(_) => true,
             _ => false,
         }
     }
 
-    pub fn into_word(self) -> (String, Location) {
+    pub fn into_word(self) -> String {
         match self {
-            LexemeNode::Word(w, pos) => (w, pos),
+            Self::Word(w) => w,
             _ => panic!("Not a word"),
         }
     }
 
-    pub fn into_digits(self) -> (String, Location) {
+    pub fn into_digits(self) -> String {
         match self {
-            LexemeNode::Digits(d, pos) => (d, pos),
+            Lexeme::Digits(d) => d,
             _ => panic!("Not digits"),
-        }
-    }
-}
-
-impl HasLocation for LexemeNode {
-    fn pos(&self) -> Location {
-        match self {
-            Self::EOF(pos)
-            | Self::EOL(_, pos)
-            | Self::Keyword(_, _, pos)
-            | Self::Word(_, pos)
-            | Self::Whitespace(_, pos)
-            | Self::Symbol(_, pos)
-            | Self::Digits(_, pos) => pos.clone(),
         }
     }
 }
@@ -108,18 +103,18 @@ impl HasLocation for LexemeNode {
 #[cfg(test)]
 impl LexemeNode {
     pub fn word(x: &str, row: u32, col: u32) -> Self {
-        Self::Word(x.to_string(), Location::new(row, col))
+        Lexeme::Word(x.to_string()).at_rc(row, col)
     }
 
     pub fn whitespace(row: u32, col: u32) -> Self {
-        Self::Whitespace(" ".to_string(), Location::new(row, col))
+        Lexeme::Whitespace(" ".to_string()).at_rc(row, col)
     }
 
     pub fn digits(x: &str, row: u32, col: u32) -> Self {
-        Self::Digits(x.to_string(), Location::new(row, col))
+        Lexeme::Digits(x.to_string()).at_rc(row, col)
     }
 
     pub fn eof(row: u32, col: u32) -> Self {
-        Self::EOF(Location::new(row, col))
+        Lexeme::EOF.at_rc(row, col)
     }
 }

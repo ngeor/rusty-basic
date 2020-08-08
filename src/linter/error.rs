@@ -102,7 +102,7 @@ pub trait WithPos<U> {
     fn with_pos(self, pos: Location) -> U;
 }
 
-impl<T: std::fmt::Debug + Sized> WithPos<Result<Locatable<T>, Error>> for Result<T, Error> {
+impl<T> WithPos<Result<Locatable<T>, Error>> for Result<T, Error> {
     fn with_pos(self, pos: Location) -> Result<Locatable<T>, Error> {
         self.map(|x| x.at(pos))
     }

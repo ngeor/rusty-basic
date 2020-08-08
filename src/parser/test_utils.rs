@@ -40,9 +40,12 @@ impl ProgramNodeHelper for ProgramNode {
     }
 
     fn demand_single_statement(self) -> Statement {
-        let t = self.demand_single().strip_location();
+        let t = self.demand_single();
         match t {
-            TopLevelToken::Statement(s) => s,
+            Locatable {
+                element: TopLevelToken::Statement(s),
+                ..
+            } => s,
             _ => panic!(format!("Expected statement, found {:?}", t)),
         }
     }

@@ -1,12 +1,13 @@
 use super::{BareName, BareNameNode, Name, NameNode, ParserError};
 use crate::common::*;
-use crate::lexer::{BufLexer, LexemeNode};
+use crate::lexer::{BufLexer, Lexeme};
 use crate::parser::type_qualifier;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, ParserError> {
-    match lexer.peek()? {
-        LexemeNode::Word(word, pos) => {
+    let Locatable { element, pos } = lexer.peek()?;
+    match element {
+        Lexeme::Word(word) => {
             lexer.read()?;
             let q = type_qualifier::try_read(lexer)?;
             Ok(Some(Name::new(word.into(), q).at(pos)))
@@ -19,8 +20,9 @@ pub fn try_read_bare<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<BareNameNode>, ParserError> {
     lexer.begin_transaction();
-    match lexer.peek()? {
-        LexemeNode::Word(word, pos) => {
+    let Locatable { element, pos } = lexer.peek()?;
+    match element {
+        Lexeme::Word(word) => {
             lexer.read()?;
 
             // if we have a type qualifier next, then it's not a bare name actually

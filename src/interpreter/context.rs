@@ -54,11 +54,9 @@ impl Cast for Argument {
 //
 
 #[derive(Debug)]
-struct NameMap<T: std::fmt::Debug + Sized + Cast>(
-    HashMap<CaseInsensitiveString, HashMap<TypeQualifier, T>>,
-);
+struct NameMap<T: Cast>(HashMap<CaseInsensitiveString, HashMap<TypeQualifier, T>>);
 
-impl<T: std::fmt::Debug + Sized + Cast> NameMap<T> {
+impl<T: Cast> NameMap<T> {
     pub fn new() -> Self {
         Self(HashMap::new())
     }

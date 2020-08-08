@@ -141,6 +141,13 @@ impl WithTypeQualifier for QualifiedName {
     }
 }
 
+impl From<QualifiedNameNode> for QualifiedName {
+    fn from(node: QualifiedNameNode) -> Self {
+        let Locatable { element, .. } = node;
+        element
+    }
+}
+
 //
 // QualifiedNameNode
 //

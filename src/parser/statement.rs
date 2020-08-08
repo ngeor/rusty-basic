@@ -1,6 +1,6 @@
 use crate::built_ins;
 use crate::common::*;
-use crate::lexer::{BufLexer, Keyword, LexemeNode};
+use crate::lexer::{BufLexer, Keyword, Lexeme};
 use crate::parser::assignment;
 use crate::parser::buf_lexer::*;
 use crate::parser::comment;
@@ -47,13 +47,11 @@ fn do_read_label<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, P
 
 // TODO migrate these remaining older style
 fn try_older<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
-    let next = lexer.read()?;
-    match next {
-        LexemeNode::Keyword(Keyword::GoTo, _, pos) => demand_go_to(lexer).map(|x| Some(x.at(pos))),
-        LexemeNode::Keyword(Keyword::On, _, pos) => demand_on(lexer).map(|x| Some(x.at(pos))),
-        LexemeNode::Keyword(Keyword::While, _, pos) => {
-            demand_while_block(lexer).map(|x| Some(x.at(pos)))
-        }
+    let Locatable { element, pos } = lexer.read()?;
+    match element {
+        Lexeme::Keyword(Keyword::GoTo, _) => demand_go_to(lexer).map(|x| Some(x.at(pos))),
+        Lexeme::Keyword(Keyword::On, _) => demand_on(lexer).map(|x| Some(x.at(pos))),
+        Lexeme::Keyword(Keyword::While, _) => demand_while_block(lexer).map(|x| Some(x.at(pos))),
         _ => Ok(None),
     }
 }

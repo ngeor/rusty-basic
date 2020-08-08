@@ -9,7 +9,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
-    if !lexer.peek()?.is_keyword(Keyword::For) {
+    if !lexer.peek()?.as_ref().is_keyword(Keyword::For) {
         return Ok(None);
     }
 
@@ -61,8 +61,8 @@ fn try_parse_step<T: BufRead>(
 
     while state != STATE_EOL {
         let next = lexer.peek()?;
-        match next {
-            LexemeNode::Whitespace(_, _) => {
+        match next.as_ref() {
+            Lexeme::Whitespace(_) => {
                 lexer.read()?;
                 if state == STATE_UPPER_BOUND {
                     state = STATE_WHITESPACE_BEFORE_STEP;
@@ -74,14 +74,14 @@ fn try_parse_step<T: BufRead>(
                     return unexpected("Unexpected whitespace", next);
                 }
             }
-            LexemeNode::EOF(_) => return unexpected("FOR without NEXT", next),
-            LexemeNode::EOL(_, _) => {
+            Lexeme::EOF => return unexpected("FOR without NEXT", next),
+            Lexeme::EOL(_) => {
                 if state == STATE_STEP || state == STATE_WHITESPACE_AFTER_STEP {
                     return unexpected("Expected expression after STEP", next);
                 }
                 state = STATE_EOL;
             }
-            LexemeNode::Keyword(Keyword::Step, _, _) => {
+            Lexeme::Keyword(Keyword::Step, _) => {
                 lexer.read()?;
                 if state == STATE_WHITESPACE_BEFORE_STEP {
                     state = STATE_STEP;
@@ -123,17 +123,17 @@ fn try_parse_next_counter<T: BufRead>(
 
     while state != STATE_EOL_OR_EOF {
         let next = lexer.peek()?;
-        match next {
-            LexemeNode::Whitespace(_, _) => {
+        match next.as_ref() {
+            Lexeme::Whitespace(_) => {
                 lexer.read()?;
                 if state == STATE_NEXT {
                     state = STATE_WHITESPACE_AFTER_NEXT;
                 }
             }
-            LexemeNode::EOL(_, _) | LexemeNode::EOF(_) => {
+            Lexeme::EOL(_) | Lexeme::EOF => {
                 state = STATE_EOL_OR_EOF;
             }
-            LexemeNode::Word(_, _) => {
+            Lexeme::Word(_) => {
                 if state == STATE_WHITESPACE_AFTER_NEXT {
                     name = Some(demand(
                         lexer,

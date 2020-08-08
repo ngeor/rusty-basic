@@ -32,17 +32,17 @@ impl Location {
 //
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Locatable<T: std::fmt::Debug + Sized> {
+pub struct Locatable<T> {
     pub element: T,
     pub pos: Location,
 }
 
-impl<T: std::fmt::Debug + Sized> Locatable<T> {
+impl<T> Locatable<T> {
     pub fn new(element: T, pos: Location) -> Self {
         Locatable { element, pos }
     }
 
-    pub fn from_locatable<U: std::fmt::Debug + Sized>(other: Locatable<U>) -> Self
+    pub fn from_locatable<U>(other: Locatable<U>) -> Self
     where
         T: From<U>,
     {
@@ -51,14 +51,14 @@ impl<T: std::fmt::Debug + Sized> Locatable<T> {
         Self::new(mapped, pos)
     }
 
-    pub fn into_locatable<U: std::fmt::Debug + Sized>(self) -> Locatable<U>
+    pub fn into_locatable<U>(self) -> Locatable<U>
     where
         U: From<T>,
     {
         Locatable::from_locatable(self)
     }
 
-    pub fn map<F, U: std::fmt::Debug + Sized>(self, op: F) -> Locatable<U>
+    pub fn map<F, U>(self, op: F) -> Locatable<U>
     where
         F: FnOnce(T) -> U,
     {
@@ -71,19 +71,19 @@ impl<T: std::fmt::Debug + Sized> Locatable<T> {
     }
 }
 
-impl<T: std::fmt::Debug + Sized> AsRef<T> for Locatable<T> {
+impl<T> AsRef<T> for Locatable<T> {
     fn as_ref(&self) -> &T {
         &self.element
     }
 }
 
-impl<T: std::fmt::Debug + Sized + AsRef<str>> AsRef<str> for Locatable<T> {
+impl<T: AsRef<str>> AsRef<str> for Locatable<T> {
     fn as_ref(&self) -> &str {
         self.element.as_ref()
     }
 }
 
-impl<T: std::fmt::Debug + Sized + PartialEq<T>> PartialEq<T> for Locatable<T> {
+impl<T: PartialEq<T>> PartialEq<T> for Locatable<T> {
     fn eq(&self, that: &T) -> bool {
         &self.element == that
     }
@@ -95,7 +95,7 @@ pub trait AtLocation<T> {
     fn at(self, pos: Location) -> T;
 }
 
-impl<T: std::fmt::Debug + Sized> AtLocation<Locatable<T>> for T {
+impl<T> AtLocation<Locatable<T>> for T {
     fn at(self, pos: Location) -> Locatable<T> {
         Locatable::new(self, pos)
     }
@@ -122,7 +122,7 @@ pub trait HasLocation {
     fn pos(&self) -> Location;
 }
 
-impl<T: std::fmt::Debug + Sized> HasLocation for Locatable<T> {
+impl<T> HasLocation for Locatable<T> {
     fn pos(&self) -> Location {
         self.pos
     }
@@ -147,19 +147,19 @@ pub trait StripLocationVal<T> {
     fn strip_location(self) -> T;
 }
 
-impl<T: std::fmt::Debug + Sized> StripLocationRef<T> for Locatable<T> {
+impl<T> StripLocationRef<T> for Locatable<T> {
     fn strip_location(&self) -> &T {
         &self.element
     }
 }
 
-impl<T: std::fmt::Debug + Sized> StripLocationVal<T> for Locatable<T> {
+impl<T> StripLocationVal<T> for Locatable<T> {
     fn strip_location(self) -> T {
         self.element
     }
 }
 
-impl<T: std::fmt::Debug + Sized> StripLocationVal<Vec<T>> for Vec<Locatable<T>> {
+impl<T> StripLocationVal<Vec<T>> for Vec<Locatable<T>> {
     fn strip_location(self) -> Vec<T> {
         self.into_iter().map(|x| x.strip_location()).collect()
     }

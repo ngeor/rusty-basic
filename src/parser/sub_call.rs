@@ -20,20 +20,20 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         pos,
     } = opt_name.unwrap();
     let p = lexer.peek()?;
-    if p.is_symbol('=') || p.is_symbol(':') {
+    if p.as_ref().is_symbol('=') || p.as_ref().is_symbol(':') {
         // assignment or label
         lexer.rollback_transaction()?;
         return Ok(None);
     }
 
-    if p.is_symbol('(') {
+    if p.as_ref().is_symbol('(') {
         // sub call with parenthesis e.g. Hello(1)
         lexer.commit_transaction()?;
         let args = read_arg_list(lexer)?;
         return Ok(Some(Statement::SubCall(bare_name, args).at(pos)));
     }
 
-    let might_have_args = if p.is_whitespace() {
+    let might_have_args = if p.as_ref().is_whitespace() {
         // we might have an argument list
         lexer.read()?;
         true
@@ -47,7 +47,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     }
 
     // check once again to make sure we're not in assignment with extra whitespace e.g. A = 2
-    if lexer.peek()?.is_symbol('=') {
+    if lexer.peek()?.as_ref().is_symbol('=') {
         lexer.rollback_transaction()?;
         return Ok(None);
     }
@@ -66,7 +66,7 @@ pub fn read_arg_list<T: BufRead>(
         Some(e) => {
             let mut args: Vec<ExpressionNode> = vec![e];
             skip_whitespace(lexer)?;
-            if lexer.peek()?.is_symbol(',') {
+            if lexer.peek()?.as_ref().is_symbol(',') {
                 // next args
                 lexer.read()?; // read comma
                 skip_whitespace(lexer)?;

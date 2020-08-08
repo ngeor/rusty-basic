@@ -2,7 +2,7 @@ use super::{
     unexpected, DefType, LetterRange, ParserError, TopLevelToken, TopLevelTokenNode, TypeQualifier,
 };
 use crate::common::*;
-use crate::lexer::{BufLexer, Keyword, LexemeNode};
+use crate::lexer::*;
 use crate::parser::buf_lexer::*;
 use std::io::BufRead;
 
@@ -10,8 +10,8 @@ pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, ParserError> {
     let next = lexer.peek()?;
-    let opt_qualifier = match next {
-        LexemeNode::Keyword(keyword, _, _) => match keyword {
+    let opt_qualifier = match next.as_ref() {
+        Lexeme::Keyword(keyword, _) => match keyword {
             Keyword::DefDbl => Some(TypeQualifier::HashDouble),
             Keyword::DefInt => Some(TypeQualifier::PercentInteger),
             Keyword::DefLng => Some(TypeQualifier::AmpersandLong),
@@ -42,8 +42,8 @@ pub fn try_read<T: BufRead>(
     while state != STATE_EOL {
         skip_whitespace(lexer)?;
         let next = lexer.peek()?;
-        match &next {
-            LexemeNode::Word(w, _) => {
+        match next.as_ref() {
+            Lexeme::Word(w) => {
                 lexer.read()?;
                 if w.len() != 1 {
                     return unexpected("Expected single character", next);
@@ -61,7 +61,7 @@ pub fn try_read<T: BufRead>(
                     return unexpected("Syntax error", next);
                 }
             }
-            LexemeNode::Symbol('-', _) => {
+            Lexeme::Symbol('-') => {
                 lexer.read()?;
                 if state == STATE_FIRST_LETTER {
                     state = STATE_DASH;
@@ -69,7 +69,7 @@ pub fn try_read<T: BufRead>(
                     return unexpected("Syntax error", next);
                 }
             }
-            LexemeNode::Symbol(',', _) => {
+            Lexeme::Symbol(',') => {
                 lexer.read()?;
                 if state == STATE_FIRST_LETTER {
                     ranges.push(LetterRange::Single(first_letter));
@@ -174,21 +174,21 @@ mod tests {
             parse_err("DEFINT HELLO"),
             ParserError::Unexpected(
                 "Expected single character".to_string(),
-                LexemeNode::Word("HELLO".to_string(), Location::new(1, 8))
+                Lexeme::Word("HELLO".to_string()).at_rc(1, 8)
             )
         );
         assert_eq!(
             parse_err("DEFINT HELLO,Z"),
             ParserError::Unexpected(
                 "Expected single character".to_string(),
-                LexemeNode::Word("HELLO".to_string(), Location::new(1, 8))
+                Lexeme::Word("HELLO".to_string()).at_rc(1, 8)
             )
         );
         assert_eq!(
             parse_err("DEFINT A,HELLO"),
             ParserError::Unexpected(
                 "Expected single character".to_string(),
-                LexemeNode::Word("HELLO".to_string(), Location::new(1, 10))
+                Lexeme::Word("HELLO".to_string()).at_rc(1, 10)
             )
         );
     }
@@ -199,7 +199,7 @@ mod tests {
             parse_err("DEFINT Z-A"),
             ParserError::Unexpected(
                 "Invalid letter range".to_string(),
-                LexemeNode::Word("A".to_string(), Location::new(1, 10))
+                Lexeme::Word("A".to_string()).at_rc(1, 10)
             )
         );
     }

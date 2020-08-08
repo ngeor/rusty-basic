@@ -47,8 +47,6 @@ where
 // blanket for Locatable
 impl<T, A, B> Converter<Locatable<A>, Locatable<B>> for T
 where
-    A: std::fmt::Debug + Sized,
-    B: std::fmt::Debug + Sized,
     T: Converter<A, B>,
 {
     fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, Error> {

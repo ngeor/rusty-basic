@@ -6,15 +6,15 @@ use std::str::FromStr;
 /// Example: A$ denotes a string variable
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TypeQualifier {
-    /// ! Single-precision
+    /// `!` Single-precision
     BangSingle,
-    /// # Double-precision
+    /// `#` Double-precision
     HashDouble,
-    /// $ String
+    /// `$` String
     DollarString,
-    /// % Integer
+    /// `%` Integer
     PercentInteger,
-    /// & Long-integer
+    /// `&` Long-integer
     AmpersandLong,
     /// Not an actual type, but to be able to call PRINT #1, "hello", we define the file handle type
     FileHandle,

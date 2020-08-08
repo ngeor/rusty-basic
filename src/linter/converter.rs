@@ -287,7 +287,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                 {
                     return err(LinterError::DuplicateDefinition, pos);
                 }
-                let mapped_declared_name = self.context.add_dim(&d, &self.resolver)?;
+                let mapped_declared_name = self.context.add_dim(&d, &self.resolver).with_err_pos(pos)?;
                 Ok(Statement::Dim(mapped_declared_name.at(pos)))
             }
         }

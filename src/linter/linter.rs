@@ -66,7 +66,7 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_assignment_sub_name_duplicate_definition() {
+        fn name_clashes_with_other_sub_name() {
             let program = r#"
             SUB Hello
             END SUB
@@ -78,7 +78,7 @@ mod tests {
         }
 
         #[test]
-        fn test_assign_type_mismatch() {
+        fn literals_type_mismatch() {
             assert_linter_err!("X = \"hello\"", LinterError::TypeMismatch, 1, 5);
             assert_linter_err!("X! = \"hello\"", LinterError::TypeMismatch, 1, 6);
             assert_linter_err!("X# = \"hello\"", LinterError::TypeMismatch, 1, 6);
@@ -87,6 +87,25 @@ mod tests {
             assert_linter_err!("A$ = -1", LinterError::TypeMismatch, 1, 6);
             assert_linter_err!("X% = \"hello\"", LinterError::TypeMismatch, 1, 6);
             assert_linter_err!("X& = \"hello\"", LinterError::TypeMismatch, 1, 6);
+        }
+
+        #[test]
+        fn assign_to_const() {
+            let program = "
+            CONST X = 3.14
+            X = 6.28
+            ";
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn assign_integer_to_extended_string() {
+            let program = r#"
+            X = 1
+            IF X = 0 THEN DIM A AS STRING
+            A = 42
+            "#;
+            assert_linter_err!(program, LinterError::TypeMismatch, 4, 17);
         }
     }
 
@@ -97,7 +116,6 @@ mod tests {
         fn function_call_not_allowed() {
             let program = r#"
             CONST X = Add(1, 2)
-            PRINT X
             "#;
             assert_linter_err!(program, LinterError::InvalidConstant, 2, 23);
         }
@@ -107,18 +125,8 @@ mod tests {
             let program = r#"
             X = 42
             CONST A = X + 1
-            PRINT A
             "#;
             assert_linter_err!(program, LinterError::InvalidConstant, 3, 23);
-        }
-
-        #[test]
-        fn qualified_usage_wrong_type() {
-            let program = "
-            CONST X = 42
-            PRINT X!
-            ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
 
         #[test]
@@ -126,7 +134,6 @@ mod tests {
             let program = "
             X = 42
             CONST X = 32
-            PRINT X
             ";
             assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
@@ -145,36 +152,49 @@ mod tests {
             let program = "
             CONST X = 32
             CONST X = 33
-            PRINT X
             ";
             assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
-        }
-
-        #[test]
-        fn assign_is_duplicate_definition() {
-            let program = "
-            CONST X = 3.14
-            X = 6.28
-            ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
         }
 
         #[test]
         fn qualified_usage_from_string_literal() {
             let program = r#"
             CONST X! = "hello"
-            PRINT X!
             "#;
             assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
         }
 
         #[test]
-        fn unqualified_usage_type_mismatch() {
+        fn const_after_dim_duplicate_definition() {
             let program = r#"
-            CONST X% = "hello"
-            PRINT X
+            DIM A AS STRING
+            CONST A = "hello"
             "#;
-            assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+        }
+
+        #[test]
+        fn test_global_const_cannot_have_function_name() {
+            let program = r#"
+            FUNCTION GetAction$
+                GetAction$ = "hello"
+            END FUNCTION
+            CONST GetAction = 42
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 19);
+        }
+
+        #[test]
+        fn test_local_const_cannot_have_function_name() {
+            let program = r#"
+            FUNCTION GetAction$
+                GetAction$ = "hello"
+            END FUNCTION
+            FUNCTION Echo(X)
+                CONST GetAction = 42
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 6, 23);
         }
     }
 
@@ -182,22 +202,12 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_dim_type_mismatch() {
-            let program = r#"
-            X = 1
-            IF X = 0 THEN DIM A AS STRING
-            A = 42
-            "#;
-            assert_linter_err!(program, LinterError::TypeMismatch, 4, 17);
-        }
-
-        #[test]
         fn test_dim_duplicate_definition_same_builtin_type() {
             let program = r#"
             DIM A AS STRING
             DIM A AS STRING
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -206,7 +216,7 @@ mod tests {
             DIM A AS STRING
             DIM A AS INTEGER
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -247,16 +257,7 @@ mod tests {
             CONST A = "hello"
             DIM A AS STRING
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
-        }
-
-        #[test]
-        fn test_const_after_dim_duplicate_definition() {
-            let program = r#"
-            DIM A AS STRING
-            CONST A = "hello"
-            "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -265,7 +266,7 @@ mod tests {
             A = 42
             DIM A AS INTEGER
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -274,7 +275,7 @@ mod tests {
             DIM A$
             DIM A$
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -283,7 +284,7 @@ mod tests {
             DIM A
             DIM A
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -293,7 +294,7 @@ mod tests {
             DIM A!
             DIM A
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -303,7 +304,7 @@ mod tests {
             DIM A
             DIM A!
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -313,7 +314,7 @@ mod tests {
             DIM A
             DIM A%
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 17);
         }
 
         #[test]
@@ -346,7 +347,7 @@ mod tests {
             Dim Oops AS STRING
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -438,30 +439,6 @@ mod tests {
             END FUNCTION
             "#;
             assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
-        }
-
-        #[test]
-        fn test_global_const_cannot_have_function_name() {
-            let program = r#"
-            FUNCTION GetAction$
-                GetAction$ = "hello"
-            END FUNCTION
-            CONST GetAction = 42
-            "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 19);
-        }
-
-        #[test]
-        fn test_local_const_cannot_have_function_name() {
-            let program = r#"
-            FUNCTION GetAction$
-                GetAction$ = "hello"
-            END FUNCTION
-            FUNCTION Echo(X)
-                CONST GetAction = 42
-            END FUNCTION
-            "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 6, 23);
         }
 
         #[test]
@@ -771,5 +748,15 @@ mod tests {
             assert_condition_err!("\"hello\" <= 3.14#", 31);
             assert_condition_err!("9 <= \"hello\"", 25);
         }
+
+        #[test]
+        fn qualified_const_usage_wrong_type() {
+            let program = "
+            CONST X = 42
+            PRINT X!
+            ";
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+        }
+
     }
 }

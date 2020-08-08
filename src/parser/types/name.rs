@@ -3,43 +3,12 @@ use crate::common::{CaseInsensitiveString, Locatable};
 use std::convert::TryFrom;
 
 //
-// NameTrait
+// WithTypeQualifier
 //
 
-pub trait NameTrait: Sized + std::fmt::Debug + Clone {
-    fn bare_name(&self) -> &CaseInsensitiveString;
-    fn opt_qualifier(&self) -> Option<TypeQualifier>;
-    fn into_bare_name(self) -> CaseInsensitiveString;
-
-    /// Checks if the type of this instance is unspecified (bare) or equal to the parameter.
-    fn bare_or_eq(&self, other: TypeQualifier) -> bool {
-        match self.opt_qualifier() {
-            Some(q) => q == other,
-            None => true,
-        }
-    }
-
-    fn with_type(self, q: TypeQualifier) -> QualifiedName {
-        QualifiedName::new(self.into_bare_name(), q)
-    }
-
-    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
-        QualifiedName::new(self.bare_name().clone(), q)
-    }
-}
-
-impl<T: NameTrait> NameTrait for Locatable<T> {
-    fn bare_name(&self) -> &CaseInsensitiveString {
-        self.as_ref().bare_name()
-    }
-
-    fn into_bare_name(self) -> CaseInsensitiveString {
-        self.consume().0.into_bare_name()
-    }
-
-    fn opt_qualifier(&self) -> Option<TypeQualifier> {
-        self.as_ref().opt_qualifier()
-    }
+pub trait WithTypeQualifier {
+    fn with_type(self, q: TypeQualifier) -> QualifiedName;
+    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName;
 }
 
 //
@@ -47,21 +16,78 @@ impl<T: NameTrait> NameTrait for Locatable<T> {
 //
 
 pub type BareName = CaseInsensitiveString;
-pub type BareNameNode = Locatable<BareName>;
 
-impl NameTrait for BareName {
-    fn bare_name(&self) -> &CaseInsensitiveString {
-        self
-    }
+// QualifiedName -> BareName
 
-    fn into_bare_name(self) -> CaseInsensitiveString {
-        self
-    }
-
-    fn opt_qualifier(&self) -> Option<TypeQualifier> {
-        None
+impl From<QualifiedName> for BareName {
+    fn from(n: QualifiedName) -> BareName {
+        n.name
     }
 }
+
+// &QualifiedName -> BareName
+
+impl From<&QualifiedName> for BareName {
+    fn from(n: &QualifiedName) -> BareName {
+        let b: &BareName = n.as_ref();
+        b.clone()
+    }
+}
+
+// Name -> BareName
+
+impl From<Name> for BareName {
+    fn from(n: Name) -> BareName {
+        match n {
+            Name::Bare(b) => b,
+            Name::Qualified(q) => q.into(),
+        }
+    }
+}
+
+// &QualifiedNameNode -> BareName
+
+impl From<&QualifiedNameNode> for BareName {
+    fn from(n: &QualifiedNameNode) -> BareName {
+        let name: &QualifiedName = n.as_ref();
+        name.clone().into()
+    }
+}
+
+// &NameNode -> BareName
+
+impl From<&NameNode> for BareName {
+    fn from(n: &NameNode) -> BareName {
+        let name: &Name = n.as_ref();
+        name.clone().into()
+    }
+}
+
+// WithTypeQualifier
+
+impl WithTypeQualifier for BareName {
+    fn with_type(self, q: TypeQualifier) -> QualifiedName {
+        QualifiedName::new(self, q)
+    }
+
+    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
+        self.clone().with_type(q)
+    }
+}
+
+// AsRef<BareName>
+
+impl AsRef<BareName> for BareName {
+    fn as_ref(&self) -> &BareName {
+        self
+    }
+}
+
+//
+// BareNameNode
+//
+
+pub type BareNameNode = Locatable<BareName>;
 
 //
 // QualifiedName
@@ -81,6 +107,10 @@ impl QualifiedName {
     pub fn consume(self) -> (CaseInsensitiveString, TypeQualifier) {
         (self.name, self.qualifier)
     }
+
+    pub fn is_of_type(&self, q_other: TypeQualifier) -> bool {
+        self.qualifier == q_other
+    }
 }
 
 impl HasQualifier for QualifiedName {
@@ -89,17 +119,9 @@ impl HasQualifier for QualifiedName {
     }
 }
 
-impl NameTrait for QualifiedName {
-    fn bare_name(&self) -> &CaseInsensitiveString {
+impl AsRef<BareName> for QualifiedName {
+    fn as_ref(&self) -> &BareName {
         &self.name
-    }
-
-    fn into_bare_name(self) -> CaseInsensitiveString {
-        self.name
-    }
-
-    fn opt_qualifier(&self) -> Option<TypeQualifier> {
-        Some(self.qualifier)
     }
 }
 
@@ -113,6 +135,29 @@ impl TryFrom<&str> for QualifiedName {
     }
 }
 
+impl WithTypeQualifier for QualifiedName {
+    fn with_type(self, q: TypeQualifier) -> QualifiedName {
+        QualifiedName::new(self.name, q)
+    }
+
+    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
+        self.clone().with_type(q)
+    }
+}
+
+//
+// QualifiedNameNode
+//
+
+pub type QualifiedNameNode = Locatable<QualifiedName>;
+
+impl AsRef<BareName> for QualifiedNameNode {
+    fn as_ref(&self) -> &BareName {
+        let n: &QualifiedName = self.as_ref();
+        n.as_ref()
+    }
+}
+
 //
 // Name
 //
@@ -122,7 +167,6 @@ pub enum Name {
     Bare(CaseInsensitiveString),
     Qualified(QualifiedName),
 }
-pub type NameNode = Locatable<Name>;
 
 impl Name {
     pub fn new(
@@ -149,27 +193,33 @@ impl Name {
             _ => false,
         }
     }
+
+    pub fn is_bare_or_of_type(&self, q_other: TypeQualifier) -> bool {
+        match self {
+            Self::Bare(_) => true,
+            Self::Qualified(q) => q.is_of_type(q_other),
+        }
+    }
 }
 
-impl NameTrait for Name {
-    fn bare_name(&self) -> &CaseInsensitiveString {
+impl WithTypeQualifier for Name {
+    fn with_type(self, q: TypeQualifier) -> QualifiedName {
         match self {
-            Self::Bare(b) => b,
-            Self::Qualified(t) => t.bare_name(),
+            Self::Bare(b) => b.with_type(q),
+            Self::Qualified(q_name) => q_name.with_type(q),
         }
     }
 
-    fn into_bare_name(self) -> CaseInsensitiveString {
-        match self {
-            Self::Bare(b) => b,
-            Self::Qualified(q) => q.into_bare_name(),
-        }
+    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
+        self.clone().with_type(q)
     }
+}
 
-    fn opt_qualifier(&self) -> Option<TypeQualifier> {
+impl AsRef<BareName> for Name {
+    fn as_ref(&self) -> &BareName {
         match self {
-            Self::Bare(_) => None,
-            Self::Qualified(t) => Some(t.qualifier()),
+            Name::Bare(b) => b,
+            Name::Qualified(q) => q.as_ref(),
         }
     }
 }
@@ -188,6 +238,19 @@ impl<S: AsRef<str>> From<S> for Name {
                 Name::Bare(CaseInsensitiveString::new(buf))
             }
         }
+    }
+}
+
+//
+// NameNode
+//
+
+pub type NameNode = Locatable<Name>;
+
+impl AsRef<BareName> for NameNode {
+    fn as_ref(&self) -> &BareName {
+        let n: &Name = self.as_ref();
+        n.as_ref()
     }
 }
 

@@ -1,6 +1,10 @@
-use super::{NameTrait, TypeQualifier};
 use crate::common::*;
+use crate::parser::types::*;
 use std::convert::TryFrom;
+
+//
+// TypeDefinition
+//
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeDefinition {
@@ -55,6 +59,8 @@ impl TypeDefinition {
     }
 }
 
+// TypeDefinition -> TypeQualifier
+
 impl TryFrom<&TypeDefinition> for TypeQualifier {
     type Error = bool;
     fn try_from(type_definition: &TypeDefinition) -> Result<Self, bool> {
@@ -65,6 +71,10 @@ impl TryFrom<&TypeDefinition> for TypeQualifier {
         }
     }
 }
+
+//
+// DeclaredName
+//
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeclaredName {
@@ -86,10 +96,6 @@ impl DeclaredName {
 
     pub fn compact<S: AsRef<str>>(name: S, q: TypeQualifier) -> Self {
         Self::new(name.as_ref().into(), TypeDefinition::CompactBuiltIn(q))
-    }
-
-    pub fn bare_name(&self) -> &CaseInsensitiveString {
-        &self.name
     }
 
     pub fn type_definition(&self) -> &TypeDefinition {
@@ -128,20 +134,39 @@ impl DeclaredName {
 pub type DeclaredNameNode = Locatable<DeclaredName>;
 pub type DeclaredNameNodes = Vec<DeclaredNameNode>;
 
-impl<T: NameTrait> From<T> for DeclaredName {
-    fn from(n: T) -> Self {
-        match n.opt_qualifier() {
-            Some(q) => Self::new(n.into_bare_name(), TypeDefinition::CompactBuiltIn(q)),
-            _ => Self::new(n.into_bare_name(), TypeDefinition::Bare),
-        }
+// AsRef<BareName>
+
+impl AsRef<BareName> for DeclaredName {
+    fn as_ref(&self) -> &BareName {
+        &self.name
     }
 }
 
-impl<T: NameTrait> From<Locatable<T>> for DeclaredNameNode {
-    fn from(name_node: Locatable<T>) -> Self {
-        let (name, pos) = name_node.consume();
-        let declared_name: DeclaredName = name.into();
-        declared_name.at(pos)
+// BareName -> DeclaredName
+
+impl From<BareName> for DeclaredName {
+    fn from(n: BareName) -> Self {
+        Self::new(n, TypeDefinition::Bare)
+    }
+}
+
+// QualifiedName -> DeclaredName
+
+impl From<QualifiedName> for DeclaredName {
+    fn from(q_name: QualifiedName) -> Self {
+        let (n, q) = q_name.consume();
+        Self::new(n, TypeDefinition::CompactBuiltIn(q))
+    }
+}
+
+// Name -> DeclaredName
+
+impl From<Name> for DeclaredName {
+    fn from(n: Name) -> Self {
+        match n {
+            Name::Bare(b) => b.into(),
+            Name::Qualified(q) => q.into(),
+        }
     }
 }
 

@@ -8,8 +8,8 @@ use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
-    BareNameNode, DeclaredNameNodes, HasQualifier, Name, NameNode, NameTrait, QualifiedName,
-    TypeQualifier,
+    BareNameNode, DeclaredNameNodes, HasQualifier, Name, NameNode, QualifiedName, TypeQualifier,
+    WithTypeQualifier,
 };
 use std::convert::TryInto;
 
@@ -121,7 +121,7 @@ impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
 
 impl Converter<Name, QualifiedName> for ConverterImpl {
     fn convert(&mut self, a: Name) -> Result<QualifiedName, Error> {
-        Ok(self.resolver.to_qualified_name(&a))
+        Ok(a.resolve_into(&self.resolver))
     }
 }
 
@@ -133,7 +133,7 @@ impl ConverterImpl {
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, Error> {
         let mapped_name = self.convert(function_name_node)?;
-        self.push_function_context(mapped_name.bare_name());
+        self.push_function_context(mapped_name.as_ref());
         let mapped_params = self.convert_function_params(mapped_name.as_ref(), params)?;
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
             name: mapped_name,
@@ -152,18 +152,18 @@ impl ConverterImpl {
         let mut result: Vec<QNameNode> = vec![];
         for p in params.into_iter() {
             let (declared_name, pos) = p.consume();
-            if self.subs.contains_key(declared_name.bare_name()) {
+            if self.subs.contains_key(declared_name.as_ref()) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return err(LinterError::DuplicateDefinition, pos);
             }
             let q: TypeQualifier = (&declared_name).resolve_into(&self.resolver);
-            if function_name.bare_name() == declared_name.bare_name()
+            if function_name.as_ref() == declared_name.as_ref()
                 && (function_name.qualifier() != q || declared_name.is_extended())
             {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
                 return err(LinterError::DuplicateDefinition, pos);
             }
-            let q_name = QualifiedName::new(declared_name.bare_name().clone(), q);
+            let q_name = QualifiedName::new(declared_name.as_ref().clone(), q);
             self.context
                 .add_param(declared_name, &self.resolver)
                 .with_err_pos(pos)?;
@@ -178,17 +178,17 @@ impl ConverterImpl {
         params: DeclaredNameNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, Error> {
-        self.push_sub_context(sub_name_node.bare_name());
+        self.push_sub_context(sub_name_node.as_ref());
 
         let mut mapped_params: Vec<QNameNode> = vec![];
         for declared_name_node in params.into_iter() {
             let (declared_name, pos) = declared_name_node.consume();
-            if self.subs.contains_key(declared_name.bare_name()) {
+            if self.subs.contains_key(declared_name.as_ref()) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return err(LinterError::DuplicateDefinition, pos);
             }
             let q: TypeQualifier = (&declared_name).resolve_into(&self.resolver);
-            let q_name = QualifiedName::new(declared_name.bare_name().clone(), q);
+            let q_name = QualifiedName::new(declared_name.as_ref().clone(), q);
             self.context
                 .add_param(declared_name, &self.resolver)
                 .with_err_pos(pos)?;
@@ -248,8 +248,8 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             }
             parser::Statement::Const(n, e) => {
                 let (name, pos) = n.clone().consume();
-                if self.functions.contains_key(name.bare_name())
-                    || self.subs.contains_key(name.bare_name())
+                if self.functions.contains_key(name.as_ref())
+                    || self.subs.contains_key(name.as_ref())
                 {
                     // local variable or local constant or function or sub already present by that name
                     err(LinterError::DuplicateDefinition, pos)
@@ -282,9 +282,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
             parser::Statement::Dim(declared_name_node) => {
                 let (d, pos) = declared_name_node.consume();
-                if self.subs.contains_key(d.bare_name())
-                    || self.functions.contains_key(d.bare_name())
-                {
+                if self.subs.contains_key(d.as_ref()) || self.functions.contains_key(d.as_ref()) {
                     return err(LinterError::DuplicateDefinition, pos);
                 }
                 let mapped_declared_name =
@@ -418,6 +416,7 @@ impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
     }
 }
 
+#[derive(Debug)]
 enum LName {
     Variable(QualifiedName),
     Function(QualifiedName),
@@ -435,17 +434,17 @@ impl ConverterImpl {
     pub fn resolve_name_in_assignment(&mut self, n: parser::Name) -> Result<LName, Error> {
         if self.context.is_function_context(&n) {
             // trying to assign to the function
-            let function_type: TypeQualifier = self.functions.get(n.bare_name()).unwrap().0;
-            if n.bare_or_eq(function_type) {
+            let function_type: TypeQualifier = self.functions.get(n.as_ref()).unwrap().0;
+            if n.is_bare_or_of_type(function_type) {
                 Ok(LName::Function(n.with_type(function_type)))
             } else {
                 // trying to assign to the function with an explicit wrong type
                 Err(LinterError::DuplicateDefinition.into())
             }
-        } else if self.subs.contains_key(n.bare_name()) {
+        } else if self.subs.contains_key(n.as_ref()) {
             // trying to assign to a sub
             Err(LinterError::DuplicateDefinition.into())
-        } else if !self.context.has_param(&n) && self.functions.contains_key(n.bare_name()) {
+        } else if !self.context.has_param(&n) && self.functions.contains_key(n.as_ref()) {
             // parameter might be hiding a function name so it takes precedence
             Err(LinterError::DuplicateDefinition.into())
         } else {
@@ -475,15 +474,15 @@ impl ConverterImpl {
         &mut self,
         n: &parser::Name,
     ) -> Result<Option<Expression>, Error> {
-        if self.subs.contains_key(n.bare_name()) {
+        if self.subs.contains_key(n.as_ref()) {
             // using the name of a sub as a variable expression
             err_no_pos(LinterError::DuplicateDefinition)
-        } else if self.functions.contains_key(n.bare_name()) {
+        } else if self.functions.contains_key(n.as_ref()) {
             // if the function expects arguments, argument count mismatch
-            let (f_type, f_args, _) = self.functions.get(n.bare_name()).unwrap();
+            let (f_type, f_args, _) = self.functions.get(n.as_ref()).unwrap();
             if !f_args.is_empty() {
                 err_no_pos(LinterError::ArgumentCountMismatch)
-            } else if !n.bare_or_eq(*f_type) {
+            } else if !n.is_bare_or_of_type(*f_type) {
                 // if the function is a different type and the name is qualified of a different type, duplication definition
                 err_no_pos(LinterError::DuplicateDefinition)
             } else {

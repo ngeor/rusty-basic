@@ -22,7 +22,7 @@ use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
 use crate::lexer::BufLexer;
 use crate::linter::{err_no_pos, Error, ExpressionNode, LinterError};
-use crate::parser::{HasQualifier, Name, NameTrait, ParserError, TypeQualifier};
+use crate::parser::{HasQualifier, Name, ParserError, TypeQualifier};
 use std::convert::TryFrom;
 use std::io::BufRead;
 
@@ -211,7 +211,7 @@ fn demand_unqualified(
 impl TryFrom<&Name> for Option<BuiltInFunction> {
     type Error = Error;
     fn try_from(n: &Name) -> Result<Option<BuiltInFunction>, Self::Error> {
-        let opt_built_in: Option<BuiltInFunction> = n.bare_name().into();
+        let opt_built_in: Option<BuiltInFunction> = n.as_ref().into();
         match opt_built_in {
             Some(b) => match b {
                 BuiltInFunction::Eof

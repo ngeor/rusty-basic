@@ -24,7 +24,7 @@ pub fn try_read<T: BufRead>(
     })?
     .is_some();
     if !is_long {
-        return Ok(Some(var_name_node.into()));
+        return Ok(Some(var_name_node.into_locatable()));
     }
     // explicit type requires a bare name
     let bare_name = match var_name_node.as_ref() {

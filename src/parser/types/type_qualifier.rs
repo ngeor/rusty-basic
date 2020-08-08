@@ -1,7 +1,7 @@
+use crate::common::Locatable;
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::str::FromStr;
-use crate::common::Locatable;
 
 //
 // TypeQualifier
@@ -43,7 +43,7 @@ impl Display for TypeQualifier {
             TypeQualifier::DollarString => write!(f, "$"),
             TypeQualifier::PercentInteger => write!(f, "%"),
             TypeQualifier::AmpersandLong => write!(f, "&"),
-            TypeQualifier::FileHandle => write!(f, "<file handle>")
+            TypeQualifier::FileHandle => write!(f, "<file handle>"),
         }
     }
 }
@@ -96,7 +96,7 @@ impl TryFrom<TypeQualifier> for char {
             TypeQualifier::DollarString => Ok('$'),
             TypeQualifier::PercentInteger => Ok('%'),
             TypeQualifier::AmpersandLong => Ok('&'),
-            _ => Err(format!("Cannot convert {:?} to char", q))
+            _ => Err(format!("Cannot convert {:?} to char", q)),
         }
     }
 }
@@ -105,7 +105,7 @@ impl PartialEq<char> for TypeQualifier {
     fn eq(&self, that: &char) -> bool {
         match char::try_from(*self) {
             Ok(ch) => ch == *that,
-            Err(_) => false
+            Err(_) => false,
         }
     }
 }
@@ -201,7 +201,10 @@ mod tests {
         assert_eq!(char::try_from(TypeQualifier::DollarString).unwrap(), '$');
         assert_eq!(char::try_from(TypeQualifier::PercentInteger).unwrap(), '%');
         assert_eq!(char::try_from(TypeQualifier::AmpersandLong).unwrap(), '&');
-        assert_eq!(char::try_from(TypeQualifier::FileHandle).unwrap_err(), "Cannot convert FileHandle to char");
+        assert_eq!(
+            char::try_from(TypeQualifier::FileHandle).unwrap_err(),
+            "Cannot convert FileHandle to char"
+        );
     }
 
     #[test]

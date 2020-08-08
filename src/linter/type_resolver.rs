@@ -1,13 +1,11 @@
-use super::{DeclaredName, NameTrait, QualifiedName, TypeQualifier};
+use crate::parser::{
+    BareName, BareNameNode, DeclaredName, HasQualifier, Name, NameNode, QualifiedName,
+    TypeQualifier,
+};
 use std::convert::TryInto;
 
 pub trait TypeResolver {
-    fn resolve<T: NameTrait>(&self, name: &T) -> TypeQualifier;
-
-    fn to_qualified_name<T: NameTrait>(&self, name: &T) -> QualifiedName {
-        let q = self.resolve(name);
-        name.with_type_ref(q)
-    }
+    fn resolve<T: AsRef<str>>(&self, name: T) -> TypeQualifier;
 }
 
 pub trait ResolveFrom<TFrom> {
@@ -18,6 +16,7 @@ pub trait ResolveInto<TInto> {
     fn resolve_into<TResolver: TypeResolver>(self, resolver: &TResolver) -> TInto;
 }
 
+// blanket ResolveInto implementation
 impl<TFrom, TInto> ResolveInto<TInto> for TFrom
 where
     TInto: ResolveFrom<TFrom>,
@@ -27,23 +26,67 @@ where
     }
 }
 
-impl<T: NameTrait> ResolveFrom<&T> for TypeQualifier {
-    fn resolve_from<TResolver: TypeResolver>(n: &T, resolver: &TResolver) -> Self {
-        resolver.resolve(n)
+// &BareName -> TypeQualifier
+
+impl ResolveFrom<&BareName> for TypeQualifier {
+    fn resolve_from<T: TypeResolver>(x: &BareName, resolver: &T) -> Self {
+        resolver.resolve(x)
     }
 }
 
-impl<T: NameTrait> ResolveFrom<T> for QualifiedName {
-    fn resolve_from<TResolver: TypeResolver>(n: T, resolver: &TResolver) -> Self {
-        let q = resolver.resolve(&n);
-        n.with_type(q)
+// BareName -> TypeQualifier
+
+impl ResolveFrom<BareName> for TypeQualifier {
+    fn resolve_from<T: TypeResolver>(x: BareName, resolver: &T) -> Self {
+        resolver.resolve(x)
+    }
+}
+
+// &BareNameNode -> TypeQualifier
+
+impl ResolveFrom<&BareNameNode> for TypeQualifier {
+    fn resolve_from<T: TypeResolver>(x: &BareNameNode, resolver: &T) -> Self {
+        let bare_name: &BareName = x.as_ref();
+        bare_name.resolve_into(resolver)
+    }
+}
+
+// &Name -> TypeQualifier
+
+impl ResolveFrom<&Name> for TypeQualifier {
+    fn resolve_from<T: TypeResolver>(x: &Name, resolver: &T) -> Self {
+        match x {
+            Name::Bare(b) => b.resolve_into(resolver),
+            Name::Qualified(q) => q.qualifier(),
+        }
+    }
+}
+
+// Name -> TypeQualifier
+
+impl ResolveFrom<Name> for TypeQualifier {
+    fn resolve_from<T: TypeResolver>(x: Name, resolver: &T) -> Self {
+        match x {
+            Name::Bare(b) => b.resolve_into(resolver),
+            Name::Qualified(q) => q.qualifier(),
+        }
+    }
+}
+
+// &NameNode -> TypeQualifier
+
+impl ResolveFrom<&NameNode> for TypeQualifier {
+    fn resolve_from<T: TypeResolver>(x: &NameNode, resolver: &T) -> Self {
+        let name: &Name = x.as_ref();
+        name.resolve_into(resolver)
     }
 }
 
 impl ResolveFrom<&DeclaredName> for TypeQualifier {
     fn resolve_from<TR: TypeResolver>(declared_name: &DeclaredName, resolver: &TR) -> Self {
         if declared_name.is_bare() {
-            resolver.resolve(declared_name.bare_name())
+            let b: &BareName = declared_name.as_ref();
+            b.resolve_into(resolver)
         } else {
             declared_name
                 .try_into()
@@ -52,9 +95,10 @@ impl ResolveFrom<&DeclaredName> for TypeQualifier {
     }
 }
 
-impl ResolveFrom<&DeclaredName> for QualifiedName {
-    fn resolve_from<TR: TypeResolver>(declared_name: &DeclaredName, resolver: &TR) -> Self {
-        let q: TypeQualifier = declared_name.resolve_into(resolver);
-        Self::new(declared_name.bare_name().clone(), q)
+impl<T: AsRef<BareName> + ResolveInto<TypeQualifier>> ResolveFrom<T> for QualifiedName {
+    fn resolve_from<TR: TypeResolver>(name: T, resolver: &TR) -> Self {
+        let n: BareName = name.as_ref().clone();
+        let q: TypeQualifier = name.resolve_into(resolver);
+        Self::new(n, q)
     }
 }

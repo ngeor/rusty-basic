@@ -18,15 +18,12 @@ fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
         match top_level_token {
             TopLevelToken::FunctionImplementation(f) => {
                 // collect param names
-                functions.insert(
-                    f.name.bare_name().clone(),
-                    f.params.clone().strip_location(),
-                );
+                functions.insert((&f.name).into(), f.params.clone().strip_location());
             }
             TopLevelToken::SubImplementation(s) => {
                 // collect param names
                 subs.insert(
-                    s.name.bare_name().clone(),
+                    s.name.clone().strip_location(),
                     s.params.clone().strip_location(),
                 );
             }
@@ -94,8 +91,9 @@ impl InstructionGenerator {
         // functions
         for (f, pos) in functions {
             let name = f.name;
+            let bare_name: &BareName = name.as_ref();
             let block = f.body;
-            self.function_label(name.bare_name(), pos);
+            self.function_label(bare_name, pos);
             // set default value
             self.push(
                 Instruction::Load(Variant::default_variant(name.qualifier())),
@@ -109,8 +107,9 @@ impl InstructionGenerator {
         // subs
         for (s, pos) in subs {
             let name = s.name;
+            let bare_name: &BareName = name.as_ref();
             let block = s.body;
-            self.sub_label(name.bare_name(), pos);
+            self.sub_label(bare_name, pos);
             self.generate_block_instructions(block);
             self.push(Instruction::PopRet, pos);
         }

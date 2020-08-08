@@ -70,9 +70,6 @@ fn demand_go_to<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, Parser
     read_demand_whitespace(lexer, "Expected space after GOTO")?;
     let name_node = demand(lexer, name::try_read_bare, "Expected label name")?;
     let (name, _) = name_node.consume();
-    // if context == StatementContext::Normal {
-    //     read_demand_eol_or_eof_skipping_whitespace(lexer, )?;
-    // }
     Ok(Statement::GoTo(name))
 }
 

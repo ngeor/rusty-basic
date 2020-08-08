@@ -11,7 +11,7 @@ impl InstructionGenerator {
     ) {
         let pos = function_name.location();
 
-        let bare_name: &CaseInsensitiveString = function_name.bare_name();
+        let bare_name: &CaseInsensitiveString = function_name.as_ref();
         let function_parameters = self.function_context.get(bare_name).unwrap().clone();
         self.generate_push_named_args_instructions(function_parameters, args, pos);
         self.push(Instruction::PushStack, pos);

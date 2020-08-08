@@ -135,11 +135,7 @@ mod tests {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
             match parse($input).demand_single().as_ref() {
                 TopLevelToken::FunctionDeclaration(name, parameters) => {
-                    assert_eq!(
-                        name.as_ref(),
-                        $expected_function_name,
-                        "Function name mismatch"
-                    );
+                    assert_eq!(name, $expected_function_name, "Function name mismatch");
                     let x = $expected_params;
                     assert_eq!(parameters.len(), x.len(), "Parameter count mismatch");
                     for i in 0..x.len() {

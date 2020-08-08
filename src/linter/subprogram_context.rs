@@ -4,7 +4,7 @@ use crate::common::*;
 use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
-use crate::parser::{DeclaredNameNode, DeclaredNameNodes, NameNode, NameTrait, TypeQualifier};
+use crate::parser::{BareName, DeclaredNameNode, DeclaredNameNodes, NameNode, TypeQualifier};
 use std::collections::HashMap;
 
 /// Collects subprograms of the given program.
@@ -59,8 +59,8 @@ impl FunctionContext {
             .iter()
             .map(|p| resolve_declared_name_node(&self.resolver, p))
             .collect();
-        let q_name: TypeQualifier = self.resolver.resolve(name);
-        let bare_name = name.bare_name().clone();
+        let q_name: TypeQualifier = name.resolve_into(&self.resolver);
+        let bare_name = BareName::from(name);
         self.check_implementation_type(&bare_name, &q_name, &q_params, pos)?;
         match self.declarations.get(&bare_name) {
             Some(_) => self.check_declaration_type(&bare_name, &q_name, &q_params, pos),
@@ -85,8 +85,8 @@ impl FunctionContext {
             .iter()
             .map(|p| resolve_declared_name_node(&self.resolver, p))
             .collect();
-        let q_name: TypeQualifier = self.resolver.resolve(name);
-        let bare_name = name.bare_name().clone();
+        let q_name: TypeQualifier = name.resolve_into(&self.resolver);
+        let bare_name = BareName::from(name);
         match self.implementations.get(&bare_name) {
             Some(_) => err(LinterError::DuplicateDefinition, pos),
             None => {

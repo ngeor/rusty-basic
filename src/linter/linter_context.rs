@@ -1,10 +1,10 @@
 use crate::common::*;
 use crate::linter::error::*;
-use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver::*;
 use crate::linter::Expression;
 use crate::parser::{
-    BareName, DeclaredName, HasQualifier, Name, NameNode, NameTrait, QualifiedName, TypeDefinition,
-    TypeQualifier,
+    BareName, DeclaredName, HasQualifier, Name, NameNode, QualifiedName, TypeDefinition,
+    TypeQualifier, WithTypeQualifier,
 };
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
@@ -124,13 +124,13 @@ impl LinterContext {
         name: DeclaredName,
         resolver: &T,
     ) -> Result<(), Error> {
-        let bare_name = name.bare_name();
-        let identifiers = self.get_names(&bare_name);
+        let bare_name: &BareName = name.as_ref();
+        let identifiers = self.get_names(bare_name);
         let resolved_q: TypeQualifier;
         match name.type_definition() {
             TypeDefinition::Bare => {
                 // need resolver
-                resolved_q = resolver.resolve(bare_name);
+                resolved_q = bare_name.resolve_into(resolver);
                 // it's not allowed to have an extended param of this name or another compact param of the same type
                 if identifiers
                     .iter()
@@ -172,7 +172,7 @@ impl LinterContext {
         name_node: NameNode,
         right_side_type: Locatable<TypeQualifier>,
     ) -> Result<TypeQualifier, Error> {
-        let identifiers = self.get_names(name_node.bare_name());
+        let identifiers = self.get_names(name_node.as_ref());
         if identifiers.is_empty() {
             let q = match name_node.as_ref() {
                 // bare name resolves from right side, not resolver
@@ -198,13 +198,13 @@ impl LinterContext {
         name: &DeclaredName,
         resolver: &T,
     ) -> Result<DeclaredName, Error> {
-        let bare_name = name.bare_name();
-        let identifiers = self.get_names(&bare_name);
+        let bare_name: &BareName = name.as_ref();
+        let identifiers = self.get_names(bare_name);
         let resolved_q: TypeQualifier;
 
         match name.type_definition() {
             TypeDefinition::Bare => {
-                resolved_q = resolver.resolve(bare_name);
+                resolved_q = bare_name.resolve_into(resolver);
                 if identifiers.iter().any(|x| {
                     x.is_extended_variable()
                         || x.is_compact_variable_of_type(resolved_q)
@@ -250,8 +250,8 @@ impl LinterContext {
         name: &Name,
         resolver: &T,
     ) -> Result<TypeQualifier, Error> {
-        let q = resolver.resolve(name);
-        let identifiers = self.get_names(name.bare_name());
+        let q: TypeQualifier = name.resolve_into(resolver);
+        let identifiers = self.get_names(name.as_ref());
         let mut already_exists = false;
         for i in identifiers.iter() {
             match i {
@@ -279,7 +279,7 @@ impl LinterContext {
         resolver: &T,
     ) -> Result<QualifiedName, Error> {
         let blank: Vec<Identifier> = vec![];
-        let identifiers = self.names.get(n.bare_name()).unwrap_or(&blank);
+        let identifiers = self.names.get(n.as_ref()).unwrap_or(&blank);
         Self::resolve_assignment_const(identifiers)
             .or_try_read(|| Self::resolve_assignment_var_or_param(identifiers, n, resolver))
             .or_read(|| self.resolve_assignment_implicit(n, resolver))
@@ -313,7 +313,7 @@ impl LinterContext {
             None => {}
         }
 
-        let q = resolver.resolve(n);
+        let q: TypeQualifier = n.resolve_into(resolver);
         match identifiers
             .iter()
             .find(|x| x.is_compact_param_of_type(q) || x.is_compact_variable_of_type(q))
@@ -329,7 +329,7 @@ impl LinterContext {
         n: &Name,
         resolver: &T,
     ) -> Result<QualifiedName, Error> {
-        let result = resolver.to_qualified_name(n);
+        let result: QualifiedName = n.resolve_into(resolver);
         self.add_dim_compact_implicit(n, resolver)?;
         Ok(result)
     }
@@ -355,7 +355,7 @@ impl LinterContext {
         resolver: &T,
     ) -> Result<Option<Expression>, Error> {
         let q_resolved = resolver.resolve(n);
-        match self.names.get(n.bare_name()) {
+        match self.names.get(n) {
             Some(v) => {
                 // try extended parameters
                 match v
@@ -380,11 +380,7 @@ impl LinterContext {
                 // try constants
                 match v.iter().find(|x| x.is_constant()).map(|x| x.qualifier()) {
                     Some(q) => {
-                        if n.bare_or_eq(q) {
-                            return Ok(Some(Expression::Constant(n.with_type_ref(q))));
-                        } else {
-                            return err_no_pos(LinterError::DuplicateDefinition);
-                        }
+                        return Ok(Some(Expression::Constant(n.with_type_ref(q))));
                     }
                     None => {}
                 }
@@ -418,7 +414,7 @@ impl LinterContext {
     }
 
     fn resolve_expression_qualified(&self, n: &QualifiedName) -> Result<Option<Expression>, Error> {
-        match self.names.get(n.bare_name()) {
+        match self.names.get(n.as_ref()) {
             Some(v) => {
                 // try extended parameters
                 match v
@@ -445,7 +441,7 @@ impl LinterContext {
                 // try constants
                 match v.iter().find(|x| x.is_constant()).map(|x| x.qualifier()) {
                     Some(q) => {
-                        if n.bare_or_eq(q) {
+                        if n.is_of_type(q) {
                             return Ok(Some(Expression::Constant(n.with_type_ref(q))));
                         } else {
                             return err_no_pos(LinterError::DuplicateDefinition);
@@ -490,12 +486,12 @@ impl LinterContext {
     }
 
     fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, Error> {
-        match self.names.get(n.bare_name()) {
+        match self.names.get(n.as_ref()) {
             Some(v) => {
                 for i in v {
                     match i {
                         Identifier::Constant(q) => {
-                            if n.bare_or_eq(*q) {
+                            if n.is_bare_or_of_type(*q) {
                                 return Ok(Some(Expression::Constant(n.with_type_ref(*q))));
                             } else {
                                 return err_no_pos(LinterError::DuplicateDefinition);
@@ -513,13 +509,13 @@ impl LinterContext {
 
     pub fn is_function_context(&self, name: &Name) -> bool {
         match &self.function_name {
-            Some(x) => x == name.bare_name(),
+            Some(x) => x == name.as_ref(),
             None => false,
         }
     }
 
     pub fn has_param(&self, name: &Name) -> bool {
-        match self.names.get(name.bare_name()) {
+        match self.names.get(name.as_ref()) {
             Some(v) => v.iter().any(|x| x.is_param()),
             None => false,
         }

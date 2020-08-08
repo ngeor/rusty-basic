@@ -128,14 +128,14 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{
-        DeclaredName, Expression, Operand, Statement, TopLevelToken, TypeQualifier,
+        DeclaredName, Expression, Operand, Statement, TopLevelToken, TypeQualifier, Name
     };
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
             match parse($input).demand_single().as_ref() {
                 TopLevelToken::FunctionDeclaration(name, parameters) => {
-                    assert_eq!(name, $expected_function_name, "Function name mismatch");
+                    assert_eq!(name.as_ref(), $expected_function_name, "Function name mismatch");
                     let x = $expected_params;
                     assert_eq!(parameters.len(), x.len(), "Parameter count mismatch");
                     for i in 0..x.len() {
@@ -151,7 +151,7 @@ mod tests {
     fn test_fn() {
         assert_function_declaration!(
             "DECLARE FUNCTION Fib! (N!)",
-            "Fib!",
+            &Name::from("Fib!"),
             vec![DeclaredName::compact("N", TypeQualifier::BangSingle)]
         );
     }
@@ -160,7 +160,7 @@ mod tests {
     fn test_lower_case() {
         assert_function_declaration!(
             "declare function echo$(msg$)",
-            "echo$",
+            &Name::from("echo$"),
             vec![DeclaredName::compact("msg", TypeQualifier::DollarString)]
         );
     }

@@ -36,7 +36,6 @@ impl Expression {
             }
             Self::BuiltInFunctionCall(f, _) => Ok(f.qualifier()),
             Self::BinaryExpression(op, l, r) => {
-                // TODO add trait try_qualifier
                 let q_left = l.as_ref().try_qualifier()?;
                 let q_right = r.as_ref().try_qualifier()?;
                 super::operand_type::cast_binary_op(*op, q_left, q_right)

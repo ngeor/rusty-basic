@@ -1,6 +1,4 @@
-use crate::parser::{
-    BareName, BareNameNode, HasQualifier, Name, NameNode, QualifiedName, TypeQualifier,
-};
+use crate::parser::{BareName, BareNameNode, Name, NameNode, QualifiedName, TypeQualifier};
 
 pub trait TypeResolver {
     fn resolve<T: AsRef<str>>(&self, name: T) -> TypeQualifier;
@@ -55,7 +53,7 @@ impl ResolveFrom<&Name> for TypeQualifier {
     fn resolve_from<T: TypeResolver>(x: &Name, resolver: &T) -> Self {
         match x {
             Name::Bare(b) => b.resolve_into(resolver),
-            Name::Qualified(q) => q.qualifier(),
+            Name::Qualified { qualifier, .. } => *qualifier,
         }
     }
 }
@@ -66,7 +64,7 @@ impl ResolveFrom<Name> for TypeQualifier {
     fn resolve_from<T: TypeResolver>(x: Name, resolver: &T) -> Self {
         match x {
             Name::Bare(b) => b.resolve_into(resolver),
-            Name::Qualified(q) => q.qualifier(),
+            Name::Qualified { qualifier, .. } => qualifier,
         }
     }
 }

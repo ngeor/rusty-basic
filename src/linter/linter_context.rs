@@ -3,8 +3,7 @@ use crate::linter::error::*;
 use crate::linter::type_resolver::*;
 use crate::linter::Expression;
 use crate::parser::{
-    BareName, DeclaredName, HasQualifier, Name, QualifiedName, TypeDefinition, TypeQualifier,
-    WithTypeQualifier,
+    BareName, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier, WithTypeQualifier,
 };
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -138,7 +137,10 @@ impl VariableMap {
                 }
                 None => Ok(None),
             },
-            Name::Qualified(q_name) => match self.m.get(q_name.as_ref()) {
+            Name::Qualified {
+                name: bare_name,
+                qualifier,
+            } => match self.m.get(bare_name) {
                 Some(type_definitions) => {
                     let opt_q = type_definitions
                         .iter()
@@ -147,8 +149,8 @@ impl VariableMap {
 
                     match opt_q {
                         Some(q) => {
-                            if q == q_name.qualifier() {
-                                Ok(Some(Expression::Constant(q_name.clone())))
+                            if q == *qualifier {
+                                Ok(Some(Expression::Constant(name.with_type_ref(q))))
                             } else {
                                 err_no_pos(LinterError::DuplicateDefinition)
                             }
@@ -189,14 +191,13 @@ impl VariableMap {
                             }
                         }
                     }
-                    Name::Qualified(q_name) => {
+                    Name::Qualified { qualifier: q, .. } => {
                         // qualified names cannot match extended identifiers
                         match type_definitions.iter().find(|x| x.is_extended()) {
                             Some(_) => err_no_pos(LinterError::DuplicateDefinition),
                             None => {
-                                let q: TypeQualifier = q_name.qualifier();
-                                if type_definitions.iter().any(|x| x.is_compact_of_type(q)) {
-                                    Ok(Some(Expression::Variable(q_name.clone())))
+                                if type_definitions.iter().any(|x| x.is_compact_of_type(*q)) {
+                                    Ok(Some(Expression::Variable(bare_name.with_type_ref(*q))))
                                 } else {
                                     Ok(None)
                                 }
@@ -392,9 +393,9 @@ impl LinterContext {
         let q = match &name {
             // bare name resolves from right side, not resolver
             Name::Bare(_) => *right_side_type.as_ref(),
-            Name::Qualified(q) => {
-                if right_side_type.as_ref().can_cast_to(q.qualifier()) {
-                    q.qualifier()
+            Name::Qualified { qualifier, .. } => {
+                if right_side_type.as_ref().can_cast_to(*qualifier) {
+                    *qualifier
                 } else {
                     return err_l(LinterError::TypeMismatch, &right_side_type);
                 }

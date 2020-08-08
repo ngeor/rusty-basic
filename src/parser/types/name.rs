@@ -3,15 +3,6 @@ use crate::common::{CaseInsensitiveString, Locatable};
 use std::convert::TryFrom;
 
 //
-// WithTypeQualifier
-//
-
-pub trait WithTypeQualifier {
-    fn with_type(self, q: TypeQualifier) -> QualifiedName;
-    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName;
-}
-
-//
 // BareName
 //
 
@@ -40,7 +31,7 @@ impl From<Name> for BareName {
     fn from(n: Name) -> BareName {
         match n {
             Name::Bare(b) => b,
-            Name::Qualified(q) => q.into(),
+            Name::Qualified { name, .. } => name,
         }
     }
 }
@@ -170,7 +161,10 @@ impl AsRef<BareName> for QualifiedNameNode {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Name {
     Bare(CaseInsensitiveString),
-    Qualified(QualifiedName),
+    Qualified {
+        name: CaseInsensitiveString,
+        qualifier: TypeQualifier,
+    },
 }
 
 impl Name {
@@ -189,7 +183,10 @@ impl Name {
     }
 
     pub fn new_qualified(word: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
-        Name::Qualified(QualifiedName::new(word, qualifier))
+        Name::Qualified {
+            name: word,
+            qualifier,
+        }
     }
 
     pub fn is_bare(&self) -> bool {
@@ -202,7 +199,7 @@ impl Name {
     pub fn is_bare_or_of_type(&self, q_other: TypeQualifier) -> bool {
         match self {
             Self::Bare(_) => true,
-            Self::Qualified(q) => q.is_of_type(q_other),
+            Self::Qualified { qualifier: q, .. } => *q == q_other,
         }
     }
 }
@@ -211,7 +208,7 @@ impl WithTypeQualifier for Name {
     fn with_type(self, q: TypeQualifier) -> QualifiedName {
         match self {
             Self::Bare(b) => b.with_type(q),
-            Self::Qualified(q_name) => q_name.with_type(q),
+            Self::Qualified { name, .. } => name.with_type(q),
         }
     }
 
@@ -224,7 +221,7 @@ impl AsRef<BareName> for Name {
     fn as_ref(&self) -> &BareName {
         match self {
             Name::Bare(b) => b,
-            Name::Qualified(q) => q.as_ref(),
+            Name::Qualified { name, .. } => name,
         }
     }
 }
@@ -234,10 +231,10 @@ impl<S: AsRef<str>> From<S> for Name {
         let mut buf = s.as_ref().to_string();
         let last_ch: char = buf.pop().unwrap();
         match TypeQualifier::try_from(last_ch) {
-            Ok(qualifier) => Name::Qualified(QualifiedName::new(
-                CaseInsensitiveString::new(buf),
+            Ok(qualifier) => Name::Qualified {
+                name: CaseInsensitiveString::new(buf),
                 qualifier,
-            )),
+            },
             _ => {
                 buf.push(last_ch);
                 Name::Bare(CaseInsensitiveString::new(buf))
@@ -268,10 +265,19 @@ mod tests {
         assert_eq!(Name::from("A"), Name::Bare("A".into()));
         assert_eq!(
             Name::from("Pos%"),
-            Name::Qualified(QualifiedName::new(
-                CaseInsensitiveString::new("Pos".to_string()),
-                TypeQualifier::PercentInteger
-            ))
+            Name::Qualified {
+                name: CaseInsensitiveString::new("Pos".to_string()),
+                qualifier: TypeQualifier::PercentInteger
+            }
         );
     }
+}
+
+//
+// WithTypeQualifier
+//
+
+pub trait WithTypeQualifier {
+    fn with_type(self, q: TypeQualifier) -> QualifiedName;
+    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName;
 }

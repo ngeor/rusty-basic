@@ -29,7 +29,7 @@ pub fn try_read<T: BufRead>(
     // explicit type requires a bare name
     let bare_name = match var_name_node.as_ref() {
         Name::Bare(b) => b.clone(),
-        Name::Qualified(_) => {
+        _ => {
             return Err(ParserError::SyntaxError(
                 "Identifier cannot end with %, &, !, #, or $".to_string(),
                 var_name_node.pos(),

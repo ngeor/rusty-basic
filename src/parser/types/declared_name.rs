@@ -171,7 +171,9 @@ impl From<Name> for DeclaredName {
     fn from(n: Name) -> Self {
         match n {
             Name::Bare(b) => b.into(),
-            Name::Qualified(q) => q.into(),
+            Name::Qualified { name, qualifier } => {
+                DeclaredName::new(name, TypeDefinition::CompactBuiltIn(qualifier))
+            }
         }
     }
 }

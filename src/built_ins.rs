@@ -204,7 +204,7 @@ fn demand_unqualified(
 ) -> Result<Option<BuiltInFunction>, Error> {
     match n {
         Name::Bare(_) => Ok(Some(built_in)),
-        Name::Qualified(_) => err_no_pos(LinterError::SyntaxError),
+        _ => err_no_pos(LinterError::SyntaxError),
     }
 }
 
@@ -222,8 +222,8 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                     // ENVIRON$ must be qualified
                     match n {
                         Name::Bare(_) => err_no_pos(LinterError::SyntaxError),
-                        Name::Qualified(q) => {
-                            if q.qualifier() == TypeQualifier::DollarString {
+                        Name::Qualified { qualifier, .. } => {
+                            if *qualifier == TypeQualifier::DollarString {
                                 Ok(Some(b))
                             } else {
                                 err_no_pos(LinterError::TypeMismatch)
@@ -236,8 +236,8 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                     match n {
                         // confirmed that even with DEFSTR A-Z it won't work as unqualified
                         Name::Bare(_) => Ok(None),
-                        Name::Qualified(q) => {
-                            if q.qualifier() == TypeQualifier::DollarString {
+                        Name::Qualified { qualifier, .. } => {
+                            if *qualifier == TypeQualifier::DollarString {
                                 Ok(Some(b))
                             } else {
                                 Ok(None)

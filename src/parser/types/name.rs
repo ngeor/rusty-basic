@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 pub trait NameTrait: Sized + std::fmt::Debug + Clone {
     fn bare_name(&self) -> &CaseInsensitiveString;
     fn opt_qualifier(&self) -> Option<TypeQualifier>;
-    fn consume_bare_name(self) -> CaseInsensitiveString;
+    fn into_bare_name(self) -> CaseInsensitiveString;
 
     /// Checks if the type of this instance is unspecified (bare) or equal to the parameter.
     fn bare_or_eq(&self, other: TypeQualifier) -> bool {
@@ -20,7 +20,7 @@ pub trait NameTrait: Sized + std::fmt::Debug + Clone {
     }
 
     fn with_type(self, q: TypeQualifier) -> QualifiedName {
-        QualifiedName::new(self.consume_bare_name(), q)
+        QualifiedName::new(self.into_bare_name(), q)
     }
 
     fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
@@ -33,8 +33,8 @@ impl<T: NameTrait> NameTrait for Locatable<T> {
         self.as_ref().bare_name()
     }
 
-    fn consume_bare_name(self) -> CaseInsensitiveString {
-        self.consume().0.consume_bare_name()
+    fn into_bare_name(self) -> CaseInsensitiveString {
+        self.consume().0.into_bare_name()
     }
 
     fn opt_qualifier(&self) -> Option<TypeQualifier> {
@@ -54,7 +54,7 @@ impl NameTrait for BareName {
         self
     }
 
-    fn consume_bare_name(self) -> CaseInsensitiveString {
+    fn into_bare_name(self) -> CaseInsensitiveString {
         self
     }
 
@@ -66,7 +66,6 @@ impl NameTrait for BareName {
 //
 // QualifiedName
 //
-
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QualifiedName {
@@ -95,7 +94,7 @@ impl NameTrait for QualifiedName {
         &self.name
     }
 
-    fn consume_bare_name(self) -> CaseInsensitiveString {
+    fn into_bare_name(self) -> CaseInsensitiveString {
         self.name
     }
 
@@ -113,7 +112,6 @@ impl TryFrom<&str> for QualifiedName {
             .map(|q| QualifiedName::new(CaseInsensitiveString::new(buf), q))
     }
 }
-
 
 //
 // Name
@@ -161,10 +159,10 @@ impl NameTrait for Name {
         }
     }
 
-    fn consume_bare_name(self) -> CaseInsensitiveString {
+    fn into_bare_name(self) -> CaseInsensitiveString {
         match self {
             Self::Bare(b) => b,
-            Self::Qualified(q) => q.consume_bare_name(),
+            Self::Qualified(q) => q.into_bare_name(),
         }
     }
 

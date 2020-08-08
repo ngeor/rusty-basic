@@ -236,7 +236,7 @@ mod number_literal {
     use super::*;
     pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserError> {
         // consume digits
-        let (digits, pos) = lexer.read()?.consume_digits();
+        let (digits, pos) = lexer.read()?.into_digits();
         let found_decimal_point = skip_if(lexer, |lexeme| lexeme.is_symbol('.'))?;
         if found_decimal_point {
             parse_floating_point_literal(lexer, digits, pos)
@@ -296,7 +296,7 @@ mod word {
     use super::*;
     pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserError> {
         // is it maybe a qualified variable name
-        let (word, pos) = lexer.read()?.consume_word();
+        let (word, pos) = lexer.read()?.into_word();
         let qualifier = type_qualifier::try_read(lexer)?;
         let name = Name::new(word.into(), qualifier);
         // it could be a function call?

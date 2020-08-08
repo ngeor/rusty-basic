@@ -76,14 +76,14 @@ impl LexemeNode {
         }
     }
 
-    pub fn consume_word(self) -> (String, Location) {
+    pub fn into_word(self) -> (String, Location) {
         match self {
             LexemeNode::Word(w, pos) => (w, pos),
             _ => panic!("Not a word"),
         }
     }
 
-    pub fn consume_digits(self) -> (String, Location) {
+    pub fn into_digits(self) -> (String, Location) {
         match self {
             LexemeNode::Digits(d, pos) => (d, pos),
             _ => panic!("Not digits"),

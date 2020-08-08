@@ -128,14 +128,18 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{
-        DeclaredName, Expression, Operand, Statement, TopLevelToken, TypeQualifier, Name
+        DeclaredName, Expression, Name, Operand, Statement, TopLevelToken, TypeQualifier,
     };
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
             match parse($input).demand_single().as_ref() {
                 TopLevelToken::FunctionDeclaration(name, parameters) => {
-                    assert_eq!(name.as_ref(), $expected_function_name, "Function name mismatch");
+                    assert_eq!(
+                        name.as_ref(),
+                        $expected_function_name,
+                        "Function name mismatch"
+                    );
                     let x = $expected_params;
                     assert_eq!(parameters.len(), x.len(), "Parameter count mismatch");
                     for i in 0..x.len() {

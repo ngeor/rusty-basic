@@ -1,6 +1,11 @@
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::str::FromStr;
+use crate::common::Locatable;
+
+//
+// TypeQualifier
+//
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable
@@ -38,7 +43,7 @@ impl Display for TypeQualifier {
             TypeQualifier::DollarString => write!(f, "$"),
             TypeQualifier::PercentInteger => write!(f, "%"),
             TypeQualifier::AmpersandLong => write!(f, "&"),
-            TypeQualifier::FileHandle => write!(f, "~"),
+            TypeQualifier::FileHandle => Err(std::fmt::Error)
         }
     }
 }
@@ -78,6 +83,20 @@ impl TryFrom<char> for TypeQualifier {
         } else {
             Err(format!("Invalid type qualifier {}", ch))
         }
+    }
+}
+
+//
+// HasQualifier
+//
+
+pub trait HasQualifier {
+    fn qualifier(&self) -> TypeQualifier;
+}
+
+impl<T: std::fmt::Debug + Sized + HasQualifier> HasQualifier for Locatable<T> {
+    fn qualifier(&self) -> TypeQualifier {
+        self.as_ref().qualifier()
     }
 }
 

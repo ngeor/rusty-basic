@@ -131,8 +131,8 @@ pub type DeclaredNameNodes = Vec<DeclaredNameNode>;
 impl<T: NameTrait> From<T> for DeclaredName {
     fn from(n: T) -> Self {
         match n.opt_qualifier() {
-            Some(q) => Self::new(n.consume_bare_name(), TypeDefinition::CompactBuiltIn(q)),
-            _ => Self::new(n.consume_bare_name(), TypeDefinition::Bare),
+            Some(q) => Self::new(n.into_bare_name(), TypeDefinition::CompactBuiltIn(q)),
+            _ => Self::new(n.into_bare_name(), TypeDefinition::Bare),
         }
     }
 }

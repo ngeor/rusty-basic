@@ -757,6 +757,5 @@ mod tests {
             ";
             assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
-
     }
 }

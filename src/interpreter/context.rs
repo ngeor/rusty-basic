@@ -64,7 +64,10 @@ impl<T: std::fmt::Debug + Sized + Cast> NameMap<T> {
     }
 
     pub fn insert(&mut self, name: QualifiedName, value: T) -> Result<(), String> {
-        let (bare_name, qualifier) = name.consume();
+        let QualifiedName {
+            name: bare_name,
+            qualifier,
+        } = name;
         match self.0.get_mut(&bare_name) {
             Some(inner_map) => {
                 inner_map.insert(qualifier, value.cast(qualifier)?);
@@ -79,21 +82,21 @@ impl<T: std::fmt::Debug + Sized + Cast> NameMap<T> {
     }
 
     pub fn get(&self, name: &QualifiedName) -> Option<&T> {
-        match self.0.get(name.bare_name()) {
+        match self.0.get(name.as_ref()) {
             Some(inner_map) => inner_map.get(&name.qualifier()),
             None => None,
         }
     }
 
     pub fn get_mut(&mut self, name: &QualifiedName) -> Option<&mut T> {
-        match self.0.get_mut(name.bare_name()) {
+        match self.0.get_mut(name.as_ref()) {
             Some(inner_map) => inner_map.get_mut(&name.qualifier()),
             None => None,
         }
     }
 
     pub fn remove(&mut self, name: &QualifiedName) -> Option<T> {
-        match self.0.get_mut(name.bare_name()) {
+        match self.0.get_mut(name.as_ref()) {
             Some(inner_map) => inner_map.remove(&name.qualifier()),
             None => None,
         }
@@ -113,7 +116,7 @@ impl ConstantMap {
     }
 
     pub fn get(&self, name: &QualifiedName) -> Option<&Variant> {
-        match self.0.get(name.bare_name()) {
+        match self.0.get(name.as_ref()) {
             Some(v) => {
                 if name.qualifier() == v.qualifier() {
                     Some(v)
@@ -127,10 +130,13 @@ impl ConstantMap {
     }
 
     pub fn insert(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
-        match self.0.get(name.bare_name()) {
+        match self.0.get(name.as_ref()) {
             Some(_) => panic!("Duplicate definition"),
             None => {
-                let (bare_name, qualifier) = name.consume();
+                let QualifiedName {
+                    name: bare_name,
+                    qualifier,
+                } = name;
                 self.0.insert(bare_name, value.cast(qualifier)?);
             }
         }

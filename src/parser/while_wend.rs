@@ -1,20 +1,24 @@
-use super::{ConditionalBlockNode, Parser, ParserError, Statement, StatementContext};
-use crate::lexer::Keyword;
+use super::{ConditionalBlockNode, ParserError, Statement};
+use crate::lexer::{BufLexer, Keyword};
+use crate::parser::buf_lexer::*;
+use crate::parser::expression;
+use crate::parser::statements::parse_statements;
 use std::io::BufRead;
 
-impl<T: BufRead> Parser<T> {
-    pub fn demand_while_block(&mut self) -> Result<Statement, ParserError> {
-        self.read_demand_whitespace("Expected whitespace after WHILE keyword")?;
-        let condition = self.read_demand_expression()?;
-        self.finish_line(StatementContext::Normal)?;
-        let (statements, _) =
-            self.parse_statements(|x| x.is_keyword(Keyword::Wend), "While without Wend")?;
-        self.finish_line(StatementContext::Normal)?;
-        Ok(Statement::While(ConditionalBlockNode {
-            condition,
-            statements,
-        }))
-    }
+pub fn demand_while_block<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, ParserError> {
+    read_demand_whitespace(lexer, "Expected whitespace after WHILE keyword")?;
+    let condition = demand(
+        lexer,
+        expression::try_read,
+        "Expected expression after WHILE",
+    )?;
+    let statements =
+        parse_statements(lexer, |x| x.is_keyword(Keyword::Wend), "While without Wend")?;
+    lexer.read()?; // read WEND
+    Ok(Statement::While(ConditionalBlockNode {
+        condition,
+        statements,
+    }))
 }
 
 #[cfg(test)]
@@ -43,6 +47,36 @@ mod tests {
                 )
                 .at_rc(2, 17),
                 statements: vec![Statement::SubCall(BareName::from("SYSTEM"), vec![]).at_rc(3, 13)]
+            })
+        );
+    }
+
+    #[test]
+    fn test_while_wend_single_line() {
+        let program = parse("WHILE A < 5: A = A + 1: PRINT A: WEND").demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::While(ConditionalBlockNode {
+                condition: Expression::BinaryExpression(
+                    Operand::Less,
+                    Box::new("A".as_var_expr(1, 7)),
+                    Box::new(5.as_lit_expr(1, 11))
+                )
+                .at_rc(1, 9),
+                statements: vec![
+                    Statement::Assignment(
+                        "A".into(),
+                        Expression::BinaryExpression(
+                            Operand::Plus,
+                            Box::new("A".as_var_expr(1, 18)),
+                            Box::new(1.as_lit_expr(1, 22))
+                        )
+                        .at_rc(1, 20)
+                    )
+                    .at_rc(1, 14),
+                    Statement::SubCall(BareName::from("PRINT"), vec!["A".as_var_expr(1, 31)])
+                        .at_rc(1, 25)
+                ]
             })
         );
     }

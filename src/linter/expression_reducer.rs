@@ -4,6 +4,9 @@ use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::parser::QualifiedName;
 
+/// Visits the converted program and transforms it into a different program.
+///
+/// The default implementation of the trait simply clones all visited elements.
 pub trait ExpressionReducer {
     fn visit_program(&self, p: ProgramNode) -> Result<ProgramNode, Error> {
         p.into_iter()
@@ -12,7 +15,10 @@ pub trait ExpressionReducer {
     }
 
     fn visit_top_level_token_node(&self, t: TopLevelTokenNode) -> Result<TopLevelTokenNode, Error> {
-        let (top_level_token, pos) = t.consume();
+        let Locatable {
+            element: top_level_token,
+            pos,
+        } = t;
         self.visit_top_level_token(top_level_token)
             .with_pos(pos)
             .with_err_pos(pos)
@@ -58,7 +64,10 @@ pub trait ExpressionReducer {
     }
 
     fn visit_statement_node(&self, t: StatementNode) -> Result<StatementNode, Error> {
-        let (statement, pos) = t.consume();
+        let Locatable {
+            element: statement,
+            pos,
+        } = t;
         self.visit_statement(statement)
             .with_pos(pos)
             .with_err_pos(pos)
@@ -95,6 +104,7 @@ pub trait ExpressionReducer {
                 .visit_expression_node(expr)
                 .map(|x| Statement::SetReturnValue(x)),
             Statement::Comment(c) => Ok(Statement::Comment(c)),
+            Statement::Dim(d) => Ok(Statement::Dim(d)),
         }
     }
 
@@ -216,7 +226,7 @@ pub trait ExpressionReducer {
     }
 
     fn visit_expression_node(&self, expr_node: ExpressionNode) -> Result<ExpressionNode, Error> {
-        let (expr, pos) = expr_node.consume();
+        let Locatable { element: expr, pos } = expr_node;
         self.visit_expression(expr).with_pos(pos).with_err_pos(pos)
     }
 

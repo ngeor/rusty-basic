@@ -9,9 +9,9 @@ impl InstructionGenerator {
         function_name: QNameNode,
         args: Vec<ExpressionNode>,
     ) {
-        let pos = function_name.location();
+        let pos = function_name.pos();
 
-        let bare_name: &CaseInsensitiveString = function_name.bare_name();
+        let bare_name: &CaseInsensitiveString = function_name.as_ref();
         let function_parameters = self.function_context.get(bare_name).unwrap().clone();
         self.generate_push_named_args_instructions(function_parameters, args, pos);
         self.push(Instruction::PushStack, pos);
@@ -31,7 +31,7 @@ impl InstructionGenerator {
     ) {
         self.push(Instruction::PreparePush, pos);
         for (n, e_node) in param_names.into_iter().zip(expressions.into_iter()) {
-            let (e, pos) = e_node.consume();
+            let Locatable { element: e, pos } = e_node;
             match e {
                 Expression::Variable(v_name) => {
                     self.push(
@@ -57,7 +57,7 @@ impl InstructionGenerator {
     ) {
         self.push(Instruction::PreparePush, pos);
         for e_node in expressions.into_iter() {
-            let (e, pos) = e_node.consume();
+            let Locatable { element: e, pos } = e_node;
             match e {
                 Expression::Variable(v_name) => {
                     self.push(Instruction::PushUnnamedRefParam(v_name), pos);

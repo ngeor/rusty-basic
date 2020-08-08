@@ -1,28 +1,26 @@
 use super::{
-    BareNameNode, Expression, ExpressionNode, Name, NameNode, Parser, ParserError, ProgramNode,
-    Statement, TopLevelToken, TopLevelTokenNode,
+    parse_main_file, parse_main_str, BareNameNode, Expression, ExpressionNode, Name, NameNode,
+    ParserError, ProgramNode, Statement, TopLevelToken, TopLevelTokenNode,
 };
 use crate::common::*;
 use std::fs::File;
 
 /// Parses the given program and demands success.
 pub fn parse(input: &str) -> ProgramNode {
-    let mut parser = Parser::from(input);
-    parser.parse().expect("Could not parse program")
+    parse_main_str(input).expect("Could not parse program")
 }
 
 pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
     let file_path = format!("fixtures/{}", filename.as_ref());
-    let mut parser = Parser::from(File::open(file_path).expect("Could not read bas file"));
-    parser.parse().expect("Could not parse program")
+    let f = File::open(file_path).expect("Could not read bas file");
+    parse_main_file(f).expect("Could not parse program")
 }
 
 /// Parses the given input, expecting that it will fail.
 /// Returns the lexer error.
 /// Panics if parsing actually succeeded.
 pub fn parse_err<T: AsRef<[u8]>>(input: T) -> ParserError {
-    let mut parser = Parser::from(input);
-    parser.parse().unwrap_err()
+    parse_main_str(input).unwrap_err()
 }
 
 pub trait ProgramNodeHelper {

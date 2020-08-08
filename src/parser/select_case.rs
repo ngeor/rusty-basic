@@ -1,178 +1,223 @@
-use super::{
-    unexpected, CaseBlockNode, CaseExpression, ExpressionNode, Operand, Parser, ParserError,
-    SelectCaseNode, Statement, StatementContext, StatementNodes,
-};
-use crate::lexer::{Keyword, LexemeNode};
-use crate::parser::buf_lexer::BufLexerUndo;
+use crate::common::*;
+use crate::lexer::*;
+use crate::parser::buf_lexer::*;
+use crate::parser::comment;
+use crate::parser::error::*;
+use crate::parser::expression;
+use crate::parser::statements::parse_statements;
+use crate::parser::types::*;
 use std::io::BufRead;
 
-impl<T: BufRead> Parser<T> {
-    pub fn demand_select_case(&mut self) -> Result<Statement, ParserError> {
-        // initial state: we just read the "SELECT" keyword
-        self.read_demand_whitespace("Expected space after SELECT")?;
-        self.read_demand_keyword(Keyword::Case)?;
-        self.read_demand_whitespace("Expected space after CASE")?;
-        let expr: ExpressionNode = self.read_demand_expression()?;
-        let inline_comment = self.read_optional_comment()?;
-
-        let mut case_blocks: Vec<CaseBlockNode> = vec![];
-        let mut next = self.read_skipping_whitespace_and_eol()?;
-        let mut has_more = true;
-        let mut else_block: Option<StatementNodes> = None;
-        while has_more {
-            match next {
-                LexemeNode::Keyword(Keyword::End, _, _) => {
-                    // END SELECT
-                    self.read_demand_whitespace("Expected space after END")?;
-                    self.read_demand_keyword(Keyword::Select)?;
-                    self.finish_line(StatementContext::Normal)?;
-                    has_more = false;
-                }
-                LexemeNode::Keyword(Keyword::Case, _, _) => {
-                    // CASE something
-                    next = self.read_after_case(&mut case_blocks, &mut else_block)?;
-                }
-                _ => return unexpected("Expected CASE or END", next),
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+    if !lexer.peek()?.is_keyword(Keyword::Select) {
+        return Ok(None);
+    }
+    let pos = lexer.read()?.pos();
+    // initial state: we just read the "SELECT" keyword
+    read_demand_whitespace(lexer, "Expected space after SELECT")?;
+    read_demand_keyword(lexer, Keyword::Case)?;
+    read_demand_whitespace(lexer, "Expected space after CASE")?;
+    let expr: ExpressionNode = demand(
+        lexer,
+        expression::try_read,
+        "Expected expression after SELECT CASE",
+    )?;
+    let mut inline_comments: Vec<Locatable<String>> = vec![];
+    let inline_statements = parse_inline_comments(lexer)?;
+    for inline_statement in inline_statements {
+        match inline_statement.as_ref() {
+            Statement::Comment(c) => {
+                inline_comments.push(c.clone().at(inline_statement.pos()));
             }
+            _ => panic!("should have been a comment"),
         }
+    }
 
-        Ok(Statement::SelectCase(SelectCaseNode {
-            inline_comment,
+    // TODO what if there is a comment on the next line between SELECT CASE and the first CASE
+    // TODO what if there is no CASE inside SELECT
+    // TODO support multiple expressions e.g. CASE 1,2,IS<=3
+    let mut case_blocks: Vec<CaseBlockNode> = vec![];
+    loop {
+        match try_read_case(lexer)? {
+            Some(c) => case_blocks.push(c),
+            None => break,
+        }
+    }
+    let else_block = try_read_case_else(lexer)?;
+    read_demand_keyword(lexer, Keyword::End)?;
+    read_demand_whitespace(lexer, "Expected space after END")?;
+    read_demand_keyword(lexer, Keyword::Select)?;
+    Ok(Some(
+        Statement::SelectCase(SelectCaseNode {
+            inline_comments,
             expr,
             case_blocks,
             else_block,
-        }))
-    }
+        })
+        .at(pos),
+    ))
+}
 
-    fn read_after_case(
-        &mut self,
-        case_blocks: &mut Vec<CaseBlockNode>,
-        else_block: &mut Option<StatementNodes>,
-    ) -> Result<LexemeNode, ParserError> {
-        self.read_demand_whitespace("Expected space after CASE")?;
-        let next = self.buf_lexer.read()?;
-        match next {
-            LexemeNode::Keyword(Keyword::Is, _, _) => {
-                // CASE IS >= 5
-                self.read_after_is(case_blocks)
-            }
-            LexemeNode::Keyword(Keyword::Else, _, _) => self.read_after_else(next, else_block),
-            _ => self.read_simple(next, case_blocks),
-        }
-    }
+/// This is a trimmed-down version of parse_statements, to parse any comments
+/// between SELECT CASE X ... until the first CASE expression
+fn parse_inline_comments<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<StatementNodes, ParserError> {
+    let mut statements: StatementNodes = vec![];
 
-    fn read_after_is(
-        &mut self,
-        case_blocks: &mut Vec<CaseBlockNode>,
-    ) -> Result<LexemeNode, ParserError> {
-        self.read_demand_whitespace("Expected space after IS")?;
-        let first = self.buf_lexer.read()?;
-        let op: Operand;
-        match first {
-            LexemeNode::Symbol('=', _) => {
-                op = Operand::Equal;
-            }
-            LexemeNode::Symbol('<', _) => {
-                op = if self.try_read_equals()? {
-                    Operand::LessOrEqual
-                } else {
-                    Operand::Less
-                }
-            }
-            LexemeNode::Symbol('>', _) => {
-                op = if self.try_read_equals()? {
-                    Operand::GreaterOrEqual
-                } else {
-                    Operand::Greater
-                }
-            }
-            _ => {
-                return unexpected("Expected =, < or > after IS", first);
-            }
-        }
-        let expr = self.read_demand_expression_skipping_whitespace()?;
-        self.read_case_body(CaseExpression::Is(op, expr), case_blocks)
-    }
-
-    fn try_read_equals(&mut self) -> Result<bool, ParserError> {
-        let next = self.buf_lexer.read()?;
-        match next {
-            LexemeNode::Symbol('=', _) => Ok(true),
-            _ => {
-                self.buf_lexer.undo(next);
-                Ok(false)
-            }
-        }
-    }
-
-    fn read_after_else(
-        &mut self,
-        next: LexemeNode,
-        else_block: &mut Option<StatementNodes>,
-    ) -> Result<LexemeNode, ParserError> {
-        // CASE ELSE
-        if else_block.is_some() {
-            // already set CASE ELSE...
-            return unexpected("CASE ELSE already defined", next);
-        }
-        self.finish_line(StatementContext::Normal)?;
-        let (statements, exit_lexeme) = self.parse_statements(
-            |x| match x {
-                LexemeNode::Keyword(Keyword::End, _, _) => true,
-                _ => false,
-            },
-            "Unexpected EOF while looking for end of SELECT after CASE ELSE",
-        )?;
-        *else_block = Some(statements);
-        Ok(exit_lexeme)
-    }
-
-    fn read_simple(
-        &mut self,
-        next: LexemeNode,
-        case_blocks: &mut Vec<CaseBlockNode>,
-    ) -> Result<LexemeNode, ParserError> {
-        // simple: CASE 5 or range: CASE 5 TO 6
-        let expr = self.demand_expression(next)?;
-        let mut upper_expr: Option<ExpressionNode> = None;
-        // try to read ahead a whitespace and "TO" keyword
-        let next2 = self.buf_lexer.read()?;
-        if next2.is_whitespace() {
-            let next3 = self.buf_lexer.read()?;
-            if next3.is_keyword(Keyword::To) {
-                // CASE 5 TO 6
-                upper_expr = Some(self.read_demand_expression_skipping_whitespace()?);
-            } else {
-                self.buf_lexer.undo(next3);
-                self.buf_lexer.undo(next2);
-            }
+    loop {
+        let p = lexer.peek()?;
+        if p.is_keyword(Keyword::Case) {
+            return Ok(statements);
+        } else if p.is_eof() {
+            return unexpected("Expected CASE", p);
+        } else if p.is_whitespace() || p.is_eol() {
+            lexer.read()?;
+        } else if p.is_symbol('\'') {
+            // read comment, regardless of whether we've seen the separator or not
+            // TODO add unit test where comment reads EOF
+            let s = demand(lexer, comment::try_read, "Expected comment")?;
+            statements.push(s);
+        // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else {
-            self.buf_lexer.undo(next2);
+            return Err(ParserError::Unterminated(p));
         }
-        self.finish_line(StatementContext::Normal)?;
-        let case_expr = match upper_expr {
-            Some(u) => CaseExpression::Range(expr, u),
-            None => CaseExpression::Simple(expr),
-        };
-        self.read_case_body(case_expr, case_blocks)
     }
+}
 
-    fn read_case_body(
-        &mut self,
-        expr: CaseExpression,
-        case_blocks: &mut Vec<CaseBlockNode>,
-    ) -> Result<LexemeNode, ParserError> {
-        let (statements, exit_lexeme) = self.parse_statements(
-            |x| match x {
-                LexemeNode::Keyword(Keyword::End, _, _) => true,
-                LexemeNode::Keyword(Keyword::Case, _, _) => true,
-                _ => false,
-            },
-            "Unexpected EOF while looking for CASE or END after CASE",
-        )?;
-        case_blocks.push(CaseBlockNode { expr, statements });
-        Ok(exit_lexeme)
+fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserError> {
+    let mut found_case_else = false;
+    lexer.begin_transaction();
+    if lexer.peek()?.is_keyword(Keyword::Case) {
+        lexer.read()?;
+        if lexer.peek()?.is_whitespace() {
+            lexer.read()?;
+            found_case_else = lexer.peek()?.is_keyword(Keyword::Else);
+        } else {
+            // CASE should always be followed by a space so it's okay to throw an error here
+            return Err(ParserError::SyntaxError(
+                "Expected space after CASE".to_string(),
+                lexer.peek()?.pos(),
+            ));
+        }
     }
+    lexer.rollback_transaction()?;
+    Ok(found_case_else)
+}
+
+fn try_read_case<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<CaseBlockNode>, ParserError> {
+    if !lexer.peek()?.is_keyword(Keyword::Case) {
+        return Ok(None);
+    }
+    if peek_case_else(lexer)? {
+        return Ok(None);
+    }
+    lexer.read()?; // CASE
+    lexer.read()?; // whitespace
+    if lexer.peek()?.is_keyword(Keyword::Is) {
+        read_case_is(lexer) // IS
+    } else {
+        read_case_expr(lexer)
+    }
+}
+
+fn read_case_is<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, ParserError> {
+    lexer.read()?; // IS
+    skip_whitespace(lexer)?;
+    let op = read_relational_operator(lexer)?;
+    skip_whitespace(lexer)?;
+    let expr = demand(lexer, expression::try_read, "Expected expression after IS")?;
+    let statements = parse_statements(
+        lexer,
+        |x| x.is_keyword(Keyword::Case) || x.is_keyword(Keyword::End),
+        "Unterminated CASE IS",
+    )?;
+    Ok(Some(CaseBlockNode {
+        expr: CaseExpression::Is(op, expr),
+        statements,
+    }))
+}
+
+fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, ParserError> {
+    let next = lexer.read()?;
+    if next.is_symbol('=') {
+        Ok(Operand::Equal)
+    } else if next.is_symbol('>') {
+        if lexer.peek()?.is_symbol('=') {
+            lexer.read()?;
+            Ok(Operand::GreaterOrEqual)
+        } else {
+            Ok(Operand::Greater)
+        }
+    } else if next.is_symbol('<') {
+        if lexer.peek()?.is_symbol('=') {
+            lexer.read()?;
+            Ok(Operand::LessOrEqual)
+        } else if lexer.peek()?.is_symbol('>') {
+            lexer.read()?;
+            Ok(Operand::NotEqual)
+        } else {
+            Ok(Operand::Less)
+        }
+    } else {
+        Err(ParserError::SyntaxError(
+            "Expected relational operator".to_string(),
+            next.pos(),
+        ))
+    }
+}
+
+fn read_case_expr<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<CaseBlockNode>, ParserError> {
+    let first_expr = demand(
+        lexer,
+        expression::try_read,
+        "Expected expression after CASE",
+    )?;
+    let mut second_expr: Option<ExpressionNode> = None;
+    lexer.begin_transaction();
+    skip_whitespace(lexer)?;
+    if lexer.read()?.is_keyword(Keyword::To) {
+        lexer.commit_transaction()?;
+        skip_whitespace(lexer)?;
+        second_expr =
+            demand(lexer, expression::try_read, "Expected expression after TO").map(|x| Some(x))?;
+    } else {
+        lexer.rollback_transaction()?;
+    }
+    let statements = parse_statements(
+        lexer,
+        |x| x.is_keyword(Keyword::Case) || x.is_keyword(Keyword::End),
+        "Unterminated CASE",
+    )?;
+    let case_expr = match second_expr {
+        Some(s) => CaseExpression::Range(first_expr, s),
+        None => CaseExpression::Simple(first_expr),
+    };
+    Ok(Some(CaseBlockNode {
+        expr: case_expr,
+        statements,
+    }))
+}
+
+fn try_read_case_else<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNodes>, ParserError> {
+    if !peek_case_else(lexer)? {
+        return Ok(None);
+    }
+    lexer.read()?; // CASE
+    lexer.read()?; // whitespace
+    lexer.read()?; // ELSE
+    let statements = parse_statements(
+        lexer,
+        |x| x.is_keyword(Keyword::End),
+        "Unterminated CASE ELSE",
+    )?;
+    Ok(Some(statements))
 }
 
 #[cfg(test)]
@@ -197,7 +242,7 @@ mod tests {
             vec![
                 TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
                     expr: "X".as_var_expr(2, 21),
-                    inline_comment: Some(" testing for x".to_string().at_rc(2, 23)),
+                    inline_comments: vec![" testing for x".to_string().at_rc(2, 23)],
                     case_blocks: vec![CaseBlockNode {
                         expr: CaseExpression::Simple(1.as_lit_expr(3, 14)),
                         statements: vec![

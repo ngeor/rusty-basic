@@ -1,4 +1,4 @@
-use super::{ArgumentNodes, BareName, ExpressionNode, Name, NameNode, Operand};
+use super::{ArgumentNodes, BareName, DeclaredNameNode, ExpressionNode, Name, NameNode, Operand};
 use crate::common::*;
 
 pub type StatementNodes = Vec<StatementNode>;
@@ -20,6 +20,10 @@ pub enum Statement {
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
     Comment(String),
+    /// Dim VAR.NAME AS TYPE
+    /// or
+    /// Dim A$
+    Dim(DeclaredNameNode),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -54,7 +58,7 @@ pub struct SelectCaseNode {
     /// An optional CASE ELSE block
     pub else_block: Option<StatementNodes>,
     /// Holds an optional inline comment after SELECT CASE X e.g. SELECT CASE X ' make a choice
-    pub inline_comment: Option<Locatable<String>>,
+    pub inline_comments: Vec<Locatable<String>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

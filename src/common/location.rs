@@ -1,4 +1,6 @@
+//
 // Location
+//
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Location {
@@ -25,27 +27,65 @@ impl Location {
     }
 }
 
+//
 // Locatable
+//
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Locatable<T: std::fmt::Debug + Sized> {
-    element: T,
-    location: Location,
+    pub element: T,
+    pub pos: Location,
 }
 
 impl<T: std::fmt::Debug + Sized> Locatable<T> {
-    pub fn new(element: T, location: Location) -> Locatable<T> {
-        Locatable { element, location }
+    pub fn new(element: T, pos: Location) -> Self {
+        Locatable { element, pos }
     }
 
-    pub fn consume(self) -> (T, Location) {
-        (self.element, self.location)
+    pub fn from_locatable<U: std::fmt::Debug + Sized>(other: Locatable<U>) -> Self
+    where
+        T: From<U>,
+    {
+        let Locatable { element, pos } = other;
+        let mapped: T = T::from(element);
+        Self::new(mapped, pos)
+    }
+
+    pub fn into_locatable<U: std::fmt::Debug + Sized>(self) -> Locatable<U>
+    where
+        U: From<T>,
+    {
+        Locatable::from_locatable(self)
+    }
+
+    pub fn map<F, U: std::fmt::Debug + Sized>(self, op: F) -> Locatable<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let Locatable { element, pos } = self;
+        let mapped: U = op(element);
+        Locatable {
+            element: mapped,
+            pos,
+        }
     }
 }
 
 impl<T: std::fmt::Debug + Sized> AsRef<T> for Locatable<T> {
     fn as_ref(&self) -> &T {
         &self.element
+    }
+}
+
+impl<T: std::fmt::Debug + Sized + AsRef<str>> AsRef<str> for Locatable<T> {
+    fn as_ref(&self) -> &str {
+        self.element.as_ref()
+    }
+}
+
+impl<T: std::fmt::Debug + Sized + PartialEq<T>> PartialEq<T> for Locatable<T> {
+    fn eq(&self, that: &T) -> bool {
+        &self.element == that
     }
 }
 
@@ -74,26 +114,30 @@ where
     }
 }
 
+//
 // HasLocation
+//
 
 pub trait HasLocation {
-    fn location(&self) -> Location;
+    fn pos(&self) -> Location;
 }
 
 impl<T: std::fmt::Debug + Sized> HasLocation for Locatable<T> {
-    fn location(&self) -> Location {
-        self.location
+    fn pos(&self) -> Location {
+        self.pos
     }
 }
 
 impl<T: HasLocation> HasLocation for Box<T> {
-    fn location(&self) -> Location {
+    fn pos(&self) -> Location {
         let inside_the_box: &T = self;
-        inside_the_box.location()
+        inside_the_box.pos()
     }
 }
 
+//
 // StripLocation
+//
 
 pub trait StripLocationRef<T> {
     fn strip_location(&self) -> &T;

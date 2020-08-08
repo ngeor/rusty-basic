@@ -1,35 +1,31 @@
 use super::error::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
+use crate::linter::type_resolver::*;
+use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
-use crate::parser::type_resolver_impl::TypeResolverImpl;
-use crate::parser::{NameNode, NameTrait, TypeQualifier, TypeResolver};
+use crate::parser::{
+    BareName, DeclaredName, DeclaredNameNode, DeclaredNameNodes, NameNode, TypeDefinition,
+    TypeQualifier,
+};
 use std::collections::HashMap;
 
-//
-// Visitor trait
-//
-
-/// A visitor visits an object. It might update itself on each visit.
-trait Visitor<A> {
-    fn visit(&mut self, a: &A) -> Result<(), Error>;
-}
-
-trait PostVisitor<A> {
-    fn post_visit(&mut self, a: &A) -> Result<(), Error>;
-}
-
-/// Blanket visitor implementation for vectors.
-impl<T, A> Visitor<Vec<A>> for T
-where
-    T: Visitor<A> + PostVisitor<Vec<A>>,
-{
-    fn visit(&mut self, a: &Vec<A>) -> Result<(), Error> {
-        for x in a.iter() {
-            self.visit(x)?;
-        }
-        self.post_visit(a)
+/// Collects subprograms of the given program.
+/// Ensures that:
+/// - All declared subprograms are implemented
+/// - No duplicate implementations
+/// - No conflicts between declarations and implementations
+/// - Resolves types of parameters and functions
+pub fn collect_subprograms(p: &parser::ProgramNode) -> Result<(FunctionMap, SubMap), Error> {
+    let mut f_c = FunctionContext::new();
+    let mut s_c = SubContext::new();
+    for t in p {
+        f_c.visit(t)?;
+        s_c.visit(t)?;
     }
+    f_c.post_visit()?;
+    s_c.post_visit()?;
+    Ok((f_c.implementations, s_c.implementations))
 }
 
 pub type ParamTypes = Vec<TypeQualifier>;
@@ -42,6 +38,21 @@ struct FunctionContext {
     implementations: FunctionMap,
 }
 
+fn resolve_declared_name_node<T: TypeResolver>(
+    resolver: &T,
+    p: &DeclaredNameNode,
+) -> TypeQualifier {
+    let d: &DeclaredName = p.as_ref();
+    match d.type_definition() {
+        TypeDefinition::Bare => {
+            let bare_name: &BareName = d.as_ref();
+            bare_name.resolve_into(resolver)
+        }
+        TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => *q,
+        _ => unimplemented!(),
+    }
+}
+
 impl FunctionContext {
     pub fn new() -> Self {
         Self::default()
@@ -50,15 +61,17 @@ impl FunctionContext {
     pub fn add_declaration(
         &mut self,
         name: &NameNode,
-        params: &Vec<NameNode>,
+        params: &DeclaredNameNodes,
         pos: Location,
     ) -> Result<(), Error> {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
-        let q_params: Vec<TypeQualifier> =
-            params.iter().map(|p| self.resolver.resolve(p)).collect();
-        let q_name: TypeQualifier = self.resolver.resolve(name);
-        let bare_name = name.bare_name().clone();
+        let q_params: Vec<TypeQualifier> = params
+            .iter()
+            .map(|p| resolve_declared_name_node(&self.resolver, p))
+            .collect();
+        let q_name: TypeQualifier = name.resolve_into(&self.resolver);
+        let bare_name = BareName::from(name);
         self.check_implementation_type(&bare_name, &q_name, &q_params, pos)?;
         match self.declarations.get(&bare_name) {
             Some(_) => self.check_declaration_type(&bare_name, &q_name, &q_params, pos),
@@ -72,17 +85,19 @@ impl FunctionContext {
     pub fn add_implementation(
         &mut self,
         name: &NameNode,
-        params: &Vec<NameNode>,
+        params: &DeclaredNameNodes,
         pos: Location,
     ) -> Result<(), Error> {
         // type must match declaration
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
-        let q_params: Vec<TypeQualifier> =
-            params.iter().map(|p| self.resolver.resolve(p)).collect();
-        let q_name: TypeQualifier = self.resolver.resolve(name);
-        let bare_name = name.bare_name().clone();
+        let q_params: Vec<TypeQualifier> = params
+            .iter()
+            .map(|p| resolve_declared_name_node(&self.resolver, p))
+            .collect();
+        let q_name: TypeQualifier = name.resolve_into(&self.resolver);
+        let bare_name = BareName::from(name);
         match self.implementations.get(&bare_name) {
             Some(_) => err(LinterError::DuplicateDefinition, pos),
             None => {
@@ -129,11 +144,9 @@ impl FunctionContext {
         }
         Ok(())
     }
-}
 
-impl Visitor<parser::TopLevelTokenNode> for FunctionContext {
-    fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
-        let pos = a.location();
+    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
+        let pos = a.pos();
         match a.as_ref() {
             parser::TopLevelToken::DefType(d) => {
                 self.resolver.set(d);
@@ -148,10 +161,8 @@ impl Visitor<parser::TopLevelTokenNode> for FunctionContext {
             _ => Ok(()),
         }
     }
-}
 
-impl PostVisitor<parser::ProgramNode> for FunctionContext {
-    fn post_visit(&mut self, _: &parser::ProgramNode) -> Result<(), Error> {
+    pub fn post_visit(&mut self) -> Result<(), Error> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return err(LinterError::SubprogramNotDefined, v.2);
@@ -187,13 +198,15 @@ impl SubContext {
     pub fn add_declaration(
         &mut self,
         name: &CaseInsensitiveString,
-        params: &Vec<NameNode>,
+        params: &DeclaredNameNodes,
         pos: Location,
     ) -> Result<(), Error> {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
-        let q_params: Vec<TypeQualifier> =
-            params.iter().map(|p| self.resolver.resolve(p)).collect();
+        let q_params: Vec<TypeQualifier> = params
+            .iter()
+            .map(|p| resolve_declared_name_node(&self.resolver, p))
+            .collect();
         self.check_implementation_type(name, &q_params, pos)?;
         match self.declarations.get(name) {
             Some(_) => self.check_declaration_type(name, &q_params, pos),
@@ -207,14 +220,16 @@ impl SubContext {
     pub fn add_implementation(
         &mut self,
         name: &CaseInsensitiveString,
-        params: &Vec<NameNode>,
+        params: &DeclaredNameNodes,
         pos: Location,
     ) -> Result<(), Error> {
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
-        let q_params: Vec<TypeQualifier> =
-            params.iter().map(|p| self.resolver.resolve(p)).collect();
+        let q_params: Vec<TypeQualifier> = params
+            .iter()
+            .map(|p| resolve_declared_name_node(&self.resolver, p))
+            .collect();
         match self.implementations.get(name) {
             Some(_) => err(LinterError::DuplicateDefinition, pos),
             None => {
@@ -258,29 +273,28 @@ impl SubContext {
         }
         Ok(())
     }
-}
 
-impl Visitor<parser::TopLevelTokenNode> for SubContext {
-    fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
-        let pos = a.location();
-        match a.as_ref() {
+    pub fn visit(&mut self, top_level_token_node: &parser::TopLevelTokenNode) -> Result<(), Error> {
+        let Locatable {
+            element: top_level_token,
+            pos,
+        } = top_level_token_node;
+        match top_level_token {
             parser::TopLevelToken::DefType(d) => {
                 self.resolver.set(d);
                 Ok(())
             }
             parser::TopLevelToken::SubDeclaration(n, params) => {
-                self.add_declaration(n.as_ref(), params, pos)
+                self.add_declaration(n.as_ref(), params, *pos)
             }
             parser::TopLevelToken::SubImplementation(n, params, _) => {
-                self.add_implementation(n.as_ref(), params, pos)
+                self.add_implementation(n.as_ref(), params, *pos)
             }
             _ => Ok(()),
         }
     }
-}
 
-impl PostVisitor<parser::ProgramNode> for SubContext {
-    fn post_visit(&mut self, _: &parser::ProgramNode) -> Result<(), Error> {
+    pub fn post_visit(&mut self) -> Result<(), Error> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return err(LinterError::SubprogramNotDefined, v.1);
@@ -296,18 +310,4 @@ impl PostVisitor<parser::ProgramNode> for SubContext {
 
         Ok(())
     }
-}
-
-/// Collects subprograms of the given program.
-/// Ensures that:
-/// - All declared subprograms are implemented
-/// - No duplicate implementations
-/// - No conflicts between declarations and implementations
-/// - Resolves types of parameters and functions
-pub fn collect_subprograms(p: &parser::ProgramNode) -> Result<(FunctionMap, SubMap), Error> {
-    let mut f_c = FunctionContext::new();
-    f_c.visit(p)?;
-    let mut s_c = SubContext::new();
-    s_c.visit(p)?;
-    Ok((f_c.implementations, s_c.implementations))
 }

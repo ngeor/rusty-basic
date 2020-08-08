@@ -1,72 +1,81 @@
-use super::{
-    unexpected, BareNameNode, ExpressionNode, Parser, ParserError, Statement, StatementContext,
-    StatementNode,
-};
 use crate::common::*;
-use crate::lexer::{Keyword, LexemeNode};
-use crate::parser::buf_lexer::BufLexerUndo;
+use crate::lexer::*;
+use crate::parser::buf_lexer::*;
+use crate::parser::error::*;
+use crate::parser::expression;
+use crate::parser::name;
+use crate::parser::types::*;
 use std::io::BufRead;
 
-impl<T: BufRead> Parser<T> {
-    pub fn demand_sub_call(
-        &mut self,
-        name_node: BareNameNode,
-        initial: LexemeNode,
-        context: StatementContext,
-    ) -> Result<StatementNode, ParserError> {
-        let mut args: Vec<ExpressionNode> = vec![];
-        const STATE_INITIAL: u8 = 0;
-        const STATE_EOL_OR_EOF: u8 = 1;
-        const STATE_ARG: u8 = 2;
-        const STATE_COMMA: u8 = 3;
-        let mut state = STATE_INITIAL;
-        let mut next = initial;
-        while state != STATE_EOL_OR_EOF {
-            match next {
-                LexemeNode::EOF(_) | LexemeNode::EOL(_, _) | LexemeNode::Symbol('\'', _) => {
-                    if state == STATE_INITIAL || state == STATE_ARG {
-                        state = STATE_EOL_OR_EOF;
-                        if context == StatementContext::SingleLineIf || !next.is_eol_or_eof() {
-                            // TODO refactor so we return back the last retrieved lexeme node instead of undoing it
-                            self.buf_lexer.undo(next.clone());
-                        }
-                    } else {
-                        return unexpected("Expected argument after comma", next);
-                    }
-                }
-                LexemeNode::Symbol(',', _) => {
-                    if state == STATE_ARG {
-                        state = STATE_COMMA;
-                        next = self.read_skipping_whitespace()?;
-                    } else {
-                        return unexpected("Syntax error", next);
-                    }
-                }
-                LexemeNode::Keyword(Keyword::Else, _, _) => {
-                    if context == StatementContext::SingleLineIf
-                        && (state == STATE_INITIAL || state == STATE_ARG)
-                    {
-                        // we are in single-line if mode. ELSE is an acceptable exit keyword
-                        state = STATE_EOL_OR_EOF;
-                        // but we need to put it back into the buffer, because the if block will be reading it
-                        self.buf_lexer.undo(next.clone());
-                    } else {
-                        return unexpected("Syntax error", next);
-                    }
-                }
-                _ => {
-                    if state == STATE_INITIAL || state == STATE_COMMA {
-                        args.push(self.demand_expression(next)?);
-                        state = STATE_ARG;
-                        next = self.read_skipping_whitespace()?;
-                    } else {
-                        return unexpected("Expected comma or EOL", next);
-                    }
-                }
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+    lexer.begin_transaction();
+    // get the name first and ensure we are not looking at an assignment or a label
+    let opt_name = name::try_read_bare(lexer)?;
+    if opt_name.is_none() {
+        lexer.rollback_transaction()?;
+        return Ok(None);
+    }
+    let Locatable {
+        element: bare_name,
+        pos,
+    } = opt_name.unwrap();
+    let p = lexer.peek()?;
+    if p.is_symbol('=') || p.is_symbol(':') {
+        // assignment or label
+        lexer.rollback_transaction()?;
+        return Ok(None);
+    }
+
+    if p.is_symbol('(') {
+        // sub call with parenthesis e.g. Hello(1)
+        lexer.commit_transaction()?;
+        let args = read_arg_list(lexer)?;
+        return Ok(Some(Statement::SubCall(bare_name, args).at(pos)));
+    }
+
+    let might_have_args = if p.is_whitespace() {
+        // we might have an argument list
+        lexer.read()?;
+        true
+    } else {
+        false
+    };
+    if !might_have_args {
+        // no args e.g. "PRINT"
+        lexer.commit_transaction()?;
+        return Ok(Some(Statement::SubCall(bare_name, vec![]).at(pos)));
+    }
+
+    // check once again to make sure we're not in assignment with extra whitespace e.g. A = 2
+    if lexer.peek()?.is_symbol('=') {
+        lexer.rollback_transaction()?;
+        return Ok(None);
+    }
+
+    // at this point we know it's a sub call so we commit
+    lexer.commit_transaction()?;
+
+    let args = read_arg_list(lexer)?;
+    Ok(Some(Statement::SubCall(bare_name, args).at(pos)))
+}
+
+pub fn read_arg_list<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Vec<ExpressionNode>, ParserError> {
+    match expression::try_read(lexer)? {
+        Some(e) => {
+            let mut args: Vec<ExpressionNode> = vec![e];
+            skip_whitespace(lexer)?;
+            if lexer.peek()?.is_symbol(',') {
+                // next args
+                lexer.read()?; // read comma
+                skip_whitespace(lexer)?;
+                let mut next_args = read_arg_list(lexer)?;
+                args.append(&mut next_args);
             }
+            Ok(args)
         }
-        let (bare_name, pos) = name_node.consume();
-        Ok(Statement::SubCall(bare_name, args).at(pos))
+        None => Ok(vec![]),
     }
 }
 
@@ -74,7 +83,9 @@ impl<T: BufRead> Parser<T> {
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Expression, Name, Operand, Statement, TopLevelToken};
+    use crate::parser::{
+        DeclaredName, Expression, Name, Operand, Statement, TopLevelToken, TypeQualifier,
+    };
 
     #[test]
     fn test_parse_sub_call_no_args() {
@@ -209,7 +220,10 @@ mod tests {
                 // DECLARE SUB Hello
                 TopLevelToken::SubDeclaration(
                     "Hello".as_bare_name(2, 21),
-                    vec!["N$".as_name(2, 27), "V$".as_name(2, 31)],
+                    vec![
+                        DeclaredName::compact("N", TypeQualifier::DollarString).at_rc(2, 27),
+                        DeclaredName::compact("V", TypeQualifier::DollarString).at_rc(2, 31)
+                    ],
                 ),
                 // Hello
                 TopLevelToken::Statement(Statement::SubCall(
@@ -219,7 +233,10 @@ mod tests {
                 // SUB Hello
                 TopLevelToken::SubImplementation(
                     "Hello".as_bare_name(4, 13),
-                    vec!["N$".as_name(4, 19), "V$".as_name(4, 23)],
+                    vec![
+                        DeclaredName::compact("N", TypeQualifier::DollarString).at_rc(4, 19),
+                        DeclaredName::compact("V", TypeQualifier::DollarString).at_rc(4, 23)
+                    ],
                     vec![Statement::SubCall(
                         "ENVIRON".into(),
                         vec![Expression::BinaryExpression(

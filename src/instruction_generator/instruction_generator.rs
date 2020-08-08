@@ -18,15 +18,12 @@ fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
         match top_level_token {
             TopLevelToken::FunctionImplementation(f) => {
                 // collect param names
-                functions.insert(
-                    f.name.bare_name().clone(),
-                    f.params.clone().strip_location(),
-                );
+                functions.insert((&f.name).into(), f.params.clone().strip_location());
             }
             TopLevelToken::SubImplementation(s) => {
                 // collect param names
                 subs.insert(
-                    s.name.bare_name().clone(),
+                    s.name.clone().strip_location(),
                     s.params.clone().strip_location(),
                 );
             }
@@ -75,7 +72,10 @@ impl InstructionGenerator {
         let mut subs: Vec<(SubImplementation, Location)> = vec![];
 
         for t in program {
-            let (top_level_token, pos) = t.consume();
+            let Locatable {
+                element: top_level_token,
+                pos,
+            } = t;
             match top_level_token {
                 TopLevelToken::Statement(s) => {
                     self.generate_statement_node_instructions(s.at(pos));
@@ -94,8 +94,9 @@ impl InstructionGenerator {
         // functions
         for (f, pos) in functions {
             let name = f.name;
+            let bare_name: &BareName = name.as_ref();
             let block = f.body;
-            self.function_label(name.bare_name(), pos);
+            self.function_label(bare_name, pos);
             // set default value
             self.push(
                 Instruction::Load(Variant::default_variant(name.qualifier())),
@@ -109,8 +110,9 @@ impl InstructionGenerator {
         // subs
         for (s, pos) in subs {
             let name = s.name;
+            let bare_name: &BareName = name.as_ref();
             let block = s.body;
-            self.sub_label(name.bare_name(), pos);
+            self.sub_label(bare_name, pos);
             self.generate_block_instructions(block);
             self.push(Instruction::PopRet, pos);
         }
@@ -121,7 +123,7 @@ impl InstructionGenerator {
         // resolve jumps
         for instruction_node in self.instructions.iter_mut() {
             let instruction: &Instruction = instruction_node.as_ref();
-            let pos: Location = instruction_node.location();
+            let pos: Location = instruction_node.pos();
             if let Instruction::UnresolvedJump(x) = instruction {
                 *instruction_node = Instruction::Jump(*labels.get(x).unwrap()).at(pos);
             } else if let Instruction::UnresolvedJumpIfFalse(x) = instruction {
@@ -211,7 +213,7 @@ impl InstructionGenerator {
 
     pub fn generate_assignment_instructions(&mut self, l: QNameNode, r: ExpressionNode) {
         self.generate_expression_instructions(r);
-        let pos = l.location();
+        let pos = l.pos();
         self.push(Instruction::Store(l.strip_location()), pos);
     }
 }

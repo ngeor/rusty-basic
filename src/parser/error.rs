@@ -1,6 +1,9 @@
 use crate::common::{HasLocation, Location};
 use crate::lexer::{LexemeNode, LexerError};
 
+// TODO clarify when we use Unexpected | Unterminated or SyntaxError
+// TODO go over all sub-parsers and make sure they honor those semantics and don't backtrack if they aren't supposed do
+// TODO add tests for more user friendly errors e.g. "ELSE without IF"
 #[derive(Debug, PartialEq)]
 pub enum ParserError {
     /// An error occurred in the lexer.
@@ -11,6 +14,10 @@ pub enum ParserError {
 
     /// Unexpected token
     Unexpected(String, LexemeNode),
+
+    Unterminated(LexemeNode),
+
+    SyntaxError(String, Location),
 }
 
 pub fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, ParserError> {
@@ -18,11 +25,17 @@ pub fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, Par
 }
 
 impl HasLocation for ParserError {
-    fn location(&self) -> Location {
+    fn pos(&self) -> Location {
         match self {
-            Self::LexerError(l) => l.location(),
-            Self::Internal(_, pos) => pos.clone(),
-            Self::Unexpected(_, l) => l.location(),
+            Self::LexerError(l) => l.pos(),
+            Self::Internal(_, pos) | Self::SyntaxError(_, pos) => pos.clone(),
+            Self::Unexpected(_, l) | Self::Unterminated(l) => l.pos(),
         }
+    }
+}
+
+impl From<LexerError> for ParserError {
+    fn from(lexer_error: LexerError) -> Self {
+        Self::LexerError(lexer_error)
     }
 }

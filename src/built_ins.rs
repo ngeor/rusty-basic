@@ -18,14 +18,11 @@ mod val;
 // utilities for the built-ins
 mod util;
 
-use crate::common::{CaseInsensitiveString, Location};
+use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
-use crate::lexer::{Keyword, LexemeNode};
+use crate::lexer::BufLexer;
 use crate::linter::{err_no_pos, Error, ExpressionNode, LinterError};
-use crate::parser::{
-    HasQualifier, Name, NameTrait, Parser, ParserError, StatementContext, StatementNode,
-    TypeQualifier,
-};
+use crate::parser::{HasQualifier, Name, ParserError, TypeQualifier};
 use std::convert::TryFrom;
 use std::io::BufRead;
 
@@ -60,16 +57,6 @@ pub enum BuiltInSub {
     Kill,
     LineInput,
     Name,
-}
-
-/// For cases where a SUB has special syntax e.g. PRINT, OPEN, etc
-pub trait BuiltInParse {
-    fn demand<T: BufRead>(
-        &self,
-        parser: &mut Parser<T>,
-        pos: Location,
-        context: StatementContext,
-    ) -> Result<StatementNode, ParserError>;
 }
 
 pub trait BuiltInLint {
@@ -217,14 +204,14 @@ fn demand_unqualified(
 ) -> Result<Option<BuiltInFunction>, Error> {
     match n {
         Name::Bare(_) => Ok(Some(built_in)),
-        Name::Qualified(_) => err_no_pos(LinterError::SyntaxError),
+        _ => err_no_pos(LinterError::SyntaxError),
     }
 }
 
 impl TryFrom<&Name> for Option<BuiltInFunction> {
     type Error = Error;
     fn try_from(n: &Name) -> Result<Option<BuiltInFunction>, Self::Error> {
-        let opt_built_in: Option<BuiltInFunction> = n.bare_name().into();
+        let opt_built_in: Option<BuiltInFunction> = n.as_ref().into();
         match opt_built_in {
             Some(b) => match b {
                 BuiltInFunction::Eof
@@ -235,8 +222,8 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                     // ENVIRON$ must be qualified
                     match n {
                         Name::Bare(_) => err_no_pos(LinterError::SyntaxError),
-                        Name::Qualified(q) => {
-                            if q.qualifier() == TypeQualifier::DollarString {
+                        Name::Qualified { qualifier, .. } => {
+                            if *qualifier == TypeQualifier::DollarString {
                                 Ok(Some(b))
                             } else {
                                 err_no_pos(LinterError::TypeMismatch)
@@ -249,8 +236,8 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                     match n {
                         // confirmed that even with DEFSTR A-Z it won't work as unqualified
                         Name::Bare(_) => Ok(None),
-                        Name::Qualified(q) => {
-                            if q.qualifier() == TypeQualifier::DollarString {
+                        Name::Qualified { qualifier, .. } => {
+                            if *qualifier == TypeQualifier::DollarString {
                                 Ok(Some(b))
                             } else {
                                 Ok(None)
@@ -290,29 +277,12 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
     }
 }
 
-pub enum ParseResult {
-    Ok(crate::parser::StatementNode),
-    No(LexemeNode),
-}
-
-pub fn parse_special<T: BufRead>(
-    parser: &mut Parser<T>,
-    next: LexemeNode,
-    context: StatementContext,
-) -> Result<ParseResult, ParserError> {
-    match next {
-        LexemeNode::Keyword(Keyword::Input, _, pos) => INPUT
-            .demand(parser, pos, context)
-            .map(|x| ParseResult::Ok(x)),
-        LexemeNode::Keyword(Keyword::Line, _, pos) => LINE_INPUT
-            .demand(parser, pos, context)
-            .map(|x| ParseResult::Ok(x)),
-        LexemeNode::Keyword(Keyword::Name, _, pos) => NAME
-            .demand(parser, pos, context)
-            .map(|x| ParseResult::Ok(x)),
-        LexemeNode::Keyword(Keyword::Open, _, pos) => OPEN
-            .demand(parser, pos, context)
-            .map(|x| ParseResult::Ok(x)),
-        _ => Ok(ParseResult::No(next)),
-    }
+/// Parses built-in subs which have a special syntax.
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<crate::parser::StatementNode>, ParserError> {
+    input::try_read(lexer)
+        .or_try_read(|| line_input::try_read(lexer))
+        .or_try_read(|| name::try_read(lexer))
+        .or_try_read(|| open::try_read(lexer))
 }

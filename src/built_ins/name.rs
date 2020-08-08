@@ -2,34 +2,35 @@
 // Renames a file or directory.
 // TODO support directory
 
-use super::{BuiltInLint, BuiltInParse, BuiltInRun};
-use crate::common::{AtLocation, Location};
+use super::{BuiltInLint, BuiltInRun};
+use crate::common::{AtLocation, HasLocation, Location};
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
-use crate::lexer::Keyword;
+use crate::lexer::{BufLexer, Keyword};
 use crate::linter::{err_l, err_no_pos, Error, ExpressionNode, LinterError};
-use crate::parser::{
-    BareName, Parser, ParserError, Statement, StatementContext, StatementNode, TypeQualifier,
-};
+use crate::parser::buf_lexer::*;
+use crate::parser::expression;
+use crate::parser::{BareName, ParserError, Statement, StatementNode, TypeQualifier};
 use std::io::BufRead;
 
+#[derive(Debug)]
 pub struct Name {}
 
-impl BuiltInParse for Name {
-    fn demand<T: BufRead>(
-        &self,
-        parser: &mut Parser<T>,
-        pos: Location,
-        _context: StatementContext,
-    ) -> Result<StatementNode, ParserError> {
-        parser.read_demand_whitespace("Expected space after NAME")?;
-        let old_file_name = parser.read_demand_expression()?;
-        parser.read_demand_whitespace("Expected space after filename")?;
-        parser.read_demand_keyword(Keyword::As)?;
-        parser.read_demand_whitespace("Expected space after AS")?;
-        let new_file_name = parser.read_demand_expression()?;
-        parser.read_demand_eol_or_eof_skipping_whitespace()?;
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+    let next = lexer.peek()?;
+    if next.is_keyword(Keyword::Name) {
+        lexer.read()?;
+        let pos = next.pos();
+        read_demand_whitespace(lexer, "Expected space after NAME")?;
+        let old_file_name = demand(lexer, expression::try_read, "Expected original filename")?;
+        read_demand_whitespace(lexer, "Expected space after filename")?;
+        read_demand_keyword(lexer, Keyword::As)?;
+        read_demand_whitespace(lexer, "Expected space after AS")?;
+        let new_file_name = demand(lexer, expression::try_read, "Expected new filename")?;
         let bare_name: BareName = "NAME".into();
         Ok(Statement::SubCall(bare_name, vec![old_file_name, new_file_name]).at(pos))
+            .map(|x| Some(x))
+    } else {
+        Ok(None)
     }
 }
 

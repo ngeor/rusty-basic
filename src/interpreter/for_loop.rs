@@ -2,11 +2,9 @@
 mod tests {
     use super::super::test_utils::*;
     use crate::assert_has_variable;
-    use crate::assert_linter_err;
     use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::InterpreterError;
-    use crate::linter::LinterError;
 
     #[test]
     fn test_simple_for_loop_untyped() {
@@ -126,16 +124,6 @@ mod tests {
         NEXT I%
         ";
         assert_prints!(input, "1", "2", "3", "4", "5");
-    }
-
-    #[test]
-    fn test_for_loop_with_wrong_next_counter() {
-        let input = "
-        FOR i% = 1 TO 5
-            PRINT i%
-        NEXT i
-        ";
-        assert_linter_err!(input, LinterError::NextWithoutFor, 4, 14);
     }
 
     #[test]

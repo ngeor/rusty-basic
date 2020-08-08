@@ -11,11 +11,11 @@ impl CaseInsensitiveString {
     pub fn new(value: String) -> CaseInsensitiveString {
         CaseInsensitiveString { inner: value }
     }
+}
 
-    /// Gets the first character of the string.
-    /// Panics if the string is empty.
-    pub fn first_char(&self) -> char {
-        self.inner.chars().next().unwrap()
+impl From<String> for CaseInsensitiveString {
+    fn from(x: String) -> CaseInsensitiveString {
+        CaseInsensitiveString::new(x)
     }
 }
 

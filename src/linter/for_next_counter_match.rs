@@ -10,6 +10,7 @@ impl PostConversionLinter for ForNextCounterMatch {
         self.visit_statement_nodes(&f.statements)?;
 
         // for and next counters must match
+        // TODO verify FOR variable is numeric and not string
         match &f.next_counter {
             Some(n) => {
                 let next_var_name: &QualifiedName = n.as_ref();

@@ -1,562 +1,761 @@
 use super::error::*;
 use super::expression_reducer::ExpressionReducer;
 use super::post_conversion_linter::PostConversionLinter;
-use super::subprogram_context::{collect_subprograms, FunctionMap, SubMap};
+use super::subprogram_context::{FunctionMap, SubMap};
 use super::types::*;
-use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::*;
+use crate::linter::converter;
 use crate::parser;
-use crate::parser::type_resolver_impl::TypeResolverImpl;
-use crate::parser::{HasQualifier, Name, NameTrait, QualifiedName, TypeQualifier, TypeResolver};
-use std::collections::{HashMap, HashSet};
-use std::convert::TryInto;
-
-//
-// Converter trait
-//
-
-trait Converter<A, B> {
-    fn convert(&mut self, a: A) -> Result<B, Error>;
-}
-
-// blanket for Vec
-impl<T, A, B> Converter<Vec<A>, Vec<B>> for T
-where
-    T: Converter<A, B>,
-{
-    fn convert(&mut self, a: Vec<A>) -> Result<Vec<B>, Error> {
-        a.into_iter().map(|x| self.convert(x)).collect()
-    }
-}
-
-// blanket for Option
-impl<T, A, B> Converter<Option<A>, Option<B>> for T
-where
-    T: Converter<A, B>,
-{
-    fn convert(&mut self, a: Option<A>) -> Result<Option<B>, Error> {
-        match a {
-            Some(x) => self.convert(x).map(|r| Some(r)),
-            None => Ok(None),
-        }
-    }
-}
-
-// blanket for Locatable
-impl<T, A, B> Converter<Locatable<A>, Locatable<B>> for T
-where
-    A: std::fmt::Debug + Sized,
-    B: std::fmt::Debug + Sized,
-    T: Converter<A, B>,
-{
-    fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, Error> {
-        let (element, pos) = a.consume();
-        self.convert(element).with_pos(pos).with_err_pos(pos)
-    }
-}
-
-//
-// Linter
-//
-
-#[derive(Debug, Default)]
-struct VariableSet(HashMap<CaseInsensitiveString, HashSet<TypeQualifier>>);
-
-impl VariableSet {
-    pub fn insert(&mut self, name: QualifiedName) {
-        let (bare_name, qualifier) = name.consume();
-        match self.0.get_mut(&bare_name) {
-            Some(inner_set) => {
-                inner_set.insert(qualifier);
-            }
-            None => {
-                let mut inner_set: HashSet<TypeQualifier> = HashSet::new();
-                inner_set.insert(qualifier);
-                self.0.insert(bare_name, inner_set);
-            }
-        }
-    }
-
-    pub fn contains_qualified(&self, name: &QualifiedName) -> bool {
-        match self.0.get(name.bare_name()) {
-            Some(inner_set) => inner_set.contains(&name.qualifier()),
-            None => false,
-        }
-    }
-
-    pub fn contains_bare<U: NameTrait>(&self, name: &U) -> bool {
-        self.0.contains_key(name.bare_name())
-    }
-}
-
-#[derive(Debug, Default)]
-struct LinterContext {
-    parent: Option<Box<LinterContext>>,
-    constants: HashMap<CaseInsensitiveString, TypeQualifier>,
-    variables: VariableSet,
-    function_name: Option<CaseInsensitiveString>,
-    sub_name: Option<CaseInsensitiveString>,
-}
-
-impl LinterContext {
-    pub fn get_constant_type(&self, n: &parser::Name) -> Result<Option<TypeQualifier>, Error> {
-        let bare_name: &CaseInsensitiveString = n.bare_name();
-        match self.constants.get(bare_name) {
-            Some(const_type) => {
-                // it's okay to reference a const unqualified
-                if n.bare_or_eq(*const_type) {
-                    Ok(Some(*const_type))
-                } else {
-                    Err(LinterError::DuplicateDefinition.into())
-                }
-            }
-            None => Ok(None),
-        }
-    }
-
-    pub fn get_parent_constant_type(
-        &self,
-        n: &parser::Name,
-    ) -> Result<Option<TypeQualifier>, Error> {
-        match &self.parent {
-            Some(p) => {
-                let x = p.get_constant_type(n)?;
-                match x {
-                    Some(q) => Ok(Some(q)),
-                    None => p.get_parent_constant_type(n),
-                }
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-struct Linter {
-    resolver: TypeResolverImpl,
-    context: LinterContext,
-    functions: FunctionMap,
-    subs: SubMap,
-}
-
-impl Linter {
-    pub fn push_function_context(&mut self, name: &CaseInsensitiveString) {
-        let old = std::mem::take(&mut self.context);
-        let mut new = LinterContext::default();
-        new.parent = Some(Box::new(old));
-        new.function_name = Some(name.clone());
-        self.context = new;
-    }
-
-    pub fn push_sub_context(&mut self, name: &CaseInsensitiveString) {
-        let old = std::mem::take(&mut self.context);
-        let mut new = LinterContext::default();
-        new.parent = Some(Box::new(old));
-        new.sub_name = Some(name.clone());
-        self.context = new;
-    }
-
-    pub fn pop_context(&mut self) {
-        let old = std::mem::take(&mut self.context);
-        match old.parent {
-            Some(p) => {
-                self.context = *p;
-            }
-            None => panic!("Stack underflow!"),
-        }
-    }
-}
 
 pub fn lint(program: parser::ProgramNode) -> Result<ProgramNode, Error> {
-    let mut linter = Linter::default();
-    let (f_c, s_c) = collect_subprograms(&program)?;
-    linter.functions = f_c;
-    linter.subs = s_c;
-    linter.convert(program)
+    // convert to fully typed
+    let (result, functions, subs) = converter::convert(program)?;
+    // lint
+    apply_linters(&result, &functions, &subs)?;
+    // reduce
+    let reducer = super::undefined_function_reducer::UndefinedFunctionReducer {
+        functions: &functions,
+    };
+    reducer.visit_program(result)
 }
 
-impl Converter<parser::ProgramNode, ProgramNode> for Linter {
-    fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, Error> {
-        let mut result: Vec<TopLevelTokenNode> = vec![];
-        for top_level_token_node in a.into_iter() {
-            // will contain None where DefInt and declarations used to be
-            let (top_level_token, pos) = top_level_token_node.consume();
-            let opt: Option<TopLevelToken> = self.convert(top_level_token).with_err_pos(pos)?;
-            match opt {
-                Some(t) => {
-                    let r: TopLevelTokenNode = t.at(pos);
-                    result.push(r);
-                }
-                _ => (),
-            }
+fn apply_linters(
+    result: &ProgramNode,
+    functions: &FunctionMap,
+    subs: &SubMap,
+) -> Result<(), Error> {
+    let linter = super::no_dynamic_const::NoDynamicConst {};
+    linter.visit_program(&result)?;
+
+    let linter = super::for_next_counter_match::ForNextCounterMatch {};
+    linter.visit_program(&result)?;
+
+    let linter = super::built_in_function_linter::BuiltInFunctionLinter {};
+    linter.visit_program(&result)?;
+
+    let linter = super::built_in_sub_linter::BuiltInSubLinter {};
+    linter.visit_program(&result)?;
+
+    let linter = super::user_defined_function_linter::UserDefinedFunctionLinter {
+        functions: &functions,
+    };
+    linter.visit_program(&result)?;
+
+    let linter = super::user_defined_sub_linter::UserDefinedSubLinter { subs: &subs };
+    linter.visit_program(&result)?;
+
+    let linter = super::select_case_linter::SelectCaseLinter {};
+    linter.visit_program(&result)?;
+
+    let mut linter = super::label_linter::LabelLinter::new();
+    linter.visit_program(&result)?;
+    linter.switch_to_validating_mode();
+    linter.visit_program(&result)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::assert_linter_err;
+    use crate::built_ins::BuiltInSub;
+    use crate::common::*;
+    use crate::linter::test_utils::*;
+    use crate::linter::*;
+    use std::convert::TryInto;
+
+    mod assignment {
+        use super::*;
+
+        #[test]
+        fn name_clashes_with_other_sub_name() {
+            let program = r#"
+            SUB Hello
+            END SUB
+            SUB Oops
+            Hello = 2
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 13);
         }
 
-        let linter = super::no_dynamic_const::NoDynamicConst {};
-        linter.visit_program(&result)?;
+        #[test]
+        fn literals_type_mismatch() {
+            assert_linter_err!("X = \"hello\"", LinterError::TypeMismatch, 1, 5);
+            assert_linter_err!("X! = \"hello\"", LinterError::TypeMismatch, 1, 6);
+            assert_linter_err!("X# = \"hello\"", LinterError::TypeMismatch, 1, 6);
+            assert_linter_err!("A$ = 1.0", LinterError::TypeMismatch, 1, 6);
+            assert_linter_err!("A$ = 1", LinterError::TypeMismatch, 1, 6);
+            assert_linter_err!("A$ = -1", LinterError::TypeMismatch, 1, 6);
+            assert_linter_err!("X% = \"hello\"", LinterError::TypeMismatch, 1, 6);
+            assert_linter_err!("X& = \"hello\"", LinterError::TypeMismatch, 1, 6);
+        }
 
-        let linter = super::for_next_counter_match::ForNextCounterMatch {};
-        linter.visit_program(&result)?;
+        #[test]
+        fn assign_to_const() {
+            let program = "
+            CONST X = 3.14
+            X = 6.28
+            ";
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
 
-        let linter = super::built_in_function_linter::BuiltInFunctionLinter {};
-        linter.visit_program(&result)?;
-
-        let linter = super::built_in_sub_linter::BuiltInSubLinter {};
-        linter.visit_program(&result)?;
-
-        let linter = super::user_defined_function_linter::UserDefinedFunctionLinter {
-            functions: &self.functions,
-        };
-        linter.visit_program(&result)?;
-
-        let linter = super::user_defined_sub_linter::UserDefinedSubLinter { subs: &self.subs };
-        linter.visit_program(&result)?;
-
-        let linter = super::select_case_linter::SelectCaseLinter {};
-        linter.visit_program(&result)?;
-
-        let mut linter = super::label_linter::LabelLinter::new();
-        linter.visit_program(&result)?;
-        linter.switch_to_validating_mode();
-        linter.visit_program(&result)?;
-
-        let reducer = super::undefined_function_reducer::UndefinedFunctionReducer {
-            functions: &self.functions,
-        };
-        result = reducer.visit_program(result)?;
-
-        Ok(result)
-    }
-}
-
-impl Converter<Name, QualifiedName> for Linter {
-    fn convert(&mut self, a: Name) -> Result<QualifiedName, Error> {
-        match a {
-            Name::Bare(b) => {
-                let qualifier = self.resolver.resolve(&b);
-                Ok(QualifiedName::new(b, qualifier))
-            }
-            Name::Qualified(q) => Ok(q),
+        #[test]
+        fn assign_integer_to_extended_string() {
+            let program = r#"
+            X = 1
+            IF X = 0 THEN DIM A AS STRING
+            A = 42
+            "#;
+            assert_linter_err!(program, LinterError::TypeMismatch, 4, 17);
         }
     }
-}
 
-// Option because we filter out DefType
-impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for Linter {
-    fn convert(&mut self, a: parser::TopLevelToken) -> Result<Option<TopLevelToken>, Error> {
-        match a {
-            parser::TopLevelToken::DefType(d) => {
-                self.resolver.set(&d);
-                Ok(None)
-            }
-            parser::TopLevelToken::FunctionDeclaration(_, _)
-            | parser::TopLevelToken::SubDeclaration(_, _) => Ok(None),
-            parser::TopLevelToken::FunctionImplementation(n, params, block) => {
-                let mapped_name = self.convert(n)?;
-                let mapped_params = self.convert(params)?;
-                self.push_function_context(mapped_name.bare_name());
-                for q_n_n in mapped_params.iter() {
-                    if self.functions.contains_key(q_n_n.bare_name())
-                        || self.subs.contains_key(q_n_n.bare_name())
-                    {
-                        // not possible to have a param name that clashes with a sub or function
-                        return err_l(LinterError::DuplicateDefinition, q_n_n);
-                    }
-                    self.context.variables.insert(q_n_n.as_ref().clone());
-                }
-                let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
-                    name: mapped_name,
-                    params: mapped_params,
-                    body: self.convert(block)?,
-                });
-                self.pop_context();
-                Ok(Some(mapped))
-            }
-            parser::TopLevelToken::SubImplementation(n, params, block) => {
-                let mapped_params = self.convert(params)?;
-                self.push_sub_context(n.bare_name());
-                for q_n_n in mapped_params.iter() {
-                    self.context.variables.insert(q_n_n.as_ref().clone());
-                }
-                let mapped = TopLevelToken::SubImplementation(SubImplementation {
-                    name: n,
-                    params: mapped_params,
-                    body: self.convert(block)?,
-                });
-                self.pop_context();
-                Ok(Some(mapped))
-            }
-            parser::TopLevelToken::Statement(s) => {
-                Ok(Some(TopLevelToken::Statement(self.convert(s)?)))
-            }
+    mod constant {
+        use super::*;
+
+        #[test]
+        fn function_call_not_allowed() {
+            let program = r#"
+            CONST X = Add(1, 2)
+            "#;
+            assert_linter_err!(program, LinterError::InvalidConstant, 2, 23);
+        }
+
+        #[test]
+        fn variable_not_allowed() {
+            let program = r#"
+            X = 42
+            CONST A = X + 1
+            "#;
+            assert_linter_err!(program, LinterError::InvalidConstant, 3, 23);
+        }
+
+        #[test]
+        fn variable_already_exists() {
+            let program = "
+            X = 42
+            CONST X = 32
+            ";
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+        }
+
+        #[test]
+        fn variable_already_exists_as_sub_call_param() {
+            let program = "
+            INPUT X%
+            CONST X = 1
+            ";
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+        }
+
+        #[test]
+        fn const_already_exists() {
+            let program = "
+            CONST X = 32
+            CONST X = 33
+            ";
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+        }
+
+        #[test]
+        fn qualified_usage_from_string_literal() {
+            let program = r#"
+            CONST X! = "hello"
+            "#;
+            assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
+        }
+
+        #[test]
+        fn const_after_dim_duplicate_definition() {
+            let program = r#"
+            DIM A AS STRING
+            CONST A = "hello"
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+        }
+
+        #[test]
+        fn test_global_const_cannot_have_function_name() {
+            let program = r#"
+            FUNCTION GetAction$
+                GetAction$ = "hello"
+            END FUNCTION
+            CONST GetAction = 42
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 19);
+        }
+
+        #[test]
+        fn test_local_const_cannot_have_function_name() {
+            let program = r#"
+            FUNCTION GetAction$
+                GetAction$ = "hello"
+            END FUNCTION
+            FUNCTION Echo(X)
+                CONST GetAction = 42
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 6, 23);
         }
     }
-}
 
-impl Converter<parser::Statement, Statement> for Linter {
-    fn convert(&mut self, a: parser::Statement) -> Result<Statement, Error> {
-        match a {
-            parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
-            parser::Statement::Assignment(n, e) => {
-                if self
-                    .context
-                    .function_name
-                    .as_ref()
-                    .map(|x| x == n.bare_name())
-                    .unwrap_or_default()
-                {
-                    // trying to assign to the function
-                    let function_type: TypeQualifier = self.functions.get(n.bare_name()).unwrap().0;
-                    if n.bare_or_eq(function_type) {
-                        let converted_expr: ExpressionNode = self.convert(e)?;
-                        let result_q: TypeQualifier = converted_expr.try_qualifier()?;
-                        if result_q.can_cast_to(function_type) {
-                            Ok(Statement::SetReturnValue(converted_expr))
-                        } else {
-                            err_l(LinterError::TypeMismatch, &converted_expr)
-                        }
-                    } else {
-                        // trying to assign to the function with an explicit wrong type
-                        Err(LinterError::DuplicateDefinition.into())
-                    }
-                } else if self.functions.contains_key(n.bare_name())
-                    || self.subs.contains_key(n.bare_name())
-                    || self.context.constants.contains_key(n.bare_name())
-                {
-                    // trying to assign to a different function, or to a sub, or to overwrite a local constant
-                    Err(LinterError::DuplicateDefinition.into())
-                } else {
-                    let converted_name = self.convert(n)?;
-                    let converted_expr: ExpressionNode = self.convert(e)?;
-                    let result_q: TypeQualifier = converted_expr.try_qualifier()?;
-                    if result_q.can_cast_to(converted_name.qualifier()) {
-                        self.context.variables.insert(converted_name.clone());
-                        Ok(Statement::Assignment(converted_name, converted_expr))
-                    } else {
-                        err_l(LinterError::TypeMismatch, &converted_expr)
-                    }
-                }
-            }
-            parser::Statement::Const(n, e) => {
-                let (name, pos) = n.consume();
-                if self.context.variables.contains_bare(&name)
-                    || self.context.constants.contains_key(name.bare_name())
-                    || self.functions.contains_key(name.bare_name())
-                    || self.subs.contains_key(name.bare_name())
-                {
-                    // local variable or local constant or function or sub already present by that name
-                    err(LinterError::DuplicateDefinition, pos)
-                } else {
-                    let converted_expression_node = self.convert(e)?;
-                    let e_type = converted_expression_node.try_qualifier()?;
-                    match name {
-                        Name::Bare(b) => {
-                            // bare name resolves from right side, not resolver
-                            self.context.constants.insert(b.clone(), e_type);
-                            Ok(Statement::Const(
-                                QualifiedName::new(b, e_type).at(pos),
-                                converted_expression_node,
-                            ))
-                        }
-                        Name::Qualified(q) => {
-                            if e_type.can_cast_to(q.qualifier()) {
-                                self.context
-                                    .constants
-                                    .insert(q.bare_name().clone(), q.qualifier());
-                                Ok(Statement::Const(q.at(pos), converted_expression_node))
-                            } else {
-                                err_l(LinterError::TypeMismatch, &converted_expression_node)
-                            }
-                        }
-                    }
-                }
-            }
-            parser::Statement::SubCall(n, args) => {
-                let converted_args = self.convert(args)?;
-                let opt_built_in: Option<BuiltInSub> = (&n).into();
-                match opt_built_in {
-                    Some(b) => Ok(Statement::BuiltInSubCall(b, converted_args)),
-                    None => Ok(Statement::SubCall(n, converted_args)),
-                }
-            }
-            parser::Statement::IfBlock(i) => Ok(Statement::IfBlock(self.convert(i)?)),
-            parser::Statement::SelectCase(s) => Ok(Statement::SelectCase(self.convert(s)?)),
-            parser::Statement::ForLoop(f) => Ok(Statement::ForLoop(self.convert(f)?)),
-            parser::Statement::While(c) => Ok(Statement::While(self.convert(c)?)),
-            parser::Statement::ErrorHandler(l) => Ok(Statement::ErrorHandler(l)),
-            parser::Statement::Label(l) => Ok(Statement::Label(l)),
-            parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
+    mod dim {
+        use super::*;
+
+        #[test]
+        fn test_dim_duplicate_definition_same_builtin_type() {
+            let program = r#"
+            DIM A AS STRING
+            DIM A AS STRING
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
-    }
-}
 
-impl Converter<parser::Expression, Expression> for Linter {
-    fn convert(&mut self, a: parser::Expression) -> Result<Expression, Error> {
-        match a {
-            parser::Expression::SingleLiteral(f) => Ok(Expression::SingleLiteral(f)),
-            parser::Expression::DoubleLiteral(f) => Ok(Expression::DoubleLiteral(f)),
-            parser::Expression::StringLiteral(f) => Ok(Expression::StringLiteral(f)),
-            parser::Expression::IntegerLiteral(f) => Ok(Expression::IntegerLiteral(f)),
-            parser::Expression::LongLiteral(f) => Ok(Expression::LongLiteral(f)),
-            parser::Expression::VariableName(n) => {
-                // check for a local constant
-                match self.context.get_constant_type(&n)? {
-                    Some(q) => Ok(Expression::Constant(QualifiedName::new(
-                        n.bare_name().clone(),
-                        q,
-                    ))),
-                    None => {
-                        // check for an already defined local variable or parameter
-                        let converted_name = self.convert(n.clone())?;
-                        if self.context.variables.contains_qualified(&converted_name) {
-                            Ok(Expression::Variable(converted_name))
-                        } else {
-                            // parent constant?
-                            match self.context.get_parent_constant_type(&n)? {
-                                Some(q) => Ok(Expression::Constant(QualifiedName::new(
-                                    n.bare_name().clone(),
-                                    q,
-                                ))),
-                                None => {
-                                    if self.subs.contains_key(n.bare_name()) {
-                                        // using the name of a sub as a variable expression
-                                        err_no_pos(LinterError::DuplicateDefinition)
-                                    } else if self.functions.contains_key(n.bare_name()) {
-                                        // if the function expects arguments, argument count mismatch
-                                        let (f_type, f_args, _) =
-                                            self.functions.get(n.bare_name()).unwrap();
-                                        if !f_args.is_empty() {
-                                            err_no_pos(LinterError::ArgumentCountMismatch)
-                                        } else if !n.bare_or_eq(*f_type) {
-                                            // if the function is a different type and the name is qualified of a different type, duplication definition
-                                            err_no_pos(LinterError::DuplicateDefinition)
-                                        } else {
-                                            // else convert it to function call
-                                            Ok(Expression::FunctionCall(
-                                                QualifiedName::new(n.bare_name().clone(), *f_type),
-                                                vec![],
-                                            ))
-                                        }
-                                    } else {
-                                        // e.g. INPUT N, where N has not been declared in advance
-                                        self.context.variables.insert(converted_name.clone());
-                                        Ok(Expression::Variable(converted_name))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            parser::Expression::FunctionCall(n, args) => {
-                let converted_args = self.convert(args)?;
-                let opt_built_in: Option<BuiltInFunction> = (&n).try_into()?;
-                match opt_built_in {
-                    Some(b) => Ok(Expression::BuiltInFunctionCall(b, converted_args)),
-                    None => Ok(Expression::FunctionCall(self.convert(n)?, converted_args)),
-                }
-            }
-            parser::Expression::BinaryExpression(op, l, r) => {
-                // unbox them
-                let unboxed_left = *l;
-                let unboxed_right = *r;
-                // convert them
-                let converted_left = self.convert(unboxed_left)?;
-                let converted_right = self.convert(unboxed_right)?;
-                // get the types
-                let q_left = converted_left.try_qualifier()?;
-                let q_right = converted_right.try_qualifier()?;
-                // get the cast type
-                let result_type = super::operand_type::cast_binary_op(op, q_left, q_right);
-                if result_type.is_some() {
-                    Ok(Expression::BinaryExpression(
-                        op,
-                        Box::new(converted_left),
-                        Box::new(converted_right),
+        #[test]
+        fn test_dim_duplicate_definition_different_builtin_type() {
+            let program = r#"
+            DIM A AS STRING
+            DIM A AS INTEGER
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_string() {
+            let program = r#"
+            DIM A AS STRING
+            A = "hello"
+            PRINT A
+            "#;
+            assert_eq!(
+                linter_ok(program),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        DeclaredName::new(
+                            "A".into(),
+                            TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                        )
+                        .at_rc(2, 17)
                     ))
-                } else {
-                    err_l(LinterError::TypeMismatch, &converted_right)
-                }
-            }
-            parser::Expression::UnaryExpression(op, c) => {
-                let unboxed_child = *c;
-                let converted_child = self.convert(unboxed_child)?;
-                let converted_q = converted_child.try_qualifier()?;
-                if super::operand_type::cast_unary_op(op, converted_q).is_none() {
-                    // no unary operation works for strings
-                    err_l(LinterError::TypeMismatch, &converted_child)
-                } else {
-                    Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
-                }
-            }
-            parser::Expression::Parenthesis(c) => {
-                let unboxed_child = *c;
-                let converted_child = self.convert(unboxed_child)?;
-                Ok(Expression::Parenthesis(Box::new(converted_child)))
-            }
-            parser::Expression::FileHandle(i) => Ok(Expression::FileHandle(i)),
+                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        "A$".try_into().unwrap(),
+                        Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
+                    ))
+                    .at_rc(3, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable("A$".try_into().unwrap()).at_rc(4, 19)]
+                    ))
+                    .at_rc(4, 13)
+                ]
+            );
+        }
+
+        #[test]
+        fn test_dim_after_const_duplicate_definition() {
+            let program = r#"
+            CONST A = "hello"
+            DIM A AS STRING
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_after_variable_assignment_duplicate_definition() {
+            let program = r#"
+            A = 42
+            DIM A AS INTEGER
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_compact_string_duplicate_definition() {
+            let program = r#"
+            DIM A$
+            DIM A$
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_compact_bare_duplicate_definition() {
+            let program = r#"
+            DIM A
+            DIM A
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_compact_single_bare_duplicate_definition() {
+            // single is the default type
+            let program = r#"
+            DIM A!
+            DIM A
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_compact_bare_single_duplicate_definition() {
+            // single is the default type
+            let program = r#"
+            DIM A
+            DIM A!
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_compact_bare_integer_duplicate_definition() {
+            let program = r#"
+            DEFINT A-Z
+            DIM A
+            DIM A%
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 17);
+        }
+
+        #[test]
+        fn test_dim_extended_inside_sub_name_clashing_sub_name() {
+            let program = r#"
+            SUB Hello
+            Dim Hello AS STRING
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_bare_inside_sub_name_clashing_other_sub_name() {
+            let program = r#"
+            SUB Oops
+            END SUB
+
+            SUB Hello
+            Dim Oops
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 6, 17);
+        }
+
+        #[test]
+        fn test_dim_extended_inside_sub_name_clashing_param_name() {
+            let program = r#"
+            SUB Hello(Oops)
+            Dim Oops AS STRING
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_extended_inside_function_name_clashing_function_name() {
+            let program = r#"
+            FUNCTION Hello
+            Dim Hello AS STRING
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_extended_inside_function_name_clashing_other_function_name() {
+            let program = r#"
+            FUNCTION Hello
+            Dim Bar AS STRING
+            END FUNCTION
+            FUNCTION Bar
+            END Function
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
         }
     }
-}
 
-impl Converter<parser::ForLoopNode, ForLoopNode> for Linter {
-    fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, Error> {
-        Ok(ForLoopNode {
-            variable_name: self.convert(a.variable_name)?,
-            lower_bound: self.convert(a.lower_bound)?,
-            upper_bound: self.convert(a.upper_bound)?,
-            step: self.convert(a.step)?,
-            statements: self.convert(a.statements)?,
-            next_counter: self.convert(a.next_counter)?,
-        })
+    mod function_implementation {
+        use super::*;
+
+        #[test]
+        fn test_function_param_clashing_sub_name_declared_earlier() {
+            let program = r#"
+            SUB Hello
+            END SUB
+
+            FUNCTION Adding(Hello)
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 29);
+        }
+
+        #[test]
+        fn test_function_param_clashing_sub_name_declared_later() {
+            let program = r#"
+            FUNCTION Adding(Hello)
+            END FUNCTION
+
+            SUB Hello
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 29);
+        }
+
+        #[test]
+        fn test_function_param_of_different_type_clashing_function_name() {
+            let program = r#"
+            FUNCTION Adding(Adding$)
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 29);
+        }
+
+        #[test]
+        fn test_function_param_clashing_function_name_extended_same_type() {
+            let program = r#"
+            FUNCTION Adding(Adding AS SINGLE)
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 29);
+        }
+
+        #[test]
+        fn test_function_param_duplicate() {
+            let program = r#"
+            FUNCTION Adding(Adding, Adding)
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 37);
+        }
+
+        #[test]
+        fn test_no_args_function_call_cannot_assign_to_variable() {
+            let program = r#"
+            DECLARE FUNCTION GetAction$
+
+            GetAction% = 42
+
+            FUNCTION GetAction$
+                GetAction$ = "hello"
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
+        }
+
+        #[test]
+        fn test_function_call_without_implementation() {
+            let program = "
+            DECLARE FUNCTION Add(A, B)
+            X = Add(1, 2)
+            ";
+            assert_linter_err!(program, LinterError::SubprogramNotDefined, 2, 13);
+        }
+
+        #[test]
+        fn test_cannot_override_built_in_function_with_declaration() {
+            let program = r#"
+            DECLARE FUNCTION Environ$
+            PRINT "Hello"
+            FUNCTION Environ$
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
+        }
+
+        #[test]
+        fn test_cannot_override_built_in_function_without_declaration() {
+            let program = r#"
+            PRINT "Hello"
+            FUNCTION Environ$
+            END FUNCTION
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_cannot_call_built_in_function_with_wrong_type() {
+            let program = r#"
+            PRINT "Hello", Environ%("oops")
+            "#;
+            assert_linter_err!(program, LinterError::TypeMismatch, 2, 28);
+        }
+
+        #[test]
+        fn test_function_call_missing_with_string_arguments_gives_type_mismatch() {
+            let program = "
+            X = Add(\"1\", \"2\")
+            ";
+            assert_linter_err!(program, LinterError::ArgumentTypeMismatch, 2, 21);
+        }
     }
-}
 
-impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for Linter {
-    fn convert(&mut self, a: parser::ConditionalBlockNode) -> Result<ConditionalBlockNode, Error> {
-        Ok(ConditionalBlockNode {
-            condition: self.convert(a.condition)?,
-            statements: self.convert(a.statements)?,
-        })
+    mod sub_implementation {
+        use super::*;
+
+        #[test]
+        fn test_sub_param_clashing_sub_name() {
+            let program = r#"
+            SUB Hello(Hello)
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 23);
+        }
+
+        #[test]
+        fn test_sub_param_clashing_other_sub_name_declared_earlier() {
+            let program = r#"
+            SUB Hello
+            END SUB
+            SUB Goodbye(Hello)
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 25);
+        }
+
+        #[test]
+        fn test_sub_param_clashing_other_sub_name_declared_later() {
+            let program = r#"
+            SUB Goodbye(Hello)
+            END SUB
+            SUB Hello
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 25);
+        }
+
+        #[test]
+        fn test_sub_param_duplicate() {
+            let program = r#"
+            SUB Hello(A, A)
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 26);
+        }
+
+        #[test]
+        fn test_sub_param_extended_duplicate() {
+            let program = r#"
+            SUB Hello(A AS INTEGER, A AS STRING)
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 37);
+        }
+
+        #[test]
+        fn test_cannot_override_built_in_sub_with_declaration() {
+            let program = r#"
+            DECLARE SUB Environ
+            PRINT "Hello"
+            SUB Environ
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
+        }
+
+        #[test]
+        fn test_cannot_override_built_in_sub_without_declaration() {
+            let program = r#"
+            PRINT "Hello"
+            SUB Environ
+            END SUB
+            "#;
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+        }
+
+        #[test]
+        fn test_by_ref_parameter_type_mismatch() {
+            let program = "
+            DECLARE SUB Hello(N)
+            A% = 42
+            Hello A%
+            SUB Hello(N)
+                N = N + 1
+            END SUB
+            ";
+            assert_linter_err!(program, LinterError::ArgumentTypeMismatch, 4, 19);
+        }
     }
-}
 
-impl Converter<parser::IfBlockNode, IfBlockNode> for Linter {
-    fn convert(&mut self, a: parser::IfBlockNode) -> Result<IfBlockNode, Error> {
-        Ok(IfBlockNode {
-            if_block: self.convert(a.if_block)?,
-            else_if_blocks: self.convert(a.else_if_blocks)?,
-            else_block: self.convert(a.else_block)?,
-        })
+    mod select_case {
+        use super::*;
+
+        #[test]
+        fn test_select_wrong_type_in_simple_case() {
+            let input = r#"
+        SELECT CASE 42
+            CASE "book"
+                PRINT "hi"
+        END SELECT
+        "#;
+            assert_linter_err!(input, LinterError::TypeMismatch, 3, 18);
+        }
+
+        #[test]
+        fn test_select_wrong_type_in_range_case_upper() {
+            let input = r#"
+        SELECT CASE 42
+            CASE 1 TO "book"
+                PRINT "hi"
+        END SELECT
+        "#;
+            assert_linter_err!(input, LinterError::TypeMismatch, 3, 23);
+        }
+
+        #[test]
+        fn test_select_wrong_type_in_range_case_lower() {
+            let input = r#"
+        SELECT CASE 42
+            CASE "abc" TO 12
+                PRINT "hi"
+        END SELECT
+        "#;
+            assert_linter_err!(input, LinterError::TypeMismatch, 3, 18);
+        }
+
+        #[test]
+        fn test_select_wrong_type_in_range_case_both() {
+            let input = r#"
+        SELECT CASE 42
+            CASE "abc" TO "def"
+                PRINT "hi"
+        END SELECT
+        "#;
+            assert_linter_err!(input, LinterError::TypeMismatch, 3, 18);
+        }
+
+        #[test]
+        fn test_select_wrong_type_in_is() {
+            let input = r#"
+        SELECT CASE 42
+            CASE IS >= "abc"
+                PRINT "hi"
+        END SELECT
+        "#;
+            assert_linter_err!(input, LinterError::TypeMismatch, 3, 24);
+        }
     }
-}
 
-impl Converter<parser::SelectCaseNode, SelectCaseNode> for Linter {
-    fn convert(&mut self, a: parser::SelectCaseNode) -> Result<SelectCaseNode, Error> {
-        Ok(SelectCaseNode {
-            expr: self.convert(a.expr)?,
-            case_blocks: self.convert(a.case_blocks)?,
-            else_block: self.convert(a.else_block)?,
-        })
+    mod go_to {
+        use super::*;
+
+        #[test]
+        fn on_error_go_to_missing_label() {
+            let input = r#"
+            ON ERROR GOTO ErrTrap
+            "#;
+            assert_linter_err!(input, LinterError::LabelNotDefined, 2, 13);
+        }
+
+        #[test]
+        fn go_to_missing_label() {
+            let input = "
+            GOTO Jump
+            ";
+            assert_linter_err!(input, LinterError::LabelNotDefined, 2, 13);
+        }
+
+        #[test]
+        fn go_to_duplicate_label() {
+            let input = "
+            GOTO Jump
+            Jump:
+            Jump:
+            ";
+            assert_linter_err!(input, LinterError::DuplicateLabel, 4, 13);
+        }
     }
-}
 
-impl Converter<parser::CaseBlockNode, CaseBlockNode> for Linter {
-    fn convert(&mut self, a: parser::CaseBlockNode) -> Result<CaseBlockNode, Error> {
-        Ok(CaseBlockNode {
-            expr: self.convert(a.expr)?,
-            statements: self.convert(a.statements)?,
-        })
+    mod for_loop {
+        use super::*;
+
+        #[test]
+        fn test_for_loop_with_wrong_next_counter() {
+            let input = "
+            FOR i% = 1 TO 5
+                PRINT i%
+            NEXT i
+            ";
+            assert_linter_err!(input, LinterError::NextWithoutFor, 4, 18);
+        }
     }
-}
 
-impl Converter<parser::CaseExpression, CaseExpression> for Linter {
-    fn convert(&mut self, a: parser::CaseExpression) -> Result<CaseExpression, Error> {
-        match a {
-            parser::CaseExpression::Simple(e) => self.convert(e).map(|x| CaseExpression::Simple(x)),
-            parser::CaseExpression::Is(op, e) => self.convert(e).map(|x| CaseExpression::Is(op, x)),
-            parser::CaseExpression::Range(from, to) => self
-                .convert(from)
-                .and_then(|x| self.convert(to).map(|y| CaseExpression::Range(x, y))),
+    mod expression {
+        use super::*;
+
+        macro_rules! assert_condition_err {
+            ($condition:expr, $col:expr) => {
+                let program = format!(
+                    "
+                IF {} THEN
+                    PRINT \"hi\"
+                END IF
+                ",
+                    $condition
+                );
+                assert_linter_err!(program, LinterError::TypeMismatch, 2, $col);
+            };
+        }
+
+        #[test]
+        fn test_type_mismatch() {
+            assert_linter_err!("X = 1.1 + \"hello\"", LinterError::TypeMismatch, 1, 11);
+            assert_linter_err!("X = 1.1# + \"hello\"", LinterError::TypeMismatch, 1, 12);
+            assert_linter_err!("X$ = \"hello\" + 1", LinterError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" + 1.1", LinterError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" + 1.1#", LinterError::TypeMismatch, 1, 16);
+            assert_linter_err!("X% = 1 + \"hello\"", LinterError::TypeMismatch, 1, 10);
+            assert_linter_err!("X& = 1 + \"hello\"", LinterError::TypeMismatch, 1, 10);
+            assert_linter_err!("X = 1.1 - \"hello\"", LinterError::TypeMismatch, 1, 11);
+            assert_linter_err!("X = 1.1# - \"hello\"", LinterError::TypeMismatch, 1, 12);
+            assert_linter_err!("X$ = \"hello\" - \"hi\"", LinterError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" - 1", LinterError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" - 1.1", LinterError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" - 1.1#", LinterError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = 1 - \"hello\"", LinterError::TypeMismatch, 1, 10);
+            assert_linter_err!("X& = 1 - \"hello\"", LinterError::TypeMismatch, 1, 10);
+            assert_linter_err!(r#"PRINT "hello" * 5"#, LinterError::TypeMismatch, 1, 17);
+            assert_linter_err!(r#"PRINT "hello" / 5"#, LinterError::TypeMismatch, 1, 17);
+            assert_linter_err!("X = -\"hello\"", LinterError::TypeMismatch, 1, 6);
+            assert_linter_err!("X% = -\"hello\"", LinterError::TypeMismatch, 1, 7);
+            assert_linter_err!("X = NOT \"hello\"", LinterError::TypeMismatch, 1, 9);
+            assert_linter_err!("X% = NOT \"hello\"", LinterError::TypeMismatch, 1, 10);
+
+            assert_linter_err!(r#"PRINT 1 AND "hello""#, LinterError::TypeMismatch, 1, 13);
+            assert_linter_err!(r#"PRINT "hello" AND 1"#, LinterError::TypeMismatch, 1, 19);
+            assert_linter_err!(
+                r#"PRINT "hello" AND "bye""#,
+                LinterError::TypeMismatch,
+                1,
+                19
+            );
+
+            assert_linter_err!(r#"PRINT 1 AND #1"#, LinterError::TypeMismatch, 1, 13);
+            assert_linter_err!(r#"PRINT #1 AND 1"#, LinterError::TypeMismatch, 1, 7);
+            assert_linter_err!(r#"PRINT #1 AND #1"#, LinterError::TypeMismatch, 1, 7);
+        }
+
+        #[test]
+        fn test_condition_type_mismatch() {
+            assert_condition_err!("9.1 < \"hello\"", 26);
+            assert_condition_err!("9.1# < \"hello\"", 27);
+            assert_condition_err!("\"hello\" < 3.14", 30);
+            assert_condition_err!("\"hello\" < 3", 30);
+            assert_condition_err!("\"hello\" < 3.14#", 30);
+            assert_condition_err!("9 < \"hello\"", 24);
+            assert_condition_err!("9.1 <= \"hello\"", 27);
+            assert_condition_err!("9.1# <= \"hello\"", 28);
+            assert_condition_err!("\"hello\" <= 3.14", 31);
+            assert_condition_err!("\"hello\" <= 3", 31);
+            assert_condition_err!("\"hello\" <= 3.14#", 31);
+            assert_condition_err!("9 <= \"hello\"", 25);
+        }
+
+        #[test]
+        fn qualified_const_usage_wrong_type() {
+            let program = "
+            CONST X = 42
+            PRINT X!
+            ";
+            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
         }
     }
 }

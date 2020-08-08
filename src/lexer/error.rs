@@ -11,7 +11,7 @@ pub enum LexerError {
 }
 
 impl HasLocation for LexerError {
-    fn location(&self) -> Location {
+    fn pos(&self) -> Location {
         match self {
             Self::Internal(_, pos) | Self::UnsupportedCharacter(_, pos) => pos.clone(),
         }

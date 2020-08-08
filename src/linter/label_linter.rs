@@ -4,6 +4,7 @@ use crate::common::*;
 use std::cell::RefCell;
 use std::collections::HashSet;
 
+// TODO get rid of RefCell, make a two pass linter a thing
 pub struct LabelLinter {
     // implemented as RefCell for inner mutability
     labels: RefCell<HashSet<CaseInsensitiveString>>,

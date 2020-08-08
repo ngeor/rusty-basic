@@ -60,6 +60,11 @@ mod tests {
     use crate::assert_prints;
 
     #[test]
+    fn test_print_no_args() {
+        assert_prints!("PRINT", "");
+    }
+
+    #[test]
     fn test_interpret_print_hello_world_one_arg() {
         let input = "PRINT \"Hello, world!\"";
         assert_prints!(input, "Hello, world!");

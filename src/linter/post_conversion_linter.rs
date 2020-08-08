@@ -2,8 +2,16 @@ use super::error::*;
 use super::types::*;
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::QualifiedName;
+use crate::parser::{DeclaredNameNode, QualifiedName};
 
+/// Invoked after the conversion to fully typed program.
+/// The default implementation of the trait simply visits all program elements.
+///
+/// The PostConversionLinter does not modify the elements it visits, which is
+/// why it works with references.
+///
+/// Methods return Ok(()) to indicate an element passes the check or
+/// Err() to indicate a problem.
 pub trait PostConversionLinter {
     fn visit_program(&self, p: &ProgramNode) -> Result<(), Error> {
         p.iter()
@@ -12,8 +20,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_top_level_token_node(&self, t: &TopLevelTokenNode) -> Result<(), Error> {
-        self.visit_top_level_token(t.as_ref())
-            .with_err_pos(t.location())
+        self.visit_top_level_token(t.as_ref()).with_err_pos(t)
     }
 
     fn visit_top_level_token(&self, t: &TopLevelToken) -> Result<(), Error> {
@@ -37,7 +44,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_statement_node(&self, t: &StatementNode) -> Result<(), Error> {
-        self.visit_statement(t.as_ref()).with_err_pos(t.location())
+        self.visit_statement(t.as_ref()).with_err_pos(t)
     }
 
     fn visit_statement(&self, s: &Statement) -> Result<(), Error> {
@@ -54,8 +61,17 @@ pub trait PostConversionLinter {
             Statement::Label(label) => self.visit_label(label),
             Statement::GoTo(label) => self.visit_go_to(label),
             Statement::SetReturnValue(expr) => self.visit_expression(expr),
-            Statement::Comment(_) => Ok(()),
+            Statement::Comment(c) => self.visit_comment(c),
+            Statement::Dim(d) => self.visit_dim(d),
         }
+    }
+
+    fn visit_comment(&self, _comment: &String) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn visit_dim(&self, _d: &DeclaredNameNode) -> Result<(), Error> {
+        Ok(())
     }
 
     fn visit_error_handler(&self, _label: &CaseInsensitiveString) -> Result<(), Error> {

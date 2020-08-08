@@ -2,8 +2,8 @@ use super::error::*;
 use super::expression_reducer::*;
 use super::subprogram_context::FunctionMap;
 use super::types::*;
-use crate::parser::NameTrait;
 
+/// Finds undefined functions and converts them to zeroes.
 pub struct UndefinedFunctionReducer<'a> {
     pub functions: &'a FunctionMap,
 }
@@ -25,7 +25,7 @@ impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
                 Ok(Expression::UnaryExpression(op, Box::new(mapped_child)))
             }
             Expression::FunctionCall(name, args) => {
-                if self.functions.contains_key(name.bare_name()) {
+                if self.functions.contains_key(name.as_ref()) {
                     Ok(Expression::FunctionCall(
                         name,
                         self.visit_expression_nodes(args)?,

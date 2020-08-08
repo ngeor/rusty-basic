@@ -45,8 +45,6 @@ pub fn err<T, S: AsRef<str>>(msg: S, pos: Location) -> Result<T> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::assert_linter_err;
-    use crate::linter::LinterError;
 
     #[test]
     fn on_error_go_to_label() {
@@ -60,13 +58,5 @@ mod tests {
         "#;
         let interpreter = interpret(input);
         assert_eq!(interpreter.stdlib.output, vec!["Saved by the bell"]);
-    }
-
-    #[test]
-    fn on_error_go_to_missing_label() {
-        let input = r#"
-        ON ERROR GOTO ErrTrap
-        "#;
-        assert_linter_err!(input, LinterError::LabelNotDefined, 2, 9);
     }
 }

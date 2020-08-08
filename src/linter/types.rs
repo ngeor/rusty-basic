@@ -39,12 +39,12 @@ impl Expression {
                 let q_left = l.as_ref().try_qualifier()?;
                 let q_right = r.as_ref().try_qualifier()?;
                 super::operand_type::cast_binary_op(*op, q_left, q_right)
-                    .ok_or_else(|| LinterError::TypeMismatch.at(r.as_ref().location()).into())
+                    .ok_or_else(|| LinterError::TypeMismatch.at(r.pos()).into())
             }
             Self::UnaryExpression(op, c) => {
                 let q_child = c.as_ref().try_qualifier()?;
                 super::operand_type::cast_unary_op(*op, q_child)
-                    .ok_or_else(|| LinterError::TypeMismatch.at(c.as_ref().location()).into())
+                    .ok_or_else(|| LinterError::TypeMismatch.at(c.pos()).into())
             }
             Self::Parenthesis(c) => c.as_ref().try_qualifier(),
             Self::FileHandle(_) => err(LinterError::TypeMismatch, pos),
@@ -56,7 +56,7 @@ pub type ExpressionNode = Locatable<Expression>;
 
 impl ExpressionNode {
     pub fn try_qualifier(&self) -> Result<TypeQualifier, Error> {
-        self.as_ref().try_qualifier(self.location())
+        self.as_ref().try_qualifier(self.pos())
     }
 }
 
@@ -125,6 +125,7 @@ pub enum Statement {
 
     SetReturnValue(ExpressionNode),
     Comment(String),
+    Dim(DeclaredNameNode),
 }
 
 pub type StatementNode = Locatable<Statement>;

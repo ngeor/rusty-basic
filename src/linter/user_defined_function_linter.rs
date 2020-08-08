@@ -3,7 +3,7 @@ use super::post_conversion_linter::PostConversionLinter;
 use super::subprogram_context::FunctionMap;
 use super::types::*;
 use crate::common::*;
-use crate::parser::{HasQualifier, NameTrait, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, HasQualifier, QualifiedName, TypeQualifier};
 
 pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,
@@ -41,7 +41,7 @@ pub fn lint_call_args(args: &ExpressionNodes, param_types: &TypeQualifiers) -> R
 
 impl<'a> UserDefinedFunctionLinter<'a> {
     fn visit_function(&self, name: &QualifiedName, args: &Vec<ExpressionNode>) -> Result {
-        let bare_name = name.bare_name();
+        let bare_name: &BareName = name.as_ref();
         match self.functions.get(bare_name) {
             Some((return_type, param_types, _)) => {
                 if *return_type != name.qualifier() {
@@ -70,14 +70,13 @@ impl<'a> UserDefinedFunctionLinter<'a> {
 
 impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
     fn visit_expression(&self, expr_node: &ExpressionNode) -> Result {
-        let pos = expr_node.location();
-        let e = expr_node.as_ref();
+        let Locatable { element: e, pos } = expr_node;
         match e {
             Expression::FunctionCall(n, args) => {
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                self.visit_function(n, args).with_err_pos(pos)
+                self.visit_function(n, args).with_err_pos(*pos)
             }
             Expression::BinaryExpression(_, left, right) => {
                 self.visit_expression(left)?;

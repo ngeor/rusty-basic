@@ -1,20 +1,25 @@
+use crate::common::Locatable;
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::str::FromStr;
+
+//
+// TypeQualifier
+//
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TypeQualifier {
-    /// ! Single-precision
+    /// `!` Single-precision
     BangSingle,
-    /// # Double-precision
+    /// `#` Double-precision
     HashDouble,
-    /// $ String
+    /// `$` String
     DollarString,
-    /// % Integer
+    /// `%` Integer
     PercentInteger,
-    /// & Long-integer
+    /// `&` Long-integer
     AmpersandLong,
     /// Not an actual type, but to be able to call PRINT #1, "hello", we define the file handle type
     FileHandle,
@@ -38,7 +43,7 @@ impl Display for TypeQualifier {
             TypeQualifier::DollarString => write!(f, "$"),
             TypeQualifier::PercentInteger => write!(f, "%"),
             TypeQualifier::AmpersandLong => write!(f, "&"),
-            TypeQualifier::FileHandle => write!(f, "~"),
+            TypeQualifier::FileHandle => write!(f, "<file handle>"),
         }
     }
 }
@@ -81,6 +86,50 @@ impl TryFrom<char> for TypeQualifier {
     }
 }
 
+impl TryFrom<TypeQualifier> for char {
+    type Error = String;
+
+    fn try_from(q: TypeQualifier) -> Result<char, String> {
+        match q {
+            TypeQualifier::BangSingle => Ok('!'),
+            TypeQualifier::HashDouble => Ok('#'),
+            TypeQualifier::DollarString => Ok('$'),
+            TypeQualifier::PercentInteger => Ok('%'),
+            TypeQualifier::AmpersandLong => Ok('&'),
+            _ => Err(format!("Cannot convert {:?} to char", q)),
+        }
+    }
+}
+
+impl PartialEq<char> for TypeQualifier {
+    fn eq(&self, that: &char) -> bool {
+        match char::try_from(*self) {
+            Ok(ch) => ch == *that,
+            Err(_) => false,
+        }
+    }
+}
+
+impl PartialEq<TypeQualifier> for char {
+    fn eq(&self, that: &TypeQualifier) -> bool {
+        that.eq(self)
+    }
+}
+
+//
+// HasQualifier
+//
+
+pub trait HasQualifier {
+    fn qualifier(&self) -> TypeQualifier;
+}
+
+impl<T: std::fmt::Debug + Sized + HasQualifier> HasQualifier for Locatable<T> {
+    fn qualifier(&self) -> TypeQualifier {
+        self.as_ref().qualifier()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,6 +141,7 @@ mod tests {
         assert_eq!("$", format!("{}", TypeQualifier::DollarString));
         assert_eq!("%", format!("{}", TypeQualifier::PercentInteger));
         assert_eq!("&", format!("{}", TypeQualifier::AmpersandLong));
+        assert_eq!("<file handle>", format!("{}", TypeQualifier::FileHandle));
     }
 
     #[test]
@@ -142,5 +192,38 @@ mod tests {
             TypeQualifier::AmpersandLong
         );
         TypeQualifier::try_from('.').expect_err("should not parse dot");
+    }
+
+    #[test]
+    fn test_char_from_type_qualifier() {
+        assert_eq!(char::try_from(TypeQualifier::BangSingle).unwrap(), '!');
+        assert_eq!(char::try_from(TypeQualifier::HashDouble).unwrap(), '#');
+        assert_eq!(char::try_from(TypeQualifier::DollarString).unwrap(), '$');
+        assert_eq!(char::try_from(TypeQualifier::PercentInteger).unwrap(), '%');
+        assert_eq!(char::try_from(TypeQualifier::AmpersandLong).unwrap(), '&');
+        assert_eq!(
+            char::try_from(TypeQualifier::FileHandle).unwrap_err(),
+            "Cannot convert FileHandle to char"
+        );
+    }
+
+    #[test]
+    fn test_partial_eq_char() {
+        // basic five types
+        assert_eq!(TypeQualifier::BangSingle, '!');
+        assert_eq!(TypeQualifier::HashDouble, '#');
+        assert_eq!(TypeQualifier::DollarString, '$');
+        assert_eq!(TypeQualifier::PercentInteger, '%');
+        assert_eq!(TypeQualifier::AmpersandLong, '&');
+        // reflexive
+        assert_eq!('!', TypeQualifier::BangSingle);
+        // ne
+        assert_ne!(TypeQualifier::BangSingle, '#');
+        // invalid characters
+        assert_ne!(TypeQualifier::BangSingle, '.');
+        assert_ne!('.', TypeQualifier::BangSingle);
+        // file handle
+        assert_ne!('!', TypeQualifier::FileHandle);
+        assert_ne!(TypeQualifier::FileHandle, '$');
     }
 }

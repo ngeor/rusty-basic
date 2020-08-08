@@ -2,9 +2,7 @@
 mod tests {
     use super::super::test_utils::*;
     use crate::assert_has_variable;
-    use crate::assert_linter_err;
     use crate::assert_prints;
-    use crate::linter::LinterError;
 
     #[test]
     fn test_function_call_declared_and_implemented() {
@@ -31,66 +29,6 @@ mod tests {
         END FUNCTION
         "#;
         assert_prints!(program, "hello");
-    }
-
-    #[test]
-    fn test_no_args_function_call_cannot_assign_to_variable() {
-        let program = r#"
-        DECLARE FUNCTION GetAction$
-
-        GetAction% = 42
-
-        FUNCTION GetAction$
-            GetAction$ = "hello"
-        END FUNCTION
-        "#;
-        assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 9);
-    }
-
-    #[test]
-    fn test_parameter_cannot_have_function_name() {
-        let program = r#"
-        FUNCTION GetAction$
-            GetAction$ = "hello"
-        END FUNCTION
-        FUNCTION Echo(GetAction)
-            Echo = 42
-        END FUNCTION
-        "#;
-        assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 23);
-    }
-
-    #[test]
-    fn test_global_const_cannot_have_function_name() {
-        let program = r#"
-        FUNCTION GetAction$
-            GetAction$ = "hello"
-        END FUNCTION
-        CONST GetAction = 42
-        "#;
-        assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 15);
-    }
-
-    #[test]
-    fn test_local_const_cannot_have_function_name() {
-        let program = r#"
-        FUNCTION GetAction$
-            GetAction$ = "hello"
-        END FUNCTION
-        FUNCTION Echo(X)
-            CONST GetAction = 42
-        END FUNCTION
-        "#;
-        assert_linter_err!(program, LinterError::DuplicateDefinition, 6, 19);
-    }
-
-    #[test]
-    fn test_function_call_without_implementation() {
-        let program = "
-        DECLARE FUNCTION Add(A, B)
-        X = Add(1, 2)
-        ";
-        assert_linter_err!(program, LinterError::SubprogramNotDefined, 2, 9);
     }
 
     #[test]
@@ -126,14 +64,6 @@ mod tests {
         ";
         let interpreter = interpret(program);
         assert_has_variable!(interpreter, "X!", 0.0_f32);
-    }
-
-    #[test]
-    fn test_function_call_missing_with_string_arguments_gives_type_mismatch() {
-        let program = "
-        X = Add(\"1\", \"2\")
-        ";
-        assert_linter_err!(program, LinterError::ArgumentTypeMismatch, 2, 17);
     }
 
     #[test]
@@ -244,34 +174,5 @@ mod tests {
         "#;
         let interpreter = interpret(program);
         assert_eq!(interpreter.stdlib.output, vec!["6"]);
-    }
-
-    #[test]
-    fn test_cannot_override_built_in_function_with_declaration() {
-        let program = r#"
-        DECLARE FUNCTION Environ$
-        PRINT "Hello"
-        FUNCTION Environ$
-        END FUNCTION
-        "#;
-        assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 9);
-    }
-
-    #[test]
-    fn test_cannot_override_built_in_function_without_declaration() {
-        let program = r#"
-        PRINT "Hello"
-        FUNCTION Environ$
-        END FUNCTION
-        "#;
-        assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 9);
-    }
-
-    #[test]
-    fn test_cannot_call_built_in_function_with_wrong_type() {
-        let program = r#"
-        PRINT "Hello", Environ%("oops")
-        "#;
-        assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
     }
 }

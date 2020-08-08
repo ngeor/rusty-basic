@@ -1,4 +1,5 @@
-use crate::parser::{DefType, HasQualifier, LetterRange, NameTrait, TypeQualifier, TypeResolver};
+use crate::linter::type_resolver::TypeResolver;
+use crate::parser::{DefType, HasQualifier, LetterRange, TypeQualifier};
 
 #[derive(Debug)]
 pub struct TypeResolverImpl {
@@ -48,14 +49,9 @@ impl TypeResolverImpl {
 }
 
 impl TypeResolver for TypeResolverImpl {
-    fn resolve<T: NameTrait>(&self, name: &T) -> TypeQualifier {
-        match name.opt_qualifier() {
-            Some(q) => q,
-            None => {
-                let bare_name = name.bare_name();
-                let x = char_to_alphabet_index(bare_name.first_char());
-                self.ranges[x]
-            }
-        }
+    fn resolve<T: AsRef<str>>(&self, name: T) -> TypeQualifier {
+        let ch = name.as_ref().chars().next().unwrap();
+        let x = char_to_alphabet_index(ch);
+        self.ranges[x]
     }
 }

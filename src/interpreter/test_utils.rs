@@ -3,7 +3,7 @@ use crate::instruction_generator::InstructionNode;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, InterpreterError, Result, Stdlib};
 use crate::linter;
-use crate::parser::{Parser, QualifiedName};
+use crate::parser::{parse_main_file, parse_main_str, QualifiedName};
 use crate::variant::Variant;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -13,8 +13,7 @@ pub fn generate_instructions<T>(input: T) -> Vec<InstructionNode>
 where
     T: AsRef<[u8]>,
 {
-    let mut parser = Parser::from(input);
-    let program = parser.parse().unwrap();
+    let program = parse_main_str(input).unwrap();
     let linted_program = linter::lint(program).unwrap();
     instruction_generator::generate_instructions(linted_program)
 }
@@ -47,15 +46,6 @@ where
         .unwrap()
 }
 
-pub fn linter_err<T>(input: T) -> linter::Error
-where
-    T: AsRef<[u8]>,
-{
-    let mut parser = Parser::from(input);
-    let program = parser.parse().unwrap();
-    linter::lint(program).unwrap_err()
-}
-
 pub fn interpret_err<T>(input: T) -> InterpreterError
 where
     T: AsRef<[u8]>,
@@ -71,8 +61,8 @@ where
     TStdlib: Stdlib,
 {
     let file_path = format!("fixtures/{}", filename.as_ref());
-    let mut parser = Parser::from(File::open(file_path).expect("Could not read bas file"));
-    let program = parser.parse().unwrap();
+    let f = File::open(file_path).expect("Could not read bas file");
+    let program = parse_main_file(f).unwrap();
     let linted_program = linter::lint(program).unwrap();
     let instructions = instruction_generator::generate_instructions(linted_program);
     let mut interpreter = Interpreter::new(stdlib);
@@ -178,19 +168,6 @@ macro_rules! assert_err {
                 $expected_msg,
                 crate::common::Location::new($expected_row, $expected_col)
             )
-        );
-    };
-}
-
-#[macro_export]
-macro_rules! assert_linter_err {
-    ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
-        let (actual_err, actual_pos) =
-            crate::interpreter::test_utils::linter_err($program).consume();
-        assert_eq!(actual_err, $expected_msg);
-        assert_eq!(
-            actual_pos.unwrap(),
-            crate::common::Location::new($expected_row, $expected_col)
         );
     };
 }

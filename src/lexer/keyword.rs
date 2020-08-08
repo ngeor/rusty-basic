@@ -28,6 +28,10 @@ pub enum Keyword {
     DefSng,
     /// DEFSTR
     DefStr,
+    /// DIM
+    Dim,
+    /// DOUBLE
+    Double,
     /// ELSE
     Else,
     /// ELSEIF
@@ -46,10 +50,14 @@ pub enum Keyword {
     If,
     /// INPUT
     Input,
+    /// INTEGER
+    Integer,
     /// IS
     Is,
     /// LINE
     Line,
+    /// LONG
+    Long,
     /// NAME
     Name,
     /// NEXT
@@ -68,8 +76,12 @@ pub enum Keyword {
     Read,
     /// SELECT
     Select,
+    /// SINGLE
+    Single,
     /// STEP
     Step,
+    /// STRING
+    String_,
     /// SUB
     Sub,
     /// THEN
@@ -94,6 +106,8 @@ const STR_DEFINT: &str = "DEFINT";
 const STR_DEFLNG: &str = "DEFLNG";
 const STR_DEFSNG: &str = "DEFSNG";
 const STR_DEFSTR: &str = "DEFSTR";
+const STR_DIM: &str = "DIM";
+const STR_DOUBLE: &str = "DOUBLE";
 const STR_ELSE: &str = "ELSE";
 const STR_ELSEIF: &str = "ELSEIF";
 const STR_END: &str = "END";
@@ -103,8 +117,10 @@ const STR_FUNCTION: &str = "FUNCTION";
 const STR_GOTO: &str = "GOTO";
 const STR_IF: &str = "IF";
 const STR_INPUT: &str = "INPUT";
+const STR_INTEGER: &str = "INTEGER";
 const STR_IS: &str = "IS";
 const STR_LINE: &str = "LINE";
+const STR_LONG: &str = "LONG";
 const STR_NAME: &str = "NAME";
 const STR_NEXT: &str = "NEXT";
 const STR_NOT: &str = "NOT";
@@ -114,14 +130,16 @@ const STR_OR: &str = "OR";
 const STR_OUTPUT: &str = "OUTPUT";
 const STR_READ: &str = "READ";
 const STR_SELECT: &str = "SELECT";
+const STR_SINGLE: &str = "SINGLE";
 const STR_STEP: &str = "STEP";
+const STR_STRING: &str = "STRING";
 const STR_SUB: &str = "SUB";
 const STR_THEN: &str = "THEN";
 const STR_TO: &str = "TO";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 38] = [
+const SORTED_KEYWORDS_STR: [&str; 44] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -134,6 +152,8 @@ const SORTED_KEYWORDS_STR: [&str; 38] = [
     STR_DEFLNG,
     STR_DEFSNG,
     STR_DEFSTR,
+    STR_DIM,
+    STR_DOUBLE,
     STR_ELSE,
     STR_ELSEIF,
     STR_END,
@@ -143,8 +163,10 @@ const SORTED_KEYWORDS_STR: [&str; 38] = [
     STR_GOTO,
     STR_IF,
     STR_INPUT,
+    STR_INTEGER,
     STR_IS,
     STR_LINE,
+    STR_LONG,
     STR_NAME,
     STR_NEXT,
     STR_NOT,
@@ -154,7 +176,9 @@ const SORTED_KEYWORDS_STR: [&str; 38] = [
     STR_OUTPUT,
     STR_READ,
     STR_SELECT,
+    STR_SINGLE,
     STR_STEP,
+    STR_STRING,
     STR_SUB,
     STR_THEN,
     STR_TO,
@@ -162,7 +186,7 @@ const SORTED_KEYWORDS_STR: [&str; 38] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 38] = [
+const SORTED_KEYWORDS: [Keyword; 44] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -175,6 +199,8 @@ const SORTED_KEYWORDS: [Keyword; 38] = [
     Keyword::DefLng,
     Keyword::DefSng,
     Keyword::DefStr,
+    Keyword::Dim,
+    Keyword::Double,
     Keyword::Else,
     Keyword::ElseIf,
     Keyword::End,
@@ -184,8 +210,10 @@ const SORTED_KEYWORDS: [Keyword; 38] = [
     Keyword::GoTo,
     Keyword::If,
     Keyword::Input,
+    Keyword::Integer,
     Keyword::Is,
     Keyword::Line,
+    Keyword::Long,
     Keyword::Name,
     Keyword::Next,
     Keyword::Not,
@@ -195,7 +223,9 @@ const SORTED_KEYWORDS: [Keyword; 38] = [
     Keyword::Output,
     Keyword::Read,
     Keyword::Select,
+    Keyword::Single,
     Keyword::Step,
+    Keyword::String_,
     Keyword::Sub,
     Keyword::Then,
     Keyword::To,
@@ -218,6 +248,8 @@ impl Display for Keyword {
             Self::DefLng => STR_DEFLNG.fmt(f),
             Self::DefSng => STR_DEFSNG.fmt(f),
             Self::DefStr => STR_DEFSTR.fmt(f),
+            Self::Dim => STR_DIM.fmt(f),
+            Self::Double => STR_DOUBLE.fmt(f),
             Self::Else => STR_ELSE.fmt(f),
             Self::ElseIf => STR_ELSEIF.fmt(f),
             Self::End => STR_END.fmt(f),
@@ -227,8 +259,10 @@ impl Display for Keyword {
             Self::GoTo => STR_GOTO.fmt(f),
             Self::If => STR_IF.fmt(f),
             Self::Input => STR_INPUT.fmt(f),
+            Self::Integer => STR_INTEGER.fmt(f),
             Self::Is => STR_IS.fmt(f),
             Self::Line => STR_LINE.fmt(f),
+            Self::Long => STR_LONG.fmt(f),
             Self::Name => STR_NAME.fmt(f),
             Self::Next => STR_NEXT.fmt(f),
             Self::Not => STR_NOT.fmt(f),
@@ -238,7 +272,9 @@ impl Display for Keyword {
             Self::Output => STR_OUTPUT.fmt(f),
             Self::Read => STR_READ.fmt(f),
             Self::Select => STR_SELECT.fmt(f),
+            Self::Single => STR_SINGLE.fmt(f),
             Self::Step => STR_STEP.fmt(f),
+            Self::String_ => STR_STRING.fmt(f),
             Self::Sub => STR_SUB.fmt(f),
             Self::Then => STR_THEN.fmt(f),
             Self::To => STR_TO.fmt(f),

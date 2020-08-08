@@ -139,27 +139,17 @@ impl<T: HasLocation> HasLocation for Box<T> {
 // StripLocation
 //
 
-pub trait StripLocationRef<T> {
-    fn strip_location(&self) -> &T;
-}
-
-pub trait StripLocationVal<T> {
+pub trait StripLocation<T> {
     fn strip_location(self) -> T;
 }
 
-impl<T> StripLocationRef<T> for Locatable<T> {
-    fn strip_location(&self) -> &T {
-        &self.element
-    }
-}
-
-impl<T> StripLocationVal<T> for Locatable<T> {
+impl<T> StripLocation<T> for Locatable<T> {
     fn strip_location(self) -> T {
         self.element
     }
 }
 
-impl<T> StripLocationVal<Vec<T>> for Vec<Locatable<T>> {
+impl<T> StripLocation<Vec<T>> for Vec<Locatable<T>> {
     fn strip_location(self) -> Vec<T> {
         self.into_iter().map(|x| x.strip_location()).collect()
     }

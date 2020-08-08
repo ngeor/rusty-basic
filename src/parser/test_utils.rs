@@ -1,8 +1,7 @@
-use super::{
-    parse_main_file, parse_main_str, BareNameNode, Expression, ExpressionNode, Name, NameNode,
-    ParserError, ProgramNode, Statement, TopLevelToken, TopLevelTokenNode,
-};
+use super::{parse_main_file, parse_main_str};
 use crate::common::*;
+use crate::parser::error::*;
+use crate::parser::types::*;
 use std::fs::File;
 
 /// Parses the given program and demands success.

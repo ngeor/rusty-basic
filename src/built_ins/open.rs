@@ -24,7 +24,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         return Ok(None);
     }
 
-    let pos = lexer.read()?.location();
+    let pos = lexer.read()?.pos();
     read_demand_whitespace(lexer, "Expected space after OPEN")?;
     let file_name_expr = demand(lexer, expression::try_read, "Expected filename")?;
     read_demand_whitespace(lexer, "Expected space after filename")?;

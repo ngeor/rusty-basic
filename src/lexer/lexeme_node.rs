@@ -92,7 +92,7 @@ impl LexemeNode {
 }
 
 impl HasLocation for LexemeNode {
-    fn location(&self) -> Location {
+    fn pos(&self) -> Location {
         match self {
             Self::EOF(pos)
             | Self::EOL(_, pos)

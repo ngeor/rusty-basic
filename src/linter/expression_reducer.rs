@@ -15,7 +15,10 @@ pub trait ExpressionReducer {
     }
 
     fn visit_top_level_token_node(&self, t: TopLevelTokenNode) -> Result<TopLevelTokenNode, Error> {
-        let (top_level_token, pos) = t.consume();
+        let Locatable {
+            element: top_level_token,
+            pos,
+        } = t;
         self.visit_top_level_token(top_level_token)
             .with_pos(pos)
             .with_err_pos(pos)
@@ -61,7 +64,10 @@ pub trait ExpressionReducer {
     }
 
     fn visit_statement_node(&self, t: StatementNode) -> Result<StatementNode, Error> {
-        let (statement, pos) = t.consume();
+        let Locatable {
+            element: statement,
+            pos,
+        } = t;
         self.visit_statement(statement)
             .with_pos(pos)
             .with_err_pos(pos)
@@ -220,7 +226,7 @@ pub trait ExpressionReducer {
     }
 
     fn visit_expression_node(&self, expr_node: ExpressionNode) -> Result<ExpressionNode, Error> {
-        let (expr, pos) = expr_node.consume();
+        let Locatable { element: expr, pos } = expr_node;
         self.visit_expression(expr).with_pos(pos).with_err_pos(pos)
     }
 

@@ -77,7 +77,7 @@ pub fn read_keyword<T: BufRead>(
 ) -> Result<Location, ParserError> {
     let x = lexer.read()?;
     if x.is_keyword(keyword) {
-        Ok(x.location())
+        Ok(x.pos())
     } else {
         Err(ParserError::Unexpected(
             format!("Expected keyword {}", keyword),

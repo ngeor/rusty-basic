@@ -78,8 +78,8 @@ impl TryFrom<&TypeDefinition> for TypeQualifier {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeclaredName {
-    name: CaseInsensitiveString,
-    type_definition: TypeDefinition,
+    pub name: CaseInsensitiveString,
+    pub type_definition: TypeDefinition,
 }
 
 impl DeclaredName {
@@ -142,6 +142,12 @@ impl AsRef<BareName> for DeclaredName {
     }
 }
 
+impl From<DeclaredName> for (BareName, TypeDefinition) {
+    fn from(n: DeclaredName) -> (BareName, TypeDefinition) {
+        (n.name, n.type_definition)
+    }
+}
+
 // BareName -> DeclaredName
 
 impl From<BareName> for DeclaredName {
@@ -154,8 +160,8 @@ impl From<BareName> for DeclaredName {
 
 impl From<QualifiedName> for DeclaredName {
     fn from(q_name: QualifiedName) -> Self {
-        let (n, q) = q_name.consume();
-        Self::new(n, TypeDefinition::CompactBuiltIn(q))
+        let QualifiedName { name, qualifier } = q_name;
+        Self::new(name, TypeDefinition::CompactBuiltIn(qualifier))
     }
 }
 

@@ -13,10 +13,10 @@ pub fn try_read<T: BufRead>(
 ) -> Result<Option<TopLevelTokenNode>, ParserError> {
     let p = lexer.peek()?;
     if p.is_keyword(Keyword::Function) {
-        let pos = lexer.read()?.location();
+        let pos = lexer.read()?.pos();
         demand_function_implementation(lexer).map(|x| Some(x.at(pos)))
     } else if p.is_keyword(Keyword::Sub) {
-        let pos = lexer.read()?.location();
+        let pos = lexer.read()?.pos();
         demand_sub_implementation(lexer).map(|x| Some(x.at(pos)))
     } else {
         Ok(None)

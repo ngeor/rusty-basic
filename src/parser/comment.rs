@@ -10,7 +10,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     if !lexer.peek()?.is_symbol('\'') {
         return Ok(None);
     }
-    let pos = lexer.read()?.location();
+    let pos = lexer.read()?.pos();
     let mut buf = String::new();
     while !lexer.peek()?.is_eol_or_eof() {
         // TODO move this to a method in LexemeNode e.g. lexeme.push_to_str

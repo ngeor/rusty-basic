@@ -8,8 +8,8 @@ use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
-    BareNameNode, DeclaredNameNodes, HasQualifier, Name, NameNode, QualifiedName, TypeQualifier,
-    WithTypeQualifier,
+    BareName, BareNameNode, DeclaredName, DeclaredNameNodes, HasQualifier, Name, NameNode,
+    QualifiedName, TypeDefinition, TypeQualifier, WithTypeQualifier,
 };
 use std::convert::TryInto;
 
@@ -52,7 +52,7 @@ where
     T: Converter<A, B>,
 {
     fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, Error> {
-        let (element, pos) = a.consume();
+        let Locatable { element, pos } = a;
         self.convert(element).with_pos(pos).with_err_pos(pos)
     }
 }
@@ -105,8 +105,8 @@ impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
         let mut result: Vec<TopLevelTokenNode> = vec![];
         for top_level_token_node in a.into_iter() {
             // will contain None where DefInt and declarations used to be
-            let (top_level_token, pos) = top_level_token_node.consume();
-            let opt: Option<TopLevelToken> = self.convert(top_level_token).with_err_pos(pos)?;
+            let Locatable { element, pos } = top_level_token_node;
+            let opt: Option<TopLevelToken> = self.convert(element).with_err_pos(pos)?;
             match opt {
                 Some(t) => {
                     let r: TopLevelTokenNode = t.at(pos);
@@ -144,6 +144,17 @@ impl ConverterImpl {
         Ok(Some(mapped))
     }
 
+    fn resolve_declared_name(&self, d: &DeclaredName) -> TypeQualifier {
+        match d.type_definition() {
+            TypeDefinition::Bare => {
+                let bare_name: &BareName = d.as_ref();
+                bare_name.resolve_into(&self.resolver)
+            }
+            TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => *q,
+            _ => unimplemented!(),
+        }
+    }
+
     fn convert_function_params(
         &mut self,
         function_name: &QualifiedName,
@@ -151,21 +162,21 @@ impl ConverterImpl {
     ) -> Result<Vec<QNameNode>, Error> {
         let mut result: Vec<QNameNode> = vec![];
         for p in params.into_iter() {
-            let (declared_name, pos) = p.consume();
-            if self.subs.contains_key(declared_name.as_ref()) {
+            let Locatable { element, pos } = p;
+            if self.subs.contains_key(element.as_ref()) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return err(LinterError::DuplicateDefinition, pos);
             }
-            let q: TypeQualifier = (&declared_name).resolve_into(&self.resolver);
-            if function_name.as_ref() == declared_name.as_ref()
-                && (function_name.qualifier() != q || declared_name.is_extended())
+            let q: TypeQualifier = self.resolve_declared_name(&element);
+            if function_name.as_ref() == element.as_ref()
+                && (function_name.qualifier() != q || element.is_extended())
             {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
                 return err(LinterError::DuplicateDefinition, pos);
             }
-            let q_name = QualifiedName::new(declared_name.as_ref().clone(), q);
+            let q_name = QualifiedName::new(element.as_ref().clone(), q);
             self.context
-                .add_param(declared_name, &self.resolver)
+                .push_param(element, &self.resolver)
                 .with_err_pos(pos)?;
             result.push(q_name.at(pos));
         }
@@ -182,15 +193,15 @@ impl ConverterImpl {
 
         let mut mapped_params: Vec<QNameNode> = vec![];
         for declared_name_node in params.into_iter() {
-            let (declared_name, pos) = declared_name_node.consume();
-            if self.subs.contains_key(declared_name.as_ref()) {
+            let Locatable { element, pos } = declared_name_node;
+            if self.subs.contains_key(element.as_ref()) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return err(LinterError::DuplicateDefinition, pos);
             }
-            let q: TypeQualifier = (&declared_name).resolve_into(&self.resolver);
-            let q_name = QualifiedName::new(declared_name.as_ref().clone(), q);
+            let q: TypeQualifier = self.resolve_declared_name(&element);
+            let q_name = QualifiedName::new(element.as_ref().clone(), q);
             self.context
-                .add_param(declared_name, &self.resolver)
+                .push_param(element, &self.resolver)
                 .with_err_pos(pos)?;
             mapped_params.push(q_name.at(pos));
         }
@@ -247,7 +258,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                 }
             }
             parser::Statement::Const(n, e) => {
-                let (name, pos) = n.clone().consume();
+                let Locatable { element: name, pos } = n;
                 if self.functions.contains_key(name.as_ref())
                     || self.subs.contains_key(name.as_ref())
                 {
@@ -256,13 +267,11 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                 } else {
                     let converted_expression_node = self.convert(e)?;
                     let e_type = converted_expression_node.try_qualifier()?;
-                    let q = self
+                    let q_name = self
                         .context
-                        .add_const(n, e_type.at(converted_expression_node.location()))?;
-                    Ok(Statement::Const(
-                        name.with_type(q).at(pos),
-                        converted_expression_node,
-                    ))
+                        .push_const(name, e_type.at(converted_expression_node.pos()))
+                        .with_err_pos(pos)?;
+                    Ok(Statement::Const(q_name.at(pos), converted_expression_node))
                 }
             }
             parser::Statement::SubCall(n, args) => {
@@ -281,12 +290,12 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::Label(l) => Ok(Statement::Label(l)),
             parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
             parser::Statement::Dim(declared_name_node) => {
-                let (d, pos) = declared_name_node.consume();
+                let Locatable { element: d, pos } = declared_name_node;
                 if self.subs.contains_key(d.as_ref()) || self.functions.contains_key(d.as_ref()) {
                     return err(LinterError::DuplicateDefinition, pos);
                 }
                 let mapped_declared_name =
-                    self.context.add_dim(&d, &self.resolver).with_err_pos(pos)?;
+                    self.context.push_dim(d, &self.resolver).with_err_pos(pos)?;
                 Ok(Statement::Dim(mapped_declared_name.at(pos)))
             }
         }
@@ -444,30 +453,24 @@ impl ConverterImpl {
         } else if self.subs.contains_key(n.as_ref()) {
             // trying to assign to a sub
             Err(LinterError::DuplicateDefinition.into())
-        } else if !self.context.has_param(&n) && self.functions.contains_key(n.as_ref()) {
+        } else if !self.context.resolve_param_assignment(&n, &self.resolver)?
+            && self.functions.contains_key(n.as_ref())
+        {
             // parameter might be hiding a function name so it takes precedence
             Err(LinterError::DuplicateDefinition.into())
         } else {
-            let q_name = self.context.resolve_assignment(&n, &self.resolver)?;
-            Ok(LName::Variable(q_name))
+            let declared_name = self.context.resolve_assignment(&n, &self.resolver)?;
+            let q = self.resolve_declared_name(&declared_name);
+            let DeclaredName { name, .. } = declared_name;
+            Ok(LName::Variable(name.with_type(q)))
         }
     }
 
     pub fn resolve_name_in_expression(&mut self, n: &parser::Name) -> Result<Expression, Error> {
-        self.resolve_from_names(n)
+        self.context
+            .resolve_expression(n, &self.resolver)
             .or_try_read(|| self.resolve_name_as_subprogram(n))
-            .or_read(|| self.resolve_name_as_new_var(n))
-    }
-
-    fn resolve_from_names(&mut self, n: &parser::Name) -> Result<Option<Expression>, Error> {
-        self.context.resolve_expression(n, &self.resolver)
-    }
-
-    fn resolve_name_as_new_var(&mut self, n: &parser::Name) -> Result<Expression, Error> {
-        // e.g. INPUT N, where N has not been declared in advance
-        let q = self.context.add_dim_compact_implicit(n, &self.resolver)?;
-        let q_name = n.with_type_ref(q);
-        Ok(Expression::Variable(q_name))
+            .or_read(|| self.context.resolve_missing_variable(n, &self.resolver))
     }
 
     fn resolve_name_as_subprogram(

@@ -12,7 +12,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         return Ok(None);
     }
 
-    let pos = lexer.read()?.location();
+    let pos = lexer.read()?.pos();
     read_demand_whitespace(lexer, "Expected whitespace after IF keyword")?;
     let if_condition = demand(lexer, expression::try_read, "Expected expression after IF")?;
     read_demand_whitespace(lexer, "Expected whitespace before THEN keyword")?;

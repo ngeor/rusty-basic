@@ -25,11 +25,11 @@ pub fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, Par
 }
 
 impl HasLocation for ParserError {
-    fn location(&self) -> Location {
+    fn pos(&self) -> Location {
         match self {
-            Self::LexerError(l) => l.location(),
+            Self::LexerError(l) => l.pos(),
             Self::Internal(_, pos) | Self::SyntaxError(_, pos) => pos.clone(),
-            Self::Unexpected(_, l) | Self::Unterminated(l) => l.location(),
+            Self::Unexpected(_, l) | Self::Unterminated(l) => l.pos(),
         }
     }
 }

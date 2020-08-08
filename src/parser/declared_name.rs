@@ -32,7 +32,7 @@ pub fn try_read<T: BufRead>(
         Name::Qualified(_) => {
             return Err(ParserError::SyntaxError(
                 "Identifier cannot end with %, &, !, #, or $".to_string(),
-                var_name_node.location(),
+                var_name_node.pos(),
             ));
         }
     };
@@ -58,11 +58,11 @@ pub fn try_read<T: BufRead>(
         _ => {
             return Err(ParserError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
-                next.location(),
+                next.pos(),
             ))
         }
     };
     Ok(Some(
-        DeclaredName::new(bare_name, var_type).at(var_name_node.location()),
+        DeclaredName::new(bare_name, var_type).at(var_name_node.pos()),
     ))
 }

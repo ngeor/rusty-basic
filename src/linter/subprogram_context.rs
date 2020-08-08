@@ -4,7 +4,10 @@ use crate::common::*;
 use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
-use crate::parser::{BareName, DeclaredNameNode, DeclaredNameNodes, NameNode, TypeQualifier};
+use crate::parser::{
+    BareName, DeclaredName, DeclaredNameNode, DeclaredNameNodes, NameNode, TypeDefinition,
+    TypeQualifier,
+};
 use std::collections::HashMap;
 
 /// Collects subprograms of the given program.
@@ -39,7 +42,15 @@ fn resolve_declared_name_node<T: TypeResolver>(
     resolver: &T,
     p: &DeclaredNameNode,
 ) -> TypeQualifier {
-    p.as_ref().resolve_into(resolver)
+    let d: &DeclaredName = p.as_ref();
+    match d.type_definition() {
+        TypeDefinition::Bare => {
+            let bare_name: &BareName = d.as_ref();
+            bare_name.resolve_into(resolver)
+        }
+        TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => *q,
+        _ => unimplemented!(),
+    }
 }
 
 impl FunctionContext {
@@ -135,7 +146,7 @@ impl FunctionContext {
     }
 
     pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
-        let pos = a.location();
+        let pos = a.pos();
         match a.as_ref() {
             parser::TopLevelToken::DefType(d) => {
                 self.resolver.set(d);
@@ -263,18 +274,21 @@ impl SubContext {
         Ok(())
     }
 
-    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
-        let pos = a.location();
-        match a.as_ref() {
+    pub fn visit(&mut self, top_level_token_node: &parser::TopLevelTokenNode) -> Result<(), Error> {
+        let Locatable {
+            element: top_level_token,
+            pos,
+        } = top_level_token_node;
+        match top_level_token {
             parser::TopLevelToken::DefType(d) => {
                 self.resolver.set(d);
                 Ok(())
             }
             parser::TopLevelToken::SubDeclaration(n, params) => {
-                self.add_declaration(n.as_ref(), params, pos)
+                self.add_declaration(n.as_ref(), params, *pos)
             }
             parser::TopLevelToken::SubImplementation(n, params, _) => {
-                self.add_implementation(n.as_ref(), params, pos)
+                self.add_implementation(n.as_ref(), params, *pos)
             }
             _ => Ok(()),
         }

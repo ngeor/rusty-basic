@@ -1,8 +1,6 @@
 use crate::parser::{
-    BareName, BareNameNode, DeclaredName, HasQualifier, Name, NameNode, QualifiedName,
-    TypeQualifier,
+    BareName, BareNameNode, HasQualifier, Name, NameNode, QualifiedName, TypeQualifier,
 };
-use std::convert::TryInto;
 
 pub trait TypeResolver {
     fn resolve<T: AsRef<str>>(&self, name: T) -> TypeQualifier;
@@ -79,19 +77,6 @@ impl ResolveFrom<&NameNode> for TypeQualifier {
     fn resolve_from<T: TypeResolver>(x: &NameNode, resolver: &T) -> Self {
         let name: &Name = x.as_ref();
         name.resolve_into(resolver)
-    }
-}
-
-impl ResolveFrom<&DeclaredName> for TypeQualifier {
-    fn resolve_from<TR: TypeResolver>(declared_name: &DeclaredName, resolver: &TR) -> Self {
-        if declared_name.is_bare() {
-            let b: &BareName = declared_name.as_ref();
-            b.resolve_into(resolver)
-        } else {
-            declared_name
-                .try_into()
-                .expect("Not implemented for user defined types")
-        }
     }
 }
 

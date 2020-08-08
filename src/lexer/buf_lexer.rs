@@ -47,7 +47,7 @@ impl<T: BufRead> BufLexer<T> {
         if self.transactions.is_empty() {
             Err(LexerError::Internal(
                 "Not in transaction".to_string(),
-                self.location(),
+                self.pos(),
             ))
         } else {
             self.transactions.pop();
@@ -59,7 +59,7 @@ impl<T: BufRead> BufLexer<T> {
         if self.transactions.is_empty() {
             Err(LexerError::Internal(
                 "Not in transaction".to_string(),
-                self.location(),
+                self.pos(),
             ))
         } else {
             self.index = self.transactions.pop().unwrap();
@@ -104,11 +104,11 @@ impl From<File> for BufLexer<BufReader<File>> {
 
 impl<T: BufRead> HasLocation for BufLexer<T> {
     /// Gets the location of the lexeme that will be read next.
-    fn location(&self) -> Location {
+    fn pos(&self) -> Location {
         if self.index < self.history.len() {
-            self.history[self.index].location()
+            self.history[self.index].pos()
         } else {
-            self.lexer.location()
+            self.lexer.pos()
         }
     }
 }
@@ -296,15 +296,15 @@ mod tests {
     fn test_location() {
         let input = "PRINT 1";
         let mut buf_lexer = BufLexer::from(input);
-        assert_eq!(buf_lexer.location(), Location::new(1, 1));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 1));
         buf_lexer.read().expect("Read should succeed (PRINT)");
-        assert_eq!(buf_lexer.location(), Location::new(1, 6));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 6));
         buf_lexer.read().expect("Read should succeed (whitespace)");
-        assert_eq!(buf_lexer.location(), Location::new(1, 7));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 7));
         buf_lexer.read().expect("Read should succeed (1)");
-        assert_eq!(buf_lexer.location(), Location::new(1, 8));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 8));
         buf_lexer.read().expect("Read should succeed (EOF)");
-        assert_eq!(buf_lexer.location(), Location::new(1, 8));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 8));
         buf_lexer.read().expect_err("Read should fail");
     }
 
@@ -312,9 +312,9 @@ mod tests {
     fn test_location_with_peek() {
         let input = "PRINT 1";
         let mut buf_lexer = BufLexer::from(input);
-        assert_eq!(buf_lexer.location(), Location::new(1, 1));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 1));
         buf_lexer.peek().expect("Peek should succeed");
-        assert_eq!(buf_lexer.location(), Location::new(1, 1));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 1));
     }
 
     #[test]
@@ -323,10 +323,10 @@ mod tests {
         let mut buf_lexer = BufLexer::from(input);
         buf_lexer.begin_transaction();
         buf_lexer.read().expect("Read should succeed");
-        assert_eq!(buf_lexer.location(), Location::new(1, 6));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 6));
         buf_lexer
             .rollback_transaction()
             .expect("Rollback should succeed");
-        assert_eq!(buf_lexer.location(), Location::new(1, 1));
+        assert_eq!(buf_lexer.pos(), Location::new(1, 1));
     }
 }

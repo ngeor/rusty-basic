@@ -395,7 +395,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         let mut exit: bool = false;
         while i < instructions.len() && !exit {
             let instruction = instructions[i].as_ref();
-            let pos = instructions[i].location();
+            let pos = instructions[i].pos();
             match self.interpret_one(&mut i, instruction, pos, &mut error_handler, &mut exit) {
                 Ok(_) => {
                     i += 1;

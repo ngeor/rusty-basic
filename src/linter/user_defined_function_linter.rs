@@ -70,14 +70,13 @@ impl<'a> UserDefinedFunctionLinter<'a> {
 
 impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
     fn visit_expression(&self, expr_node: &ExpressionNode) -> Result {
-        let pos = expr_node.location();
-        let e = expr_node.as_ref();
+        let Locatable { element: e, pos } = expr_node;
         match e {
             Expression::FunctionCall(n, args) => {
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                self.visit_function(n, args).with_err_pos(pos)
+                self.visit_function(n, args).with_err_pos(*pos)
             }
             Expression::BinaryExpression(_, left, right) => {
                 self.visit_expression(left)?;

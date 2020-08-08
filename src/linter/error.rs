@@ -58,7 +58,7 @@ impl Error {
 // To be able to use the ? operator on Result<Locatable<LinterError>>
 impl From<Locatable<LinterError>> for Error {
     fn from(e: Locatable<LinterError>) -> Error {
-        let (l, pos) = e.consume();
+        let Locatable { element: l, pos } = e;
         Error(l, Some(pos))
     }
 }
@@ -75,7 +75,7 @@ pub fn err<T>(l: LinterError, pos: Location) -> Result<T, Error> {
 }
 
 pub fn err_l<T, U: HasLocation>(l: LinterError, locatable: &U) -> Result<T, Error> {
-    err(l, locatable.location())
+    err(l, locatable.pos())
 }
 
 pub fn err_no_pos<T>(l: LinterError) -> Result<T, Error> {
@@ -93,8 +93,8 @@ impl<T> WithErrPos<Result<T, Error>, Location> for Result<T, Error> {
 }
 
 impl<T, L: HasLocation> WithErrPos<Result<T, Error>, &L> for Result<T, Error> {
-    fn with_err_pos(self, pos: &L) -> Self {
-        self.map_err(|x| x.with_pos(pos.location()))
+    fn with_err_pos(self, locatable: &L) -> Self {
+        self.map_err(|x| x.with_pos(locatable.pos()))
     }
 }
 

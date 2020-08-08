@@ -10,7 +10,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     if !lexer.peek()?.is_keyword(Keyword::Const) {
         return Ok(None);
     }
-    let pos = lexer.read()?.location();
+    let pos = lexer.read()?.pos();
     read_demand_whitespace(lexer, "Expected whitespace after CONST")?;
     let name_node = demand(lexer, name::try_read, "Expected CONST name")?;
     skip_whitespace(lexer)?;

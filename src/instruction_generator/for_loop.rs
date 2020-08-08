@@ -25,7 +25,7 @@ impl InstructionGenerator {
         // load the step expression
         match step {
             Some(s) => {
-                let step_location = s.location();
+                let step_location = s.pos();
                 // load 0 to B
                 self.push(Instruction::Load(Variant::VInteger(0)), pos);
                 self.push(Instruction::CopyAToB, pos);

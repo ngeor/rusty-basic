@@ -37,7 +37,10 @@ fn try_read_label<T: BufRead>(
 }
 
 fn do_read_label<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, ParserError> {
-    let (bare_name, pos) = demand(lexer, name::try_read_bare, "Expected bare name")?.consume();
+    let Locatable {
+        element: bare_name,
+        pos,
+    } = demand(lexer, name::try_read_bare, "Expected bare name")?;
     read_symbol(lexer, ':')?;
     Ok(Statement::Label(bare_name).at(pos))
 }
@@ -62,14 +65,14 @@ fn demand_on<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, ParserErr
     read_demand_keyword(lexer, Keyword::GoTo)?;
     read_demand_whitespace(lexer, "Expected space after GOTO")?;
     let name_node = demand(lexer, name::try_read_bare, "Expected label name")?;
-    let (name, _) = name_node.consume();
+    let Locatable { element: name, .. } = name_node;
     Ok(Statement::ErrorHandler(name))
 }
 
 fn demand_go_to<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, ParserError> {
     read_demand_whitespace(lexer, "Expected space after GOTO")?;
     let name_node = demand(lexer, name::try_read_bare, "Expected label name")?;
-    let (name, _) = name_node.consume();
+    let Locatable { element: name, .. } = name_node;
     Ok(Statement::GoTo(name))
 }
 

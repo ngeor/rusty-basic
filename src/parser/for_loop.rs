@@ -13,7 +13,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         return Ok(None);
     }
 
-    let pos = lexer.read()?.location();
+    let pos = lexer.read()?.pos();
     read_demand_whitespace(lexer, "Expected whitespace after FOR keyword")?;
     let for_counter_variable = demand(lexer, name::try_read, "Expected FOR counter variable")?;
     read_demand_symbol_skipping_whitespace(lexer, '=')?;

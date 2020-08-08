@@ -1,5 +1,5 @@
 use super::Name;
-use crate::common::{AtLocation, FileHandle, Locatable};
+use crate::common::{FileHandle, Locatable};
 use crate::variant;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -182,8 +182,7 @@ impl Expression {
 
 impl ExpressionNode {
     pub fn simplify_unary_minus_literals(self) -> Self {
-        let (x, pos) = self.consume();
-        x.simplify_unary_minus_literals().at(pos)
+        self.map(|x| x.simplify_unary_minus_literals())
     }
 
     pub fn is_parenthesis(&self) -> bool {

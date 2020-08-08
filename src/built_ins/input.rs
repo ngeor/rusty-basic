@@ -34,7 +34,7 @@ pub struct Input {}
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
     let next = lexer.peek()?;
     if next.is_keyword(Keyword::Input) {
-        let pos = lexer.read()?.location();
+        let pos = lexer.read()?.pos();
         read_demand_whitespace(lexer, "Expected space after INPUT")?;
         let args = sub_call::read_arg_list(lexer)?;
         Ok(Some(Statement::SubCall("INPUT".into(), args).at(pos)))

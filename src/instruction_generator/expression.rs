@@ -5,7 +5,7 @@ use crate::variant::Variant;
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions(&mut self, expr_node: ExpressionNode) {
-        let (e, pos) = expr_node.consume();
+        let Locatable { element: e, pos } = expr_node;
         match e {
             Expression::SingleLiteral(s) => {
                 self.push(Instruction::Load(Variant::from(s)), pos);

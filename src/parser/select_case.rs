@@ -12,7 +12,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     if !lexer.peek()?.is_keyword(Keyword::Select) {
         return Ok(None);
     }
-    let pos = lexer.read()?.location();
+    let pos = lexer.read()?.pos();
     // initial state: we just read the "SELECT" keyword
     read_demand_whitespace(lexer, "Expected space after SELECT")?;
     read_demand_keyword(lexer, Keyword::Case)?;
@@ -27,7 +27,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     for inline_statement in inline_statements {
         match inline_statement.as_ref() {
             Statement::Comment(c) => {
-                inline_comments.push(c.clone().at(inline_statement.location()));
+                inline_comments.push(c.clone().at(inline_statement.pos()));
             }
             _ => panic!("should have been a comment"),
         }
@@ -97,7 +97,7 @@ fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserErr
             // CASE should always be followed by a space so it's okay to throw an error here
             return Err(ParserError::SyntaxError(
                 "Expected space after CASE".to_string(),
-                lexer.peek()?.location(),
+                lexer.peek()?.pos(),
             ));
         }
     }
@@ -164,7 +164,7 @@ fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Opera
     } else {
         Err(ParserError::SyntaxError(
             "Expected relational operator".to_string(),
-            next.location(),
+            next.pos(),
         ))
     }
 }

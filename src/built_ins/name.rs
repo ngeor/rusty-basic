@@ -19,7 +19,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     let next = lexer.peek()?;
     if next.is_keyword(Keyword::Name) {
         lexer.read()?;
-        let pos = next.location();
+        let pos = next.pos();
         read_demand_whitespace(lexer, "Expected space after NAME")?;
         let old_file_name = demand(lexer, expression::try_read, "Expected original filename")?;
         read_demand_whitespace(lexer, "Expected space after filename")?;

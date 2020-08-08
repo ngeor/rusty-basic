@@ -10,7 +10,7 @@ pub struct BuiltInFunctionLinter;
 
 impl PostConversionLinter for BuiltInFunctionLinter {
     fn visit_expression(&self, expr_node: &ExpressionNode) -> Result<(), Error> {
-        let pos = expr_node.location();
+        let pos = expr_node.pos();
         let e = expr_node.as_ref();
         match e {
             Expression::BuiltInFunctionCall(built_in_function, args) => {

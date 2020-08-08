@@ -63,6 +63,15 @@ impl From<&NameNode> for BareName {
     }
 }
 
+// NameNode -> BareName
+
+impl From<NameNode> for BareName {
+    fn from(n: NameNode) -> BareName {
+        let NameNode { element, .. } = n;
+        element.into()
+    }
+}
+
 // WithTypeQualifier
 
 impl WithTypeQualifier for BareName {
@@ -95,17 +104,13 @@ pub type BareNameNode = Locatable<BareName>;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QualifiedName {
-    name: CaseInsensitiveString,
-    qualifier: TypeQualifier,
+    pub name: CaseInsensitiveString,
+    pub qualifier: TypeQualifier,
 }
 
 impl QualifiedName {
     pub fn new(name: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
         QualifiedName { name, qualifier }
-    }
-
-    pub fn consume(self) -> (CaseInsensitiveString, TypeQualifier) {
-        (self.name, self.qualifier)
     }
 
     pub fn is_of_type(&self, q_other: TypeQualifier) -> bool {

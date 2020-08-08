@@ -72,7 +72,10 @@ impl InstructionGenerator {
         let mut subs: Vec<(SubImplementation, Location)> = vec![];
 
         for t in program {
-            let (top_level_token, pos) = t.consume();
+            let Locatable {
+                element: top_level_token,
+                pos,
+            } = t;
             match top_level_token {
                 TopLevelToken::Statement(s) => {
                     self.generate_statement_node_instructions(s.at(pos));
@@ -120,7 +123,7 @@ impl InstructionGenerator {
         // resolve jumps
         for instruction_node in self.instructions.iter_mut() {
             let instruction: &Instruction = instruction_node.as_ref();
-            let pos: Location = instruction_node.location();
+            let pos: Location = instruction_node.pos();
             if let Instruction::UnresolvedJump(x) = instruction {
                 *instruction_node = Instruction::Jump(*labels.get(x).unwrap()).at(pos);
             } else if let Instruction::UnresolvedJumpIfFalse(x) = instruction {
@@ -210,7 +213,7 @@ impl InstructionGenerator {
 
     pub fn generate_assignment_instructions(&mut self, l: QNameNode, r: ExpressionNode) {
         self.generate_expression_instructions(r);
-        let pos = l.location();
+        let pos = l.pos();
         self.push(Instruction::Store(l.strip_location()), pos);
     }
 }

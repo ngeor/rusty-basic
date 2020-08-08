@@ -15,7 +15,10 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         lexer.rollback_transaction()?;
         return Ok(None);
     }
-    let (bare_name, pos) = opt_name.unwrap().consume();
+    let Locatable {
+        element: bare_name,
+        pos,
+    } = opt_name.unwrap();
     let p = lexer.peek()?;
     if p.is_symbol('=') || p.is_symbol(':') {
         // assignment or label

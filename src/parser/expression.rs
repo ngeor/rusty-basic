@@ -114,7 +114,7 @@ fn apply_priority_order(
                     ),
                     r_right.clone(),
                 )
-                .at(right_side.location())
+                .at(right_side.pos())
             } else {
                 Expression::BinaryExpression(op, Box::new(left_side), Box::new(right_side)).at(pos)
             }
@@ -137,7 +137,7 @@ fn apply_unary_priority_order(
                     Box::new(Expression::UnaryExpression(op, r_left.clone()).at(pos)),
                     r_right.clone(),
                 )
-                .at(child.location())
+                .at(child.pos())
             } else {
                 Expression::UnaryExpression(op, Box::new(child)).at(pos)
             }
@@ -197,8 +197,8 @@ mod string_literal {
     use super::*;
     pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserError> {
         let mut buf: String = String::new();
-        let pos = lexer.read()?.location(); // read double quote
-                                            // read until we hit the next double quote
+        let pos = lexer.read()?.pos(); // read double quote
+                                       // read until we hit the next double quote
         loop {
             let l = lexer.read()?;
             match l {
@@ -249,7 +249,7 @@ mod number_literal {
     pub fn read_dot_float<T: BufRead>(
         lexer: &mut BufLexer<T>,
     ) -> Result<ExpressionNode, ParserError> {
-        let pos = lexer.read()?.location(); // consume . of .10
+        let pos = lexer.read()?.pos(); // consume . of .10
         parse_floating_point_literal(lexer, "0".to_string(), pos)
     }
 

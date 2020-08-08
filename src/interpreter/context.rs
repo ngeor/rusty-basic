@@ -64,7 +64,10 @@ impl<T: std::fmt::Debug + Sized + Cast> NameMap<T> {
     }
 
     pub fn insert(&mut self, name: QualifiedName, value: T) -> Result<(), String> {
-        let (bare_name, qualifier) = name.consume();
+        let QualifiedName {
+            name: bare_name,
+            qualifier,
+        } = name;
         match self.0.get_mut(&bare_name) {
             Some(inner_map) => {
                 inner_map.insert(qualifier, value.cast(qualifier)?);
@@ -130,7 +133,10 @@ impl ConstantMap {
         match self.0.get(name.as_ref()) {
             Some(_) => panic!("Duplicate definition"),
             None => {
-                let (bare_name, qualifier) = name.consume();
+                let QualifiedName {
+                    name: bare_name,
+                    qualifier,
+                } = name;
                 self.0.insert(bare_name, value.cast(qualifier)?);
             }
         }

@@ -14,7 +14,7 @@ pub fn try_read<T: BufRead>(
         return Ok(None);
     }
 
-    let pos = lexer.read()?.location();
+    let pos = lexer.read()?.pos();
     read_demand_whitespace(lexer, "Expected whitespace after DECLARE keyword")?;
     let next = lexer.read()?;
     match next {
@@ -87,7 +87,7 @@ fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameN
         }
         _ => Err(ParserError::SyntaxError(
             "Expected parameter name or closing parenthesis".to_string(),
-            lexer.peek()?.location(),
+            lexer.peek()?.pos(),
         )),
     }
 }
@@ -112,7 +112,7 @@ fn parse_next_parameter<T: BufRead>(
         }
         _ => Err(ParserError::SyntaxError(
             "Expected comma or closing parenthesis".to_string(),
-            lexer.peek()?.location(),
+            lexer.peek()?.pos(),
         )),
     }
 }

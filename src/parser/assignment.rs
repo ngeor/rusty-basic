@@ -11,7 +11,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 }
 
 fn do_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, ParserError> {
-    let (name, pos) = demand(lexer, name::try_read, "Expected name")?.consume();
+    let Locatable { element: name, pos } = demand(lexer, name::try_read, "Expected name")?;
     skip_whitespace(lexer)?;
     read_symbol(lexer, '=')?;
     skip_whitespace(lexer)?;

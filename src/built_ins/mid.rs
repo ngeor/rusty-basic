@@ -5,14 +5,14 @@
 // if the length is omitted, returns or replaces all remaining characters
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::common::Location;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
-use crate::linter::{err_no_pos, Error, ExpressionNode, LinterError};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 
 pub struct Mid {}
 
 impl BuiltInLint for Mid {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() == 2 {
             util::require_string_argument(args, 0)?;
             util::require_integer_argument(args, 1)
@@ -21,40 +21,31 @@ impl BuiltInLint for Mid {
             util::require_integer_argument(args, 1)?;
             util::require_integer_argument(args, 2)
         } else {
-            err_no_pos(LinterError::ArgumentCountMismatch)
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         }
     }
 }
 
 impl BuiltInRun for Mid {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let s: String = interpreter.pop_string();
         let start: i32 = interpreter.pop_integer();
         let length: Option<i32> = interpreter.pop_unnamed_val().map(|v| v.demand_integer());
-        let result: String = do_mid(s, start, length, pos)?;
+        let result: String = do_mid(s, start, length)?;
         interpreter.function_result = result.into();
         Ok(())
     }
 }
 
-fn do_mid(
-    s: String,
-    start: i32,
-    opt_length: Option<i32>,
-    pos: Location,
-) -> Result<String, InterpreterError> {
+fn do_mid(s: String, start: i32, opt_length: Option<i32>) -> Result<String, QErrorNode> {
     if start <= 0 {
-        Err(InterpreterError::new_with_pos("Illegal function call", pos))
+        Err(QError::IllegalFunctionCall).with_err_no_pos()
     } else {
         let start_idx: usize = (start - 1) as usize;
         match opt_length {
             Some(length) => {
                 if length < 0 {
-                    Err(InterpreterError::new_with_pos("Illegal function call", pos))
+                    Err(QError::IllegalFunctionCall).with_err_no_pos()
                 } else {
                     let end: usize = if start_idx + (length as usize) > s.len() {
                         s.len()
@@ -73,10 +64,8 @@ fn do_mid(
 mod tests {
     use crate::assert_linter_err;
     use crate::assert_prints;
-    use crate::common::Location;
+    use crate::common::*;
     use crate::interpreter::test_utils::interpret_err;
-    use crate::interpreter::InterpreterError;
-    use crate::linter::LinterError;
 
     #[test]
     fn test_mid_happy_flow() {
@@ -94,33 +83,16 @@ mod tests {
         assert_prints!(r#"PRINT MID$("hay", 1, 0)"#, "");
         assert_eq!(
             interpret_err(r#"PRINT MID$("hay", 0)"#),
-            InterpreterError::new(
-                "Illegal function call",
-                vec![
-                    Location::new(1, 7),
-                    Location::new(1, 7) // TODO why is this double
-                ]
-            )
+            ErrorEnvelope::Pos(QError::IllegalFunctionCall, Location::new(1, 7))
         );
         assert_eq!(
             interpret_err(r#"PRINT MID$("hay", 1, -1)"#),
-            InterpreterError::new(
-                "Illegal function call",
-                vec![
-                    Location::new(1, 7),
-                    Location::new(1, 7) // TODO why is this double
-                ]
-            )
+            ErrorEnvelope::Pos(QError::IllegalFunctionCall, Location::new(1, 7))
         );
     }
 
     #[test]
     fn test_mid_linter() {
-        assert_linter_err!(
-            r#"PRINT MID$("oops")"#,
-            LinterError::ArgumentCountMismatch,
-            1,
-            7
-        );
+        assert_linter_err!(r#"PRINT MID$("oops")"#, QError::ArgumentCountMismatch, 1, 7);
     }
 }

@@ -2,20 +2,20 @@
 // Parameter must be in the form of name=value or name value (TODO support the latter)
 
 use super::{BuiltInLint, BuiltInRun};
-use crate::common::Location;
-use crate::interpreter::{err, Interpreter, InterpreterError, Stdlib};
-use crate::linter::{err_l, err_no_pos, Error, ExpressionNode, LinterError};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 use crate::parser::TypeQualifier;
 use crate::variant::Variant;
 
 pub struct Environ {}
 
 impl BuiltInLint for Environ {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
-            err_no_pos(LinterError::ArgumentCountMismatch)
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
-            err_l(LinterError::ArgumentTypeMismatch, &args[0])
+            Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
         } else {
             Ok(())
         }
@@ -23,16 +23,12 @@ impl BuiltInLint for Environ {
 }
 
 impl BuiltInRun for Environ {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         match interpreter.pop_unnamed_val().unwrap() {
             Variant::VString(arg_string_value) => {
                 let parts: Vec<&str> = arg_string_value.split("=").collect();
                 if parts.len() != 2 {
-                    err("Invalid expression. Must be name=value.", pos)
+                    Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()
                 } else {
                     interpreter
                         .stdlib

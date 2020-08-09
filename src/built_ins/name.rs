@@ -4,27 +4,27 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::{BufLexer, Keyword};
-use crate::linter::{err_l, err_no_pos, Error, ExpressionNode, LinterError};
-use crate::parser::buf_lexer::*;
+use crate::linter::ExpressionNode;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
-use crate::parser::{BareName, ParserError, Statement, StatementNode, TypeQualifier};
+use crate::parser::{BareName, Statement, StatementNode, TypeQualifier};
 use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Name {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Name) {
         lexer.read()?;
-        read_demand_whitespace(lexer, "Expected space after NAME")?;
-        let old_file_name = demand(lexer, expression::try_read, "Expected original filename")?;
-        read_demand_whitespace(lexer, "Expected space after filename")?;
-        read_demand_keyword(lexer, Keyword::As)?;
-        read_demand_whitespace(lexer, "Expected space after AS")?;
-        let new_file_name = demand(lexer, expression::try_read, "Expected new filename")?;
+        read_whitespace(lexer, "Expected space after NAME")?;
+        let old_file_name = read(lexer, expression::try_read, "Expected original filename")?;
+        read_whitespace(lexer, "Expected space after filename")?;
+        read_keyword(lexer, Keyword::As)?;
+        read_whitespace(lexer, "Expected space after AS")?;
+        let new_file_name = read(lexer, expression::try_read, "Expected new filename")?;
         let bare_name: BareName = "NAME".into();
         Ok(Statement::SubCall(bare_name, vec![old_file_name, new_file_name]).at(pos))
             .map(|x| Some(x))
@@ -34,13 +34,13 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 }
 
 impl BuiltInLint for Name {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 2 {
-            err_no_pos(LinterError::ArgumentCountMismatch)
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
-            err_l(LinterError::ArgumentTypeMismatch, &args[0])
+            Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
         } else if args[1].try_qualifier()? != TypeQualifier::DollarString {
-            err_l(LinterError::ArgumentTypeMismatch, &args[1])
+            Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])
         } else {
             Ok(())
         }
@@ -48,23 +48,20 @@ impl BuiltInLint for Name {
 }
 
 impl BuiltInRun for Name {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let old_file_name = interpreter.pop_string();
         let new_file_name = interpreter.pop_string();
         std::fs::rename(old_file_name, new_file_name)
-            .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))
+            .map_err(|e| e.into())
+            .with_err_no_pos()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
+    use crate::common::*;
     use crate::interpreter::test_utils::*;
-    use crate::linter::LinterError;
 
     #[test]
     fn test_can_rename_file() {
@@ -84,17 +81,7 @@ mod tests {
 
     #[test]
     fn test_name_linter_err() {
-        assert_linter_err!(
-            r#"NAME 1 AS "boo""#,
-            LinterError::ArgumentTypeMismatch,
-            1,
-            6
-        );
-        assert_linter_err!(
-            r#"NAME "boo" AS 2"#,
-            LinterError::ArgumentTypeMismatch,
-            1,
-            15
-        );
+        assert_linter_err!(r#"NAME 1 AS "boo""#, QError::ArgumentTypeMismatch, 1, 6);
+        assert_linter_err!(r#"NAME "boo" AS 2"#, QError::ArgumentTypeMismatch, 1, 15);
     }
 }

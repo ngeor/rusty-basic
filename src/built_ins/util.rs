@@ -1,39 +1,40 @@
-use crate::linter::{err_l, err_no_pos, Error, ExpressionNode, LinterError, TypeQualifier};
+use crate::common::*;
+use crate::linter::{ExpressionNode, TypeQualifier};
 
-pub fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), Error> {
+pub fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
     if args.len() != 1 {
-        err_no_pos(LinterError::ArgumentCountMismatch)
+        Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         let q = args[0].try_qualifier()?;
         if q == TypeQualifier::DollarString || q == TypeQualifier::FileHandle {
-            err_l(LinterError::ArgumentTypeMismatch, &args[0])
+            Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
         } else {
             Ok(())
         }
     }
 }
 
-pub fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), Error> {
+pub fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
     if args.len() != 1 {
-        err_no_pos(LinterError::ArgumentCountMismatch)
+        Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         require_string_argument(args, 0)
     }
 }
 
-pub fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), Error> {
+pub fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
     let q = args[idx].try_qualifier()?;
     if q != TypeQualifier::DollarString {
-        err_l(LinterError::ArgumentTypeMismatch, &args[idx])
+        Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
     }
 }
 
-pub fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), Error> {
+pub fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
     let q = args[idx].try_qualifier()?;
     if q != TypeQualifier::PercentInteger {
-        err_l(LinterError::ArgumentTypeMismatch, &args[idx])
+        Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
     }

@@ -1,18 +1,18 @@
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer::*;
-use crate::parser::error::*;
+use crate::parser::buf_lexer_helpers::*;
+
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     lexer.begin_transaction();
     // get the name first and ensure we are not looking at an assignment or a label
     let opt_name = name::try_read_bare(lexer)?;
     if opt_name.is_none() {
-        lexer.rollback_transaction()?;
+        lexer.rollback_transaction();
         return Ok(None);
     }
     let Locatable {
@@ -22,13 +22,13 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     let p = lexer.peek()?;
     if p.as_ref().is_symbol('=') || p.as_ref().is_symbol(':') {
         // assignment or label
-        lexer.rollback_transaction()?;
+        lexer.rollback_transaction();
         return Ok(None);
     }
 
     if p.as_ref().is_symbol('(') {
         // sub call with parenthesis e.g. Hello(1)
-        lexer.commit_transaction()?;
+        lexer.commit_transaction();
         let args = read_arg_list(lexer)?;
         return Ok(Some(Statement::SubCall(bare_name, args).at(pos)));
     }
@@ -42,18 +42,18 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     };
     if !might_have_args {
         // no args e.g. "PRINT"
-        lexer.commit_transaction()?;
+        lexer.commit_transaction();
         return Ok(Some(Statement::SubCall(bare_name, vec![]).at(pos)));
     }
 
     // check once again to make sure we're not in assignment with extra whitespace e.g. A = 2
     if lexer.peek()?.as_ref().is_symbol('=') {
-        lexer.rollback_transaction()?;
+        lexer.rollback_transaction();
         return Ok(None);
     }
 
     // at this point we know it's a sub call so we commit
-    lexer.commit_transaction()?;
+    lexer.commit_transaction();
 
     let args = read_arg_list(lexer)?;
     Ok(Some(Statement::SubCall(bare_name, args).at(pos)))
@@ -61,7 +61,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 
 pub fn read_arg_list<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Vec<ExpressionNode>, ParserError> {
+) -> Result<Vec<ExpressionNode>, QErrorNode> {
     match expression::try_read(lexer)? {
         Some(e) => {
             let mut args: Vec<ExpressionNode> = vec![e];

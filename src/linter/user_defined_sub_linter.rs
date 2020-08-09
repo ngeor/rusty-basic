@@ -1,4 +1,3 @@
-use super::error::*;
 use super::post_conversion_linter::PostConversionLinter;
 use super::subprogram_context::SubMap;
 use super::types::*;
@@ -14,10 +13,10 @@ impl<'a> PostConversionLinter for UserDefinedSubLinter<'a> {
         &self,
         name: &CaseInsensitiveString,
         args: &Vec<ExpressionNode>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), QErrorNode> {
         match self.subs.get(name) {
             Some((param_types, _)) => lint_call_args(args, param_types),
-            None => err_no_pos(LinterError::SubprogramNotDefined),
+            None => err_no_pos(QError::SubprogramNotDefined),
         }
     }
 }

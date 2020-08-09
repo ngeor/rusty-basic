@@ -17,25 +17,23 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
-use crate::linter::{err_l, err_no_pos, Error, Expression, ExpressionNode, LinterError};
-use crate::parser::buf_lexer::*;
+use crate::linter::{Expression, ExpressionNode};
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::sub_call;
-use crate::parser::{
-    HasQualifier, ParserError, QualifiedName, Statement, StatementNode, TypeQualifier,
-};
+use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
 use crate::variant::Variant;
 use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Input {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Input) {
         lexer.read()?;
-        read_demand_whitespace(lexer, "Expected space after INPUT")?;
+        read_whitespace(lexer, "Expected space after INPUT")?;
         let args = sub_call::read_arg_list(lexer)?;
         Ok(Some(Statement::SubCall("INPUT".into(), args).at(pos)))
     } else {
@@ -44,14 +42,14 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 }
 
 impl BuiltInLint for Input {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() == 0 {
-            err_no_pos(LinterError::ArgumentCountMismatch)
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             args.iter()
                 .map(|a| match a.as_ref() {
                     Expression::Variable(_) => Ok(()),
-                    _ => err_l(LinterError::VariableRequired, a),
+                    _ => Err(QError::VariableRequired).with_err_at(a),
                 })
                 .collect()
         }
@@ -59,16 +57,12 @@ impl BuiltInLint for Input {
 }
 
 impl BuiltInRun for Input {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         loop {
             match &interpreter.pop_unnamed_arg() {
                 Some(a) => match a {
                     Argument::ByRef(n) => {
-                        do_input_one_var(interpreter, pos, a, n)?;
+                        do_input_one_var(interpreter, a, n)?;
                     }
                     _ => {
                         panic!("Expected variable (linter should have caught this)");
@@ -85,46 +79,46 @@ impl BuiltInRun for Input {
 
 fn do_input_one_var<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
-    pos: Location,
     a: &Argument,
     n: &QualifiedName,
-) -> Result<(), InterpreterError> {
+) -> Result<(), QErrorNode> {
     let raw_input: String = interpreter
         .stdlib
         .input()
-        .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))?;
+        .map_err(|e| e.into())
+        .with_err_no_pos()?;
     let q: TypeQualifier = n.qualifier();
     let variable_value = match q {
-        TypeQualifier::BangSingle => Variant::from(
-            parse_single_input(raw_input).map_err(|e| InterpreterError::new_with_pos(e, pos))?,
-        ),
+        TypeQualifier::BangSingle => {
+            Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
+        }
         TypeQualifier::DollarString => Variant::from(raw_input),
-        TypeQualifier::PercentInteger => Variant::from(
-            parse_int_input(raw_input).map_err(|e| InterpreterError::new_with_pos(e, pos))?,
-        ),
+        TypeQualifier::PercentInteger => {
+            Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
+        }
         _ => unimplemented!(),
     };
     interpreter
         .context_mut()
         .demand_sub()
         .set_value_to_popped_arg(a, variable_value)
-        .map_err(|e| InterpreterError::new_with_pos(e, pos))
+        .with_err_no_pos()
 }
 
-fn parse_single_input(s: String) -> std::result::Result<f32, String> {
+fn parse_single_input(s: String) -> Result<f32, QError> {
     if s.is_empty() {
         Ok(0.0)
     } else {
         s.parse::<f32>()
-            .map_err(|e| format!("Could not parse {} as float: {}", s, e))
+            .map_err(|e| format!("Could not parse {} as float: {}", s, e).into())
     }
 }
 
-fn parse_int_input(s: String) -> std::result::Result<i32, String> {
+fn parse_int_input(s: String) -> Result<i32, QError> {
     if s.is_empty() {
         Ok(0)
     } else {
         s.parse::<i32>()
-            .map_err(|e| format!("Could not parse {} as int: {}", s, e))
+            .map_err(|e| format!("Could not parse {} as int: {}", s, e).into())
     }
 }

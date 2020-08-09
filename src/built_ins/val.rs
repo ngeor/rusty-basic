@@ -1,36 +1,32 @@
 // VAL(str-expr$) converts a string representation of a number to a number.
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::common::Location;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
-use crate::linter::{Error, ExpressionNode};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 use crate::variant;
 use crate::variant::Variant;
 
 pub struct Val {}
 
 impl BuiltInLint for Val {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         util::require_single_string_argument(args)
     }
 }
 
 impl BuiltInRun for Val {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
-            Variant::VString(s) => val(s).map_err(|e| InterpreterError::new_with_pos(e, pos))?,
+            Variant::VString(s) => val(s).with_err_no_pos()?,
             _ => panic!("unexpected arg to VAL"),
         };
         Ok(())
     }
 }
 
-fn val(s: String) -> std::result::Result<Variant, String> {
+fn val(s: String) -> Result<Variant, QError> {
     let mut is_positive = true;
     let mut value: f64 = 0.0;
     let mut frac_power: i32 = 0;
@@ -55,7 +51,7 @@ fn val(s: String) -> std::result::Result<Variant, String> {
                 if frac_power <= variant::MAX_INTEGER {
                     frac_power += 1;
                 } else {
-                    return Err("Overflow".to_string());
+                    return Err(QError::Overflow);
                 }
                 value = (value * 10.0_f64.powi(frac_power) + ((c as u8) - ('0' as u8)) as f64)
                     / 10.0_f64.powi(frac_power);

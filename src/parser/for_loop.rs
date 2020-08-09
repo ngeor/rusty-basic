@@ -1,32 +1,33 @@
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer::*;
-use crate::parser::error::*;
+use crate::parser::buf_lexer_helpers::*;
+
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::For) {
         return Ok(None);
     }
 
     let pos = lexer.read()?.pos();
-    read_demand_whitespace(lexer, "Expected whitespace after FOR keyword")?;
-    let for_counter_variable = demand(lexer, name::try_read, "Expected FOR counter variable")?;
-    read_demand_symbol_skipping_whitespace(lexer, '=')?;
-    let lower_bound =
-        demand_skipping_whitespace(lexer, expression::try_read, "Expected lower bound")?;
-    read_demand_whitespace(lexer, "Expected whitespace before TO keyword")?;
-    read_demand_keyword(lexer, Keyword::To)?;
-    read_demand_whitespace(lexer, "Expected whitespace after TO keyword")?;
-    let upper_bound = demand(lexer, expression::try_read, "Expected upper bound")?;
+    read_whitespace(lexer, "Expected whitespace after FOR keyword")?;
+    let for_counter_variable = read(lexer, name::try_read, "Expected FOR counter variable")?;
+    skip_whitespace(lexer)?;
+    read_symbol(lexer, '=')?;
+    skip_whitespace(lexer)?;
+    let lower_bound = read(lexer, expression::try_read, "Expected lower bound")?;
+    read_whitespace(lexer, "Expected whitespace before TO keyword")?;
+    read_keyword(lexer, Keyword::To)?;
+    read_whitespace(lexer, "Expected whitespace after TO keyword")?;
+    let upper_bound = read(lexer, expression::try_read, "Expected upper bound")?;
     let optional_step = try_parse_step(lexer)?;
 
     let statements = parse_statements(lexer, |x| x.is_keyword(Keyword::Next), "FOR without NEXT")?;
-    read_demand_keyword(lexer, Keyword::Next)?;
+    read_keyword(lexer, Keyword::Next)?;
 
     // we are past the "NEXT", maybe there is a variable name e.g. NEXT I
     let next_counter = try_parse_next_counter(lexer)?;
@@ -46,7 +47,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 
 fn try_parse_step<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<ExpressionNode>, ParserError> {
+) -> Result<Option<ExpressionNode>, QErrorNode> {
     const STATE_UPPER_BOUND: u8 = 0;
     const STATE_WHITESPACE_BEFORE_STEP: u8 = 1;
     const STATE_STEP: u8 = 2;
@@ -71,13 +72,19 @@ fn try_parse_step<T: BufRead>(
                 } else if state == STATE_STEP_EXPR {
                     state = STATE_WHITESPACE_BEFORE_EOL;
                 } else {
-                    return unexpected("Unexpected whitespace", next);
+                    return Err(QError::SyntaxError("Unexpected whitespace".to_string()))
+                        .with_err_at(&next);
                 }
             }
-            Lexeme::EOF => return unexpected("FOR without NEXT", next),
+            Lexeme::EOF => {
+                return Err(QError::SyntaxError("FOR without NEXT".to_string())).with_err_at(&next)
+            }
             Lexeme::EOL(_) => {
                 if state == STATE_STEP || state == STATE_WHITESPACE_AFTER_STEP {
-                    return unexpected("Expected expression after STEP", next);
+                    return Err(QError::SyntaxError(
+                        "Expected expression after STEP".to_string(),
+                    ))
+                    .with_err_at(&next);
                 }
                 state = STATE_EOL;
             }
@@ -86,7 +93,7 @@ fn try_parse_step<T: BufRead>(
                 if state == STATE_WHITESPACE_BEFORE_STEP {
                     state = STATE_STEP;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
             _ => {
@@ -94,25 +101,25 @@ fn try_parse_step<T: BufRead>(
                     // bail out, we didn't find the STEP keyword but something else (maybe a comment?)
                     state = STATE_EOL;
                 } else if state == STATE_WHITESPACE_AFTER_STEP {
-                    expr = Some(demand(
+                    expr = Some(read(
                         lexer,
                         expression::try_read,
                         "Expected expression after STEP",
                     )?);
                     state = STATE_STEP_EXPR;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
         }
     }
-    lexer.commit_transaction()?;
+    lexer.commit_transaction();
     Ok(expr)
 }
 
 fn try_parse_next_counter<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<NameNode>, ParserError> {
+) -> Result<Option<NameNode>, QErrorNode> {
     const STATE_NEXT: u8 = 0;
     const STATE_WHITESPACE_AFTER_NEXT: u8 = 1;
     const STATE_EOL_OR_EOF: u8 = 2;
@@ -135,14 +142,14 @@ fn try_parse_next_counter<T: BufRead>(
             }
             Lexeme::Word(_) => {
                 if state == STATE_WHITESPACE_AFTER_NEXT {
-                    name = Some(demand(
+                    name = Some(read(
                         lexer,
                         name::try_read,
                         "Expected NEXT counter variable",
                     )?);
                     state = STATE_EOL_OR_EOF;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
             _ => {
@@ -151,7 +158,7 @@ fn try_parse_next_counter<T: BufRead>(
         }
     }
 
-    lexer.commit_transaction()?;
+    lexer.commit_transaction();
 
     Ok(name)
 }

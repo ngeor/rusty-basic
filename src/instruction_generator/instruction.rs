@@ -60,7 +60,7 @@ pub enum Instruction {
     SetNamedRefParam(NamedRefParam),
     SetNamedValParam(QualifiedName),
 
-    Throw(String),
+    Throw(QError),
 
     /// Stores A as the result of a function
     StoreAToResult,

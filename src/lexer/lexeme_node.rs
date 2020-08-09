@@ -1,5 +1,6 @@
 use super::Keyword;
 use crate::common::*;
+use std::fmt::{Display, Write};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Lexeme {
@@ -96,6 +97,18 @@ impl Lexeme {
         match self {
             Lexeme::Digits(d) => d,
             _ => panic!("Not digits"),
+        }
+    }
+}
+
+impl Display for Lexeme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Self::Keyword(_, s) | Self::Word(s) | Self::Whitespace(s) | Self::Digits(s) => {
+                f.write_str(s)
+            }
+            Lexeme::Symbol(c) => f.write_char(*c),
+            Lexeme::EOF | Lexeme::EOL(_) => Err(std::fmt::Error),
         }
     }
 }

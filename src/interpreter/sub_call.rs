@@ -3,7 +3,7 @@ mod tests {
     use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::test_utils::*;
-    use crate::interpreter::{InterpreterError, Stdlib};
+    use crate::interpreter::Stdlib;
 
     mod input {
         mod unqualified_var {
@@ -153,11 +153,10 @@ mod tests {
         "#;
         assert_eq!(
             interpret_err(program),
-            InterpreterError::new(
-                "Invalid expression. Must be name=value.",
+            ErrorEnvelope::Stacktrace(
+                QError::Other("Invalid expression. Must be name=value.".to_string()),
                 vec![
                     Location::new(10, 17), // "inside" Environ
-                    Location::new(10, 17), // at Environ "oops"
                     Location::new(8, 17),  // at Hello N + 1
                     Location::new(4, 9),   // at Hello 1
                 ]

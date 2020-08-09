@@ -2,13 +2,13 @@
 
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::declared_name;
-use crate::parser::error::*;
+
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     // try to read DIM, if it succeeds demand it, else return None
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Dim) {
         return Ok(None);
@@ -16,16 +16,16 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     // demand DIM
     let pos = read_keyword(lexer, Keyword::Dim)?;
     // demand whitespace
-    read_whitespace(lexer)?;
+    read_whitespace(lexer, "Expected whitespace after DIM")?;
     // demand variable name
-    let declared_name_node = demand(lexer, declared_name::try_read, "Expected variable name")?;
+    let declared_name_node = read(lexer, declared_name::try_read, "Expected variable name")?;
     Ok(Some(Statement::Dim(declared_name_node).at(pos)))
 }
 
 #[cfg(test)]
 mod tests {
     use crate::common::*;
-    use crate::parser::error::*;
+
     use crate::parser::test_utils::*;
     use crate::parser::types::*;
 
@@ -77,9 +77,8 @@ mod tests {
         let input = "DIM X AS AS";
         assert_eq!(
             parse_err(input),
-            ParserError::SyntaxError(
-                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
-                Location::new(1, 10)
+            QError::SyntaxError(
+                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string()
             )
         );
     }
@@ -89,10 +88,7 @@ mod tests {
         let input = "DIM A$ AS STRING";
         assert_eq!(
             parse_err(input),
-            ParserError::SyntaxError(
-                "Identifier cannot end with %, &, !, #, or $".to_string(),
-                Location::new(1, 5)
-            )
+            QError::SyntaxError("Identifier cannot end with %, &, !, #, or $".to_string())
         );
     }
 

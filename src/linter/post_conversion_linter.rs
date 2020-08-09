@@ -1,4 +1,3 @@
-use super::error::*;
 use super::types::*;
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
@@ -13,17 +12,17 @@ use crate::parser::{DeclaredNameNode, QualifiedName};
 /// Methods return Ok(()) to indicate an element passes the check or
 /// Err() to indicate a problem.
 pub trait PostConversionLinter {
-    fn visit_program(&self, p: &ProgramNode) -> Result<(), Error> {
+    fn visit_program(&self, p: &ProgramNode) -> Result<(), QErrorNode> {
         p.iter()
             .map(|t| self.visit_top_level_token_node(t))
             .collect()
     }
 
-    fn visit_top_level_token_node(&self, t: &TopLevelTokenNode) -> Result<(), Error> {
-        self.visit_top_level_token(t.as_ref()).with_err_pos(t)
+    fn visit_top_level_token_node(&self, t: &TopLevelTokenNode) -> Result<(), QErrorNode> {
+        self.visit_top_level_token(t.as_ref()).patch_err_pos(t)
     }
 
-    fn visit_top_level_token(&self, t: &TopLevelToken) -> Result<(), Error> {
+    fn visit_top_level_token(&self, t: &TopLevelToken) -> Result<(), QErrorNode> {
         match t {
             TopLevelToken::FunctionImplementation(f) => self.visit_function_implementation(f),
             TopLevelToken::SubImplementation(s) => self.visit_sub_implementation(s),
@@ -31,23 +30,23 @@ pub trait PostConversionLinter {
         }
     }
 
-    fn visit_function_implementation(&self, f: &FunctionImplementation) -> Result<(), Error> {
+    fn visit_function_implementation(&self, f: &FunctionImplementation) -> Result<(), QErrorNode> {
         self.visit_statement_nodes(&f.body)
     }
 
-    fn visit_sub_implementation(&self, s: &SubImplementation) -> Result<(), Error> {
+    fn visit_sub_implementation(&self, s: &SubImplementation) -> Result<(), QErrorNode> {
         self.visit_statement_nodes(&s.body)
     }
 
-    fn visit_statement_nodes(&self, s: &StatementNodes) -> Result<(), Error> {
+    fn visit_statement_nodes(&self, s: &StatementNodes) -> Result<(), QErrorNode> {
         s.iter().map(|x| self.visit_statement_node(x)).collect()
     }
 
-    fn visit_statement_node(&self, t: &StatementNode) -> Result<(), Error> {
-        self.visit_statement(t.as_ref()).with_err_pos(t)
+    fn visit_statement_node(&self, t: &StatementNode) -> Result<(), QErrorNode> {
+        self.visit_statement(t.as_ref()).patch_err_pos(t)
     }
 
-    fn visit_statement(&self, s: &Statement) -> Result<(), Error> {
+    fn visit_statement(&self, s: &Statement) -> Result<(), QErrorNode> {
         match s {
             Statement::Assignment(left, right) => self.visit_assignment(left, right),
             Statement::Const(left, right) => self.visit_const(left, right),
@@ -66,23 +65,23 @@ pub trait PostConversionLinter {
         }
     }
 
-    fn visit_comment(&self, _comment: &String) -> Result<(), Error> {
+    fn visit_comment(&self, _comment: &String) -> Result<(), QErrorNode> {
         Ok(())
     }
 
-    fn visit_dim(&self, _d: &DeclaredNameNode) -> Result<(), Error> {
+    fn visit_dim(&self, _d: &DeclaredNameNode) -> Result<(), QErrorNode> {
         Ok(())
     }
 
-    fn visit_error_handler(&self, _label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_error_handler(&self, _label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
         Ok(())
     }
 
-    fn visit_label(&self, _label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_label(&self, _label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
         Ok(())
     }
 
-    fn visit_go_to(&self, _label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_go_to(&self, _label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
         Ok(())
     }
 
@@ -90,7 +89,7 @@ pub trait PostConversionLinter {
         &self,
         _name: &CaseInsensitiveString,
         args: &Vec<ExpressionNode>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), QErrorNode> {
         args.iter().map(|e| self.visit_expression(e)).collect()
     }
 
@@ -98,15 +97,19 @@ pub trait PostConversionLinter {
         &self,
         _name: &BuiltInSub,
         args: &Vec<ExpressionNode>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), QErrorNode> {
         args.iter().map(|e| self.visit_expression(e)).collect()
     }
 
-    fn visit_assignment(&self, _name: &QualifiedName, v: &ExpressionNode) -> Result<(), Error> {
+    fn visit_assignment(
+        &self,
+        _name: &QualifiedName,
+        v: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
         self.visit_expression(v)
     }
 
-    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), Error> {
+    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
         self.visit_expression(&f.lower_bound)?;
         self.visit_expression(&f.upper_bound)?;
         match &f.step {
@@ -116,7 +119,7 @@ pub trait PostConversionLinter {
         self.visit_statement_nodes(&f.statements)
     }
 
-    fn visit_if_block(&self, i: &IfBlockNode) -> Result<(), Error> {
+    fn visit_if_block(&self, i: &IfBlockNode) -> Result<(), QErrorNode> {
         self.visit_conditional_block(&i.if_block)?;
         for else_if_block in i.else_if_blocks.iter() {
             self.visit_conditional_block(else_if_block)?;
@@ -127,7 +130,7 @@ pub trait PostConversionLinter {
         }
     }
 
-    fn visit_select_case(&self, s: &SelectCaseNode) -> Result<(), Error> {
+    fn visit_select_case(&self, s: &SelectCaseNode) -> Result<(), QErrorNode> {
         self.visit_expression(&s.expr)?;
         for c in s.case_blocks.iter() {
             match &c.expr {
@@ -150,16 +153,16 @@ pub trait PostConversionLinter {
         }
     }
 
-    fn visit_conditional_block(&self, c: &ConditionalBlockNode) -> Result<(), Error> {
+    fn visit_conditional_block(&self, c: &ConditionalBlockNode) -> Result<(), QErrorNode> {
         self.visit_expression(&c.condition)?;
         self.visit_statement_nodes(&c.statements)
     }
 
-    fn visit_const(&self, _left: &QNameNode, right: &ExpressionNode) -> Result<(), Error> {
+    fn visit_const(&self, _left: &QNameNode, right: &ExpressionNode) -> Result<(), QErrorNode> {
         self.visit_expression(right)
     }
 
-    fn visit_expression(&self, _e: &ExpressionNode) -> Result<(), Error> {
+    fn visit_expression(&self, _e: &ExpressionNode) -> Result<(), QErrorNode> {
         Ok(())
     }
 }

@@ -9,10 +9,10 @@
 
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
-use crate::parser::error::*;
+
 use crate::parser::implementation;
 use crate::parser::statement;
 use crate::parser::types::*;
@@ -20,7 +20,7 @@ use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, ParserError> {
+) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     def_type::try_read(lexer)
         .or_try_read(|| declaration::try_read(lexer))
         .or_try_read(|| implementation::try_read(lexer))
@@ -29,7 +29,7 @@ pub fn try_read<T: BufRead>(
 
 fn try_read_statement<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, ParserError> {
+) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     statement::try_read(lexer).map(to_top_level_opt)
 }
 
@@ -38,12 +38,12 @@ fn to_top_level_opt(x: Option<StatementNode>) -> Option<TopLevelTokenNode> {
 }
 
 fn to_top_level(x: StatementNode) -> TopLevelTokenNode {
-    x.map(|s| TopLevelToken::Statement(s))
+    x.map(|s| s.into())
 }
 
 pub fn parse_top_level_tokens<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<ProgramNode, ParserError> {
+) -> Result<ProgramNode, QErrorNode> {
     let mut read_separator = true; // we are the beginning of the file
     let mut tokens: ProgramNode = vec![];
 
@@ -61,23 +61,22 @@ pub fn parse_top_level_tokens<T: BufRead>(
             read_separator = true;
         } else if p.is_symbol('\'') {
             // read comment
-            // TODO add unit test where comment reads EOF
-            let t = demand(lexer, try_read, "Expected comment")?;
+            let t = read(lexer, try_read, "Expected comment")?;
             tokens.push(t);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else if p.is_symbol(':') {
-            // TODO is this allowed at the start of a line?
             // single-line statement separator (e.g. WHILE A < 5:A=A+1:WEND)
             lexer.read()?;
             read_separator = true;
         } else {
             // must be a statement
             if read_separator {
-                let t = demand(lexer, try_read, "Expected top level token")?;
+                let t = read(lexer, try_read, "Expected top level token")?;
                 tokens.push(t);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {
-                return Err(ParserError::Unterminated(p.at(pos)));
+                return Err(QError::SyntaxError("Expected top level token".to_string()))
+                    .with_err_at(pos);
             }
         }
     }

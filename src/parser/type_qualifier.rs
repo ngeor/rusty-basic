@@ -1,11 +1,11 @@
-use crate::common::Locatable;
+use crate::common::*;
 use crate::lexer::*;
-use crate::parser::error::*;
+
 use crate::parser::types::TypeQualifier;
 use std::convert::TryFrom;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<TypeQualifier>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<TypeQualifier>, QErrorNode> {
     match lexer.peek()? {
         Locatable {
             element: Lexeme::Symbol(ch),

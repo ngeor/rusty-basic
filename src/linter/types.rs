@@ -1,4 +1,3 @@
-use super::error::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::parser::*;
@@ -24,7 +23,7 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn try_qualifier(&self, pos: Location) -> Result<TypeQualifier, Error> {
+    pub fn try_qualifier(&self, pos: Location) -> Result<TypeQualifier, QErrorNode> {
         match self {
             Self::SingleLiteral(_) => Ok(TypeQualifier::BangSingle),
             Self::DoubleLiteral(_) => Ok(TypeQualifier::HashDouble),
@@ -39,15 +38,17 @@ impl Expression {
                 let q_left = l.as_ref().try_qualifier()?;
                 let q_right = r.as_ref().try_qualifier()?;
                 super::operand_type::cast_binary_op(*op, q_left, q_right)
-                    .ok_or_else(|| LinterError::TypeMismatch.at(r.pos()).into())
+                    .ok_or_else(|| QError::TypeMismatch)
+                    .with_err_at(r.pos())
             }
             Self::UnaryExpression(op, c) => {
                 let q_child = c.as_ref().try_qualifier()?;
                 super::operand_type::cast_unary_op(*op, q_child)
-                    .ok_or_else(|| LinterError::TypeMismatch.at(c.pos()).into())
+                    .ok_or_else(|| QError::TypeMismatch)
+                    .with_err_at(c.as_ref())
             }
             Self::Parenthesis(c) => c.as_ref().try_qualifier(),
-            Self::FileHandle(_) => err(LinterError::TypeMismatch, pos),
+            Self::FileHandle(_) => Err(QError::TypeMismatch).with_err_at(pos),
         }
     }
 }
@@ -55,7 +56,7 @@ impl Expression {
 pub type ExpressionNode = Locatable<Expression>;
 
 impl ExpressionNode {
-    pub fn try_qualifier(&self) -> Result<TypeQualifier, Error> {
+    pub fn try_qualifier(&self) -> Result<TypeQualifier, QErrorNode> {
         self.as_ref().try_qualifier(self.pos())
     }
 }

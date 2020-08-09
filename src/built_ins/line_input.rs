@@ -6,27 +6,25 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{err, Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::{BufLexer, Keyword};
-use crate::linter::{Error, ExpressionNode};
-use crate::parser::buf_lexer::*;
+use crate::linter::ExpressionNode;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::sub_call;
-use crate::parser::{
-    HasQualifier, ParserError, QualifiedName, Statement, StatementNode, TypeQualifier,
-};
+use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
 use crate::variant::Variant;
 use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct LineInput {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Line) {
         lexer.read()?;
-        read_demand_whitespace(lexer, "Expected space after LINE")?;
-        read_demand_keyword(lexer, Keyword::Input)?;
-        read_demand_whitespace(lexer, "Expected space after INPUT")?;
+        read_whitespace(lexer, "Expected space after LINE")?;
+        read_keyword(lexer, Keyword::Input)?;
+        read_whitespace(lexer, "Expected space after INPUT")?;
         let args = sub_call::read_arg_list(lexer)?;
         Ok(Some(Statement::SubCall("LINE INPUT".into(), args).at(pos)))
     } else {
@@ -35,18 +33,14 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 }
 
 impl BuiltInLint for LineInput {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // TODO lint
         Ok(())
     }
 }
 
 impl BuiltInRun for LineInput {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
         let mut has_more = true;
@@ -58,11 +52,11 @@ impl BuiltInRun for LineInput {
                         if is_first && v.qualifier() == TypeQualifier::FileHandle {
                             file_handle = v.clone().demand_file_handle();
                         } else {
-                            return err("Argument type mismatch", pos);
+                            panic!("LINE INPUT linter should have caught this");
                         }
                     }
                     Argument::ByRef(n) => {
-                        line_input_one(interpreter, pos, a, n, file_handle)?;
+                        line_input_one(interpreter, a, n, file_handle)?;
                     }
                 },
                 None => {
@@ -77,56 +71,52 @@ impl BuiltInRun for LineInput {
 }
 fn line_input_one<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
-    pos: Location,
     arg: &Argument,
     n: &QualifiedName,
     file_handle: FileHandle,
-) -> Result<(), InterpreterError> {
+) -> Result<(), QErrorNode> {
     if file_handle.is_valid() {
-        line_input_one_file(interpreter, pos, arg, n, file_handle)
+        line_input_one_file(interpreter, arg, n, file_handle)
     } else {
-        line_input_one_stdin(interpreter, pos, arg, n)
+        line_input_one_stdin(interpreter, arg, n)
     }
 }
 
 fn line_input_one_file<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
-    pos: Location,
     arg: &Argument,
     n: &QualifiedName,
     file_handle: FileHandle,
-) -> Result<(), InterpreterError> {
+) -> Result<(), QErrorNode> {
     let s = interpreter
         .file_manager
         .read_line(file_handle)
-        .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))?;
+        .map_err(|e| e.into())
+        .with_err_no_pos()?;
     let q: TypeQualifier = n.qualifier();
     match q {
         TypeQualifier::DollarString => interpreter
             .context_mut()
             .demand_sub()
             .set_value_to_popped_arg(arg, Variant::VString(s))
-            .map_err(|e| InterpreterError::new_with_pos(e, pos)),
+            .with_err_no_pos(),
         _ => unimplemented!(),
     }
 }
 
 fn line_input_one_stdin<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
-    pos: Location,
     arg: &Argument,
     _n: &QualifiedName,
-) -> Result<(), InterpreterError> {
+) -> Result<(), QErrorNode> {
     let s = interpreter
         .stdlib
         .input()
-        .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))?;
+        .map_err(|e| e.into())
+        .with_err_no_pos()?;
     interpreter
         .context_mut()
         .demand_sub()
         .set_value_to_popped_arg(arg, Variant::VString(s))
-        .map_err(|e| InterpreterError::new_with_pos(e, pos))
+        .with_err_no_pos()
 }
-
-// TODO: remove Result aliases, always use Result<T, E>
-// TODO: unify errors

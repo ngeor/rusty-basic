@@ -1,4 +1,3 @@
-use super::error::*;
 use super::post_conversion_linter::*;
 use crate::common::*;
 use std::cell::RefCell;
@@ -32,18 +31,18 @@ impl LabelLinter {
 }
 
 impl PostConversionLinter for LabelLinter {
-    fn visit_error_handler(&self, label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_error_handler(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
         if self.collecting || self.labels.borrow().contains(label) {
             Ok(())
         } else {
-            err_no_pos(LinterError::LabelNotDefined)
+            err_no_pos(QError::LabelNotDefined)
         }
     }
 
-    fn visit_label(&self, label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_label(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
         if self.collecting {
             if self.labels.borrow().contains(label) {
-                err_no_pos(LinterError::DuplicateLabel)
+                err_no_pos(QError::DuplicateLabel)
             } else {
                 self.labels.borrow_mut().insert(label.clone());
                 Ok(())
@@ -53,11 +52,11 @@ impl PostConversionLinter for LabelLinter {
         }
     }
 
-    fn visit_go_to(&self, label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_go_to(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
         if self.collecting || self.labels.borrow().contains(label) {
             Ok(())
         } else {
-            err_no_pos(LinterError::LabelNotDefined)
+            err_no_pos(QError::LabelNotDefined)
         }
     }
 }

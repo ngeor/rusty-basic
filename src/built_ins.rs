@@ -19,10 +19,10 @@ mod val;
 mod util;
 
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::BufLexer;
-use crate::linter::{err_no_pos, Error, ExpressionNode, LinterError};
-use crate::parser::{HasQualifier, Name, ParserError, TypeQualifier};
+use crate::linter::ExpressionNode;
+use crate::parser::{HasQualifier, Name, TypeQualifier};
 use std::convert::TryFrom;
 use std::io::BufRead;
 
@@ -60,15 +60,11 @@ pub enum BuiltInSub {
 }
 
 pub trait BuiltInLint {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error>;
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode>;
 }
 
 pub trait BuiltInRun {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError>;
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode>;
 }
 
 static CHR: chr::Chr = chr::Chr {};
@@ -90,7 +86,7 @@ static SYSTEM: system::System = system::System {};
 static VAL: val::Val = val::Val {};
 
 impl BuiltInLint for BuiltInFunction {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         match self {
             Self::Chr => CHR.lint(args),
             Self::Environ => ENVIRON_FN.lint(args),
@@ -105,7 +101,7 @@ impl BuiltInLint for BuiltInFunction {
 }
 
 impl BuiltInLint for BuiltInSub {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         match self {
             Self::Close => CLOSE.lint(args),
             Self::Environ => ENVIRON_SUB.lint(args),
@@ -121,40 +117,32 @@ impl BuiltInLint for BuiltInSub {
 }
 
 impl BuiltInRun for BuiltInFunction {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         match self {
-            Self::Chr => CHR.run(interpreter, pos),
-            Self::Environ => ENVIRON_FN.run(interpreter, pos),
-            Self::Eof => EOF.run(interpreter, pos),
-            Self::InStr => INSTR.run(interpreter, pos),
-            Self::Len => LEN.run(interpreter, pos),
-            Self::Mid => MID.run(interpreter, pos),
-            Self::Str => STR_FN.run(interpreter, pos),
-            Self::Val => VAL.run(interpreter, pos),
+            Self::Chr => CHR.run(interpreter),
+            Self::Environ => ENVIRON_FN.run(interpreter),
+            Self::Eof => EOF.run(interpreter),
+            Self::InStr => INSTR.run(interpreter),
+            Self::Len => LEN.run(interpreter),
+            Self::Mid => MID.run(interpreter),
+            Self::Str => STR_FN.run(interpreter),
+            Self::Val => VAL.run(interpreter),
         }
     }
 }
 
 impl BuiltInRun for BuiltInSub {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         match self {
-            Self::Close => CLOSE.run(interpreter, pos),
-            Self::Environ => ENVIRON_SUB.run(interpreter, pos),
-            Self::Input => INPUT.run(interpreter, pos),
-            Self::Kill => KILL.run(interpreter, pos),
-            Self::LineInput => LINE_INPUT.run(interpreter, pos),
-            Self::Name => NAME.run(interpreter, pos),
-            Self::Open => OPEN.run(interpreter, pos),
-            Self::Print => PRINT.run(interpreter, pos),
-            Self::System => SYSTEM.run(interpreter, pos),
+            Self::Close => CLOSE.run(interpreter),
+            Self::Environ => ENVIRON_SUB.run(interpreter),
+            Self::Input => INPUT.run(interpreter),
+            Self::Kill => KILL.run(interpreter),
+            Self::LineInput => LINE_INPUT.run(interpreter),
+            Self::Name => NAME.run(interpreter),
+            Self::Open => OPEN.run(interpreter),
+            Self::Print => PRINT.run(interpreter),
+            Self::System => SYSTEM.run(interpreter),
         }
     }
 }
@@ -201,15 +189,18 @@ impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
 fn demand_unqualified(
     built_in: BuiltInFunction,
     n: &Name,
-) -> Result<Option<BuiltInFunction>, Error> {
+) -> Result<Option<BuiltInFunction>, QError> {
     match n {
         Name::Bare(_) => Ok(Some(built_in)),
-        _ => err_no_pos(LinterError::SyntaxError),
+        _ => Err(QError::SyntaxError(format!(
+            "Function {:?} must be unqualified",
+            built_in
+        ))),
     }
 }
 
 impl TryFrom<&Name> for Option<BuiltInFunction> {
-    type Error = Error;
+    type Error = QError;
     fn try_from(n: &Name) -> Result<Option<BuiltInFunction>, Self::Error> {
         let opt_built_in: Option<BuiltInFunction> = n.as_ref().into();
         match opt_built_in {
@@ -221,12 +212,15 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 BuiltInFunction::Environ | BuiltInFunction::Mid => {
                     // ENVIRON$ must be qualified
                     match n {
-                        Name::Bare(_) => err_no_pos(LinterError::SyntaxError),
+                        Name::Bare(_) => Err(QError::SyntaxError(format!(
+                            "Function {:?} must be qualified",
+                            n
+                        ))),
                         Name::Qualified { qualifier, .. } => {
                             if *qualifier == TypeQualifier::DollarString {
                                 Ok(Some(b))
                             } else {
-                                err_no_pos(LinterError::TypeMismatch)
+                                Err(QError::TypeMismatch)
                             }
                         }
                     }
@@ -280,7 +274,7 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
 /// Parses built-in subs which have a special syntax.
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<crate::parser::StatementNode>, ParserError> {
+) -> Result<Option<crate::parser::StatementNode>, QErrorNode> {
     input::try_read(lexer)
         .or_try_read(|| line_input::try_read(lexer))
         .or_try_read(|| name::try_read(lexer))

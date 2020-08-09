@@ -2,25 +2,25 @@
 
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer::*;
-use crate::parser::error::*;
+use crate::parser::buf_lexer_helpers::*;
+
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<DeclaredNameNode>, ParserError> {
+) -> Result<Option<DeclaredNameNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_word() {
         return Ok(None);
     }
 
     // demand variable name
-    let var_name_node = demand(lexer, name::try_read, "Expected variable name")?;
+    let var_name_node = read(lexer, name::try_read, "Expected variable name")?;
     let is_long = in_transaction(lexer, |lexer| {
-        read_whitespace(lexer)?;
+        read_whitespace(lexer, "Expected whitespace between variable name and AS")?;
         read_keyword(lexer, Keyword::As)?;
-        read_whitespace(lexer)
+        read_whitespace(lexer, "Expected whitespace after AS")
     })?
     .is_some();
     if !is_long {
@@ -30,15 +30,15 @@ pub fn try_read<T: BufRead>(
     let bare_name = match var_name_node.as_ref() {
         Name::Bare(b) => b.clone(),
         _ => {
-            return Err(ParserError::SyntaxError(
+            return Err(QError::SyntaxError(
                 "Identifier cannot end with %, &, !, #, or $".to_string(),
-                var_name_node.pos(),
-            ));
+            ))
+            .with_err_at(&var_name_node);
         }
     };
     // demand type name
-    let next = lexer.read()?;
-    let var_type = match next.as_ref() {
+    let Locatable { element: next, pos } = lexer.read()?;
+    let var_type = match next {
         Lexeme::Keyword(Keyword::Double, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)
         }
@@ -54,12 +54,12 @@ pub fn try_read<T: BufRead>(
         Lexeme::Keyword(Keyword::String_, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
         }
-        Lexeme::Word(w) => TypeDefinition::UserDefined(w.clone().into()),
+        Lexeme::Word(w) => TypeDefinition::UserDefined(w.into()),
         _ => {
-            return Err(ParserError::SyntaxError(
+            return Err(QError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
-                next.pos(),
             ))
+            .with_err_at(pos)
         }
     };
     Ok(Some(

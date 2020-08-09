@@ -1,27 +1,27 @@
 use crate::common::*;
 use crate::lexer::{BufLexer, Keyword, Lexeme};
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::declared_name;
-use crate::parser::error::*;
+
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, ParserError> {
+) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Declare) {
         return Ok(None);
     }
 
     let pos = lexer.read()?.pos();
-    read_demand_whitespace(lexer, "Expected whitespace after DECLARE keyword")?;
+    read_whitespace(lexer, "Expected whitespace after DECLARE keyword")?;
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Function, _) => {
-            read_demand_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
-            let function_name = demand(lexer, name::try_read, "Expected function name")?;
-            let parameters = demand(
+            read_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
+            let function_name = read(lexer, name::try_read, "Expected function name")?;
+            let parameters = read(
                 lexer,
                 try_read_declaration_parameters,
                 "Expected function declaration parameters",
@@ -31,9 +31,9 @@ pub fn try_read<T: BufRead>(
             ))
         }
         Lexeme::Keyword(Keyword::Sub, _) => {
-            read_demand_whitespace(lexer, "Expected whitespace after SUB keyword")?;
-            let sub_name = demand(lexer, name::try_read_bare, "Expected sub name")?;
-            let parameters = demand(
+            read_whitespace(lexer, "Expected whitespace after SUB keyword")?;
+            let sub_name = read(lexer, name::try_read_bare, "Expected sub name")?;
+            let parameters = read(
                 lexer,
                 try_read_declaration_parameters,
                 "Expected sub declaration parameters",
@@ -42,36 +42,37 @@ pub fn try_read<T: BufRead>(
                 TopLevelToken::SubDeclaration(sub_name, parameters).at(pos),
             ))
         }
-        _ => unexpected("Unknown declaration", next),
+        _ => Err(QError::SyntaxError("Unknown declaration".to_string())).with_err_at(&next),
     }
 }
 
 pub fn try_read_declaration_parameters<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<DeclaredNameNodes>, ParserError> {
+) -> Result<Option<DeclaredNameNodes>, QErrorNode> {
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
     match lexer.peek()?.as_ref() {
         Lexeme::EOL(_) | Lexeme::EOF => {
             // EOL: no parameters e.g. Sub Hello
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             Ok(Some(vec![]))
         }
         Lexeme::Symbol('(') => {
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             parse_parameters(lexer).map(|x| Some(x))
         }
         _ => {
-            lexer.rollback_transaction()?;
+            lexer.rollback_transaction();
             Ok(None)
         }
     }
 }
 
-fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameNodes, ParserError> {
+fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameNodes, QErrorNode> {
     lexer.read()?; // read opening parenthesis
     skip_whitespace(lexer)?;
-    match lexer.peek()?.as_ref() {
+    let Locatable { element, pos } = lexer.peek()?;
+    match element {
         Lexeme::Word(_) => {
             // probably variable name
             let first_param = parse_one_parameter(lexer)?;
@@ -85,18 +86,19 @@ fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameN
             lexer.read()?;
             Ok(vec![])
         }
-        _ => Err(ParserError::SyntaxError(
+        _ => Err(QError::SyntaxError(
             "Expected parameter name or closing parenthesis".to_string(),
-            lexer.peek()?.pos(),
-        )),
+        ))
+        .with_err_at(pos),
     }
 }
 
 fn parse_next_parameter<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<DeclaredNameNodes, ParserError> {
+) -> Result<DeclaredNameNodes, QErrorNode> {
     skip_whitespace(lexer)?;
-    match lexer.peek()?.as_ref() {
+    let Locatable { element, pos } = lexer.peek()?;
+    match element {
         Lexeme::Symbol(',') => {
             lexer.read()?;
             skip_whitespace(lexer)?;
@@ -110,17 +112,17 @@ fn parse_next_parameter<T: BufRead>(
             lexer.read()?;
             Ok(vec![])
         }
-        _ => Err(ParserError::SyntaxError(
+        _ => Err(QError::SyntaxError(
             "Expected comma or closing parenthesis".to_string(),
-            lexer.peek()?.pos(),
-        )),
+        ))
+        .with_err_at(pos),
     }
 }
 
 fn parse_one_parameter<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<DeclaredNameNode, ParserError> {
-    demand(lexer, declared_name::try_read, "Expected parameter")
+) -> Result<DeclaredNameNode, QErrorNode> {
+    read(lexer, declared_name::try_read, "Expected parameter")
 }
 
 #[cfg(test)]

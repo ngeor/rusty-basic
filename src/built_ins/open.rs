@@ -9,41 +9,41 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::{BufLexer, Keyword, Lexeme, LexemeNode};
-use crate::linter::{Error, ExpressionNode};
-use crate::parser::buf_lexer::*;
+use crate::linter::ExpressionNode;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
-use crate::parser::{unexpected, BareName, Expression, ParserError, Statement, StatementNode};
+use crate::parser::{BareName, Expression, Statement, StatementNode};
 use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     if !next.is_keyword(Keyword::Open) {
         return Ok(None);
     }
 
     lexer.read()?;
-    read_demand_whitespace(lexer, "Expected space after OPEN")?;
-    let file_name_expr = demand(lexer, expression::try_read, "Expected filename")?;
-    read_demand_whitespace(lexer, "Expected space after filename")?;
-    read_demand_keyword(lexer, Keyword::For)?;
-    read_demand_whitespace(lexer, "Expected space after FOR")?;
+    read_whitespace(lexer, "Expected space after OPEN")?;
+    let file_name_expr = read(lexer, expression::try_read, "Expected filename")?;
+    read_whitespace(lexer, "Expected space after filename")?;
+    read_keyword(lexer, Keyword::For)?;
+    read_whitespace(lexer, "Expected space after FOR")?;
     let mode: i32 = read_demand_file_mode(lexer)?.into();
-    read_demand_whitespace(lexer, "Expected space after file mode")?;
+    read_whitespace(lexer, "Expected space after file mode")?;
     let mut next: LexemeNode = lexer.read()?;
     let mut access: i32 = FileAccess::Unspecified.into();
     if next.as_ref().is_keyword(Keyword::Access) {
-        read_demand_whitespace(lexer, "Expected space after ACCESS")?;
+        read_whitespace(lexer, "Expected space after ACCESS")?;
         access = read_demand_file_access(lexer)?.into();
-        read_demand_whitespace(lexer, "Expected space after file access")?;
+        read_whitespace(lexer, "Expected space after file access")?;
         next = lexer.read()?;
     }
     if next.as_ref().is_keyword(Keyword::As) {
-        read_demand_whitespace(lexer, "Expected space after AS")?;
-        let file_handle = demand(lexer, expression::try_read, "Expected file handle")?;
+        read_whitespace(lexer, "Expected space after AS")?;
+        let file_handle = read(lexer, expression::try_read, "Expected file handle")?;
         let bare_name: BareName = "OPEN".into();
 
         Ok(Statement::SubCall(
@@ -58,41 +58,43 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         .at(pos))
         .map(|x| Some(x))
     } else {
-        unexpected("Expected AS", next)
+        Err(QError::SyntaxError("Expected AS".to_string())).with_err_at(&next)
     }
 }
 
-fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode, ParserError> {
+fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode, QErrorNode> {
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Input, _) => Ok(FileMode::Input),
         Lexeme::Keyword(Keyword::Output, _) => Ok(FileMode::Output),
         Lexeme::Keyword(Keyword::Append, _) => Ok(FileMode::Append),
-        _ => unexpected("Expected INPUT|OUTPUT|APPEND after FOR", next),
+        _ => Err(QError::SyntaxError(
+            "Expected INPUT|OUTPUT|APPEND after FOR".to_string(),
+        ))
+        .with_err_at(&next),
     }
 }
 
-fn read_demand_file_access<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileAccess, ParserError> {
+fn read_demand_file_access<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileAccess, QErrorNode> {
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Read, _) => Ok(FileAccess::Read),
-        _ => unexpected("Expected READ after ACCESS", next),
+        _ => Err(QError::SyntaxError(
+            "Expected READ after ACCESS".to_string(),
+        ))
+        .with_err_at(&next),
     }
 }
 
 impl BuiltInLint for Open {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // not needed because of special parsing
         Ok(())
     }
 }
 
 impl BuiltInRun for Open {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let file_name = interpreter.pop_string();
         let file_mode: FileMode = interpreter.pop_integer().into();
         let file_access: FileAccess = interpreter.pop_integer().into();
@@ -100,9 +102,8 @@ impl BuiltInRun for Open {
         interpreter
             .file_manager
             .open(file_handle, file_name.as_ref(), file_mode, file_access)
-            .map_err(|e| {
-                InterpreterError::new_with_pos(format!("Could not open {}: {}", file_name, e), pos)
-            })
+            .map_err(|e| e.into())
+            .with_err_no_pos()
     }
 }
 

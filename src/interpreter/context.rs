@@ -1,7 +1,7 @@
-use crate::common::CaseInsensitiveString;
+use crate::common::*;
 use crate::instruction_generator::NamedRefParam;
+use crate::interpreter::casting;
 use crate::linter::*;
-use crate::variant;
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
 
@@ -29,22 +29,22 @@ impl HasQualifier for Argument {
 //
 
 trait Cast {
-    fn cast(self, qualifier: TypeQualifier) -> Result<Self, String>
+    fn cast(self, qualifier: TypeQualifier) -> Result<Self, QError>
     where
         Self: Sized;
 }
 
 impl Cast for Variant {
-    fn cast(self, qualifier: TypeQualifier) -> Result<Self, String> {
-        variant::cast(self, qualifier)
+    fn cast(self, qualifier: TypeQualifier) -> Result<Self, QError> {
+        casting::cast(self, qualifier)
     }
 }
 
 impl Cast for Argument {
-    fn cast(self, qualifier: TypeQualifier) -> Result<Self, String> {
+    fn cast(self, qualifier: TypeQualifier) -> Result<Self, QError> {
         match self {
             Self::ByRef(n) => Ok(Self::ByRef(n)),
-            Self::ByVal(v) => variant::cast(v, qualifier).map(|x| Self::ByVal(x)),
+            Self::ByVal(v) => casting::cast(v, qualifier).map(|x| Self::ByVal(x)),
         }
     }
 }
@@ -61,7 +61,7 @@ impl<T: Cast> NameMap<T> {
         Self(HashMap::new())
     }
 
-    pub fn insert(&mut self, name: QualifiedName, value: T) -> Result<(), String> {
+    pub fn insert(&mut self, name: QualifiedName, value: T) -> Result<(), QError> {
         let QualifiedName {
             name: bare_name,
             qualifier,
@@ -127,7 +127,7 @@ impl ConstantMap {
         }
     }
 
-    pub fn insert(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    pub fn insert(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         match self.0.get(name.as_ref()) {
             Some(_) => panic!("Duplicate definition"),
             None => {
@@ -158,7 +158,7 @@ impl ArgumentMap {
         }
     }
 
-    pub fn push_unnamed(&mut self, arg: Argument) -> Result<(), String> {
+    pub fn push_unnamed(&mut self, arg: Argument) -> Result<(), QError> {
         let dummy_name = format!("{}", self.name_order.len());
         self.insert(
             QualifiedName::new(CaseInsensitiveString::new(dummy_name), arg.qualifier()),
@@ -166,7 +166,7 @@ impl ArgumentMap {
         )
     }
 
-    pub fn insert(&mut self, name: QualifiedName, arg: Argument) -> Result<(), String> {
+    pub fn insert(&mut self, name: QualifiedName, arg: Argument) -> Result<(), QError> {
         self.name_order.push_back(name.clone());
         self.named.insert(name, arg)
     }
@@ -223,7 +223,7 @@ impl RootContext {
         }
     }
 
-    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         self.constants.insert(name, value)
     }
 
@@ -247,7 +247,7 @@ impl RootContext {
         }
     }
 
-    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         // Arguments do not exist at root level. Create/Update a variable.
         self.variables.insert(name, value)
     }
@@ -264,19 +264,19 @@ pub struct ArgsContext {
 }
 
 impl ArgsContext {
-    pub fn push_back_unnamed_ref_parameter(&mut self, name: QualifiedName) -> Result<(), String> {
+    pub fn push_back_unnamed_ref_parameter(&mut self, name: QualifiedName) -> Result<(), QError> {
         let arg = self.parent.create_parameter(name);
         self.args.push_unnamed(arg)
     }
 
-    pub fn push_back_unnamed_val_parameter(&mut self, value: Variant) -> Result<(), String> {
+    pub fn push_back_unnamed_val_parameter(&mut self, value: Variant) -> Result<(), QError> {
         self.args.push_unnamed(Argument::ByVal(value))
     }
 
     pub fn set_named_ref_parameter(
         &mut self,
         named_ref_param: &NamedRefParam,
-    ) -> Result<(), String> {
+    ) -> Result<(), QError> {
         let arg = self
             .parent
             .create_parameter(named_ref_param.argument_name.clone());
@@ -287,7 +287,7 @@ impl ArgsContext {
         &mut self,
         param_name: &QualifiedName,
         value: Variant,
-    ) -> Result<(), String> {
+    ) -> Result<(), QError> {
         self.insert_next_argument(param_name, Argument::ByVal(value))
     }
 
@@ -295,7 +295,7 @@ impl ArgsContext {
         &mut self,
         param_name: &QualifiedName,
         arg: Argument,
-    ) -> Result<(), String> {
+    ) -> Result<(), QError> {
         self.args.insert(param_name.clone(), arg)
     }
 }
@@ -312,11 +312,11 @@ pub struct SubContext {
 }
 
 impl SubContext {
-    fn set_variable_parent(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    fn set_variable_parent(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         self.parent.set_variable(name, value)
     }
 
-    fn do_insert_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    fn do_insert_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         self.variables.insert(name, Argument::ByVal(value))
     }
 
@@ -335,7 +335,7 @@ impl SubContext {
         self.variables.get(name)
     }
 
-    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         self.constants.insert(name, value)
     }
 
@@ -356,7 +356,7 @@ impl SubContext {
         &mut self,
         arg: &Argument,
         value: Variant,
-    ) -> Result<(), String> {
+    ) -> Result<(), QError> {
         match arg {
             Argument::ByVal(_) => panic!("Expected variable"),
             Argument::ByRef(n) => {
@@ -395,7 +395,7 @@ impl SubContext {
         }
     }
 
-    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         // if a parameter exists, set it (might be a ref)
         match self.get_argument_mut(&name) {
             Some(a) => {
@@ -481,7 +481,7 @@ impl Context {
         }
     }
 
-    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         match self {
             Self::Root(r) => r.set_constant(name, value),
             Self::Sub(s) => s.set_constant(name, value),
@@ -519,7 +519,7 @@ impl Context {
         }
     }
 
-    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), String> {
+    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
         match self {
             Self::Root(r) => r.set_variable(name, value),
             Self::Sub(s) => s.set_variable(name, value),

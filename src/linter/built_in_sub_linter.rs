@@ -1,7 +1,7 @@
-use super::error::*;
 use super::post_conversion_linter::PostConversionLinter;
 use super::types::*;
 use crate::built_ins::{BuiltInLint, BuiltInSub};
+use crate::common::*;
 
 /// Lints built-in subs. Delegates responsibility to the built-in subs
 /// themselves in the built_ins module.
@@ -12,7 +12,7 @@ impl PostConversionLinter for BuiltInSubLinter {
         &self,
         built_in_sub: &BuiltInSub,
         args: &Vec<ExpressionNode>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), QErrorNode> {
         built_in_sub.lint(args)
     }
 }

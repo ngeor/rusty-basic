@@ -1,10 +1,10 @@
-use super::{BareName, BareNameNode, Name, NameNode, ParserError};
+use super::{BareName, BareNameNode, Name, NameNode};
 use crate::common::*;
 use crate::lexer::{BufLexer, Lexeme};
 use crate::parser::type_qualifier;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, QErrorNode> {
     let Locatable { element, pos } = lexer.peek()?;
     match element {
         Lexeme::Word(word) => {
@@ -18,7 +18,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>,
 
 pub fn try_read_bare<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<BareNameNode>, ParserError> {
+) -> Result<Option<BareNameNode>, QErrorNode> {
     lexer.begin_transaction();
     let Locatable { element, pos } = lexer.peek()?;
     match element {
@@ -28,17 +28,17 @@ pub fn try_read_bare<T: BufRead>(
             // if we have a type qualifier next, then it's not a bare name actually
             match type_qualifier::try_read(lexer)? {
                 Some(_) => {
-                    lexer.rollback_transaction()?;
+                    lexer.rollback_transaction();
                     Ok(None)
                 }
                 None => {
-                    lexer.commit_transaction()?;
+                    lexer.commit_transaction();
                     Ok(Some(BareName::new(word).at(pos)))
                 }
             }
         }
         _ => {
-            lexer.rollback_transaction()?;
+            lexer.rollback_transaction();
             Ok(None)
         }
     }

@@ -1,23 +1,23 @@
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::comment;
-use crate::parser::error::*;
+
 use crate::parser::expression;
 use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Select) {
         return Ok(None);
     }
     let pos = lexer.read()?.pos();
     // initial state: we just read the "SELECT" keyword
-    read_demand_whitespace(lexer, "Expected space after SELECT")?;
-    read_demand_keyword(lexer, Keyword::Case)?;
-    read_demand_whitespace(lexer, "Expected space after CASE")?;
-    let expr: ExpressionNode = demand(
+    read_whitespace(lexer, "Expected space after SELECT")?;
+    read_keyword(lexer, Keyword::Case)?;
+    read_whitespace(lexer, "Expected space after CASE")?;
+    let expr: ExpressionNode = read(
         lexer,
         expression::try_read,
         "Expected expression after SELECT CASE",
@@ -33,8 +33,6 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         }
     }
 
-    // TODO what if there is a comment on the next line between SELECT CASE and the first CASE
-    // TODO what if there is no CASE inside SELECT
     // TODO support multiple expressions e.g. CASE 1,2,IS<=3
     let mut case_blocks: Vec<CaseBlockNode> = vec![];
     loop {
@@ -44,9 +42,9 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         }
     }
     let else_block = try_read_case_else(lexer)?;
-    read_demand_keyword(lexer, Keyword::End)?;
-    read_demand_whitespace(lexer, "Expected space after END")?;
-    read_demand_keyword(lexer, Keyword::Select)?;
+    read_keyword(lexer, Keyword::End)?;
+    read_whitespace(lexer, "Expected space after END")?;
+    read_keyword(lexer, Keyword::Select)?;
     Ok(Some(
         Statement::SelectCase(SelectCaseNode {
             inline_comments,
@@ -62,52 +60,49 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 /// between SELECT CASE X ... until the first CASE expression
 fn parse_inline_comments<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<StatementNodes, ParserError> {
+) -> Result<StatementNodes, QErrorNode> {
     let mut statements: StatementNodes = vec![];
 
     loop {
-        let p = lexer.peek()?;
-        if p.as_ref().is_keyword(Keyword::Case) {
+        let Locatable { element: p, pos } = lexer.peek()?;
+        if p.is_keyword(Keyword::Case) || p.is_keyword(Keyword::End) {
             return Ok(statements);
-        } else if p.as_ref().is_eof() {
-            return unexpected("Expected CASE", p);
-        } else if p.as_ref().is_whitespace() || p.as_ref().is_eol() {
+        } else if p.is_whitespace() || p.is_eol() {
             lexer.read()?;
-        } else if p.as_ref().is_symbol('\'') {
+        } else if p.is_symbol('\'') {
             // read comment, regardless of whether we've seen the separator or not
-            // TODO add unit test where comment reads EOF
-            let s = demand(lexer, comment::try_read, "Expected comment")?;
+            let s = read(lexer, comment::try_read, "Expected comment")?;
             statements.push(s);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else {
-            return Err(ParserError::Unterminated(p));
+            return Err(QError::SyntaxError("Expected CASE".to_string())).with_err_at(pos);
         }
     }
 }
 
-fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserError> {
+fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_case_else = false;
     lexer.begin_transaction();
     if lexer.peek()?.as_ref().is_keyword(Keyword::Case) {
         lexer.read()?;
-        if lexer.peek()?.as_ref().is_whitespace() {
+        let Locatable {
+            element: maybe_whitespace,
+            pos,
+        } = lexer.peek()?;
+        if maybe_whitespace.is_whitespace() {
             lexer.read()?;
             found_case_else = lexer.peek()?.as_ref().is_keyword(Keyword::Else);
         } else {
             // CASE should always be followed by a space so it's okay to throw an error here
-            return Err(ParserError::SyntaxError(
-                "Expected space after CASE".to_string(),
-                lexer.peek()?.pos(),
-            ));
+            return Err(QError::SyntaxError("Expected space after CASE".to_string()))
+                .with_err_at(pos);
         }
     }
-    lexer.rollback_transaction()?;
+    lexer.rollback_transaction();
     Ok(found_case_else)
 }
 
-fn try_read_case<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<CaseBlockNode>, ParserError> {
+fn try_read_case<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Case) {
         return Ok(None);
     }
@@ -123,12 +118,12 @@ fn try_read_case<T: BufRead>(
     }
 }
 
-fn read_case_is<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, ParserError> {
+fn read_case_is<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, QErrorNode> {
     lexer.read()?; // IS
     skip_whitespace(lexer)?;
     let op = read_relational_operator(lexer)?;
     skip_whitespace(lexer)?;
-    let expr = demand(lexer, expression::try_read, "Expected expression after IS")?;
+    let expr = read(lexer, expression::try_read, "Expected expression after IS")?;
     let statements = parse_statements(
         lexer,
         |x| x.is_keyword(Keyword::Case) || x.is_keyword(Keyword::End),
@@ -140,7 +135,7 @@ fn read_case_is<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockN
     }))
 }
 
-fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, ParserError> {
+fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, QErrorNode> {
     let next = lexer.read()?;
     if next.as_ref().is_symbol('=') {
         Ok(Operand::Equal)
@@ -162,17 +157,17 @@ fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Opera
             Ok(Operand::Less)
         }
     } else {
-        Err(ParserError::SyntaxError(
+        Err(QError::SyntaxError(
             "Expected relational operator".to_string(),
-            next.pos(),
         ))
+        .with_err_at(&next)
     }
 }
 
 fn read_case_expr<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<CaseBlockNode>, ParserError> {
-    let first_expr = demand(
+) -> Result<Option<CaseBlockNode>, QErrorNode> {
+    let first_expr = read(
         lexer,
         expression::try_read,
         "Expected expression after CASE",
@@ -181,12 +176,12 @@ fn read_case_expr<T: BufRead>(
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
     if lexer.read()?.as_ref().is_keyword(Keyword::To) {
-        lexer.commit_transaction()?;
+        lexer.commit_transaction();
         skip_whitespace(lexer)?;
         second_expr =
-            demand(lexer, expression::try_read, "Expected expression after TO").map(|x| Some(x))?;
+            read(lexer, expression::try_read, "Expected expression after TO").map(|x| Some(x))?;
     } else {
-        lexer.rollback_transaction()?;
+        lexer.rollback_transaction();
     }
     let statements = parse_statements(
         lexer,
@@ -205,7 +200,7 @@ fn read_case_expr<T: BufRead>(
 
 fn try_read_case_else<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNodes>, ParserError> {
+) -> Result<Option<StatementNodes>, QErrorNode> {
     if !peek_case_else(lexer)? {
         return Ok(None);
     }
@@ -262,6 +257,62 @@ mod tests {
                 .at_rc(2, 9),
                 TopLevelToken::Statement(Statement::Comment(" end of select".to_string()))
                     .at_rc(7, 23)
+            ]
+        );
+    }
+
+    #[test]
+    fn test_no_case() {
+        let input = r#"
+        SELECT CASE X
+        END SELECT
+        "#;
+        let result = parse(input);
+        assert_eq!(
+            result,
+            vec![
+                TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
+                    expr: "X".as_var_expr(2, 21),
+                    inline_comments: vec![],
+                    case_blocks: vec![],
+                    else_block: None
+                }))
+                .at_rc(2, 9)
+            ]
+        );
+    }
+
+    #[test]
+    fn test_inline_comment_next_line() {
+        let input = r#"
+        SELECT CASE X ' testing for x
+        ' first case
+        CASE 1        ' is it one?
+        PRINT "One"   ' print it
+        END SELECT
+        "#;
+        let result = parse(input);
+        assert_eq!(
+            result,
+            vec![
+                TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
+                    expr: "X".as_var_expr(2, 21),
+                    inline_comments: vec![
+                        " testing for x".to_string().at_rc(2, 23),
+                        " first case".to_string().at_rc(3, 9)
+                    ],
+                    case_blocks: vec![CaseBlockNode {
+                        expr: CaseExpression::Simple(1.as_lit_expr(4, 14)),
+                        statements: vec![
+                            Statement::Comment(" is it one?".to_string()).at_rc(4, 23),
+                            Statement::SubCall("PRINT".into(), vec!["One".as_lit_expr(5, 15)])
+                                .at_rc(5, 9),
+                            Statement::Comment(" print it".to_string()).at_rc(5, 23),
+                        ]
+                    }],
+                    else_block: None
+                }))
+                .at_rc(2, 9)
             ]
         );
     }

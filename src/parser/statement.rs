@@ -1,22 +1,22 @@
 use crate::built_ins;
 use crate::common::*;
-use crate::lexer::{BufLexer, Keyword, Lexeme};
+use crate::lexer::{BufLexer, Keyword};
 use crate::parser::assignment;
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim_parser;
-use crate::parser::error::ParserError;
+
 use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;
-use crate::parser::while_wend::*;
+use crate::parser::while_wend;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     dim_parser::try_read(lexer)
         .or_try_read(|| constant::try_read(lexer))
         .or_try_read(|| comment::try_read(lexer))
@@ -27,51 +27,67 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         .or_try_read(|| if_block::try_read(lexer))
         .or_try_read(|| for_loop::try_read(lexer))
         .or_try_read(|| select_case::try_read(lexer))
-        .or_try_read(|| try_older(lexer))
+        .or_try_read(|| while_wend::try_read(lexer))
+        .or_try_read(|| try_read_go_to(lexer))
+        .or_try_read(|| try_read_on(lexer))
+        .or_try_read(|| try_read_illegal_keywords(lexer))
+}
+
+fn try_read_illegal_keywords<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
+    let Locatable { element, pos } = lexer.peek()?;
+    if element.is_keyword(Keyword::Wend) {
+        Err(QError::WendWithoutWhile).with_err_at(pos)
+    } else if element.is_keyword(Keyword::Else) {
+        Err(QError::ElseWithoutIf).with_err_at(pos)
+    } else {
+        Ok(None)
+    }
 }
 
 fn try_read_label<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserError> {
+) -> Result<Option<StatementNode>, QErrorNode> {
     in_transaction(lexer, do_read_label)
 }
 
-fn do_read_label<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, ParserError> {
+fn do_read_label<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, QErrorNode> {
     let Locatable {
         element: bare_name,
         pos,
-    } = demand(lexer, name::try_read_bare, "Expected bare name")?;
+    } = read(lexer, name::try_read_bare, "Expected bare name")?;
     read_symbol(lexer, ':')?;
     Ok(Statement::Label(bare_name).at(pos))
 }
 
-// TODO migrate these remaining older style
-fn try_older<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
-    let Locatable { element, pos } = lexer.read()?;
-    match element {
-        Lexeme::Keyword(Keyword::GoTo, _) => demand_go_to(lexer).map(|x| Some(x.at(pos))),
-        Lexeme::Keyword(Keyword::On, _) => demand_on(lexer).map(|x| Some(x.at(pos))),
-        Lexeme::Keyword(Keyword::While, _) => demand_while_block(lexer).map(|x| Some(x.at(pos))),
-        _ => Ok(None),
+fn try_read_on<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+    if !lexer.peek()?.as_ref().is_keyword(Keyword::On) {
+        return Ok(None);
     }
+    let pos = lexer.read()?.pos();
+    read_whitespace(lexer, "Expected space after ON")?;
+    read_keyword(lexer, Keyword::Error)?;
+    read_whitespace(lexer, "Expected space after ERROR")?;
+    read_keyword(lexer, Keyword::GoTo)?;
+    read_whitespace(lexer, "Expected space after GOTO")?;
+    let name_node = read(lexer, name::try_read_bare, "Expected label name")?;
+    let Locatable { element: name, .. } = name_node;
+    Ok(Some(Statement::ErrorHandler(name).at(pos)))
 }
 
-fn demand_on<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, ParserError> {
-    read_demand_whitespace(lexer, "Expected space after ON")?;
-    read_demand_keyword(lexer, Keyword::Error)?;
-    read_demand_whitespace(lexer, "Expected space after ERROR")?;
-    read_demand_keyword(lexer, Keyword::GoTo)?;
-    read_demand_whitespace(lexer, "Expected space after GOTO")?;
-    let name_node = demand(lexer, name::try_read_bare, "Expected label name")?;
-    let Locatable { element: name, .. } = name_node;
-    Ok(Statement::ErrorHandler(name))
-}
+fn try_read_go_to<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
+    if !lexer.peek()?.as_ref().is_keyword(Keyword::GoTo) {
+        return Ok(None);
+    }
 
-fn demand_go_to<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, ParserError> {
-    read_demand_whitespace(lexer, "Expected space after GOTO")?;
-    let name_node = demand(lexer, name::try_read_bare, "Expected label name")?;
+    let pos = lexer.read()?.pos();
+    read_whitespace(lexer, "Expected space after GOTO")?;
+    let name_node = read(lexer, name::try_read_bare, "Expected label name")?;
     let Locatable { element: name, .. } = name_node;
-    Ok(Statement::GoTo(name))
+    Ok(Some(Statement::GoTo(name).at(pos)))
 }
 
 #[cfg(test)]
@@ -90,6 +106,20 @@ mod tests {
                 TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))
                     .at_rc(1, 1)
             ]
+        );
+    }
+
+    #[test]
+    fn colon_separator_at_start_of_line() {
+        let input = ": PRINT 42";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![TopLevelToken::Statement(Statement::SubCall(
+                "PRINT".into(),
+                vec![42.as_lit_expr(1, 9)]
+            ))
+            .at_rc(1, 3)]
         );
     }
 }

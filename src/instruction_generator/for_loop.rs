@@ -66,10 +66,7 @@ impl InstructionGenerator {
                 self.jump("out-of-for", pos);
                 // Zero step
                 self.label("zero", pos);
-                self.push(
-                    Instruction::Throw(format!("Step cannot be zero")),
-                    step_location,
-                );
+                self.push(Instruction::Throw(QError::ForLoopZeroStep), step_location);
                 self.label("out-of-for", pos);
             }
             None => {

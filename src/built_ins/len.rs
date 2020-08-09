@@ -2,20 +2,18 @@
 // LEN(variable) -> number of bytes required to store a variable
 
 use super::{BuiltInLint, BuiltInRun};
-use crate::common::Location;
-use crate::interpreter::{err, Interpreter, InterpreterError, Stdlib};
-use crate::linter::{
-    err_l, err_no_pos, Error, Expression, ExpressionNode, LinterError, TypeQualifier,
-};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::{Expression, ExpressionNode, TypeQualifier};
 use crate::variant::Variant;
 use std::convert::TryInto;
 
 pub struct Len {}
 
 impl BuiltInLint for Len {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
-            err_no_pos(LinterError::ArgumentCountMismatch)
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             let arg: &Expression = args[0].as_ref();
             match arg {
@@ -23,7 +21,7 @@ impl BuiltInLint for Len {
                 _ => {
                     let q = args[0].try_qualifier()?;
                     if q != TypeQualifier::DollarString {
-                        err_l(LinterError::VariableRequired, &args[0])
+                        Err(QError::VariableRequired).with_err_at(&args[0])
                     } else {
                         Ok(())
                     }
@@ -34,11 +32,7 @@ impl BuiltInLint for Len {
 }
 
 impl BuiltInRun for Len {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
             Variant::VSingle(_) => Variant::VInteger(4),
@@ -47,7 +41,8 @@ impl BuiltInRun for Len {
             Variant::VInteger(_) => Variant::VInteger(2),
             Variant::VLong(_) => Variant::VInteger(4),
             _ => {
-                return err("Not supported", pos);
+                return Err(format!("Variant {:?} not supported in LEN", v).into())
+                    .with_err_no_pos();
             }
         };
         Ok(())
@@ -58,7 +53,7 @@ impl BuiltInRun for Len {
 mod tests {
     use crate::assert_linter_err;
     use crate::assert_prints;
-    use crate::linter::LinterError;
+    use crate::common::QError;
 
     #[test]
     fn test_len_string() {
@@ -105,7 +100,7 @@ mod tests {
     #[test]
     fn test_len_integer_expression_error() {
         let program = "PRINT LEN(42)";
-        assert_linter_err!(program, LinterError::VariableRequired, 1, 11);
+        assert_linter_err!(program, QError::VariableRequired, 1, 11);
     }
 
     #[test]
@@ -114,18 +109,23 @@ mod tests {
             CONST X = 42
             PRINT LEN(X)
             ";
-        assert_linter_err!(program, LinterError::VariableRequired, 3, 23);
+        assert_linter_err!(program, QError::VariableRequired, 3, 23);
     }
 
     #[test]
     fn test_len_two_arguments_error() {
         let program = r#"PRINT LEN("a", "b")"#;
-        assert_linter_err!(program, LinterError::ArgumentCountMismatch, 1, 7);
+        assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
     }
 
     #[test]
     fn test_len_must_be_unqualified() {
         let program = r#"PRINT LEN!("hello")"#;
-        assert_linter_err!(program, LinterError::SyntaxError, 1, 7);
+        assert_linter_err!(
+            program,
+            QError::SyntaxError("Function Len must be unqualified".to_string()),
+            1,
+            7
+        );
     }
 }

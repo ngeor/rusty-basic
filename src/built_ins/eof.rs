@@ -3,13 +3,13 @@
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Error, ExpressionNode};
+use crate::linter::{ExpressionNode, LinterErrorNode};
 use crate::variant::Variant;
 
 pub struct Eof {}
 
 impl BuiltInLint for Eof {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         util::require_single_numeric_argument(args)
     }
 }

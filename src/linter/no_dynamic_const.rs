@@ -6,7 +6,7 @@ use crate::common::*;
 pub struct NoDynamicConst;
 
 impl NoDynamicConst {
-    fn visit_const_expr(&self, e_node: &ExpressionNode) -> Result<(), Error> {
+    fn visit_const_expr(&self, e_node: &ExpressionNode) -> Result<(), LinterErrorNode> {
         let e: &Expression = e_node.as_ref();
         match e {
             Expression::FunctionCall(_, _)
@@ -28,7 +28,11 @@ impl NoDynamicConst {
 }
 
 impl PostConversionLinter for NoDynamicConst {
-    fn visit_const(&self, _left_node: &QNameNode, e_node: &ExpressionNode) -> Result<(), Error> {
+    fn visit_const(
+        &self,
+        _left_node: &QNameNode,
+        e_node: &ExpressionNode,
+    ) -> Result<(), LinterErrorNode> {
         self.visit_const_expr(e_node)
     }
 }

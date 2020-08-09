@@ -16,7 +16,9 @@ use std::collections::HashMap;
 /// - No duplicate implementations
 /// - No conflicts between declarations and implementations
 /// - Resolves types of parameters and functions
-pub fn collect_subprograms(p: &parser::ProgramNode) -> Result<(FunctionMap, SubMap), Error> {
+pub fn collect_subprograms(
+    p: &parser::ProgramNode,
+) -> Result<(FunctionMap, SubMap), LinterErrorNode> {
     let mut f_c = FunctionContext::new();
     let mut s_c = SubContext::new();
     for t in p {
@@ -63,7 +65,7 @@ impl FunctionContext {
         name: &NameNode,
         params: &DeclaredNameNodes,
         pos: Location,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
         let q_params: Vec<TypeQualifier> = params
@@ -87,7 +89,7 @@ impl FunctionContext {
         name: &NameNode,
         params: &DeclaredNameNodes,
         pos: Location,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         // type must match declaration
         // param count must match declaration
         // param types must match declaration
@@ -115,7 +117,7 @@ impl FunctionContext {
         q_name: &TypeQualifier,
         q_params: &Vec<TypeQualifier>,
         pos: Location,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         match self.declarations.get(name) {
             Some((e_name, e_params, _)) => {
                 if e_name != q_name || e_params != q_params {
@@ -133,7 +135,7 @@ impl FunctionContext {
         q_name: &TypeQualifier,
         q_params: &Vec<TypeQualifier>,
         pos: Location,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         match self.implementations.get(name) {
             Some((e_name, e_params, _)) => {
                 if e_name != q_name || e_params != q_params {
@@ -145,7 +147,7 @@ impl FunctionContext {
         Ok(())
     }
 
-    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), Error> {
+    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), LinterErrorNode> {
         let pos = a.pos();
         match a.as_ref() {
             parser::TopLevelToken::DefType(d) => {
@@ -162,7 +164,7 @@ impl FunctionContext {
         }
     }
 
-    pub fn post_visit(&mut self) -> Result<(), Error> {
+    pub fn post_visit(&mut self) -> Result<(), LinterErrorNode> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return Err(LinterError::SubprogramNotDefined).with_err_at(v.2);
@@ -200,7 +202,7 @@ impl SubContext {
         name: &CaseInsensitiveString,
         params: &DeclaredNameNodes,
         pos: Location,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
         let q_params: Vec<TypeQualifier> = params
@@ -222,7 +224,7 @@ impl SubContext {
         name: &CaseInsensitiveString,
         params: &DeclaredNameNodes,
         pos: Location,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
@@ -245,7 +247,7 @@ impl SubContext {
         name: &CaseInsensitiveString,
         q_params: &Vec<TypeQualifier>,
         pos: Location,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         match self.declarations.get(name) {
             Some((e_params, _)) => {
                 if e_params != q_params {
@@ -262,7 +264,7 @@ impl SubContext {
         name: &CaseInsensitiveString,
         q_params: &Vec<TypeQualifier>,
         pos: Location,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         match self.implementations.get(name) {
             Some((e_params, _)) => {
                 if e_params != q_params {
@@ -274,7 +276,10 @@ impl SubContext {
         Ok(())
     }
 
-    pub fn visit(&mut self, top_level_token_node: &parser::TopLevelTokenNode) -> Result<(), Error> {
+    pub fn visit(
+        &mut self,
+        top_level_token_node: &parser::TopLevelTokenNode,
+    ) -> Result<(), LinterErrorNode> {
         let Locatable {
             element: top_level_token,
             pos,
@@ -294,7 +299,7 @@ impl SubContext {
         }
     }
 
-    pub fn post_visit(&mut self) -> Result<(), Error> {
+    pub fn post_visit(&mut self) -> Result<(), LinterErrorNode> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return Err(LinterError::SubprogramNotDefined).with_err_at(v.1);

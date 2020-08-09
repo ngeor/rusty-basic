@@ -6,7 +6,7 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::{BufLexer, Keyword};
-use crate::linter::{Error, ExpressionNode, LinterError};
+use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
 use crate::parser::buf_lexer::*;
 use crate::parser::expression;
 use crate::parser::{BareName, ParserErrorNode, Statement, StatementNode, TypeQualifier};
@@ -36,7 +36,7 @@ pub fn try_read<T: BufRead>(
 }
 
 impl BuiltInLint for Name {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         if args.len() != 2 {
             Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
         } else if args[0].try_qualifier()? != TypeQualifier::DollarString {

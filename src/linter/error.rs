@@ -34,4 +34,4 @@ pub enum LinterError {
     SyntaxError,
 }
 
-pub type Error = ErrorEnvelope<LinterError>;
+pub type LinterErrorNode = ErrorEnvelope<LinterError>;

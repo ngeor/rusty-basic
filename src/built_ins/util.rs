@@ -1,7 +1,7 @@
 use crate::common::*;
-use crate::linter::{Error, ExpressionNode, LinterError, TypeQualifier};
+use crate::linter::{ExpressionNode, LinterError, LinterErrorNode, TypeQualifier};
 
-pub fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), Error> {
+pub fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
     if args.len() != 1 {
         Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
     } else {
@@ -14,7 +14,7 @@ pub fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(),
     }
 }
 
-pub fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), Error> {
+pub fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
     if args.len() != 1 {
         Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
     } else {
@@ -22,7 +22,10 @@ pub fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), 
     }
 }
 
-pub fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), Error> {
+pub fn require_string_argument(
+    args: &Vec<ExpressionNode>,
+    idx: usize,
+) -> Result<(), LinterErrorNode> {
     let q = args[idx].try_qualifier()?;
     if q != TypeQualifier::DollarString {
         Err(LinterError::ArgumentTypeMismatch).with_err_at(&args[idx])
@@ -31,7 +34,10 @@ pub fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result
     }
 }
 
-pub fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), Error> {
+pub fn require_integer_argument(
+    args: &Vec<ExpressionNode>,
+    idx: usize,
+) -> Result<(), LinterErrorNode> {
     let q = args[idx].try_qualifier()?;
     if q != TypeQualifier::PercentInteger {
         Err(LinterError::ArgumentTypeMismatch).with_err_at(&args[idx])

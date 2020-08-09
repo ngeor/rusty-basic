@@ -12,7 +12,7 @@ impl PostConversionLinter for BuiltInSubLinter {
         &self,
         built_in_sub: &BuiltInSub,
         args: &Vec<ExpressionNode>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), LinterErrorNode> {
         built_in_sub.lint(args)
     }
 }

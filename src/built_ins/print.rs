@@ -5,13 +5,13 @@
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Error, ExpressionNode};
+use crate::linter::{ExpressionNode, LinterErrorNode};
 use crate::variant::Variant;
 
 pub struct Print {}
 
 impl BuiltInLint for Print {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         Ok(())
     }
 }

@@ -9,7 +9,7 @@ use crate::common::*;
 pub struct BuiltInFunctionLinter;
 
 impl PostConversionLinter for BuiltInFunctionLinter {
-    fn visit_expression(&self, expr_node: &ExpressionNode) -> Result<(), Error> {
+    fn visit_expression(&self, expr_node: &ExpressionNode) -> Result<(), LinterErrorNode> {
         let pos = expr_node.pos();
         let e = expr_node.as_ref();
         match e {

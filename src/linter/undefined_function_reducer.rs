@@ -9,7 +9,7 @@ pub struct UndefinedFunctionReducer<'a> {
 }
 
 impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
-    fn visit_expression(&self, expression: Expression) -> Result<Expression, Error> {
+    fn visit_expression(&self, expression: Expression) -> Result<Expression, LinterErrorNode> {
         match expression {
             Expression::BinaryExpression(op, left, right) => {
                 let mapped_left = self.visit_expression_node(*left)?;

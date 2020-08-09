@@ -4,14 +4,14 @@
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Error, ExpressionNode, LinterError};
+use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
 use crate::parser::TypeQualifier;
 use crate::variant::Variant;
 
 pub struct Environ {}
 
 impl BuiltInLint for Environ {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         if args.len() != 1 {
             Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
         } else if args[0].try_qualifier()? != TypeQualifier::DollarString {

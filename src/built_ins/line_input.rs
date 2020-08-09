@@ -8,7 +8,7 @@ use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::{BufLexer, Keyword};
-use crate::linter::{Error, ExpressionNode};
+use crate::linter::{ExpressionNode, LinterErrorNode};
 use crate::parser::buf_lexer::*;
 use crate::parser::sub_call;
 use crate::parser::{
@@ -37,7 +37,7 @@ pub fn try_read<T: BufRead>(
 }
 
 impl BuiltInLint for LineInput {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         // TODO lint
         Ok(())
     }

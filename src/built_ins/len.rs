@@ -4,14 +4,14 @@
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Error, Expression, ExpressionNode, LinterError, TypeQualifier};
+use crate::linter::{Expression, ExpressionNode, LinterError, LinterErrorNode, TypeQualifier};
 use crate::variant::Variant;
 use std::convert::TryInto;
 
 pub struct Len {}
 
 impl BuiltInLint for Len {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         if args.len() != 1 {
             Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
         } else {

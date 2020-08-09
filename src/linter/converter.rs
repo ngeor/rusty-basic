@@ -18,7 +18,7 @@ use std::convert::TryInto;
 //
 
 trait Converter<A, B> {
-    fn convert(&mut self, a: A) -> Result<B, Error>;
+    fn convert(&mut self, a: A) -> Result<B, LinterErrorNode>;
 }
 
 // blanket for Vec
@@ -26,7 +26,7 @@ impl<T, A, B> Converter<Vec<A>, Vec<B>> for T
 where
     T: Converter<A, B>,
 {
-    fn convert(&mut self, a: Vec<A>) -> Result<Vec<B>, Error> {
+    fn convert(&mut self, a: Vec<A>) -> Result<Vec<B>, LinterErrorNode> {
         a.into_iter().map(|x| self.convert(x)).collect()
     }
 }
@@ -36,7 +36,7 @@ impl<T, A, B> Converter<Option<A>, Option<B>> for T
 where
     T: Converter<A, B>,
 {
-    fn convert(&mut self, a: Option<A>) -> Result<Option<B>, Error> {
+    fn convert(&mut self, a: Option<A>) -> Result<Option<B>, LinterErrorNode> {
         match a {
             Some(x) => self.convert(x).map(|r| Some(r)),
             None => Ok(None),
@@ -49,7 +49,7 @@ impl<T, A, B> Converter<Locatable<A>, Locatable<B>> for T
 where
     T: Converter<A, B>,
 {
-    fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, Error> {
+    fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, LinterErrorNode> {
         let Locatable { element, pos } = a;
         self.convert(element).with_ok_pos(pos).patch_err_pos(pos)
     }
@@ -88,7 +88,9 @@ impl ConverterImpl {
     }
 }
 
-pub fn convert(program: parser::ProgramNode) -> Result<(ProgramNode, FunctionMap, SubMap), Error> {
+pub fn convert(
+    program: parser::ProgramNode,
+) -> Result<(ProgramNode, FunctionMap, SubMap), LinterErrorNode> {
     let mut linter = ConverterImpl::default();
     let (f_c, s_c) = collect_subprograms(&program)?;
     linter.functions = f_c;
@@ -99,7 +101,7 @@ pub fn convert(program: parser::ProgramNode) -> Result<(ProgramNode, FunctionMap
 }
 
 impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, Error> {
+    fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, LinterErrorNode> {
         let mut result: Vec<TopLevelTokenNode> = vec![];
         for top_level_token_node in a.into_iter() {
             // will contain None where DefInt and declarations used to be
@@ -118,7 +120,7 @@ impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
 }
 
 impl Converter<Name, QualifiedName> for ConverterImpl {
-    fn convert(&mut self, a: Name) -> Result<QualifiedName, Error> {
+    fn convert(&mut self, a: Name) -> Result<QualifiedName, LinterErrorNode> {
         Ok(a.resolve_into(&self.resolver))
     }
 }
@@ -129,7 +131,7 @@ impl ConverterImpl {
         function_name_node: NameNode,
         params: DeclaredNameNodes,
         block: parser::StatementNodes,
-    ) -> Result<Option<TopLevelToken>, Error> {
+    ) -> Result<Option<TopLevelToken>, LinterErrorNode> {
         let mapped_name = self.convert(function_name_node)?;
         self.push_function_context(mapped_name.as_ref());
         let mapped_params = self.convert_function_params(mapped_name.as_ref(), params)?;
@@ -157,7 +159,7 @@ impl ConverterImpl {
         &mut self,
         function_name: &QualifiedName,
         params: DeclaredNameNodes,
-    ) -> Result<Vec<QNameNode>, Error> {
+    ) -> Result<Vec<QNameNode>, LinterErrorNode> {
         let mut result: Vec<QNameNode> = vec![];
         for p in params.into_iter() {
             let Locatable { element, pos } = p;
@@ -186,7 +188,7 @@ impl ConverterImpl {
         sub_name_node: BareNameNode,
         params: DeclaredNameNodes,
         block: parser::StatementNodes,
-    ) -> Result<Option<TopLevelToken>, Error> {
+    ) -> Result<Option<TopLevelToken>, LinterErrorNode> {
         self.push_sub_context(sub_name_node.as_ref());
 
         let mut mapped_params: Vec<QNameNode> = vec![];
@@ -216,7 +218,10 @@ impl ConverterImpl {
 
 // Option because we filter out DefType
 impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
-    fn convert(&mut self, a: parser::TopLevelToken) -> Result<Option<TopLevelToken>, Error> {
+    fn convert(
+        &mut self,
+        a: parser::TopLevelToken,
+    ) -> Result<Option<TopLevelToken>, LinterErrorNode> {
         match a {
             parser::TopLevelToken::DefType(d) => {
                 self.resolver.set(&d);
@@ -238,7 +243,7 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
 }
 
 impl Converter<parser::Statement, Statement> for ConverterImpl {
-    fn convert(&mut self, a: parser::Statement) -> Result<Statement, Error> {
+    fn convert(&mut self, a: parser::Statement) -> Result<Statement, LinterErrorNode> {
         match a {
             parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
             parser::Statement::Assignment(n, e) => {
@@ -303,7 +308,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
 }
 
 impl Converter<parser::Expression, Expression> for ConverterImpl {
-    fn convert(&mut self, a: parser::Expression) -> Result<Expression, Error> {
+    fn convert(&mut self, a: parser::Expression) -> Result<Expression, LinterErrorNode> {
         match a {
             parser::Expression::SingleLiteral(f) => Ok(Expression::SingleLiteral(f)),
             parser::Expression::DoubleLiteral(f) => Ok(Expression::DoubleLiteral(f)),
@@ -363,7 +368,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
 }
 
 impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, Error> {
+    fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, LinterErrorNode> {
         Ok(ForLoopNode {
             variable_name: self.convert(a.variable_name)?,
             lower_bound: self.convert(a.lower_bound)?,
@@ -376,7 +381,10 @@ impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
 }
 
 impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::ConditionalBlockNode) -> Result<ConditionalBlockNode, Error> {
+    fn convert(
+        &mut self,
+        a: parser::ConditionalBlockNode,
+    ) -> Result<ConditionalBlockNode, LinterErrorNode> {
         Ok(ConditionalBlockNode {
             condition: self.convert(a.condition)?,
             statements: self.convert(a.statements)?,
@@ -385,7 +393,7 @@ impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for Converter
 }
 
 impl Converter<parser::IfBlockNode, IfBlockNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::IfBlockNode) -> Result<IfBlockNode, Error> {
+    fn convert(&mut self, a: parser::IfBlockNode) -> Result<IfBlockNode, LinterErrorNode> {
         Ok(IfBlockNode {
             if_block: self.convert(a.if_block)?,
             else_if_blocks: self.convert(a.else_if_blocks)?,
@@ -395,7 +403,7 @@ impl Converter<parser::IfBlockNode, IfBlockNode> for ConverterImpl {
 }
 
 impl Converter<parser::SelectCaseNode, SelectCaseNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::SelectCaseNode) -> Result<SelectCaseNode, Error> {
+    fn convert(&mut self, a: parser::SelectCaseNode) -> Result<SelectCaseNode, LinterErrorNode> {
         Ok(SelectCaseNode {
             expr: self.convert(a.expr)?,
             case_blocks: self.convert(a.case_blocks)?,
@@ -405,7 +413,7 @@ impl Converter<parser::SelectCaseNode, SelectCaseNode> for ConverterImpl {
 }
 
 impl Converter<parser::CaseBlockNode, CaseBlockNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::CaseBlockNode) -> Result<CaseBlockNode, Error> {
+    fn convert(&mut self, a: parser::CaseBlockNode) -> Result<CaseBlockNode, LinterErrorNode> {
         Ok(CaseBlockNode {
             expr: self.convert(a.expr)?,
             statements: self.convert(a.statements)?,
@@ -414,7 +422,7 @@ impl Converter<parser::CaseBlockNode, CaseBlockNode> for ConverterImpl {
 }
 
 impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
-    fn convert(&mut self, a: parser::CaseExpression) -> Result<CaseExpression, Error> {
+    fn convert(&mut self, a: parser::CaseExpression) -> Result<CaseExpression, LinterErrorNode> {
         match a {
             parser::CaseExpression::Simple(e) => self.convert(e).map(|x| CaseExpression::Simple(x)),
             parser::CaseExpression::Is(op, e) => self.convert(e).map(|x| CaseExpression::Is(op, x)),
@@ -440,7 +448,10 @@ impl HasQualifier for LName {
 }
 
 impl ConverterImpl {
-    pub fn resolve_name_in_assignment(&mut self, n: parser::Name) -> Result<LName, Error> {
+    pub fn resolve_name_in_assignment(
+        &mut self,
+        n: parser::Name,
+    ) -> Result<LName, LinterErrorNode> {
         if self.context.is_function_context(&n) {
             // trying to assign to the function
             let function_type: TypeQualifier = self.functions.get(n.as_ref()).unwrap().0;
@@ -466,7 +477,10 @@ impl ConverterImpl {
         }
     }
 
-    pub fn resolve_name_in_expression(&mut self, n: &parser::Name) -> Result<Expression, Error> {
+    pub fn resolve_name_in_expression(
+        &mut self,
+        n: &parser::Name,
+    ) -> Result<Expression, LinterErrorNode> {
         self.context
             .resolve_expression(n, &self.resolver)
             .or_try_read(|| self.resolve_name_as_subprogram(n).with_err_no_pos())

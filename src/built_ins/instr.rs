@@ -5,13 +5,13 @@
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Error, ExpressionNode, LinterError};
+use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
 use crate::variant::Variant;
 
 pub struct InStr {}
 
 impl BuiltInLint for InStr {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         if args.len() == 2 {
             util::require_string_argument(args, 0)?;
             util::require_string_argument(args, 1)

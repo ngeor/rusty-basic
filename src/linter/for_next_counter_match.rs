@@ -6,7 +6,7 @@ use crate::common::*;
 pub struct ForNextCounterMatch;
 
 impl PostConversionLinter for ForNextCounterMatch {
-    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), Error> {
+    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), LinterErrorNode> {
         self.visit_statement_nodes(&f.statements)?;
 
         // for and next counters must match

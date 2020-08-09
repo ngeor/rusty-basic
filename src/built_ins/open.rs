@@ -11,7 +11,7 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::{BufLexer, Keyword, Lexeme, LexemeNode};
-use crate::linter::{Error, ExpressionNode};
+use crate::linter::{ExpressionNode, LinterErrorNode};
 use crate::parser::buf_lexer::*;
 use crate::parser::expression;
 use crate::parser::{unexpected, BareName, Expression, ParserErrorNode, Statement, StatementNode};
@@ -85,7 +85,7 @@ fn read_demand_file_access<T: BufRead>(
 }
 
 impl BuiltInLint for Open {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         // not needed because of special parsing
         Ok(())
     }

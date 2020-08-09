@@ -2,12 +2,12 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Error, ExpressionNode};
+use crate::linter::{ExpressionNode, LinterErrorNode};
 
 pub struct Chr {}
 
 impl BuiltInLint for Chr {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         util::require_single_numeric_argument(args)
     }
 }

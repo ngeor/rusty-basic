@@ -24,7 +24,7 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn try_qualifier(&self, pos: Location) -> Result<TypeQualifier, Error> {
+    pub fn try_qualifier(&self, pos: Location) -> Result<TypeQualifier, LinterErrorNode> {
         match self {
             Self::SingleLiteral(_) => Ok(TypeQualifier::BangSingle),
             Self::DoubleLiteral(_) => Ok(TypeQualifier::HashDouble),
@@ -57,7 +57,7 @@ impl Expression {
 pub type ExpressionNode = Locatable<Expression>;
 
 impl ExpressionNode {
-    pub fn try_qualifier(&self) -> Result<TypeQualifier, Error> {
+    pub fn try_qualifier(&self) -> Result<TypeQualifier, LinterErrorNode> {
         self.as_ref().try_qualifier(self.pos())
     }
 }

@@ -21,7 +21,7 @@ mod util;
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::BufLexer;
-use crate::linter::{Error, ExpressionNode, LinterError};
+use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
 use crate::parser::{HasQualifier, Name, ParserErrorNode, TypeQualifier};
 use std::convert::TryFrom;
 use std::io::BufRead;
@@ -60,7 +60,7 @@ pub enum BuiltInSub {
 }
 
 pub trait BuiltInLint {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error>;
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode>;
 }
 
 pub trait BuiltInRun {
@@ -86,7 +86,7 @@ static SYSTEM: system::System = system::System {};
 static VAL: val::Val = val::Val {};
 
 impl BuiltInLint for BuiltInFunction {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         match self {
             Self::Chr => CHR.lint(args),
             Self::Environ => ENVIRON_FN.lint(args),
@@ -101,7 +101,7 @@ impl BuiltInLint for BuiltInFunction {
 }
 
 impl BuiltInLint for BuiltInSub {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         match self {
             Self::Close => CLOSE.lint(args),
             Self::Environ => ENVIRON_SUB.lint(args),

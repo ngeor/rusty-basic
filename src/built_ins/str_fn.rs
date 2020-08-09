@@ -2,13 +2,13 @@
 // TODO support hexadecimal literals &H10
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Error, ExpressionNode};
+use crate::linter::{ExpressionNode, LinterErrorNode};
 use crate::variant::Variant;
 
 pub struct StrFn {}
 
 impl BuiltInLint for StrFn {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         util::require_single_numeric_argument(args)
     }
 }

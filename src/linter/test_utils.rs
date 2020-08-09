@@ -9,7 +9,7 @@ where
     linter::lint(program).unwrap()
 }
 
-pub fn linter_err<T>(input: T) -> linter::Error
+pub fn linter_err<T>(input: T) -> linter::LinterErrorNode
 where
     T: AsRef<[u8]>,
 {

@@ -32,7 +32,7 @@ impl LabelLinter {
 }
 
 impl PostConversionLinter for LabelLinter {
-    fn visit_error_handler(&self, label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_error_handler(&self, label: &CaseInsensitiveString) -> Result<(), LinterErrorNode> {
         if self.collecting || self.labels.borrow().contains(label) {
             Ok(())
         } else {
@@ -40,7 +40,7 @@ impl PostConversionLinter for LabelLinter {
         }
     }
 
-    fn visit_label(&self, label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_label(&self, label: &CaseInsensitiveString) -> Result<(), LinterErrorNode> {
         if self.collecting {
             if self.labels.borrow().contains(label) {
                 err_no_pos(LinterError::DuplicateLabel)
@@ -53,7 +53,7 @@ impl PostConversionLinter for LabelLinter {
         }
     }
 
-    fn visit_go_to(&self, label: &CaseInsensitiveString) -> Result<(), Error> {
+    fn visit_go_to(&self, label: &CaseInsensitiveString) -> Result<(), LinterErrorNode> {
         if self.collecting || self.labels.borrow().contains(label) {
             Ok(())
         } else {

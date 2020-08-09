@@ -4,12 +4,12 @@
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Error, ExpressionNode, LinterError};
+use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
 
 pub struct System {}
 
 impl BuiltInLint for System {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
         if args.len() != 0 {
             Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
         } else {

@@ -7,7 +7,7 @@ use crate::parser::TypeQualifier;
 pub struct SelectCaseLinter;
 
 impl PostConversionLinter for SelectCaseLinter {
-    fn visit_select_case(&self, s: &SelectCaseNode) -> Result<(), Error> {
+    fn visit_select_case(&self, s: &SelectCaseNode) -> Result<(), LinterErrorNode> {
         let top_qualifier: TypeQualifier = s.expr.try_qualifier()?;
         for c in s.case_blocks.iter() {
             match &c.expr {

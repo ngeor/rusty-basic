@@ -6,7 +6,7 @@ use super::types::*;
 use crate::linter::converter;
 use crate::parser;
 
-pub fn lint(program: parser::ProgramNode) -> Result<ProgramNode, Error> {
+pub fn lint(program: parser::ProgramNode) -> Result<ProgramNode, LinterErrorNode> {
     // convert to fully typed
     let (result, functions, subs) = converter::convert(program)?;
     // lint
@@ -22,7 +22,7 @@ fn apply_linters(
     result: &ProgramNode,
     functions: &FunctionMap,
     subs: &SubMap,
-) -> Result<(), Error> {
+) -> Result<(), LinterErrorNode> {
     let linter = super::no_dynamic_const::NoDynamicConst {};
     linter.visit_program(&result)?;
 

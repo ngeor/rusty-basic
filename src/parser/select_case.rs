@@ -33,8 +33,6 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         }
     }
 
-    // TODO what if there is a comment on the next line between SELECT CASE and the first CASE
-    // TODO what if there is no CASE inside SELECT
     // TODO support multiple expressions e.g. CASE 1,2,IS<=3
     let mut case_blocks: Vec<CaseBlockNode> = vec![];
     loop {
@@ -67,7 +65,7 @@ fn parse_inline_comments<T: BufRead>(
 
     loop {
         let Locatable { element: p, pos } = lexer.peek()?;
-        if p.is_keyword(Keyword::Case) {
+        if p.is_keyword(Keyword::Case) || p.is_keyword(Keyword::End) {
             return Ok(statements);
         } else if p.is_whitespace() || p.is_eol() {
             lexer.read()?;
@@ -259,6 +257,62 @@ mod tests {
                 .at_rc(2, 9),
                 TopLevelToken::Statement(Statement::Comment(" end of select".to_string()))
                     .at_rc(7, 23)
+            ]
+        );
+    }
+
+    #[test]
+    fn test_no_case() {
+        let input = r#"
+        SELECT CASE X
+        END SELECT
+        "#;
+        let result = parse(input);
+        assert_eq!(
+            result,
+            vec![
+                TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
+                    expr: "X".as_var_expr(2, 21),
+                    inline_comments: vec![],
+                    case_blocks: vec![],
+                    else_block: None
+                }))
+                .at_rc(2, 9)
+            ]
+        );
+    }
+
+    #[test]
+    fn test_inline_comment_next_line() {
+        let input = r#"
+        SELECT CASE X ' testing for x
+        ' first case
+        CASE 1        ' is it one?
+        PRINT "One"   ' print it
+        END SELECT
+        "#;
+        let result = parse(input);
+        assert_eq!(
+            result,
+            vec![
+                TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
+                    expr: "X".as_var_expr(2, 21),
+                    inline_comments: vec![
+                        " testing for x".to_string().at_rc(2, 23),
+                        " first case".to_string().at_rc(3, 9)
+                    ],
+                    case_blocks: vec![CaseBlockNode {
+                        expr: CaseExpression::Simple(1.as_lit_expr(4, 14)),
+                        statements: vec![
+                            Statement::Comment(" is it one?".to_string()).at_rc(4, 23),
+                            Statement::SubCall("PRINT".into(), vec!["One".as_lit_expr(5, 15)])
+                                .at_rc(5, 9),
+                            Statement::Comment(" print it".to_string()).at_rc(5, 23),
+                        ]
+                    }],
+                    else_block: None
+                }))
+                .at_rc(2, 9)
             ]
         );
     }

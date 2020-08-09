@@ -1,6 +1,5 @@
 use super::ErrorEnvelope;
 
-// TODO go over all sub-parsers and make sure they honor those semantics and don't backtrack if they aren't supposed do
 // TODO add tests for more user friendly errors e.g. "ELSE without IF"
 
 #[derive(Clone, Debug, PartialEq)]
@@ -172,9 +171,6 @@ pub enum QError {
     InvalidConstant,
 
     ForLoopZeroStep,
-
-    // Parser errors
-    Unterminated,
 
     // Lexer errors
     UnsupportedCharacter(char),

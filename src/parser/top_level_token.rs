@@ -77,7 +77,8 @@ pub fn parse_top_level_tokens<T: BufRead>(
                 tokens.push(t);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {
-                return Err(QError::Unterminated).with_err_at(pos);
+                return Err(QError::SyntaxError("Expected top level token".to_string()))
+                    .with_err_at(pos);
             }
         }
     }

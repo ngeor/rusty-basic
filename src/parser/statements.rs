@@ -75,7 +75,11 @@ where
                 statements.push(s);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {
-                return Err(QError::Unterminated).with_err_at(pos);
+                return Err(QError::SyntaxError(format!(
+                    "Expected statement: {}",
+                    err_msg.as_ref()
+                )))
+                .with_err_at(pos);
             }
         }
     }

@@ -851,7 +851,10 @@ mod tests {
                 Box::new(2.as_lit_expr(1, 13))
             )
         );
-        assert_eq!(parse_err("PRINT 1AND 2"), QError::Unterminated);
+        assert_eq!(
+            parse_err("PRINT 1AND 2"),
+            QError::SyntaxError("Expected top level token".to_string())
+        );
         assert_expression!(
             "(1 OR 2)AND 3",
             Expression::BinaryExpression(
@@ -878,7 +881,10 @@ mod tests {
                 Box::new(2.as_lit_expr(1, 12))
             )
         );
-        assert_eq!(parse_err("PRINT 1OR 2"), QError::Unterminated);
+        assert_eq!(
+            parse_err("PRINT 1OR 2"),
+            QError::SyntaxError("Expected top level token".to_string())
+        );
         assert_expression!(
             "(1 AND 2)OR 3",
             Expression::BinaryExpression(

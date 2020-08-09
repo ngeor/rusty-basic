@@ -69,8 +69,6 @@ fn parse_inline_comments<T: BufRead>(
         let Locatable { element: p, pos } = lexer.peek()?;
         if p.is_keyword(Keyword::Case) {
             return Ok(statements);
-        } else if p.is_eof() {
-            return Err(QError::SyntaxError("Expected CASE".to_string())).with_err_at(pos);
         } else if p.is_whitespace() || p.is_eol() {
             lexer.read()?;
         } else if p.is_symbol('\'') {
@@ -80,7 +78,7 @@ fn parse_inline_comments<T: BufRead>(
             statements.push(s);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else {
-            return Err(QError::Unterminated).with_err_at(pos);
+            return Err(QError::SyntaxError("Expected CASE".to_string())).with_err_at(pos);
         }
     }
 }

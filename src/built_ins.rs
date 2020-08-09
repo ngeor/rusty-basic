@@ -19,7 +19,7 @@ mod val;
 mod util;
 
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::BufLexer;
 use crate::linter::{Error, ExpressionNode, LinterError};
 use crate::parser::{HasQualifier, Name, ParserErrorNode, TypeQualifier};
@@ -64,7 +64,7 @@ pub trait BuiltInLint {
 }
 
 pub trait BuiltInRun {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError>;
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode>;
 }
 
 static CHR: chr::Chr = chr::Chr {};
@@ -117,7 +117,7 @@ impl BuiltInLint for BuiltInSub {
 }
 
 impl BuiltInRun for BuiltInFunction {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         match self {
             Self::Chr => CHR.run(interpreter),
             Self::Environ => ENVIRON_FN.run(interpreter),
@@ -132,7 +132,7 @@ impl BuiltInRun for BuiltInFunction {
 }
 
 impl BuiltInRun for BuiltInSub {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         match self {
             Self::Close => CLOSE.run(interpreter),
             Self::Environ => ENVIRON_SUB.run(interpreter),

@@ -1,7 +1,7 @@
 use crate::instruction_generator;
 use crate::instruction_generator::InstructionNode;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter;
 use crate::parser::{parse_main_file, parse_main_str, QualifiedName};
 use crate::variant::Variant;
@@ -46,7 +46,7 @@ where
         .unwrap()
 }
 
-pub fn interpret_err<T>(input: T) -> InterpreterError
+pub fn interpret_err<T>(input: T) -> InterpreterErrorNode
 where
     T: AsRef<[u8]>,
 {
@@ -58,7 +58,7 @@ where
 pub fn interpret_file<S, TStdlib>(
     filename: S,
     stdlib: TStdlib,
-) -> Result<Interpreter<TStdlib>, InterpreterError>
+) -> Result<Interpreter<TStdlib>, InterpreterErrorNode>
 where
     S: AsRef<str>,
     TStdlib: Stdlib,

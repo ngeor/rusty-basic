@@ -3,7 +3,7 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, Expression, ExpressionNode, LinterError, TypeQualifier};
 use crate::variant::Variant;
 use std::convert::TryInto;
@@ -32,7 +32,7 @@ impl BuiltInLint for Len {
 }
 
 impl BuiltInRun for Len {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
             Variant::VSingle(_) => Variant::VInteger(4),

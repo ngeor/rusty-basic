@@ -2,7 +2,7 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 use crate::variant::Variant;
 
@@ -15,7 +15,7 @@ impl BuiltInLint for Eof {
 }
 
 impl BuiltInRun for Eof {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let v: Variant = interpreter.pop_unnamed_val().unwrap();
         let file_handle: FileHandle = match v {
             Variant::VFileHandle(f) => f,

@@ -4,7 +4,7 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, ExpressionNode, LinterError};
 use crate::variant::Variant;
 
@@ -26,7 +26,7 @@ impl BuiltInLint for InStr {
 }
 
 impl BuiltInRun for InStr {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let a: Variant = interpreter.pop_unnamed_val().unwrap();
         let b: Variant = interpreter.pop_unnamed_val().unwrap();
         let result: i32 = match interpreter.pop_unnamed_val() {
@@ -38,7 +38,7 @@ impl BuiltInRun for InStr {
     }
 }
 
-fn do_instr(start: i32, hay: String, needle: String) -> Result<i32, InterpreterError> {
+fn do_instr(start: i32, hay: String, needle: String) -> Result<i32, InterpreterErrorNode> {
     if start <= 0 {
         Err("Illegal function call".to_string()).with_err_no_pos()
     } else if hay.is_empty() {

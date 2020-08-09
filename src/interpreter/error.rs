@@ -1,6 +1,6 @@
 use crate::common::*;
 
-pub type InterpreterError = ErrorEnvelope<String>;
+pub type InterpreterErrorNode = ErrorEnvelope<String>;
 
 #[cfg(test)]
 mod tests {

@@ -4,7 +4,7 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::{BufLexer, Keyword};
 use crate::linter::{Error, ExpressionNode, LinterError};
 use crate::parser::buf_lexer::*;
@@ -50,7 +50,7 @@ impl BuiltInLint for Name {
 }
 
 impl BuiltInRun for Name {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let old_file_name = interpreter.pop_string();
         let new_file_name = interpreter.pop_string();
         std::fs::rename(old_file_name, new_file_name)

@@ -2,7 +2,7 @@
 // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 use crate::variant::Variant;
 
@@ -15,7 +15,7 @@ impl BuiltInLint for Environ {
 }
 
 impl BuiltInRun for Environ {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         match v {
             Variant::VString(env_var_name) => {

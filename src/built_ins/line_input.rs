@@ -6,7 +6,7 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::{BufLexer, Keyword};
 use crate::linter::{Error, ExpressionNode};
 use crate::parser::buf_lexer::*;
@@ -44,7 +44,7 @@ impl BuiltInLint for LineInput {
 }
 
 impl BuiltInRun for LineInput {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
         let mut has_more = true;
@@ -78,7 +78,7 @@ fn line_input_one<S: Stdlib>(
     arg: &Argument,
     n: &QualifiedName,
     file_handle: FileHandle,
-) -> Result<(), InterpreterError> {
+) -> Result<(), InterpreterErrorNode> {
     if file_handle.is_valid() {
         line_input_one_file(interpreter, arg, n, file_handle)
     } else {
@@ -91,7 +91,7 @@ fn line_input_one_file<S: Stdlib>(
     arg: &Argument,
     n: &QualifiedName,
     file_handle: FileHandle,
-) -> Result<(), InterpreterError> {
+) -> Result<(), InterpreterErrorNode> {
     let s = interpreter
         .file_manager
         .read_line(file_handle)
@@ -112,7 +112,7 @@ fn line_input_one_stdin<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
     arg: &Argument,
     _n: &QualifiedName,
-) -> Result<(), InterpreterError> {
+) -> Result<(), InterpreterErrorNode> {
     let s = interpreter
         .stdlib
         .input()

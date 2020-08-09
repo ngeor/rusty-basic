@@ -6,7 +6,7 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, ExpressionNode, LinterError};
 
 pub struct Mid {}
@@ -27,7 +27,7 @@ impl BuiltInLint for Mid {
 }
 
 impl BuiltInRun for Mid {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let s: String = interpreter.pop_string();
         let start: i32 = interpreter.pop_integer();
         let length: Option<i32> = interpreter.pop_unnamed_val().map(|v| v.demand_integer());
@@ -37,7 +37,7 @@ impl BuiltInRun for Mid {
     }
 }
 
-fn do_mid(s: String, start: i32, opt_length: Option<i32>) -> Result<String, InterpreterError> {
+fn do_mid(s: String, start: i32, opt_length: Option<i32>) -> Result<String, InterpreterErrorNode> {
     if start <= 0 {
         Err("Illegal function call".to_string()).with_err_no_pos()
     } else {

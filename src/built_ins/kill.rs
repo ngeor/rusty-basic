@@ -2,7 +2,7 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 
 pub struct Kill {}
@@ -14,7 +14,7 @@ impl BuiltInLint for Kill {
 }
 
 impl BuiltInRun for Kill {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let file_name = interpreter.pop_string();
         std::fs::remove_file(file_name)
             .map_err(|e| map_err(e))

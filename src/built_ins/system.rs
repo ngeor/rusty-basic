@@ -3,7 +3,7 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, ExpressionNode, LinterError};
 
 pub struct System {}
@@ -19,7 +19,10 @@ impl BuiltInLint for System {
 }
 
 impl BuiltInRun for System {
-    fn run<S: Stdlib>(&self, _interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(
+        &self,
+        _interpreter: &mut Interpreter<S>,
+    ) -> Result<(), InterpreterErrorNode> {
         panic!("Should have been handled at the IG level")
     }
 }

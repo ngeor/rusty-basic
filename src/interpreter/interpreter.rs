@@ -4,7 +4,7 @@ use crate::instruction_generator::{Instruction, InstructionNode};
 use crate::interpreter::context::*;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
-use crate::interpreter::{InterpreterError, Stdlib};
+use crate::interpreter::{InterpreterErrorNode, Stdlib};
 use crate::parser::TypeQualifier;
 use crate::variant::cast;
 use crate::variant::Variant;
@@ -127,7 +127,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         pos: Location,
         error_handler: &mut Option<usize>,
         exit: &mut bool,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), InterpreterErrorNode> {
         match instruction {
             Instruction::SetErrorHandler(idx) => {
                 *error_handler = Some(*idx);
@@ -357,7 +357,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     pub fn interpret(
         &mut self,
         instructions: Vec<InstructionNode>,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), InterpreterErrorNode> {
         let mut i: usize = 0;
         let mut error_handler: Option<usize> = None;
         let mut exit: bool = false;

@@ -1,7 +1,7 @@
 // CHR$(ascii-code%) returns the text representation of the given ascii code
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 
 pub struct Chr {}
@@ -13,7 +13,7 @@ impl BuiltInLint for Chr {
 }
 
 impl BuiltInRun for Chr {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let i: i32 = interpreter.pop_integer();
         let mut s: String = String::new();
         s.push((i as u8) as char);

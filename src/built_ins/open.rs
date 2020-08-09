@@ -9,7 +9,7 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::{BufLexer, Keyword, Lexeme, LexemeNode};
 use crate::linter::{Error, ExpressionNode};
 use crate::parser::buf_lexer::*;
@@ -92,7 +92,7 @@ impl BuiltInLint for Open {
 }
 
 impl BuiltInRun for Open {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let file_name = interpreter.pop_string();
         let file_mode: FileMode = interpreter.pop_integer().into();
         let file_access: FileAccess = interpreter.pop_integer().into();

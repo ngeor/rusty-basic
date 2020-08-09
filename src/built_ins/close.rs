@@ -4,7 +4,7 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::linter::{Error, Expression, ExpressionNode, LinterError};
 
 pub struct Close {}
@@ -23,7 +23,7 @@ impl BuiltInLint for Close {
 }
 
 impl BuiltInRun for Close {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let file_handle = interpreter.pop_file_handle();
         interpreter.file_manager.close(file_handle);
         Ok(())

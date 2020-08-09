@@ -17,7 +17,7 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
 use crate::lexer::*;
 use crate::linter::{Error, Expression, ExpressionNode, LinterError};
 use crate::parser::buf_lexer::*;
@@ -61,7 +61,7 @@ impl BuiltInLint for Input {
 }
 
 impl BuiltInRun for Input {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         loop {
             match &interpreter.pop_unnamed_arg() {
                 Some(a) => match a {
@@ -85,7 +85,7 @@ fn do_input_one_var<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
     a: &Argument,
     n: &QualifiedName,
-) -> Result<(), InterpreterError> {
+) -> Result<(), InterpreterErrorNode> {
     let raw_input: String = interpreter
         .stdlib
         .input()

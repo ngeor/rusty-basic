@@ -41,7 +41,8 @@ impl BuiltInRun for Len {
             Variant::VInteger(_) => Variant::VInteger(2),
             Variant::VLong(_) => Variant::VInteger(4),
             _ => {
-                return Err(format!("Variant {:?} not supported in LEN", v)).with_err_no_pos();
+                return Err(format!("Variant {:?} not supported in LEN", v).into())
+                    .with_err_no_pos();
             }
         };
         Ok(())

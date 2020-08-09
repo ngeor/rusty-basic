@@ -56,7 +56,7 @@ impl BuiltInRun for LineInput {
                         if is_first && v.qualifier() == TypeQualifier::FileHandle {
                             file_handle = v.clone().demand_file_handle();
                         } else {
-                            return Err("Argument type mismatch".to_string()).with_err_no_pos();
+                            panic!("LINE INPUT linter should have caught this");
                         }
                     }
                     Argument::ByRef(n) => {
@@ -95,7 +95,7 @@ fn line_input_one_file<S: Stdlib>(
     let s = interpreter
         .file_manager
         .read_line(file_handle)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.into())
         .with_err_no_pos()?;
     let q: TypeQualifier = n.qualifier();
     match q {
@@ -116,7 +116,7 @@ fn line_input_one_stdin<S: Stdlib>(
     let s = interpreter
         .stdlib
         .input()
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.into())
         .with_err_no_pos()?;
     interpreter
         .context_mut()

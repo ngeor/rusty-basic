@@ -1,5 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
+use crate::interpreter::InterpreterError;
 use crate::linter::QualifiedName;
 use crate::variant::Variant;
 
@@ -60,7 +61,7 @@ pub enum Instruction {
     SetNamedRefParam(NamedRefParam),
     SetNamedValParam(QualifiedName),
 
-    Throw(String),
+    Throw(InterpreterError),
 
     /// Stores A as the result of a function
     StoreAToResult,

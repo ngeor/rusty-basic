@@ -15,6 +15,13 @@ pub enum Variant {
     VFileHandle(FileHandle),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VariantError {
+    Overflow,
+    TypeMismatch,
+    DivisionByZero,
+}
+
 pub const V_TRUE: Variant = Variant::VInteger(-1);
 pub const V_FALSE: Variant = Variant::VInteger(0);
 
@@ -86,7 +93,7 @@ impl ApproximateEqToInt for f64 {
 macro_rules! div {
     ($nom:expr, $div:expr) => {
         if $div.approximate_eq(0) {
-            Err("Division by zero".to_string())
+            Err(VariantError::DivisionByZero)
         } else {
             Ok(($nom / $div).fit_to_type())
         }
@@ -94,7 +101,7 @@ macro_rules! div {
 
     ($nom:expr, $div:expr, $cast:tt) => {
         if $div.approximate_eq(0) {
-            Err("Division by zero".to_string())
+            Err(VariantError::DivisionByZero)
         } else {
             Ok(($nom as $cast / $div as $cast).fit_to_type())
         }
@@ -102,7 +109,7 @@ macro_rules! div {
 }
 
 impl Variant {
-    pub fn cmp(&self, other: &Self) -> Result<Ordering, String> {
+    pub fn cmp(&self, other: &Self) -> Result<Ordering, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
@@ -119,7 +126,7 @@ impl Variant {
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
@@ -132,74 +139,74 @@ impl Variant {
             },
             Variant::VFileHandle(s_left) => match other {
                 Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
         }
     }
 
-    fn cmp_same_type_only(&self, other: &Self) -> Result<Ordering, String> {
+    fn cmp_same_type_only(&self, other: &Self) -> Result<Ordering, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VFileHandle(s_left) => match other {
                 Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
         }
     }
 
-    pub fn negate(&self) -> Result<Self, String> {
+    pub fn negate(&self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(n) => Ok(Variant::VSingle(-n)),
             Variant::VDouble(n) => Ok(Variant::VDouble(-n)),
             Variant::VInteger(n) => {
                 if *n <= MIN_INTEGER {
                     // prevent converting -32768 to 32768
-                    Err("Overflow".to_string())
+                    Err(VariantError::Overflow)
                 } else {
                     Ok(Variant::VInteger(-n))
                 }
             }
             Variant::VLong(n) => {
                 if *n <= MIN_LONG {
-                    Err("Overflow".to_string())
+                    Err(VariantError::Overflow)
                 } else {
                     Ok(Variant::VLong(-n))
                 }
             }
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn unary_not(&self) -> Result<Self, String> {
+    pub fn unary_not(&self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f) => Ok(Variant::VSingle(-f.round() - 1.0)),
             Variant::VDouble(d) => Ok(Variant::VDouble(-d.round() - 1.0)),
             Variant::VInteger(n) => Ok(Variant::VInteger(-n - 1)),
             Variant::VLong(n) => Ok(Variant::VLong(-n - 1)),
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn plus(self, other: Self) -> Result<Self, String> {
+    pub fn plus(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left + f_right)),
@@ -216,7 +223,7 @@ impl Variant {
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(Variant::VString(format!("{}{}", s_left, s_right))),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(Variant::VInteger(i_left + i_right)),
@@ -227,11 +234,11 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VLong(l_left + l_right)),
                 _ => other.plus(self),
             },
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn minus(self, other: Self) -> Result<Self, String> {
+    pub fn minus(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left - f_right)),
@@ -255,18 +262,18 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VLong(l_left - l_right)),
                 _ => other.minus(self).and_then(|x| x.negate()),
             },
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn multiply(self, other: Self) -> Result<Self, String> {
+    pub fn multiply(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left * f_right)),
                 Variant::VDouble(d_right) => Ok(Variant::VDouble(f_left as f64 * d_right)),
                 Variant::VInteger(i_right) => Ok(Variant::VSingle(f_left * i_right as f32)),
                 Variant::VLong(l_right) => Ok(Variant::VSingle(f_left * l_right as f32)),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VDouble(d_right) => Ok(Variant::VDouble(d_left * d_right)),
@@ -283,67 +290,67 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VLong(l_left * l_right)),
                 _ => other.multiply(self),
             },
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn divide(self, other: Self) -> Result<Self, String> {
+    pub fn divide(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => div!(f_left, f_right),
                 Variant::VDouble(d_right) => div!(f_left, d_right, f64),
                 Variant::VInteger(i_right) => div!(f_left, i_right, f32),
                 Variant::VLong(l_right) => div!(f_left, l_right, f32),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VSingle(f_right) => div!(d_left, f_right, f64),
                 Variant::VDouble(d_right) => div!(d_left, d_right),
                 Variant::VInteger(i_right) => div!(d_left, i_right, f64),
                 Variant::VLong(l_right) => div!(d_left, l_right, f64),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VSingle(f_right) => div!(i_left, f_right, f32),
                 Variant::VDouble(d_right) => div!(i_left, d_right, f64),
                 Variant::VInteger(i_right) => div!(i_left, i_right, f32),
                 Variant::VLong(l_right) => div!(i_left, l_right, f32),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VSingle(f_right) => div!(l_left, f_right, f32),
                 Variant::VDouble(d_right) => div!(l_left, d_right, f64),
                 Variant::VInteger(i_right) => div!(l_left, i_right, f32),
                 Variant::VLong(l_right) => div!(l_left, l_right, f32),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn and(self, other: Self) -> Result<Self, String> {
+    pub fn and(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VInteger(a) => match other {
                 Variant::VInteger(b) => Ok(Variant::VInteger(from_bits(and_bits(
                     to_bits(a),
                     to_bits(b),
                 )))),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn or(self, other: Self) -> Result<Self, String> {
+    pub fn or(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VInteger(a) => match other {
                 Variant::VInteger(b) => Ok(Variant::VInteger(from_bits(or_bits(
                     to_bits(a),
                     to_bits(b),
                 )))),
-                _ => Err("Type mismatch".to_string()),
+                _ => Err(VariantError::TypeMismatch),
             },
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
@@ -457,23 +464,23 @@ impl From<bool> for Variant {
 }
 
 impl TryFrom<&Variant> for bool {
-    type Error = String;
+    type Error = VariantError;
 
-    fn try_from(value: &Variant) -> Result<bool, String> {
+    fn try_from(value: &Variant) -> Result<bool, VariantError> {
         match value {
             Variant::VSingle(n) => Ok(*n != 0.0),
             Variant::VDouble(n) => Ok(*n != 0.0),
             Variant::VInteger(n) => Ok(*n != 0),
             Variant::VLong(n) => Ok(*n != 0),
-            _ => Err("Type mismatch".to_string()),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 }
 
 impl TryFrom<Variant> for bool {
-    type Error = String;
+    type Error = VariantError;
 
-    fn try_from(value: Variant) -> Result<bool, String> {
+    fn try_from(value: Variant) -> Result<bool, VariantError> {
         bool::try_from(&value)
     }
 }

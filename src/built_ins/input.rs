@@ -17,7 +17,7 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterError, InterpreterErrorNode, Stdlib};
 use crate::lexer::*;
 use crate::linter::{Expression, ExpressionNode, LinterError, LinterErrorNode};
 use crate::parser::buf_lexer::*;
@@ -89,7 +89,7 @@ fn do_input_one_var<S: Stdlib>(
     let raw_input: String = interpreter
         .stdlib
         .input()
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.into())
         .with_err_no_pos()?;
     let q: TypeQualifier = n.qualifier();
     let variable_value = match q {
@@ -109,20 +109,20 @@ fn do_input_one_var<S: Stdlib>(
         .with_err_no_pos()
 }
 
-fn parse_single_input(s: String) -> Result<f32, String> {
+fn parse_single_input(s: String) -> Result<f32, InterpreterError> {
     if s.is_empty() {
         Ok(0.0)
     } else {
         s.parse::<f32>()
-            .map_err(|e| format!("Could not parse {} as float: {}", s, e))
+            .map_err(|e| format!("Could not parse {} as float: {}", s, e).into())
     }
 }
 
-fn parse_int_input(s: String) -> Result<i32, String> {
+fn parse_int_input(s: String) -> Result<i32, InterpreterError> {
     if s.is_empty() {
         Ok(0)
     } else {
         s.parse::<i32>()
-            .map_err(|e| format!("Could not parse {} as int: {}", s, e))
+            .map_err(|e| format!("Could not parse {} as int: {}", s, e).into())
     }
 }

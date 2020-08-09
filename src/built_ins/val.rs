@@ -2,7 +2,7 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterError, InterpreterErrorNode, Stdlib};
 use crate::linter::{ExpressionNode, LinterErrorNode};
 use crate::variant;
 use crate::variant::Variant;
@@ -26,7 +26,7 @@ impl BuiltInRun for Val {
     }
 }
 
-fn val(s: String) -> Result<Variant, String> {
+fn val(s: String) -> Result<Variant, InterpreterError> {
     let mut is_positive = true;
     let mut value: f64 = 0.0;
     let mut frac_power: i32 = 0;
@@ -51,7 +51,7 @@ fn val(s: String) -> Result<Variant, String> {
                 if frac_power <= variant::MAX_INTEGER {
                     frac_power += 1;
                 } else {
-                    return Err("Overflow".to_string());
+                    return Err(InterpreterError::Overflow);
                 }
                 value = (value * 10.0_f64.powi(frac_power) + ((c as u8) - ('0' as u8)) as f64)
                     / 10.0_f64.powi(frac_power);
@@ -99,7 +99,7 @@ fn val(s: String) -> Result<Variant, String> {
             if is_positive {
                 Ok(x)
             } else {
-                x.negate()
+                x.negate().map_err(|e| e.into())
             }
         }
     } else {
@@ -107,7 +107,7 @@ fn val(s: String) -> Result<Variant, String> {
         if is_positive {
             Ok(x)
         } else {
-            x.negate()
+            x.negate().map_err(|e| e.into())
         }
     }
 }

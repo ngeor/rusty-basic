@@ -54,7 +54,7 @@ impl BuiltInRun for Name {
         let old_file_name = interpreter.pop_string();
         let new_file_name = interpreter.pop_string();
         std::fs::rename(old_file_name, new_file_name)
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.into())
             .with_err_no_pos()
     }
 }

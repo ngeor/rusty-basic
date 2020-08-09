@@ -3,7 +3,7 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterError, InterpreterErrorNode, Stdlib};
 use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
 use crate::parser::TypeQualifier;
 use crate::variant::Variant;
@@ -28,7 +28,10 @@ impl BuiltInRun for Environ {
             Variant::VString(arg_string_value) => {
                 let parts: Vec<&str> = arg_string_value.split("=").collect();
                 if parts.len() != 2 {
-                    Err("Invalid expression. Must be name=value.".to_string()).with_err_no_pos()
+                    Err(InterpreterError::from(
+                        "Invalid expression. Must be name=value.",
+                    ))
+                    .with_err_no_pos()
                 } else {
                     interpreter
                         .stdlib

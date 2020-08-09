@@ -100,7 +100,7 @@ impl BuiltInRun for Open {
         interpreter
             .file_manager
             .open(file_handle, file_name.as_ref(), file_mode, file_access)
-            .map_err(|e| format!("Could not open {}: {}", file_name, e))
+            .map_err(|e| e.into())
             .with_err_no_pos()
     }
 }

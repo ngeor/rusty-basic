@@ -4,6 +4,7 @@ mod tests {
     use crate::assert_has_variable;
     use crate::assert_prints;
     use crate::common::*;
+    use crate::interpreter::InterpreterError;
 
     #[test]
     fn test_simple_for_loop_untyped() {
@@ -88,7 +89,7 @@ mod tests {
         ";
         assert_eq!(
             interpret_err(input),
-            ErrorEnvelope::Pos("Step cannot be zero".to_string(), Location::new(2, 31))
+            ErrorEnvelope::Pos(InterpreterError::ForLoopZeroStep, Location::new(2, 31))
         );
     }
 

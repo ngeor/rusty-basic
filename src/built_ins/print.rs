@@ -43,7 +43,7 @@ impl BuiltInRun for Print {
             interpreter
                 .file_manager
                 .print(file_handle, print_args)
-                .map_err(|e| e.to_string())
+                .map_err(|e| e.into())
                 .with_err_no_pos()?;
         } else {
             interpreter.stdlib.print(print_args);

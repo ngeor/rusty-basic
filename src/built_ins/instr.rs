@@ -4,7 +4,7 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterError, InterpreterErrorNode, Stdlib};
 use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
 use crate::variant::Variant;
 
@@ -40,7 +40,7 @@ impl BuiltInRun for InStr {
 
 fn do_instr(start: i32, hay: String, needle: String) -> Result<i32, InterpreterErrorNode> {
     if start <= 0 {
-        Err("Illegal function call".to_string()).with_err_no_pos()
+        Err(InterpreterError::IllegalFunctionCall).with_err_no_pos()
     } else if hay.is_empty() {
         Ok(0)
     } else if needle.is_empty() {
@@ -64,6 +64,7 @@ mod tests {
     use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::test_utils::interpret_err;
+    use crate::interpreter::InterpreterError;
     use crate::linter::LinterError;
 
     #[test]
@@ -84,7 +85,7 @@ mod tests {
         assert_eq!(
             interpret_err(r#"PRINT INSTR(0, "oops", "zero")"#),
             ErrorEnvelope::Stacktrace(
-                "Illegal function call".to_string(),
+                InterpreterError::IllegalFunctionCall,
                 vec![
                     Location::new(1, 7),
                     Location::new(1, 7) // TODO why is this double

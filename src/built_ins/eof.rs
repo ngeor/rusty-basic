@@ -21,13 +21,13 @@ impl BuiltInRun for Eof {
             Variant::VFileHandle(f) => f,
             Variant::VInteger(i) => (i as u32).into(),
             _ => {
-                return Err("Invalid file handle in EOF".into()).with_err_no_pos();
+                panic!("Invalid file handle in EOF, linter should have caught this");
             }
         };
         let is_eof: bool = interpreter
             .file_manager
             .eof(file_handle)
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.into())
             .with_err_no_pos()?;
         interpreter.function_result = is_eof.into();
         Ok(())

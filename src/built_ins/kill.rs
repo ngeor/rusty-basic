@@ -17,16 +17,8 @@ impl BuiltInRun for Kill {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
         let file_name = interpreter.pop_string();
         std::fs::remove_file(file_name)
-            .map_err(|e| map_err(e))
+            .map_err(|e| e.into())
             .with_err_no_pos()
-    }
-}
-
-fn map_err(e: std::io::Error) -> String {
-    if e.kind() == std::io::ErrorKind::NotFound {
-        "File not found".to_string()
-    } else {
-        e.to_string()
     }
 }
 
@@ -35,6 +27,7 @@ mod tests {
     use crate::assert_linter_err;
     use crate::common::*;
     use crate::interpreter::test_utils::*;
+    use crate::interpreter::InterpreterError;
     use crate::linter::LinterError;
 
     #[test]
@@ -49,7 +42,7 @@ mod tests {
         assert_eq!(
             interpret_err(r#"KILL "KILL2.TXT""#),
             ErrorEnvelope::Stacktrace(
-                "File not found".to_string(),
+                InterpreterError::FileNotFound,
                 vec![
                     Location::new(1, 1),
                     Location::new(1, 1) // TODO why is this double

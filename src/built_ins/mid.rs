@@ -6,7 +6,7 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, InterpreterError, InterpreterErrorNode, Stdlib};
 use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
 
 pub struct Mid {}
@@ -39,13 +39,13 @@ impl BuiltInRun for Mid {
 
 fn do_mid(s: String, start: i32, opt_length: Option<i32>) -> Result<String, InterpreterErrorNode> {
     if start <= 0 {
-        Err("Illegal function call".to_string()).with_err_no_pos()
+        Err(InterpreterError::IllegalFunctionCall).with_err_no_pos()
     } else {
         let start_idx: usize = (start - 1) as usize;
         match opt_length {
             Some(length) => {
                 if length < 0 {
-                    Err("Illegal function call".to_string()).with_err_no_pos()
+                    Err(InterpreterError::IllegalFunctionCall).with_err_no_pos()
                 } else {
                     let end: usize = if start_idx + (length as usize) > s.len() {
                         s.len()
@@ -66,6 +66,7 @@ mod tests {
     use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::test_utils::interpret_err;
+    use crate::interpreter::InterpreterError;
     use crate::linter::LinterError;
 
     #[test]
@@ -85,7 +86,7 @@ mod tests {
         assert_eq!(
             interpret_err(r#"PRINT MID$("hay", 0)"#),
             ErrorEnvelope::Stacktrace(
-                "Illegal function call".to_string(),
+                InterpreterError::IllegalFunctionCall,
                 vec![
                     Location::new(1, 7),
                     Location::new(1, 7) // TODO why is this double
@@ -95,7 +96,7 @@ mod tests {
         assert_eq!(
             interpret_err(r#"PRINT MID$("hay", 1, -1)"#),
             ErrorEnvelope::Stacktrace(
-                "Illegal function call".to_string(),
+                InterpreterError::IllegalFunctionCall,
                 vec![
                     Location::new(1, 7),
                     Location::new(1, 7) // TODO why is this double

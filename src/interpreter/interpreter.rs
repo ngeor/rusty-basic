@@ -1,12 +1,12 @@
 use crate::built_ins::BuiltInRun;
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
+use crate::interpreter::casting::cast;
 use crate::interpreter::context::*;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::{InterpreterErrorNode, Stdlib};
 use crate::parser::TypeQualifier;
-use crate::variant::cast;
 use crate::variant::Variant;
 
 use std::cmp::Ordering;
@@ -178,35 +178,35 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Plus => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let c = a.plus(b).with_err_at(pos)?;
+                let c = a.plus(b).map_err(|e| e.into()).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::Minus => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let c = a.minus(b).with_err_at(pos)?;
+                let c = a.minus(b).map_err(|e| e.into()).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::Multiply => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let c = a.multiply(b).with_err_at(pos)?;
+                let c = a.multiply(b).map_err(|e| e.into()).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::Divide => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let c = a.divide(b).with_err_at(pos)?;
+                let c = a.divide(b).map_err(|e| e.into()).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::NegateA => {
                 let a = self.get_a();
-                let c = a.negate().with_err_at(pos)?;
+                let c = a.negate().map_err(|e| e.into()).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::NotA => {
                 let a = self.get_a();
-                let c = a.unary_not().with_err_at(pos)?;
+                let c = a.unary_not().map_err(|e| e.into()).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::CopyVarToA(n) => {
@@ -219,58 +219,58 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Equal => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
+                let order = a.cmp(&b).map_err(|e| e.into()).with_err_at(pos)?;
                 let is_true = order == Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::NotEqual => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
+                let order = a.cmp(&b).map_err(|e| e.into()).with_err_at(pos)?;
                 let is_true = order != Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::Less => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
+                let order = a.cmp(&b).map_err(|e| e.into()).with_err_at(pos)?;
                 let is_true = order == Ordering::Less;
                 self.set_a(is_true.into());
             }
             Instruction::Greater => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
+                let order = a.cmp(&b).map_err(|e| e.into()).with_err_at(pos)?;
                 let is_true = order == Ordering::Greater;
                 self.set_a(is_true.into());
             }
             Instruction::LessOrEqual => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
+                let order = a.cmp(&b).map_err(|e| e.into()).with_err_at(pos)?;
                 let is_true = order == Ordering::Less || order == Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::GreaterOrEqual => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
+                let order = a.cmp(&b).map_err(|e| e.into()).with_err_at(pos)?;
                 let is_true = order == Ordering::Greater || order == Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::And => {
                 let a = cast(self.get_a(), TypeQualifier::PercentInteger).with_err_at(pos)?;
                 let b = cast(self.get_b(), TypeQualifier::PercentInteger).with_err_at(pos)?;
-                self.set_a(a.and(b).with_err_at(pos)?);
+                self.set_a(a.and(b).map_err(|e| e.into()).with_err_at(pos)?);
             }
             Instruction::Or => {
                 let a = cast(self.get_a(), TypeQualifier::PercentInteger).with_err_at(pos)?;
                 let b = cast(self.get_b(), TypeQualifier::PercentInteger).with_err_at(pos)?;
-                self.set_a(a.or(b).with_err_at(pos)?);
+                self.set_a(a.or(b).map_err(|e| e.into()).with_err_at(pos)?);
             }
             Instruction::JumpIfFalse(resolved_idx) => {
                 let a = self.get_a();
-                let is_true: bool = bool::try_from(a).with_err_at(pos)?;
+                let is_true: bool = bool::try_from(a).map_err(|e| e.into()).with_err_at(pos)?;
                 if !is_true {
                     *i = resolved_idx - 1; // the +1 will happen at the end of the loop
                 }
@@ -347,8 +347,8 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let v = self.function_result.clone();
                 self.set_a(v);
             }
-            Instruction::Throw(msg) => {
-                return Err(msg.clone()).with_err_at(pos);
+            Instruction::Throw(interpreter_error) => {
+                return Err(interpreter_error.clone()).with_err_at(pos);
             }
         }
         Ok(())

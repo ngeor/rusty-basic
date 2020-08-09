@@ -165,10 +165,16 @@ pub fn assert_input<T>(
 #[macro_export]
 macro_rules! assert_err {
     ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
+        // for backwards compatibility with older tests
+        let expected_interpreter_err = if $expected_msg == "Overflow" {
+            crate::interpreter::InterpreterError::Overflow
+        } else {
+            crate::interpreter::InterpreterError::Other(format!("{}", $expected_msg))
+        };
         assert_eq!(
             crate::interpreter::test_utils::interpret_err($program),
             crate::common::ErrorEnvelope::Pos(
-                format!("{}", $expected_msg),
+                expected_interpreter_err,
                 crate::common::Location::new($expected_row, $expected_col)
             )
         );

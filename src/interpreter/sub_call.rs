@@ -3,6 +3,7 @@ mod tests {
     use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::test_utils::*;
+    use crate::interpreter::InterpreterError;
     use crate::interpreter::Stdlib;
 
     mod input {
@@ -154,7 +155,7 @@ mod tests {
         assert_eq!(
             interpret_err(program),
             ErrorEnvelope::Stacktrace(
-                "Invalid expression. Must be name=value.".to_string(),
+                InterpreterError::Other("Invalid expression. Must be name=value.".to_string()),
                 vec![
                     Location::new(10, 17), // "inside" Environ
                     Location::new(10, 17), // at Environ "oops"

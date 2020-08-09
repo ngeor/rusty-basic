@@ -1,19 +1,20 @@
 // CHR$(ascii-code%) returns the text representation of the given ascii code
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{ExpressionNode, LinterErrorNode};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 
 pub struct Chr {}
 
 impl BuiltInLint for Chr {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         util::require_single_numeric_argument(args)
     }
 }
 
 impl BuiltInRun for Chr {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let i: i32 = interpreter.pop_integer();
         let mut s: String = String::new();
         s.push((i as u8) as char);
@@ -26,22 +27,12 @@ impl BuiltInRun for Chr {
 mod tests {
     use crate::assert_linter_err;
     use crate::assert_prints;
-    use crate::linter::LinterError;
+    use crate::common::QError;
 
     #[test]
     fn test_chr() {
         assert_prints!("PRINT CHR$(33)", "!");
-        assert_linter_err!(
-            "PRINT CHR$(33, 34)",
-            LinterError::ArgumentCountMismatch,
-            1,
-            7
-        );
-        assert_linter_err!(
-            r#"PRINT CHR$("33")"#,
-            LinterError::ArgumentTypeMismatch,
-            1,
-            12
-        );
+        assert_linter_err!("PRINT CHR$(33, 34)", QError::ArgumentCountMismatch, 1, 7);
+        assert_linter_err!(r#"PRINT CHR$("33")"#, QError::ArgumentTypeMismatch, 1, 12);
     }
 }

@@ -1,7 +1,6 @@
 mod built_in_function_linter;
 mod built_in_sub_linter;
 mod converter;
-mod error;
 mod expression_reducer;
 mod for_next_counter_match;
 mod label_linter;
@@ -22,7 +21,6 @@ mod user_defined_sub_linter;
 #[cfg(test)]
 pub mod test_utils;
 
-pub use self::error::*;
 pub use self::linter::*;
 pub use self::types::*;
 

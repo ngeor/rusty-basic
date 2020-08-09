@@ -4,20 +4,20 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{ExpressionNode, LinterErrorNode};
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 use crate::variant::Variant;
 
 pub struct Print {}
 
 impl BuiltInLint for Print {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         Ok(())
     }
 }
 
 impl BuiltInRun for Print {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let mut print_args: Vec<String> = vec![];
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();

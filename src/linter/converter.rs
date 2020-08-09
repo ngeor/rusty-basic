@@ -1,4 +1,3 @@
-use super::error::*;
 use super::subprogram_context::{collect_subprograms, FunctionMap, SubMap};
 use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
@@ -18,7 +17,7 @@ use std::convert::TryInto;
 //
 
 trait Converter<A, B> {
-    fn convert(&mut self, a: A) -> Result<B, LinterErrorNode>;
+    fn convert(&mut self, a: A) -> Result<B, QErrorNode>;
 }
 
 // blanket for Vec
@@ -26,7 +25,7 @@ impl<T, A, B> Converter<Vec<A>, Vec<B>> for T
 where
     T: Converter<A, B>,
 {
-    fn convert(&mut self, a: Vec<A>) -> Result<Vec<B>, LinterErrorNode> {
+    fn convert(&mut self, a: Vec<A>) -> Result<Vec<B>, QErrorNode> {
         a.into_iter().map(|x| self.convert(x)).collect()
     }
 }
@@ -36,7 +35,7 @@ impl<T, A, B> Converter<Option<A>, Option<B>> for T
 where
     T: Converter<A, B>,
 {
-    fn convert(&mut self, a: Option<A>) -> Result<Option<B>, LinterErrorNode> {
+    fn convert(&mut self, a: Option<A>) -> Result<Option<B>, QErrorNode> {
         match a {
             Some(x) => self.convert(x).map(|r| Some(r)),
             None => Ok(None),
@@ -49,7 +48,7 @@ impl<T, A, B> Converter<Locatable<A>, Locatable<B>> for T
 where
     T: Converter<A, B>,
 {
-    fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, LinterErrorNode> {
+    fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, QErrorNode> {
         let Locatable { element, pos } = a;
         self.convert(element).with_ok_pos(pos).patch_err_pos(pos)
     }
@@ -90,7 +89,7 @@ impl ConverterImpl {
 
 pub fn convert(
     program: parser::ProgramNode,
-) -> Result<(ProgramNode, FunctionMap, SubMap), LinterErrorNode> {
+) -> Result<(ProgramNode, FunctionMap, SubMap), QErrorNode> {
     let mut linter = ConverterImpl::default();
     let (f_c, s_c) = collect_subprograms(&program)?;
     linter.functions = f_c;
@@ -101,7 +100,7 @@ pub fn convert(
 }
 
 impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, LinterErrorNode> {
+    fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, QErrorNode> {
         let mut result: Vec<TopLevelTokenNode> = vec![];
         for top_level_token_node in a.into_iter() {
             // will contain None where DefInt and declarations used to be
@@ -120,7 +119,7 @@ impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
 }
 
 impl Converter<Name, QualifiedName> for ConverterImpl {
-    fn convert(&mut self, a: Name) -> Result<QualifiedName, LinterErrorNode> {
+    fn convert(&mut self, a: Name) -> Result<QualifiedName, QErrorNode> {
         Ok(a.resolve_into(&self.resolver))
     }
 }
@@ -131,7 +130,7 @@ impl ConverterImpl {
         function_name_node: NameNode,
         params: DeclaredNameNodes,
         block: parser::StatementNodes,
-    ) -> Result<Option<TopLevelToken>, LinterErrorNode> {
+    ) -> Result<Option<TopLevelToken>, QErrorNode> {
         let mapped_name = self.convert(function_name_node)?;
         self.push_function_context(mapped_name.as_ref());
         let mapped_params = self.convert_function_params(mapped_name.as_ref(), params)?;
@@ -159,20 +158,20 @@ impl ConverterImpl {
         &mut self,
         function_name: &QualifiedName,
         params: DeclaredNameNodes,
-    ) -> Result<Vec<QNameNode>, LinterErrorNode> {
+    ) -> Result<Vec<QNameNode>, QErrorNode> {
         let mut result: Vec<QNameNode> = vec![];
         for p in params.into_iter() {
             let Locatable { element, pos } = p;
             if self.subs.contains_key(element.as_ref()) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
-                return Err(LinterError::DuplicateDefinition).with_err_at(pos);
+                return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
             let q: TypeQualifier = self.resolve_declared_name(&element);
             if function_name.as_ref() == element.as_ref()
                 && (function_name.qualifier() != q || element.is_extended())
             {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
-                return Err(LinterError::DuplicateDefinition).with_err_at(pos);
+                return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
             let q_name = QualifiedName::new(element.as_ref().clone(), q);
             self.context
@@ -188,7 +187,7 @@ impl ConverterImpl {
         sub_name_node: BareNameNode,
         params: DeclaredNameNodes,
         block: parser::StatementNodes,
-    ) -> Result<Option<TopLevelToken>, LinterErrorNode> {
+    ) -> Result<Option<TopLevelToken>, QErrorNode> {
         self.push_sub_context(sub_name_node.as_ref());
 
         let mut mapped_params: Vec<QNameNode> = vec![];
@@ -196,7 +195,7 @@ impl ConverterImpl {
             let Locatable { element, pos } = declared_name_node;
             if self.subs.contains_key(element.as_ref()) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
-                return Err(LinterError::DuplicateDefinition).with_err_at(pos);
+                return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
             let q: TypeQualifier = self.resolve_declared_name(&element);
             let q_name = QualifiedName::new(element.as_ref().clone(), q);
@@ -218,10 +217,7 @@ impl ConverterImpl {
 
 // Option because we filter out DefType
 impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
-    fn convert(
-        &mut self,
-        a: parser::TopLevelToken,
-    ) -> Result<Option<TopLevelToken>, LinterErrorNode> {
+    fn convert(&mut self, a: parser::TopLevelToken) -> Result<Option<TopLevelToken>, QErrorNode> {
         match a {
             parser::TopLevelToken::DefType(d) => {
                 self.resolver.set(&d);
@@ -243,7 +239,7 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
 }
 
 impl Converter<parser::Statement, Statement> for ConverterImpl {
-    fn convert(&mut self, a: parser::Statement) -> Result<Statement, LinterErrorNode> {
+    fn convert(&mut self, a: parser::Statement) -> Result<Statement, QErrorNode> {
         match a {
             parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
             parser::Statement::Assignment(n, e) => {
@@ -257,7 +253,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                         LName::Function(_) => Ok(Statement::SetReturnValue(converted_expr)),
                     }
                 } else {
-                    Err(LinterError::TypeMismatch).with_err_at(&converted_expr)
+                    Err(QError::TypeMismatch).with_err_at(&converted_expr)
                 }
             }
             parser::Statement::Const(n, e) => {
@@ -266,7 +262,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                     || self.subs.contains_key(name.as_ref())
                 {
                     // local variable or local constant or function or sub already present by that name
-                    Err(LinterError::DuplicateDefinition).with_err_at(pos)
+                    Err(QError::DuplicateDefinition).with_err_at(pos)
                 } else {
                     let converted_expression_node = self.convert(e)?;
                     let e_type = converted_expression_node.try_qualifier()?;
@@ -295,7 +291,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::Dim(declared_name_node) => {
                 let Locatable { element: d, pos } = declared_name_node;
                 if self.subs.contains_key(d.as_ref()) || self.functions.contains_key(d.as_ref()) {
-                    return Err(LinterError::DuplicateDefinition).with_err_at(pos);
+                    return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
                 let mapped_declared_name = self
                     .context
@@ -308,7 +304,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
 }
 
 impl Converter<parser::Expression, Expression> for ConverterImpl {
-    fn convert(&mut self, a: parser::Expression) -> Result<Expression, LinterErrorNode> {
+    fn convert(&mut self, a: parser::Expression) -> Result<Expression, QErrorNode> {
         match a {
             parser::Expression::SingleLiteral(f) => Ok(Expression::SingleLiteral(f)),
             parser::Expression::DoubleLiteral(f) => Ok(Expression::DoubleLiteral(f)),
@@ -343,7 +339,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                         Box::new(converted_right),
                     ))
                 } else {
-                    Err(LinterError::TypeMismatch).with_err_at(&converted_right)
+                    Err(QError::TypeMismatch).with_err_at(&converted_right)
                 }
             }
             parser::Expression::UnaryExpression(op, c) => {
@@ -352,7 +348,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let converted_q = converted_child.try_qualifier()?;
                 if super::operand_type::cast_unary_op(op, converted_q).is_none() {
                     // no unary operation works for strings
-                    Err(LinterError::TypeMismatch).with_err_at(&converted_child)
+                    Err(QError::TypeMismatch).with_err_at(&converted_child)
                 } else {
                     Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
                 }
@@ -368,7 +364,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
 }
 
 impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, LinterErrorNode> {
+    fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
         Ok(ForLoopNode {
             variable_name: self.convert(a.variable_name)?,
             lower_bound: self.convert(a.lower_bound)?,
@@ -384,7 +380,7 @@ impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for Converter
     fn convert(
         &mut self,
         a: parser::ConditionalBlockNode,
-    ) -> Result<ConditionalBlockNode, LinterErrorNode> {
+    ) -> Result<ConditionalBlockNode, QErrorNode> {
         Ok(ConditionalBlockNode {
             condition: self.convert(a.condition)?,
             statements: self.convert(a.statements)?,
@@ -393,7 +389,7 @@ impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for Converter
 }
 
 impl Converter<parser::IfBlockNode, IfBlockNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::IfBlockNode) -> Result<IfBlockNode, LinterErrorNode> {
+    fn convert(&mut self, a: parser::IfBlockNode) -> Result<IfBlockNode, QErrorNode> {
         Ok(IfBlockNode {
             if_block: self.convert(a.if_block)?,
             else_if_blocks: self.convert(a.else_if_blocks)?,
@@ -403,7 +399,7 @@ impl Converter<parser::IfBlockNode, IfBlockNode> for ConverterImpl {
 }
 
 impl Converter<parser::SelectCaseNode, SelectCaseNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::SelectCaseNode) -> Result<SelectCaseNode, LinterErrorNode> {
+    fn convert(&mut self, a: parser::SelectCaseNode) -> Result<SelectCaseNode, QErrorNode> {
         Ok(SelectCaseNode {
             expr: self.convert(a.expr)?,
             case_blocks: self.convert(a.case_blocks)?,
@@ -413,7 +409,7 @@ impl Converter<parser::SelectCaseNode, SelectCaseNode> for ConverterImpl {
 }
 
 impl Converter<parser::CaseBlockNode, CaseBlockNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::CaseBlockNode) -> Result<CaseBlockNode, LinterErrorNode> {
+    fn convert(&mut self, a: parser::CaseBlockNode) -> Result<CaseBlockNode, QErrorNode> {
         Ok(CaseBlockNode {
             expr: self.convert(a.expr)?,
             statements: self.convert(a.statements)?,
@@ -422,7 +418,7 @@ impl Converter<parser::CaseBlockNode, CaseBlockNode> for ConverterImpl {
 }
 
 impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
-    fn convert(&mut self, a: parser::CaseExpression) -> Result<CaseExpression, LinterErrorNode> {
+    fn convert(&mut self, a: parser::CaseExpression) -> Result<CaseExpression, QErrorNode> {
         match a {
             parser::CaseExpression::Simple(e) => self.convert(e).map(|x| CaseExpression::Simple(x)),
             parser::CaseExpression::Is(op, e) => self.convert(e).map(|x| CaseExpression::Is(op, x)),
@@ -448,10 +444,7 @@ impl HasQualifier for LName {
 }
 
 impl ConverterImpl {
-    pub fn resolve_name_in_assignment(
-        &mut self,
-        n: parser::Name,
-    ) -> Result<LName, LinterErrorNode> {
+    pub fn resolve_name_in_assignment(&mut self, n: parser::Name) -> Result<LName, QErrorNode> {
         if self.context.is_function_context(&n) {
             // trying to assign to the function
             let function_type: TypeQualifier = self.functions.get(n.as_ref()).unwrap().0;
@@ -459,16 +452,16 @@ impl ConverterImpl {
                 Ok(LName::Function(n.with_type(function_type)))
             } else {
                 // trying to assign to the function with an explicit wrong type
-                Err(LinterError::DuplicateDefinition).with_err_no_pos()
+                Err(QError::DuplicateDefinition).with_err_no_pos()
             }
         } else if self.subs.contains_key(n.as_ref()) {
             // trying to assign to a sub
-            Err(LinterError::DuplicateDefinition).with_err_no_pos()
+            Err(QError::DuplicateDefinition).with_err_no_pos()
         } else if !self.context.resolve_param_assignment(&n, &self.resolver)?
             && self.functions.contains_key(n.as_ref())
         {
             // parameter might be hiding a function name so it takes precedence
-            Err(LinterError::DuplicateDefinition).with_err_no_pos()
+            Err(QError::DuplicateDefinition).with_err_no_pos()
         } else {
             let declared_name = self.context.resolve_assignment(&n, &self.resolver)?;
             let q = self.resolve_declared_name(&declared_name);
@@ -480,7 +473,7 @@ impl ConverterImpl {
     pub fn resolve_name_in_expression(
         &mut self,
         n: &parser::Name,
-    ) -> Result<Expression, LinterErrorNode> {
+    ) -> Result<Expression, QErrorNode> {
         self.context
             .resolve_expression(n, &self.resolver)
             .or_try_read(|| self.resolve_name_as_subprogram(n).with_err_no_pos())
@@ -490,18 +483,18 @@ impl ConverterImpl {
     fn resolve_name_as_subprogram(
         &mut self,
         n: &parser::Name,
-    ) -> Result<Option<Expression>, LinterError> {
+    ) -> Result<Option<Expression>, QError> {
         if self.subs.contains_key(n.as_ref()) {
             // using the name of a sub as a variable expression
-            Err(LinterError::DuplicateDefinition)
+            Err(QError::DuplicateDefinition)
         } else if self.functions.contains_key(n.as_ref()) {
             // if the function expects arguments, argument count mismatch
             let (f_type, f_args, _) = self.functions.get(n.as_ref()).unwrap();
             if !f_args.is_empty() {
-                Err(LinterError::ArgumentCountMismatch)
+                Err(QError::ArgumentCountMismatch)
             } else if !n.is_bare_or_of_type(*f_type) {
                 // if the function is a different type and the name is qualified of a different type, duplication definition
-                Err(LinterError::DuplicateDefinition)
+                Err(QError::DuplicateDefinition)
             } else {
                 // else convert it to function call
                 Ok(Some(Expression::FunctionCall(

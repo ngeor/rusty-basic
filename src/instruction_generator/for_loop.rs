@@ -1,6 +1,5 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::interpreter::InterpreterError;
 use crate::linter::{ForLoopNode, QualifiedName, StatementNodes};
 use crate::variant::Variant;
 
@@ -67,10 +66,7 @@ impl InstructionGenerator {
                 self.jump("out-of-for", pos);
                 // Zero step
                 self.label("zero", pos);
-                self.push(
-                    Instruction::Throw(InterpreterError::ForLoopZeroStep),
-                    step_location,
-                );
+                self.push(Instruction::Throw(QError::ForLoopZeroStep), step_location);
                 self.label("out-of-for", pos);
             }
             None => {

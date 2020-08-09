@@ -1,20 +1,21 @@
 // STR$(numeric-expression) returns a string representation of a number
 // TODO support hexadecimal literals &H10
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{ExpressionNode, LinterErrorNode};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 use crate::variant::Variant;
 
 pub struct StrFn {}
 
 impl BuiltInLint for StrFn {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         util::require_single_numeric_argument(args)
     }
 }
 
 impl BuiltInRun for StrFn {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
             Variant::VSingle(f) => Variant::VString(format!("{}", f)),

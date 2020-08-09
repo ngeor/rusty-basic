@@ -1,4 +1,3 @@
-use super::error::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::linter::type_resolver::*;
@@ -16,9 +15,7 @@ use std::collections::HashMap;
 /// - No duplicate implementations
 /// - No conflicts between declarations and implementations
 /// - Resolves types of parameters and functions
-pub fn collect_subprograms(
-    p: &parser::ProgramNode,
-) -> Result<(FunctionMap, SubMap), LinterErrorNode> {
+pub fn collect_subprograms(p: &parser::ProgramNode) -> Result<(FunctionMap, SubMap), QErrorNode> {
     let mut f_c = FunctionContext::new();
     let mut s_c = SubContext::new();
     for t in p {
@@ -65,7 +62,7 @@ impl FunctionContext {
         name: &NameNode,
         params: &DeclaredNameNodes,
         pos: Location,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
         let q_params: Vec<TypeQualifier> = params
@@ -89,7 +86,7 @@ impl FunctionContext {
         name: &NameNode,
         params: &DeclaredNameNodes,
         pos: Location,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         // type must match declaration
         // param count must match declaration
         // param types must match declaration
@@ -101,7 +98,7 @@ impl FunctionContext {
         let q_name: TypeQualifier = name.resolve_into(&self.resolver);
         let bare_name = BareName::from(name);
         match self.implementations.get(&bare_name) {
-            Some(_) => Err(LinterError::DuplicateDefinition).with_err_at(pos),
+            Some(_) => Err(QError::DuplicateDefinition).with_err_at(pos),
             None => {
                 self.check_declaration_type(&bare_name, &q_name, &q_params, pos)?;
                 self.implementations
@@ -117,11 +114,11 @@ impl FunctionContext {
         q_name: &TypeQualifier,
         q_params: &Vec<TypeQualifier>,
         pos: Location,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         match self.declarations.get(name) {
             Some((e_name, e_params, _)) => {
                 if e_name != q_name || e_params != q_params {
-                    return Err(LinterError::TypeMismatch).with_err_at(pos);
+                    return Err(QError::TypeMismatch).with_err_at(pos);
                 }
             }
             None => (),
@@ -135,11 +132,11 @@ impl FunctionContext {
         q_name: &TypeQualifier,
         q_params: &Vec<TypeQualifier>,
         pos: Location,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         match self.implementations.get(name) {
             Some((e_name, e_params, _)) => {
                 if e_name != q_name || e_params != q_params {
-                    return Err(LinterError::TypeMismatch).with_err_at(pos);
+                    return Err(QError::TypeMismatch).with_err_at(pos);
                 }
             }
             None => (),
@@ -147,7 +144,7 @@ impl FunctionContext {
         Ok(())
     }
 
-    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), LinterErrorNode> {
+    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), QErrorNode> {
         let pos = a.pos();
         match a.as_ref() {
             parser::TopLevelToken::DefType(d) => {
@@ -164,17 +161,17 @@ impl FunctionContext {
         }
     }
 
-    pub fn post_visit(&mut self) -> Result<(), LinterErrorNode> {
+    pub fn post_visit(&mut self) -> Result<(), QErrorNode> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
-                return Err(LinterError::SubprogramNotDefined).with_err_at(v.2);
+                return Err(QError::SubprogramNotDefined).with_err_at(v.2);
             }
         }
 
         for (k, v) in self.implementations.iter() {
             let opt_built_in: Option<BuiltInFunction> = k.into();
             if opt_built_in.is_some() {
-                return Err(LinterError::DuplicateDefinition).with_err_at(v.2);
+                return Err(QError::DuplicateDefinition).with_err_at(v.2);
             }
         }
 
@@ -202,7 +199,7 @@ impl SubContext {
         name: &CaseInsensitiveString,
         params: &DeclaredNameNodes,
         pos: Location,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
         let q_params: Vec<TypeQualifier> = params
@@ -224,7 +221,7 @@ impl SubContext {
         name: &CaseInsensitiveString,
         params: &DeclaredNameNodes,
         pos: Location,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
@@ -233,7 +230,7 @@ impl SubContext {
             .map(|p| resolve_declared_name_node(&self.resolver, p))
             .collect();
         match self.implementations.get(name) {
-            Some(_) => Err(LinterError::DuplicateDefinition).with_err_at(pos),
+            Some(_) => Err(QError::DuplicateDefinition).with_err_at(pos),
             None => {
                 self.check_declaration_type(name, &q_params, pos)?;
                 self.implementations.insert(name.clone(), (q_params, pos));
@@ -247,11 +244,11 @@ impl SubContext {
         name: &CaseInsensitiveString,
         q_params: &Vec<TypeQualifier>,
         pos: Location,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         match self.declarations.get(name) {
             Some((e_params, _)) => {
                 if e_params != q_params {
-                    return Err(LinterError::TypeMismatch).with_err_at(pos);
+                    return Err(QError::TypeMismatch).with_err_at(pos);
                 }
             }
             None => (),
@@ -264,11 +261,11 @@ impl SubContext {
         name: &CaseInsensitiveString,
         q_params: &Vec<TypeQualifier>,
         pos: Location,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         match self.implementations.get(name) {
             Some((e_params, _)) => {
                 if e_params != q_params {
-                    return Err(LinterError::TypeMismatch).with_err_at(pos);
+                    return Err(QError::TypeMismatch).with_err_at(pos);
                 }
             }
             None => (),
@@ -279,7 +276,7 @@ impl SubContext {
     pub fn visit(
         &mut self,
         top_level_token_node: &parser::TopLevelTokenNode,
-    ) -> Result<(), LinterErrorNode> {
+    ) -> Result<(), QErrorNode> {
         let Locatable {
             element: top_level_token,
             pos,
@@ -299,17 +296,17 @@ impl SubContext {
         }
     }
 
-    pub fn post_visit(&mut self) -> Result<(), LinterErrorNode> {
+    pub fn post_visit(&mut self) -> Result<(), QErrorNode> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
-                return Err(LinterError::SubprogramNotDefined).with_err_at(v.1);
+                return Err(QError::SubprogramNotDefined).with_err_at(v.1);
             }
         }
 
         for (k, v) in self.implementations.iter() {
             let opt_built_in: Option<BuiltInSub> = k.into();
             if opt_built_in.is_some() {
-                return Err(LinterError::DuplicateDefinition).with_err_at(v.1);
+                return Err(QError::DuplicateDefinition).with_err_at(v.1);
             }
         }
 

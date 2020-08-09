@@ -1,7 +1,8 @@
+use crate::common::*;
 use crate::instruction_generator;
 use crate::instruction_generator::InstructionNode;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
 use crate::parser::{parse_main_file, parse_main_str, QualifiedName};
 use crate::variant::Variant;
@@ -46,7 +47,7 @@ where
         .unwrap()
 }
 
-pub fn interpret_err<T>(input: T) -> InterpreterErrorNode
+pub fn interpret_err<T>(input: T) -> QErrorNode
 where
     T: AsRef<[u8]>,
 {
@@ -58,7 +59,7 @@ where
 pub fn interpret_file<S, TStdlib>(
     filename: S,
     stdlib: TStdlib,
-) -> Result<Interpreter<TStdlib>, InterpreterErrorNode>
+) -> Result<Interpreter<TStdlib>, QErrorNode>
 where
     S: AsRef<str>,
     TStdlib: Stdlib,
@@ -167,9 +168,9 @@ macro_rules! assert_err {
     ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
         // for backwards compatibility with older tests
         let expected_interpreter_err = if $expected_msg == "Overflow" {
-            crate::interpreter::InterpreterError::Overflow
+            crate::common::QError::Overflow
         } else {
-            crate::interpreter::InterpreterError::Other(format!("{}", $expected_msg))
+            crate::common::QError::Other(format!("{}", $expected_msg))
         };
         assert_eq!(
             crate::interpreter::test_utils::interpret_err($program),

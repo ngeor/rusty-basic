@@ -2,21 +2,21 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, InterpreterErrorNode, Stdlib};
-use crate::linter::{ExpressionNode, LinterErrorNode};
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 use crate::variant;
 use crate::variant::Variant;
 
 pub struct Val {}
 
 impl BuiltInLint for Val {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         util::require_single_string_argument(args)
     }
 }
 
 impl BuiltInRun for Val {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
             Variant::VString(s) => val(s).with_err_no_pos()?,
@@ -26,7 +26,7 @@ impl BuiltInRun for Val {
     }
 }
 
-fn val(s: String) -> Result<Variant, InterpreterError> {
+fn val(s: String) -> Result<Variant, QError> {
     let mut is_positive = true;
     let mut value: f64 = 0.0;
     let mut frac_power: i32 = 0;
@@ -51,7 +51,7 @@ fn val(s: String) -> Result<Variant, InterpreterError> {
                 if frac_power <= variant::MAX_INTEGER {
                     frac_power += 1;
                 } else {
-                    return Err(InterpreterError::Overflow);
+                    return Err(QError::Overflow);
                 }
                 value = (value * 10.0_f64.powi(frac_power) + ((c as u8) - ('0' as u8)) as f64)
                     / 10.0_f64.powi(frac_power);

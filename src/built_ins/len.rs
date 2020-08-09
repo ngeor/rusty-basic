@@ -3,17 +3,17 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{Expression, ExpressionNode, LinterError, LinterErrorNode, TypeQualifier};
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::{Expression, ExpressionNode, TypeQualifier};
 use crate::variant::Variant;
 use std::convert::TryInto;
 
 pub struct Len {}
 
 impl BuiltInLint for Len {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
-            Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             let arg: &Expression = args[0].as_ref();
             match arg {
@@ -21,7 +21,7 @@ impl BuiltInLint for Len {
                 _ => {
                     let q = args[0].try_qualifier()?;
                     if q != TypeQualifier::DollarString {
-                        Err(LinterError::VariableRequired).with_err_at(&args[0])
+                        Err(QError::VariableRequired).with_err_at(&args[0])
                     } else {
                         Ok(())
                     }
@@ -32,7 +32,7 @@ impl BuiltInLint for Len {
 }
 
 impl BuiltInRun for Len {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
             Variant::VSingle(_) => Variant::VInteger(4),
@@ -53,7 +53,7 @@ impl BuiltInRun for Len {
 mod tests {
     use crate::assert_linter_err;
     use crate::assert_prints;
-    use crate::linter::LinterError;
+    use crate::common::QError;
 
     #[test]
     fn test_len_string() {
@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn test_len_integer_expression_error() {
         let program = "PRINT LEN(42)";
-        assert_linter_err!(program, LinterError::VariableRequired, 1, 11);
+        assert_linter_err!(program, QError::VariableRequired, 1, 11);
     }
 
     #[test]
@@ -109,18 +109,18 @@ mod tests {
             CONST X = 42
             PRINT LEN(X)
             ";
-        assert_linter_err!(program, LinterError::VariableRequired, 3, 23);
+        assert_linter_err!(program, QError::VariableRequired, 3, 23);
     }
 
     #[test]
     fn test_len_two_arguments_error() {
         let program = r#"PRINT LEN("a", "b")"#;
-        assert_linter_err!(program, LinterError::ArgumentCountMismatch, 1, 7);
+        assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
     }
 
     #[test]
     fn test_len_must_be_unqualified() {
         let program = r#"PRINT LEN!("hello")"#;
-        assert_linter_err!(program, LinterError::SyntaxError, 1, 7);
+        assert_linter_err!(program, QError::SyntaxError, 1, 7);
     }
 }

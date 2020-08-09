@@ -1,4 +1,3 @@
-use super::error::*;
 use super::post_conversion_linter::*;
 use super::types::*;
 use crate::common::*;
@@ -6,7 +5,7 @@ use crate::common::*;
 pub struct ForNextCounterMatch;
 
 impl PostConversionLinter for ForNextCounterMatch {
-    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), LinterErrorNode> {
+    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
         self.visit_statement_nodes(&f.statements)?;
 
         // for and next counters must match
@@ -20,7 +19,7 @@ impl PostConversionLinter for ForNextCounterMatch {
                 if next_var_name == f.variable_name.as_ref() {
                     Ok(())
                 } else {
-                    Err(LinterError::NextWithoutFor).with_err_at(pos)
+                    Err(QError::NextWithoutFor).with_err_at(pos)
                 }
             }
             None => Ok(()),

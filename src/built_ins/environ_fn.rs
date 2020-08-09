@@ -2,20 +2,21 @@
 // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{ExpressionNode, LinterErrorNode};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 use crate::variant::Variant;
 
 pub struct Environ {}
 
 impl BuiltInLint for Environ {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         util::require_single_string_argument(args)
     }
 }
 
 impl BuiltInRun for Environ {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         match v {
             Variant::VString(env_var_name) => {
@@ -32,9 +33,9 @@ impl BuiltInRun for Environ {
 mod tests {
     use crate::assert_has_variable;
     use crate::assert_linter_err;
+    use crate::common::QError;
     use crate::interpreter::test_utils::*;
     use crate::interpreter::Stdlib;
-    use crate::linter::LinterError;
 
     #[test]
     fn test_function_call_environ() {
@@ -53,7 +54,7 @@ mod tests {
     fn test_function_call_environ_two_args_linter_err() {
         assert_linter_err!(
             r#"X$ = ENVIRON$("hi", "bye")"#,
-            LinterError::ArgumentCountMismatch,
+            QError::ArgumentCountMismatch,
             1,
             6
         );
@@ -61,11 +62,6 @@ mod tests {
 
     #[test]
     fn test_function_call_environ_numeric_arg_linter_err() {
-        assert_linter_err!(
-            "X$ = ENVIRON$(42)",
-            LinterError::ArgumentTypeMismatch,
-            1,
-            15
-        );
+        assert_linter_err!("X$ = ENVIRON$(42)", QError::ArgumentTypeMismatch, 1, 15);
     }
 }

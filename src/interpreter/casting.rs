@@ -1,4 +1,4 @@
-use crate::interpreter::InterpreterError;
+use crate::common::QError;
 use crate::parser::TypeQualifier;
 use crate::variant;
 use crate::variant::Variant;
@@ -11,170 +11,158 @@ use crate::variant::Variant;
 // 4. casting from an f64 to an f32 will produce the closest possible value (rounding to nearest, ties to even)
 
 trait QBNumberCast<T> {
-    fn try_cast(&self) -> Result<T, InterpreterError>;
+    fn try_cast(&self) -> Result<T, QError>;
 }
 
 impl QBNumberCast<f64> for f32 {
-    fn try_cast(&self) -> Result<f64, InterpreterError> {
+    fn try_cast(&self) -> Result<f64, QError> {
         Ok(*self as f64)
     }
 }
 
 impl QBNumberCast<i32> for f32 {
-    fn try_cast(&self) -> Result<i32, InterpreterError> {
+    fn try_cast(&self) -> Result<i32, QError> {
         if self.is_finite() {
             let r = self.round();
             if r >= (variant::MIN_INTEGER as f32) && r <= (variant::MAX_INTEGER as f32) {
                 Ok(r as i32)
             } else {
-                Err(InterpreterError::Overflow)
+                Err(QError::Overflow)
             }
         } else {
-            Err(InterpreterError::Other(format!(
-                "Cannot cast {} to i32",
-                self
-            )))
+            Err(QError::Other(format!("Cannot cast {} to i32", self)))
         }
     }
 }
 
 impl QBNumberCast<i64> for f32 {
-    fn try_cast(&self) -> Result<i64, InterpreterError> {
+    fn try_cast(&self) -> Result<i64, QError> {
         if self.is_finite() {
             let r = self.round();
             if r >= (variant::MIN_LONG as f32) && r <= (variant::MAX_LONG as f32) {
                 Ok(r as i64)
             } else {
-                Err(InterpreterError::Overflow)
+                Err(QError::Overflow)
             }
         } else {
-            Err(InterpreterError::Other(format!(
-                "Cannot cast {} to i64",
-                self
-            )))
+            Err(QError::Other(format!("Cannot cast {} to i64", self)))
         }
     }
 }
 
 impl QBNumberCast<f32> for f64 {
-    fn try_cast(&self) -> Result<f32, InterpreterError> {
+    fn try_cast(&self) -> Result<f32, QError> {
         Ok(*self as f32)
     }
 }
 
 impl QBNumberCast<i32> for f64 {
-    fn try_cast(&self) -> Result<i32, InterpreterError> {
+    fn try_cast(&self) -> Result<i32, QError> {
         if self.is_finite() {
             let r = self.round();
             if r >= (variant::MIN_INTEGER as f64) && r <= (variant::MAX_INTEGER as f64) {
                 Ok(r as i32)
             } else {
-                Err(InterpreterError::Overflow)
+                Err(QError::Overflow)
             }
         } else {
-            Err(InterpreterError::Other(format!(
-                "Cannot cast {} to i32",
-                self
-            )))
+            Err(QError::Other(format!("Cannot cast {} to i32", self)))
         }
     }
 }
 
 impl QBNumberCast<i64> for f64 {
-    fn try_cast(&self) -> Result<i64, InterpreterError> {
+    fn try_cast(&self) -> Result<i64, QError> {
         if self.is_finite() {
             let r = self.round();
             if r >= (variant::MIN_LONG as f64) && r <= (variant::MAX_LONG as f64) {
                 Ok(r as i64)
             } else {
-                Err(InterpreterError::Overflow)
+                Err(QError::Overflow)
             }
         } else {
-            Err(InterpreterError::Other(format!(
-                "Cannot cast {} to i64",
-                self
-            )))
+            Err(QError::Other(format!("Cannot cast {} to i64", self)))
         }
     }
 }
 
 impl QBNumberCast<f32> for i32 {
-    fn try_cast(&self) -> Result<f32, InterpreterError> {
+    fn try_cast(&self) -> Result<f32, QError> {
         Ok(*self as f32)
     }
 }
 
 impl QBNumberCast<f64> for i32 {
-    fn try_cast(&self) -> Result<f64, InterpreterError> {
+    fn try_cast(&self) -> Result<f64, QError> {
         Ok(*self as f64)
     }
 }
 
 impl QBNumberCast<i64> for i32 {
-    fn try_cast(&self) -> Result<i64, InterpreterError> {
+    fn try_cast(&self) -> Result<i64, QError> {
         Ok(*self as i64)
     }
 }
 
 impl QBNumberCast<f32> for i64 {
-    fn try_cast(&self) -> Result<f32, InterpreterError> {
+    fn try_cast(&self) -> Result<f32, QError> {
         Ok(*self as f32)
     }
 }
 
 impl QBNumberCast<f64> for i64 {
-    fn try_cast(&self) -> Result<f64, InterpreterError> {
+    fn try_cast(&self) -> Result<f64, QError> {
         Ok(*self as f64)
     }
 }
 
 impl QBNumberCast<i32> for i64 {
-    fn try_cast(&self) -> Result<i32, InterpreterError> {
+    fn try_cast(&self) -> Result<i32, QError> {
         if *self >= (variant::MIN_INTEGER as i64) && *self <= (variant::MAX_INTEGER as i64) {
             Ok(*self as i32)
         } else {
-            Err(InterpreterError::Overflow)
+            Err(QError::Overflow)
         }
     }
 }
 
-pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, InterpreterError> {
+pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, QError> {
     match value {
         Variant::VSingle(f) => match target_type {
             TypeQualifier::BangSingle => Ok(value),
             TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
             TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
             TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
-            _ => Err(InterpreterError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         },
         Variant::VDouble(f) => match target_type {
             TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
             TypeQualifier::HashDouble => Ok(value),
             TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
             TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
-            _ => Err(InterpreterError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         },
         Variant::VString(_) => match target_type {
             TypeQualifier::DollarString => Ok(value),
-            _ => Err(InterpreterError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         },
         Variant::VInteger(f) => match target_type {
             TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
             TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
             TypeQualifier::PercentInteger => Ok(value),
             TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
-            _ => Err(InterpreterError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         },
         Variant::VLong(f) => match target_type {
             TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
             TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
             TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
             TypeQualifier::AmpersandLong => Ok(value),
-            _ => Err(InterpreterError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         },
         Variant::VFileHandle(_) => match target_type {
             TypeQualifier::FileHandle => Ok(value),
-            _ => Err(InterpreterError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         },
     }
 }

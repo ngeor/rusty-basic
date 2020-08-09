@@ -6,9 +6,9 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::{BufLexer, Keyword};
-use crate::linter::{ExpressionNode, LinterErrorNode};
+use crate::linter::ExpressionNode;
 use crate::parser::buf_lexer::*;
 use crate::parser::sub_call;
 use crate::parser::{
@@ -37,14 +37,14 @@ pub fn try_read<T: BufRead>(
 }
 
 impl BuiltInLint for LineInput {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // TODO lint
         Ok(())
     }
 }
 
 impl BuiltInRun for LineInput {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
         let mut has_more = true;
@@ -78,7 +78,7 @@ fn line_input_one<S: Stdlib>(
     arg: &Argument,
     n: &QualifiedName,
     file_handle: FileHandle,
-) -> Result<(), InterpreterErrorNode> {
+) -> Result<(), QErrorNode> {
     if file_handle.is_valid() {
         line_input_one_file(interpreter, arg, n, file_handle)
     } else {
@@ -91,7 +91,7 @@ fn line_input_one_file<S: Stdlib>(
     arg: &Argument,
     n: &QualifiedName,
     file_handle: FileHandle,
-) -> Result<(), InterpreterErrorNode> {
+) -> Result<(), QErrorNode> {
     let s = interpreter
         .file_manager
         .read_line(file_handle)
@@ -112,7 +112,7 @@ fn line_input_one_stdin<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
     arg: &Argument,
     _n: &QualifiedName,
-) -> Result<(), InterpreterErrorNode> {
+) -> Result<(), QErrorNode> {
     let s = interpreter
         .stdlib
         .input()

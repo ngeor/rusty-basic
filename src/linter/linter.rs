@@ -1,12 +1,12 @@
-use super::error::*;
 use super::expression_reducer::ExpressionReducer;
 use super::post_conversion_linter::PostConversionLinter;
 use super::subprogram_context::{FunctionMap, SubMap};
 use super::types::*;
+use crate::common::*;
 use crate::linter::converter;
 use crate::parser;
 
-pub fn lint(program: parser::ProgramNode) -> Result<ProgramNode, LinterErrorNode> {
+pub fn lint(program: parser::ProgramNode) -> Result<ProgramNode, QErrorNode> {
     // convert to fully typed
     let (result, functions, subs) = converter::convert(program)?;
     // lint
@@ -22,7 +22,7 @@ fn apply_linters(
     result: &ProgramNode,
     functions: &FunctionMap,
     subs: &SubMap,
-) -> Result<(), LinterErrorNode> {
+) -> Result<(), QErrorNode> {
     let linter = super::no_dynamic_const::NoDynamicConst {};
     linter.visit_program(&result)?;
 
@@ -74,19 +74,19 @@ mod tests {
             Hello = 2
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 13);
+            assert_linter_err!(program, QError::DuplicateDefinition, 5, 13);
         }
 
         #[test]
         fn literals_type_mismatch() {
-            assert_linter_err!("X = \"hello\"", LinterError::TypeMismatch, 1, 5);
-            assert_linter_err!("X! = \"hello\"", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("X# = \"hello\"", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("A$ = 1.0", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("A$ = 1", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("A$ = -1", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("X% = \"hello\"", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("X& = \"hello\"", LinterError::TypeMismatch, 1, 6);
+            assert_linter_err!("X = \"hello\"", QError::TypeMismatch, 1, 5);
+            assert_linter_err!("X! = \"hello\"", QError::TypeMismatch, 1, 6);
+            assert_linter_err!("X# = \"hello\"", QError::TypeMismatch, 1, 6);
+            assert_linter_err!("A$ = 1.0", QError::TypeMismatch, 1, 6);
+            assert_linter_err!("A$ = 1", QError::TypeMismatch, 1, 6);
+            assert_linter_err!("A$ = -1", QError::TypeMismatch, 1, 6);
+            assert_linter_err!("X% = \"hello\"", QError::TypeMismatch, 1, 6);
+            assert_linter_err!("X& = \"hello\"", QError::TypeMismatch, 1, 6);
         }
 
         #[test]
@@ -95,7 +95,7 @@ mod tests {
             CONST X = 3.14
             X = 6.28
             ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 13);
         }
 
         #[test]
@@ -105,7 +105,7 @@ mod tests {
             IF X = 0 THEN DIM A AS STRING
             A = 42
             "#;
-            assert_linter_err!(program, LinterError::TypeMismatch, 4, 17);
+            assert_linter_err!(program, QError::TypeMismatch, 4, 17);
         }
     }
 
@@ -117,7 +117,7 @@ mod tests {
             let program = r#"
             CONST X = Add(1, 2)
             "#;
-            assert_linter_err!(program, LinterError::InvalidConstant, 2, 23);
+            assert_linter_err!(program, QError::InvalidConstant, 2, 23);
         }
 
         #[test]
@@ -126,7 +126,7 @@ mod tests {
             X = 42
             CONST A = X + 1
             "#;
-            assert_linter_err!(program, LinterError::InvalidConstant, 3, 23);
+            assert_linter_err!(program, QError::InvalidConstant, 3, 23);
         }
 
         #[test]
@@ -135,7 +135,7 @@ mod tests {
             X = 42
             CONST X = 32
             ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
         }
 
         #[test]
@@ -144,7 +144,7 @@ mod tests {
             INPUT X%
             CONST X = 1
             ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
         }
 
         #[test]
@@ -153,7 +153,7 @@ mod tests {
             CONST X = 32
             CONST X = 33
             ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
         }
 
         #[test]
@@ -161,7 +161,7 @@ mod tests {
             let program = r#"
             CONST X! = "hello"
             "#;
-            assert_linter_err!(program, LinterError::TypeMismatch, 2, 24);
+            assert_linter_err!(program, QError::TypeMismatch, 2, 24);
         }
 
         #[test]
@@ -170,7 +170,7 @@ mod tests {
             DIM A AS STRING
             CONST A = "hello"
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
         }
 
         #[test]
@@ -181,7 +181,7 @@ mod tests {
             END FUNCTION
             CONST GetAction = 42
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 19);
+            assert_linter_err!(program, QError::DuplicateDefinition, 5, 19);
         }
 
         #[test]
@@ -194,7 +194,7 @@ mod tests {
                 CONST GetAction = 42
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 6, 23);
+            assert_linter_err!(program, QError::DuplicateDefinition, 6, 23);
         }
     }
 
@@ -207,7 +207,7 @@ mod tests {
             DIM A AS STRING
             DIM A AS STRING
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -216,7 +216,7 @@ mod tests {
             DIM A AS STRING
             DIM A AS INTEGER
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -257,7 +257,7 @@ mod tests {
             CONST A = "hello"
             DIM A AS STRING
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -266,7 +266,7 @@ mod tests {
             A = 42
             DIM A AS INTEGER
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -275,7 +275,7 @@ mod tests {
             DIM A$
             DIM A$
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -284,7 +284,7 @@ mod tests {
             DIM A
             DIM A
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -294,7 +294,7 @@ mod tests {
             DIM A!
             DIM A
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -304,7 +304,7 @@ mod tests {
             DIM A
             DIM A!
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -314,7 +314,7 @@ mod tests {
             DIM A
             DIM A%
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 4, 17);
         }
 
         #[test]
@@ -324,7 +324,7 @@ mod tests {
             Dim Hello AS STRING
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -337,7 +337,7 @@ mod tests {
             Dim Oops
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 6, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 6, 17);
         }
 
         #[test]
@@ -347,7 +347,7 @@ mod tests {
             Dim Oops AS STRING
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -357,7 +357,7 @@ mod tests {
             Dim Hello AS STRING
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]
@@ -369,7 +369,7 @@ mod tests {
             FUNCTION Bar
             END Function
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 17);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
     }
 
@@ -385,7 +385,7 @@ mod tests {
             FUNCTION Adding(Hello)
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 5, 29);
+            assert_linter_err!(program, QError::DuplicateDefinition, 5, 29);
         }
 
         #[test]
@@ -397,7 +397,7 @@ mod tests {
             SUB Hello
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 29);
+            assert_linter_err!(program, QError::DuplicateDefinition, 2, 29);
         }
 
         #[test]
@@ -406,7 +406,7 @@ mod tests {
             FUNCTION Adding(Adding$)
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 29);
+            assert_linter_err!(program, QError::DuplicateDefinition, 2, 29);
         }
 
         #[test]
@@ -415,7 +415,7 @@ mod tests {
             FUNCTION Adding(Adding AS SINGLE)
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 29);
+            assert_linter_err!(program, QError::DuplicateDefinition, 2, 29);
         }
 
         #[test]
@@ -424,7 +424,7 @@ mod tests {
             FUNCTION Adding(Adding, Adding)
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 37);
+            assert_linter_err!(program, QError::DuplicateDefinition, 2, 37);
         }
 
         #[test]
@@ -438,7 +438,7 @@ mod tests {
                 GetAction$ = "hello"
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
+            assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
         }
 
         #[test]
@@ -447,7 +447,7 @@ mod tests {
             DECLARE FUNCTION Add(A, B)
             X = Add(1, 2)
             ";
-            assert_linter_err!(program, LinterError::SubprogramNotDefined, 2, 13);
+            assert_linter_err!(program, QError::SubprogramNotDefined, 2, 13);
         }
 
         #[test]
@@ -458,7 +458,7 @@ mod tests {
             FUNCTION Environ$
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
+            assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
         }
 
         #[test]
@@ -468,7 +468,7 @@ mod tests {
             FUNCTION Environ$
             END FUNCTION
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 13);
         }
 
         #[test]
@@ -476,7 +476,7 @@ mod tests {
             let program = r#"
             PRINT "Hello", Environ%("oops")
             "#;
-            assert_linter_err!(program, LinterError::TypeMismatch, 2, 28);
+            assert_linter_err!(program, QError::TypeMismatch, 2, 28);
         }
 
         #[test]
@@ -484,7 +484,7 @@ mod tests {
             let program = "
             X = Add(\"1\", \"2\")
             ";
-            assert_linter_err!(program, LinterError::ArgumentTypeMismatch, 2, 21);
+            assert_linter_err!(program, QError::ArgumentTypeMismatch, 2, 21);
         }
     }
 
@@ -497,7 +497,7 @@ mod tests {
             SUB Hello(Hello)
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 23);
+            assert_linter_err!(program, QError::DuplicateDefinition, 2, 23);
         }
 
         #[test]
@@ -508,7 +508,7 @@ mod tests {
             SUB Goodbye(Hello)
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 25);
+            assert_linter_err!(program, QError::DuplicateDefinition, 4, 25);
         }
 
         #[test]
@@ -519,7 +519,7 @@ mod tests {
             SUB Hello
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 25);
+            assert_linter_err!(program, QError::DuplicateDefinition, 2, 25);
         }
 
         #[test]
@@ -528,7 +528,7 @@ mod tests {
             SUB Hello(A, A)
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 26);
+            assert_linter_err!(program, QError::DuplicateDefinition, 2, 26);
         }
 
         #[test]
@@ -537,7 +537,7 @@ mod tests {
             SUB Hello(A AS INTEGER, A AS STRING)
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 2, 37);
+            assert_linter_err!(program, QError::DuplicateDefinition, 2, 37);
         }
 
         #[test]
@@ -548,7 +548,7 @@ mod tests {
             SUB Environ
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 4, 13);
+            assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
         }
 
         #[test]
@@ -558,7 +558,7 @@ mod tests {
             SUB Environ
             END SUB
             "#;
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 13);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 13);
         }
 
         #[test]
@@ -571,7 +571,7 @@ mod tests {
                 N = N + 1
             END SUB
             ";
-            assert_linter_err!(program, LinterError::ArgumentTypeMismatch, 4, 19);
+            assert_linter_err!(program, QError::ArgumentTypeMismatch, 4, 19);
         }
     }
 
@@ -586,7 +586,7 @@ mod tests {
                 PRINT "hi"
         END SELECT
         "#;
-            assert_linter_err!(input, LinterError::TypeMismatch, 3, 18);
+            assert_linter_err!(input, QError::TypeMismatch, 3, 18);
         }
 
         #[test]
@@ -597,7 +597,7 @@ mod tests {
                 PRINT "hi"
         END SELECT
         "#;
-            assert_linter_err!(input, LinterError::TypeMismatch, 3, 23);
+            assert_linter_err!(input, QError::TypeMismatch, 3, 23);
         }
 
         #[test]
@@ -608,7 +608,7 @@ mod tests {
                 PRINT "hi"
         END SELECT
         "#;
-            assert_linter_err!(input, LinterError::TypeMismatch, 3, 18);
+            assert_linter_err!(input, QError::TypeMismatch, 3, 18);
         }
 
         #[test]
@@ -619,7 +619,7 @@ mod tests {
                 PRINT "hi"
         END SELECT
         "#;
-            assert_linter_err!(input, LinterError::TypeMismatch, 3, 18);
+            assert_linter_err!(input, QError::TypeMismatch, 3, 18);
         }
 
         #[test]
@@ -630,7 +630,7 @@ mod tests {
                 PRINT "hi"
         END SELECT
         "#;
-            assert_linter_err!(input, LinterError::TypeMismatch, 3, 24);
+            assert_linter_err!(input, QError::TypeMismatch, 3, 24);
         }
     }
 
@@ -642,7 +642,7 @@ mod tests {
             let input = r#"
             ON ERROR GOTO ErrTrap
             "#;
-            assert_linter_err!(input, LinterError::LabelNotDefined, 2, 13);
+            assert_linter_err!(input, QError::LabelNotDefined, 2, 13);
         }
 
         #[test]
@@ -650,7 +650,7 @@ mod tests {
             let input = "
             GOTO Jump
             ";
-            assert_linter_err!(input, LinterError::LabelNotDefined, 2, 13);
+            assert_linter_err!(input, QError::LabelNotDefined, 2, 13);
         }
 
         #[test]
@@ -660,7 +660,7 @@ mod tests {
             Jump:
             Jump:
             ";
-            assert_linter_err!(input, LinterError::DuplicateLabel, 4, 13);
+            assert_linter_err!(input, QError::DuplicateLabel, 4, 13);
         }
     }
 
@@ -674,7 +674,7 @@ mod tests {
                 PRINT i%
             NEXT i
             ";
-            assert_linter_err!(input, LinterError::NextWithoutFor, 4, 18);
+            assert_linter_err!(input, QError::NextWithoutFor, 4, 18);
         }
     }
 
@@ -691,46 +691,41 @@ mod tests {
                 ",
                     $condition
                 );
-                assert_linter_err!(program, LinterError::TypeMismatch, 2, $col);
+                assert_linter_err!(program, QError::TypeMismatch, 2, $col);
             };
         }
 
         #[test]
         fn test_type_mismatch() {
-            assert_linter_err!("X = 1.1 + \"hello\"", LinterError::TypeMismatch, 1, 11);
-            assert_linter_err!("X = 1.1# + \"hello\"", LinterError::TypeMismatch, 1, 12);
-            assert_linter_err!("X$ = \"hello\" + 1", LinterError::TypeMismatch, 1, 16);
-            assert_linter_err!("X$ = \"hello\" + 1.1", LinterError::TypeMismatch, 1, 16);
-            assert_linter_err!("X$ = \"hello\" + 1.1#", LinterError::TypeMismatch, 1, 16);
-            assert_linter_err!("X% = 1 + \"hello\"", LinterError::TypeMismatch, 1, 10);
-            assert_linter_err!("X& = 1 + \"hello\"", LinterError::TypeMismatch, 1, 10);
-            assert_linter_err!("X = 1.1 - \"hello\"", LinterError::TypeMismatch, 1, 11);
-            assert_linter_err!("X = 1.1# - \"hello\"", LinterError::TypeMismatch, 1, 12);
-            assert_linter_err!("X$ = \"hello\" - \"hi\"", LinterError::TypeMismatch, 1, 16);
-            assert_linter_err!("X$ = \"hello\" - 1", LinterError::TypeMismatch, 1, 16);
-            assert_linter_err!("X$ = \"hello\" - 1.1", LinterError::TypeMismatch, 1, 16);
-            assert_linter_err!("X$ = \"hello\" - 1.1#", LinterError::TypeMismatch, 1, 16);
-            assert_linter_err!("X$ = 1 - \"hello\"", LinterError::TypeMismatch, 1, 10);
-            assert_linter_err!("X& = 1 - \"hello\"", LinterError::TypeMismatch, 1, 10);
-            assert_linter_err!(r#"PRINT "hello" * 5"#, LinterError::TypeMismatch, 1, 17);
-            assert_linter_err!(r#"PRINT "hello" / 5"#, LinterError::TypeMismatch, 1, 17);
-            assert_linter_err!("X = -\"hello\"", LinterError::TypeMismatch, 1, 6);
-            assert_linter_err!("X% = -\"hello\"", LinterError::TypeMismatch, 1, 7);
-            assert_linter_err!("X = NOT \"hello\"", LinterError::TypeMismatch, 1, 9);
-            assert_linter_err!("X% = NOT \"hello\"", LinterError::TypeMismatch, 1, 10);
+            assert_linter_err!("X = 1.1 + \"hello\"", QError::TypeMismatch, 1, 11);
+            assert_linter_err!("X = 1.1# + \"hello\"", QError::TypeMismatch, 1, 12);
+            assert_linter_err!("X$ = \"hello\" + 1", QError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" + 1.1", QError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" + 1.1#", QError::TypeMismatch, 1, 16);
+            assert_linter_err!("X% = 1 + \"hello\"", QError::TypeMismatch, 1, 10);
+            assert_linter_err!("X& = 1 + \"hello\"", QError::TypeMismatch, 1, 10);
+            assert_linter_err!("X = 1.1 - \"hello\"", QError::TypeMismatch, 1, 11);
+            assert_linter_err!("X = 1.1# - \"hello\"", QError::TypeMismatch, 1, 12);
+            assert_linter_err!("X$ = \"hello\" - \"hi\"", QError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" - 1", QError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" - 1.1", QError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = \"hello\" - 1.1#", QError::TypeMismatch, 1, 16);
+            assert_linter_err!("X$ = 1 - \"hello\"", QError::TypeMismatch, 1, 10);
+            assert_linter_err!("X& = 1 - \"hello\"", QError::TypeMismatch, 1, 10);
+            assert_linter_err!(r#"PRINT "hello" * 5"#, QError::TypeMismatch, 1, 17);
+            assert_linter_err!(r#"PRINT "hello" / 5"#, QError::TypeMismatch, 1, 17);
+            assert_linter_err!("X = -\"hello\"", QError::TypeMismatch, 1, 6);
+            assert_linter_err!("X% = -\"hello\"", QError::TypeMismatch, 1, 7);
+            assert_linter_err!("X = NOT \"hello\"", QError::TypeMismatch, 1, 9);
+            assert_linter_err!("X% = NOT \"hello\"", QError::TypeMismatch, 1, 10);
 
-            assert_linter_err!(r#"PRINT 1 AND "hello""#, LinterError::TypeMismatch, 1, 13);
-            assert_linter_err!(r#"PRINT "hello" AND 1"#, LinterError::TypeMismatch, 1, 19);
-            assert_linter_err!(
-                r#"PRINT "hello" AND "bye""#,
-                LinterError::TypeMismatch,
-                1,
-                19
-            );
+            assert_linter_err!(r#"PRINT 1 AND "hello""#, QError::TypeMismatch, 1, 13);
+            assert_linter_err!(r#"PRINT "hello" AND 1"#, QError::TypeMismatch, 1, 19);
+            assert_linter_err!(r#"PRINT "hello" AND "bye""#, QError::TypeMismatch, 1, 19);
 
-            assert_linter_err!(r#"PRINT 1 AND #1"#, LinterError::TypeMismatch, 1, 13);
-            assert_linter_err!(r#"PRINT #1 AND 1"#, LinterError::TypeMismatch, 1, 7);
-            assert_linter_err!(r#"PRINT #1 AND #1"#, LinterError::TypeMismatch, 1, 7);
+            assert_linter_err!(r#"PRINT 1 AND #1"#, QError::TypeMismatch, 1, 13);
+            assert_linter_err!(r#"PRINT #1 AND 1"#, QError::TypeMismatch, 1, 7);
+            assert_linter_err!(r#"PRINT #1 AND #1"#, QError::TypeMismatch, 1, 7);
         }
 
         #[test]
@@ -755,7 +750,7 @@ mod tests {
             CONST X = 42
             PRINT X!
             ";
-            assert_linter_err!(program, LinterError::DuplicateDefinition, 3, 19);
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
         }
     }
 }

@@ -17,9 +17,9 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, InterpreterError, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
-use crate::linter::{Expression, ExpressionNode, LinterError, LinterErrorNode};
+use crate::linter::{Expression, ExpressionNode};
 use crate::parser::buf_lexer::*;
 use crate::parser::sub_call;
 use crate::parser::{
@@ -46,14 +46,14 @@ pub fn try_read<T: BufRead>(
 }
 
 impl BuiltInLint for Input {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() == 0 {
-            Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             args.iter()
                 .map(|a| match a.as_ref() {
                     Expression::Variable(_) => Ok(()),
-                    _ => Err(LinterError::VariableRequired).with_err_at(a),
+                    _ => Err(QError::VariableRequired).with_err_at(a),
                 })
                 .collect()
         }
@@ -61,7 +61,7 @@ impl BuiltInLint for Input {
 }
 
 impl BuiltInRun for Input {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         loop {
             match &interpreter.pop_unnamed_arg() {
                 Some(a) => match a {
@@ -85,7 +85,7 @@ fn do_input_one_var<S: Stdlib>(
     interpreter: &mut Interpreter<S>,
     a: &Argument,
     n: &QualifiedName,
-) -> Result<(), InterpreterErrorNode> {
+) -> Result<(), QErrorNode> {
     let raw_input: String = interpreter
         .stdlib
         .input()
@@ -109,7 +109,7 @@ fn do_input_one_var<S: Stdlib>(
         .with_err_no_pos()
 }
 
-fn parse_single_input(s: String) -> Result<f32, InterpreterError> {
+fn parse_single_input(s: String) -> Result<f32, QError> {
     if s.is_empty() {
         Ok(0.0)
     } else {
@@ -118,7 +118,7 @@ fn parse_single_input(s: String) -> Result<f32, InterpreterError> {
     }
 }
 
-fn parse_int_input(s: String) -> Result<i32, InterpreterError> {
+fn parse_int_input(s: String) -> Result<i32, QError> {
     if s.is_empty() {
         Ok(0)
     } else {

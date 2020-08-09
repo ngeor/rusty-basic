@@ -4,14 +4,14 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterError, InterpreterErrorNode, Stdlib};
-use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 use crate::variant::Variant;
 
 pub struct InStr {}
 
 impl BuiltInLint for InStr {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() == 2 {
             util::require_string_argument(args, 0)?;
             util::require_string_argument(args, 1)
@@ -20,13 +20,13 @@ impl BuiltInLint for InStr {
             util::require_string_argument(args, 1)?;
             util::require_string_argument(args, 2)
         } else {
-            Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         }
     }
 }
 
 impl BuiltInRun for InStr {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let a: Variant = interpreter.pop_unnamed_val().unwrap();
         let b: Variant = interpreter.pop_unnamed_val().unwrap();
         let result: i32 = match interpreter.pop_unnamed_val() {
@@ -38,9 +38,9 @@ impl BuiltInRun for InStr {
     }
 }
 
-fn do_instr(start: i32, hay: String, needle: String) -> Result<i32, InterpreterErrorNode> {
+fn do_instr(start: i32, hay: String, needle: String) -> Result<i32, QErrorNode> {
     if start <= 0 {
-        Err(InterpreterError::IllegalFunctionCall).with_err_no_pos()
+        Err(QError::IllegalFunctionCall).with_err_no_pos()
     } else if hay.is_empty() {
         Ok(0)
     } else if needle.is_empty() {
@@ -64,8 +64,6 @@ mod tests {
     use crate::assert_prints;
     use crate::common::*;
     use crate::interpreter::test_utils::interpret_err;
-    use crate::interpreter::InterpreterError;
-    use crate::linter::LinterError;
 
     #[test]
     fn test_instr_happy_flow() {
@@ -85,7 +83,7 @@ mod tests {
         assert_eq!(
             interpret_err(r#"PRINT INSTR(0, "oops", "zero")"#),
             ErrorEnvelope::Stacktrace(
-                InterpreterError::IllegalFunctionCall,
+                QError::IllegalFunctionCall,
                 vec![
                     Location::new(1, 7),
                     Location::new(1, 7) // TODO why is this double
@@ -98,7 +96,7 @@ mod tests {
     fn test_instr_linter() {
         assert_linter_err!(
             r#"PRINT INSTR("oops")"#,
-            LinterError::ArgumentCountMismatch,
+            QError::ArgumentCountMismatch,
             1,
             7
         );

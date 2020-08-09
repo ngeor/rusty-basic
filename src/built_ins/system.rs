@@ -3,15 +3,15 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 
 pub struct System {}
 
 impl BuiltInLint for System {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 0 {
-            Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             Ok(())
         }
@@ -19,10 +19,7 @@ impl BuiltInLint for System {
 }
 
 impl BuiltInRun for System {
-    fn run<S: Stdlib>(
-        &self,
-        _interpreter: &mut Interpreter<S>,
-    ) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, _interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         panic!("Should have been handled at the IG level")
     }
 }
@@ -30,10 +27,10 @@ impl BuiltInRun for System {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use crate::linter::LinterError;
+    use crate::common::QError;
 
     #[test]
     fn test_sub_call_system_no_args_allowed() {
-        assert_linter_err!("SYSTEM 42", LinterError::ArgumentCountMismatch, 1, 1);
+        assert_linter_err!("SYSTEM 42", QError::ArgumentCountMismatch, 1, 1);
     }
 }

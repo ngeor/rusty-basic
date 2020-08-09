@@ -2,20 +2,20 @@
 
 use super::{util, BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
-use crate::linter::{ExpressionNode, LinterErrorNode};
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
 use crate::variant::Variant;
 
 pub struct Eof {}
 
 impl BuiltInLint for Eof {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         util::require_single_numeric_argument(args)
     }
 }
 
 impl BuiltInRun for Eof {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v: Variant = interpreter.pop_unnamed_val().unwrap();
         let file_handle: FileHandle = match v {
             Variant::VFileHandle(f) => f,

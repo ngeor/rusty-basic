@@ -4,9 +4,9 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
-use crate::interpreter::{Interpreter, InterpreterErrorNode, Stdlib};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::{BufLexer, Keyword};
-use crate::linter::{ExpressionNode, LinterError, LinterErrorNode};
+use crate::linter::ExpressionNode;
 use crate::parser::buf_lexer::*;
 use crate::parser::expression;
 use crate::parser::{BareName, ParserErrorNode, Statement, StatementNode, TypeQualifier};
@@ -36,13 +36,13 @@ pub fn try_read<T: BufRead>(
 }
 
 impl BuiltInLint for Name {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), LinterErrorNode> {
+    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 2 {
-            Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
-            Err(LinterError::ArgumentTypeMismatch).with_err_at(&args[0])
+            Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
         } else if args[1].try_qualifier()? != TypeQualifier::DollarString {
-            Err(LinterError::ArgumentTypeMismatch).with_err_at(&args[1])
+            Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])
         } else {
             Ok(())
         }
@@ -50,7 +50,7 @@ impl BuiltInLint for Name {
 }
 
 impl BuiltInRun for Name {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterErrorNode> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let old_file_name = interpreter.pop_string();
         let new_file_name = interpreter.pop_string();
         std::fs::rename(old_file_name, new_file_name)
@@ -62,8 +62,8 @@ impl BuiltInRun for Name {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
+    use crate::common::*;
     use crate::interpreter::test_utils::*;
-    use crate::linter::LinterError;
 
     #[test]
     fn test_can_rename_file() {
@@ -83,17 +83,7 @@ mod tests {
 
     #[test]
     fn test_name_linter_err() {
-        assert_linter_err!(
-            r#"NAME 1 AS "boo""#,
-            LinterError::ArgumentTypeMismatch,
-            1,
-            6
-        );
-        assert_linter_err!(
-            r#"NAME "boo" AS 2"#,
-            LinterError::ArgumentTypeMismatch,
-            1,
-            15
-        );
+        assert_linter_err!(r#"NAME 1 AS "boo""#, QError::ArgumentTypeMismatch, 1, 6);
+        assert_linter_err!(r#"NAME "boo" AS 2"#, QError::ArgumentTypeMismatch, 1, 15);
     }
 }

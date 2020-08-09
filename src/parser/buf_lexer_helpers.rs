@@ -4,7 +4,7 @@ use crate::lexer::*;
 use std::io::BufRead;
 
 /// Demands that the given function can parse the next lexeme(s).
-/// If the function returns None, it will be converted to an unexpected parser error.
+/// If the function returns None, it will be converted to a syntax error.
 pub fn demand<T: BufRead, TResult, F, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     mut op: F,

@@ -1,4 +1,4 @@
-use super::{Statement, StatementNode};
+use super::{NameNode, Statement, StatementNode};
 use crate::common::*;
 use crate::lexer::BufLexer;
 use crate::parser::buf_lexer_helpers::*;
@@ -7,16 +7,24 @@ use crate::parser::name;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    in_transaction(lexer, do_read)
+    let opt_name_node = in_transaction(lexer, do_read_left_side)?;
+    match opt_name_node {
+        Some(name_node) => {
+            let right_side = demand(lexer, expression::try_read, "Expected expression")?;
+            Ok(Some(
+                name_node.map(|name| Statement::Assignment(name, right_side)),
+            ))
+        }
+        None => Ok(None),
+    }
 }
 
-fn do_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, QErrorNode> {
-    let Locatable { element: name, pos } = demand(lexer, name::try_read, "Expected name")?;
+fn do_read_left_side<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<NameNode, QErrorNode> {
+    let name_node = demand(lexer, name::try_read, "Expected name")?;
     skip_whitespace(lexer)?;
     read_symbol(lexer, '=')?;
     skip_whitespace(lexer)?;
-    let right_side = demand(lexer, expression::try_read, "Expected expression")?;
-    Ok(Statement::Assignment(name, right_side).at(pos))
+    Ok(name_node)
 }
 
 #[cfg(test)]

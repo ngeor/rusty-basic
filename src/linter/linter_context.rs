@@ -280,11 +280,10 @@ impl Symbols {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<DeclaredName, QErrorNode> {
+    ) -> Result<Option<DeclaredName>, QErrorNode> {
         // first params
         // then constants
         // then variables
-        // TODO then parent constants
 
         if self.constants.contains_any(name) {
             err_no_pos(QError::DuplicateDefinition)
@@ -292,12 +291,6 @@ impl Symbols {
             self.params
                 .resolve_assignment(name, resolver)
                 .or_try_read(|| self.variables.resolve_assignment(name, resolver))
-                .or_read(|| {
-                    let q: QualifiedName = name.resolve_into(resolver);
-                    let d = DeclaredName::from(q);
-                    self.variables.push(d.clone())?;
-                    Ok(d)
-                })
         }
     }
 
@@ -332,7 +325,18 @@ impl Symbols {
             .map(|x| x.is_some())
     }
 
-    pub fn resolve_missing_variable<T: TypeResolver>(
+    pub fn resolve_missing_name_in_assignment<T: TypeResolver>(
+        &mut self,
+        name: &Name,
+        resolver: &T,
+    ) -> Result<DeclaredName, QErrorNode> {
+        let q: QualifiedName = name.resolve_into(resolver);
+        let d = DeclaredName::from(q);
+        self.variables.push(d.clone())?;
+        Ok(d)
+    }
+
+    pub fn resolve_missing_name_in_expression<T: TypeResolver>(
         &mut self,
         name: &Name,
         resolver: &T,
@@ -469,14 +473,28 @@ impl LinterContext {
         name: &Name,
         resolver: &T,
     ) -> Result<DeclaredName, QErrorNode> {
-        self.symbols.resolve_assignment(name, resolver)
+        match self.symbols.resolve_assignment(name, resolver)? {
+            Some(x) => Ok(x),
+            None => {
+                // maybe a parent constant?
+                match self.resolve_parent_const_expression(name)? {
+                    Some(_) => Err(QError::DuplicateDefinition).with_err_no_pos(),
+                    None => {
+                        // just insert it
+                        self.symbols
+                            .resolve_missing_name_in_assignment(name, resolver)
+                    }
+                }
+            }
+        }
     }
 
-    pub fn resolve_missing_variable<T: TypeResolver>(
+    pub fn resolve_missing_name_in_expression<T: TypeResolver>(
         &mut self,
         name: &Name,
         resolver: &T,
     ) -> Result<Expression, QErrorNode> {
-        self.symbols.resolve_missing_variable(name, resolver)
+        self.symbols
+            .resolve_missing_name_in_expression(name, resolver)
     }
 }

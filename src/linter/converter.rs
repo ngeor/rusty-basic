@@ -477,7 +477,10 @@ impl ConverterImpl {
         self.context
             .resolve_expression(n, &self.resolver)
             .or_try_read(|| self.resolve_name_as_subprogram(n).with_err_no_pos())
-            .or_read(|| self.context.resolve_missing_variable(n, &self.resolver))
+            .or_read(|| {
+                self.context
+                    .resolve_missing_name_in_expression(n, &self.resolver)
+            })
     }
 
     fn resolve_name_as_subprogram(

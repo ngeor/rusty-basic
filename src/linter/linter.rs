@@ -99,6 +99,17 @@ mod tests {
         }
 
         #[test]
+        fn assign_to_parent_const() {
+            let program = r#"
+            CONST X = 42
+            SUB Hello
+            X = 3
+            END SUB
+            "#;
+            assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+        }
+
+        #[test]
         fn assign_integer_to_extended_string() {
             let program = r#"
             X = 1

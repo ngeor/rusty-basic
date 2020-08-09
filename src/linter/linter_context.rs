@@ -348,15 +348,23 @@ impl Symbols {
 }
 
 //
+// SubProgram Type
+//
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SubProgramType {
+    Function,
+    Sub,
+}
+
+//
 // LinterContext
 //
 
 #[derive(Debug, Default)]
 pub struct LinterContext {
     parent: Option<Box<LinterContext>>,
-    // TODO replace with one sub_program_name
-    function_name: Option<CaseInsensitiveString>,
-    sub_name: Option<CaseInsensitiveString>,
+    sub_program: Option<(CaseInsensitiveString, SubProgramType)>,
     symbols: Symbols,
 }
 
@@ -364,14 +372,14 @@ impl LinterContext {
     pub fn push_function_context(self, name: &CaseInsensitiveString) -> Self {
         let mut result = LinterContext::default();
         result.parent = Some(Box::new(self));
-        result.function_name = Some(name.clone());
+        result.sub_program = Some((name.clone(), SubProgramType::Function));
         result
     }
 
     pub fn push_sub_context(self, name: &CaseInsensitiveString) -> Self {
         let mut result = LinterContext::default();
         result.parent = Some(Box::new(self));
-        result.sub_name = Some(name.clone());
+        result.sub_program = Some((name.clone(), SubProgramType::Sub));
         result
     }
 
@@ -453,8 +461,10 @@ impl LinterContext {
     }
 
     pub fn is_function_context(&self, name: &Name) -> bool {
-        match &self.function_name {
-            Some(x) => x == name.as_ref(),
+        match &self.sub_program {
+            Some((sub_program_name, sub_program_type)) => {
+                sub_program_name == name.as_ref() && *sub_program_type == SubProgramType::Function
+            }
             None => false,
         }
     }

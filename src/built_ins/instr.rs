@@ -82,13 +82,7 @@ mod tests {
         assert_prints!(r#"PRINT INSTR("", "")"#, "0");
         assert_eq!(
             interpret_err(r#"PRINT INSTR(0, "oops", "zero")"#),
-            ErrorEnvelope::Stacktrace(
-                QError::IllegalFunctionCall,
-                vec![
-                    Location::new(1, 7),
-                    Location::new(1, 7) // TODO why is this double
-                ]
-            )
+            ErrorEnvelope::Pos(QError::IllegalFunctionCall, Location::new(1, 7))
         );
     }
 

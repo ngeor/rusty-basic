@@ -39,13 +39,7 @@ mod tests {
     fn test_kill_edge_cases() {
         assert_eq!(
             interpret_err(r#"KILL "KILL2.TXT""#),
-            ErrorEnvelope::Stacktrace(
-                QError::FileNotFound,
-                vec![
-                    Location::new(1, 1),
-                    Location::new(1, 1) // TODO why is this double
-                ]
-            )
+            ErrorEnvelope::Pos(QError::FileNotFound, Location::new(1, 1))
         );
     }
 

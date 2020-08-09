@@ -83,23 +83,11 @@ mod tests {
         assert_prints!(r#"PRINT MID$("hay", 1, 0)"#, "");
         assert_eq!(
             interpret_err(r#"PRINT MID$("hay", 0)"#),
-            ErrorEnvelope::Stacktrace(
-                QError::IllegalFunctionCall,
-                vec![
-                    Location::new(1, 7),
-                    Location::new(1, 7) // TODO why is this double
-                ]
-            )
+            ErrorEnvelope::Pos(QError::IllegalFunctionCall, Location::new(1, 7))
         );
         assert_eq!(
             interpret_err(r#"PRINT MID$("hay", 1, -1)"#),
-            ErrorEnvelope::Stacktrace(
-                QError::IllegalFunctionCall,
-                vec![
-                    Location::new(1, 7),
-                    Location::new(1, 7) // TODO why is this double
-                ]
-            )
+            ErrorEnvelope::Pos(QError::IllegalFunctionCall, Location::new(1, 7))
         );
     }
 

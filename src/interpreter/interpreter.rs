@@ -318,10 +318,12 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     .with_err_at(pos)?;
             }
             Instruction::BuiltInSub(n) => {
-                n.run(self).patch_err_pos(pos)?;
+                // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
+                n.run(self)?;
             }
             Instruction::BuiltInFunction(n) => {
-                n.run(self).patch_err_pos(pos)?;
+                // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
+                n.run(self)?;
             }
             Instruction::UnresolvedJump(_)
             | Instruction::UnresolvedJumpIfFalse(_)

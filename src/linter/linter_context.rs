@@ -284,7 +284,7 @@ impl Symbols {
         // first params
         // then constants
         // then variables
-        // then parent constants todo
+        // TODO then parent constants
 
         if self.constants.contains_any(name) {
             err_no_pos(QError::DuplicateDefinition)

@@ -2,7 +2,7 @@ use crate::built_ins;
 use crate::common::*;
 use crate::lexer::{BufLexer, Keyword, Lexeme};
 use crate::parser::assignment;
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim_parser;

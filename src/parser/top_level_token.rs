@@ -9,7 +9,7 @@
 
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 

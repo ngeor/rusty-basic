@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 
 use crate::parser::expression;
 use crate::parser::name;

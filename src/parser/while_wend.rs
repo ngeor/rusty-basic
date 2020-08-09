@@ -1,7 +1,7 @@
 use super::{ConditionalBlockNode, Statement};
 use crate::common::*;
 use crate::lexer::{BufLexer, Keyword};
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::statements::parse_statements;
 use std::io::BufRead;

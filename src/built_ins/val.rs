@@ -99,7 +99,7 @@ fn val(s: String) -> Result<Variant, QError> {
             if is_positive {
                 Ok(x)
             } else {
-                x.negate().map_err(|e| e.into())
+                x.negate()
             }
         }
     } else {
@@ -107,7 +107,7 @@ fn val(s: String) -> Result<Variant, QError> {
         if is_positive {
             Ok(x)
         } else {
-            x.negate().map_err(|e| e.into())
+            x.negate()
         }
     }
 }

@@ -20,7 +20,7 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
 use crate::linter::{Expression, ExpressionNode};
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::sub_call;
 use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
 use crate::variant::Variant;

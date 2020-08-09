@@ -12,7 +12,7 @@ use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::{BufLexer, Keyword, Lexeme, LexemeNode};
 use crate::linter::ExpressionNode;
-use crate::parser::buf_lexer::*;
+use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::{BareName, Expression, Statement, StatementNode};
 use std::io::BufRead;

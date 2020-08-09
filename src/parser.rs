@@ -1,5 +1,5 @@
 mod assignment;
-pub mod buf_lexer;
+pub mod buf_lexer_helpers;
 mod comment;
 mod constant;
 mod declaration;

@@ -38,7 +38,7 @@ fn to_top_level_opt(x: Option<StatementNode>) -> Option<TopLevelTokenNode> {
 }
 
 fn to_top_level(x: StatementNode) -> TopLevelTokenNode {
-    x.map(|s| TopLevelToken::Statement(s))
+    x.map(|s| s.into())
 }
 
 pub fn parse_top_level_tokens<T: BufRead>(

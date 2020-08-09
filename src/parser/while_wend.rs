@@ -1,25 +1,38 @@
-use super::{ConditionalBlockNode, Statement};
+use super::{ConditionalBlockNode, Statement, StatementNode};
 use crate::common::*;
 use crate::lexer::{BufLexer, Keyword};
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
-use crate::parser::statements::parse_statements;
+use crate::parser::statements::*;
 use std::io::BufRead;
 
-pub fn demand_while_block<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, QErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+    if !lexer.peek()?.as_ref().is_keyword(Keyword::While) {
+        return Ok(None);
+    }
+    let pos = lexer.read()?.pos();
     read_whitespace(lexer, "Expected whitespace after WHILE keyword")?;
     let condition = read(
         lexer,
         expression::try_read,
         "Expected expression after WHILE",
     )?;
-    let statements =
-        parse_statements(lexer, |x| x.is_keyword(Keyword::Wend), "While without Wend")?;
+    let statements = parse_statements_with_options(
+        lexer,
+        |x| x.is_keyword(Keyword::Wend),
+        ParseStatementsOptions {
+            first_statement_separated_by_whitespace: false,
+            err: QError::WhileWithoutWend,
+        },
+    )?;
     lexer.read()?; // read WEND
-    Ok(Statement::While(ConditionalBlockNode {
-        condition,
-        statements,
-    }))
+    Ok(Some(
+        Statement::While(ConditionalBlockNode {
+            condition,
+            statements,
+        })
+        .at(pos),
+    ))
 }
 
 #[cfg(test)]
@@ -106,5 +119,20 @@ mod tests {
                     .at_rc(4, 20)
             ]
         );
+    }
+
+    #[test]
+    fn test_wend_without_while() {
+        let input = "WEND";
+        assert_eq!(parse_err(input), QError::WendWithoutWhile);
+    }
+
+    #[test]
+    fn test_while_without_wend() {
+        let input = r#"
+        WHILE X > 0
+        PRINT X
+        "#;
+        assert_eq!(parse_err(input), QError::WhileWithoutWend);
     }
 }

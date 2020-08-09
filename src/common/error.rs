@@ -1,7 +1,5 @@
 use super::ErrorEnvelope;
 
-// TODO add tests for more user friendly errors e.g. "ELSE without IF"
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum QError {
     // 1
@@ -166,11 +164,17 @@ pub enum QError {
     // 76
     PathNotFound,
 
+    //
     // The following are not standard errors
+    //
     ArgumentTypeMismatch,
     InvalidConstant,
 
     ForLoopZeroStep,
+
+    UnterminatedIf,
+    UnterminatedElse,
+    ElseWithoutIf,
 
     // Lexer errors
     UnsupportedCharacter(char),

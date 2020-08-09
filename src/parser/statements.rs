@@ -6,9 +6,10 @@ use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ParseStatementsOptions {
     pub first_statement_separated_by_whitespace: bool,
+    pub err: QError,
 }
 
 pub fn parse_statements<T: BufRead, F, S: AsRef<str>>(
@@ -22,15 +23,16 @@ where
     parse_statements_with_options(
         lexer,
         exit_predicate,
-        err_msg,
-        ParseStatementsOptions::default(),
+        ParseStatementsOptions {
+            first_statement_separated_by_whitespace: false,
+            err: QError::SyntaxError(err_msg.as_ref().to_string()),
+        },
     )
 }
 
-pub fn parse_statements_with_options<T: BufRead, F, S: AsRef<str>>(
+pub fn parse_statements_with_options<T: BufRead, F>(
     lexer: &mut BufLexer<T>,
     exit_predicate: F,
-    err_msg: S,
     options: ParseStatementsOptions,
 ) -> Result<StatementNodes, QErrorNode>
 where
@@ -47,7 +49,7 @@ where
             // important that this check is done first, e.g. in case EOL or EOF is part of the exit predicate
             return Ok(statements);
         } else if p.is_eof() {
-            return Err(QError::SyntaxError(err_msg.as_ref().to_string())).with_err_at(pos);
+            return Err(options.err).with_err_at(pos);
         } else if p.is_whitespace() {
             lexer.read()?;
             if statements.is_empty() && options.first_statement_separated_by_whitespace {
@@ -75,8 +77,8 @@ where
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {
                 return Err(QError::SyntaxError(format!(
-                    "Expected statement: {}",
-                    err_msg.as_ref()
+                    "Statement without separator: {:?}",
+                    p
                 )))
                 .with_err_at(pos);
             }

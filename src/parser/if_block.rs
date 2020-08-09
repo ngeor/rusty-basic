@@ -51,14 +51,21 @@ fn read_if_block<T: BufRead>(
     is_multi_line: bool,
 ) -> Result<ConditionalBlockNode, QErrorNode> {
     let statements = if is_multi_line {
-        parse_statements(lexer, exit_predicate_if_multi_line, "Unterminated IF")?
+        parse_statements_with_options(
+            lexer,
+            exit_predicate_if_multi_line,
+            ParseStatementsOptions {
+                first_statement_separated_by_whitespace: false,
+                err: QError::UnterminatedIf,
+            },
+        )?
     } else {
         parse_statements_with_options(
             lexer,
             exit_predicate_if_single_line,
-            "Unterminated IF",
             ParseStatementsOptions {
                 first_statement_separated_by_whitespace: true,
+                err: QError::UnterminatedIf,
             },
         )?
     };
@@ -99,15 +106,22 @@ fn try_read_else_block<T: BufRead>(
     }
     lexer.read()?;
     if is_multi_line {
-        parse_statements(lexer, exit_predicate_else_multi_line, "Unterminated ELSE")
-            .map(|x| Some(x))
+        parse_statements_with_options(
+            lexer,
+            exit_predicate_else_multi_line,
+            ParseStatementsOptions {
+                first_statement_separated_by_whitespace: false,
+                err: QError::UnterminatedElse,
+            },
+        )
+        .map(|x| Some(x))
     } else {
         parse_statements_with_options(
             lexer,
             exit_predicate_else_single_line,
-            "Unterminated ELSE",
             ParseStatementsOptions {
                 first_statement_separated_by_whitespace: true,
+                err: QError::UnterminatedElse,
             },
         )
         .map(|x| Some(x))
@@ -450,5 +464,11 @@ end if"#;
                 TopLevelToken::Statement(Statement::Comment(" end if".to_string())).at_rc(8, 23)
             ]
         );
+    }
+
+    #[test]
+    fn test_else_without_if() {
+        let input = "ELSE";
+        assert_eq!(parse_err(input), QError::ElseWithoutIf);
     }
 }

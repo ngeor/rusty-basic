@@ -14,19 +14,20 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     }
 
     let pos = lexer.read()?.pos();
-    read_demand_whitespace(lexer, "Expected whitespace after FOR keyword")?;
-    let for_counter_variable = demand(lexer, name::try_read, "Expected FOR counter variable")?;
-    read_demand_symbol_skipping_whitespace(lexer, '=')?;
+    read_whitespace(lexer, "Expected whitespace after FOR keyword")?;
+    let for_counter_variable = read(lexer, name::try_read, "Expected FOR counter variable")?;
     skip_whitespace(lexer)?;
-    let lower_bound = demand(lexer, expression::try_read, "Expected lower bound")?;
-    read_demand_whitespace(lexer, "Expected whitespace before TO keyword")?;
-    read_demand_keyword(lexer, Keyword::To)?;
-    read_demand_whitespace(lexer, "Expected whitespace after TO keyword")?;
-    let upper_bound = demand(lexer, expression::try_read, "Expected upper bound")?;
+    read_symbol(lexer, '=')?;
+    skip_whitespace(lexer)?;
+    let lower_bound = read(lexer, expression::try_read, "Expected lower bound")?;
+    read_whitespace(lexer, "Expected whitespace before TO keyword")?;
+    read_keyword(lexer, Keyword::To)?;
+    read_whitespace(lexer, "Expected whitespace after TO keyword")?;
+    let upper_bound = read(lexer, expression::try_read, "Expected upper bound")?;
     let optional_step = try_parse_step(lexer)?;
 
     let statements = parse_statements(lexer, |x| x.is_keyword(Keyword::Next), "FOR without NEXT")?;
-    read_demand_keyword(lexer, Keyword::Next)?;
+    read_keyword(lexer, Keyword::Next)?;
 
     // we are past the "NEXT", maybe there is a variable name e.g. NEXT I
     let next_counter = try_parse_next_counter(lexer)?;
@@ -100,7 +101,7 @@ fn try_parse_step<T: BufRead>(
                     // bail out, we didn't find the STEP keyword but something else (maybe a comment?)
                     state = STATE_EOL;
                 } else if state == STATE_WHITESPACE_AFTER_STEP {
-                    expr = Some(demand(
+                    expr = Some(read(
                         lexer,
                         expression::try_read,
                         "Expected expression after STEP",
@@ -141,7 +142,7 @@ fn try_parse_next_counter<T: BufRead>(
             }
             Lexeme::Word(_) => {
                 if state == STATE_WHITESPACE_AFTER_NEXT {
-                    name = Some(demand(
+                    name = Some(read(
                         lexer,
                         name::try_read,
                         "Expected NEXT counter variable",

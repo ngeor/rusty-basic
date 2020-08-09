@@ -14,10 +14,10 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     }
     let pos = lexer.read()?.pos();
     // initial state: we just read the "SELECT" keyword
-    read_demand_whitespace(lexer, "Expected space after SELECT")?;
-    read_demand_keyword(lexer, Keyword::Case)?;
-    read_demand_whitespace(lexer, "Expected space after CASE")?;
-    let expr: ExpressionNode = demand(
+    read_whitespace(lexer, "Expected space after SELECT")?;
+    read_keyword(lexer, Keyword::Case)?;
+    read_whitespace(lexer, "Expected space after CASE")?;
+    let expr: ExpressionNode = read(
         lexer,
         expression::try_read,
         "Expected expression after SELECT CASE",
@@ -44,9 +44,9 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         }
     }
     let else_block = try_read_case_else(lexer)?;
-    read_demand_keyword(lexer, Keyword::End)?;
-    read_demand_whitespace(lexer, "Expected space after END")?;
-    read_demand_keyword(lexer, Keyword::Select)?;
+    read_keyword(lexer, Keyword::End)?;
+    read_whitespace(lexer, "Expected space after END")?;
+    read_keyword(lexer, Keyword::Select)?;
     Ok(Some(
         Statement::SelectCase(SelectCaseNode {
             inline_comments,
@@ -74,7 +74,7 @@ fn parse_inline_comments<T: BufRead>(
         } else if p.is_symbol('\'') {
             // read comment, regardless of whether we've seen the separator or not
             // TODO add unit test where comment reads EOF
-            let s = demand(lexer, comment::try_read, "Expected comment")?;
+            let s = read(lexer, comment::try_read, "Expected comment")?;
             statements.push(s);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else {
@@ -126,7 +126,7 @@ fn read_case_is<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockN
     skip_whitespace(lexer)?;
     let op = read_relational_operator(lexer)?;
     skip_whitespace(lexer)?;
-    let expr = demand(lexer, expression::try_read, "Expected expression after IS")?;
+    let expr = read(lexer, expression::try_read, "Expected expression after IS")?;
     let statements = parse_statements(
         lexer,
         |x| x.is_keyword(Keyword::Case) || x.is_keyword(Keyword::End),
@@ -170,7 +170,7 @@ fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Opera
 fn read_case_expr<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<CaseBlockNode>, QErrorNode> {
-    let first_expr = demand(
+    let first_expr = read(
         lexer,
         expression::try_read,
         "Expected expression after CASE",
@@ -182,7 +182,7 @@ fn read_case_expr<T: BufRead>(
         lexer.commit_transaction();
         skip_whitespace(lexer)?;
         second_expr =
-            demand(lexer, expression::try_read, "Expected expression after TO").map(|x| Some(x))?;
+            read(lexer, expression::try_read, "Expected expression after TO").map(|x| Some(x))?;
     } else {
         lexer.rollback_transaction();
     }

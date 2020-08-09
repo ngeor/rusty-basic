@@ -16,11 +16,11 @@ pub fn try_read<T: BufRead>(
     }
 
     // demand variable name
-    let var_name_node = demand(lexer, name::try_read, "Expected variable name")?;
+    let var_name_node = read(lexer, name::try_read, "Expected variable name")?;
     let is_long = in_transaction(lexer, |lexer| {
-        read_whitespace(lexer)?;
+        read_whitespace(lexer, "Expected whitespace between variable name and AS")?;
         read_keyword(lexer, Keyword::As)?;
-        read_whitespace(lexer)
+        read_whitespace(lexer, "Expected whitespace after AS")
     })?
     .is_some();
     if !is_long {

@@ -25,7 +25,7 @@ pub fn try_read<T: BufRead>(
     }
 
     let pos = lexer.read()?.pos(); // read DEF* keyword
-    read_demand_whitespace(lexer, "Expected whitespace after DEF* keyword")?;
+    read_whitespace(lexer, "Expected whitespace after DEF* keyword")?;
     let mut ranges: Vec<LetterRange> = vec![];
     const STATE_INITIAL: u8 = 0;
     const STATE_FIRST_LETTER: u8 = 1;

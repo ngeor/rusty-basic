@@ -26,24 +26,24 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     }
 
     lexer.read()?;
-    read_demand_whitespace(lexer, "Expected space after OPEN")?;
-    let file_name_expr = demand(lexer, expression::try_read, "Expected filename")?;
-    read_demand_whitespace(lexer, "Expected space after filename")?;
-    read_demand_keyword(lexer, Keyword::For)?;
-    read_demand_whitespace(lexer, "Expected space after FOR")?;
+    read_whitespace(lexer, "Expected space after OPEN")?;
+    let file_name_expr = read(lexer, expression::try_read, "Expected filename")?;
+    read_whitespace(lexer, "Expected space after filename")?;
+    read_keyword(lexer, Keyword::For)?;
+    read_whitespace(lexer, "Expected space after FOR")?;
     let mode: i32 = read_demand_file_mode(lexer)?.into();
-    read_demand_whitespace(lexer, "Expected space after file mode")?;
+    read_whitespace(lexer, "Expected space after file mode")?;
     let mut next: LexemeNode = lexer.read()?;
     let mut access: i32 = FileAccess::Unspecified.into();
     if next.as_ref().is_keyword(Keyword::Access) {
-        read_demand_whitespace(lexer, "Expected space after ACCESS")?;
+        read_whitespace(lexer, "Expected space after ACCESS")?;
         access = read_demand_file_access(lexer)?.into();
-        read_demand_whitespace(lexer, "Expected space after file access")?;
+        read_whitespace(lexer, "Expected space after file access")?;
         next = lexer.read()?;
     }
     if next.as_ref().is_keyword(Keyword::As) {
-        read_demand_whitespace(lexer, "Expected space after AS")?;
-        let file_handle = demand(lexer, expression::try_read, "Expected file handle")?;
+        read_whitespace(lexer, "Expected space after AS")?;
+        let file_handle = read(lexer, expression::try_read, "Expected file handle")?;
         let bare_name: BareName = "OPEN".into();
 
         Ok(Statement::SubCall(

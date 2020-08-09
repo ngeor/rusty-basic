@@ -61,7 +61,7 @@ where
         } else if p.is_symbol('\'') {
             // read comment, regardless of whether we've seen the separator or not
             // TODO add unit test where comment reads EOF
-            let s = demand(lexer, statement::try_read, "Expected comment")?;
+            let s = read(lexer, statement::try_read, "Expected comment")?;
             statements.push(s);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else if p.is_symbol(':') {
@@ -71,7 +71,7 @@ where
         } else {
             // must be a statement
             if read_separator {
-                let s = demand(lexer, statement::try_read, "Expected statement")?;
+                let s = read(lexer, statement::try_read, "Expected statement")?;
                 statements.push(s);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {

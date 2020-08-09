@@ -15,13 +15,13 @@ pub fn try_read<T: BufRead>(
     }
 
     let pos = lexer.read()?.pos();
-    read_demand_whitespace(lexer, "Expected whitespace after DECLARE keyword")?;
+    read_whitespace(lexer, "Expected whitespace after DECLARE keyword")?;
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Function, _) => {
-            read_demand_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
-            let function_name = demand(lexer, name::try_read, "Expected function name")?;
-            let parameters = demand(
+            read_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
+            let function_name = read(lexer, name::try_read, "Expected function name")?;
+            let parameters = read(
                 lexer,
                 try_read_declaration_parameters,
                 "Expected function declaration parameters",
@@ -31,9 +31,9 @@ pub fn try_read<T: BufRead>(
             ))
         }
         Lexeme::Keyword(Keyword::Sub, _) => {
-            read_demand_whitespace(lexer, "Expected whitespace after SUB keyword")?;
-            let sub_name = demand(lexer, name::try_read_bare, "Expected sub name")?;
-            let parameters = demand(
+            read_whitespace(lexer, "Expected whitespace after SUB keyword")?;
+            let sub_name = read(lexer, name::try_read_bare, "Expected sub name")?;
+            let parameters = read(
                 lexer,
                 try_read_declaration_parameters,
                 "Expected sub declaration parameters",
@@ -122,7 +122,7 @@ fn parse_next_parameter<T: BufRead>(
 fn parse_one_parameter<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<DeclaredNameNode, QErrorNode> {
-    demand(lexer, declared_name::try_read, "Expected parameter")
+    read(lexer, declared_name::try_read, "Expected parameter")
 }
 
 #[cfg(test)]

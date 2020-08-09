@@ -7,8 +7,8 @@ use crate::parser::statements::parse_statements;
 use std::io::BufRead;
 
 pub fn demand_while_block<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, QErrorNode> {
-    read_demand_whitespace(lexer, "Expected whitespace after WHILE keyword")?;
-    let condition = demand(
+    read_whitespace(lexer, "Expected whitespace after WHILE keyword")?;
+    let condition = read(
         lexer,
         expression::try_read,
         "Expected expression after WHILE",

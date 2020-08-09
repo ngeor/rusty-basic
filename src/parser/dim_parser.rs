@@ -16,9 +16,9 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     // demand DIM
     let pos = read_keyword(lexer, Keyword::Dim)?;
     // demand whitespace
-    read_whitespace(lexer)?;
+    read_whitespace(lexer, "Expected whitespace after DIM")?;
     // demand variable name
-    let declared_name_node = demand(lexer, declared_name::try_read, "Expected variable name")?;
+    let declared_name_node = read(lexer, declared_name::try_read, "Expected variable name")?;
     Ok(Some(Statement::Dim(declared_name_node).at(pos)))
 }
 

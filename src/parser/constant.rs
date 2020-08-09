@@ -11,12 +11,12 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         return Ok(None);
     }
     let pos = lexer.read()?.pos();
-    read_demand_whitespace(lexer, "Expected whitespace after CONST")?;
-    let name_node = demand(lexer, name::try_read, "Expected CONST name")?;
+    read_whitespace(lexer, "Expected whitespace after CONST")?;
+    let name_node = read(lexer, name::try_read, "Expected CONST name")?;
     skip_whitespace(lexer)?;
     read_symbol(lexer, '=')?;
     skip_whitespace(lexer)?;
-    let right_side = demand(lexer, expression::try_read, "Expected CONST expression")?;
+    let right_side = read(lexer, expression::try_read, "Expected CONST expression")?;
     Ok(Statement::Const(name_node, right_side).at(pos)).map(|x| Some(x))
 }
 

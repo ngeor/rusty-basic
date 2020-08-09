@@ -62,7 +62,7 @@ pub fn parse_top_level_tokens<T: BufRead>(
         } else if p.is_symbol('\'') {
             // read comment
             // TODO add unit test where comment reads EOF
-            let t = demand(lexer, try_read, "Expected comment")?;
+            let t = read(lexer, try_read, "Expected comment")?;
             tokens.push(t);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else if p.is_symbol(':') {
@@ -73,7 +73,7 @@ pub fn parse_top_level_tokens<T: BufRead>(
         } else {
             // must be a statement
             if read_separator {
-                let t = demand(lexer, try_read, "Expected top level token")?;
+                let t = read(lexer, try_read, "Expected top level token")?;
                 tokens.push(t);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {

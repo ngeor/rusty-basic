@@ -10,7 +10,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     let opt_name_node = in_transaction(lexer, do_read_left_side)?;
     match opt_name_node {
         Some(name_node) => {
-            let right_side = demand(lexer, expression::try_read, "Expected expression")?;
+            let right_side = read(lexer, expression::try_read, "Expected expression")?;
             Ok(Some(
                 name_node.map(|name| Statement::Assignment(name, right_side)),
             ))
@@ -20,7 +20,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 }
 
 fn do_read_left_side<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<NameNode, QErrorNode> {
-    let name_node = demand(lexer, name::try_read, "Expected name")?;
+    let name_node = read(lexer, name::try_read, "Expected name")?;
     skip_whitespace(lexer)?;
     read_symbol(lexer, '=')?;
     skip_whitespace(lexer)?;

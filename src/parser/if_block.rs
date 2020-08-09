@@ -13,10 +13,10 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     }
 
     let pos = lexer.read()?.pos();
-    read_demand_whitespace(lexer, "Expected whitespace after IF keyword")?;
-    let if_condition = demand(lexer, expression::try_read, "Expected expression after IF")?;
-    read_demand_whitespace(lexer, "Expected whitespace before THEN keyword")?;
-    read_demand_keyword(lexer, Keyword::Then)?;
+    read_whitespace(lexer, "Expected whitespace after IF keyword")?;
+    let if_condition = read(lexer, expression::try_read, "Expected expression after IF")?;
+    read_whitespace(lexer, "Expected whitespace before THEN keyword")?;
+    read_keyword(lexer, Keyword::Then)?;
     let is_multi_line = is_multi_line(lexer)?;
     let if_block = read_if_block(lexer, if_condition, is_multi_line)?;
     let mut else_if_blocks: Vec<ConditionalBlockNode> = vec![];
@@ -29,9 +29,9 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     }
     let else_block = try_read_else_block(lexer, is_multi_line)?;
     if is_multi_line {
-        read_demand_keyword(lexer, Keyword::End)?;
-        read_demand_whitespace(lexer, "Expected space after END")?;
-        read_demand_keyword(lexer, Keyword::If)?;
+        read_keyword(lexer, Keyword::End)?;
+        read_whitespace(lexer, "Expected space after END")?;
+        read_keyword(lexer, Keyword::If)?;
     }
 
     Ok(Some(
@@ -75,14 +75,14 @@ fn try_read_else_if_block<T: BufRead>(
         return Ok(None);
     }
     lexer.read()?;
-    read_demand_whitespace(lexer, "Expected whitespace after ELSEIF keyword")?;
-    let condition = demand(
+    read_whitespace(lexer, "Expected whitespace after ELSEIF keyword")?;
+    let condition = read(
         lexer,
         expression::try_read,
         "Expected expression out of ELISEIF",
     )?;
-    read_demand_whitespace(lexer, "Expected whitespace before THEN keyword")?;
-    read_demand_keyword(lexer, Keyword::Then)?;
+    read_whitespace(lexer, "Expected whitespace before THEN keyword")?;
+    read_keyword(lexer, Keyword::Then)?;
     let statements = parse_statements(lexer, exit_predicate_if_multi_line, "Unterminated IF")?;
     Ok(Some(ConditionalBlockNode {
         condition,

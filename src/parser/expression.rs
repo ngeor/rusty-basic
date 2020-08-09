@@ -28,7 +28,7 @@ fn try_single_expression<T: BufRead>(
         Lexeme::Symbol('.') => number_literal::read_dot_float(lexer).map(|x| Some(x)),
         Lexeme::Symbol('-') => {
             lexer.read()?;
-            let child = demand(lexer, try_read, "Expected expression after unary minus")?;
+            let child = read(lexer, try_read, "Expected expression after unary minus")?;
             Ok(Some(apply_unary_priority_order(
                 child,
                 UnaryOperand::Minus,
@@ -37,8 +37,8 @@ fn try_single_expression<T: BufRead>(
         }
         Lexeme::Keyword(Keyword::Not, _) => {
             lexer.read()?;
-            read_demand_whitespace(lexer, "Expected whitespace after NOT")?;
-            let child = demand(lexer, try_read, "Expected expression after NOT")?;
+            read_whitespace(lexer, "Expected whitespace after NOT")?;
+            let child = read(lexer, try_read, "Expected expression after NOT")?;
             Ok(Some(apply_unary_priority_order(
                 child,
                 UnaryOperand::Not,
@@ -48,7 +48,7 @@ fn try_single_expression<T: BufRead>(
         Lexeme::Symbol('(') => {
             lexer.read()?;
             skip_whitespace(lexer)?;
-            let inner = demand(lexer, try_read, "Expected expression inside parenthesis")?;
+            let inner = read(lexer, try_read, "Expected expression inside parenthesis")?;
             skip_whitespace(lexer)?;
             let closing = lexer.read()?;
             match closing.as_ref() {
@@ -80,7 +80,7 @@ fn try_parse_second_expression<T: BufRead>(
     match operand {
         Some((op, pos)) => {
             skip_whitespace(lexer)?;
-            let right_side = demand(lexer, try_read, "Expected right side expression")?;
+            let right_side = read(lexer, try_read, "Expected right side expression")?;
             Ok(apply_priority_order(left_side, right_side, op, pos))
         }
         None => Ok(left_side),
@@ -189,7 +189,7 @@ fn parse_expression_list_with_parentheses<T: BufRead>(
                     return Err(QError::SyntaxError("Expected comma or )".to_string()))
                         .with_err_at(&next);
                 }
-                args.push(demand(lexer, try_read, "Expected expression")?);
+                args.push(read(lexer, try_read, "Expected expression")?);
                 state = STATE_EXPRESSION;
             }
         }
@@ -329,7 +329,8 @@ fn try_parse_operand<T: BufRead>(
     // if we can't find an operand, we need to restore the whitespace as it was,
     // in case there is a next call that will be demanding for it
     lexer.begin_transaction();
-    let (opt_space, next) = read_preserve_whitespace(lexer)?;
+    let had_leading_space = skip_whitespace(lexer)?;
+    let next = lexer.read()?;
     let Locatable { element, pos } = next;
     match element {
         Lexeme::Symbol('<') => {
@@ -361,7 +362,7 @@ fn try_parse_operand<T: BufRead>(
             Ok(Some((Operand::Divide, pos)))
         }
         Lexeme::Keyword(Keyword::And, _) => {
-            if opt_space.is_some() || left_side.is_parenthesis() {
+            if had_leading_space || left_side.is_parenthesis() {
                 lexer.commit_transaction();
                 Ok(Some((Operand::And, pos)))
             } else {
@@ -370,7 +371,7 @@ fn try_parse_operand<T: BufRead>(
             }
         }
         Lexeme::Keyword(Keyword::Or, _) => {
-            if opt_space.is_some() || left_side.is_parenthesis() {
+            if had_leading_space || left_side.is_parenthesis() {
                 lexer.commit_transaction();
                 Ok(Some((Operand::Or, pos)))
             } else {

@@ -33,7 +33,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Input) {
         lexer.read()?;
-        read_demand_whitespace(lexer, "Expected space after INPUT")?;
+        read_whitespace(lexer, "Expected space after INPUT")?;
         let args = sub_call::read_arg_list(lexer)?;
         Ok(Some(Statement::SubCall("INPUT".into(), args).at(pos)))
     } else {

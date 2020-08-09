@@ -27,10 +27,10 @@ pub fn demand_function_implementation<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<TopLevelToken, QErrorNode> {
     // function name
-    read_demand_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
-    let name = demand(lexer, name::try_read, "Expected function name")?;
+    read_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
+    let name = read(lexer, name::try_read, "Expected function name")?;
     // function parameters
-    let params: DeclaredNameNodes = demand(
+    let params: DeclaredNameNodes = read(
         lexer,
         try_read_declaration_parameters,
         "Expected function parameters",
@@ -41,9 +41,9 @@ pub fn demand_function_implementation<T: BufRead>(
         |x| x.is_keyword(Keyword::End),
         "Function without End",
     )?;
-    read_demand_keyword(lexer, Keyword::End)?;
-    read_demand_whitespace(lexer, "Expected whitespace after END keyword")?;
-    read_demand_keyword(lexer, Keyword::Function)?;
+    read_keyword(lexer, Keyword::End)?;
+    read_whitespace(lexer, "Expected whitespace after END keyword")?;
+    read_keyword(lexer, Keyword::Function)?;
     Ok(TopLevelToken::FunctionImplementation(name, params, block))
 }
 
@@ -51,18 +51,18 @@ pub fn demand_sub_implementation<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<TopLevelToken, QErrorNode> {
     // sub name
-    read_demand_whitespace(lexer, "Expected whitespace after SUB keyword")?;
-    let name = demand(lexer, name::try_read_bare, "Expected sub name")?;
+    read_whitespace(lexer, "Expected whitespace after SUB keyword")?;
+    let name = read(lexer, name::try_read_bare, "Expected sub name")?;
     // sub parameters
-    let params: DeclaredNameNodes = demand(
+    let params: DeclaredNameNodes = read(
         lexer,
         try_read_declaration_parameters,
         "Expected sub parameters",
     )?;
     // body
     let block = parse_statements(lexer, |x| x.is_keyword(Keyword::End), "Sub without End")?;
-    read_demand_keyword(lexer, Keyword::End)?;
-    read_demand_whitespace(lexer, "Expected whitespace after END keyword")?;
-    read_demand_keyword(lexer, Keyword::Sub)?;
+    read_keyword(lexer, Keyword::End)?;
+    read_whitespace(lexer, "Expected whitespace after END keyword")?;
+    read_keyword(lexer, Keyword::Sub)?;
     Ok(TopLevelToken::SubImplementation(name, params, block))
 }

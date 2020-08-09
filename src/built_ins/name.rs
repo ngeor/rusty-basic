@@ -19,12 +19,12 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Name) {
         lexer.read()?;
-        read_demand_whitespace(lexer, "Expected space after NAME")?;
-        let old_file_name = demand(lexer, expression::try_read, "Expected original filename")?;
-        read_demand_whitespace(lexer, "Expected space after filename")?;
-        read_demand_keyword(lexer, Keyword::As)?;
-        read_demand_whitespace(lexer, "Expected space after AS")?;
-        let new_file_name = demand(lexer, expression::try_read, "Expected new filename")?;
+        read_whitespace(lexer, "Expected space after NAME")?;
+        let old_file_name = read(lexer, expression::try_read, "Expected original filename")?;
+        read_whitespace(lexer, "Expected space after filename")?;
+        read_keyword(lexer, Keyword::As)?;
+        read_whitespace(lexer, "Expected space after AS")?;
+        let new_file_name = read(lexer, expression::try_read, "Expected new filename")?;
         let bare_name: BareName = "NAME".into();
         Ok(Statement::SubCall(bare_name, vec![old_file_name, new_file_name]).at(pos))
             .map(|x| Some(x))

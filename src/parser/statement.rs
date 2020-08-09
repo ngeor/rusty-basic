@@ -40,7 +40,7 @@ fn do_read_label<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, Q
     let Locatable {
         element: bare_name,
         pos,
-    } = demand(lexer, name::try_read_bare, "Expected bare name")?;
+    } = read(lexer, name::try_read_bare, "Expected bare name")?;
     read_symbol(lexer, ':')?;
     Ok(Statement::Label(bare_name).at(pos))
 }
@@ -57,19 +57,19 @@ fn try_older<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode
 }
 
 fn demand_on<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, QErrorNode> {
-    read_demand_whitespace(lexer, "Expected space after ON")?;
-    read_demand_keyword(lexer, Keyword::Error)?;
-    read_demand_whitespace(lexer, "Expected space after ERROR")?;
-    read_demand_keyword(lexer, Keyword::GoTo)?;
-    read_demand_whitespace(lexer, "Expected space after GOTO")?;
-    let name_node = demand(lexer, name::try_read_bare, "Expected label name")?;
+    read_whitespace(lexer, "Expected space after ON")?;
+    read_keyword(lexer, Keyword::Error)?;
+    read_whitespace(lexer, "Expected space after ERROR")?;
+    read_keyword(lexer, Keyword::GoTo)?;
+    read_whitespace(lexer, "Expected space after GOTO")?;
+    let name_node = read(lexer, name::try_read_bare, "Expected label name")?;
     let Locatable { element: name, .. } = name_node;
     Ok(Statement::ErrorHandler(name))
 }
 
 fn demand_go_to<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, QErrorNode> {
-    read_demand_whitespace(lexer, "Expected space after GOTO")?;
-    let name_node = demand(lexer, name::try_read_bare, "Expected label name")?;
+    read_whitespace(lexer, "Expected space after GOTO")?;
+    let name_node = read(lexer, name::try_read_bare, "Expected label name")?;
     let Locatable { element: name, .. } = name_node;
     Ok(Statement::GoTo(name))
 }

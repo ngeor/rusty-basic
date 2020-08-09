@@ -4,13 +4,11 @@ use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
 use crate::parser::declared_name;
-use crate::parser::error::*;
+
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     // try to read DIM, if it succeeds demand it, else return None
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Dim) {
         return Ok(None);
@@ -27,7 +25,7 @@ pub fn try_read<T: BufRead>(
 #[cfg(test)]
 mod tests {
     use crate::common::*;
-    use crate::parser::error::*;
+
     use crate::parser::test_utils::*;
     use crate::parser::types::*;
 
@@ -79,7 +77,7 @@ mod tests {
         let input = "DIM X AS AS";
         assert_eq!(
             parse_err(input),
-            ParserError::SyntaxError(
+            QError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string()
             )
         );
@@ -90,7 +88,7 @@ mod tests {
         let input = "DIM A$ AS STRING";
         assert_eq!(
             parse_err(input),
-            ParserError::SyntaxError("Identifier cannot end with %, &, !, #, or $".to_string())
+            QError::SyntaxError("Identifier cannot end with %, &, !, #, or $".to_string())
         );
     }
 

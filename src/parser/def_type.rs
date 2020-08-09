@@ -1,13 +1,13 @@
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
-use crate::parser::error::*;
+
 use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, ParserErrorNode> {
+) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     let next = lexer.peek()?;
     let opt_qualifier = match next.as_ref() {
         Lexeme::Keyword(keyword, _) => match keyword {
@@ -45,7 +45,8 @@ pub fn try_read<T: BufRead>(
             Lexeme::Word(w) => {
                 lexer.read()?;
                 if w.len() != 1 {
-                    return unexpected("Expected single character", next);
+                    return Err(QError::SyntaxError("Expected single character".to_string()))
+                        .with_err_at(&next);
                 }
                 if state == STATE_INITIAL || state == STATE_COMMA {
                     first_letter = w.chars().next().unwrap();
@@ -53,11 +54,14 @@ pub fn try_read<T: BufRead>(
                 } else if state == STATE_DASH {
                     second_letter = w.chars().next().unwrap();
                     if first_letter > second_letter {
-                        return unexpected("Invalid letter range".to_string(), next);
+                        return Err(QError::SyntaxError(
+                            "Invalid letter range".to_string().to_string(),
+                        ))
+                        .with_err_at(&next);
                     }
                     state = STATE_SECOND_LETTER;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
             Lexeme::Symbol('-') => {
@@ -65,7 +69,7 @@ pub fn try_read<T: BufRead>(
                 if state == STATE_FIRST_LETTER {
                     state = STATE_DASH;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
             Lexeme::Symbol(',') => {
@@ -77,15 +81,21 @@ pub fn try_read<T: BufRead>(
                     ranges.push(LetterRange::Range(first_letter, second_letter));
                     state = STATE_COMMA;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
             _ => {
                 // bail out
                 if state == STATE_DASH {
-                    return unexpected("Expected letter after dash", next);
+                    return Err(QError::SyntaxError(
+                        "Expected letter after dash".to_string(),
+                    ))
+                    .with_err_at(&next);
                 } else if state == STATE_COMMA {
-                    return unexpected("Expected letter range after comma", next);
+                    return Err(QError::SyntaxError(
+                        "Expected letter range after comma".to_string(),
+                    ))
+                    .with_err_at(&next);
                 } else if state == STATE_FIRST_LETTER {
                     ranges.push(LetterRange::Single(first_letter));
                     state = STATE_EOL;
@@ -93,7 +103,10 @@ pub fn try_read<T: BufRead>(
                     ranges.push(LetterRange::Range(first_letter, second_letter));
                     state = STATE_EOL;
                 } else {
-                    return unexpected("Expected at least one letter range", next);
+                    return Err(QError::SyntaxError(
+                        "Expected at least one letter range".to_string(),
+                    ))
+                    .with_err_at(&next);
                 }
             }
         }
@@ -171,24 +184,15 @@ mod tests {
     fn test_parse_def_int_word_instead_of_letter() {
         assert_eq!(
             parse_err("DEFINT HELLO"),
-            ParserError::Unexpected(
-                "Expected single character".to_string(),
-                Lexeme::Word("HELLO".to_string())
-            )
+            QError::SyntaxError("Expected single character".to_string(),)
         );
         assert_eq!(
             parse_err("DEFINT HELLO,Z"),
-            ParserError::Unexpected(
-                "Expected single character".to_string(),
-                Lexeme::Word("HELLO".to_string())
-            )
+            QError::SyntaxError("Expected single character".to_string(),)
         );
         assert_eq!(
             parse_err("DEFINT A,HELLO"),
-            ParserError::Unexpected(
-                "Expected single character".to_string(),
-                Lexeme::Word("HELLO".to_string())
-            )
+            QError::SyntaxError("Expected single character".to_string(),)
         );
     }
 
@@ -196,10 +200,7 @@ mod tests {
     fn test_parse_def_int_reverse_range() {
         assert_eq!(
             parse_err("DEFINT Z-A"),
-            ParserError::Unexpected(
-                "Invalid letter range".to_string(),
-                Lexeme::Word("A".to_string())
-            )
+            QError::SyntaxError("Invalid letter range".to_string(),)
         );
     }
 

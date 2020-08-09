@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::error::*;
+
 use std::io::BufRead;
 
 /// Demands that the given function can parse the next lexeme(s).
@@ -9,15 +9,15 @@ pub fn demand<T: BufRead, TResult, F, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     mut op: F,
     msg: S,
-) -> Result<TResult, ParserErrorNode>
+) -> Result<TResult, QErrorNode>
 where
-    F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, ParserErrorNode>,
+    F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, QErrorNode>,
 {
     let p = lexer.peek()?;
     match op(lexer) {
         Ok(opt) => match opt {
             Some(x) => Ok(x),
-            None => unexpected(msg, p),
+            None => Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(&p),
         },
         Err(e) => Err(e),
     }
@@ -27,9 +27,9 @@ pub fn demand_skipping_whitespace<T: BufRead, TResult, F, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     op: F,
     msg: S,
-) -> Result<TResult, ParserErrorNode>
+) -> Result<TResult, QErrorNode>
 where
-    F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, ParserErrorNode>,
+    F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, QErrorNode>,
 {
     skip_whitespace(lexer)?;
     demand(lexer, op, msg)
@@ -38,9 +38,9 @@ where
 pub fn in_transaction<T: BufRead, F, TResult>(
     lexer: &mut BufLexer<T>,
     mut op: F,
-) -> Result<Option<TResult>, ParserErrorNode>
+) -> Result<Option<TResult>, QErrorNode>
 where
-    F: FnMut(&mut BufLexer<T>) -> Result<TResult, ParserErrorNode>,
+    F: FnMut(&mut BufLexer<T>) -> Result<TResult, QErrorNode>,
 {
     lexer.begin_transaction();
     match op(lexer) {
@@ -51,14 +51,14 @@ where
         Err(err) => {
             lexer.rollback_transaction();
             match err.as_ref() {
-                ParserError::Unexpected(_, _) => Ok(None),
+                QError::SyntaxError(_) => Ok(None),
                 _ => Err(err),
             }
         }
     }
 }
 
-pub fn skip_if<T: BufRead, F>(lexer: &mut BufLexer<T>, f: F) -> Result<bool, LexerErrorNode>
+pub fn skip_if<T: BufRead, F>(lexer: &mut BufLexer<T>, f: F) -> Result<bool, QErrorNode>
 where
     F: Fn(&Lexeme) -> bool,
 {
@@ -74,39 +74,36 @@ where
 pub fn read_keyword<T: BufRead>(
     lexer: &mut BufLexer<T>,
     keyword: Keyword,
-) -> Result<Location, ParserErrorNode> {
+) -> Result<Location, QErrorNode> {
     let Locatable { element: x, pos } = lexer.read()?;
     if x.is_keyword(keyword) {
         Ok(pos)
     } else {
-        unexpected(format!("Expected keyword {}", keyword), x.at(pos))
+        Err(QError::SyntaxError(format!("Expected keyword {}", keyword))).with_err_at(pos)
     }
 }
 
-pub fn read_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<(), ParserErrorNode> {
+pub fn read_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<(), QErrorNode> {
     let x = lexer.read()?;
     if x.as_ref().is_whitespace() {
         Ok(())
     } else {
-        unexpected(format!("Expected whitespace"), x)
+        Err(QError::SyntaxError(format!("Expected whitespace"))).with_err_at(&x)
     }
 }
 
-pub fn read_symbol<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-    symbol: char,
-) -> Result<(), ParserErrorNode> {
+pub fn read_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<(), QErrorNode> {
     let x = lexer.read()?;
     if x.as_ref().is_symbol(symbol) {
         Ok(())
     } else {
-        unexpected(format!("Expected symbol {}", symbol), x)
+        Err(QError::SyntaxError(format!("Expected symbol {}", symbol))).with_err_at(&x)
     }
 }
 
 // whitespace
 
-pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<(), ParserErrorNode> {
+pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<(), QErrorNode> {
     while lexer.peek()?.as_ref().is_whitespace() {
         lexer.read()?;
     }
@@ -116,17 +113,17 @@ pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<(), Parser
 pub fn read_demand_whitespace<T: BufRead, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     msg: S,
-) -> Result<(), ParserErrorNode> {
+) -> Result<(), QErrorNode> {
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Whitespace(_) => Ok(()),
-        _ => unexpected(msg, next),
+        _ => Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(&next),
     }
 }
 
 pub fn read_preserve_whitespace<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<(Option<LexemeNode>, LexemeNode), ParserErrorNode> {
+) -> Result<(Option<LexemeNode>, LexemeNode), QErrorNode> {
     let first = lexer.read()?;
     if first.as_ref().is_whitespace() {
         Ok((Some(first), lexer.read()?))
@@ -140,13 +137,13 @@ pub fn read_preserve_whitespace<T: BufRead>(
 pub fn read_demand_symbol_skipping_whitespace<T: BufRead>(
     lexer: &mut BufLexer<T>,
     ch: char,
-) -> Result<(), ParserErrorNode> {
+) -> Result<(), QErrorNode> {
     skip_whitespace(lexer)?;
     let next = lexer.read()?;
     if next.as_ref().is_symbol(ch) {
         Ok(())
     } else {
-        unexpected(format!("Expected {}", ch), next)
+        Err(QError::SyntaxError(format!("Expected symbol {}", ch))).with_err_at(&next)
     }
 }
 
@@ -155,11 +152,11 @@ pub fn read_demand_symbol_skipping_whitespace<T: BufRead>(
 pub fn read_demand_keyword<T: BufRead>(
     lexer: &mut BufLexer<T>,
     keyword: Keyword,
-) -> Result<(), ParserErrorNode> {
+) -> Result<(), QErrorNode> {
     let next = lexer.read()?;
     if next.as_ref().is_keyword(keyword) {
         Ok(())
     } else {
-        unexpected(format!("Expected keyword {}", keyword), next)
+        Err(QError::SyntaxError(format!("Expected keyword {}", keyword))).with_err_at(&next)
     }
 }

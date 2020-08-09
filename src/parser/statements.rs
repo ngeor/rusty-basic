@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
-use crate::parser::error::*;
+
 use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -15,7 +15,7 @@ pub fn parse_statements<T: BufRead, F, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     exit_predicate: F,
     err_msg: S,
-) -> Result<StatementNodes, ParserErrorNode>
+) -> Result<StatementNodes, QErrorNode>
 where
     F: Fn(&Lexeme) -> bool,
 {
@@ -32,7 +32,7 @@ pub fn parse_statements_with_options<T: BufRead, F, S: AsRef<str>>(
     exit_predicate: F,
     err_msg: S,
     options: ParseStatementsOptions,
-) -> Result<StatementNodes, ParserErrorNode>
+) -> Result<StatementNodes, QErrorNode>
 where
     F: Fn(&Lexeme) -> bool,
 {
@@ -47,7 +47,7 @@ where
             // important that this check is done first, e.g. in case EOL or EOF is part of the exit predicate
             return Ok(statements);
         } else if p.is_eof() {
-            return Err(ParserError::unexpected(err_msg, p)).with_err_at(pos);
+            return Err(QError::SyntaxError(err_msg.as_ref().to_string())).with_err_at(pos);
         } else if p.is_whitespace() {
             lexer.read()?;
             if statements.is_empty() && options.first_statement_separated_by_whitespace {
@@ -75,7 +75,7 @@ where
                 statements.push(s);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {
-                return Err(ParserError::Unterminated(p)).with_err_at(pos);
+                return Err(QError::Unterminated).with_err_at(pos);
             }
         }
     }

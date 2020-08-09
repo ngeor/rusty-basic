@@ -1,4 +1,3 @@
-use super::error::*;
 use super::{LexemeNode, Lexer};
 use crate::common::*;
 use std::convert::From;
@@ -26,12 +25,12 @@ impl<T: BufRead> BufLexer<T> {
         }
     }
 
-    pub fn peek(&mut self) -> Result<LexemeNode, LexerErrorNode> {
+    pub fn peek(&mut self) -> Result<LexemeNode, QErrorNode> {
         self.fill_buffer_if_empty()?;
         Ok(self.history[self.index].clone())
     }
 
-    pub fn read(&mut self) -> Result<LexemeNode, LexerErrorNode> {
+    pub fn read(&mut self) -> Result<LexemeNode, QErrorNode> {
         let result = self.peek()?;
         self.index += 1;
         self.clear_history();
@@ -59,7 +58,7 @@ impl<T: BufRead> BufLexer<T> {
         }
     }
 
-    fn fill_buffer_if_empty(&mut self) -> Result<(), LexerErrorNode> {
+    fn fill_buffer_if_empty(&mut self) -> Result<(), QErrorNode> {
         if self.index >= self.history.len() {
             let lexeme = self.lexer.read()?;
             self.history.push(lexeme);

@@ -2,15 +2,13 @@ use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
 use crate::parser::comment;
-use crate::parser::error::*;
+
 use crate::parser::expression;
 use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Select) {
         return Ok(None);
     }
@@ -64,7 +62,7 @@ pub fn try_read<T: BufRead>(
 /// between SELECT CASE X ... until the first CASE expression
 fn parse_inline_comments<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<StatementNodes, ParserErrorNode> {
+) -> Result<StatementNodes, QErrorNode> {
     let mut statements: StatementNodes = vec![];
 
     loop {
@@ -72,7 +70,7 @@ fn parse_inline_comments<T: BufRead>(
         if p.is_keyword(Keyword::Case) {
             return Ok(statements);
         } else if p.is_eof() {
-            return Err(ParserError::unexpected("Expected CASE", p)).with_err_at(pos);
+            return Err(QError::SyntaxError("Expected CASE".to_string())).with_err_at(pos);
         } else if p.is_whitespace() || p.is_eol() {
             lexer.read()?;
         } else if p.is_symbol('\'') {
@@ -82,12 +80,12 @@ fn parse_inline_comments<T: BufRead>(
             statements.push(s);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else {
-            return Err(ParserError::Unterminated(p)).with_err_at(pos);
+            return Err(QError::Unterminated).with_err_at(pos);
         }
     }
 }
 
-fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserErrorNode> {
+fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_case_else = false;
     lexer.begin_transaction();
     if lexer.peek()?.as_ref().is_keyword(Keyword::Case) {
@@ -101,19 +99,15 @@ fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserErr
             found_case_else = lexer.peek()?.as_ref().is_keyword(Keyword::Else);
         } else {
             // CASE should always be followed by a space so it's okay to throw an error here
-            return Err(ParserError::SyntaxError(
-                "Expected space after CASE".to_string(),
-            ))
-            .with_err_at(pos);
+            return Err(QError::SyntaxError("Expected space after CASE".to_string()))
+                .with_err_at(pos);
         }
     }
     lexer.rollback_transaction();
     Ok(found_case_else)
 }
 
-fn try_read_case<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<CaseBlockNode>, ParserErrorNode> {
+fn try_read_case<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Case) {
         return Ok(None);
     }
@@ -129,9 +123,7 @@ fn try_read_case<T: BufRead>(
     }
 }
 
-fn read_case_is<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<CaseBlockNode>, ParserErrorNode> {
+fn read_case_is<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, QErrorNode> {
     lexer.read()?; // IS
     skip_whitespace(lexer)?;
     let op = read_relational_operator(lexer)?;
@@ -148,9 +140,7 @@ fn read_case_is<T: BufRead>(
     }))
 }
 
-fn read_relational_operator<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Operand, ParserErrorNode> {
+fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, QErrorNode> {
     let next = lexer.read()?;
     if next.as_ref().is_symbol('=') {
         Ok(Operand::Equal)
@@ -172,7 +162,7 @@ fn read_relational_operator<T: BufRead>(
             Ok(Operand::Less)
         }
     } else {
-        Err(ParserError::SyntaxError(
+        Err(QError::SyntaxError(
             "Expected relational operator".to_string(),
         ))
         .with_err_at(&next)
@@ -181,7 +171,7 @@ fn read_relational_operator<T: BufRead>(
 
 fn read_case_expr<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<CaseBlockNode>, ParserErrorNode> {
+) -> Result<Option<CaseBlockNode>, QErrorNode> {
     let first_expr = demand(
         lexer,
         expression::try_read,
@@ -215,7 +205,7 @@ fn read_case_expr<T: BufRead>(
 
 fn try_read_case_else<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNodes>, ParserErrorNode> {
+) -> Result<Option<StatementNodes>, QErrorNode> {
     if !peek_case_else(lexer)? {
         return Ok(None);
     }

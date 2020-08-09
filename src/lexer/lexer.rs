@@ -1,4 +1,3 @@
-use super::error::*;
 use super::{Keyword, Lexeme, LexemeNode};
 use crate::common::*;
 use crate::reader::*;
@@ -48,7 +47,7 @@ impl<T: BufRead> Lexer<T> {
         }
     }
 
-    pub fn read(&mut self) -> Result<LexemeNode, LexerErrorNode> {
+    pub fn read(&mut self) -> Result<LexemeNode, QErrorNode> {
         let peeked = self.peek_one()?;
         match peeked {
             None => {
@@ -59,7 +58,7 @@ impl<T: BufRead> Lexer<T> {
         }
     }
 
-    fn read_char(&mut self, peeked: char) -> Result<LexemeNode, LexerErrorNode> {
+    fn read_char(&mut self, peeked: char) -> Result<LexemeNode, QErrorNode> {
         let pos = self.pos;
         if is_letter(peeked) {
             let buf = self.read_while(is_alphanumeric)?;
@@ -81,25 +80,25 @@ impl<T: BufRead> Lexer<T> {
             self.read_one()?;
             Ok(Lexeme::Symbol(peeked).at(pos))
         } else {
-            Err(LexerError::UnsupportedCharacter(peeked)).with_err_at(pos)
+            Err(QError::UnsupportedCharacter(peeked)).with_err_at(pos)
         }
     }
 
-    fn peek_one(&mut self) -> Result<Option<char>, LexerErrorNode> {
+    fn peek_one(&mut self) -> Result<Option<char>, QErrorNode> {
         self.reader
             .peek()
             .map_err(|e| e.into())
             .with_err_at(self.pos)
     }
 
-    fn read_one(&mut self) -> Result<Option<char>, LexerErrorNode> {
+    fn read_one(&mut self) -> Result<Option<char>, QErrorNode> {
         self.reader
             .read()
             .map_err(|e| e.into())
             .with_err_at(self.pos)
     }
 
-    fn read_while(&mut self, predicate: fn(char) -> bool) -> Result<String, LexerErrorNode> {
+    fn read_while(&mut self, predicate: fn(char) -> bool) -> Result<String, QErrorNode> {
         let mut result: String = String::new();
         let mut next = self.consume_if(predicate)?;
         while next.is_some() {
@@ -110,7 +109,7 @@ impl<T: BufRead> Lexer<T> {
         Ok(result)
     }
 
-    fn consume_if(&mut self, predicate: fn(char) -> bool) -> Result<Option<char>, LexerErrorNode> {
+    fn consume_if(&mut self, predicate: fn(char) -> bool) -> Result<Option<char>, QErrorNode> {
         match self.peek_one()? {
             Some(ch) => {
                 if predicate(ch) {
@@ -125,7 +124,7 @@ impl<T: BufRead> Lexer<T> {
         }
     }
 
-    fn read_while_eol(&mut self) -> Result<String, LexerErrorNode> {
+    fn read_while_eol(&mut self) -> Result<String, QErrorNode> {
         let mut result: String = String::new();
         let mut previous_was_cr = false;
         loop {
@@ -259,7 +258,7 @@ mod tests {
         assert_eq!(lexer.read().unwrap(), Lexeme::EOF.at_rc(1, 3));
         assert_eq!(
             lexer.read(),
-            Err(LexerError::Internal("unexpected end of file".to_string())).with_err_at_rc(1, 3)
+            Err(QError::InputPastEndOfFile).with_err_at_rc(1, 3)
         );
     }
 

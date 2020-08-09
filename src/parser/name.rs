@@ -1,10 +1,10 @@
-use super::{BareName, BareNameNode, Name, NameNode, ParserErrorNode};
+use super::{BareName, BareNameNode, Name, NameNode};
 use crate::common::*;
 use crate::lexer::{BufLexer, Lexeme};
 use crate::parser::type_qualifier;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, QErrorNode> {
     let Locatable { element, pos } = lexer.peek()?;
     match element {
         Lexeme::Word(word) => {
@@ -18,7 +18,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>,
 
 pub fn try_read_bare<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<BareNameNode>, ParserErrorNode> {
+) -> Result<Option<BareNameNode>, QErrorNode> {
     lexer.begin_transaction();
     let Locatable { element, pos } = lexer.peek()?;
     match element {

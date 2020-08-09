@@ -22,7 +22,7 @@ use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::BufLexer;
 use crate::linter::ExpressionNode;
-use crate::parser::{HasQualifier, Name, ParserErrorNode, TypeQualifier};
+use crate::parser::{HasQualifier, Name, TypeQualifier};
 use std::convert::TryFrom;
 use std::io::BufRead;
 
@@ -274,7 +274,7 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
 /// Parses built-in subs which have a special syntax.
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<crate::parser::StatementNode>, ParserErrorNode> {
+) -> Result<Option<crate::parser::StatementNode>, QErrorNode> {
     input::try_read(lexer)
         .or_try_read(|| line_input::try_read(lexer))
         .or_try_read(|| name::try_read(lexer))

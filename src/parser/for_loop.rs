@@ -1,16 +1,14 @@
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
-use crate::parser::error::*;
+
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::For) {
         return Ok(None);
     }
@@ -48,7 +46,7 @@ pub fn try_read<T: BufRead>(
 
 fn try_parse_step<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<ExpressionNode>, ParserErrorNode> {
+) -> Result<Option<ExpressionNode>, QErrorNode> {
     const STATE_UPPER_BOUND: u8 = 0;
     const STATE_WHITESPACE_BEFORE_STEP: u8 = 1;
     const STATE_STEP: u8 = 2;
@@ -73,13 +71,19 @@ fn try_parse_step<T: BufRead>(
                 } else if state == STATE_STEP_EXPR {
                     state = STATE_WHITESPACE_BEFORE_EOL;
                 } else {
-                    return unexpected("Unexpected whitespace", next);
+                    return Err(QError::SyntaxError("Unexpected whitespace".to_string()))
+                        .with_err_at(&next);
                 }
             }
-            Lexeme::EOF => return unexpected("FOR without NEXT", next),
+            Lexeme::EOF => {
+                return Err(QError::SyntaxError("FOR without NEXT".to_string())).with_err_at(&next)
+            }
             Lexeme::EOL(_) => {
                 if state == STATE_STEP || state == STATE_WHITESPACE_AFTER_STEP {
-                    return unexpected("Expected expression after STEP", next);
+                    return Err(QError::SyntaxError(
+                        "Expected expression after STEP".to_string(),
+                    ))
+                    .with_err_at(&next);
                 }
                 state = STATE_EOL;
             }
@@ -88,7 +92,7 @@ fn try_parse_step<T: BufRead>(
                 if state == STATE_WHITESPACE_BEFORE_STEP {
                     state = STATE_STEP;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
             _ => {
@@ -103,7 +107,7 @@ fn try_parse_step<T: BufRead>(
                     )?);
                     state = STATE_STEP_EXPR;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
         }
@@ -114,7 +118,7 @@ fn try_parse_step<T: BufRead>(
 
 fn try_parse_next_counter<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<NameNode>, ParserErrorNode> {
+) -> Result<Option<NameNode>, QErrorNode> {
     const STATE_NEXT: u8 = 0;
     const STATE_WHITESPACE_AFTER_NEXT: u8 = 1;
     const STATE_EOL_OR_EOF: u8 = 2;
@@ -144,7 +148,7 @@ fn try_parse_next_counter<T: BufRead>(
                     )?);
                     state = STATE_EOL_OR_EOF;
                 } else {
-                    return unexpected("Syntax error", next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
             }
             _ => {

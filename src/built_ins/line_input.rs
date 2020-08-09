@@ -11,18 +11,14 @@ use crate::lexer::{BufLexer, Keyword};
 use crate::linter::ExpressionNode;
 use crate::parser::buf_lexer::*;
 use crate::parser::sub_call;
-use crate::parser::{
-    HasQualifier, ParserErrorNode, QualifiedName, Statement, StatementNode, TypeQualifier,
-};
+use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
 use crate::variant::Variant;
 use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct LineInput {}
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Line) {
         lexer.read()?;

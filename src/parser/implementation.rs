@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
 use crate::parser::declaration::try_read_declaration_parameters;
-use crate::parser::error::*;
+
 use crate::parser::name;
 use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
@@ -10,7 +10,7 @@ use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, ParserErrorNode> {
+) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     let p = lexer.peek()?;
     if p.as_ref().is_keyword(Keyword::Function) {
         let pos = lexer.read()?.pos();
@@ -25,7 +25,7 @@ pub fn try_read<T: BufRead>(
 
 pub fn demand_function_implementation<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<TopLevelToken, ParserErrorNode> {
+) -> Result<TopLevelToken, QErrorNode> {
     // function name
     read_demand_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
     let name = demand(lexer, name::try_read, "Expected function name")?;
@@ -49,7 +49,7 @@ pub fn demand_function_implementation<T: BufRead>(
 
 pub fn demand_sub_implementation<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<TopLevelToken, ParserErrorNode> {
+) -> Result<TopLevelToken, QErrorNode> {
     // sub name
     read_demand_whitespace(lexer, "Expected whitespace after SUB keyword")?;
     let name = demand(lexer, name::try_read_bare, "Expected sub name")?;

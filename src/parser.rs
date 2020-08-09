@@ -6,7 +6,6 @@ mod declaration;
 mod declared_name;
 mod def_type;
 mod dim_parser;
-mod error;
 pub mod expression;
 mod for_loop;
 mod if_block;
@@ -24,6 +23,5 @@ mod type_qualifier;
 mod types;
 mod while_wend;
 
-pub use self::error::*;
 pub use self::parser::*;
 pub use self::types::*;

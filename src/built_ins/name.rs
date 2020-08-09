@@ -9,15 +9,13 @@ use crate::lexer::{BufLexer, Keyword};
 use crate::linter::ExpressionNode;
 use crate::parser::buf_lexer::*;
 use crate::parser::expression;
-use crate::parser::{BareName, ParserErrorNode, Statement, StatementNode, TypeQualifier};
+use crate::parser::{BareName, Statement, StatementNode, TypeQualifier};
 use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Name {}
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     if next.is_keyword(Keyword::Name) {
         lexer.read()?;

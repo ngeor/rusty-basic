@@ -14,14 +14,12 @@ use crate::lexer::{BufLexer, Keyword, Lexeme, LexemeNode};
 use crate::linter::ExpressionNode;
 use crate::parser::buf_lexer::*;
 use crate::parser::expression;
-use crate::parser::{unexpected, BareName, Expression, ParserErrorNode, Statement, StatementNode};
+use crate::parser::{BareName, Expression, Statement, StatementNode};
 use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     if !next.is_keyword(Keyword::Open) {
         return Ok(None);
@@ -60,27 +58,31 @@ pub fn try_read<T: BufRead>(
         .at(pos))
         .map(|x| Some(x))
     } else {
-        unexpected("Expected AS", next)
+        Err(QError::SyntaxError("Expected AS".to_string())).with_err_at(&next)
     }
 }
 
-fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode, ParserErrorNode> {
+fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode, QErrorNode> {
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Input, _) => Ok(FileMode::Input),
         Lexeme::Keyword(Keyword::Output, _) => Ok(FileMode::Output),
         Lexeme::Keyword(Keyword::Append, _) => Ok(FileMode::Append),
-        _ => unexpected("Expected INPUT|OUTPUT|APPEND after FOR", next),
+        _ => Err(QError::SyntaxError(
+            "Expected INPUT|OUTPUT|APPEND after FOR".to_string(),
+        ))
+        .with_err_at(&next),
     }
 }
 
-fn read_demand_file_access<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<FileAccess, ParserErrorNode> {
+fn read_demand_file_access<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileAccess, QErrorNode> {
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Read, _) => Ok(FileAccess::Read),
-        _ => unexpected("Expected READ after ACCESS", next),
+        _ => Err(QError::SyntaxError(
+            "Expected READ after ACCESS".to_string(),
+        ))
+        .with_err_at(&next),
     }
 }
 

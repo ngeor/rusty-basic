@@ -1,4 +1,4 @@
-use super::{ParserErrorNode, Statement, StatementNode};
+use super::{Statement, StatementNode};
 use crate::common::*;
 use crate::lexer::BufLexer;
 use crate::parser::buf_lexer::*;
@@ -6,13 +6,11 @@ use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     in_transaction(lexer, do_read)
 }
 
-fn do_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, ParserErrorNode> {
+fn do_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, QErrorNode> {
     let Locatable { element: name, pos } = demand(lexer, name::try_read, "Expected name")?;
     skip_whitespace(lexer)?;
     read_symbol(lexer, '=')?;
@@ -25,8 +23,7 @@ fn do_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, ParserE
 mod tests {
     use super::super::test_utils::*;
     use super::*;
-    use crate::lexer::Lexeme;
-    use crate::parser::{Expression, Name, ParserError, TopLevelToken};
+    use crate::parser::{Expression, Name, TopLevelToken};
 
     macro_rules! assert_top_level_assignment {
         ($input:expr, $name:expr, $value:expr) => {
@@ -49,7 +46,7 @@ mod tests {
     fn test_numeric_assignment_to_keyword_not_allowed() {
         assert_eq!(
             parse_err("FOR = 42"),
-            ParserError::unexpected("Expected FOR counter variable", Lexeme::Symbol('='))
+            QError::SyntaxError("Expected FOR counter variable".to_string())
         );
     }
 

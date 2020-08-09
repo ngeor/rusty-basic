@@ -1,22 +1,22 @@
+use crate::common::*;
 use crate::lexer::BufLexer;
-use crate::parser::error::*;
 use crate::parser::top_level_token;
 use crate::parser::types::*;
 use std::fs::File;
 use std::io::BufRead;
 
-pub fn parse_main_file(f: File) -> Result<ProgramNode, ParserErrorNode> {
+pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
     let mut lexer = BufLexer::from(f);
     parse_main(&mut lexer)
 }
 
 #[cfg(test)]
-pub fn parse_main_str<T: AsRef<[u8]>>(s: T) -> Result<ProgramNode, ParserErrorNode> {
+pub fn parse_main_str<T: AsRef<[u8]>>(s: T) -> Result<ProgramNode, QErrorNode> {
     let mut lexer = BufLexer::from(s);
     parse_main(&mut lexer)
 }
 
-pub fn parse_main<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ProgramNode, ParserErrorNode> {
+pub fn parse_main<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ProgramNode, QErrorNode> {
     top_level_token::parse_top_level_tokens(lexer)
 }
 

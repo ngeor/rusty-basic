@@ -3,14 +3,14 @@
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
-use crate::parser::error::*;
+
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<DeclaredNameNode>, ParserErrorNode> {
+) -> Result<Option<DeclaredNameNode>, QErrorNode> {
     if !lexer.peek()?.as_ref().is_word() {
         return Ok(None);
     }
@@ -30,7 +30,7 @@ pub fn try_read<T: BufRead>(
     let bare_name = match var_name_node.as_ref() {
         Name::Bare(b) => b.clone(),
         _ => {
-            return Err(ParserError::SyntaxError(
+            return Err(QError::SyntaxError(
                 "Identifier cannot end with %, &, !, #, or $".to_string(),
             ))
             .with_err_at(&var_name_node);
@@ -56,7 +56,7 @@ pub fn try_read<T: BufRead>(
         }
         Lexeme::Word(w) => TypeDefinition::UserDefined(w.into()),
         _ => {
-            return Err(ParserError::SyntaxError(
+            return Err(QError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
             ))
             .with_err_at(pos)

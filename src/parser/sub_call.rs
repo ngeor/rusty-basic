@@ -1,15 +1,13 @@
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
-use crate::parser::error::*;
+
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, ParserErrorNode> {
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     lexer.begin_transaction();
     // get the name first and ensure we are not looking at an assignment or a label
     let opt_name = name::try_read_bare(lexer)?;
@@ -63,7 +61,7 @@ pub fn try_read<T: BufRead>(
 
 pub fn read_arg_list<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Vec<ExpressionNode>, ParserErrorNode> {
+) -> Result<Vec<ExpressionNode>, QErrorNode> {
     match expression::try_read(lexer)? {
         Some(e) => {
             let mut args: Vec<ExpressionNode> = vec![e];

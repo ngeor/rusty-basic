@@ -11,7 +11,6 @@ pub struct BufLexer<T: BufRead> {
     history: Vec<LexemeNode>,
     index: usize,
     transactions: Vec<usize>,
-    last_read: Option<LexemeNode>,
 }
 
 impl<T: BufRead> BufLexer<T> {
@@ -21,7 +20,6 @@ impl<T: BufRead> BufLexer<T> {
             history: vec![],
             index: 0,
             transactions: vec![],
-            last_read: None,
         }
     }
 
@@ -34,7 +32,6 @@ impl<T: BufRead> BufLexer<T> {
         let result = self.peek()?;
         self.index += 1;
         self.clear_history();
-        self.last_read = Some(result.clone()); // TODO 1 test 2 transactions
         Ok(result)
     }
 

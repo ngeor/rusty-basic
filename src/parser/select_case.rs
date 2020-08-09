@@ -73,7 +73,6 @@ fn parse_inline_comments<T: BufRead>(
             lexer.read()?;
         } else if p.is_symbol('\'') {
             // read comment, regardless of whether we've seen the separator or not
-            // TODO add unit test where comment reads EOF
             let s = read(lexer, comment::try_read, "Expected comment")?;
             statements.push(s);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator

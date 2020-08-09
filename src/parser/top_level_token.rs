@@ -61,12 +61,10 @@ pub fn parse_top_level_tokens<T: BufRead>(
             read_separator = true;
         } else if p.is_symbol('\'') {
             // read comment
-            // TODO add unit test where comment reads EOF
             let t = read(lexer, try_read, "Expected comment")?;
             tokens.push(t);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else if p.is_symbol(':') {
-            // TODO is this allowed at the start of a line?
             // single-line statement separator (e.g. WHILE A < 5:A=A+1:WEND)
             lexer.read()?;
             read_separator = true;

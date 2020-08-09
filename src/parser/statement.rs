@@ -92,4 +92,18 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn colon_separator_at_start_of_line() {
+        let input = ": PRINT 42";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![TopLevelToken::Statement(Statement::SubCall(
+                "PRINT".into(),
+                vec![42.as_lit_expr(1, 9)]
+            ))
+            .at_rc(1, 3)]
+        );
+    }
 }

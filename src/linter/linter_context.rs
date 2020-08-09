@@ -57,7 +57,6 @@ struct VariableMap {
 
 impl VariableMap {
     pub fn push(&mut self, declared_name: DeclaredName) -> Result<(), QErrorNode> {
-        // TODO use the destructuring pattern elsewhere too
         let DeclaredName {
             name,
             type_definition,

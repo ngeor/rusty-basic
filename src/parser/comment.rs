@@ -1,4 +1,4 @@
-// parses DIM statement
+// parses comments
 
 use crate::common::*;
 use crate::lexer::*;
@@ -27,4 +27,20 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::super::test_utils::*;
+    use super::*;
+
+    #[test]
+    fn test_comment_until_eof() {
+        let input = "' just a comment";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::Statement(Statement::Comment(" just a comment".to_string()))
+                    .at_rc(1, 1)
+            ]
+        );
+    }
+}

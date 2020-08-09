@@ -5,34 +5,29 @@ use std::io::BufRead;
 
 /// Demands that the given function can parse the next lexeme(s).
 /// If the function returns None, it will be converted to a syntax error.
+///
+/// # Parameters
+///
+/// - `lexer`: The buffering lexer
+/// - `parse_function`: A function that will be called to parse the next lexeme. If the function
+///   returns None, it will be converted to a syntax error.
+/// - `msg`: The error message for the syntax error.
 pub fn demand<T: BufRead, TResult, F, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
-    mut op: F,
+    mut parse_function: F,
     msg: S,
 ) -> Result<TResult, QErrorNode>
 where
     F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, QErrorNode>,
 {
     let p = lexer.peek()?;
-    match op(lexer) {
+    match parse_function(lexer) {
         Ok(opt) => match opt {
             Some(x) => Ok(x),
             None => Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(&p),
         },
         Err(e) => Err(e),
     }
-}
-
-pub fn demand_skipping_whitespace<T: BufRead, TResult, F, S: AsRef<str>>(
-    lexer: &mut BufLexer<T>,
-    op: F,
-    msg: S,
-) -> Result<TResult, QErrorNode>
-where
-    F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, QErrorNode>,
-{
-    skip_whitespace(lexer)?;
-    demand(lexer, op, msg)
 }
 
 pub fn in_transaction<T: BufRead, F, TResult>(

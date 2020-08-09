@@ -47,11 +47,8 @@ fn try_single_expression<T: BufRead>(
         }
         Lexeme::Symbol('(') => {
             lexer.read()?;
-            let inner = demand_skipping_whitespace(
-                lexer,
-                try_read,
-                "Expected expression inside parenthesis",
-            )?;
+            skip_whitespace(lexer)?;
+            let inner = demand(lexer, try_read, "Expected expression inside parenthesis")?;
             skip_whitespace(lexer)?;
             let closing = lexer.read()?;
             match closing.as_ref() {
@@ -82,8 +79,8 @@ fn try_parse_second_expression<T: BufRead>(
     let operand = try_parse_operand(lexer, &left_side)?;
     match operand {
         Some((op, pos)) => {
-            let right_side =
-                demand_skipping_whitespace(lexer, try_read, "Expected right side expression")?;
+            skip_whitespace(lexer)?;
+            let right_side = demand(lexer, try_read, "Expected right side expression")?;
             Ok(apply_priority_order(left_side, right_side, op, pos))
         }
         None => Ok(left_side),

@@ -17,8 +17,8 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     read_demand_whitespace(lexer, "Expected whitespace after FOR keyword")?;
     let for_counter_variable = demand(lexer, name::try_read, "Expected FOR counter variable")?;
     read_demand_symbol_skipping_whitespace(lexer, '=')?;
-    let lower_bound =
-        demand_skipping_whitespace(lexer, expression::try_read, "Expected lower bound")?;
+    skip_whitespace(lexer)?;
+    let lower_bound = demand(lexer, expression::try_read, "Expected lower bound")?;
     read_demand_whitespace(lexer, "Expected whitespace before TO keyword")?;
     read_demand_keyword(lexer, Keyword::To)?;
     read_demand_whitespace(lexer, "Expected whitespace after TO keyword")?;

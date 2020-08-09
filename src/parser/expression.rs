@@ -205,28 +205,20 @@ mod string_literal {
                                        // read until we hit the next double quote
         loop {
             let Locatable { element: l, pos } = lexer.read()?;
-            match l {
-                Lexeme::EOF => {
-                    return Err(QError::SyntaxError(
-                        "EOF while looking for end of string".to_string(),
-                    ))
-                    .with_err_at(&l.at(pos))
-                }
-                Lexeme::EOL(_) => {
-                    return Err(QError::SyntaxError(
-                        "Unexpected new line while looking for end of string".to_string(),
-                    ))
-                    .with_err_at(pos);
-                }
-                Lexeme::Keyword(_, s) | Lexeme::Word(s) | Lexeme::Whitespace(s) => buf.push_str(&s),
-                Lexeme::Symbol(c) => {
-                    if c == '"' {
-                        break;
-                    } else {
-                        buf.push(c);
-                    }
-                }
-                Lexeme::Digits(d) => buf.push_str(&format!("{}", d)),
+            if l.is_eof() {
+                return Err(QError::SyntaxError(
+                    "EOF while looking for end of string".to_string(),
+                ))
+                .with_err_at(&l.at(pos));
+            } else if l.is_eol() {
+                return Err(QError::SyntaxError(
+                    "Unexpected new line while looking for end of string".to_string(),
+                ))
+                .with_err_at(pos);
+            } else if l.is_symbol('"') {
+                break;
+            } else {
+                buf.push_str(l.to_string().as_ref());
             }
         }
 
@@ -449,7 +441,8 @@ mod tests {
 
     #[test]
     fn test_parse_literals() {
-        assert_literal_expression!("\"hello, world\"", "hello, world");
+        assert_literal_expression!(r#""hello, world""#, "hello, world");
+        assert_literal_expression!(r#""hello 123 . AS""#, "hello 123 . AS");
         assert_literal_expression!("42", 42);
         assert_literal_expression!("4.2", 4.2_f32);
         assert_literal_expression!("0.5", 0.5_f32);

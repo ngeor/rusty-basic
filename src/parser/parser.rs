@@ -5,18 +5,18 @@ use crate::parser::types::*;
 use std::fs::File;
 use std::io::BufRead;
 
-pub fn parse_main_file(f: File) -> Result<ProgramNode, ParserError> {
+pub fn parse_main_file(f: File) -> Result<ProgramNode, ParserErrorNode> {
     let mut lexer = BufLexer::from(f);
     parse_main(&mut lexer)
 }
 
 #[cfg(test)]
-pub fn parse_main_str<T: AsRef<[u8]>>(s: T) -> Result<ProgramNode, ParserError> {
+pub fn parse_main_str<T: AsRef<[u8]>>(s: T) -> Result<ProgramNode, ParserErrorNode> {
     let mut lexer = BufLexer::from(s);
     parse_main(&mut lexer)
 }
 
-pub fn parse_main<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ProgramNode, ParserError> {
+pub fn parse_main<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ProgramNode, ParserErrorNode> {
     top_level_token::parse_top_level_tokens(lexer)
 }
 

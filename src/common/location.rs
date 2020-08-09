@@ -91,13 +91,19 @@ impl<T: PartialEq<T>> PartialEq<T> for Locatable<T> {
 
 // AtLocation
 
-pub trait AtLocation<T> {
-    fn at(self, pos: Location) -> T;
+pub trait AtLocation<T, TLocation> {
+    fn at(self, pos: TLocation) -> T;
 }
 
-impl<T> AtLocation<Locatable<T>> for T {
+impl<T> AtLocation<Locatable<T>, Location> for T {
     fn at(self, pos: Location) -> Locatable<T> {
         Locatable::new(self, pos)
+    }
+}
+
+impl<T, TLocation: HasLocation> AtLocation<Locatable<T>, &TLocation> for T {
+    fn at(self, pos: &TLocation) -> Locatable<T> {
+        Locatable::new(self, pos.pos())
     }
 }
 
@@ -107,7 +113,7 @@ pub trait AtRowCol<T> {
 
 impl<T, U> AtRowCol<U> for T
 where
-    T: AtLocation<U>,
+    T: AtLocation<U, Location>,
 {
     fn at_rc(self, row: u32, col: u32) -> U {
         self.at(Location::new(row, col))
@@ -132,6 +138,12 @@ impl<T: HasLocation> HasLocation for Box<T> {
     fn pos(&self) -> Location {
         let inside_the_box: &T = self;
         inside_the_box.pos()
+    }
+}
+
+impl HasLocation for Location {
+    fn pos(&self) -> Location {
+        *self
     }
 }
 

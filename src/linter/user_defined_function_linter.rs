@@ -24,13 +24,13 @@ pub fn lint_call_args(args: &ExpressionNodes, param_types: &TypeQualifiers) -> R
             Expression::Variable(_) => {
                 // it's by ref, it needs to match exactly
                 if arg_q != *param_type {
-                    return err_l(LinterError::ArgumentTypeMismatch, arg_node);
+                    return Err(LinterError::ArgumentTypeMismatch).with_err_at(arg_node);
                 }
             }
             _ => {
                 // it's by val, casting is allowed
                 if !arg_q.can_cast_to(*param_type) {
-                    return err_l(LinterError::ArgumentTypeMismatch, arg_node);
+                    return Err(LinterError::ArgumentTypeMismatch).with_err_at(arg_node);
                 }
             }
         }
@@ -39,7 +39,11 @@ pub fn lint_call_args(args: &ExpressionNodes, param_types: &TypeQualifiers) -> R
 }
 
 impl<'a> UserDefinedFunctionLinter<'a> {
-    fn visit_function(&self, name: &QualifiedName, args: &Vec<ExpressionNode>) -> Result<(), Error> {
+    fn visit_function(
+        &self,
+        name: &QualifiedName,
+        args: &Vec<ExpressionNode>,
+    ) -> Result<(), Error> {
         let bare_name: &BareName = name.as_ref();
         match self.functions.get(bare_name) {
             Some((return_type, param_types, _)) => {
@@ -58,7 +62,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
             let arg_node = args.get(i).unwrap();
             let arg_q = arg_node.try_qualifier()?;
             if arg_q == TypeQualifier::DollarString {
-                return err_l(LinterError::ArgumentTypeMismatch, arg_node);
+                return Err(LinterError::ArgumentTypeMismatch).with_err_at(arg_node);
             }
         }
 
@@ -75,7 +79,7 @@ impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                self.visit_function(n, args).with_err_pos(*pos)
+                self.visit_function(n, args).patch_err_pos(pos)
             }
             Expression::BinaryExpression(_, left, right) => {
                 self.visit_expression(left)?;

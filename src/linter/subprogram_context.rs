@@ -99,7 +99,7 @@ impl FunctionContext {
         let q_name: TypeQualifier = name.resolve_into(&self.resolver);
         let bare_name = BareName::from(name);
         match self.implementations.get(&bare_name) {
-            Some(_) => err(LinterError::DuplicateDefinition, pos),
+            Some(_) => Err(LinterError::DuplicateDefinition).with_err_at(pos),
             None => {
                 self.check_declaration_type(&bare_name, &q_name, &q_params, pos)?;
                 self.implementations
@@ -119,7 +119,7 @@ impl FunctionContext {
         match self.declarations.get(name) {
             Some((e_name, e_params, _)) => {
                 if e_name != q_name || e_params != q_params {
-                    return err(LinterError::TypeMismatch, pos);
+                    return Err(LinterError::TypeMismatch).with_err_at(pos);
                 }
             }
             None => (),
@@ -137,7 +137,7 @@ impl FunctionContext {
         match self.implementations.get(name) {
             Some((e_name, e_params, _)) => {
                 if e_name != q_name || e_params != q_params {
-                    return err(LinterError::TypeMismatch, pos);
+                    return Err(LinterError::TypeMismatch).with_err_at(pos);
                 }
             }
             None => (),
@@ -165,14 +165,14 @@ impl FunctionContext {
     pub fn post_visit(&mut self) -> Result<(), Error> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
-                return err(LinterError::SubprogramNotDefined, v.2);
+                return Err(LinterError::SubprogramNotDefined).with_err_at(v.2);
             }
         }
 
         for (k, v) in self.implementations.iter() {
             let opt_built_in: Option<BuiltInFunction> = k.into();
             if opt_built_in.is_some() {
-                return err(LinterError::DuplicateDefinition, v.2);
+                return Err(LinterError::DuplicateDefinition).with_err_at(v.2);
             }
         }
 
@@ -231,7 +231,7 @@ impl SubContext {
             .map(|p| resolve_declared_name_node(&self.resolver, p))
             .collect();
         match self.implementations.get(name) {
-            Some(_) => err(LinterError::DuplicateDefinition, pos),
+            Some(_) => Err(LinterError::DuplicateDefinition).with_err_at(pos),
             None => {
                 self.check_declaration_type(name, &q_params, pos)?;
                 self.implementations.insert(name.clone(), (q_params, pos));
@@ -249,7 +249,7 @@ impl SubContext {
         match self.declarations.get(name) {
             Some((e_params, _)) => {
                 if e_params != q_params {
-                    return err(LinterError::TypeMismatch, pos);
+                    return Err(LinterError::TypeMismatch).with_err_at(pos);
                 }
             }
             None => (),
@@ -266,7 +266,7 @@ impl SubContext {
         match self.implementations.get(name) {
             Some((e_params, _)) => {
                 if e_params != q_params {
-                    return err(LinterError::TypeMismatch, pos);
+                    return Err(LinterError::TypeMismatch).with_err_at(pos);
                 }
             }
             None => (),
@@ -297,14 +297,14 @@ impl SubContext {
     pub fn post_visit(&mut self) -> Result<(), Error> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
-                return err(LinterError::SubprogramNotDefined, v.1);
+                return Err(LinterError::SubprogramNotDefined).with_err_at(v.1);
             }
         }
 
         for (k, v) in self.implementations.iter() {
             let opt_built_in: Option<BuiltInSub> = k.into();
             if opt_built_in.is_some() {
-                return err(LinterError::DuplicateDefinition, v.1);
+                return Err(LinterError::DuplicateDefinition).with_err_at(v.1);
             }
         }
 

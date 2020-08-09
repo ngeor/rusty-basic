@@ -13,6 +13,7 @@ use std::fs::File;
 
 use interpreter::{DefaultStdlib, Interpreter};
 
+// TODO only use the apache hacks if called with a flag or so
 fn get_filename() -> String {
     // Normally it should just be the first command line argument.
     // We also check the variable BLR_PROGRAM in order to make it work inside Apache.

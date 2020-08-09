@@ -1,7 +1,7 @@
 use super::error::*;
 use super::post_conversion_linter::*;
 use super::types::*;
-use crate::parser::QualifiedName;
+use crate::common::*;
 
 pub struct ForNextCounterMatch;
 
@@ -13,11 +13,14 @@ impl PostConversionLinter for ForNextCounterMatch {
         // TODO verify FOR variable is numeric and not string
         match &f.next_counter {
             Some(n) => {
-                let next_var_name: &QualifiedName = n.as_ref();
+                let Locatable {
+                    element: next_var_name,
+                    pos,
+                } = n;
                 if next_var_name == f.variable_name.as_ref() {
                     Ok(())
                 } else {
-                    err_l(LinterError::NextWithoutFor, n)
+                    Err(LinterError::NextWithoutFor).with_err_at(pos)
                 }
             }
             None => Ok(()),

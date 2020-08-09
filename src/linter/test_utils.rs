@@ -20,10 +20,12 @@ where
 #[macro_export]
 macro_rules! assert_linter_err {
     ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
-        let (actual_err, actual_pos) = crate::linter::test_utils::linter_err($program).consume();
-        assert_eq!(actual_err, $expected_msg);
+        let err = crate::linter::test_utils::linter_err($program);
+        let actual_msg: crate::linter::LinterError = err.as_ref().clone();
+        assert_eq!(actual_msg, $expected_msg);
+        let actual_pos = err.pos().expect("Should have an error location");
         assert_eq!(
-            actual_pos.unwrap(),
+            actual_pos,
             crate::common::Location::new($expected_row, $expected_col)
         );
     };

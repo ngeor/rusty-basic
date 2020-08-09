@@ -26,12 +26,12 @@ impl<T: BufRead> BufLexer<T> {
         }
     }
 
-    pub fn peek(&mut self) -> Result<LexemeNode, LexerError> {
+    pub fn peek(&mut self) -> Result<LexemeNode, LexerErrorNode> {
         self.fill_buffer_if_empty()?;
         Ok(self.history[self.index].clone())
     }
 
-    pub fn read(&mut self) -> Result<LexemeNode, LexerError> {
+    pub fn read(&mut self) -> Result<LexemeNode, LexerErrorNode> {
         let result = self.peek()?;
         self.index += 1;
         self.clear_history();
@@ -43,31 +43,23 @@ impl<T: BufRead> BufLexer<T> {
         self.transactions.push(self.index);
     }
 
-    pub fn commit_transaction(&mut self) -> Result<(), LexerError> {
+    pub fn commit_transaction(&mut self) {
         if self.transactions.is_empty() {
-            Err(LexerError::Internal(
-                "Not in transaction".to_string(),
-                self.pos(),
-            ))
+            panic!("Not in transaction");
         } else {
             self.transactions.pop();
-            Ok(())
         }
     }
 
-    pub fn rollback_transaction(&mut self) -> Result<(), LexerError> {
+    pub fn rollback_transaction(&mut self) {
         if self.transactions.is_empty() {
-            Err(LexerError::Internal(
-                "Not in transaction".to_string(),
-                self.pos(),
-            ))
+            panic!("Not in transaction");
         } else {
             self.index = self.transactions.pop().unwrap();
-            Ok(())
         }
     }
 
-    fn fill_buffer_if_empty(&mut self) -> Result<(), LexerError> {
+    fn fill_buffer_if_empty(&mut self) -> Result<(), LexerErrorNode> {
         if self.index >= self.history.len() {
             let lexeme = self.lexer.read()?;
             self.history.push(lexeme);
@@ -153,29 +145,19 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Not in transaction")]
     fn test_commit_transaction_not_in_transaction() {
         let input = "PRINT 1";
         let mut buf_lexer = BufLexer::from(input);
-        assert_eq!(
-            buf_lexer.commit_transaction(),
-            Err(LexerError::Internal(
-                "Not in transaction".to_string(),
-                Location::new(1, 1)
-            ))
-        );
+        buf_lexer.commit_transaction();
     }
 
     #[test]
+    #[should_panic(expected = "Not in transaction")]
     fn test_rollback_transaction_not_in_transaction() {
         let input = "PRINT 1";
         let mut buf_lexer = BufLexer::from(input);
-        assert_eq!(
-            buf_lexer.rollback_transaction(),
-            Err(LexerError::Internal(
-                "Not in transaction".to_string(),
-                Location::new(1, 1)
-            ))
-        );
+        buf_lexer.rollback_transaction();
     }
 
     #[test]
@@ -184,28 +166,19 @@ mod tests {
         let mut buf_lexer = BufLexer::from(input);
         buf_lexer.begin_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
-        buf_lexer
-            .commit_transaction()
-            .expect("commit should succeed");
+        buf_lexer.commit_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::whitespace(1, 6));
     }
 
     #[test]
+    #[should_panic(expected = "Not in transaction")]
     fn test_commit_transaction_not_in_transaction_after_commit() {
         let input = "PRINT 1";
         let mut buf_lexer = BufLexer::from(input);
         buf_lexer.begin_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
-        buf_lexer
-            .commit_transaction()
-            .expect("first commit should succeed");
-        assert_eq!(
-            buf_lexer.commit_transaction(),
-            Err(LexerError::Internal(
-                "Not in transaction".to_string(),
-                Location::new(1, 6)
-            ))
-        );
+        buf_lexer.commit_transaction();
+        buf_lexer.commit_transaction();
     }
 
     #[test]
@@ -214,9 +187,7 @@ mod tests {
         let mut buf_lexer = BufLexer::from(input);
         buf_lexer.begin_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
-        buf_lexer
-            .rollback_transaction()
-            .expect("rollback should succeed");
+        buf_lexer.rollback_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
     }
 
@@ -228,13 +199,9 @@ mod tests {
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
         buf_lexer.begin_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::whitespace(1, 6));
-        buf_lexer
-            .commit_transaction()
-            .expect("inner commit should succeed");
+        buf_lexer.commit_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::digits("1", 1, 7));
-        buf_lexer
-            .commit_transaction()
-            .expect("outer commit should succeed");
+        buf_lexer.commit_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::eof(1, 8));
     }
 
@@ -246,13 +213,9 @@ mod tests {
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
         buf_lexer.begin_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::whitespace(1, 6));
-        buf_lexer
-            .rollback_transaction()
-            .expect("inner rollback should succeed");
+        buf_lexer.rollback_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::whitespace(1, 6));
-        buf_lexer
-            .commit_transaction()
-            .expect("outer commit should succeed");
+        buf_lexer.commit_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::digits("1", 1, 7));
     }
 
@@ -264,13 +227,9 @@ mod tests {
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
         buf_lexer.begin_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::whitespace(1, 6));
-        buf_lexer
-            .commit_transaction()
-            .expect("inner commit should succeed");
+        buf_lexer.commit_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::digits("1", 1, 7));
-        buf_lexer
-            .rollback_transaction()
-            .expect("outer rollback should succeed");
+        buf_lexer.rollback_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
     }
 
@@ -282,13 +241,9 @@ mod tests {
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
         buf_lexer.begin_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::whitespace(1, 6));
-        buf_lexer
-            .rollback_transaction()
-            .expect("inner rollback should succeed");
+        buf_lexer.rollback_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::whitespace(1, 6));
-        buf_lexer
-            .rollback_transaction()
-            .expect("outer rollback should succeed");
+        buf_lexer.rollback_transaction();
         assert_eq!(buf_lexer.read().unwrap(), LexemeNode::word("PRINT", 1, 1));
     }
 
@@ -324,9 +279,7 @@ mod tests {
         buf_lexer.begin_transaction();
         buf_lexer.read().expect("Read should succeed");
         assert_eq!(buf_lexer.pos(), Location::new(1, 6));
-        buf_lexer
-            .rollback_transaction()
-            .expect("Rollback should succeed");
+        buf_lexer.rollback_transaction();
         assert_eq!(buf_lexer.pos(), Location::new(1, 1));
     }
 }

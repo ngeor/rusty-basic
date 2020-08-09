@@ -8,7 +8,9 @@ use crate::parser::error::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, ParserErrorNode> {
     // try to read DIM, if it succeeds demand it, else return None
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Dim) {
         return Ok(None);
@@ -78,8 +80,7 @@ mod tests {
         assert_eq!(
             parse_err(input),
             ParserError::SyntaxError(
-                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
-                Location::new(1, 10)
+                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string()
             )
         );
     }
@@ -89,10 +90,7 @@ mod tests {
         let input = "DIM A$ AS STRING";
         assert_eq!(
             parse_err(input),
-            ParserError::SyntaxError(
-                "Identifier cannot end with %, &, !, #, or $".to_string(),
-                Location::new(1, 5)
-            )
+            ParserError::SyntaxError("Identifier cannot end with %, &, !, #, or $".to_string())
         );
     }
 

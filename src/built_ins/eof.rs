@@ -1,8 +1,8 @@
 // EOF(file-number%) -> checks if the end of file has been reached
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::common::{FileHandle, Location};
-use crate::interpreter::{err, Interpreter, InterpreterError, Stdlib};
+use crate::common::*;
+use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 use crate::variant::Variant;
 
@@ -15,23 +15,20 @@ impl BuiltInLint for Eof {
 }
 
 impl BuiltInRun for Eof {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
         let v: Variant = interpreter.pop_unnamed_val().unwrap();
         let file_handle: FileHandle = match v {
             Variant::VFileHandle(f) => f,
             Variant::VInteger(i) => (i as u32).into(),
             _ => {
-                return err("Invalid file handle in EOF", pos);
+                return Err("Invalid file handle in EOF".into()).with_err_no_pos();
             }
         };
         let is_eof: bool = interpreter
             .file_manager
             .eof(file_handle)
-            .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))?;
+            .map_err(|e| e.to_string())
+            .with_err_no_pos()?;
         interpreter.function_result = is_eof.into();
         Ok(())
     }

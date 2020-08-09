@@ -1,7 +1,7 @@
 // VAL(str-expr$) converts a string representation of a number to a number.
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::common::Location;
+use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 use crate::variant;
@@ -16,14 +16,10 @@ impl BuiltInLint for Val {
 }
 
 impl BuiltInRun for Val {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
-            Variant::VString(s) => val(s).map_err(|e| InterpreterError::new_with_pos(e, pos))?,
+            Variant::VString(s) => val(s).with_err_no_pos()?,
             _ => panic!("unexpected arg to VAL"),
         };
         Ok(())

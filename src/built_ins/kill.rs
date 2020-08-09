@@ -1,7 +1,7 @@
 // KILL file-spec$ -> deletes files from disk
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::common::Location;
+use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 
@@ -14,13 +14,11 @@ impl BuiltInLint for Kill {
 }
 
 impl BuiltInRun for Kill {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
         let file_name = interpreter.pop_string();
-        std::fs::remove_file(file_name).map_err(|e| InterpreterError::new_with_pos(map_err(e), pos))
+        std::fs::remove_file(file_name)
+            .map_err(|e| map_err(e))
+            .with_err_no_pos()
     }
 }
 
@@ -35,9 +33,8 @@ fn map_err(e: std::io::Error) -> String {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use crate::common::Location;
+    use crate::common::*;
     use crate::interpreter::test_utils::*;
-    use crate::interpreter::InterpreterError;
     use crate::linter::LinterError;
 
     #[test]
@@ -51,8 +48,8 @@ mod tests {
     fn test_kill_edge_cases() {
         assert_eq!(
             interpret_err(r#"KILL "KILL2.TXT""#),
-            InterpreterError::new(
-                "File not found",
+            ErrorEnvelope::Stacktrace(
+                "File not found".to_string(),
                 vec![
                     Location::new(1, 1),
                     Location::new(1, 1) // TODO why is this double

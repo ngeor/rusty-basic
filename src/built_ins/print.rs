@@ -3,7 +3,7 @@
 // , -> print at the start of the next print zone (print zones are 14 characters wide)
 
 use super::{BuiltInLint, BuiltInRun};
-use crate::common::{FileHandle, Location};
+use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 use crate::variant::Variant;
@@ -17,11 +17,7 @@ impl BuiltInLint for Print {
 }
 
 impl BuiltInRun for Print {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
         let mut print_args: Vec<String> = vec![];
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
@@ -47,7 +43,8 @@ impl BuiltInRun for Print {
             interpreter
                 .file_manager
                 .print(file_handle, print_args)
-                .map_err(|e| InterpreterError::new_with_pos(e.to_string(), pos))?;
+                .map_err(|e| e.to_string())
+                .with_err_no_pos()?;
         } else {
             interpreter.stdlib.print(print_args);
         }

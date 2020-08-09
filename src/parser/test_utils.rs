@@ -19,7 +19,7 @@ pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
 /// Returns the lexer error.
 /// Panics if parsing actually succeeded.
 pub fn parse_err<T: AsRef<[u8]>>(input: T) -> ParserError {
-    parse_main_str(input).unwrap_err()
+    parse_main_str(input).unwrap_err().into_err()
 }
 
 pub trait ProgramNodeHelper {

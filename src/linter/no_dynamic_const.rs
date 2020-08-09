@@ -1,6 +1,7 @@
 use super::error::*;
 use super::post_conversion_linter::*;
 use super::types::*;
+use crate::common::*;
 
 pub struct NoDynamicConst;
 
@@ -10,7 +11,7 @@ impl NoDynamicConst {
         match e {
             Expression::FunctionCall(_, _)
             | Expression::BuiltInFunctionCall(_, _)
-            | Expression::Variable(_) => err_l(LinterError::InvalidConstant, e_node),
+            | Expression::Variable(_) => Err(LinterError::InvalidConstant).with_err_at(e_node),
             Expression::BinaryExpression(_, left, right) => {
                 let unboxed_left: &ExpressionNode = left;
                 let unboxed_right: &ExpressionNode = right;

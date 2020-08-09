@@ -8,7 +8,9 @@ use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, ParserErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::For) {
         return Ok(None);
     }
@@ -46,7 +48,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 
 fn try_parse_step<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<ExpressionNode>, ParserError> {
+) -> Result<Option<ExpressionNode>, ParserErrorNode> {
     const STATE_UPPER_BOUND: u8 = 0;
     const STATE_WHITESPACE_BEFORE_STEP: u8 = 1;
     const STATE_STEP: u8 = 2;
@@ -106,13 +108,13 @@ fn try_parse_step<T: BufRead>(
             }
         }
     }
-    lexer.commit_transaction()?;
+    lexer.commit_transaction();
     Ok(expr)
 }
 
 fn try_parse_next_counter<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<NameNode>, ParserError> {
+) -> Result<Option<NameNode>, ParserErrorNode> {
     const STATE_NEXT: u8 = 0;
     const STATE_WHITESPACE_AFTER_NEXT: u8 = 1;
     const STATE_EOL_OR_EOF: u8 = 2;
@@ -151,7 +153,7 @@ fn try_parse_next_counter<T: BufRead>(
         }
     }
 
-    lexer.commit_transaction()?;
+    lexer.commit_transaction();
 
     Ok(name)
 }

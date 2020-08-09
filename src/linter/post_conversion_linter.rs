@@ -20,7 +20,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_top_level_token_node(&self, t: &TopLevelTokenNode) -> Result<(), Error> {
-        self.visit_top_level_token(t.as_ref()).with_err_pos(t)
+        self.visit_top_level_token(t.as_ref()).patch_err_pos(t)
     }
 
     fn visit_top_level_token(&self, t: &TopLevelToken) -> Result<(), Error> {
@@ -44,7 +44,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_statement_node(&self, t: &StatementNode) -> Result<(), Error> {
-        self.visit_statement(t.as_ref()).with_err_pos(t)
+        self.visit_statement(t.as_ref()).patch_err_pos(t)
     }
 
     fn visit_statement(&self, s: &Statement) -> Result<(), Error> {

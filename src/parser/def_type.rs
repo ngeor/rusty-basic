@@ -1,14 +1,13 @@
-use super::{
-    unexpected, DefType, LetterRange, ParserError, TopLevelToken, TopLevelTokenNode, TypeQualifier,
-};
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
+use crate::parser::error::*;
+use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, ParserError> {
+) -> Result<Option<TopLevelTokenNode>, ParserErrorNode> {
     let next = lexer.peek()?;
     let opt_qualifier = match next.as_ref() {
         Lexeme::Keyword(keyword, _) => match keyword {
@@ -99,7 +98,7 @@ pub fn try_read<T: BufRead>(
             }
         }
     }
-    lexer.commit_transaction()?;
+    lexer.commit_transaction();
     Ok(Some(
         TopLevelToken::DefType(DefType::new(opt_qualifier.unwrap(), ranges)).at(pos),
     ))
@@ -174,21 +173,21 @@ mod tests {
             parse_err("DEFINT HELLO"),
             ParserError::Unexpected(
                 "Expected single character".to_string(),
-                Lexeme::Word("HELLO".to_string()).at_rc(1, 8)
+                Lexeme::Word("HELLO".to_string())
             )
         );
         assert_eq!(
             parse_err("DEFINT HELLO,Z"),
             ParserError::Unexpected(
                 "Expected single character".to_string(),
-                Lexeme::Word("HELLO".to_string()).at_rc(1, 8)
+                Lexeme::Word("HELLO".to_string())
             )
         );
         assert_eq!(
             parse_err("DEFINT A,HELLO"),
             ParserError::Unexpected(
                 "Expected single character".to_string(),
-                Lexeme::Word("HELLO".to_string()).at_rc(1, 10)
+                Lexeme::Word("HELLO".to_string())
             )
         );
     }
@@ -199,7 +198,7 @@ mod tests {
             parse_err("DEFINT Z-A"),
             ParserError::Unexpected(
                 "Invalid letter range".to_string(),
-                Lexeme::Word("A".to_string()).at_rc(1, 10)
+                Lexeme::Word("A".to_string())
             )
         );
     }

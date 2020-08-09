@@ -146,13 +146,13 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let v = self.get_a();
                 self.context_mut()
                     .set_variable(n.clone(), v)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                    .with_err_at(pos)?;
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
                 self.context_mut()
                     .set_constant(n.clone(), v)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                    .with_err_at(pos)?;
             }
             Instruction::CopyAToB => {
                 self.registers_mut().copy_a_to_b();
@@ -178,47 +178,35 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Plus => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let c = a
-                    .plus(b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let c = a.plus(b).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::Minus => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let c = a
-                    .minus(b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let c = a.minus(b).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::Multiply => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let c = a
-                    .multiply(b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let c = a.multiply(b).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::Divide => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let c = a
-                    .divide(b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let c = a.divide(b).with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::NegateA => {
                 let a = self.get_a();
-                let c = a
-                    .negate()
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let c = a.negate().with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::NotA => {
                 let a = self.get_a();
-                let c = a
-                    .unary_not()
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let c = a.unary_not().with_err_at(pos)?;
                 self.set_a(c);
             }
             Instruction::CopyVarToA(n) => {
@@ -231,81 +219,58 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Equal => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a
-                    .cmp(&b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let order = a.cmp(&b).with_err_at(pos)?;
                 let is_true = order == Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::NotEqual => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a
-                    .cmp(&b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let order = a.cmp(&b).with_err_at(pos)?;
                 let is_true = order != Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::Less => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a
-                    .cmp(&b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let order = a.cmp(&b).with_err_at(pos)?;
                 let is_true = order == Ordering::Less;
                 self.set_a(is_true.into());
             }
             Instruction::Greater => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a
-                    .cmp(&b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let order = a.cmp(&b).with_err_at(pos)?;
                 let is_true = order == Ordering::Greater;
                 self.set_a(is_true.into());
             }
             Instruction::LessOrEqual => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a
-                    .cmp(&b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let order = a.cmp(&b).with_err_at(pos)?;
                 let is_true = order == Ordering::Less || order == Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::GreaterOrEqual => {
                 let a = self.get_a();
                 let b = self.get_b();
-                let order = a
-                    .cmp(&b)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let order = a.cmp(&b).with_err_at(pos)?;
                 let is_true = order == Ordering::Greater || order == Ordering::Equal;
                 self.set_a(is_true.into());
             }
             Instruction::And => {
-                let a = cast(self.get_a(), TypeQualifier::PercentInteger)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
-                let b = cast(self.get_b(), TypeQualifier::PercentInteger)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
-                self.set_a(
-                    a.and(b)
-                        .map_err(|e| InterpreterError::new_with_pos(e, pos))?,
-                );
+                let a = cast(self.get_a(), TypeQualifier::PercentInteger).with_err_at(pos)?;
+                let b = cast(self.get_b(), TypeQualifier::PercentInteger).with_err_at(pos)?;
+                self.set_a(a.and(b).with_err_at(pos)?);
             }
             Instruction::Or => {
-                let a = cast(self.get_a(), TypeQualifier::PercentInteger)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
-                let b = cast(self.get_b(), TypeQualifier::PercentInteger)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
-                self.set_a(
-                    a.or(b)
-                        .map_err(|e| InterpreterError::new_with_pos(e, pos))?,
-                );
+                let a = cast(self.get_a(), TypeQualifier::PercentInteger).with_err_at(pos)?;
+                let b = cast(self.get_b(), TypeQualifier::PercentInteger).with_err_at(pos)?;
+                self.set_a(a.or(b).with_err_at(pos)?);
             }
             Instruction::JumpIfFalse(resolved_idx) => {
                 let a = self.get_a();
-                let is_true: bool =
-                    bool::try_from(a).map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                let is_true: bool = bool::try_from(a).with_err_at(pos)?;
                 if !is_true {
                     *i = resolved_idx - 1; // the +1 will happen at the end of the loop
                 }
@@ -328,7 +293,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.context_mut()
                     .demand_args()
                     .push_back_unnamed_ref_parameter(name.clone())
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                    .with_err_at(pos)?;
             }
             Instruction::PushUnnamedValParam => {
                 let v = self.get_a();
@@ -336,13 +301,13 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.context_mut()
                     .demand_args()
                     .push_back_unnamed_val_parameter(v)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                    .with_err_at(pos)?;
             }
             Instruction::SetNamedRefParam(named_ref_param) => {
                 self.context_mut()
                     .demand_args()
                     .set_named_ref_parameter(named_ref_param)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                    .with_err_at(pos)?;
             }
             Instruction::SetNamedValParam(param_q_name) => {
                 let v = self.get_a();
@@ -350,13 +315,13 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.context_mut()
                     .demand_args()
                     .set_named_val_parameter(param_q_name, v)
-                    .map_err(|e| InterpreterError::new_with_pos(e, pos))?;
+                    .with_err_at(pos)?;
             }
             Instruction::BuiltInSub(n) => {
-                n.run(self, pos)?;
+                n.run(self).patch_err_pos(pos)?;
             }
             Instruction::BuiltInFunction(n) => {
-                n.run(self, pos)?;
+                n.run(self).patch_err_pos(pos)?;
             }
             Instruction::UnresolvedJump(_)
             | Instruction::UnresolvedJumpIfFalse(_)
@@ -383,13 +348,16 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.set_a(v);
             }
             Instruction::Throw(msg) => {
-                self.throw(msg, pos)?;
+                return Err(msg.clone()).with_err_at(pos);
             }
         }
         Ok(())
     }
 
-    pub fn interpret(&mut self, instructions: Vec<InstructionNode>) -> Result<(), InterpreterError> {
+    pub fn interpret(
+        &mut self,
+        instructions: Vec<InstructionNode>,
+    ) -> Result<(), InterpreterError> {
         let mut i: usize = 0;
         let mut error_handler: Option<usize> = None;
         let mut exit: bool = false;
@@ -405,16 +373,12 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                         i = error_idx;
                     }
                     None => {
-                        return Err(e.with_existing_stacktrace(&self.stacktrace));
+                        return Err(e.patch_stacktrace(&self.stacktrace));
                     }
                 },
             }
         }
         Ok(())
-    }
-
-    fn throw(&mut self, msg: &String, pos: Location) -> Result<(), InterpreterError> {
-        Err(InterpreterError::new_with_pos(msg, pos))
     }
 
     // shortcuts to common context_mut operations

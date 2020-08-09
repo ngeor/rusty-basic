@@ -390,14 +390,18 @@ impl LinterContext {
         name: Name,
         right_side_type: Locatable<TypeQualifier>,
     ) -> Result<QualifiedName, Error> {
+        let Locatable {
+            element: right_side_q,
+            pos: right_side_pos,
+        } = right_side_type;
         let q = match &name {
             // bare name resolves from right side, not resolver
-            Name::Bare(_) => *right_side_type.as_ref(),
+            Name::Bare(_) => right_side_q,
             Name::Qualified { qualifier, .. } => {
-                if right_side_type.as_ref().can_cast_to(*qualifier) {
+                if right_side_q.can_cast_to(*qualifier) {
                     *qualifier
                 } else {
-                    return err_l(LinterError::TypeMismatch, &right_side_type);
+                    return Err(LinterError::TypeMismatch).with_err_at(right_side_pos);
                 }
             }
         };

@@ -1,4 +1,4 @@
-use super::{ParserError, Statement, StatementNode};
+use super::{ParserErrorNode, Statement, StatementNode};
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
@@ -6,7 +6,9 @@ use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, ParserErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Const) {
         return Ok(None);
     }

@@ -14,12 +14,14 @@ use crate::lexer::{BufLexer, Keyword, Lexeme, LexemeNode};
 use crate::linter::{Error, ExpressionNode};
 use crate::parser::buf_lexer::*;
 use crate::parser::expression;
-use crate::parser::{unexpected, BareName, Expression, ParserError, Statement, StatementNode};
+use crate::parser::{unexpected, BareName, Expression, ParserErrorNode, Statement, StatementNode};
 use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, ParserErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     if !next.is_keyword(Keyword::Open) {
         return Ok(None);
@@ -62,7 +64,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     }
 }
 
-fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode, ParserError> {
+fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode, ParserErrorNode> {
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Input, _) => Ok(FileMode::Input),
@@ -72,7 +74,9 @@ fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode
     }
 }
 
-fn read_demand_file_access<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileAccess, ParserError> {
+fn read_demand_file_access<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<FileAccess, ParserErrorNode> {
     let next = lexer.read()?;
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Read, _) => Ok(FileAccess::Read),
@@ -88,11 +92,7 @@ impl BuiltInLint for Open {
 }
 
 impl BuiltInRun for Open {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
         let file_name = interpreter.pop_string();
         let file_mode: FileMode = interpreter.pop_integer().into();
         let file_access: FileAccess = interpreter.pop_integer().into();
@@ -100,9 +100,8 @@ impl BuiltInRun for Open {
         interpreter
             .file_manager
             .open(file_handle, file_name.as_ref(), file_mode, file_access)
-            .map_err(|e| {
-                InterpreterError::new_with_pos(format!("Could not open {}: {}", file_name, e), pos)
-            })
+            .map_err(|e| format!("Could not open {}: {}", file_name, e))
+            .with_err_no_pos()
     }
 }
 

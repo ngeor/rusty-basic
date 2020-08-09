@@ -1,16 +1,15 @@
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer::*;
+use crate::parser::error::*;
 use crate::parser::type_qualifier;
-use crate::parser::{
-    unexpected, Expression, ExpressionNode, Name, Operand, ParserError, UnaryOperand,
-};
+use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<ExpressionNode>, ParserError> {
+) -> Result<Option<ExpressionNode>, ParserErrorNode> {
     let opt_first = try_single_expression(lexer)?;
     match opt_first {
         Some(first) => try_parse_second_expression(lexer, first)
@@ -22,7 +21,7 @@ pub fn try_read<T: BufRead>(
 
 fn try_single_expression<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<ExpressionNode>, ParserError> {
+) -> Result<Option<ExpressionNode>, ParserErrorNode> {
     let Locatable { element: next, pos } = lexer.peek()?;
     match next {
         Lexeme::Symbol('"') => string_literal::read(lexer).map(|x| Some(x)),
@@ -68,7 +67,10 @@ fn try_single_expression<T: BufRead>(
             let digits = demand_digits(lexer)?;
             match digits.parse::<u32>() {
                 Ok(d) => Ok(Some(Expression::FileHandle(d.into()).at(pos))),
-                Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
+                Err(err) => Err(ParserError::LexerError(LexerError::Internal(
+                    err.to_string(),
+                )))
+                .with_err_at(pos),
             }
         }
         _ => Ok(None),
@@ -78,7 +80,7 @@ fn try_single_expression<T: BufRead>(
 fn try_parse_second_expression<T: BufRead>(
     lexer: &mut BufLexer<T>,
     left_side: ExpressionNode,
-) -> Result<ExpressionNode, ParserError> {
+) -> Result<ExpressionNode, ParserErrorNode> {
     let operand = try_parse_operand(lexer, &left_side)?;
     match operand {
         Some((op, pos)) => {
@@ -147,7 +149,7 @@ fn apply_unary_priority_order(
 /// Parses a comma separated list of expressions.
 fn parse_expression_list_with_parentheses<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Vec<ExpressionNode>, ParserError> {
+) -> Result<Vec<ExpressionNode>, ParserErrorNode> {
     let mut args: Vec<ExpressionNode> = vec![];
     const STATE_OPEN_PARENTHESIS: u8 = 0;
     const STATE_CLOSE_PARENTHESIS: u8 = 1;
@@ -193,7 +195,7 @@ fn parse_expression_list_with_parentheses<T: BufRead>(
 
 mod string_literal {
     use super::*;
-    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserError> {
+    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserErrorNode> {
         let mut buf: String = String::new();
         let pos = lexer.read()?.pos(); // read double quote
                                        // read until we hit the next double quote
@@ -223,7 +225,7 @@ mod string_literal {
     }
 }
 
-fn demand_digits<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<String, ParserError> {
+fn demand_digits<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<String, ParserErrorNode> {
     let Locatable { element: next, pos } = lexer.read()?;
     match next {
         Lexeme::Digits(digits) => Ok(digits),
@@ -233,7 +235,7 @@ fn demand_digits<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<String, ParserEr
 
 mod number_literal {
     use super::*;
-    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserError> {
+    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserErrorNode> {
         // consume digits
         let Locatable { element: next, pos } = lexer.read()?;
         let digits = next.into_digits();
@@ -248,7 +250,7 @@ mod number_literal {
 
     pub fn read_dot_float<T: BufRead>(
         lexer: &mut BufLexer<T>,
-    ) -> Result<ExpressionNode, ParserError> {
+    ) -> Result<ExpressionNode, ParserErrorNode> {
         let pos = lexer.read()?.pos(); // consume . of .10
         parse_floating_point_literal(lexer, "0".to_string(), pos)
     }
@@ -256,7 +258,7 @@ mod number_literal {
     fn integer_literal_to_expression_node(
         s: String,
         pos: Location,
-    ) -> Result<ExpressionNode, ParserError> {
+    ) -> Result<ExpressionNode, ParserErrorNode> {
         match s.parse::<u32>() {
             Ok(u) => {
                 if u <= variant::MAX_INTEGER as u32 {
@@ -267,7 +269,9 @@ mod number_literal {
                     Ok(Expression::DoubleLiteral(u as f64).at(pos))
                 }
             }
-            Err(e) => Err(ParserError::Internal(e.to_string(), pos)),
+            Err(e) => {
+                Err(ParserError::LexerError(LexerError::Internal(e.to_string()))).with_err_at(pos)
+            }
         }
     }
 
@@ -275,18 +279,24 @@ mod number_literal {
         lexer: &mut BufLexer<T>,
         integer_digits: String,
         pos: Location,
-    ) -> Result<ExpressionNode, ParserError> {
+    ) -> Result<ExpressionNode, ParserErrorNode> {
         let fraction_digits = demand_digits(lexer)?;
         let is_double = skip_if(lexer, |lexeme| lexeme.is_symbol('#'))?;
         if is_double {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
                 Ok(f) => Ok(Expression::DoubleLiteral(f).at(pos)),
-                Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
+                Err(err) => Err(ParserError::LexerError(LexerError::Internal(
+                    err.to_string(),
+                )))
+                .with_err_at(pos),
             }
         } else {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
                 Ok(f) => Ok(Expression::SingleLiteral(f).at(pos)),
-                Err(err) => Err(ParserError::Internal(err.to_string(), pos)),
+                Err(err) => Err(ParserError::LexerError(LexerError::Internal(
+                    err.to_string(),
+                )))
+                .with_err_at(pos),
             }
         }
     }
@@ -294,7 +304,7 @@ mod number_literal {
 
 mod word {
     use super::*;
-    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserError> {
+    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, ParserErrorNode> {
         // is it maybe a qualified variable name
         let Locatable { element: next, pos } = lexer.read()?;
         let word = next.into_word();
@@ -314,7 +324,7 @@ mod word {
 fn try_parse_operand<T: BufRead>(
     lexer: &mut BufLexer<T>,
     left_side: &ExpressionNode,
-) -> Result<Option<(Operand, Location)>, ParserError> {
+) -> Result<Option<(Operand, Location)>, ParserErrorNode> {
     // if we can't find an operand, we need to restore the whitespace as it was,
     // in case there is a next call that will be demanding for it
     lexer.begin_transaction();
@@ -322,59 +332,59 @@ fn try_parse_operand<T: BufRead>(
     let Locatable { element, pos } = next;
     match element {
         Lexeme::Symbol('<') => {
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             Ok(Some((less_or_lte_or_ne(lexer)?, pos)))
         }
         Lexeme::Symbol('>') => {
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             Ok(Some((greater_or_gte(lexer)?, pos)))
         }
         Lexeme::Symbol('=') => {
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             Ok(Some((Operand::Equal, pos)))
         }
         Lexeme::Symbol('+') => {
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             Ok(Some((Operand::Plus, pos)))
         }
         Lexeme::Symbol('-') => {
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             Ok(Some((Operand::Minus, pos)))
         }
         Lexeme::Symbol('*') => {
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             Ok(Some((Operand::Multiply, pos)))
         }
         Lexeme::Symbol('/') => {
-            lexer.commit_transaction()?;
+            lexer.commit_transaction();
             Ok(Some((Operand::Divide, pos)))
         }
         Lexeme::Keyword(Keyword::And, _) => {
             if opt_space.is_some() || left_side.is_parenthesis() {
-                lexer.commit_transaction()?;
+                lexer.commit_transaction();
                 Ok(Some((Operand::And, pos)))
             } else {
-                lexer.rollback_transaction()?;
+                lexer.rollback_transaction();
                 Ok(None)
             }
         }
         Lexeme::Keyword(Keyword::Or, _) => {
             if opt_space.is_some() || left_side.is_parenthesis() {
-                lexer.commit_transaction()?;
+                lexer.commit_transaction();
                 Ok(Some((Operand::Or, pos)))
             } else {
-                lexer.rollback_transaction()?;
+                lexer.rollback_transaction();
                 Ok(None)
             }
         }
         _ => {
-            lexer.rollback_transaction()?;
+            lexer.rollback_transaction();
             Ok(None)
         }
     }
 }
 
-fn less_or_lte_or_ne<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, ParserError> {
+fn less_or_lte_or_ne<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, ParserErrorNode> {
     let Locatable { element: next, .. } = lexer.peek()?;
     match next {
         Lexeme::Symbol('=') => {
@@ -389,7 +399,7 @@ fn less_or_lte_or_ne<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, Par
     }
 }
 
-fn greater_or_gte<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, ParserError> {
+fn greater_or_gte<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, ParserErrorNode> {
     let x = skip_if(lexer, |lexeme| lexeme.is_symbol('=')).map(|found_equal_sign| {
         if found_equal_sign {
             Operand::GreaterOrEqual
@@ -459,10 +469,7 @@ mod tests {
         fn test_function_call_expression_no_args() {
             assert_eq!(
                 parse_err("PRINT IsValid()"),
-                ParserError::Unexpected(
-                    "Expected expression".to_string(),
-                    Lexeme::Symbol(')').at_rc(1, 15)
-                )
+                ParserError::Unexpected("Expected expression".to_string(), Lexeme::Symbol(')'))
             );
         }
 
@@ -470,10 +477,7 @@ mod tests {
         fn test_function_call_qualified_expression_no_args() {
             assert_eq!(
                 parse_err("PRINT IsValid%()"),
-                ParserError::Unexpected(
-                    "Expected expression".to_string(),
-                    Lexeme::Symbol(')').at_rc(1, 16)
-                )
+                ParserError::Unexpected("Expected expression".to_string(), Lexeme::Symbol(')'))
             );
         }
 
@@ -846,7 +850,7 @@ mod tests {
         );
         assert_eq!(
             parse_err("PRINT 1AND 2"),
-            ParserError::Unterminated(Lexeme::Keyword(Keyword::And, "AND".to_string()).at_rc(1, 8))
+            ParserError::Unterminated(Lexeme::Keyword(Keyword::And, "AND".to_string()))
         );
         assert_expression!(
             "(1 OR 2)AND 3",
@@ -876,7 +880,7 @@ mod tests {
         );
         assert_eq!(
             parse_err("PRINT 1OR 2"),
-            ParserError::Unterminated(Lexeme::Keyword(Keyword::Or, "OR".to_string()).at_rc(1, 8))
+            ParserError::Unterminated(Lexeme::Keyword(Keyword::Or, "OR".to_string()))
         );
         assert_expression!(
             "(1 AND 2)OR 3",

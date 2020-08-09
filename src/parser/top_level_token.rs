@@ -20,7 +20,7 @@ use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, ParserError> {
+) -> Result<Option<TopLevelTokenNode>, ParserErrorNode> {
     def_type::try_read(lexer)
         .or_try_read(|| declaration::try_read(lexer))
         .or_try_read(|| implementation::try_read(lexer))
@@ -29,7 +29,7 @@ pub fn try_read<T: BufRead>(
 
 fn try_read_statement<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, ParserError> {
+) -> Result<Option<TopLevelTokenNode>, ParserErrorNode> {
     statement::try_read(lexer).map(to_top_level_opt)
 }
 
@@ -43,7 +43,7 @@ fn to_top_level(x: StatementNode) -> TopLevelTokenNode {
 
 pub fn parse_top_level_tokens<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<ProgramNode, ParserError> {
+) -> Result<ProgramNode, ParserErrorNode> {
     let mut read_separator = true; // we are the beginning of the file
     let mut tokens: ProgramNode = vec![];
 
@@ -77,7 +77,7 @@ pub fn parse_top_level_tokens<T: BufRead>(
                 tokens.push(t);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {
-                return Err(ParserError::Unterminated(p.at(pos)));
+                return Err(ParserError::Unterminated(p)).with_err_at(pos);
             }
         }
     }

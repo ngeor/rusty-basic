@@ -51,7 +51,7 @@ where
 {
     fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, Error> {
         let Locatable { element, pos } = a;
-        self.convert(element).with_pos(pos).with_err_pos(pos)
+        self.convert(element).with_ok_pos(pos).patch_err_pos(pos)
     }
 }
 
@@ -104,7 +104,7 @@ impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
         for top_level_token_node in a.into_iter() {
             // will contain None where DefInt and declarations used to be
             let Locatable { element, pos } = top_level_token_node;
-            let opt: Option<TopLevelToken> = self.convert(element).with_err_pos(pos)?;
+            let opt: Option<TopLevelToken> = self.convert(element).patch_err_pos(pos)?;
             match opt {
                 Some(t) => {
                     let r: TopLevelTokenNode = t.at(pos);
@@ -163,19 +163,19 @@ impl ConverterImpl {
             let Locatable { element, pos } = p;
             if self.subs.contains_key(element.as_ref()) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
-                return err(LinterError::DuplicateDefinition, pos);
+                return Err(LinterError::DuplicateDefinition).with_err_at(pos);
             }
             let q: TypeQualifier = self.resolve_declared_name(&element);
             if function_name.as_ref() == element.as_ref()
                 && (function_name.qualifier() != q || element.is_extended())
             {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
-                return err(LinterError::DuplicateDefinition, pos);
+                return Err(LinterError::DuplicateDefinition).with_err_at(pos);
             }
             let q_name = QualifiedName::new(element.as_ref().clone(), q);
             self.context
                 .push_param(element, &self.resolver)
-                .with_err_pos(pos)?;
+                .patch_err_pos(pos)?;
             result.push(q_name.at(pos));
         }
         Ok(result)
@@ -194,13 +194,13 @@ impl ConverterImpl {
             let Locatable { element, pos } = declared_name_node;
             if self.subs.contains_key(element.as_ref()) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
-                return err(LinterError::DuplicateDefinition, pos);
+                return Err(LinterError::DuplicateDefinition).with_err_at(pos);
             }
             let q: TypeQualifier = self.resolve_declared_name(&element);
             let q_name = QualifiedName::new(element.as_ref().clone(), q);
             self.context
                 .push_param(element, &self.resolver)
-                .with_err_pos(pos)?;
+                .patch_err_pos(pos)?;
             mapped_params.push(q_name.at(pos));
         }
 
@@ -252,7 +252,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                         LName::Function(_) => Ok(Statement::SetReturnValue(converted_expr)),
                     }
                 } else {
-                    err_l(LinterError::TypeMismatch, &converted_expr)
+                    Err(LinterError::TypeMismatch).with_err_at(&converted_expr)
                 }
             }
             parser::Statement::Const(n, e) => {
@@ -261,14 +261,14 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                     || self.subs.contains_key(name.as_ref())
                 {
                     // local variable or local constant or function or sub already present by that name
-                    err(LinterError::DuplicateDefinition, pos)
+                    Err(LinterError::DuplicateDefinition).with_err_at(pos)
                 } else {
                     let converted_expression_node = self.convert(e)?;
                     let e_type = converted_expression_node.try_qualifier()?;
                     let q_name = self
                         .context
                         .push_const(name, e_type.at(converted_expression_node.pos()))
-                        .with_err_pos(pos)?;
+                        .patch_err_pos(pos)?;
                     Ok(Statement::Const(q_name.at(pos), converted_expression_node))
                 }
             }
@@ -290,10 +290,12 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::Dim(declared_name_node) => {
                 let Locatable { element: d, pos } = declared_name_node;
                 if self.subs.contains_key(d.as_ref()) || self.functions.contains_key(d.as_ref()) {
-                    return err(LinterError::DuplicateDefinition, pos);
+                    return Err(LinterError::DuplicateDefinition).with_err_at(pos);
                 }
-                let mapped_declared_name =
-                    self.context.push_dim(d, &self.resolver).with_err_pos(pos)?;
+                let mapped_declared_name = self
+                    .context
+                    .push_dim(d, &self.resolver)
+                    .patch_err_pos(pos)?;
                 Ok(Statement::Dim(mapped_declared_name.at(pos)))
             }
         }
@@ -311,7 +313,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
             parser::Expression::VariableName(n) => self.resolve_name_in_expression(&n),
             parser::Expression::FunctionCall(n, args) => {
                 let converted_args = self.convert(args)?;
-                let opt_built_in: Option<BuiltInFunction> = (&n).try_into()?;
+                let opt_built_in: Option<BuiltInFunction> = (&n).try_into().with_err_no_pos()?;
                 match opt_built_in {
                     Some(b) => Ok(Expression::BuiltInFunctionCall(b, converted_args)),
                     None => Ok(Expression::FunctionCall(self.convert(n)?, converted_args)),
@@ -336,7 +338,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                         Box::new(converted_right),
                     ))
                 } else {
-                    err_l(LinterError::TypeMismatch, &converted_right)
+                    Err(LinterError::TypeMismatch).with_err_at(&converted_right)
                 }
             }
             parser::Expression::UnaryExpression(op, c) => {
@@ -345,7 +347,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let converted_q = converted_child.try_qualifier()?;
                 if super::operand_type::cast_unary_op(op, converted_q).is_none() {
                     // no unary operation works for strings
-                    err_l(LinterError::TypeMismatch, &converted_child)
+                    Err(LinterError::TypeMismatch).with_err_at(&converted_child)
                 } else {
                     Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
                 }
@@ -446,16 +448,16 @@ impl ConverterImpl {
                 Ok(LName::Function(n.with_type(function_type)))
             } else {
                 // trying to assign to the function with an explicit wrong type
-                Err(LinterError::DuplicateDefinition.into())
+                Err(LinterError::DuplicateDefinition).with_err_no_pos()
             }
         } else if self.subs.contains_key(n.as_ref()) {
             // trying to assign to a sub
-            Err(LinterError::DuplicateDefinition.into())
+            Err(LinterError::DuplicateDefinition).with_err_no_pos()
         } else if !self.context.resolve_param_assignment(&n, &self.resolver)?
             && self.functions.contains_key(n.as_ref())
         {
             // parameter might be hiding a function name so it takes precedence
-            Err(LinterError::DuplicateDefinition.into())
+            Err(LinterError::DuplicateDefinition).with_err_no_pos()
         } else {
             let declared_name = self.context.resolve_assignment(&n, &self.resolver)?;
             let q = self.resolve_declared_name(&declared_name);
@@ -467,25 +469,25 @@ impl ConverterImpl {
     pub fn resolve_name_in_expression(&mut self, n: &parser::Name) -> Result<Expression, Error> {
         self.context
             .resolve_expression(n, &self.resolver)
-            .or_try_read(|| self.resolve_name_as_subprogram(n))
+            .or_try_read(|| self.resolve_name_as_subprogram(n).with_err_no_pos())
             .or_read(|| self.context.resolve_missing_variable(n, &self.resolver))
     }
 
     fn resolve_name_as_subprogram(
         &mut self,
         n: &parser::Name,
-    ) -> Result<Option<Expression>, Error> {
+    ) -> Result<Option<Expression>, LinterError> {
         if self.subs.contains_key(n.as_ref()) {
             // using the name of a sub as a variable expression
-            err_no_pos(LinterError::DuplicateDefinition)
+            Err(LinterError::DuplicateDefinition)
         } else if self.functions.contains_key(n.as_ref()) {
             // if the function expects arguments, argument count mismatch
             let (f_type, f_args, _) = self.functions.get(n.as_ref()).unwrap();
             if !f_args.is_empty() {
-                err_no_pos(LinterError::ArgumentCountMismatch)
+                Err(LinterError::ArgumentCountMismatch)
             } else if !n.is_bare_or_of_type(*f_type) {
                 // if the function is a different type and the name is qualified of a different type, duplication definition
-                err_no_pos(LinterError::DuplicateDefinition)
+                Err(LinterError::DuplicateDefinition)
             } else {
                 // else convert it to function call
                 Ok(Some(Expression::FunctionCall(

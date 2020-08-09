@@ -55,7 +55,10 @@ where
     interpreter.interpret(instructions).unwrap_err()
 }
 
-pub fn interpret_file<S, TStdlib>(filename: S, stdlib: TStdlib) -> Result<Interpreter<TStdlib>, InterpreterError>
+pub fn interpret_file<S, TStdlib>(
+    filename: S,
+    stdlib: TStdlib,
+) -> Result<Interpreter<TStdlib>, InterpreterError>
 where
     S: AsRef<str>,
     TStdlib: Stdlib,
@@ -164,8 +167,8 @@ macro_rules! assert_err {
     ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             crate::interpreter::test_utils::interpret_err($program),
-            crate::interpreter::InterpreterError::new_with_pos(
-                $expected_msg,
+            crate::common::ErrorEnvelope::Pos(
+                format!("{}", $expected_msg),
                 crate::common::Location::new($expected_row, $expected_col)
             )
         );

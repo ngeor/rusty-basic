@@ -22,7 +22,7 @@ mod user_defined_sub_linter;
 #[cfg(test)]
 pub mod test_utils;
 
-pub use self::error::{err_l, err_no_pos, Error, LinterError};
+pub use self::error::*;
 pub use self::linter::*;
 pub use self::types::*;
 

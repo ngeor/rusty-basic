@@ -1,7 +1,6 @@
 // STR$(numeric-expression) returns a string representation of a number
 // TODO support hexadecimal literals &H10
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::common::Location;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
 use crate::linter::{Error, ExpressionNode};
 use crate::variant::Variant;
@@ -15,11 +14,7 @@ impl BuiltInLint for StrFn {
 }
 
 impl BuiltInRun for StrFn {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        _pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
             Variant::VSingle(f) => Variant::VString(format!("{}", f)),

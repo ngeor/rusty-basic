@@ -17,7 +17,7 @@ impl PostConversionLinter for BuiltInFunctionLinter {
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                built_in_function.lint(args).with_err_pos(pos)
+                built_in_function.lint(args).patch_err_pos(pos)
             }
             Expression::BinaryExpression(_, left, right) => {
                 self.visit_expression(left)?;

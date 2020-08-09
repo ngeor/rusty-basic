@@ -3,9 +3,9 @@
 // returns the first occurrence of needle$ inside hay$
 
 use super::{util, BuiltInLint, BuiltInRun};
-use crate::common::Location;
+use crate::common::*;
 use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
-use crate::linter::{err_no_pos, Error, ExpressionNode, LinterError};
+use crate::linter::{Error, ExpressionNode, LinterError};
 use crate::variant::Variant;
 
 pub struct InStr {}
@@ -20,41 +20,27 @@ impl BuiltInLint for InStr {
             util::require_string_argument(args, 1)?;
             util::require_string_argument(args, 2)
         } else {
-            err_no_pos(LinterError::ArgumentCountMismatch)
+            Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
         }
     }
 }
 
 impl BuiltInRun for InStr {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
         let a: Variant = interpreter.pop_unnamed_val().unwrap();
         let b: Variant = interpreter.pop_unnamed_val().unwrap();
         let result: i32 = match interpreter.pop_unnamed_val() {
-            Some(c) => do_instr(
-                a.demand_integer(),
-                b.demand_string(),
-                c.demand_string(),
-                pos,
-            )?,
-            None => do_instr(1, a.demand_string(), b.demand_string(), pos)?,
+            Some(c) => do_instr(a.demand_integer(), b.demand_string(), c.demand_string())?,
+            None => do_instr(1, a.demand_string(), b.demand_string())?,
         };
         interpreter.function_result = result.into();
         Ok(())
     }
 }
 
-fn do_instr(
-    start: i32,
-    hay: String,
-    needle: String,
-    pos: Location,
-) -> Result<i32, InterpreterError> {
+fn do_instr(start: i32, hay: String, needle: String) -> Result<i32, InterpreterError> {
     if start <= 0 {
-        Err(InterpreterError::new_with_pos("Illegal function call", pos))
+        Err("Illegal function call".to_string()).with_err_no_pos()
     } else if hay.is_empty() {
         Ok(0)
     } else if needle.is_empty() {
@@ -76,9 +62,8 @@ fn do_instr(
 mod tests {
     use crate::assert_linter_err;
     use crate::assert_prints;
-    use crate::common::Location;
+    use crate::common::*;
     use crate::interpreter::test_utils::interpret_err;
-    use crate::interpreter::InterpreterError;
     use crate::linter::LinterError;
 
     #[test]
@@ -98,8 +83,8 @@ mod tests {
         assert_prints!(r#"PRINT INSTR("", "")"#, "0");
         assert_eq!(
             interpret_err(r#"PRINT INSTR(0, "oops", "zero")"#),
-            InterpreterError::new(
-                "Illegal function call",
+            ErrorEnvelope::Stacktrace(
+                "Illegal function call".to_string(),
                 vec![
                     Location::new(1, 7),
                     Location::new(1, 7) // TODO why is this double

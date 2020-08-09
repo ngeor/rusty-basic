@@ -1,44 +1,6 @@
-use crate::common::Location;
+use crate::common::*;
 
-/// A collection of coordinates in the program where an error occurred
-pub type Stacktrace = Vec<Location>;
-
-/// The error type of the interpreter
-#[derive(Debug, PartialEq)]
-pub struct InterpreterError {
-    message: String,
-    stacktrace: Stacktrace,
-}
-
-// TODO add runtime errors like Overflow with the correct error code
-
-impl InterpreterError {
-    pub fn new<S: AsRef<str>>(msg: S, stacktrace: Stacktrace) -> Self {
-        InterpreterError {
-            message: msg.as_ref().to_string(),
-            stacktrace,
-        }
-    }
-
-    pub fn new_with_pos<S: AsRef<str>>(msg: S, pos: Location) -> Self {
-        InterpreterError::new(msg, vec![pos])
-    }
-
-    pub fn with_existing_stacktrace(self, stacktrace: &Stacktrace) -> Self {
-        let mut new_vec = vec![];
-        for x in self.stacktrace {
-            new_vec.push(x);
-        }
-        for x in stacktrace.iter() {
-            new_vec.push(*x);
-        }
-        InterpreterError::new(self.message, new_vec)
-    }
-}
-
-pub fn err<T, S: AsRef<str>>(msg: S, pos: Location) -> Result<T, InterpreterError> {
-    Err(InterpreterError::new_with_pos(msg, pos))
-}
+pub type InterpreterError = ErrorEnvelope<String>;
 
 #[cfg(test)]
 mod tests {

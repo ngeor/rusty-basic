@@ -1,11 +1,13 @@
-use super::{ConditionalBlockNode, ParserError, Statement};
+use super::{ConditionalBlockNode, ParserErrorNode, Statement};
 use crate::lexer::{BufLexer, Keyword};
 use crate::parser::buf_lexer::*;
 use crate::parser::expression;
 use crate::parser::statements::parse_statements;
 use std::io::BufRead;
 
-pub fn demand_while_block<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Statement, ParserError> {
+pub fn demand_while_block<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Statement, ParserErrorNode> {
     read_demand_whitespace(lexer, "Expected whitespace after WHILE keyword")?;
     let condition = demand(
         lexer,

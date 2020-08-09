@@ -10,7 +10,7 @@ use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<DeclaredNameNode>, ParserError> {
+) -> Result<Option<DeclaredNameNode>, ParserErrorNode> {
     if !lexer.peek()?.as_ref().is_word() {
         return Ok(None);
     }
@@ -32,13 +32,13 @@ pub fn try_read<T: BufRead>(
         _ => {
             return Err(ParserError::SyntaxError(
                 "Identifier cannot end with %, &, !, #, or $".to_string(),
-                var_name_node.pos(),
-            ));
+            ))
+            .with_err_at(&var_name_node);
         }
     };
     // demand type name
-    let next = lexer.read()?;
-    let var_type = match next.as_ref() {
+    let Locatable { element: next, pos } = lexer.read()?;
+    let var_type = match next {
         Lexeme::Keyword(Keyword::Double, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)
         }
@@ -54,12 +54,12 @@ pub fn try_read<T: BufRead>(
         Lexeme::Keyword(Keyword::String_, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
         }
-        Lexeme::Word(w) => TypeDefinition::UserDefined(w.clone().into()),
+        Lexeme::Word(w) => TypeDefinition::UserDefined(w.into()),
         _ => {
             return Err(ParserError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
-                next.pos(),
             ))
+            .with_err_at(pos)
         }
     };
     Ok(Some(

@@ -7,7 +7,9 @@ use crate::parser::statements::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, ParserError> {
+pub fn try_read<T: BufRead>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, ParserErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::If) {
         return Ok(None);
     }
@@ -49,7 +51,7 @@ fn read_if_block<T: BufRead>(
     lexer: &mut BufLexer<T>,
     condition: ExpressionNode,
     is_multi_line: bool,
-) -> Result<ConditionalBlockNode, ParserError> {
+) -> Result<ConditionalBlockNode, ParserErrorNode> {
     let statements = if is_multi_line {
         parse_statements(lexer, exit_predicate_if_multi_line, "Unterminated IF")?
     } else {
@@ -70,7 +72,7 @@ fn read_if_block<T: BufRead>(
 
 fn try_read_else_if_block<T: BufRead>(
     lexer: &mut BufLexer<T>,
-) -> Result<Option<ConditionalBlockNode>, ParserError> {
+) -> Result<Option<ConditionalBlockNode>, ParserErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::ElseIf) {
         return Ok(None);
     }
@@ -93,7 +95,7 @@ fn try_read_else_if_block<T: BufRead>(
 fn try_read_else_block<T: BufRead>(
     lexer: &mut BufLexer<T>,
     is_multi_line: bool,
-) -> Result<Option<StatementNodes>, ParserError> {
+) -> Result<Option<StatementNodes>, ParserErrorNode> {
     if !lexer.peek()?.as_ref().is_keyword(Keyword::Else) {
         return Ok(None);
     }
@@ -114,13 +116,13 @@ fn try_read_else_block<T: BufRead>(
     }
 }
 
-fn is_multi_line<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserError> {
+fn is_multi_line<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, ParserErrorNode> {
     // if we find EOL or comment, it's multi-line
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
     let p = lexer.peek()?;
     let is_multi_line = p.as_ref().is_eol() || p.as_ref().is_symbol('\'');
-    lexer.rollback_transaction()?;
+    lexer.rollback_transaction();
     Ok(is_multi_line)
 }
 

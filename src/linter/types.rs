@@ -39,15 +39,17 @@ impl Expression {
                 let q_left = l.as_ref().try_qualifier()?;
                 let q_right = r.as_ref().try_qualifier()?;
                 super::operand_type::cast_binary_op(*op, q_left, q_right)
-                    .ok_or_else(|| LinterError::TypeMismatch.at(r.pos()).into())
+                    .ok_or_else(|| LinterError::TypeMismatch)
+                    .with_err_at(r.pos())
             }
             Self::UnaryExpression(op, c) => {
                 let q_child = c.as_ref().try_qualifier()?;
                 super::operand_type::cast_unary_op(*op, q_child)
-                    .ok_or_else(|| LinterError::TypeMismatch.at(c.pos()).into())
+                    .ok_or_else(|| LinterError::TypeMismatch)
+                    .with_err_at(c.as_ref())
             }
             Self::Parenthesis(c) => c.as_ref().try_qualifier(),
-            Self::FileHandle(_) => err(LinterError::TypeMismatch, pos),
+            Self::FileHandle(_) => Err(LinterError::TypeMismatch).with_err_at(pos),
         }
     }
 }

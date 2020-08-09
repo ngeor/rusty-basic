@@ -2,11 +2,9 @@
 // LEN(variable) -> number of bytes required to store a variable
 
 use super::{BuiltInLint, BuiltInRun};
-use crate::common::Location;
-use crate::interpreter::{err, Interpreter, InterpreterError, Stdlib};
-use crate::linter::{
-    err_l, err_no_pos, Error, Expression, ExpressionNode, LinterError, TypeQualifier,
-};
+use crate::common::*;
+use crate::interpreter::{Interpreter, InterpreterError, Stdlib};
+use crate::linter::{Error, Expression, ExpressionNode, LinterError, TypeQualifier};
 use crate::variant::Variant;
 use std::convert::TryInto;
 
@@ -15,7 +13,7 @@ pub struct Len {}
 impl BuiltInLint for Len {
     fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), Error> {
         if args.len() != 1 {
-            err_no_pos(LinterError::ArgumentCountMismatch)
+            Err(LinterError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             let arg: &Expression = args[0].as_ref();
             match arg {
@@ -23,7 +21,7 @@ impl BuiltInLint for Len {
                 _ => {
                     let q = args[0].try_qualifier()?;
                     if q != TypeQualifier::DollarString {
-                        err_l(LinterError::VariableRequired, &args[0])
+                        Err(LinterError::VariableRequired).with_err_at(&args[0])
                     } else {
                         Ok(())
                     }
@@ -34,11 +32,7 @@ impl BuiltInLint for Len {
 }
 
 impl BuiltInRun for Len {
-    fn run<S: Stdlib>(
-        &self,
-        interpreter: &mut Interpreter<S>,
-        pos: Location,
-    ) -> Result<(), InterpreterError> {
+    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), InterpreterError> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
             Variant::VSingle(_) => Variant::VInteger(4),
@@ -47,7 +41,7 @@ impl BuiltInRun for Len {
             Variant::VInteger(_) => Variant::VInteger(2),
             Variant::VLong(_) => Variant::VInteger(4),
             _ => {
-                return err("Not supported", pos);
+                return Err(format!("Variant {:?} not supported in LEN", v)).with_err_no_pos();
             }
         };
         Ok(())

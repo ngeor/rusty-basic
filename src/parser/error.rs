@@ -1,5 +1,5 @@
-use crate::common::{HasLocation, Location};
-use crate::lexer::{LexemeNode, LexerError};
+use crate::common::*;
+use crate::lexer::{Lexeme, LexemeNode, LexerError, LexerErrorNode};
 
 // TODO clarify when we use Unexpected | Unterminated or SyntaxError
 // TODO go over all sub-parsers and make sure they honor those semantics and don't backtrack if they aren't supposed do
@@ -9,33 +9,38 @@ pub enum ParserError {
     /// An error occurred in the lexer.
     LexerError(LexerError),
 
-    /// An internal error (IO error, unexpected num parsing, etc)
-    Internal(String, Location),
+    /// Unexpected token. This is a recoverable error.
+    Unexpected(String, Lexeme),
 
-    /// Unexpected token
-    Unexpected(String, LexemeNode),
+    Unterminated(Lexeme),
 
-    Unterminated(LexemeNode),
-
-    SyntaxError(String, Location),
+    SyntaxError(String),
 }
 
-pub fn unexpected<T, S: AsRef<str>>(msg: S, lexeme: LexemeNode) -> Result<T, ParserError> {
-    Err(ParserError::Unexpected(msg.as_ref().to_string(), lexeme))
-}
+pub type ParserErrorNode = ErrorEnvelope<ParserError>;
 
-impl HasLocation for ParserError {
-    fn pos(&self) -> Location {
-        match self {
-            Self::LexerError(l) => l.pos(),
-            Self::Internal(_, pos) | Self::SyntaxError(_, pos) => pos.clone(),
-            Self::Unexpected(_, l) | Self::Unterminated(l) => l.pos(),
-        }
+impl ParserError {
+    pub fn unexpected<S: AsRef<str>>(msg: S, lexeme: Lexeme) -> Self {
+        ParserError::Unexpected(msg.as_ref().to_string(), lexeme)
     }
 }
 
 impl From<LexerError> for ParserError {
     fn from(lexer_error: LexerError) -> Self {
-        Self::LexerError(lexer_error)
+        ParserError::LexerError(lexer_error)
+    }
+}
+
+pub fn unexpected<T, S: AsRef<str>>(msg: S, lexeme_node: LexemeNode) -> Result<T, ParserErrorNode> {
+    let Locatable {
+        element: lexeme,
+        pos,
+    } = lexeme_node;
+    Err(ParserError::unexpected(msg, lexeme)).with_err_at(pos)
+}
+
+impl From<LexerErrorNode> for ParserErrorNode {
+    fn from(l: LexerErrorNode) -> Self {
+        l.map(|x| x.into())
     }
 }

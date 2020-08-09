@@ -121,6 +121,11 @@ mod tests {
     #[test]
     fn test_len_must_be_unqualified() {
         let program = r#"PRINT LEN!("hello")"#;
-        assert_linter_err!(program, QError::SyntaxError, 1, 7);
+        assert_linter_err!(
+            program,
+            QError::SyntaxError("Function Len must be unqualified".to_string()),
+            1,
+            7
+        );
     }
 }

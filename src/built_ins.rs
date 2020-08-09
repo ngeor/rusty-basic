@@ -192,7 +192,10 @@ fn demand_unqualified(
 ) -> Result<Option<BuiltInFunction>, QError> {
     match n {
         Name::Bare(_) => Ok(Some(built_in)),
-        _ => Err(QError::SyntaxError),
+        _ => Err(QError::SyntaxError(format!(
+            "Function {:?} must be unqualified",
+            built_in
+        ))),
     }
 }
 
@@ -209,7 +212,10 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 BuiltInFunction::Environ | BuiltInFunction::Mid => {
                     // ENVIRON$ must be qualified
                     match n {
-                        Name::Bare(_) => Err(QError::SyntaxError),
+                        Name::Bare(_) => Err(QError::SyntaxError(format!(
+                            "Function {:?} must be qualified",
+                            n
+                        ))),
                         Name::Qualified { qualifier, .. } => {
                             if *qualifier == TypeQualifier::DollarString {
                                 Ok(Some(b))

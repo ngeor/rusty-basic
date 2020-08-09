@@ -1,5 +1,9 @@
 use super::ErrorEnvelope;
 
+// TODO clarify when we use Unexpected | Unterminated or SyntaxError
+// TODO go over all sub-parsers and make sure they honor those semantics and don't backtrack if they aren't supposed do
+// TODO add tests for more user friendly errors e.g. "ELSE without IF"
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum QError {
     // 37
@@ -31,7 +35,7 @@ pub enum QError {
     VariableRequired,
 
     // 2
-    SyntaxError,
+    SyntaxError(String),
 
     ForLoopZeroStep,
     Overflow,

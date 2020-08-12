@@ -4,7 +4,7 @@ use super::{HasLocation, Location};
 // ErrorEnvelope
 //
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ErrorEnvelope<T> {
     NoPos(T),
     Pos(T, Location),

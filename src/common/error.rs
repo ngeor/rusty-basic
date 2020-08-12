@@ -185,8 +185,8 @@ pub enum QError {
 
 pub type QErrorNode = ErrorEnvelope<QError>;
 
-impl From<std::io::Error> for QError {
-    fn from(e: std::io::Error) -> Self {
+impl From<&std::io::Error> for QError {
+    fn from(e: &std::io::Error) -> Self {
         if e.kind() == std::io::ErrorKind::NotFound {
             Self::FileNotFound
         } else if e.kind() == std::io::ErrorKind::UnexpectedEof {
@@ -194,6 +194,13 @@ impl From<std::io::Error> for QError {
         } else {
             Self::DeviceIOError(e.to_string())
         }
+    }
+}
+
+impl From<std::io::Error> for QError {
+    fn from(e: std::io::Error) -> Self {
+        let x: &std::io::Error = &e;
+        x.into()
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::common::{PeekOne, ReadOne};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor, Result};
 
@@ -8,6 +9,23 @@ pub struct CharOrEofReader<T: BufRead> {
     seen_eof: bool,
 }
 
+impl<T: BufRead> ReadOne for CharOrEofReader<T> {
+    type Item = char;
+    type Err = std::io::Error;
+
+    fn read(&mut self) -> Result<Option<char>> {
+        self.fill_buffer_if_empty()?;
+        Ok(self.buffer.remove(0))
+    }
+}
+
+impl<T: BufRead> PeekOne for CharOrEofReader<T> {
+    fn peek(&mut self) -> Result<Option<&char>> {
+        self.fill_buffer_if_empty()?;
+        Ok(self.buffer[0].as_ref())
+    }
+}
+
 impl<T: BufRead> CharOrEofReader<T> {
     pub fn new(reader: T) -> CharOrEofReader<T> {
         CharOrEofReader {
@@ -15,16 +33,6 @@ impl<T: BufRead> CharOrEofReader<T> {
             buffer: vec![],
             seen_eof: false,
         }
-    }
-
-    pub fn peek(&mut self) -> Result<Option<char>> {
-        self.fill_buffer_if_empty()?;
-        Ok(self.buffer[0])
-    }
-
-    pub fn read(&mut self) -> Result<Option<char>> {
-        self.fill_buffer_if_empty()?;
-        Ok(self.buffer.remove(0))
     }
 
     fn fill_buffer_if_empty(&mut self) -> Result<()> {

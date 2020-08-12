@@ -54,7 +54,10 @@ impl<T: BufRead> Lexer<T> {
                 self.read_one()?; // consume it so that next invocation yields unexpected eof error
                 Ok(Lexeme::EOF.at(self.pos))
             }
-            Some(peeked) => self.read_char(peeked),
+            Some(peeked) => {
+                let ch = *peeked;
+                self.read_char(ch)
+            }
         }
     }
 
@@ -84,7 +87,7 @@ impl<T: BufRead> Lexer<T> {
         }
     }
 
-    fn peek_one(&mut self) -> Result<Option<char>, QErrorNode> {
+    fn peek_one(&mut self) -> Result<Option<&char>, QErrorNode> {
         self.reader
             .peek()
             .map_err(|e| e.into())
@@ -112,10 +115,11 @@ impl<T: BufRead> Lexer<T> {
     fn consume_if(&mut self, predicate: fn(char) -> bool) -> Result<Option<char>, QErrorNode> {
         match self.peek_one()? {
             Some(ch) => {
-                if predicate(ch) {
+                let c = *ch;
+                if predicate(c) {
                     self.read_one()?;
                     self.pos.inc_col();
-                    Ok(Some(ch))
+                    Ok(Some(c))
                 } else {
                     Ok(None)
                 }
@@ -131,18 +135,18 @@ impl<T: BufRead> Lexer<T> {
             let x = self.peek_one()?;
             match x {
                 Some(ch) => {
-                    if ch == '\n' {
+                    if *ch == '\n' {
                         // \n
-                        result.push(ch);
+                        result.push(*ch);
                         self.read_one()?;
                         if previous_was_cr {
                             previous_was_cr = false;
                         } else {
                             self.pos.inc_row();
                         }
-                    } else if ch == '\r' {
+                    } else if *ch == '\r' {
                         // \r\?
-                        result.push(ch);
+                        result.push(*ch);
                         self.read_one()?;
                         self.pos.inc_row();
                         previous_was_cr = true;

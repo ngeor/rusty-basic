@@ -10,6 +10,7 @@ use std::str::FromStr;
 pub struct Lexer<T: BufRead> {
     reader: CharOrEofReader<T>,
     pos: Location,
+    seen_eof: bool,
 }
 
 fn is_letter(ch: char) -> bool {
@@ -39,25 +40,55 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
+impl<T: BufRead> ReadOne for Lexer<T> {
+    type Item = LexemeNode;
+    type Err = QErrorNode;
+
+    fn read_ng(&mut self) -> Result<Option<LexemeNode>, QErrorNode> {
+        let pos = self.pos();
+        let peeked = self.peek_one()?;
+        match peeked {
+            None => {
+                if self.seen_eof {
+                    Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into())
+                        .with_err_at(pos)
+                } else {
+                    self.seen_eof = true;
+                    Ok(Some(Lexeme::EOF.at(pos)))
+                }
+            }
+            Some(peeked) => {
+                let ch = peeked;
+                let lexeme_node = self.read_char(ch)?;
+                Ok(Some(lexeme_node))
+            }
+        }
+    }
+}
+
+/// Rejects Ok(None) values
+pub trait DemandTrait<T, E> {
+    fn demand<S: AsRef<str>>(self, err_msg: S, err_pos: Location) -> Result<T, E>;
+}
+
+impl<T> DemandTrait<T, QErrorNode> for Result<Option<T>, QErrorNode> {
+    fn demand<S: AsRef<str>>(self, err_msg: S, err_pos: Location) -> Result<T, QErrorNode> {
+        match self {
+            Ok(None) => {
+                Err(QError::SyntaxError(format!("{}", err_msg.as_ref()))).with_err_at(err_pos)
+            }
+            Ok(Some(x)) => Ok(x),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 impl<T: BufRead> Lexer<T> {
     pub fn new(reader: CharOrEofReader<T>) -> Lexer<T> {
         Lexer {
             reader: reader,
             pos: Location::start(),
-        }
-    }
-
-    pub fn read(&mut self) -> Result<LexemeNode, QErrorNode> {
-        let peeked = self.peek_one()?;
-        match peeked {
-            None => {
-                self.read_one()?; // consume it so that next invocation yields unexpected eof error
-                Ok(Lexeme::EOF.at(self.pos))
-            }
-            Some(peeked) => {
-                let ch = *peeked;
-                self.read_char(ch)
-            }
+            seen_eof: false,
         }
     }
 
@@ -87,16 +118,20 @@ impl<T: BufRead> Lexer<T> {
         }
     }
 
-    fn peek_one(&mut self) -> Result<Option<&char>, QErrorNode> {
+    fn peek_one(&mut self) -> Result<Option<char>, QErrorNode> {
         self.reader
-            .peek()
+            .peek_ng()
+            .map(|opt| match opt {
+                Some(x) => Some(*x),
+                None => None,
+            })
             .map_err(|e| e.into())
             .with_err_at(self.pos)
     }
 
     fn read_one(&mut self) -> Result<Option<char>, QErrorNode> {
         self.reader
-            .read()
+            .read_ng()
             .map_err(|e| e.into())
             .with_err_at(self.pos)
     }
@@ -115,7 +150,7 @@ impl<T: BufRead> Lexer<T> {
     fn consume_if(&mut self, predicate: fn(char) -> bool) -> Result<Option<char>, QErrorNode> {
         match self.peek_one()? {
             Some(ch) => {
-                let c = *ch;
+                let c = ch;
                 if predicate(c) {
                     self.read_one()?;
                     self.pos.inc_col();
@@ -135,18 +170,18 @@ impl<T: BufRead> Lexer<T> {
             let x = self.peek_one()?;
             match x {
                 Some(ch) => {
-                    if *ch == '\n' {
+                    if ch == '\n' {
                         // \n
-                        result.push(*ch);
+                        result.push(ch);
                         self.read_one()?;
                         if previous_was_cr {
                             previous_was_cr = false;
                         } else {
                             self.pos.inc_row();
                         }
-                    } else if *ch == '\r' {
+                    } else if ch == '\r' {
                         // \r\?
-                        result.push(*ch);
+                        result.push(ch);
                         self.read_one()?;
                         self.pos.inc_row();
                         previous_was_cr = true;
@@ -194,74 +229,86 @@ mod tests {
         let input = "PRINT \"Hello, world!\"";
         let mut lexer = Lexer::from(input);
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Word("PRINT".to_string()).at_rc(1, 1)
         );
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Whitespace(" ".to_string()).at_rc(1, 6)
         );
-        assert_eq!(lexer.read().unwrap(), Lexeme::Symbol('"').at_rc(1, 7));
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
+            Lexeme::Symbol('"').at_rc(1, 7)
+        );
+        assert_eq!(
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Word("Hello".to_string()).at_rc(1, 8)
         );
-        assert_eq!(lexer.read().unwrap(), Lexeme::Symbol(',').at_rc(1, 13));
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
+            Lexeme::Symbol(',').at_rc(1, 13)
+        );
+        assert_eq!(
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Whitespace(" ".to_string()).at_rc(1, 14)
         );
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Word("world".to_string()).at_rc(1, 15)
         );
-        assert_eq!(lexer.read().unwrap(), Lexeme::Symbol('!').at_rc(1, 20));
-        assert_eq!(lexer.read().unwrap(), Lexeme::Symbol('"').at_rc(1, 21));
-        assert_eq!(lexer.read().unwrap(), Lexeme::EOF.at_rc(1, 22));
+        assert_eq!(
+            lexer.read_ng().unwrap().unwrap(),
+            Lexeme::Symbol('!').at_rc(1, 20)
+        );
+        assert_eq!(
+            lexer.read_ng().unwrap().unwrap(),
+            Lexeme::Symbol('"').at_rc(1, 21)
+        );
+        assert_eq!(lexer.read_ng().unwrap().unwrap(), Lexeme::EOF.at_rc(1, 22));
     }
 
     #[test]
     fn test_cr_lf() {
         let mut lexer = Lexer::from("Hi\r\n123");
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Word("Hi".to_string()).at_rc(1, 1)
         );
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::EOL("\r\n".to_string()).at_rc(1, 3)
         );
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Digits("123".to_string()).at_rc(2, 1)
         );
-        assert_eq!(lexer.read().unwrap(), Lexeme::EOF.at_rc(2, 4));
+        assert_eq!(lexer.read_ng().unwrap().unwrap(), Lexeme::EOF.at_rc(2, 4));
     }
 
     #[test]
     fn test_cr_lf_2() {
         let mut lexer = Lexer::from("Hi\r\n\n\r");
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Word("Hi".to_string()).at_rc(1, 1)
         );
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::EOL("\r\n\n\r".to_string()).at_rc(1, 3)
         );
-        assert_eq!(lexer.read().unwrap(), Lexeme::EOF.at_rc(4, 1));
+        assert_eq!(lexer.read_ng().unwrap().unwrap(), Lexeme::EOF.at_rc(4, 1));
     }
 
     #[test]
     fn test_eof_is_only_once() {
         let mut lexer = Lexer::from("Hi");
         assert_eq!(
-            lexer.read().unwrap(),
+            lexer.read_ng().unwrap().unwrap(),
             Lexeme::Word("Hi".to_string()).at_rc(1, 1)
         );
-        assert_eq!(lexer.read().unwrap(), Lexeme::EOF.at_rc(1, 3));
+        assert_eq!(lexer.read_ng().unwrap().unwrap(), Lexeme::EOF.at_rc(1, 3));
         assert_eq!(
-            lexer.read(),
+            lexer.read_ng(),
             Err(QError::InputPastEndOfFile).with_err_at_rc(1, 3)
         );
     }
@@ -270,14 +317,20 @@ mod tests {
     fn test_location() {
         let mut lexer = Lexer::from("PRINT 1");
         assert_eq!(lexer.pos(), Location::new(1, 1));
-        lexer.read().expect("Read should succeed (PRINT)");
+        lexer
+            .read_ng()
+            .unwrap()
+            .expect("Read should succeed (PRINT)");
         assert_eq!(lexer.pos(), Location::new(1, 6));
-        lexer.read().expect("Read should succeed (whitespace)");
+        lexer
+            .read_ng()
+            .unwrap()
+            .expect("Read should succeed (whitespace)");
         assert_eq!(lexer.pos(), Location::new(1, 7));
-        lexer.read().expect("Read should succeed (1)");
+        lexer.read_ng().unwrap().expect("Read should succeed (1)");
         assert_eq!(lexer.pos(), Location::new(1, 8));
-        lexer.read().expect("Read should succeed (EOF)");
+        lexer.read_ng().unwrap().expect("Read should succeed (EOF)");
         assert_eq!(lexer.pos(), Location::new(1, 8));
-        lexer.read().expect_err("Read should fail");
+        lexer.read_ng().expect_err("Read should fail");
     }
 }

@@ -1,12 +1,13 @@
 use super::{ConditionalBlockNode, Statement, StatementNode};
 use crate::common::*;
-use crate::lexer::{BufLexer, Keyword};
+use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::statements::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+    // TODO lexer consume_if + map
     if !lexer.peek()?.as_ref().is_keyword(Keyword::While) {
         return Ok(None);
     }

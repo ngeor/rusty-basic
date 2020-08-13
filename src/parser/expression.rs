@@ -300,7 +300,7 @@ mod word {
     pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, QErrorNode> {
         // is it maybe a qualified variable name
         let Locatable { element: next, pos } = lexer.read()?;
-        let word = next.into_word();
+        let word = next.as_word().unwrap(); // TODO fix this
         let qualifier = type_qualifier::try_read(lexer)?;
         let name = Name::new(word.into(), qualifier);
         // it could be a function call?

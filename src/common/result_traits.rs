@@ -71,3 +71,24 @@ impl<T, E> ToLocatableOk<Location, Result<Locatable<T>, E>> for Result<T, E> {
         self.map(|e| e.at(pos))
     }
 }
+
+/// Chains on Ok(Some) values
+
+pub trait ChainResultOption<T, U, E> {
+    fn and_then_opt<F>(self, f: F) -> Result<Option<U>, E>
+    where
+        F: FnOnce(T) -> Result<Option<U>, E>;
+}
+
+impl<T, U, E> ChainResultOption<T, U, E> for Result<Option<T>, E> {
+    fn and_then_opt<F>(self, f: F) -> Result<Option<U>, E>
+    where
+        F: FnOnce(T) -> Result<Option<U>, E>,
+    {
+        match self {
+            Ok(None) => Ok(None),
+            Err(err) => Err(err),
+            Ok(Some(x)) => f(x),
+        }
+    }
+}

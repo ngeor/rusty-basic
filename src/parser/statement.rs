@@ -1,6 +1,6 @@
 use crate::built_ins;
 use crate::common::*;
-use crate::lexer::{BufLexer, Keyword};
+use crate::lexer::*;
 use crate::parser::assignment;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::comment;

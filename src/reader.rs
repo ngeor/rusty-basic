@@ -5,24 +5,42 @@ use std::io::{BufRead, BufReader, Cursor, Result};
 #[derive(Debug)]
 pub struct CharOrEofReader<T: BufRead> {
     reader: T,
-    buffer: Vec<Option<char>>,
-    seen_eof: bool,
+    buffer: Vec<char>,
+    read_eof: bool,
 }
 
 impl<T: BufRead> ReadOne for CharOrEofReader<T> {
     type Item = char;
     type Err = std::io::Error;
 
-    fn read(&mut self) -> Result<Option<char>> {
-        self.fill_buffer_if_empty()?;
-        Ok(self.buffer.remove(0))
+    fn read_ng(&mut self) -> Result<Option<char>> {
+        if self.read_eof {
+            Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+        } else {
+            self.fill_buffer_if_empty()?;
+            if self.buffer.is_empty() {
+                self.read_eof = true;
+                Ok(None)
+            } else {
+                Ok(Some(self.buffer.remove(0)))
+            }
+        }
     }
 }
 
 impl<T: BufRead> PeekOne for CharOrEofReader<T> {
-    fn peek(&mut self) -> Result<Option<&char>> {
-        self.fill_buffer_if_empty()?;
-        Ok(self.buffer[0].as_ref())
+    // TODO make a new trait where peek_ng can return the real thing for Copy types
+    fn peek_ng(&mut self) -> Result<Option<&char>> {
+        if self.read_eof {
+            Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+        } else {
+            self.fill_buffer_if_empty()?;
+            if self.buffer.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(&self.buffer[0]))
+            }
+        }
     }
 }
 
@@ -31,7 +49,7 @@ impl<T: BufRead> CharOrEofReader<T> {
         CharOrEofReader {
             reader,
             buffer: vec![],
-            seen_eof: false,
+            read_eof: false,
         }
     }
 
@@ -46,19 +64,9 @@ impl<T: BufRead> CharOrEofReader<T> {
     fn fill_buffer(&mut self) -> Result<()> {
         let mut line = String::new();
         let bytes_read = self.reader.read_line(&mut line)?;
-        if bytes_read <= 0 {
-            if self.seen_eof {
-                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof));
-            } else {
-                self.buffer.push(None);
-                self.seen_eof = true;
-            }
-        } else {
+        if bytes_read > 0 {
             for c in line.chars() {
-                self.buffer.push(Some(c))
-            }
-            if self.buffer.is_empty() {
-                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof));
+                self.buffer.push(c)
             }
         }
         Ok(())
@@ -89,10 +97,10 @@ mod tests {
     #[test]
     fn test_eof_is_only_once() {
         let mut reader: CharOrEofReader<BufReader<Cursor<&str>>> = "123".into();
-        assert_eq!(reader.read().unwrap().unwrap(), '1');
-        assert_eq!(reader.read().unwrap().unwrap(), '2');
-        assert_eq!(reader.read().unwrap().unwrap(), '3');
-        assert_eq!(reader.read().unwrap(), None);
-        assert_eq!(reader.read().is_err(), true);
+        assert_eq!(reader.read_ng().unwrap().unwrap(), '1');
+        assert_eq!(reader.read_ng().unwrap().unwrap(), '2');
+        assert_eq!(reader.read_ng().unwrap().unwrap(), '3');
+        assert_eq!(reader.read_ng().unwrap(), None);
+        assert_eq!(reader.read_ng().is_err(), true);
     }
 }

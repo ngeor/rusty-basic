@@ -1,76 +1,25 @@
-use super::{LexemeNode, Lexer};
 use crate::common::*;
+use crate::lexer::*;
 use std::convert::From;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
-/// Buffering lexer, offering peek/read/undo capabilities.
-#[derive(Debug)]
-pub struct BufLexer<T: BufRead> {
-    lexer: Lexer<T>,
-    history: Vec<LexemeNode>,
-    index: usize,
-    transactions: Vec<usize>,
-}
+pub type BufLexer<T> = TransactionalPeek<Lexer<T>>;
 
 impl<T: BufRead> BufLexer<T> {
-    pub fn new(lexer: Lexer<T>) -> Self {
-        Self {
-            lexer,
-            history: vec![],
-            index: 0,
-            transactions: vec![],
-        }
-    }
-
     pub fn peek(&mut self) -> Result<LexemeNode, QErrorNode> {
-        self.fill_buffer_if_empty()?;
-        Ok(self.history[self.index].clone())
+        let pos = self.pos();
+        match self.peek_ng()? {
+            Some(x) => Ok(x.clone()),
+            None => Ok(Lexeme::EOF.at(pos)),
+        }
     }
 
     pub fn read(&mut self) -> Result<LexemeNode, QErrorNode> {
-        let result = self.peek()?;
-        self.index += 1;
-        self.clear_history();
-        Ok(result)
-    }
-
-    pub fn begin_transaction(&mut self) {
-        self.transactions.push(self.index);
-    }
-
-    pub fn commit_transaction(&mut self) {
-        if self.transactions.is_empty() {
-            panic!("Not in transaction");
-        } else {
-            self.transactions.pop();
-        }
-    }
-
-    pub fn rollback_transaction(&mut self) {
-        if self.transactions.is_empty() {
-            panic!("Not in transaction");
-        } else {
-            self.index = self.transactions.pop().unwrap();
-        }
-    }
-
-    fn fill_buffer_if_empty(&mut self) -> Result<(), QErrorNode> {
-        if self.index >= self.history.len() {
-            let lexeme = self.lexer.read()?;
-            self.history.push(lexeme);
-        }
-        Ok(())
-    }
-
-    fn clear_history(&mut self) {
-        if self.transactions.is_empty() {
-            // self.index points to the next possible item in the history buffer
-            // remove items from the buffer so that self.index points to zero
-            while self.index > 0 && !self.history.is_empty() {
-                self.index -= 1;
-                self.history.remove(0);
-            }
+        let pos = self.pos();
+        match self.read_ng()? {
+            Some(x) => Ok(x),
+            None => Ok(Lexeme::EOF.at(pos)),
         }
     }
 }
@@ -87,17 +36,6 @@ where
 impl From<File> for BufLexer<BufReader<File>> {
     fn from(input: File) -> Self {
         Self::new(input.into())
-    }
-}
-
-impl<T: BufRead> HasLocation for BufLexer<T> {
-    /// Gets the location of the lexeme that will be read next.
-    fn pos(&self) -> Location {
-        if self.index < self.history.len() {
-            self.history[self.index].pos()
-        } else {
-            self.lexer.pos()
-        }
     }
 }
 

@@ -37,66 +37,155 @@ impl From<LexemeNode> for Lexeme {
 }
 
 impl Lexeme {
-    pub fn is_eof(&self) -> bool {
+    pub fn as_word(self) -> Option<String> {
         match self {
-            Self::EOF => true,
-            _ => false,
+            Lexeme::Word(w) => Some(w),
+            _ => None,
         }
     }
 
-    pub fn is_eol(&self) -> bool {
-        match self {
-            Self::EOL(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_eol_or_eof(&self) -> bool {
-        match self {
-            Self::EOF | Self::EOL(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_symbol(&self, ch: char) -> bool {
-        match self {
-            Self::Symbol(c) => *c == ch,
-            _ => false,
-        }
-    }
-
-    pub fn is_keyword(&self, keyword: Keyword) -> bool {
-        match self {
-            Self::Keyword(k, _) => *k == keyword,
-            _ => false,
-        }
-    }
-
-    pub fn is_whitespace(&self) -> bool {
-        match self {
-            Self::Whitespace(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_word(&self) -> bool {
-        match self {
-            Self::Word(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn into_word(self) -> String {
-        match self {
-            Self::Word(w) => w,
-            _ => panic!("Not a word"),
-        }
-    }
-
+    // TODO convert in the style of as_digits
     pub fn into_digits(self) -> String {
         match self {
             Lexeme::Digits(d) => d,
             _ => panic!("Not digits"),
+        }
+    }
+}
+
+pub trait LexemeTrait {
+    fn is_eof(&self) -> bool;
+
+    fn is_eol_or_eof(&self) -> bool {
+        self.is_eof() || self.is_eol()
+    }
+
+    fn is_eol(&self) -> bool;
+
+    fn is_symbol(&self, ch: char) -> bool;
+
+    fn is_keyword(&self, keyword: Keyword) -> bool;
+
+    fn is_whitespace(&self) -> bool;
+
+    fn is_word(&self) -> bool;
+}
+
+impl LexemeTrait for Lexeme {
+    fn is_eof(&self) -> bool {
+        self == &Lexeme::EOF
+    }
+
+    fn is_eol(&self) -> bool {
+        match self {
+            Lexeme::EOL(_) => true,
+            _ => false,
+        }
+    }
+
+    fn is_symbol(&self, ch: char) -> bool {
+        match self {
+            Lexeme::Symbol(c) => *c == ch,
+            _ => false,
+        }
+    }
+
+    fn is_keyword(&self, keyword: Keyword) -> bool {
+        match self {
+            Lexeme::Keyword(k, _) => *k == keyword,
+            _ => false,
+        }
+    }
+
+    fn is_whitespace(&self) -> bool {
+        match self {
+            Lexeme::Whitespace(_) => true,
+            _ => false,
+        }
+    }
+
+    fn is_word(&self) -> bool {
+        match self {
+            Lexeme::Word(_) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<T: AsRef<Lexeme>> LexemeTrait for T {
+    fn is_eof(&self) -> bool {
+        self.as_ref().is_eof()
+    }
+
+    fn is_eol(&self) -> bool {
+        self.as_ref().is_eol()
+    }
+
+    fn is_symbol(&self, ch: char) -> bool {
+        self.as_ref().is_symbol(ch)
+    }
+
+    fn is_keyword(&self, keyword: Keyword) -> bool {
+        self.as_ref().is_keyword(keyword)
+    }
+
+    fn is_whitespace(&self) -> bool {
+        self.as_ref().is_whitespace()
+    }
+
+    fn is_word(&self) -> bool {
+        self.as_ref().is_word()
+    }
+}
+
+impl<T: AsRef<Lexeme>> LexemeTrait for Option<&T> {
+    fn is_eof(&self) -> bool {
+        match self {
+            Some(x) => x.is_eof(),
+            None => true, // the only case where we map Option to true
+        }
+    }
+    fn is_eol(&self) -> bool {
+        match self {
+            Some(x) => x.is_eol(),
+            _ => false,
+        }
+    }
+
+    fn is_symbol(&self, ch: char) -> bool {
+        match self {
+            Some(x) => x.is_symbol(ch),
+            _ => false,
+        }
+    }
+
+    fn is_keyword(&self, keyword: Keyword) -> bool {
+        match self {
+            Some(x) => x.is_keyword(keyword),
+            _ => false,
+        }
+    }
+
+    fn is_whitespace(&self) -> bool {
+        match self {
+            Some(x) => x.is_whitespace(),
+            _ => false,
+        }
+    }
+
+    fn is_word(&self) -> bool {
+        match self {
+            Some(x) => x.is_word(),
+            _ => false,
+        }
+    }
+}
+
+impl HasLocation for Option<LexemeNode> {
+    fn pos(&self) -> Location {
+        match self {
+            Some(x) => x.pos(),
+            _ => panic!("None has no location"),
         }
     }
 }

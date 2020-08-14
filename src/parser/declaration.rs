@@ -10,7 +10,7 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::Declare) {
+    if !lexer.peek_ng().is_keyword(Keyword::Declare) {
         return Ok(None);
     }
 
@@ -51,29 +51,42 @@ pub fn try_read_declaration_parameters<T: BufRead>(
 ) -> Result<Option<DeclaredNameNodes>, QErrorNode> {
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
-    match lexer.peek()?.as_ref() {
-        Lexeme::EOL(_) | Lexeme::EOF => {
-            // EOL: no parameters e.g. Sub Hello
+
+    let p = lexer.peek_ng()?;
+    match p {
+        Some(l) => {
+            match l.as_ref() {
+                Lexeme::EOL(_) => {
+                    // EOL: no parameters e.g. Sub Hello
+                    lexer.commit_transaction();
+                    Ok(Some(vec![]))
+                }
+                Lexeme::Symbol('(') => {
+                    lexer.commit_transaction();
+                    parse_parameters(lexer).map(|x| Some(x))
+                }
+                _ => {
+                    lexer.rollback_transaction();
+                    Ok(None)
+                }
+            }
+        }
+        None => {
+            // EOF same as EOL
             lexer.commit_transaction();
             Ok(Some(vec![]))
-        }
-        Lexeme::Symbol('(') => {
-            lexer.commit_transaction();
-            parse_parameters(lexer).map(|x| Some(x))
-        }
-        _ => {
-            lexer.rollback_transaction();
-            Ok(None)
         }
     }
 }
 
 fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameNodes, QErrorNode> {
-    lexer.read()?; // read opening parenthesis
+    lexer.read_ng()?; // read opening parenthesis
     skip_whitespace(lexer)?;
-    let Locatable { element, pos } = lexer.peek()?;
-    match element {
-        Lexeme::Word(_) => {
+    match lexer.peek_ng()? {
+        Some(Locatable {
+            element: Lexeme::Word(_),
+            ..
+        }) => {
             // probably variable name
             let first_param = parse_one_parameter(lexer)?;
             let mut remaining = parse_next_parameter(lexer)?;
@@ -81,15 +94,18 @@ fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameN
             result.append(&mut remaining);
             Ok(result)
         }
-        Lexeme::Symbol(')') => {
+        Some(Locatable {
+            element: Lexeme::Symbol(')'),
+            ..
+        }) => {
             // exit e.g. Sub Hello()
-            lexer.read()?;
+            lexer.read_ng()?;
             Ok(vec![])
         }
         _ => Err(QError::SyntaxError(
             "Expected parameter name or closing parenthesis".to_string(),
         ))
-        .with_err_at(pos),
+        .with_err_at(lexer.pos()),
     }
 }
 
@@ -97,10 +113,12 @@ fn parse_next_parameter<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<DeclaredNameNodes, QErrorNode> {
     skip_whitespace(lexer)?;
-    let Locatable { element, pos } = lexer.peek()?;
-    match element {
-        Lexeme::Symbol(',') => {
-            lexer.read()?;
+    match lexer.peek_ng()? {
+        Some(Locatable {
+            element: Lexeme::Symbol(','),
+            ..
+        }) => {
+            lexer.read_ng()?;
             skip_whitespace(lexer)?;
             let first_param = parse_one_parameter(lexer)?;
             let mut remaining = parse_next_parameter(lexer)?;
@@ -108,14 +126,17 @@ fn parse_next_parameter<T: BufRead>(
             result.append(&mut remaining);
             Ok(result)
         }
-        Lexeme::Symbol(')') => {
-            lexer.read()?;
+        Some(Locatable {
+            element: Lexeme::Symbol(')'),
+            ..
+        }) => {
+            lexer.read_ng()?;
             Ok(vec![])
         }
         _ => Err(QError::SyntaxError(
             "Expected comma or closing parenthesis".to_string(),
         ))
-        .with_err_at(pos),
+        .with_err_at(lexer.pos()),
     }
 }
 

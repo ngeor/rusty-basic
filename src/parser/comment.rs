@@ -7,17 +7,16 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_symbol('\'') {
+    if !lexer.peek_ng().is_symbol('\'') {
         return Ok(None);
     }
     let pos = lexer.read()?.pos();
     let mut buf = String::new();
     loop {
-        let Locatable { element: n, .. } = lexer.peek()?;
-        if n.is_eol_or_eof() {
+        if lexer.peek_ng().is_eol_or_eof() {
             break;
         }
-        lexer.read()?;
+        let Locatable { element: n, .. } = lexer.read()?;
         buf.push_str(n.to_string().as_ref());
     }
     Ok(Statement::Comment(buf).at(pos)).map(|x| Some(x))

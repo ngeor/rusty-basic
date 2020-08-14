@@ -20,14 +20,18 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<Expression
 fn try_single_expression<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ExpressionNode>, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.peek()?;
+    let p = lexer.peek_ng()?;
+    if p.is_none() {
+        return Ok(None);
+    }
+    let Locatable { element: next, pos } = p.unwrap().clone();
     match next {
         Lexeme::Symbol('"') => string_literal::read(lexer).map(|x| Some(x)),
         Lexeme::Word(_) => word::read(lexer).map(|x| Some(x)),
         Lexeme::Digits(_) => number_literal::read(lexer).map(|x| Some(x)),
         Lexeme::Symbol('.') => number_literal::read_dot_float(lexer).map(|x| Some(x)),
         Lexeme::Symbol('-') => {
-            lexer.read()?;
+            lexer.read_ng()?;
             let child = read(lexer, try_read, "Expected expression after unary minus")?;
             Ok(Some(apply_unary_priority_order(
                 child,
@@ -36,7 +40,7 @@ fn try_single_expression<T: BufRead>(
             )))
         }
         Lexeme::Keyword(Keyword::Not, _) => {
-            lexer.read()?;
+            lexer.read_ng()?;
             read_whitespace(lexer, "Expected whitespace after NOT")?;
             let child = read(lexer, try_read, "Expected expression after NOT")?;
             Ok(Some(apply_unary_priority_order(
@@ -46,7 +50,7 @@ fn try_single_expression<T: BufRead>(
             )))
         }
         Lexeme::Symbol('(') => {
-            lexer.read()?;
+            lexer.read_ng()?;
             skip_whitespace(lexer)?;
             let inner = read(lexer, try_read, "Expected expression inside parenthesis")?;
             skip_whitespace(lexer)?;
@@ -61,7 +65,7 @@ fn try_single_expression<T: BufRead>(
         }
         Lexeme::Symbol('#') => {
             // file handle e.g. CLOSE #1
-            lexer.read()?;
+            lexer.read_ng()?;
             let digits = demand_digits(lexer)?;
             match digits.parse::<u32>() {
                 Ok(d) => Ok(Some(Expression::FileHandle(d.into()).at(pos))),
@@ -153,44 +157,56 @@ fn parse_expression_list_with_parentheses<T: BufRead>(
     let mut state = STATE_OPEN_PARENTHESIS;
     while state != STATE_CLOSE_PARENTHESIS {
         skip_whitespace(lexer)?;
-        let next = lexer.peek()?;
-        match next.as_ref() {
-            Lexeme::Symbol(')') => {
-                lexer.read()?;
-                if state == STATE_EXPRESSION {
-                    state = STATE_CLOSE_PARENTHESIS;
-                } else if state == STATE_OPEN_PARENTHESIS {
-                    return Err(QError::SyntaxError("Expected expression".to_string()))
-                        .with_err_at(&next);
-                } else {
-                    return Err(QError::SyntaxError(
-                        "Expected expression after comma".to_string(),
-                    ))
-                    .with_err_at(&next);
+        let p = lexer.peek_ng()?;
+        match p {
+            Some(next) => {
+                let pos = next.pos();
+                match next.as_ref() {
+                    Lexeme::Symbol(')') => {
+                        lexer.read_ng()?;
+                        if state == STATE_EXPRESSION {
+                            state = STATE_CLOSE_PARENTHESIS;
+                        } else if state == STATE_OPEN_PARENTHESIS {
+                            return Err(QError::SyntaxError("Expected expression".to_string()))
+                                .with_err_at(pos);
+                        } else {
+                            return Err(QError::SyntaxError(
+                                "Expected expression after comma".to_string(),
+                            ))
+                            .with_err_at(pos);
+                        }
+                    }
+                    Lexeme::Symbol(',') => {
+                        lexer.read_ng()?;
+                        if state == STATE_EXPRESSION {
+                            state = STATE_COMMA;
+                        } else {
+                            return Err(QError::SyntaxError("Unexpected comma".to_string()))
+                                .with_err_at(pos);
+                        }
+                    }
+                    Lexeme::EOL(_) => {
+                        return Err(QError::SyntaxError(
+                            "Premature end of expression list".to_string(),
+                        ))
+                        .with_err_at(next);
+                    }
+                    _ => {
+                        if state == STATE_EXPRESSION {
+                            return Err(QError::SyntaxError("Expected comma or )".to_string()))
+                                .with_err_at(next);
+                        }
+                        args.push(read(lexer, try_read, "Expected expression")?);
+                        state = STATE_EXPRESSION;
+                    }
                 }
             }
-            Lexeme::Symbol(',') => {
-                lexer.read()?;
-                if state == STATE_EXPRESSION {
-                    state = STATE_COMMA;
-                } else {
-                    return Err(QError::SyntaxError("Unexpected comma".to_string()))
-                        .with_err_at(&next);
-                }
-            }
-            Lexeme::EOL(_) | Lexeme::EOF => {
+            None => {
+                // EOF
                 return Err(QError::SyntaxError(
                     "Premature end of expression list".to_string(),
                 ))
-                .with_err_at(&next);
-            }
-            _ => {
-                if state == STATE_EXPRESSION {
-                    return Err(QError::SyntaxError("Expected comma or )".to_string()))
-                        .with_err_at(&next);
-                }
-                args.push(read(lexer, try_read, "Expected expression")?);
-                state = STATE_EXPRESSION;
+                .with_err_at(lexer.pos()); // TODO why does it not work with just `lexer`
             }
         }
     }
@@ -204,21 +220,23 @@ mod string_literal {
         let pos = lexer.read()?.pos(); // read double quote
                                        // read until we hit the next double quote
         loop {
-            let Locatable { element: l, pos } = lexer.read()?;
-            if l.is_eof() {
+            let q = lexer.read_ng()?;
+            let p = (&q).as_ref();
+            if p.is_eof() {
                 return Err(QError::SyntaxError(
                     "EOF while looking for end of string".to_string(),
                 ))
-                .with_err_at(&l.at(pos));
-            } else if l.is_eol() {
+                .with_err_at(&p.at(pos));
+            } else if p.is_eol() {
                 return Err(QError::SyntaxError(
                     "Unexpected new line while looking for end of string".to_string(),
                 ))
                 .with_err_at(pos);
-            } else if l.is_symbol('"') {
+            } else if p.is_symbol('"') {
                 break;
             } else {
-                buf.push_str(l.to_string().as_ref());
+                let Locatable { element, .. } = p.unwrap();
+                buf.push_str(element.to_string().as_ref());
             }
         }
 
@@ -379,14 +397,19 @@ fn try_parse_operand<T: BufRead>(
 }
 
 fn less_or_lte_or_ne<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, QErrorNode> {
-    let Locatable { element: next, .. } = lexer.peek()?;
-    match next {
-        Lexeme::Symbol('=') => {
-            lexer.read()?;
+    match lexer.peek_ng()? {
+        Some(Locatable {
+            element: Lexeme::Symbol('='),
+            ..
+        }) => {
+            lexer.read_ng()?;
             Ok(Operand::LessOrEqual)
         }
-        Lexeme::Symbol('>') => {
-            lexer.read()?;
+        Some(Locatable {
+            element: Lexeme::Symbol('>'),
+            ..
+        }) => {
+            lexer.read_ng()?;
             Ok(Operand::NotEqual)
         }
         _ => Ok(Operand::Less),

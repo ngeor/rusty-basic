@@ -8,8 +8,11 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    let next = lexer.peek()?;
-    let opt_qualifier = match next.as_ref() {
+    let next = lexer.peek_ng()?;
+    if next.is_none() {
+        return Ok(None);
+    }
+    let opt_qualifier = match next.unwrap().as_ref() {
         Lexeme::Keyword(keyword, _) => match keyword {
             Keyword::DefDbl => Some(TypeQualifier::HashDouble),
             Keyword::DefInt => Some(TypeQualifier::PercentInteger),
@@ -40,48 +43,59 @@ pub fn try_read<T: BufRead>(
     lexer.begin_transaction();
     while state != STATE_EOL {
         skip_whitespace(lexer)?;
-        let next = lexer.peek()?;
-        match next.as_ref() {
-            Lexeme::Word(w) => {
-                lexer.read()?;
+        // TODO add helper for the peek_ng / read_ng pattern
+        match lexer.peek_ng()? {
+            Some(Locatable {
+                element: Lexeme::Word(w),
+                pos,
+            }) => {
                 if w.len() != 1 {
                     return Err(QError::SyntaxError("Expected single character".to_string()))
-                        .with_err_at(&next);
+                        .with_err_at(*pos);
                 }
                 if state == STATE_INITIAL || state == STATE_COMMA {
                     first_letter = w.chars().next().unwrap();
                     state = STATE_FIRST_LETTER;
+                    lexer.read_ng()?;
                 } else if state == STATE_DASH {
                     second_letter = w.chars().next().unwrap();
                     if first_letter > second_letter {
                         return Err(QError::SyntaxError(
                             "Invalid letter range".to_string().to_string(),
                         ))
-                        .with_err_at(&next);
+                        .with_err_at(*pos);
                     }
                     state = STATE_SECOND_LETTER;
+                    lexer.read_ng()?;
                 } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(*pos);
                 }
             }
-            Lexeme::Symbol('-') => {
-                lexer.read()?;
+            Some(Locatable {
+                element: Lexeme::Symbol('-'),
+                pos,
+            }) => {
                 if state == STATE_FIRST_LETTER {
                     state = STATE_DASH;
+                    lexer.read_ng()?;
                 } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(*pos);
                 }
             }
-            Lexeme::Symbol(',') => {
-                lexer.read()?;
+            Some(Locatable {
+                element: Lexeme::Symbol(','),
+                pos,
+            }) => {
                 if state == STATE_FIRST_LETTER {
                     ranges.push(LetterRange::Single(first_letter));
                     state = STATE_COMMA;
+                    lexer.read_ng()?;
                 } else if state == STATE_SECOND_LETTER {
                     ranges.push(LetterRange::Range(first_letter, second_letter));
                     state = STATE_COMMA;
+                    lexer.read_ng()?;
                 } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
+                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(*pos);
                 }
             }
             _ => {
@@ -90,12 +104,12 @@ pub fn try_read<T: BufRead>(
                     return Err(QError::SyntaxError(
                         "Expected letter after dash".to_string(),
                     ))
-                    .with_err_at(&next);
+                    .with_err_at(lexer.pos());
                 } else if state == STATE_COMMA {
                     return Err(QError::SyntaxError(
                         "Expected letter range after comma".to_string(),
                     ))
-                    .with_err_at(&next);
+                    .with_err_at(lexer.pos());
                 } else if state == STATE_FIRST_LETTER {
                     ranges.push(LetterRange::Single(first_letter));
                     state = STATE_EOL;
@@ -106,7 +120,7 @@ pub fn try_read<T: BufRead>(
                     return Err(QError::SyntaxError(
                         "Expected at least one letter range".to_string(),
                     ))
-                    .with_err_at(&next);
+                    .with_err_at(lexer.pos());
                 }
             }
         }

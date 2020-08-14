@@ -10,9 +10,6 @@ use std::io::{BufRead, BufReader, Cursor, Result};
 /// - `Ok(Some(char))` means we found a `char`
 /// - `Ok(None)` means we hit EOF
 /// - `Err(err)` means we encountered some IO error
-///
-/// EOF will be returned only once. If reading again after EOF,
-/// it will return an IO error (`UnexpectedEof`).
 #[derive(Debug)]
 pub struct CharReader<T: BufRead> {
     reader: T,
@@ -55,7 +52,7 @@ impl<T: BufRead> ReadOpt for CharReader<T> {
 
     fn read_ng(&mut self) -> Result<Option<char>> {
         if self.read_eof {
-            Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+            Ok(None)
         } else {
             self.fill_buffer_if_empty()?;
             if self.buffer.is_empty() {
@@ -71,7 +68,7 @@ impl<T: BufRead> ReadOpt for CharReader<T> {
 impl<T: BufRead> PeekOptCopy for CharReader<T> {
     fn peek_ng(&mut self) -> Result<Option<char>> {
         if self.read_eof {
-            Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+            Ok(None)
         } else {
             self.fill_buffer_if_empty()?;
             if self.buffer.is_empty() {
@@ -119,13 +116,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_eof_is_only_once() {
+    fn test_eof_is_twice() {
         let mut reader: CharReader<BufReader<Cursor<&str>>> = "123".into();
         assert_eq!(reader.read_ng().unwrap().unwrap(), '1');
         assert_eq!(reader.read_ng().unwrap().unwrap(), '2');
         assert_eq!(reader.read_ng().unwrap().unwrap(), '3');
         assert_eq!(reader.read_ng().unwrap(), None);
-        assert_eq!(reader.read_ng().is_err(), true);
+        assert_eq!(reader.read_ng().unwrap(), None);
     }
 
     #[test]

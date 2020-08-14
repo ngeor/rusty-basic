@@ -8,7 +8,7 @@ use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
     // TODO lexer consume_if + map
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::While) {
+    if !lexer.peek_ng().is_keyword(Keyword::While) {
         return Ok(None);
     }
     let pos = lexer.read()?.pos();
@@ -26,7 +26,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
             err: QError::WhileWithoutWend,
         },
     )?;
-    lexer.read()?; // read WEND
+    lexer.read_ng()?; // read WEND
     Ok(Some(
         Statement::While(ConditionalBlockNode {
             condition,

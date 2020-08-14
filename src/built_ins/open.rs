@@ -20,12 +20,11 @@ use std::io::BufRead;
 pub struct Open {}
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.peek()?;
-    if !next.is_keyword(Keyword::Open) {
+    if !lexer.peek_ng().is_keyword(Keyword::Open) {
         return Ok(None);
     }
 
-    lexer.read()?;
+    let Locatable { element: next, pos } = lexer.read()?;
     read_whitespace(lexer, "Expected space after OPEN")?;
     let file_name_expr = read(lexer, expression::try_read, "Expected filename")?;
     read_whitespace(lexer, "Expected space after filename")?;

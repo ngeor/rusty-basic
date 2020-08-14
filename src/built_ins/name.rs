@@ -16,9 +16,8 @@ use std::io::BufRead;
 pub struct Name {}
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.peek()?;
-    if next.is_keyword(Keyword::Name) {
-        lexer.read()?;
+    if lexer.peek_ng().is_keyword(Keyword::Name) {
+        let pos = lexer.read()?.pos();
         read_whitespace(lexer, "Expected space after NAME")?;
         let old_file_name = read(lexer, expression::try_read, "Expected original filename")?;
         read_whitespace(lexer, "Expected space after filename")?;

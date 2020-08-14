@@ -8,7 +8,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::If) {
+    if !lexer.peek_ng().is_keyword(Keyword::If) {
         return Ok(None);
     }
 
@@ -78,10 +78,10 @@ fn read_if_block<T: BufRead>(
 fn try_read_else_if_block<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ConditionalBlockNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::ElseIf) {
+    if !lexer.peek_ng().is_keyword(Keyword::ElseIf) {
         return Ok(None);
     }
-    lexer.read()?;
+    lexer.read_ng()?;
     read_whitespace(lexer, "Expected whitespace after ELSEIF keyword")?;
     let condition = read(
         lexer,
@@ -101,10 +101,10 @@ fn try_read_else_block<T: BufRead>(
     lexer: &mut BufLexer<T>,
     is_multi_line: bool,
 ) -> Result<Option<StatementNodes>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::Else) {
+    if !lexer.peek_ng().is_keyword(Keyword::Else) {
         return Ok(None);
     }
-    lexer.read()?;
+    lexer.read_ng()?;
     if is_multi_line {
         parse_statements_with_options(
             lexer,
@@ -132,25 +132,25 @@ fn is_multi_line<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode
     // if we find EOL or comment, it's multi-line
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
-    let p = lexer.peek()?;
-    let is_multi_line = p.as_ref().is_eol() || p.as_ref().is_symbol('\'');
+    let p = lexer.peek_ng()?;
+    let is_multi_line = p.is_eol() || p.is_symbol('\'');
     lexer.rollback_transaction();
     Ok(is_multi_line)
 }
 
-fn exit_predicate_if_single_line(l: &Lexeme) -> bool {
+fn exit_predicate_if_single_line(l: &Option<&LexemeNode>) -> bool {
     l.is_eof() || l.is_eol() || l.is_keyword(Keyword::ElseIf) || l.is_keyword(Keyword::Else)
 }
 
-fn exit_predicate_if_multi_line(l: &Lexeme) -> bool {
+fn exit_predicate_if_multi_line(l: &Option<&LexemeNode>) -> bool {
     l.is_keyword(Keyword::ElseIf) || l.is_keyword(Keyword::Else) || l.is_keyword(Keyword::End)
 }
 
-fn exit_predicate_else_single_line(l: &Lexeme) -> bool {
+fn exit_predicate_else_single_line(l: &Option<&LexemeNode>) -> bool {
     l.is_eol_or_eof()
 }
 
-fn exit_predicate_else_multi_line(l: &Lexeme) -> bool {
+fn exit_predicate_else_multi_line(l: &Option<&LexemeNode>) -> bool {
     l.is_keyword(Keyword::End)
 }
 

@@ -19,9 +19,8 @@ use std::io::BufRead;
 pub struct LineInput {}
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.peek()?;
-    if next.is_keyword(Keyword::Line) {
-        lexer.read()?;
+    if lexer.peek_ng().is_keyword(Keyword::Line) {
+        let pos = lexer.read()?.pos();
         read_whitespace(lexer, "Expected space after LINE")?;
         read_keyword(lexer, Keyword::Input)?;
         read_whitespace(lexer, "Expected space after INPUT")?;

@@ -20,13 +20,22 @@ pub fn read<T: BufRead, TResult, F, S: AsRef<str>>(
 where
     F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, QErrorNode>,
 {
-    let p = lexer.peek()?;
-    match parse_function(lexer) {
-        Ok(opt) => match opt {
-            Some(x) => Ok(x),
-            None => Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(&p),
-        },
-        Err(e) => Err(e),
+    let p = lexer.peek_ng()?;
+    match p {
+        Some(x) => {
+            let pos = x.pos();
+            match parse_function(lexer) {
+                Ok(opt) => match opt {
+                    Some(x) => Ok(x),
+                    None => Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(pos),
+                },
+                Err(e) => Err(e),
+            }
+        }
+        None => {
+            let pos = lexer.pos();
+            Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(pos)
+        }
     }
 }
 
@@ -67,12 +76,16 @@ pub fn skip_if<T: BufRead, F>(lexer: &mut BufLexer<T>, f: F) -> Result<bool, QEr
 where
     F: Fn(&Lexeme) -> bool,
 {
-    let next = lexer.peek()?;
-    if f(next.as_ref()) {
-        lexer.read()?;
-        Ok(true)
-    } else {
-        Ok(false)
+    match lexer.peek_ng()? {
+        Some(next) => {
+            if f(next.as_ref()) {
+                lexer.read_ng()?;
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        }
+        None => Ok(false),
     }
 }
 
@@ -101,8 +114,8 @@ pub fn read_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<
 /// Returns `true` if at least one whitespace was read.
 pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_whitespace = false;
-    while lexer.peek()?.as_ref().is_whitespace() {
-        lexer.read()?;
+    while lexer.peek_ng().is_whitespace() {
+        lexer.read_ng()?;
         found_whitespace = true;
     }
     Ok(found_whitespace)
@@ -112,9 +125,14 @@ pub fn read_whitespace<T: BufRead, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     msg: S,
 ) -> Result<(), QErrorNode> {
-    let next = lexer.read()?;
-    match next.as_ref() {
-        Lexeme::Whitespace(_) => Ok(()),
-        _ => Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(&next),
+    match lexer.read_ng()? {
+        Some(Locatable {
+            element: Lexeme::Whitespace(_),
+            ..
+        }) => Ok(()),
+        Some(Locatable { pos, .. }) => {
+            Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(pos)
+        }
+        _ => Err(QError::SyntaxError(msg.as_ref().to_string())).with_err_at(lexer.pos()),
     }
 }

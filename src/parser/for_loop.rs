@@ -9,7 +9,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::For) {
+    if !lexer.peek_ng().is_keyword(Keyword::For) {
         return Ok(None);
     }
 
@@ -61,55 +61,64 @@ fn try_parse_step<T: BufRead>(
     lexer.begin_transaction();
 
     while state != STATE_EOL {
-        let next = lexer.peek()?;
-        match next.as_ref() {
-            Lexeme::Whitespace(_) => {
-                lexer.read()?;
-                if state == STATE_UPPER_BOUND {
-                    state = STATE_WHITESPACE_BEFORE_STEP;
-                } else if state == STATE_STEP {
-                    state = STATE_WHITESPACE_AFTER_STEP;
-                } else if state == STATE_STEP_EXPR {
-                    state = STATE_WHITESPACE_BEFORE_EOL;
-                } else {
-                    return Err(QError::SyntaxError("Unexpected whitespace".to_string()))
-                        .with_err_at(&next);
+        let p = lexer.peek_ng()?;
+        match p {
+            Some(next) => {
+                let pos = next.pos();
+                match next.as_ref() {
+                    Lexeme::Whitespace(_) => {
+                        lexer.read_ng()?;
+                        if state == STATE_UPPER_BOUND {
+                            state = STATE_WHITESPACE_BEFORE_STEP;
+                        } else if state == STATE_STEP {
+                            state = STATE_WHITESPACE_AFTER_STEP;
+                        } else if state == STATE_STEP_EXPR {
+                            state = STATE_WHITESPACE_BEFORE_EOL;
+                        } else {
+                            return Err(QError::SyntaxError("Unexpected whitespace".to_string()))
+                                .with_err_at(pos);
+                        }
+                    }
+                    Lexeme::EOL(_) => {
+                        if state == STATE_STEP || state == STATE_WHITESPACE_AFTER_STEP {
+                            return Err(QError::SyntaxError(
+                                "Expected expression after STEP".to_string(),
+                            ))
+                            .with_err_at(next);
+                        }
+                        state = STATE_EOL;
+                    }
+                    Lexeme::Keyword(Keyword::Step, _) => {
+                        lexer.read_ng()?;
+                        if state == STATE_WHITESPACE_BEFORE_STEP {
+                            state = STATE_STEP;
+                        } else {
+                            return Err(QError::SyntaxError("Syntax error".to_string()))
+                                .with_err_at(pos);
+                        }
+                    }
+                    _ => {
+                        if state == STATE_UPPER_BOUND || state == STATE_WHITESPACE_BEFORE_STEP {
+                            // bail out, we didn't find the STEP keyword but something else (maybe a comment?)
+                            state = STATE_EOL;
+                        } else if state == STATE_WHITESPACE_AFTER_STEP {
+                            expr = Some(read(
+                                lexer,
+                                expression::try_read,
+                                "Expected expression after STEP",
+                            )?);
+                            state = STATE_STEP_EXPR;
+                        } else {
+                            return Err(QError::SyntaxError("Syntax error".to_string()))
+                                .with_err_at(next);
+                        }
+                    }
                 }
             }
-            Lexeme::EOF => {
-                return Err(QError::SyntaxError("FOR without NEXT".to_string())).with_err_at(&next)
-            }
-            Lexeme::EOL(_) => {
-                if state == STATE_STEP || state == STATE_WHITESPACE_AFTER_STEP {
-                    return Err(QError::SyntaxError(
-                        "Expected expression after STEP".to_string(),
-                    ))
-                    .with_err_at(&next);
-                }
-                state = STATE_EOL;
-            }
-            Lexeme::Keyword(Keyword::Step, _) => {
-                lexer.read()?;
-                if state == STATE_WHITESPACE_BEFORE_STEP {
-                    state = STATE_STEP;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
-                }
-            }
-            _ => {
-                if state == STATE_UPPER_BOUND || state == STATE_WHITESPACE_BEFORE_STEP {
-                    // bail out, we didn't find the STEP keyword but something else (maybe a comment?)
-                    state = STATE_EOL;
-                } else if state == STATE_WHITESPACE_AFTER_STEP {
-                    expr = Some(read(
-                        lexer,
-                        expression::try_read,
-                        "Expected expression after STEP",
-                    )?);
-                    state = STATE_STEP_EXPR;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
-                }
+            None => {
+                // EOF
+                return Err(QError::SyntaxError("FOR without NEXT".to_string()))
+                    .with_err_at(lexer.pos());
             }
         }
     }
@@ -129,30 +138,37 @@ fn try_parse_next_counter<T: BufRead>(
     lexer.begin_transaction();
 
     while state != STATE_EOL_OR_EOF {
-        let next = lexer.peek()?;
-        match next.as_ref() {
-            Lexeme::Whitespace(_) => {
-                lexer.read()?;
-                if state == STATE_NEXT {
-                    state = STATE_WHITESPACE_AFTER_NEXT;
+        let p = lexer.peek_ng()?;
+        match p {
+            Some(next) => match next.as_ref() {
+                Lexeme::Whitespace(_) => {
+                    lexer.read_ng()?;
+                    if state == STATE_NEXT {
+                        state = STATE_WHITESPACE_AFTER_NEXT;
+                    }
                 }
-            }
-            Lexeme::EOL(_) | Lexeme::EOF => {
-                state = STATE_EOL_OR_EOF;
-            }
-            Lexeme::Word(_) => {
-                if state == STATE_WHITESPACE_AFTER_NEXT {
-                    name = Some(read(
-                        lexer,
-                        name::try_read,
-                        "Expected NEXT counter variable",
-                    )?);
+                Lexeme::EOL(_) => {
                     state = STATE_EOL_OR_EOF;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
                 }
-            }
-            _ => {
+                Lexeme::Word(_) => {
+                    if state == STATE_WHITESPACE_AFTER_NEXT {
+                        name = Some(read(
+                            lexer,
+                            name::try_read,
+                            "Expected NEXT counter variable",
+                        )?);
+                        state = STATE_EOL_OR_EOF;
+                    } else {
+                        return Err(QError::SyntaxError("Syntax error".to_string()))
+                            .with_err_at(next);
+                    }
+                }
+                _ => {
+                    state = STATE_EOL_OR_EOF;
+                }
+            },
+            None => {
+                // EOF
                 state = STATE_EOL_OR_EOF;
             }
         }

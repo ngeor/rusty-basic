@@ -11,7 +11,6 @@ use std::str::FromStr;
 pub struct Lexer<T: BufRead> {
     reader: CharReader<T>,
     pos: Location,
-    seen_eof: bool,
 }
 
 impl<T: BufRead> Lexer<T> {
@@ -19,7 +18,6 @@ impl<T: BufRead> Lexer<T> {
         Lexer {
             reader: reader,
             pos: Location::start(),
-            seen_eof: false,
         }
     }
 
@@ -128,18 +126,9 @@ impl<T: BufRead> ReadOpt for Lexer<T> {
     type Err = QErrorNode;
 
     fn read_ng(&mut self) -> Result<Option<LexemeNode>, QErrorNode> {
-        let pos = self.pos();
         let peeked = self.peek_one()?;
         match peeked {
-            None => {
-                if self.seen_eof {
-                    Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into())
-                        .with_err_at(pos)
-                } else {
-                    self.seen_eof = true;
-                    Ok(Some(Lexeme::EOF.at(pos)))
-                }
-            }
+            None => Ok(None),
             Some(peeked) => {
                 let ch = peeked;
                 let lexeme_node = self.read_char(ch)?;
@@ -163,6 +152,14 @@ impl<T> DemandTrait<T, QErrorNode> for Result<Option<T>, QErrorNode> {
             Ok(Some(x)) => Ok(x),
             Err(err) => Err(err),
         }
+    }
+}
+
+impl<T: BufRead> Iterator for Lexer<T> {
+    type Item = Result<LexemeNode, QErrorNode>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.read_ng().transpose()
     }
 }
 
@@ -261,7 +258,8 @@ mod tests {
             lexer.read_ng().unwrap().unwrap(),
             Lexeme::Symbol('"').at_rc(1, 21)
         );
-        assert_eq!(lexer.read_ng().unwrap().unwrap(), Lexeme::EOF.at_rc(1, 22));
+        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.pos(), Location::new(1, 22));
     }
 
     #[test]
@@ -279,7 +277,8 @@ mod tests {
             lexer.read_ng().unwrap().unwrap(),
             Lexeme::Digits("123".to_string()).at_rc(2, 1)
         );
-        assert_eq!(lexer.read_ng().unwrap().unwrap(), Lexeme::EOF.at_rc(2, 4));
+        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.pos(), Location::new(2, 4));
     }
 
     #[test]
@@ -293,21 +292,21 @@ mod tests {
             lexer.read_ng().unwrap().unwrap(),
             Lexeme::EOL("\r\n\n\r".to_string()).at_rc(1, 3)
         );
-        assert_eq!(lexer.read_ng().unwrap().unwrap(), Lexeme::EOF.at_rc(4, 1));
+        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.pos(), Location::new(4, 1));
     }
 
     #[test]
-    fn test_eof_is_only_once() {
+    fn test_eof_twice() {
         let mut lexer = Lexer::from("Hi");
         assert_eq!(
             lexer.read_ng().unwrap().unwrap(),
             Lexeme::Word("Hi".to_string()).at_rc(1, 1)
         );
-        assert_eq!(lexer.read_ng().unwrap().unwrap(), Lexeme::EOF.at_rc(1, 3));
-        assert_eq!(
-            lexer.read_ng(),
-            Err(QError::InputPastEndOfFile).with_err_at_rc(1, 3)
-        );
+        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.pos(), Location::new(1, 3));
+        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.pos(), Location::new(1, 3));
     }
 
     #[test]
@@ -326,8 +325,26 @@ mod tests {
         assert_eq!(lexer.pos(), Location::new(1, 7));
         lexer.read_ng().unwrap().expect("Read should succeed (1)");
         assert_eq!(lexer.pos(), Location::new(1, 8));
-        lexer.read_ng().unwrap().expect("Read should succeed (EOF)");
+        assert_eq!(
+            lexer.read_ng().unwrap().is_some(),
+            false,
+            "Read should succeed (EOF)"
+        );
         assert_eq!(lexer.pos(), Location::new(1, 8));
-        lexer.read_ng().expect_err("Read should fail");
+    }
+
+    #[test]
+    fn test_iterator() {
+        let input = "PRINT 1";
+        let lexer = Lexer::from(input);
+        let nodes: Vec<LexemeNode> = lexer.map(|x| x.unwrap()).collect();
+        assert_eq!(
+            nodes,
+            vec![
+                LexemeNode::word("PRINT", 1, 1),
+                LexemeNode::whitespace(1, 6),
+                LexemeNode::digits("1", 1, 7)
+            ]
+        );
     }
 }

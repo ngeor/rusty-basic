@@ -49,15 +49,15 @@ pub fn parse_top_level_tokens<T: BufRead>(
 
     // allowed to start with space, eol, : (e.g. WHILE A < 5:), ' for comment
     loop {
-        let Locatable { element: p, pos } = lexer.peek()?;
+        let p = lexer.peek_ng()?;
         if p.is_eof() {
             return Ok(tokens);
         } else if p.is_whitespace() {
-            lexer.read()?;
+            lexer.read_ng()?;
         } else if p.is_eol() {
             // now we're allowed to read a statement other than comments,
             // and we're in multi-line mode
-            lexer.read()?;
+            lexer.read_ng()?;
             read_separator = true;
         } else if p.is_symbol('\'') {
             // read comment
@@ -66,7 +66,7 @@ pub fn parse_top_level_tokens<T: BufRead>(
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else if p.is_symbol(':') {
             // single-line statement separator (e.g. WHILE A < 5:A=A+1:WEND)
-            lexer.read()?;
+            lexer.read_ng()?;
             read_separator = true;
         } else {
             // must be a statement
@@ -76,7 +76,7 @@ pub fn parse_top_level_tokens<T: BufRead>(
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {
                 return Err(QError::SyntaxError("Expected top level token".to_string()))
-                    .with_err_at(pos);
+                    .with_err_at(p.unwrap()); // safe to do as it's not eof
             }
         }
     }

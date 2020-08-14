@@ -18,7 +18,7 @@ pub fn parse_statements<T: BufRead, F, S: AsRef<str>>(
     err_msg: S,
 ) -> Result<StatementNodes, QErrorNode>
 where
-    F: Fn(&Lexeme) -> bool,
+    F: Fn(&Option<&LexemeNode>) -> bool,
 {
     parse_statements_with_options(
         lexer,
@@ -36,29 +36,29 @@ pub fn parse_statements_with_options<T: BufRead, F>(
     options: ParseStatementsOptions,
 ) -> Result<StatementNodes, QErrorNode>
 where
-    F: Fn(&Lexeme) -> bool,
+    F: Fn(&Option<&LexemeNode>) -> bool,
 {
     let mut read_separator = false;
     let mut statements: StatementNodes = vec![];
 
     // allowed to start with space, eol, : (e.g. WHILE A < 5:), ' for comment
     loop {
-        let Locatable { element: p, pos } = lexer.peek()?;
+        let p = lexer.peek_ng()?;
         if exit_predicate(&p) {
             // found the exit door
             // important that this check is done first, e.g. in case EOL or EOF is part of the exit predicate
             return Ok(statements);
         } else if p.is_eof() {
-            return Err(options.err).with_err_at(pos);
+            return Err(options.err).with_err_at(lexer.pos());
         } else if p.is_whitespace() {
-            lexer.read()?;
+            lexer.read_ng()?;
             if statements.is_empty() && options.first_statement_separated_by_whitespace {
                 read_separator = true;
             }
         } else if p.is_eol() {
             // now we're allowed to read a statement other than comments,
             // and we're in multi-line mode
-            lexer.read()?;
+            lexer.read_ng()?;
             read_separator = true;
         } else if p.is_symbol('\'') {
             // read comment, regardless of whether we've seen the separator or not
@@ -67,7 +67,7 @@ where
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else if p.is_symbol(':') {
             // single-line statement separator (e.g. WHILE A < 5:A=A+1:WEND)
-            lexer.read()?;
+            lexer.read_ng()?;
             read_separator = true;
         } else {
             // must be a statement
@@ -80,7 +80,7 @@ where
                     "Statement without separator: {:?}",
                     p
                 )))
-                .with_err_at(pos);
+                .with_err_at(p.unwrap());
             }
         }
     }

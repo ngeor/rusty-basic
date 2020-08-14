@@ -4,9 +4,6 @@ use std::fmt::{Display, Write};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Lexeme {
-    /// EOF
-    EOF,
-
     /// CR, LF
     EOL(String),
 
@@ -73,7 +70,7 @@ pub trait LexemeTrait {
 
 impl LexemeTrait for Lexeme {
     fn is_eof(&self) -> bool {
-        self == &Lexeme::EOF
+        false
     }
 
     fn is_eol(&self) -> bool {
@@ -140,11 +137,9 @@ impl<T: AsRef<Lexeme>> LexemeTrait for T {
 
 impl<T: AsRef<Lexeme>> LexemeTrait for Option<&T> {
     fn is_eof(&self) -> bool {
-        match self {
-            Some(x) => x.is_eof(),
-            None => true, // the only case where we map Option to true
-        }
+        self.is_none()
     }
+
     fn is_eol(&self) -> bool {
         match self {
             Some(x) => x.is_eol(),
@@ -181,12 +176,31 @@ impl<T: AsRef<Lexeme>> LexemeTrait for Option<&T> {
     }
 }
 
-impl HasLocation for Option<LexemeNode> {
-    fn pos(&self) -> Location {
-        match self {
-            Some(x) => x.pos(),
-            _ => panic!("None has no location"),
-        }
+impl<T: AsRef<Lexeme>, E> LexemeTrait for Result<Option<&T>, E> {
+    fn is_eof(&self) -> bool {
+        self.as_ref().map(|x| x.is_eof()).unwrap_or(false)
+    }
+
+    fn is_eol(&self) -> bool {
+        self.as_ref().map(|x| x.is_eol()).unwrap_or(false)
+    }
+
+    fn is_symbol(&self, ch: char) -> bool {
+        self.as_ref().map(|x| x.is_symbol(ch)).unwrap_or(false)
+    }
+
+    fn is_keyword(&self, keyword: Keyword) -> bool {
+        self.as_ref()
+            .map(|x| x.is_keyword(keyword))
+            .unwrap_or(false)
+    }
+
+    fn is_whitespace(&self) -> bool {
+        self.as_ref().map(|x| x.is_whitespace()).unwrap_or(false)
+    }
+
+    fn is_word(&self) -> bool {
+        self.as_ref().map(|x| x.is_word()).unwrap_or(false)
     }
 }
 
@@ -197,7 +211,7 @@ impl Display for Lexeme {
                 f.write_str(s)
             }
             Lexeme::Symbol(c) => f.write_char(*c),
-            Lexeme::EOF | Lexeme::EOL(_) => Err(std::fmt::Error),
+            Lexeme::EOL(_) => Err(std::fmt::Error),
         }
     }
 }
@@ -214,9 +228,5 @@ impl LexemeNode {
 
     pub fn digits(x: &str, row: u32, col: u32) -> Self {
         Lexeme::Digits(x.to_string()).at_rc(row, col)
-    }
-
-    pub fn eof(row: u32, col: u32) -> Self {
-        Lexeme::EOF.at_rc(row, col)
     }
 }

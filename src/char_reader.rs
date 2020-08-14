@@ -1,4 +1,4 @@
-use crate::common::{PeekOptCopy, ReadOpt};
+use crate::common::{PeekIterCopy, PeekOptCopy, ReadOpt};
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor, Result};
@@ -83,6 +83,20 @@ impl<T: BufRead> PeekOptCopy for CharReader<T> {
     }
 }
 
+impl<T: BufRead> Iterator for CharReader<T> {
+    type Item = Result<char>;
+
+    fn next(&mut self) -> Option<Result<char>> {
+        self.read_ng().transpose()
+    }
+}
+
+impl<T: BufRead> PeekIterCopy for CharReader<T> {
+    fn peek_iter_ng(&mut self) -> Option<Result<char>> {
+        self.peek_ng().transpose()
+    }
+}
+
 // bytes || &str -> CharReader
 impl<T> From<T> for CharReader<BufReader<Cursor<T>>>
 where
@@ -112,5 +126,13 @@ mod tests {
         assert_eq!(reader.read_ng().unwrap().unwrap(), '3');
         assert_eq!(reader.read_ng().unwrap(), None);
         assert_eq!(reader.read_ng().is_err(), true);
+    }
+
+    #[test]
+    fn test_iterator() {
+        let input = "123";
+        let reader = CharReader::from(input);
+        let chars: Vec<char> = reader.map(|x| x.unwrap()).collect();
+        assert_eq!(chars, vec!['1', '2', '3']);
     }
 }

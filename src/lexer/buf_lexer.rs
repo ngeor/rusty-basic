@@ -4,6 +4,7 @@ use std::convert::From;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
+/// BufLexer is a TransactionalPeek over a Lexer
 pub type BufLexer<T> = TransactionalPeek<Lexer<T>>;
 
 impl<T: BufRead> BufLexer<T> {
@@ -20,6 +21,27 @@ impl<T: BufRead> BufLexer<T> {
         match self.read_ng()? {
             Some(x) => Ok(x),
             None => Ok(Lexeme::EOF.at(pos)),
+        }
+    }
+}
+
+/// Iterator implementation for BufLexer.
+/// The implementation if the same for any ReadOne but it's not possible to implement the trait for a trait.
+/// EOF lexeme is turned into a None.
+impl<T: BufRead> Iterator for BufLexer<T> {
+    type Item = Result<LexemeNode, QErrorNode>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.read_ng().transpose() {
+            Some(Ok(x)) => {
+                if x.is_eof() {
+                    None
+                } else {
+                    Some(Ok(x))
+                }
+            }
+            None => None,
+            Some(Err(err)) => Some(Err(err)),
         }
     }
 }

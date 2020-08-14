@@ -2,6 +2,16 @@ use crate::common::{PeekOne, ReadOne};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor, Result};
 
+/// Reads one character at a time out of a `BufRead`.
+///
+/// Returns a `Result<Option<char>>` where:
+///
+/// - `Ok(Some(char))` means we found a `char`
+/// - `Ok(None)` means we hit EOF
+/// - `Err(err)` means we encountered some IO error
+///
+/// EOF will be returned only once. If reading again after EOF,
+/// it will return an IO error (`UnexpectedEof`).
 #[derive(Debug)]
 pub struct CharOrEofReader<T: BufRead> {
     reader: T,

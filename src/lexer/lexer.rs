@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 use std::str::FromStr;
 
+/// A Lexer uses a CharOrEofReader to turn characters into LexemeNodes.
 #[derive(Debug)]
 pub struct Lexer<T: BufRead> {
     reader: CharOrEofReader<T>,

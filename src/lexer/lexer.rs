@@ -14,76 +14,6 @@ pub struct Lexer<T: BufRead> {
     seen_eof: bool,
 }
 
-fn is_letter(ch: char) -> bool {
-    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
-}
-
-fn is_digit(ch: char) -> bool {
-    ch >= '0' && ch <= '9'
-}
-
-fn is_alphanumeric(ch: char) -> bool {
-    is_letter(ch) || is_digit(ch)
-}
-
-fn is_whitespace(ch: char) -> bool {
-    ch == ' ' || ch == '\t'
-}
-
-fn is_eol(ch: char) -> bool {
-    ch == '\r' || ch == '\n'
-}
-
-fn is_symbol(ch: char) -> bool {
-    (ch > ' ' && ch < '0')
-        || (ch > '9' && ch < 'A')
-        || (ch > 'Z' && ch < 'a')
-        || (ch > 'z' && ch <= '~')
-}
-
-impl<T: BufRead> ReadOpt for Lexer<T> {
-    type Item = LexemeNode;
-    type Err = QErrorNode;
-
-    fn read_ng(&mut self) -> Result<Option<LexemeNode>, QErrorNode> {
-        let pos = self.pos();
-        let peeked = self.peek_one()?;
-        match peeked {
-            None => {
-                if self.seen_eof {
-                    Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into())
-                        .with_err_at(pos)
-                } else {
-                    self.seen_eof = true;
-                    Ok(Some(Lexeme::EOF.at(pos)))
-                }
-            }
-            Some(peeked) => {
-                let ch = peeked;
-                let lexeme_node = self.read_char(ch)?;
-                Ok(Some(lexeme_node))
-            }
-        }
-    }
-}
-
-/// Rejects Ok(None) values
-pub trait DemandTrait<T, E> {
-    fn demand<S: AsRef<str>>(self, err_msg: S, err_pos: Location) -> Result<T, E>;
-}
-
-impl<T> DemandTrait<T, QErrorNode> for Result<Option<T>, QErrorNode> {
-    fn demand<S: AsRef<str>>(self, err_msg: S, err_pos: Location) -> Result<T, QErrorNode> {
-        match self {
-            Ok(None) => {
-                Err(QError::SyntaxError(format!("{}", err_msg.as_ref()))).with_err_at(err_pos)
-            }
-            Ok(Some(x)) => Ok(x),
-            Err(err) => Err(err),
-        }
-    }
-}
-
 impl<T: BufRead> Lexer<T> {
     pub fn new(reader: CharReader<T>) -> Lexer<T> {
         Lexer {
@@ -193,6 +123,49 @@ impl<T: BufRead> Lexer<T> {
     }
 }
 
+impl<T: BufRead> ReadOpt for Lexer<T> {
+    type Item = LexemeNode;
+    type Err = QErrorNode;
+
+    fn read_ng(&mut self) -> Result<Option<LexemeNode>, QErrorNode> {
+        let pos = self.pos();
+        let peeked = self.peek_one()?;
+        match peeked {
+            None => {
+                if self.seen_eof {
+                    Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into())
+                        .with_err_at(pos)
+                } else {
+                    self.seen_eof = true;
+                    Ok(Some(Lexeme::EOF.at(pos)))
+                }
+            }
+            Some(peeked) => {
+                let ch = peeked;
+                let lexeme_node = self.read_char(ch)?;
+                Ok(Some(lexeme_node))
+            }
+        }
+    }
+}
+
+/// Rejects Ok(None) values
+pub trait DemandTrait<T, E> {
+    fn demand<S: AsRef<str>>(self, err_msg: S, err_pos: Location) -> Result<T, E>;
+}
+
+impl<T> DemandTrait<T, QErrorNode> for Result<Option<T>, QErrorNode> {
+    fn demand<S: AsRef<str>>(self, err_msg: S, err_pos: Location) -> Result<T, QErrorNode> {
+        match self {
+            Ok(None) => {
+                Err(QError::SyntaxError(format!("{}", err_msg.as_ref()))).with_err_at(err_pos)
+            }
+            Ok(Some(x)) => Ok(x),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 // bytes || &str -> Lexer
 impl<T> From<T> for Lexer<BufReader<Cursor<T>>>
 where
@@ -215,6 +188,33 @@ impl<T: BufRead> HasLocation for Lexer<T> {
     fn pos(&self) -> Location {
         self.pos
     }
+}
+
+fn is_letter(ch: char) -> bool {
+    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+}
+
+fn is_digit(ch: char) -> bool {
+    ch >= '0' && ch <= '9'
+}
+
+fn is_alphanumeric(ch: char) -> bool {
+    is_letter(ch) || is_digit(ch)
+}
+
+fn is_whitespace(ch: char) -> bool {
+    ch == ' ' || ch == '\t'
+}
+
+fn is_eol(ch: char) -> bool {
+    ch == '\r' || ch == '\n'
+}
+
+fn is_symbol(ch: char) -> bool {
+    (ch > ' ' && ch < '0')
+        || (ch > '9' && ch < 'A')
+        || (ch > 'Z' && ch < 'a')
+        || (ch > 'z' && ch <= '~')
 }
 
 #[cfg(test)]

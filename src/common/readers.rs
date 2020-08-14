@@ -1,19 +1,34 @@
 use crate::common::location::*;
 
+/// Reads one item from a stream.
 ///
-/// Read one item from a stream
-///
-pub trait ReadOne {
+/// Returns:
+/// - `Ok(Some(item))` if an item is read successfully
+/// - `Ok(None)` if the end of stream is found
+/// - `Err(err)` if an error occurred when reading the item
+pub trait ReadOpt {
     type Item;
     type Err;
 
+    /// Reads one item from a stream.
+    ///
+    /// Returns:
+    /// - `Ok(Some(item))` if an item is read successfully
+    /// - `Ok(None)` if the end of stream is found
+    /// - `Err(err)` if an error occurred when reading the item
     fn read_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
 }
 
-///
-/// Peek one item from a stream.
-///
-pub trait PeekOne: ReadOne {
+/// Peeks one item from a stream, returning a copy of the peeked item.
+/// This trait should be implemented when the item implements `Copy`.
+pub trait PeekOptCopy: ReadOpt {
+    /// Peeks one item from a stream.
+    fn peek_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
+}
+
+/// Peeks one item from a stream.
+pub trait PeekOne: ReadOpt {
+    /// Peeks one item from a stream.
     fn peek_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err>;
 
     /// Peeks the next item and reads it if it tests successfully against
@@ -90,14 +105,14 @@ pub trait Transactional {
 }
 
 #[derive(Debug)]
-pub struct TransactionalPeek<R: ReadOne> {
+pub struct TransactionalPeek<R: ReadOpt> {
     reader: R,
     history: Vec<R::Item>,
     index: usize,
     transactions: Vec<usize>,
 }
 
-impl<R: ReadOne> TransactionalPeek<R> {
+impl<R: ReadOpt> TransactionalPeek<R> {
     pub fn new(reader: R) -> Self {
         Self {
             reader,
@@ -108,7 +123,7 @@ impl<R: ReadOne> TransactionalPeek<R> {
     }
 }
 
-impl<R: ReadOne> ReadOne for TransactionalPeek<R>
+impl<R: ReadOpt> ReadOpt for TransactionalPeek<R>
 where
     R::Item: Clone,
 {
@@ -123,7 +138,7 @@ where
     }
 }
 
-impl<R: ReadOne> PeekOne for TransactionalPeek<R>
+impl<R: ReadOpt> PeekOne for TransactionalPeek<R>
 where
     R::Item: Clone,
 {
@@ -136,7 +151,7 @@ where
     }
 }
 
-impl<R: ReadOne> Transactional for TransactionalPeek<R> {
+impl<R: ReadOpt> Transactional for TransactionalPeek<R> {
     fn begin_transaction(&mut self) {
         self.transactions.push(self.index);
     }
@@ -158,7 +173,7 @@ impl<R: ReadOne> Transactional for TransactionalPeek<R> {
     }
 }
 
-impl<R: ReadOne> TransactionalPeek<R> {
+impl<R: ReadOpt> TransactionalPeek<R> {
     fn fill_buffer_if_empty(&mut self) -> Result<bool, R::Err> {
         if self.index >= self.history.len() {
             match self.reader.read_ng()? {
@@ -185,7 +200,7 @@ impl<R: ReadOne> TransactionalPeek<R> {
     }
 }
 
-impl<R: ReadOne + HasLocation> HasLocation for TransactionalPeek<R>
+impl<R: ReadOpt + HasLocation> HasLocation for TransactionalPeek<R>
 where
     R::Item: HasLocation,
 {
@@ -215,7 +230,7 @@ pub trait LocatableReader<T> {
         F: FnOnce(&T) -> Option<U>;
 }
 
-impl<T, R: ReadOne> LocatableReader<T> for TransactionalPeek<R>
+impl<T, R: ReadOpt> LocatableReader<T> for TransactionalPeek<R>
 where
     R::Item: Clone + HasLocation + AsRef<T>,
 {

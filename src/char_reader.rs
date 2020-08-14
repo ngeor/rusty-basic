@@ -1,4 +1,5 @@
-use crate::common::{PeekOne, ReadOne};
+use crate::common::{PeekOptCopy, ReadOpt};
+use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor, Result};
 
@@ -15,50 +16,15 @@ use std::io::{BufRead, BufReader, Cursor, Result};
 #[derive(Debug)]
 pub struct CharReader<T: BufRead> {
     reader: T,
-    buffer: Vec<char>,
+    buffer: VecDeque<char>,
     read_eof: bool,
-}
-
-impl<T: BufRead> ReadOne for CharReader<T> {
-    type Item = char;
-    type Err = std::io::Error;
-
-    fn read_ng(&mut self) -> Result<Option<char>> {
-        if self.read_eof {
-            Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
-        } else {
-            self.fill_buffer_if_empty()?;
-            if self.buffer.is_empty() {
-                self.read_eof = true;
-                Ok(None)
-            } else {
-                Ok(Some(self.buffer.remove(0)))
-            }
-        }
-    }
-}
-
-impl<T: BufRead> PeekOne for CharReader<T> {
-    // TODO make a new trait where peek_ng can return the real thing for Copy types
-    fn peek_ng(&mut self) -> Result<Option<&char>> {
-        if self.read_eof {
-            Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
-        } else {
-            self.fill_buffer_if_empty()?;
-            if self.buffer.is_empty() {
-                Ok(None)
-            } else {
-                Ok(Some(&self.buffer[0]))
-            }
-        }
-    }
 }
 
 impl<T: BufRead> CharReader<T> {
     pub fn new(reader: T) -> CharReader<T> {
         CharReader {
             reader,
-            buffer: vec![],
+            buffer: VecDeque::new(),
             read_eof: false,
         }
     }
@@ -76,10 +42,44 @@ impl<T: BufRead> CharReader<T> {
         let bytes_read = self.reader.read_line(&mut line)?;
         if bytes_read > 0 {
             for c in line.chars() {
-                self.buffer.push(c)
+                self.buffer.push_back(c);
             }
         }
         Ok(())
+    }
+}
+
+impl<T: BufRead> ReadOpt for CharReader<T> {
+    type Item = char;
+    type Err = std::io::Error;
+
+    fn read_ng(&mut self) -> Result<Option<char>> {
+        if self.read_eof {
+            Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+        } else {
+            self.fill_buffer_if_empty()?;
+            if self.buffer.is_empty() {
+                self.read_eof = true;
+                Ok(None)
+            } else {
+                Ok(self.buffer.pop_front())
+            }
+        }
+    }
+}
+
+impl<T: BufRead> PeekOptCopy for CharReader<T> {
+    fn peek_ng(&mut self) -> Result<Option<char>> {
+        if self.read_eof {
+            Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof))
+        } else {
+            self.fill_buffer_if_empty()?;
+            if self.buffer.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(self.buffer[0]))
+            }
+        }
     }
 }
 

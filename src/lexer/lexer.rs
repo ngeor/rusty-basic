@@ -41,7 +41,7 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
-impl<T: BufRead> ReadOne for Lexer<T> {
+impl<T: BufRead> ReadOpt for Lexer<T> {
     type Item = LexemeNode;
     type Err = QErrorNode;
 
@@ -122,10 +122,6 @@ impl<T: BufRead> Lexer<T> {
     fn peek_one(&mut self) -> Result<Option<char>, QErrorNode> {
         self.reader
             .peek_ng()
-            .map(|opt| match opt {
-                Some(x) => Some(*x),
-                None => None,
-            })
             .map_err(|e| e.into())
             .with_err_at(self.pos)
     }

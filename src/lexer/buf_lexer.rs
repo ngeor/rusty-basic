@@ -26,7 +26,7 @@ impl<T: BufRead> BufLexer<T> {
 }
 
 /// Iterator implementation for BufLexer.
-/// The implementation if the same for any ReadOne but it's not possible to implement the trait for a trait.
+/// The implementation if the same for any ReadOpt but it's not possible to implement the trait for a trait.
 /// EOF lexeme is turned into a None.
 impl<T: BufRead> Iterator for BufLexer<T> {
     type Item = Result<LexemeNode, QErrorNode>;

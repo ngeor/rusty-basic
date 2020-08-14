@@ -13,13 +13,13 @@ use std::io::{BufRead, BufReader, Cursor, Result};
 /// EOF will be returned only once. If reading again after EOF,
 /// it will return an IO error (`UnexpectedEof`).
 #[derive(Debug)]
-pub struct CharOrEofReader<T: BufRead> {
+pub struct CharReader<T: BufRead> {
     reader: T,
     buffer: Vec<char>,
     read_eof: bool,
 }
 
-impl<T: BufRead> ReadOne for CharOrEofReader<T> {
+impl<T: BufRead> ReadOne for CharReader<T> {
     type Item = char;
     type Err = std::io::Error;
 
@@ -38,7 +38,7 @@ impl<T: BufRead> ReadOne for CharOrEofReader<T> {
     }
 }
 
-impl<T: BufRead> PeekOne for CharOrEofReader<T> {
+impl<T: BufRead> PeekOne for CharReader<T> {
     // TODO make a new trait where peek_ng can return the real thing for Copy types
     fn peek_ng(&mut self) -> Result<Option<&char>> {
         if self.read_eof {
@@ -54,9 +54,9 @@ impl<T: BufRead> PeekOne for CharOrEofReader<T> {
     }
 }
 
-impl<T: BufRead> CharOrEofReader<T> {
-    pub fn new(reader: T) -> CharOrEofReader<T> {
-        CharOrEofReader {
+impl<T: BufRead> CharReader<T> {
+    pub fn new(reader: T) -> CharReader<T> {
+        CharReader {
             reader,
             buffer: vec![],
             read_eof: false,
@@ -83,20 +83,20 @@ impl<T: BufRead> CharOrEofReader<T> {
     }
 }
 
-// bytes || &str -> CharOrEofReader
-impl<T> From<T> for CharOrEofReader<BufReader<Cursor<T>>>
+// bytes || &str -> CharReader
+impl<T> From<T> for CharReader<BufReader<Cursor<T>>>
 where
     T: AsRef<[u8]>,
 {
     fn from(input: T) -> Self {
-        CharOrEofReader::new(BufReader::new(Cursor::new(input)))
+        CharReader::new(BufReader::new(Cursor::new(input)))
     }
 }
 
-// File -> CharOrEofReader
-impl From<File> for CharOrEofReader<BufReader<File>> {
+// File -> CharReader
+impl From<File> for CharReader<BufReader<File>> {
     fn from(input: File) -> Self {
-        CharOrEofReader::new(BufReader::new(input))
+        CharReader::new(BufReader::new(input))
     }
 }
 
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_eof_is_only_once() {
-        let mut reader: CharOrEofReader<BufReader<Cursor<&str>>> = "123".into();
+        let mut reader: CharReader<BufReader<Cursor<&str>>> = "123".into();
         assert_eq!(reader.read_ng().unwrap().unwrap(), '1');
         assert_eq!(reader.read_ng().unwrap().unwrap(), '2');
         assert_eq!(reader.read_ng().unwrap().unwrap(), '3');

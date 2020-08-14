@@ -33,10 +33,10 @@ Characters form lexemes.
 Lexemes form parser tokens. At this point parsing is done.
 
 ```
-input (file or str) -> CharOrEofReader -> Lexer -> BufLexer -> Parser
+input (file or str) -> CharReader -> Lexer -> BufLexer -> Parser
 ```
 
-- CharOrEofReader offers peek/read functions over the consumed source, returning
+- CharReader offers peek/read functions over the consumed source, returning
   one `Option<char>` at a time.
 - Lexer combines characters together into lexemes (Keyword, Digits, Word, Whitespace, Symbol, etc) and keeps track of their location (row/col).
 - BufLexer offers peek/read/undo functions over the Lexer.

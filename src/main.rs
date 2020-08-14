@@ -1,11 +1,11 @@
 mod built_ins;
+mod char_reader;
 mod common;
 mod instruction_generator;
 mod interpreter;
 mod lexer;
 mod linter;
 mod parser;
-mod reader;
 mod variant;
 
 use std::env;

@@ -1,15 +1,15 @@
 use super::{Keyword, Lexeme, LexemeNode};
+use crate::char_reader::*;
 use crate::common::*;
-use crate::reader::*;
 use std::convert::From;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 use std::str::FromStr;
 
-/// A Lexer uses a CharOrEofReader to turn characters into LexemeNodes.
+/// A Lexer uses a CharReader to turn characters into LexemeNodes.
 #[derive(Debug)]
 pub struct Lexer<T: BufRead> {
-    reader: CharOrEofReader<T>,
+    reader: CharReader<T>,
     pos: Location,
     seen_eof: bool,
 }
@@ -85,7 +85,7 @@ impl<T> DemandTrait<T, QErrorNode> for Result<Option<T>, QErrorNode> {
 }
 
 impl<T: BufRead> Lexer<T> {
-    pub fn new(reader: CharOrEofReader<T>) -> Lexer<T> {
+    pub fn new(reader: CharReader<T>) -> Lexer<T> {
         Lexer {
             reader: reader,
             pos: Location::start(),
@@ -203,14 +203,14 @@ where
     T: AsRef<[u8]>,
 {
     fn from(input: T) -> Self {
-        Lexer::new(CharOrEofReader::from(input))
+        Lexer::new(CharReader::from(input))
     }
 }
 
 // File -> Lexer
 impl From<File> for Lexer<BufReader<File>> {
     fn from(input: File) -> Self {
-        Lexer::new(CharOrEofReader::from(input))
+        Lexer::new(CharReader::from(input))
     }
 }
 

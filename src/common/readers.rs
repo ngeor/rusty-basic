@@ -60,7 +60,7 @@ pub trait PeekOne: ReadOne {
 }
 
 /// Peek one item from an `Iterator`.
-/// 
+///
 /// This mimics the `PeekableIterator` struct of the standard library,
 /// but as a trait.
 pub trait PeekOneIter: Iterator {

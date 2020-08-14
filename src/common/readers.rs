@@ -26,8 +26,8 @@ pub trait PeekOptCopy: ReadOpt {
     fn peek_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
 }
 
-/// Peeks one item from a stream.
-pub trait PeekOne: ReadOpt {
+/// Peeks one item from a stream, returning a reference of the peeked item.
+pub trait PeekOptRef: ReadOpt {
     /// Peeks one item from a stream.
     fn peek_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err>;
 
@@ -74,14 +74,6 @@ pub trait PeekOne: ReadOpt {
     }
 }
 
-/// Peek one item from an `Iterator`.
-///
-/// This mimics the `PeekableIterator` struct of the standard library,
-/// but as a trait.
-pub trait PeekOneIter: Iterator {
-    fn peek_iter_ng(&mut self) -> Option<&Self::Item>;
-}
-
 ///
 ///  Offers transaction capabilities.
 ///
@@ -90,6 +82,10 @@ pub trait Transactional {
     fn commit_transaction(&mut self);
     fn rollback_transaction(&mut self);
 
+    /// Runs the given function inside a transaction.
+    ///
+    /// The transaction is committed only if the function returns `Ok(Some())`,
+    /// otherwise it is rolled back.
     fn in_transaction<T, E, F>(&mut self, f: F) -> Result<Option<T>, E>
     where
         F: FnOnce(&mut Self) -> Result<Option<T>, E>,
@@ -121,6 +117,31 @@ impl<R: ReadOpt> TransactionalPeek<R> {
             transactions: vec![],
         }
     }
+
+    fn fill_buffer_if_empty(&mut self) -> Result<bool, R::Err> {
+        if self.index >= self.history.len() {
+            match self.reader.read_ng()? {
+                Some(x) => {
+                    self.history.push(x);
+                    Ok(true)
+                }
+                None => Ok(false),
+            }
+        } else {
+            Ok(true)
+        }
+    }
+
+    fn clear_history(&mut self) {
+        if self.transactions.is_empty() {
+            // self.index points to the next possible item in the history buffer
+            // remove items from the buffer so that self.index points to zero
+            while self.index > 0 && !self.history.is_empty() {
+                self.index -= 1;
+                self.history.remove(0);
+            }
+        }
+    }
 }
 
 impl<R: ReadOpt> ReadOpt for TransactionalPeek<R>
@@ -138,7 +159,7 @@ where
     }
 }
 
-impl<R: ReadOpt> PeekOne for TransactionalPeek<R>
+impl<R: ReadOpt> PeekOptRef for TransactionalPeek<R>
 where
     R::Item: Clone,
 {
@@ -169,33 +190,6 @@ impl<R: ReadOpt> Transactional for TransactionalPeek<R> {
             panic!("Not in transaction");
         } else {
             self.index = self.transactions.pop().unwrap();
-        }
-    }
-}
-
-impl<R: ReadOpt> TransactionalPeek<R> {
-    fn fill_buffer_if_empty(&mut self) -> Result<bool, R::Err> {
-        if self.index >= self.history.len() {
-            match self.reader.read_ng()? {
-                Some(x) => {
-                    self.history.push(x);
-                    Ok(true)
-                }
-                None => Ok(false),
-            }
-        } else {
-            Ok(true)
-        }
-    }
-
-    fn clear_history(&mut self) {
-        if self.transactions.is_empty() {
-            // self.index points to the next possible item in the history buffer
-            // remove items from the buffer so that self.index points to zero
-            while self.index > 0 && !self.history.is_empty() {
-                self.index -= 1;
-                self.history.remove(0);
-            }
         }
     }
 }

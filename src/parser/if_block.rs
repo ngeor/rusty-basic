@@ -8,7 +8,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::If) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::If) {
         return Ok(None);
     }
 
@@ -78,7 +78,7 @@ fn read_if_block<T: BufRead>(
 fn try_read_else_if_block<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ConditionalBlockNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::ElseIf) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::ElseIf) {
         return Ok(None);
     }
     lexer.read_ng()?;
@@ -101,7 +101,7 @@ fn try_read_else_block<T: BufRead>(
     lexer: &mut BufLexer<T>,
     is_multi_line: bool,
 ) -> Result<Option<StatementNodes>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::Else) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::Else) {
         return Ok(None);
     }
     lexer.read_ng()?;
@@ -132,7 +132,7 @@ fn is_multi_line<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode
     // if we find EOL or comment, it's multi-line
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
-    let p = lexer.peek_ng()?;
+    let p = lexer.peek_ref_ng()?;
     let is_multi_line = p.is_eol() || p.is_symbol('\'');
     lexer.rollback_transaction();
     Ok(is_multi_line)

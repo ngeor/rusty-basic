@@ -1,25 +1,29 @@
-// parses comments
-
 use crate::common::*;
 use crate::lexer::*;
 
 use crate::parser::types::*;
 use std::io::BufRead;
 
+/// Tries to read a comment
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ng().is_symbol('\'') {
-        return Ok(None);
-    }
-    let pos = lexer.read()?.pos();
-    let mut buf = String::new();
-    loop {
-        if lexer.peek_ng().is_eol_or_eof() {
-            break;
-        }
-        let Locatable { element: n, .. } = lexer.read()?;
-        buf.push_str(n.to_string().as_ref());
-    }
-    Ok(Statement::Comment(buf).at(pos)).map(|x| Some(x))
+    let mut lexeme_nodes = lexer
+        // read if we have a ' symbol
+        .take_if(|x| x.is_symbol('\''))
+        // keep reading until we hit eol
+        .take_while(|x| !x.is_eol())
+        // collect all lexemes including the ' (we need its pos)
+        .collect()?;
+    // pop the ' lexeme to get its position later
+    Ok(lexeme_nodes.pop_front().map(|first| {
+        Statement::Comment(lexeme_nodes.into_iter().fold(
+            String::new(),
+            |acc, Locatable { element, .. }| {
+                // fold all remaining lexemes into a string
+                format!("{}{}", acc, element) // concatenate strings
+            },
+        ))
+        .at(first.pos()) // with the pos of the ' symbol
+    }))
 }
 
 #[cfg(test)]

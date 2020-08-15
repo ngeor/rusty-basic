@@ -9,7 +9,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::For) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::For) {
         return Ok(None);
     }
 
@@ -61,7 +61,7 @@ fn try_parse_step<T: BufRead>(
     lexer.begin_transaction();
 
     while state != STATE_EOL {
-        let p = lexer.peek_ng()?;
+        let p = lexer.peek_ref_ng()?;
         match p {
             Some(next) => {
                 let pos = next.pos();
@@ -138,7 +138,7 @@ fn try_parse_next_counter<T: BufRead>(
     lexer.begin_transaction();
 
     while state != STATE_EOL_OR_EOF {
-        let p = lexer.peek_ng()?;
+        let p = lexer.peek_ref_ng()?;
         match p {
             Some(next) => match next.as_ref() {
                 Lexeme::Whitespace(_) => {

@@ -18,27 +18,6 @@ impl<T: BufRead> BufLexer<T> {
     }
 }
 
-/// Iterator implementation for BufLexer.
-/// The implementation if the same for any ReadOpt but it's not possible to implement the trait for a trait.
-/// EOF lexeme is turned into a None.
-impl<T: BufRead> Iterator for BufLexer<T> {
-    type Item = Result<LexemeNode, QErrorNode>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.read_ng().transpose() {
-            Some(Ok(x)) => {
-                if x.is_eof() {
-                    None
-                } else {
-                    Some(Ok(x))
-                }
-            }
-            None => None,
-            Some(Err(err)) => Some(Err(err)),
-        }
-    }
-}
-
 impl<T> From<T> for BufLexer<BufReader<Cursor<T>>>
 where
     T: AsRef<[u8]>,
@@ -84,12 +63,12 @@ mod tests {
         let mut buf_lexer = BufLexer::from(input);
         // peek one time
         assert_eq!(
-            buf_lexer.peek_ng().unwrap().unwrap(),
+            buf_lexer.peek_ref_ng().unwrap().unwrap(),
             &LexemeNode::word("PRINT", 1, 1)
         );
         // peek again should be the same
         assert_eq!(
-            buf_lexer.peek_ng().unwrap().unwrap(),
+            buf_lexer.peek_ref_ng().unwrap().unwrap(),
             &LexemeNode::word("PRINT", 1, 1)
         );
         // read should be the same
@@ -99,7 +78,7 @@ mod tests {
         );
         // peek should get the next
         assert_eq!(
-            buf_lexer.peek_ng().unwrap().unwrap(),
+            buf_lexer.peek_ref_ng().unwrap().unwrap(),
             &LexemeNode::whitespace(1, 6)
         );
         // read the next
@@ -113,11 +92,11 @@ mod tests {
             LexemeNode::digits("1", 1, 7)
         );
         // peek should be at eof
-        assert_eq!(buf_lexer.peek_ng().unwrap().is_some(), false);
-        assert_eq!(buf_lexer.peek_ng().unwrap().is_some(), false);
+        assert_eq!(buf_lexer.peek_ref_ng().unwrap().is_some(), false);
+        assert_eq!(buf_lexer.peek_ref_ng().unwrap().is_some(), false);
         assert_eq!(buf_lexer.read_ng().unwrap().is_some(), false);
         // peek should also return None after eof has been consumed
-        assert_eq!(buf_lexer.peek_ng().unwrap().is_some(), false);
+        assert_eq!(buf_lexer.peek_ref_ng().unwrap().is_some(), false);
     }
 
     #[test]
@@ -317,7 +296,10 @@ mod tests {
         let input = "PRINT 1";
         let mut buf_lexer = BufLexer::from(input);
         assert_eq!(buf_lexer.pos(), Location::new(1, 1));
-        buf_lexer.peek_ng().unwrap().expect("Peek should succeed");
+        buf_lexer
+            .peek_ref_ng()
+            .unwrap()
+            .expect("Peek should succeed");
         assert_eq!(buf_lexer.pos(), Location::new(1, 1));
     }
 

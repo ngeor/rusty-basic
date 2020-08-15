@@ -20,7 +20,7 @@ use std::io::BufRead;
 pub struct Open {}
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::Open) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::Open) {
         return Ok(None);
     }
 

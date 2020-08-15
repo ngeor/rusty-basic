@@ -19,7 +19,7 @@ use std::io::BufRead;
 pub struct LineInput {}
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if lexer.peek_ng().is_keyword(Keyword::Line) {
+    if lexer.peek_ref_ng().is_keyword(Keyword::Line) {
         let pos = lexer.read()?.pos();
         read_whitespace(lexer, "Expected space after LINE")?;
         read_keyword(lexer, Keyword::Input)?;

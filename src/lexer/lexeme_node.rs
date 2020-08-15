@@ -51,8 +51,10 @@ impl Lexeme {
 }
 
 pub trait LexemeTrait {
+    #[deprecated]
     fn is_eof(&self) -> bool;
 
+    #[deprecated]
     fn is_eol_or_eof(&self) -> bool {
         self.is_eof() || self.is_eol()
     }
@@ -173,6 +175,34 @@ impl<T: AsRef<Lexeme>> LexemeTrait for Option<&T> {
             Some(x) => x.is_word(),
             _ => false,
         }
+    }
+}
+
+impl<T: AsRef<Lexeme>, E> LexemeTrait for Result<T, E> {
+    fn is_eof(&self) -> bool {
+        self.as_ref().map(|x| x.is_eof()).unwrap_or_default()
+    }
+
+    fn is_eol(&self) -> bool {
+        self.as_ref().map(|x| x.is_eol()).unwrap_or_default()
+    }
+
+    fn is_symbol(&self, ch: char) -> bool {
+        self.as_ref().map(|x| x.is_symbol(ch)).unwrap_or_default()
+    }
+
+    fn is_keyword(&self, keyword: Keyword) -> bool {
+        self.as_ref()
+            .map(|x| x.is_keyword(keyword))
+            .unwrap_or_default()
+    }
+
+    fn is_whitespace(&self) -> bool {
+        self.as_ref().map(|x| x.is_whitespace()).unwrap_or_default()
+    }
+
+    fn is_word(&self) -> bool {
+        self.as_ref().map(|x| x.is_word()).unwrap_or_default()
     }
 }
 

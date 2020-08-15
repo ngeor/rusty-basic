@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<TypeQualifier>, QErrorNode> {
-    match lexer.peek_ng()? {
+    match lexer.peek_ref_ng()? {
         Some(Locatable {
             element: Lexeme::Symbol(ch),
             ..

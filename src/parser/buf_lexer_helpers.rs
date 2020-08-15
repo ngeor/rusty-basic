@@ -20,7 +20,7 @@ pub fn read<T: BufRead, TResult, F, S: AsRef<str>>(
 where
     F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, QErrorNode>,
 {
-    let p = lexer.peek_ng()?;
+    let p = lexer.peek_ref_ng()?;
     match p {
         Some(x) => {
             let pos = x.pos();
@@ -76,7 +76,7 @@ pub fn skip_if<T: BufRead, F>(lexer: &mut BufLexer<T>, f: F) -> Result<bool, QEr
 where
     F: Fn(&Lexeme) -> bool,
 {
-    match lexer.peek_ng()? {
+    match lexer.peek_ref_ng()? {
         Some(next) => {
             if f(next.as_ref()) {
                 lexer.read_ng()?;
@@ -114,7 +114,7 @@ pub fn read_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<
 /// Returns `true` if at least one whitespace was read.
 pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_whitespace = false;
-    while lexer.peek_ng().is_whitespace() {
+    while lexer.peek_ref_ng().is_whitespace() {
         lexer.read_ng()?;
         found_whitespace = true;
     }

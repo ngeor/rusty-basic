@@ -36,7 +36,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 fn try_read_illegal_keywords<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
-    let p = lexer.peek_ng()?;
+    let p = lexer.peek_ref_ng()?;
     if p.is_keyword(Keyword::Wend) {
         Err(QError::WendWithoutWhile).with_err_at(p.unwrap())
     } else if p.is_keyword(Keyword::Else) {
@@ -62,7 +62,7 @@ fn do_read_label<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, Q
 }
 
 fn try_read_on<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::On) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::On) {
         return Ok(None);
     }
     let pos = lexer.read()?.pos();
@@ -79,7 +79,7 @@ fn try_read_on<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNo
 fn try_read_go_to<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::GoTo) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::GoTo) {
         return Ok(None);
     }
 

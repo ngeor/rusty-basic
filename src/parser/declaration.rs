@@ -10,7 +10,7 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::Declare) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::Declare) {
         return Ok(None);
     }
 
@@ -52,7 +52,7 @@ pub fn try_read_declaration_parameters<T: BufRead>(
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
 
-    let p = lexer.peek_ng()?;
+    let p = lexer.peek_ref_ng()?;
     match p {
         Some(l) => {
             match l.as_ref() {
@@ -82,7 +82,7 @@ pub fn try_read_declaration_parameters<T: BufRead>(
 fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameNodes, QErrorNode> {
     lexer.read_ng()?; // read opening parenthesis
     skip_whitespace(lexer)?;
-    match lexer.peek_ng()? {
+    match lexer.peek_ref_ng()? {
         Some(Locatable {
             element: Lexeme::Word(_),
             ..
@@ -113,7 +113,7 @@ fn parse_next_parameter<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<DeclaredNameNodes, QErrorNode> {
     skip_whitespace(lexer)?;
-    match lexer.peek_ng()? {
+    match lexer.peek_ref_ng()? {
         Some(Locatable {
             element: Lexeme::Symbol(','),
             ..

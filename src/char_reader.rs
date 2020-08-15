@@ -1,4 +1,4 @@
-use crate::common::{PeekIterCopy, PeekOptCopy, ReadOpt};
+use crate::common::{PeekOptCopy, ReadOpt};
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor, Result};
@@ -66,7 +66,7 @@ impl<T: BufRead> ReadOpt for CharReader<T> {
 }
 
 impl<T: BufRead> PeekOptCopy for CharReader<T> {
-    fn peek_ng(&mut self) -> Result<Option<char>> {
+    fn peek_copy_ng(&mut self) -> Result<Option<char>> {
         if self.read_eof {
             Ok(None)
         } else {
@@ -85,12 +85,6 @@ impl<T: BufRead> Iterator for CharReader<T> {
 
     fn next(&mut self) -> Option<Result<char>> {
         self.read_ng().transpose()
-    }
-}
-
-impl<T: BufRead> PeekIterCopy for CharReader<T> {
-    fn peek_iter_ng(&mut self) -> Option<Result<char>> {
-        self.peek_ng().transpose()
     }
 }
 

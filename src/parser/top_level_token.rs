@@ -49,7 +49,7 @@ pub fn parse_top_level_tokens<T: BufRead>(
 
     // allowed to start with space, eol, : (e.g. WHILE A < 5:), ' for comment
     loop {
-        let p = lexer.peek_ng()?;
+        let p = lexer.peek_ref_ng()?;
         if p.is_eof() {
             return Ok(tokens);
         } else if p.is_whitespace() {

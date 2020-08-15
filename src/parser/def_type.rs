@@ -8,7 +8,7 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    let next = lexer.peek_ng()?;
+    let next = lexer.peek_ref_ng()?;
     if next.is_none() {
         return Ok(None);
     }
@@ -44,7 +44,7 @@ pub fn try_read<T: BufRead>(
     while state != STATE_EOL {
         skip_whitespace(lexer)?;
         // TODO add helper for the peek_ng / read_ng pattern
-        match lexer.peek_ng()? {
+        match lexer.peek_ref_ng()? {
             Some(Locatable {
                 element: Lexeme::Word(w),
                 pos,

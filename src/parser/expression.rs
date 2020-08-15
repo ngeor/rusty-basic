@@ -20,7 +20,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<Expression
 fn try_single_expression<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ExpressionNode>, QErrorNode> {
-    let p = lexer.peek_ng()?;
+    let p = lexer.peek_ref_ng()?;
     if p.is_none() {
         return Ok(None);
     }
@@ -157,7 +157,7 @@ fn parse_expression_list_with_parentheses<T: BufRead>(
     let mut state = STATE_OPEN_PARENTHESIS;
     while state != STATE_CLOSE_PARENTHESIS {
         skip_whitespace(lexer)?;
-        let p = lexer.peek_ng()?;
+        let p = lexer.peek_ref_ng()?;
         match p {
             Some(next) => {
                 let pos = next.pos();
@@ -397,7 +397,7 @@ fn try_parse_operand<T: BufRead>(
 }
 
 fn less_or_lte_or_ne<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, QErrorNode> {
-    match lexer.peek_ng()? {
+    match lexer.peek_ref_ng()? {
         Some(Locatable {
             element: Lexeme::Symbol('='),
             ..

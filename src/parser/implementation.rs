@@ -11,7 +11,7 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    let p = lexer.peek_ng();
+    let p = lexer.peek_ref_ng();
     if p.is_keyword(Keyword::Function) {
         let pos = lexer.read()?.pos();
         demand_function_implementation(lexer).map(|x| Some(x.at(pos)))

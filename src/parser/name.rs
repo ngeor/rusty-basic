@@ -6,7 +6,7 @@ use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, QErrorNode> {
     // TODO make helpers to improve this
-    match lexer.peek_ng()? {
+    match lexer.peek_ref_ng()? {
         Some(Locatable {
             element: Lexeme::Word(word),
             pos,
@@ -26,7 +26,7 @@ pub fn try_read_bare<T: BufRead>(
 ) -> Result<Option<BareNameNode>, QErrorNode> {
     lexer.begin_transaction();
     // TODO make helpers to improve this
-    match lexer.peek_ng()? {
+    match lexer.peek_ref_ng()? {
         Some(Locatable {
             element: Lexeme::Word(word),
             pos,

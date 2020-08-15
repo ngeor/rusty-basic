@@ -1,3 +1,4 @@
+use crate::common::iter::*;
 use crate::common::location::*;
 
 /// Reads one item from a stream.
@@ -23,13 +24,13 @@ pub trait ReadOpt {
 /// This trait should be implemented when the item implements `Copy`.
 pub trait PeekOptCopy: ReadOpt {
     /// Peeks one item from a stream.
-    fn peek_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
+    fn peek_copy_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
 }
 
 /// Peeks one item from a stream, returning a reference of the peeked item.
 pub trait PeekOptRef: ReadOpt {
     /// Peeks one item from a stream.
-    fn peek_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err>;
+    fn peek_ref_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err>;
 
     /// Peeks the next item and reads it if it tests successfully against
     /// the given predicate function.
@@ -37,7 +38,7 @@ pub trait PeekOptRef: ReadOpt {
     where
         F: FnOnce(&Self::Item) -> bool,
     {
-        let opt: Option<&Self::Item> = self.peek_ng()?;
+        let opt: Option<&Self::Item> = self.peek_ref_ng()?;
         match opt {
             Some(candidate) => {
                 if predicate(candidate) {
@@ -57,7 +58,7 @@ pub trait PeekOptRef: ReadOpt {
     where
         F: FnOnce(&Self::Item) -> Result<Option<U>, Self::Err>,
     {
-        let opt: Option<&Self::Item> = self.peek_ng()?;
+        let opt: Option<&Self::Item> = self.peek_ref_ng()?;
         match opt {
             Some(candidate) => {
                 let mapped = predicate_mapper(candidate)?;
@@ -152,10 +153,10 @@ where
     type Err = R::Err;
 
     fn read_ng(&mut self) -> Result<Option<Self::Item>, Self::Err> {
-        let result = self.peek_ng()?.map(|x| x.clone());
+        let result = self.peek_copy_ng();
         self.index += 1;
         self.clear_history();
-        Ok(result)
+        result
     }
 }
 
@@ -163,9 +164,22 @@ impl<R: ReadOpt> PeekOptRef for TransactionalPeek<R>
 where
     R::Item: Clone,
 {
-    fn peek_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err> {
+    fn peek_ref_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err> {
         if self.fill_buffer_if_empty()? {
             Ok(Some(&self.history[self.index]))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl<R: ReadOpt> PeekOptCopy for TransactionalPeek<R>
+where
+    R::Item: Clone,
+{
+    fn peek_copy_ng(&mut self) -> Result<Option<Self::Item>, Self::Err> {
+        if self.fill_buffer_if_empty()? {
+            Ok(Some(self.history[self.index].clone()))
         } else {
             Ok(None)
         }
@@ -208,6 +222,38 @@ where
     }
 }
 
+impl<R: ReadOpt> Iterator for TransactionalPeek<R>
+where
+    R::Item: Clone,
+{
+    type Item = Result<R::Item, R::Err>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.read_ng().transpose()
+    }
+}
+
+impl<R: ReadOpt> ResultIterator for TransactionalPeek<R>
+where
+    R::Item: Clone,
+{
+    type Item = R::Item;
+    type Err = R::Err;
+
+    fn next(&mut self) -> Option<Result<R::Item, R::Err>> {
+        self.read_ng().transpose()
+    }
+}
+
+impl<R: ReadOpt> PeekResultIterator for TransactionalPeek<R>
+where
+    R::Item: Clone,
+{
+    fn peek(&mut self) -> Option<Result<&R::Item, R::Err>> {
+        self.peek_ref_ng().transpose()
+    }
+}
+
 ///
 /// Trait for Transactional Peek of R::Item Locatable
 ///
@@ -235,7 +281,7 @@ where
     where
         F: FnOnce(&T) -> bool,
     {
-        let locatable: Option<&R::Item> = self.peek_ng()?;
+        let locatable: Option<&R::Item> = self.peek_ref_ng()?;
         match locatable {
             Some(x) => {
                 let inside: &T = x.as_ref();
@@ -254,7 +300,7 @@ where
     where
         F: FnOnce(&T) -> Option<U>,
     {
-        let locatable: Option<&R::Item> = self.peek_ng()?;
+        let locatable: Option<&R::Item> = self.peek_ref_ng()?;
         match locatable {
             Some(x) => {
                 let inside: &T = x.as_ref();

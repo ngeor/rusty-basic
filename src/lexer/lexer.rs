@@ -49,7 +49,7 @@ impl<T: BufRead> Lexer<T> {
 
     fn peek_one(&mut self) -> Result<Option<char>, QErrorNode> {
         self.reader
-            .peek_ng()
+            .peek_copy_ng()
             .map_err(|e| e.into())
             .with_err_at(self.pos)
     }

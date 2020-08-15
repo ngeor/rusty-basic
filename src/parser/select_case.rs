@@ -9,7 +9,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::Select) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::Select) {
         return Ok(None);
     }
     let pos = lexer.read()?.pos();
@@ -64,7 +64,7 @@ fn parse_inline_comments<T: BufRead>(
     let mut statements: StatementNodes = vec![];
 
     loop {
-        let p = lexer.peek_ng();
+        let p = lexer.peek_ref_ng();
         if p.is_keyword(Keyword::Case) || p.is_keyword(Keyword::End) {
             return Ok(statements);
         } else if p.is_whitespace() || p.is_eol() {
@@ -83,11 +83,11 @@ fn parse_inline_comments<T: BufRead>(
 fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_case_else = false;
     lexer.begin_transaction();
-    if lexer.peek_ng().is_keyword(Keyword::Case) {
+    if lexer.peek_ref_ng().is_keyword(Keyword::Case) {
         lexer.read_ng()?;
-        if lexer.peek_ng().is_whitespace() {
+        if lexer.peek_ref_ng().is_whitespace() {
             lexer.read_ng()?;
-            found_case_else = lexer.peek_ng().is_keyword(Keyword::Else);
+            found_case_else = lexer.peek_ref_ng().is_keyword(Keyword::Else);
         } else {
             // CASE should always be followed by a space so it's okay to throw an error here
             return Err(QError::SyntaxError("Expected space after CASE".to_string()))
@@ -99,7 +99,7 @@ fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNod
 }
 
 fn try_read_case<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, QErrorNode> {
-    if !lexer.peek_ng().is_keyword(Keyword::Case) {
+    if !lexer.peek_ref_ng().is_keyword(Keyword::Case) {
         return Ok(None);
     }
     if peek_case_else(lexer)? {
@@ -107,7 +107,7 @@ fn try_read_case<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlock
     }
     lexer.read_ng()?; // CASE
     lexer.read_ng()?; // whitespace
-    if lexer.peek_ng().is_keyword(Keyword::Is) {
+    if lexer.peek_ref_ng().is_keyword(Keyword::Is) {
         read_case_is(lexer) // IS
     } else {
         read_case_expr(lexer)
@@ -136,17 +136,17 @@ fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Opera
     if next.as_ref().is_symbol('=') {
         Ok(Operand::Equal)
     } else if next.as_ref().is_symbol('>') {
-        if lexer.peek_ng().is_symbol('=') {
+        if lexer.peek_ref_ng().is_symbol('=') {
             lexer.read_ng()?;
             Ok(Operand::GreaterOrEqual)
         } else {
             Ok(Operand::Greater)
         }
     } else if next.as_ref().is_symbol('<') {
-        if lexer.peek_ng().is_symbol('=') {
+        if lexer.peek_ref_ng().is_symbol('=') {
             lexer.read_ng()?;
             Ok(Operand::LessOrEqual)
-        } else if lexer.peek_ng().is_symbol('>') {
+        } else if lexer.peek_ref_ng().is_symbol('>') {
             lexer.read_ng()?;
             Ok(Operand::NotEqual)
         } else {

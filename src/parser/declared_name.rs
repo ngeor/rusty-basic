@@ -11,7 +11,7 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<DeclaredNameNode>, QErrorNode> {
-    if !lexer.peek_ng().is_word() {
+    if !lexer.peek_ref_ng().is_word() {
         return Ok(None);
     }
 

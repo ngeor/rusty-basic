@@ -19,7 +19,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
         element: bare_name,
         pos,
     } = opt_name.unwrap();
-    let p = lexer.peek_ng();
+    let p = lexer.peek_ref_ng();
     if p.is_symbol('=') || p.is_symbol(':') {
         // assignment or label
         lexer.rollback_transaction();
@@ -47,7 +47,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     }
 
     // check once again to make sure we're not in assignment with extra whitespace e.g. A = 2
-    if lexer.peek_ng().is_symbol('=') {
+    if lexer.peek_ref_ng().is_symbol('=') {
         lexer.rollback_transaction();
         return Ok(None);
     }
@@ -66,7 +66,7 @@ pub fn read_arg_list<T: BufRead>(
         Some(e) => {
             let mut args: Vec<ExpressionNode> = vec![e];
             skip_whitespace(lexer)?;
-            if lexer.peek_ng().is_symbol(',') {
+            if lexer.peek_ref_ng().is_symbol(',') {
                 // next args
                 lexer.read_ng()?; // read comma
                 skip_whitespace(lexer)?;

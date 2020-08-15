@@ -12,6 +12,7 @@ pub trait ResultIterator: Sized {
     ///
     /// Returns `Ok(VecDeque)` if the iterator does not contain any errors.
     /// Returns `Err(_)` on the first encountered error.
+    #[deprecated]
     fn collect(&mut self) -> Result<VecDeque<Self::Item>, Self::Err> {
         let mut result: VecDeque<Self::Item> = VecDeque::new();
         loop {
@@ -23,30 +24,38 @@ pub trait ResultIterator: Sized {
         }
     }
 
-    fn tap_next<F>(&mut self, f: F) -> &mut Self
+    /// Skips the first element in the iterator, calling
+    /// the given function with it.
+    fn tap_next<F>(&mut self, f: F) -> Skip<Self, F>
     where
-        F: FnOnce(Self::Item) -> (),
+        Self::Err: Clone,
+        F: FnMut(Self::Item) -> (),
     {
-        // TODO this does not remember Err / None
-        match self.next() {
-            Some(Ok(x)) => f(x),
-            _ => (),
-        };
-        self
+        Skip::new(self, f)
     }
 
+    /// Folds the iterator into a single value using the given accumulator function.
     fn fold<A, F>(&mut self, seed: A, f: F) -> Option<Result<A, Self::Err>>
     where
         F: Fn(A, Self::Item) -> A,
     {
         let mut result: A = seed;
-        loop {
-            match self.next() {
-                None => return Some(Ok(result)),
-                Some(Err(err)) => return Some(Err(err)),
-                Some(Ok(x)) => result = f(result, x),
+        for x in self.iter() {
+            match x {
+                Ok(x) => {
+                    result = f(result, x);
+                }
+                Err(err) => {
+                    return Some(Err(err));
+                }
             }
         }
+        Some(Ok(result))
+    }
+
+    /// Creates a standard `Iterator` over this `ResultIterator`.
+    fn iter(&mut self) -> IteratorAdaptor<Self> {
+        IteratorAdaptor::new(self)
     }
 }
 
@@ -232,31 +241,33 @@ where
     }
 }
 
-pub struct Skip<'a, I>
+/// A decorator over an iterator, remembering if it has encountered Err or None.
+/// If it encounters Err or None, it will keep returning that result on subsequent calls to `next`.
+pub struct Fuse<'a, I>
 where
     I: ResultIterator,
+    I::Err: Clone,
 {
     iter: &'a mut I,
-    skipped_next: bool,
     found_none: bool,
     found_err: Option<I::Err>,
 }
 
-impl<'a, I> Skip<'a, I>
+impl<'a, I> Fuse<'a, I>
 where
     I: ResultIterator,
+    I::Err: Clone,
 {
     pub fn new(iter: &'a mut I) -> Self {
-        Skip {
+        Fuse {
             iter,
-            skipped_next: false,
             found_none: false,
             found_err: None,
         }
     }
 }
 
-impl<'a, I> ResultIterator for Skip<'a, I>
+impl<'a, I> ResultIterator for Fuse<'a, I>
 where
     I: ResultIterator,
     I::Err: Clone,
@@ -265,16 +276,11 @@ where
     type Err = I::Err;
 
     fn next(&mut self) -> Option<Result<Self::Item, Self::Err>> {
-        if self.skipped_next {
-            if self.found_none {
-                None
-            } else if self.found_err.is_some() {
-                Some(Err(self.found_err.clone().unwrap()))
-            } else {
-                self.iter.next()
-            }
+        if self.found_none {
+            None
+        } else if self.found_err.is_some() {
+            Some(Err(self.found_err.clone().unwrap()))
         } else {
-            self.skipped_next = true;
             match self.iter.next() {
                 None => {
                     self.found_none = true;
@@ -284,21 +290,127 @@ where
                     self.found_err = Some(err.clone());
                     Some(Err(err))
                 }
-                Some(Ok(_)) => {
-                    // skip !
-                    self.next()
-                }
+                Some(Ok(x)) => Some(Ok(x)),
             }
         }
     }
 }
 
-impl<'a, I> PeekResultIterator for Skip<'a, I>
+impl<'a, I> PeekResultIterator for Fuse<'a, I>
 where
     I: PeekResultIterator,
     I::Err: Clone,
 {
     fn peek(&mut self) -> Option<Result<&Self::Item, Self::Err>> {
-        None
+        if self.found_none {
+            None
+        } else if self.found_err.is_some() {
+            Some(Err(self.found_err.clone().unwrap()))
+        } else {
+            match self.iter.peek() {
+                None => {
+                    self.found_none = true;
+                    None
+                }
+                Some(Err(err)) => {
+                    self.found_err = Some(err.clone());
+                    Some(Err(err))
+                }
+                Some(Ok(x)) => Some(Ok(x)),
+            }
+        }
+    }
+}
+
+/// Skips over the first element, calling a predicate with it
+pub struct Skip<'a, I, F>
+where
+    I: ResultIterator,
+    I::Err: Clone,
+    F: FnMut(I::Item),
+{
+    iter: Fuse<'a, I>,
+    predicate: F,
+    seen_next: bool,
+}
+
+impl<'a, I, F> Skip<'a, I, F>
+where
+    I: ResultIterator,
+    I::Err: Clone,
+    F: FnMut(I::Item),
+{
+    pub fn new(iter: &'a mut I, predicate: F) -> Self {
+        Skip {
+            iter: Fuse::new(iter),
+            predicate,
+            seen_next: false,
+        }
+    }
+
+    fn call_predicate(&mut self) {
+        self.seen_next = true;
+        // we use a Fuse so if we hit None or Error it will remember it
+        match self.iter.next() {
+            Some(Ok(x)) => {
+                let p = &mut self.predicate;
+                p(x);
+            }
+            _ => (),
+        }
+    }
+}
+
+impl<'a, I, F> ResultIterator for Skip<'a, I, F>
+where
+    I: ResultIterator,
+    I::Err: Clone,
+    F: FnMut(I::Item),
+{
+    type Item = I::Item;
+    type Err = I::Err;
+
+    fn next(&mut self) -> Option<Result<Self::Item, Self::Err>> {
+        if self.seen_next {
+            self.iter.next()
+        } else {
+            self.call_predicate();
+            self.next()
+        }
+    }
+}
+
+impl<'a, I, F> PeekResultIterator for Skip<'a, I, F>
+where
+    I: PeekResultIterator,
+    I::Err: Clone,
+    F: FnMut(I::Item),
+{
+    fn peek(&mut self) -> Option<Result<&Self::Item, Self::Err>> {
+        if self.seen_next {
+            self.iter.peek()
+        } else {
+            self.call_predicate();
+            self.peek()
+        }
+    }
+}
+
+/// An adaptor that converts a `ResultIterator` into a standard `Iterator`.
+pub struct IteratorAdaptor<'a, I: ResultIterator> {
+    iter: &'a mut I,
+}
+
+impl<'a, I: ResultIterator> IteratorAdaptor<'a, I> {
+    pub fn new(iter: &'a mut I) -> Self {
+        Self { iter }
+    }
+}
+
+impl<'a, I: ResultIterator> Iterator for IteratorAdaptor<'a, I> {
+    type Item = Result<I::Item, I::Err>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
     }
 }

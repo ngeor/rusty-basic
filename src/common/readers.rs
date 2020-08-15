@@ -50,29 +50,6 @@ pub trait PeekOptRef: ReadOpt {
             None => Ok(None),
         }
     }
-
-    /// Peeks the next item and if it has a value it passes it through
-    /// the given function. If the function returns some result,
-    /// the item is read and the value of the function is returned.
-    fn map_if<F, U>(&mut self, predicate_mapper: F) -> Result<Option<U>, Self::Err>
-    where
-        F: FnOnce(&Self::Item) -> Result<Option<U>, Self::Err>,
-    {
-        let opt: Option<&Self::Item> = self.peek_ref_ng()?;
-        match opt {
-            Some(candidate) => {
-                let mapped = predicate_mapper(candidate)?;
-                match mapped {
-                    Some(x) => {
-                        self.read_ng()?;
-                        Ok(Some(x))
-                    }
-                    None => Ok(None),
-                }
-            }
-            None => Ok(None),
-        }
-    }
 }
 
 ///
@@ -87,6 +64,7 @@ pub trait Transactional {
     ///
     /// The transaction is committed only if the function returns `Ok(Some())`,
     /// otherwise it is rolled back.
+    #[deprecated]
     fn in_transaction<T, E, F>(&mut self, f: F) -> Result<Option<T>, E>
     where
         F: FnOnce(&mut Self) -> Result<Option<T>, E>,
@@ -95,6 +73,19 @@ pub trait Transactional {
         let result = f(self);
         match &result {
             Ok(Some(_)) => self.commit_transaction(),
+            _ => self.rollback_transaction(),
+        };
+        result
+    }
+
+    fn in_transaction_opt<T, E, F>(&mut self, f: F) -> Option<Result<T, E>>
+    where
+        F: FnOnce(&mut Self) -> Option<Result<T, E>>,
+    {
+        self.begin_transaction();
+        let result = f(self);
+        match &result {
+            Some(Ok(_)) => self.commit_transaction(),
             _ => self.rollback_transaction(),
         };
         result

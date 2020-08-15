@@ -57,6 +57,11 @@ pub trait ResultIterator: Sized {
     fn iter(&mut self) -> IteratorAdaptor<Self> {
         IteratorAdaptor::new(self)
     }
+
+    /// Gets the first element out of the iterator.
+    fn first(mut self) -> Option<Result<Self::Item, Self::Err>> {
+        self.iter().take(1).next()
+    }
 }
 
 /// Peek support for an iterator-like trait that iterates over Results.
@@ -88,10 +93,20 @@ pub trait PeekResultIterator: ResultIterator {
     /// Reads while the next peeked item can be mapped using the given mapper function.
     fn map_while<F, U>(&mut self, mapper: F) -> MapWhile<Self, F, U>
     where
-        F: FnMut(&Self::Item) -> Option<Result<&U, Self::Err>>,
-        U: Copy,
+        F: FnMut(&Self::Item) -> Option<Result<U, Self::Err>>,
+        U: Sized,
     {
         MapWhile::new(self, mapper)
+    }
+
+    /// Takes the first element and maps it with the given mapper function.
+    /// If the first element cannot be mapped, it returns `None`.
+    fn map_if<F, U>(&mut self, mapper: F) -> Option<Result<U, Self::Err>>
+    where
+        F: FnMut(&Self::Item) -> Option<Result<U, Self::Err>>,
+        U: Sized,
+    {
+        self.map_while(mapper).first()
     }
 }
 
@@ -255,29 +270,34 @@ where
 pub struct MapWhile<'a, I, F, U>
 where
     I: PeekResultIterator,
-    F: FnMut(&I::Item) -> Option<Result<&U, I::Err>>,
-    U: Copy,
+    F: FnMut(&I::Item) -> Option<Result<U, I::Err>>,
+    U: Sized,
 {
     iter: &'a mut I,
     mapper: F,
+    last_peeked: Option<U>,
 }
 
 impl<'a, I, F, U> MapWhile<'a, I, F, U>
 where
     I: PeekResultIterator,
-    F: FnMut(&I::Item) -> Option<Result<&U, I::Err>>,
-    U: Copy,
+    F: FnMut(&I::Item) -> Option<Result<U, I::Err>>,
+    U: Sized,
 {
     pub fn new(iter: &'a mut I, mapper: F) -> Self {
-        MapWhile { iter, mapper }
+        MapWhile {
+            iter,
+            mapper,
+            last_peeked: None,
+        }
     }
 }
 
 impl<'a, I, F, U> ResultIterator for MapWhile<'a, I, F, U>
 where
     I: PeekResultIterator,
-    F: FnMut(&I::Item) -> Option<Result<&U, I::Err>>,
-    U: Copy,
+    F: FnMut(&I::Item) -> Option<Result<U, I::Err>>,
+    U: Sized,
 {
     type Item = U;
     type Err = I::Err;
@@ -292,7 +312,7 @@ where
                     None => None,
                     Some(Err(err)) => Some(Err(err)),
                     Some(Ok(y)) => {
-                        let result = Some(Ok(*y));
+                        let result = Some(Ok(y));
                         self.iter.next();
                         result
                     }
@@ -305,8 +325,8 @@ where
 impl<'a, I, F, U> PeekResultIterator for MapWhile<'a, I, F, U>
 where
     I: PeekResultIterator,
-    F: FnMut(&I::Item) -> Option<Result<&U, I::Err>>,
-    U: Copy,
+    F: FnMut(&I::Item) -> Option<Result<U, I::Err>>,
+    U: Sized,
 {
     fn peek(&mut self) -> Option<Result<&Self::Item, Self::Err>> {
         match self.iter.peek() {
@@ -317,7 +337,10 @@ where
                 match p(x) {
                     None => None,
                     Some(Err(err)) => Some(Err(err)),
-                    Some(Ok(y)) => Some(Ok(y)),
+                    Some(Ok(y)) => {
+                        self.last_peeked = Some(y);
+                        Some(Ok(self.last_peeked.as_ref().unwrap()))
+                    }
                 }
             }
         }

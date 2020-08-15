@@ -5,27 +5,27 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 /// Tries to read a comment
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    // TODO try to avoid collect
-    // TODO deprecate try_read and switch to Option Result signature
-    let mut lexeme_nodes = lexer
+pub fn next<T: BufRead>(lexer: &mut BufLexer<T>) -> Option<Result<StatementNode, QErrorNode>> {
+    let mut opt_pos: Option<Location> = None;
+    lexer
         // read if we have a ' symbol
-        .take_if(|x| x.is_symbol('\''))
+        .take_if(|lexeme_node| lexeme_node.is_symbol('\''))
+        // capture pos, to be able to tell if `fold` returned an empty string because there was an empty comment or if because there was no comment at all
+        .tap_next(|lexeme_node| opt_pos = Some(lexeme_node.pos()))
         // keep reading until we hit eol
         .take_while(|x| !x.is_eol())
-        // collect all lexemes including the ' (we need its pos)
-        .collect()?;
-    // pop the ' lexeme to get its position later
-    Ok(lexeme_nodes.pop_front().map(|first| {
-        Statement::Comment(lexeme_nodes.into_iter().fold(
-            String::new(),
-            |acc, Locatable { element, .. }| {
-                // fold all remaining lexemes into a string
-                format!("{}{}", acc, element) // concatenate strings
-            },
-        ))
-        .at(first.pos()) // with the pos of the ' symbol
-    }))
+        // fold all remaining lexemes into a string. This creates an empty string even if we never hit a comment,
+        // which is why we use the `opt_pos` to map it back to None if needed
+        .fold(String::new(), |acc, Locatable { element, .. }| {
+            format!("{}{}", acc, element) // concatenate strings
+        })
+        .map_ok(|text| Statement::Comment(text))
+        .with_ok_pos(opt_pos)
+}
+
+#[deprecated]
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+    next(lexer).transpose()
 }
 
 #[cfg(test)]
@@ -52,9 +52,7 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![
-                TopLevelToken::Statement(Statement::Comment(String::new())).at_rc(1, 1)
-            ]
+            vec![TopLevelToken::Statement(Statement::Comment(String::new())).at_rc(1, 1)]
         );
     }
 }

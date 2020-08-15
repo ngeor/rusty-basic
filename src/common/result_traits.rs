@@ -72,6 +72,23 @@ impl<T, E> ToLocatableOk<Location, Result<Locatable<T>, E>> for Result<T, E> {
     }
 }
 
+impl<T, E> ToLocatableOk<Location, Option<Result<Locatable<T>, E>>> for Option<Result<T, E>> {
+    fn with_ok_pos(self, pos: Location) -> Option<Result<Locatable<T>, E>> {
+        self.map(|r| r.map(|x| x.at(pos)))
+    }
+}
+
+impl<T, E> ToLocatableOk<Option<Location>, Option<Result<Locatable<T>, E>>>
+    for Option<Result<T, E>>
+{
+    fn with_ok_pos(self, opt_pos: Option<Location>) -> Option<Result<Locatable<T>, E>> {
+        match opt_pos {
+            Some(pos) => self.with_ok_pos(pos),
+            None => None,
+        }
+    }
+}
+
 /// Chains on Ok(Some) values
 
 pub trait ChainResultOption<T, U, E> {
@@ -90,5 +107,23 @@ impl<T, U, E> ChainResultOption<T, U, E> for Result<Option<T>, E> {
             Err(err) => Err(err),
             Ok(Some(x)) => f(x),
         }
+    }
+}
+
+/// Maps an Option Result
+pub trait MapOptionResult<T, U, E> {
+    /// Applies the given function to the value of a `Some(Ok(_))`
+    fn map_ok<F>(self, f: F) -> Option<Result<U, E>>
+    where
+        F: FnOnce(T) -> U;
+}
+
+impl<T, U, E> MapOptionResult<T, U, E> for Option<Result<T, E>> {
+    /// Applies the given function to the value of a `Some(Ok(_))`
+    fn map_ok<F>(self, f: F) -> Option<Result<U, E>>
+    where
+        F: FnOnce(T) -> U,
+    {
+        self.map(|r| r.map(|x| f(x)))
     }
 }

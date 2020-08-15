@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 /// An iterator-like trait that iterates over Results.
-pub trait ResultIterator {
+pub trait ResultIterator: Sized {
     type Item;
     type Err;
 
@@ -22,10 +22,36 @@ pub trait ResultIterator {
             }
         }
     }
+
+    fn tap_next<F>(&mut self, f: F) -> &mut Self
+    where
+        F: FnOnce(Self::Item) -> (),
+    {
+        // TODO this does not remember Err / None
+        match self.next() {
+            Some(Ok(x)) => f(x),
+            _ => (),
+        };
+        self
+    }
+
+    fn fold<A, F>(&mut self, seed: A, f: F) -> Option<Result<A, Self::Err>>
+    where
+        F: Fn(A, Self::Item) -> A,
+    {
+        let mut result: A = seed;
+        loop {
+            match self.next() {
+                None => return Some(Ok(result)),
+                Some(Err(err)) => return Some(Err(err)),
+                Some(Ok(x)) => result = f(result, x),
+            }
+        }
+    }
 }
 
 /// Peek support for an iterator-like trait that iterates over Results.
-pub trait PeekResultIterator: ResultIterator + Sized {
+pub trait PeekResultIterator: ResultIterator {
     /// Peeks the next item.
     fn peek(&mut self) -> Option<Result<&Self::Item, Self::Err>>; // errors are always copied because they have precedence
 
@@ -203,5 +229,76 @@ where
                 }
             }
         }
+    }
+}
+
+pub struct Skip<'a, I>
+where
+    I: ResultIterator,
+{
+    iter: &'a mut I,
+    skipped_next: bool,
+    found_none: bool,
+    found_err: Option<I::Err>,
+}
+
+impl<'a, I> Skip<'a, I>
+where
+    I: ResultIterator,
+{
+    pub fn new(iter: &'a mut I) -> Self {
+        Skip {
+            iter,
+            skipped_next: false,
+            found_none: false,
+            found_err: None,
+        }
+    }
+}
+
+impl<'a, I> ResultIterator for Skip<'a, I>
+where
+    I: ResultIterator,
+    I::Err: Clone,
+{
+    type Item = I::Item;
+    type Err = I::Err;
+
+    fn next(&mut self) -> Option<Result<Self::Item, Self::Err>> {
+        if self.skipped_next {
+            if self.found_none {
+                None
+            } else if self.found_err.is_some() {
+                Some(Err(self.found_err.clone().unwrap()))
+            } else {
+                self.iter.next()
+            }
+        } else {
+            self.skipped_next = true;
+            match self.iter.next() {
+                None => {
+                    self.found_none = true;
+                    None
+                }
+                Some(Err(err)) => {
+                    self.found_err = Some(err.clone());
+                    Some(Err(err))
+                }
+                Some(Ok(_)) => {
+                    // skip !
+                    self.next()
+                }
+            }
+        }
+    }
+}
+
+impl<'a, I> PeekResultIterator for Skip<'a, I>
+where
+    I: PeekResultIterator,
+    I::Err: Clone,
+{
+    fn peek(&mut self) -> Option<Result<&Self::Item, Self::Err>> {
+        None
     }
 }

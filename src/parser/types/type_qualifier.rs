@@ -33,6 +33,30 @@ impl TypeQualifier {
             _ => other != Self::DollarString && other != Self::FileHandle,
         }
     }
+
+    /// Maps the given character into a `TypeQualifier` reference.
+    /// If the character does not represent a type qualifier, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(TypeQualifier::from_char_ref(&'1'), Some(&TypeQualifier::HashDouble));
+    /// ```
+    pub fn from_char_ref(ch: &char) -> Option<&Self> {
+        if *ch == '!' {
+            Some(&TypeQualifier::BangSingle)
+        } else if *ch == '#' {
+            Some(&TypeQualifier::HashDouble)
+        } else if *ch == '$' {
+            Some(&TypeQualifier::DollarString)
+        } else if *ch == '%' {
+            Some(&TypeQualifier::PercentInteger)
+        } else if *ch == '&' {
+            Some(&TypeQualifier::AmpersandLong)
+        } else {
+            None
+        }
+    }
 }
 
 impl Display for TypeQualifier {
@@ -70,18 +94,9 @@ impl FromStr for TypeQualifier {
 impl TryFrom<char> for TypeQualifier {
     type Error = String;
     fn try_from(ch: char) -> Result<TypeQualifier, String> {
-        if ch == '!' {
-            Ok(TypeQualifier::BangSingle)
-        } else if ch == '#' {
-            Ok(TypeQualifier::HashDouble)
-        } else if ch == '$' {
-            Ok(TypeQualifier::DollarString)
-        } else if ch == '%' {
-            Ok(TypeQualifier::PercentInteger)
-        } else if ch == '&' {
-            Ok(TypeQualifier::AmpersandLong)
-        } else {
-            Err(format!("Invalid type qualifier {}", ch))
+        match TypeQualifier::from_char_ref(&ch) {
+            Some(t) => Ok(*t),
+            None => Err(format!("Invalid type qualifier {}", ch)),
         }
     }
 }

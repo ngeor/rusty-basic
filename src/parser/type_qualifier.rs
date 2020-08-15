@@ -2,21 +2,21 @@ use crate::common::*;
 use crate::lexer::*;
 
 use crate::parser::types::TypeQualifier;
-use std::convert::TryFrom;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<TypeQualifier>, QErrorNode> {
-    match lexer.peek_ref_ng()? {
-        Some(Locatable {
-            element: Lexeme::Symbol(ch),
-            ..
-        }) => match TypeQualifier::try_from(*ch) {
-            Ok(t) => {
-                lexer.read_ng()?;
-                Ok(Some(t))
-            }
-            _ => Ok(None),
-        },
-        _ => Ok(None),
+pub fn next<T: BufRead>(lexer: &mut BufLexer<T>) -> Option<Result<TypeQualifier, QErrorNode>> {
+    lexer.map_while(lexeme_node_to_type_qualifier).iter().next()
+}
+
+fn lexeme_node_to_type_qualifier(l: &LexemeNode) -> Option<Result<&TypeQualifier, QErrorNode>> {
+    let Locatable { element, .. } = l;
+    match element {
+        Lexeme::Symbol(ch) => TypeQualifier::from_char_ref(ch).map(|x| Ok(x)),
+        _ => None,
     }
+}
+
+#[deprecated]
+pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<TypeQualifier>, QErrorNode> {
+    next(lexer).transpose()
 }

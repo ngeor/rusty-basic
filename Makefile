@@ -17,3 +17,6 @@ wc:
 
 coverage:
 	docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin cargo tarpaulin -o Html
+
+clean:
+	cargo clean

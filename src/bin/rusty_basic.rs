@@ -1,17 +1,10 @@
-mod built_ins;
-mod char_reader;
-mod common;
-mod instruction_generator;
-mod interpreter;
-mod lexer;
-mod linter;
-mod parser;
-mod variant;
-
 use std::env;
 use std::fs::File;
 
-use interpreter::{DefaultStdlib, Interpreter};
+use rusty_basic::instruction_generator;
+use rusty_basic::interpreter::{DefaultStdlib, Interpreter};
+use rusty_basic::linter;
+use rusty_basic::parser;
 
 // TODO only use the apache hacks if called with a flag or so
 fn get_filename() -> String {
@@ -32,13 +25,13 @@ fn set_current_dir(filename: &String) {
 
 fn main() {
     let filename = get_filename();
-    set_current_dir(&filename); // Note: only needed to make it work inside Apache.
     let f = File::open(&filename).expect(format!("Could not find program {}", filename).as_ref());
     match parser::parse_main_file(f) {
         Ok(program) => match linter::lint(program) {
             Ok(linted_program) => {
                 let mut interpreter = Interpreter::new(DefaultStdlib {});
                 let instructions = instruction_generator::generate_instructions(linted_program);
+                set_current_dir(&filename); // Note: only needed to make it work inside Apache.
                 match interpreter.interpret(instructions) {
                     Ok(_) => (),
                     Err(e) => eprintln!("Runtime error. {:?}", e),

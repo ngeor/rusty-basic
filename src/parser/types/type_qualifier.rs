@@ -40,7 +40,9 @@ impl TypeQualifier {
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(TypeQualifier::from_char_ref(&'1'), Some(&TypeQualifier::HashDouble));
+    /// use rusty_basic::parser::TypeQualifier;
+    /// assert_eq!(TypeQualifier::from_char_ref(&'#'), Some(&TypeQualifier::HashDouble));
+    /// assert_eq!(TypeQualifier::from_char_ref(&'1'), None);
     /// ```
     pub fn from_char_ref(ch: &char) -> Option<&Self> {
         if *ch == '!' {

@@ -6,6 +6,8 @@ use std::io::BufRead;
 
 /// Tries to read a comment
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+    // TODO try to avoid collect
+    // TODO deprecate try_read and switch to Option Result signature
     let mut lexeme_nodes = lexer
         // read if we have a ' symbol
         .take_if(|x| x.is_symbol('\''))
@@ -41,6 +43,18 @@ mod tests {
                 " just a comment . 123 AS".to_string()
             ))
             .at_rc(1, 1)]
+        );
+    }
+
+    #[test]
+    fn test_comment_at_eof() {
+        let input = "'";
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::Statement(Statement::Comment(String::new())).at_rc(1, 1)
+            ]
         );
     }
 }

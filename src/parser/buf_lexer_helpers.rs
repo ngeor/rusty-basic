@@ -12,6 +12,7 @@ use std::io::BufRead;
 /// - `parse_function`: A function that will be called to parse the next lexeme. If the function
 ///   returns None, it will be converted to a syntax error.
 /// - `msg`: The error message for the syntax error.
+#[deprecated]
 pub fn read<T: BufRead, TResult, F, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     mut parse_function: F,
@@ -49,6 +50,7 @@ where
 ///
 /// - lexer: The buffering lexer used to get lexemes
 /// - parse_function: The parsing function
+#[deprecated]
 pub fn in_transaction<T: BufRead, F, TResult>(
     lexer: &mut BufLexer<T>,
     mut parse_function: F,
@@ -72,6 +74,7 @@ where
     }
 }
 
+#[deprecated]
 pub fn skip_if<T: BufRead, F>(lexer: &mut BufLexer<T>, f: F) -> Result<bool, QErrorNode>
 where
     F: Fn(&Lexeme) -> bool,
@@ -89,6 +92,7 @@ where
     }
 }
 
+#[deprecated]
 pub fn read_keyword<T: BufRead>(
     lexer: &mut BufLexer<T>,
     keyword: Keyword,
@@ -101,6 +105,7 @@ pub fn read_keyword<T: BufRead>(
     }
 }
 
+#[deprecated]
 pub fn read_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<(), QErrorNode> {
     let x = lexer.read()?;
     if x.as_ref().is_symbol(symbol) {
@@ -112,6 +117,7 @@ pub fn read_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<
 
 /// Reads lexemes as long as they are whitespace.
 /// Returns `true` if at least one whitespace was read.
+#[deprecated]
 pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_whitespace = false;
     while lexer.peek_ref_ng().is_whitespace() {
@@ -121,6 +127,7 @@ pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErr
     Ok(found_whitespace)
 }
 
+#[deprecated]
 pub fn read_whitespace<T: BufRead, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     msg: S,

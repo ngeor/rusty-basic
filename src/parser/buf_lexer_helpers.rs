@@ -5,7 +5,7 @@ use std::io::BufRead;
 
 // parser combinators
 
-/// Creates a parser that gets the next lexeme if it is a word.
+/// Creates a parser that consumes the next lexeme if it is any word.
 pub fn take_if_any_word<I>() -> impl Fn(&mut I) -> Option<Result<Locatable<String>, I::Err>>
 where
     I: PeekResultIterator<Item = LexemeNode>,
@@ -19,8 +19,8 @@ where
     })
 }
 
-/// Creates a parser that gets the next symbol if it is a symbol.
-pub fn take_if_any_symbol_parser<I>() -> impl Fn(&mut I) -> Option<Result<Locatable<char>, I::Err>>
+/// Creates a parser that consumes the next lexeme if it is any symbol.
+pub fn take_if_any_symbol<I>() -> impl Fn(&mut I) -> Option<Result<Locatable<char>, I::Err>>
 where
     I: PeekResultIterator<Item = LexemeNode>,
 {
@@ -29,6 +29,29 @@ where
             let Locatable { element, .. } = lexeme_node;
             match element {
                 Lexeme::Symbol(_) => true,
+                _ => false,
+            }
+        },
+        |lexeme_node| {
+            let Locatable { element, pos } = lexeme_node;
+            match element {
+                Lexeme::Symbol(ch) => Some(ch.at(pos)),
+                _ => None,
+            }
+        },
+    )
+}
+
+/// Creates a parser that consumes the next lexeme if it is the given symbol.
+pub fn take_if_symbol<I>(ch: char) -> impl Fn(&mut I) -> Option<Result<Locatable<char>, I::Err>>
+where
+    I: PeekResultIterator<Item = LexemeNode>,
+{
+    take_if(
+        move |lexeme_node| {
+            let Locatable { element, .. } = lexeme_node;
+            match element {
+                Lexeme::Symbol(c) => *c == ch,
                 _ => false,
             }
         },

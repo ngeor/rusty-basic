@@ -9,17 +9,20 @@ use std::io::BufRead;
 // name node
 
 pub fn take_if_name_node<T: BufRead>(
-) -> impl Fn(&mut BufLexer<T>) -> Option<Result<NameNode, QErrorNode>> {
+) -> impl Fn(&mut BufLexer<T>) -> OptRes<NameNode> {
     apply(
         |(bare_name_node, opt_q)| bare_name_node.map(|n| Name::new(n, opt_q)),
-        zip_allow_right_none(bare_name_node_parser_combinator(), type_qualifier::take_if_type_qualifier()),
+        zip_allow_right_none(
+            bare_name_node_parser_combinator(),
+            type_qualifier::take_if_type_qualifier(),
+        ),
     )
 }
 
 // bare name node
 
 pub fn take_if_bare_name_node<T: BufRead>(
-) -> impl Fn(&mut BufLexer<T>) -> Option<Result<BareNameNode, QErrorNode>> {
+) -> impl Fn(&mut BufLexer<T>) -> OptRes<BareNameNode> {
     in_transaction_pc(switch(
         |(bare_name_node, opt_q)| {
             if opt_q.is_none() {
@@ -30,14 +33,17 @@ pub fn take_if_bare_name_node<T: BufRead>(
                 None
             }
         },
-        zip_allow_right_none(bare_name_node_parser_combinator(), type_qualifier::take_if_type_qualifier()),
+        zip_allow_right_none(
+            bare_name_node_parser_combinator(),
+            type_qualifier::take_if_type_qualifier(),
+        ),
     ))
 }
 
 // private
 
 fn bare_name_node_parser_combinator<T: BufRead>(
-) -> impl Fn(&mut BufLexer<T>) -> Option<Result<BareNameNode, QErrorNode>> {
+) -> impl Fn(&mut BufLexer<T>) -> OptRes<BareNameNode> {
     map_from_locatable(take_if_any_word())
 }
 
@@ -49,12 +55,12 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>,
 }
 
 #[deprecated]
-pub fn next<T: BufRead>(lexer: &mut BufLexer<T>) -> Option<Result<NameNode, QErrorNode>> {
+pub fn next<T: BufRead>(lexer: &mut BufLexer<T>) -> OptRes<NameNode> {
     take_if_name_node()(lexer)
 }
 
 #[deprecated]
-pub fn next_bare<T: BufRead>(lexer: &mut BufLexer<T>) -> Option<Result<BareNameNode, QErrorNode>> {
+pub fn next_bare<T: BufRead>(lexer: &mut BufLexer<T>) -> OptRes<BareNameNode> {
     take_if_bare_name_node()(lexer)
 }
 

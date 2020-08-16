@@ -185,6 +185,9 @@ pub enum QError {
 
 pub type QErrorNode = ErrorEnvelope<QError>;
 
+/// Shorthand for Option<Result<T, QErrorNode>>
+pub type OptRes<T> = Option<Result<T, QErrorNode>>;
+
 impl From<&std::io::Error> for QError {
     fn from(e: &std::io::Error) -> Self {
         if e.kind() == std::io::ErrorKind::NotFound {

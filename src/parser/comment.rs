@@ -7,33 +7,25 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 /// Tries to read a comment.
-pub fn take_if_comment<T: BufRead>(
-) -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+pub fn take_if_comment<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
     apply(
-        |(left, opt_right)| {
+        |(left, lexeme_nodes)| {
             let pos = left.pos();
-            let text = opt_right
-                .map(|x| {
-                    x.into_iter()
-                        .fold(String::new(), |acc, Locatable { element, .. }| {
-                            format!("{}{}", acc, element) // concatenate strings
-                        })
-                })
-                .unwrap_or_default();
+            let text =
+                lexeme_nodes
+                    .into_iter()
+                    .fold(String::new(), |acc, Locatable { element, .. }| {
+                        format!("{}{}", acc, element) // concatenate strings
+                    });
             Statement::Comment(text).at(pos)
         },
-        zip_allow_right_none(take_if_symbol('\''), take_until(LexemeTrait::is_eol)),
+        and(take_if_symbol('\''), take_until(LexemeTrait::is_eol)),
     )
 }
 
 #[deprecated]
-pub fn next<T: BufRead>(lexer: &mut BufLexer<T>) -> OptRes<StatementNode> {
-    take_if_comment()(lexer)
-}
-
-#[deprecated]
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    next(lexer).transpose()
+    take_if_comment()(lexer).transpose()
 }
 
 #[cfg(test)]

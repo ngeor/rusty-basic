@@ -8,8 +8,7 @@ use std::io::BufRead;
 
 // name node
 
-pub fn take_if_name_node<T: BufRead>(
-) -> impl Fn(&mut BufLexer<T>) -> OptRes<NameNode> {
+pub fn take_if_name_node<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<NameNode> {
     apply(
         |(bare_name_node, opt_q)| bare_name_node.map(|n| Name::new(n, opt_q)),
         zip_allow_right_none(
@@ -21,12 +20,11 @@ pub fn take_if_name_node<T: BufRead>(
 
 // bare name node
 
-pub fn take_if_bare_name_node<T: BufRead>(
-) -> impl Fn(&mut BufLexer<T>) -> OptRes<BareNameNode> {
+pub fn take_if_bare_name_node<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<BareNameNode> {
     in_transaction_pc(switch(
         |(bare_name_node, opt_q)| {
             if opt_q.is_none() {
-                Some(Ok(bare_name_node))
+                Some(bare_name_node)
             } else {
                 // we specifically wanted a bare name,
                 // but here we found a qualified name
@@ -51,22 +49,12 @@ fn bare_name_node_parser_combinator<T: BufRead>(
 
 #[deprecated]
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, QErrorNode> {
-    next(lexer).transpose()
-}
-
-#[deprecated]
-pub fn next<T: BufRead>(lexer: &mut BufLexer<T>) -> OptRes<NameNode> {
-    take_if_name_node()(lexer)
-}
-
-#[deprecated]
-pub fn next_bare<T: BufRead>(lexer: &mut BufLexer<T>) -> OptRes<BareNameNode> {
-    take_if_bare_name_node()(lexer)
+    take_if_name_node()(lexer).transpose()
 }
 
 #[deprecated]
 pub fn try_read_bare<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<BareNameNode>, QErrorNode> {
-    next_bare(lexer).transpose()
+    take_if_bare_name_node()(lexer).transpose()
 }

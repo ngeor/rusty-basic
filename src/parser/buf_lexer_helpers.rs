@@ -8,9 +8,9 @@ use std::io::BufRead;
 /// Creates a parser that consumes the next lexeme if it is any word.
 pub fn take_if_any_word<I>() -> impl Fn(&mut I) -> Option<Result<Locatable<String>, I::Err>>
 where
-    I: PeekResultIterator<Item = LexemeNode>,
+    I: ResultIterator<Item = LexemeNode> + Transactional,
 {
-    take_if(LexemeTrait::is_word, |lexeme_node| {
+    take_if_map(|lexeme_node| {
         let Locatable { element, pos } = lexeme_node;
         match element {
             Lexeme::Word(word) => Some(word.at(pos)),
@@ -22,47 +22,74 @@ where
 /// Creates a parser that consumes the next lexeme if it is any symbol.
 pub fn take_if_any_symbol<I>() -> impl Fn(&mut I) -> Option<Result<Locatable<char>, I::Err>>
 where
-    I: PeekResultIterator<Item = LexemeNode>,
+    I: ResultIterator<Item = LexemeNode> + Transactional,
 {
-    take_if(
-        |lexeme_node| {
-            let Locatable { element, .. } = lexeme_node;
-            match element {
-                Lexeme::Symbol(_) => true,
-                _ => false,
-            }
-        },
-        |lexeme_node| {
-            let Locatable { element, pos } = lexeme_node;
-            match element {
-                Lexeme::Symbol(ch) => Some(ch.at(pos)),
-                _ => None,
-            }
-        },
-    )
+    take_if_map(|lexeme_node| {
+        let Locatable { element, pos } = lexeme_node;
+        match element {
+            Lexeme::Symbol(ch) => Some(ch.at(pos)),
+            _ => None,
+        }
+    })
 }
 
 /// Creates a parser that consumes the next lexeme if it is the given symbol.
-pub fn take_if_symbol<I>(ch: char) -> impl Fn(&mut I) -> Option<Result<Locatable<char>, I::Err>>
+pub fn take_if_symbol<I>(needle: char) -> impl Fn(&mut I) -> Option<Result<Locatable<char>, I::Err>>
 where
-    I: PeekResultIterator<Item = LexemeNode>,
+    I: ResultIterator<Item = LexemeNode> + Transactional,
 {
-    take_if(
-        move |lexeme_node| {
-            let Locatable { element, .. } = lexeme_node;
-            match element {
-                Lexeme::Symbol(c) => *c == ch,
-                _ => false,
+    take_if_map(move |lexeme_node| {
+        let Locatable { element, pos } = lexeme_node;
+        match element {
+            Lexeme::Symbol(ch) => {
+                if ch == needle {
+                    Some(ch.at(pos))
+                } else {
+                    None
+                }
             }
-        },
-        |lexeme_node| {
-            let Locatable { element, pos } = lexeme_node;
-            match element {
-                Lexeme::Symbol(ch) => Some(ch.at(pos)),
-                _ => None,
+            _ => None,
+        }
+    })
+}
+
+/// Creates a parser that consumes the next lexeme if it is the given keyword.
+pub fn take_if_keyword<I>(
+    needle: Keyword,
+) -> impl Fn(&mut I) -> Option<Result<Locatable<Keyword>, I::Err>>
+where
+    I: ResultIterator<Item = LexemeNode> + Transactional,
+{
+    take_if_map(move |lexeme_node| {
+        let Locatable { element, pos } = lexeme_node;
+        match element {
+            Lexeme::Keyword(k, _) => {
+                if k == needle {
+                    Some(k.at(pos))
+                } else {
+                    None
+                }
             }
-        },
-    )
+            _ => None,
+        }
+    })
+}
+
+/// Creates a parser that demands that the next lexeme is present.
+/// If not, it will return a `SyntaxError` with the given message.
+/// This parser therefore never returns `None`.
+pub fn demand<I, T, U, FPC, S: AsRef<str>>(parser: FPC, err_msg: S) -> impl Fn(&mut I) -> OptRes<U>
+where
+    I: ResultIterator<Item = T, Err = QErrorNode> + HasLocation,
+    FPC: Fn(&mut I) -> OptRes<U>,
+{
+    move |source| {
+        let pos = source.pos();
+        match parser(source) {
+            Some(x) => Some(x),
+            None => Some(Err(QError::SyntaxError(err_msg.as_ref().to_string())).with_err_at(pos)),
+        }
+    }
 }
 
 /// Demands that the given function can parse the next lexeme(s).

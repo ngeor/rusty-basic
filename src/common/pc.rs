@@ -4,6 +4,28 @@ use super::{Locatable, Transactional};
 // Parser combinators that are applicable to any parser
 //
 
+/// Creates a new parsers that zips together the result of two parsers.
+///
+/// The new parser will only return `Some(Ok)` if both parsers do that.
+pub fn and<I, A, B, FA, FB, E>(
+    first_parser: FA,
+    second_parser: FB,
+) -> impl Fn(&mut I) -> Option<Result<(A, B), E>>
+where
+    FA: Fn(&mut I) -> Option<Result<A, E>>,
+    FB: Fn(&mut I) -> Option<Result<B, E>>,
+{
+    move |input| match first_parser(input) {
+        None => None,
+        Some(Err(err)) => Some(Err(err)),
+        Some(Ok(first)) => match second_parser(input) {
+            None => None,
+            Some(Err(err)) => Some(Err(err)),
+            Some(Ok(second)) => Some(Ok((first, second))),
+        },
+    }
+}
+
 /// Creates a new parser that zips together the result of two parsers.
 ///
 /// The second parser may return None.
@@ -65,18 +87,59 @@ where
 ///
 /// None and Some(Err) results are never replaced. The mapper function only
 /// processes Some(Ok) results.
-pub fn switch<I, T, U, FMap, FPC, E>(
+pub fn switch<I, T, E, U, FMap, FPC>(
     f: FMap,
     parser: FPC,
 ) -> impl Fn(&mut I) -> Option<Result<U, E>>
 where
-    FMap: Fn(T) -> Option<Result<U, E>>,
+    FMap: Fn(T) -> Option<U>,
     FPC: Fn(&mut I) -> Option<Result<T, E>>,
 {
     move |input| match parser(input) {
         None => None,
         Some(Err(err)) => Some(Err(err)),
-        Some(Ok(x)) => f(x),
+        Some(Ok(x)) => f(x).map(|opt| Ok(opt)),
+    }
+}
+
+/// Creates a parser that returns `None` if the given predicate is not satisfied.
+pub fn filter<I, T, E, FMap, FPC>(f: FMap, parser: FPC) -> impl Fn(&mut I) -> Option<Result<T, E>>
+where
+    FMap: Fn(&T) -> bool,
+    FPC: Fn(&mut I) -> Option<Result<T, E>>,
+{
+    switch(move |x| if f(&x) { Some(x) } else { None }, parser)
+}
+
+/// Creates a parser that returns `None` if the given predicate is satisfied.
+pub fn exclude<I, T, E, FMap, FPC>(f: FMap, parser: FPC) -> impl Fn(&mut I) -> Option<Result<T, E>>
+where
+    FMap: Fn(&T) -> bool,
+    FPC: Fn(&mut I) -> Option<Result<T, E>>,
+{
+    switch(move |x| if f(&x) { None } else { Some(x) }, parser)
+}
+
+/// Creates a new parser that calls the given parser multiple times
+/// until it fails or returns `None`.
+pub fn many<I, T, E, FPC>(parser: FPC) -> impl Fn(&mut I) -> Option<Result<Vec<T>, E>>
+where
+    FPC: Fn(&mut I) -> Option<Result<T, E>>,
+{
+    move |input| {
+        let mut result: Vec<T> = vec![];
+        loop {
+            match parser(input) {
+                Some(Ok(x)) => {
+                    result.push(x);
+                }
+                Some(Err(err)) => return Some(Err(err)),
+                None => {
+                    break;
+                }
+            }
+        }
+        Some(Ok(result))
     }
 }
 

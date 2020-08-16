@@ -5,33 +5,19 @@ use crate::parser::types::TypeQualifier;
 use std::io::BufRead;
 
 /// Returns a function that can parse a `TypeQualifier`.
-pub fn take_if_type_qualifier<T: BufRead>(
-) -> impl Fn(&mut BufLexer<T>) -> OptRes<TypeQualifier> {
-    take_if(predicate, mapper)
-}
-
-fn predicate(l: &LexemeNode) -> bool {
-    let Locatable { element, .. } = l;
-    match element {
-        Lexeme::Symbol(ch) => TypeQualifier::from_char_ref(ch).is_some(),
-        _ => false,
-    }
+pub fn take_if_type_qualifier<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<TypeQualifier> {
+    take_if_map(mapper)
 }
 
 fn mapper(l: LexemeNode) -> Option<TypeQualifier> {
     let Locatable { element, .. } = l;
     match element {
-        Lexeme::Symbol(ch) => TypeQualifier::from_char_ref(&ch).map(|x| *x),
+        Lexeme::Symbol(ch) => TypeQualifier::from_char(ch),
         _ => None,
     }
 }
 
 #[deprecated]
-pub fn next<T: BufRead>(lexer: &mut BufLexer<T>) -> OptRes<TypeQualifier> {
-    take_if_type_qualifier()(lexer)
-}
-
-#[deprecated]
 pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<TypeQualifier>, QErrorNode> {
-    next(lexer).transpose()
+    take_if_type_qualifier()(lexer).transpose()
 }

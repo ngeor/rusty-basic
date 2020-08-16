@@ -17,6 +17,7 @@ pub trait ReadOpt {
     /// - `Ok(Some(item))` if an item is read successfully
     /// - `Ok(None)` if the end of stream is found
     /// - `Err(err)` if an error occurred when reading the item
+    #[deprecated]
     fn read_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
 }
 
@@ -24,16 +25,19 @@ pub trait ReadOpt {
 /// This trait should be implemented when the item implements `Copy`.
 pub trait PeekOptCopy: ReadOpt {
     /// Peeks one item from a stream.
+    #[deprecated]
     fn peek_copy_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
 }
 
 /// Peeks one item from a stream, returning a reference of the peeked item.
 pub trait PeekOptRef: ReadOpt {
     /// Peeks one item from a stream.
+    #[deprecated]
     fn peek_ref_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err>;
 
     /// Peeks the next item and reads it if it tests successfully against
     /// the given predicate function.
+    #[deprecated]
     fn read_if<F>(&mut self, predicate: F) -> Result<Option<Self::Item>, Self::Err>
     where
         F: FnOnce(&Self::Item) -> bool,
@@ -73,19 +77,6 @@ pub trait Transactional {
         let result = f(self);
         match &result {
             Ok(Some(_)) => self.commit_transaction(),
-            _ => self.rollback_transaction(),
-        };
-        result
-    }
-
-    fn in_transaction_opt<T, E, F>(&mut self, f: F) -> Option<Result<T, E>>
-    where
-        F: FnOnce(&mut Self) -> Option<Result<T, E>>,
-    {
-        self.begin_transaction();
-        let result = f(self);
-        match &result {
-            Some(Ok(_)) => self.commit_transaction(),
             _ => self.rollback_transaction(),
         };
         result
@@ -213,17 +204,6 @@ where
     }
 }
 
-impl<R: ReadOpt> Iterator for TransactionalPeek<R>
-where
-    R::Item: Clone,
-{
-    type Item = Result<R::Item, R::Err>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.read_ng().transpose()
-    }
-}
-
 impl<R: ReadOpt> ResultIterator for TransactionalPeek<R>
 where
     R::Item: Clone,
@@ -233,79 +213,5 @@ where
 
     fn next(&mut self) -> Option<Result<R::Item, R::Err>> {
         self.read_ng().transpose()
-    }
-}
-
-impl<R: ReadOpt> PeekResultIterator for TransactionalPeek<R>
-where
-    R::Item: Clone,
-{
-    fn peek(&mut self) -> Option<Result<&R::Item, R::Err>> {
-        self.peek_ref_ng().transpose()
-    }
-}
-
-///
-/// Trait for Transactional Peek of R::Item Locatable
-///
-
-pub trait LocatableReader<T> {
-    type Item;
-    type Err;
-    fn read_if_ref<F>(&mut self, f: F) -> Result<Option<Self::Item>, Self::Err>
-    where
-        F: FnOnce(&T) -> bool;
-
-    fn map_if_ref<F, U>(&mut self, f: F) -> Result<Option<Locatable<U>>, Self::Err>
-    where
-        F: FnOnce(&T) -> Option<U>;
-}
-
-impl<T, R: ReadOpt> LocatableReader<T> for TransactionalPeek<R>
-where
-    R::Item: Clone + HasLocation + AsRef<T>,
-{
-    type Item = R::Item;
-    type Err = R::Err;
-
-    fn read_if_ref<F>(&mut self, f: F) -> Result<Option<R::Item>, R::Err>
-    where
-        F: FnOnce(&T) -> bool,
-    {
-        let locatable: Option<&R::Item> = self.peek_ref_ng()?;
-        match locatable {
-            Some(x) => {
-                let inside: &T = x.as_ref();
-                let passes: bool = f(inside);
-                if passes {
-                    self.read_ng()
-                } else {
-                    Ok(None)
-                }
-            }
-            None => Ok(None),
-        }
-    }
-
-    fn map_if_ref<F, U>(&mut self, f: F) -> Result<Option<Locatable<U>>, Self::Err>
-    where
-        F: FnOnce(&T) -> Option<U>,
-    {
-        let locatable: Option<&R::Item> = self.peek_ref_ng()?;
-        match locatable {
-            Some(x) => {
-                let inside: &T = x.as_ref();
-                match f(inside) {
-                    Some(mapped) => {
-                        let pos = x.pos();
-                        let result = Some(mapped.at(pos));
-                        self.read_ng()?;
-                        Ok(result)
-                    }
-                    None => Ok(None),
-                }
-            }
-            None => Ok(None),
-        }
     }
 }

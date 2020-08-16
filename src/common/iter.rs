@@ -1,12 +1,21 @@
 use std::collections::VecDeque;
 
 /// An iterator-like trait that iterates over Results.
-pub trait ResultIterator: Sized {
+pub trait ResultIterator {
     type Item;
     type Err;
 
     /// Gets the next item.
     fn next(&mut self) -> Option<Result<Self::Item, Self::Err>>;
+
+    /// Creates a ref adaptor around this iterator,
+    /// so that it can be used without consuming the original.
+    fn to_ref(&mut self) -> RefAdaptor<Self>
+    where
+        Self: Sized,
+    {
+        RefAdaptor::new(self)
+    }
 
     /// Collects all items into a `VecDeque`.
     ///
@@ -28,6 +37,7 @@ pub trait ResultIterator: Sized {
     /// the given function with it.
     fn tap_next<F>(&mut self, f: F) -> Skip<Self, F>
     where
+        Self: Sized,
         Self::Err: Clone,
         F: FnMut(Self::Item) -> (),
     {
@@ -37,6 +47,7 @@ pub trait ResultIterator: Sized {
     /// Folds the iterator into a single value using the given accumulator function.
     fn fold<A, F>(&mut self, seed: A, f: F) -> Option<Result<A, Self::Err>>
     where
+        Self: Sized,
         F: Fn(A, Self::Item) -> A,
     {
         let mut result: A = seed;
@@ -54,12 +65,18 @@ pub trait ResultIterator: Sized {
     }
 
     /// Creates a standard `Iterator` over this `ResultIterator`.
-    fn iter(&mut self) -> IteratorAdaptor<Self> {
+    fn iter(&mut self) -> IteratorAdaptor<Self>
+    where
+        Self: Sized,
+    {
         IteratorAdaptor::new(self)
     }
 
     /// Gets the first element out of the iterator.
-    fn first(mut self) -> Option<Result<Self::Item, Self::Err>> {
+    fn first(mut self) -> Option<Result<Self::Item, Self::Err>>
+    where
+        Self: Sized,
+    {
         self.iter().take(1).next()
     }
 }
@@ -77,6 +94,7 @@ pub trait PeekResultIterator: ResultIterator {
     /// Only the first item is checked with the predicate.
     fn take_if<F>(&mut self, predicate: F) -> TakeIf<Self, F>
     where
+        Self: Sized,
         F: FnMut(&Self::Item) -> bool,
     {
         TakeIf::new(self, predicate)
@@ -85,28 +103,20 @@ pub trait PeekResultIterator: ResultIterator {
     /// Reads while the next peeked item satisfies the given predicate.
     fn take_while<F>(&mut self, predicate: F) -> TakeWhile<Self, F>
     where
+        Self: Sized,
         F: FnMut(&Self::Item) -> bool,
     {
         TakeWhile::new(self, predicate)
     }
 
     /// Reads while the next peeked item can be mapped using the given mapper function.
-    fn map_while<F, U>(&mut self, mapper: F) -> MapWhile<Self, F, U>
+    fn map_while<F, U>(self, mapper: F) -> MapWhile<Self, F, U>
     where
+        Self: Sized,
         F: FnMut(&Self::Item) -> Option<Result<U, Self::Err>>,
         U: Sized,
     {
         MapWhile::new(self, mapper)
-    }
-
-    /// Takes the first element and maps it with the given mapper function.
-    /// If the first element cannot be mapped, it returns `None`.
-    fn map_if<F, U>(&mut self, mapper: F) -> Option<Result<U, Self::Err>>
-    where
-        F: FnMut(&Self::Item) -> Option<Result<U, Self::Err>>,
-        U: Sized,
-    {
-        self.map_while(mapper).first()
     }
 }
 
@@ -267,24 +277,24 @@ where
     }
 }
 
-pub struct MapWhile<'a, I, F, U>
+pub struct MapWhile<I, F, U>
 where
     I: PeekResultIterator,
     F: FnMut(&I::Item) -> Option<Result<U, I::Err>>,
     U: Sized,
 {
-    iter: &'a mut I,
+    iter: I,
     mapper: F,
     last_peeked: Option<U>,
 }
 
-impl<'a, I, F, U> MapWhile<'a, I, F, U>
+impl<I, F, U> MapWhile<I, F, U>
 where
     I: PeekResultIterator,
     F: FnMut(&I::Item) -> Option<Result<U, I::Err>>,
     U: Sized,
 {
-    pub fn new(iter: &'a mut I, mapper: F) -> Self {
+    pub fn new(iter: I, mapper: F) -> Self {
         MapWhile {
             iter,
             mapper,
@@ -293,7 +303,7 @@ where
     }
 }
 
-impl<'a, I, F, U> ResultIterator for MapWhile<'a, I, F, U>
+impl<I, F, U> ResultIterator for MapWhile<I, F, U>
 where
     I: PeekResultIterator,
     F: FnMut(&I::Item) -> Option<Result<U, I::Err>>,
@@ -322,7 +332,7 @@ where
     }
 }
 
-impl<'a, I, F, U> PeekResultIterator for MapWhile<'a, I, F, U>
+impl<I, F, U> PeekResultIterator for MapWhile<I, F, U>
 where
     I: PeekResultIterator,
     F: FnMut(&I::Item) -> Option<Result<U, I::Err>>,
@@ -518,5 +528,68 @@ impl<'a, I: ResultIterator> Iterator for IteratorAdaptor<'a, I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
+    }
+}
+
+/// A pass through adaptor that allows to share a reference of an iterator.
+pub struct RefAdaptor<'a, I> {
+    iter: &'a mut I,
+}
+
+impl<'a, I> RefAdaptor<'a, I> {
+    pub fn new(iter: &'a mut I) -> Self {
+        Self { iter }
+    }
+}
+
+impl<'a, I: ResultIterator> ResultIterator for RefAdaptor<'a, I> {
+    type Item = I::Item;
+    type Err = I::Err;
+
+    fn next(&mut self) -> Option<Result<Self::Item, Self::Err>> {
+        self.iter.next()
+    }
+}
+
+impl<'a, I: PeekResultIterator> PeekResultIterator for RefAdaptor<'a, I> {
+    fn peek(&mut self) -> Option<Result<&Self::Item, Self::Err>> {
+        self.iter.peek()
+    }
+}
+
+// Parser combinators
+
+/// Takes the first element and maps it with the given mapper function.
+/// If the first element cannot be mapped, it returns `None`.
+///
+/// For efficiency, there is a separate function that tests the peeked result
+/// (which has a reference to the item)
+/// and a separate function that maps the fetched result (which is owned).
+pub fn take_if<I: PeekResultIterator, FP, FM, U>(
+    predicate: FP,
+    mapper: FM,
+) -> impl Fn(&mut I) -> Option<Result<U, I::Err>>
+where
+    FP: Fn(&I::Item) -> bool,
+    FM: Fn(I::Item) -> Option<U>,
+    U: Sized,
+{
+    move |iter| match iter.peek() {
+        None => None,
+        Some(Err(err)) => Some(Err(err)),
+        Some(Ok(x)) => {
+            if predicate(x) {
+                match iter.next() {
+                    None => None,
+                    Some(Err(err)) => Some(Err(err)),
+                    Some(Ok(x)) => match mapper(x) {
+                        Some(z) => Some(Ok(z)),
+                        None => None,
+                    },
+                }
+            } else {
+                None
+            }
+        }
     }
 }

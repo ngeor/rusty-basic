@@ -3,6 +3,45 @@ use crate::lexer::*;
 
 use std::io::BufRead;
 
+// parser combinators
+
+/// Creates a parser that gets the next lexeme if it is a word.
+pub fn take_if_any_word<I>() -> impl Fn(&mut I) -> Option<Result<Locatable<String>, I::Err>>
+where
+    I: PeekResultIterator<Item = LexemeNode>,
+{
+    take_if(LexemeTrait::is_word, |lexeme_node| {
+        let Locatable { element, pos } = lexeme_node;
+        match element {
+            Lexeme::Word(word) => Some(word.at(pos)),
+            _ => None,
+        }
+    })
+}
+
+/// Creates a parser that gets the next symbol if it is a symbol.
+pub fn take_if_any_symbol_parser<I>() -> impl Fn(&mut I) -> Option<Result<Locatable<char>, I::Err>>
+where
+    I: PeekResultIterator<Item = LexemeNode>,
+{
+    take_if(
+        |lexeme_node| {
+            let Locatable { element, .. } = lexeme_node;
+            match element {
+                Lexeme::Symbol(_) => true,
+                _ => false,
+            }
+        },
+        |lexeme_node| {
+            let Locatable { element, pos } = lexeme_node;
+            match element {
+                Lexeme::Symbol(ch) => Some(ch.at(pos)),
+                _ => None,
+            }
+        },
+    )
+}
+
 /// Demands that the given function can parse the next lexeme(s).
 /// If the function returns None, it will be converted to a syntax error.
 ///

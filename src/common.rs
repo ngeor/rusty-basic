@@ -4,6 +4,7 @@ mod error_envelope;
 mod file_constants;
 mod iter;
 mod location;
+pub mod pc;
 mod readers;
 mod result_traits;
 

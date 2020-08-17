@@ -1,5 +1,10 @@
-// parses DIM statement
+// Parses a declared name. Possible options:
+// A
+// A%
+// A AS INTEGER
+// A AS UserDefinedType
 
+use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
@@ -8,37 +13,41 @@ use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<DeclaredNameNode>, QErrorNode> {
-    if !lexer.peek_ref_ng().is_word() {
-        return Ok(None);
-    }
+pub fn take_if_declared_name<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<DeclaredNameNode>> {
+    Box::new(switch_err(
+        |(l, opt_r)| match opt_r {
+            Some(r) => {
+                let Locatable { element: name, pos } = l;
+                match name {
+                    Name::Bare(b) => Some(Ok(DeclaredName::new(b, r).at(pos))),
+                    Name::Qualified { .. } => Some(
+                        Err(QError::SyntaxError(
+                            "Identifier cannot end with %, &, !, #, or $".to_string(),
+                        ))
+                        .with_err_at(pos),
+                    ),
+                }
+            }
+            None => Some(Ok(l.into_locatable())),
+        },
+        zip_allow_right_none(name::take_if_name_node(), as_part()),
+    ))
+}
 
-    // demand variable name
-    let var_name_node = read(lexer, name::try_read, "Expected variable name")?;
-    let is_long = in_transaction(lexer, |lexer| {
-        read_whitespace(lexer, "Expected whitespace between variable name and AS")?;
-        read_keyword(lexer, Keyword::As)?;
-        read_whitespace(lexer, "Expected whitespace after AS")
-    })?
-    .is_some();
-    if !is_long {
-        return Ok(Some(var_name_node.into_locatable()));
-    }
-    // explicit type requires a bare name
-    let bare_name = match var_name_node.as_ref() {
-        Name::Bare(b) => b.clone(),
-        _ => {
-            return Err(QError::SyntaxError(
-                "Identifier cannot end with %, &, !, #, or $".to_string(),
-            ))
-            .with_err_at(&var_name_node);
-        }
-    };
-    // demand type name
-    let Locatable { element: next, pos } = lexer.read()?;
-    let var_type = match next {
+fn as_part<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<TypeDefinition>> {
+    Box::new(apply(
+        |(_, r)| r,
+        with_leading_space(with_space_between(
+            take_if_keyword(Keyword::As),
+            take_and_map_to_result(lexeme_node_to_type_definition),
+        )),
+    ))
+}
+
+fn lexeme_node_to_type_definition(lexeme_node: LexemeNode) -> Result<TypeDefinition, QErrorNode> {
+    let Locatable { element, pos } = lexeme_node;
+    let var_type = match element {
         Lexeme::Keyword(Keyword::Double, _) => {
             TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)
         }
@@ -62,7 +71,12 @@ pub fn try_read<T: BufRead>(
             .with_err_at(pos)
         }
     };
-    Ok(Some(
-        DeclaredName::new(bare_name, var_type).at(var_name_node.pos()),
-    ))
+    Ok(var_type)
+}
+
+#[deprecated]
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<DeclaredNameNode>, QErrorNode> {
+    take_if_declared_name()(lexer).transpose()
 }

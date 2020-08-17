@@ -8,7 +8,9 @@ use crate::parser::declared_name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     // try to read DIM, if it succeeds demand it, else return None
     if !lexer.peek_ref_ng().is_keyword(Keyword::Dim) {
         return Ok(None);

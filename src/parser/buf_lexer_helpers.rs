@@ -125,6 +125,14 @@ where
     ))
 }
 
+/// Creates a parser that takes the next lexeme if it is a whitespace.
+pub fn take_if_whitespace<I>() -> impl Fn(&mut I) -> OptRes<LexemeNode>
+where
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional,
+{
+    take_if_predicate(LexemeTrait::is_whitespace)
+}
+
 /// Creates a parser that skips the optional leading whitespace before using
 /// the given parser to return a result.
 pub fn skipping_whitespace<I, T, FPC>(parser: FPC) -> impl Fn(&mut I) -> OptRes<T>
@@ -134,28 +142,41 @@ where
 {
     apply(
         |(_, r)| r,
-        zip_allow_left_none(take_if_predicate(LexemeTrait::is_whitespace), parser),
+        zip_allow_left_none(take_if_whitespace(), parser),
     )
 }
 
-/// Creates a parser that demands leading whitespace before using
-/// the given parser to return a result.
-pub fn demanding_whitespace<I, T, FPC, S: AsRef<str> + 'static>(
-    err_msg: S,
-    parser: FPC,
-) -> Box<dyn Fn(&mut I) -> OptRes<T>>
+/// Creates a parser that gives the combined result of the given parsers,
+/// ensuring there is a whitespace between them.
+///
+/// Both parsers must succeed and the whitespace must be present between their
+/// invocation.
+pub fn with_space_between<I, T1, T2, F1, F2>(
+    first: F1,
+    second: F2,
+) -> Box<dyn Fn(&mut I) -> OptRes<(T1, T2)>>
 where
-    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation + 'static,
-    FPC: Fn(&mut I) -> OptRes<T> + 'static,
-    T: 'static,
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + 'static,
+    T1: 'static,
+    T2: 'static,
+    F1: Fn(&mut I) -> OptRes<T1> + 'static,
+    F2: Fn(&mut I) -> OptRes<T2> + 'static,
 {
     Box::new(apply(
-        |(_, r)| r,
-        and(
-            demand(err_msg, take_if_predicate(LexemeTrait::is_whitespace)),
-            parser,
-        ),
+        |(l, (_, r))| (l, r),
+        and(first, and(take_if_whitespace(), second)),
     ))
+}
+
+/// Crates a parser that givens the result of the given parser, ensuring that
+/// there is a whitespace before it. The whitespace is mandatory.
+pub fn with_leading_space<I, T, F>(parser: F) -> Box<dyn Fn(&mut I) -> OptRes<T>>
+where
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + 'static,
+    T: 'static,
+    F: Fn(&mut I) -> OptRes<T> + 'static,
+{
+    Box::new(apply(|(_, r)| r, and(take_if_whitespace(), parser)))
 }
 
 /// Creates a parser that consumes a list of comma separated values.

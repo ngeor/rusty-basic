@@ -69,13 +69,7 @@ fn take_if_unary_not<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> Opt
 {
     apply(
         |(l, child)| apply_unary_priority_order(child, UnaryOperand::Not, l.pos()),
-        and(
-            take_if_keyword(Keyword::Not),
-            demanding_whitespace(
-                "Expected whitespace after NOT",
-                demand("Expected expression after NOT", take_if_expression_node()),
-            ),
-        ),
+        with_space_between(take_if_keyword(Keyword::Not), take_if_expression_node()),
     )
 }
 
@@ -388,17 +382,14 @@ fn take_and_or_op<T: BufRead + 'static>(
     left_side_parenthesis: bool,
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
     Box::new(switch(
-        move |(l, r)| {
-            if l.is_some() || left_side_parenthesis {
+        move |(had_whitespace, r)| {
+            if had_whitespace.is_some() || left_side_parenthesis {
                 Some(op.at(r.pos()))
             } else {
                 None
             }
         },
-        zip_allow_left_none(
-            take_if_predicate(LexemeTrait::is_whitespace),
-            take_if_keyword(k),
-        ),
+        zip_allow_left_none(take_if_whitespace(), take_if_keyword(k)),
     ))
 }
 

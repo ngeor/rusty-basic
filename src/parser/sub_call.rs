@@ -39,13 +39,9 @@ fn detect_assignment_and_abort<T: BufRead + 'static>(
 
 fn take_args_no_parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
-    Box::new(apply(
-        |(_, r)| r,
-        and(
-            take_if_predicate(LexemeTrait::is_whitespace),
-            csv(expression::take_if_expression_node()),
-        ),
-    ))
+    Box::new(with_leading_space(csv(
+        expression::take_if_expression_node(),
+    )))
 }
 
 fn take_args_parenthesis<T: BufRead + 'static>(
@@ -69,7 +65,7 @@ pub fn read_arg_list<T: BufRead + 'static>(
 ) -> Result<Vec<ExpressionNode>, QErrorNode> {
     match csv(expression::take_if_expression_node())(lexer) {
         None => Ok(vec![]),
-        Some(x) => x
+        Some(x) => x,
     }
 }
 

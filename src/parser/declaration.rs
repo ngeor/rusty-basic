@@ -7,7 +7,7 @@ use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
+pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     if !lexer.peek_ref_ng().is_keyword(Keyword::Declare) {
@@ -46,7 +46,7 @@ pub fn try_read<T: BufRead>(
     }
 }
 
-pub fn try_read_declaration_parameters<T: BufRead>(
+pub fn try_read_declaration_parameters<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<DeclaredNameNodes>, QErrorNode> {
     lexer.begin_transaction();
@@ -79,7 +79,9 @@ pub fn try_read_declaration_parameters<T: BufRead>(
     }
 }
 
-fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameNodes, QErrorNode> {
+fn parse_parameters<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<DeclaredNameNodes, QErrorNode> {
     lexer.read_ng()?; // read opening parenthesis
     skip_whitespace(lexer)?;
     match lexer.peek_ref_ng()? {
@@ -109,7 +111,7 @@ fn parse_parameters<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<DeclaredNameN
     }
 }
 
-fn parse_next_parameter<T: BufRead>(
+fn parse_next_parameter<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<DeclaredNameNodes, QErrorNode> {
     skip_whitespace(lexer)?;
@@ -140,7 +142,7 @@ fn parse_next_parameter<T: BufRead>(
     }
 }
 
-fn parse_one_parameter<T: BufRead>(
+fn parse_one_parameter<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<DeclaredNameNode, QErrorNode> {
     read(lexer, declared_name::try_read, "Expected parameter")

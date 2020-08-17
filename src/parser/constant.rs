@@ -13,21 +13,18 @@ pub fn take_if_const<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> Opt
             let pos = l.pos();
             Statement::Const(name_node, right_side).at(pos)
         },
-        and(
+        with_space_between(
             take_if_keyword(Keyword::Const),
-            demanding_whitespace(
-                "Expected whitespace after CONST",
+            and(
+                demand("Expected CONST name", name::take_if_name_node()),
                 and(
-                    demand("Expected CONST name", name::take_if_name_node()),
-                    and(
-                        demand(
-                            "Expected = after CONST name",
-                            skipping_whitespace(take_if_symbol('=')),
-                        ),
-                        demand(
-                            "Expected CONST expression",
-                            skipping_whitespace(expression::take_if_expression_node()),
-                        ),
+                    demand(
+                        "Expected = after CONST name",
+                        skipping_whitespace(take_if_symbol('=')),
+                    ),
+                    demand(
+                        "Expected CONST expression",
+                        skipping_whitespace(expression::take_if_expression_node()),
                     ),
                 ),
             ),

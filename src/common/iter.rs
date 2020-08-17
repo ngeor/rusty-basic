@@ -67,3 +67,18 @@ where
 {
     many(take_unless_predicate(predicate))
 }
+
+/// Takes the next element and if it is successful (`Some(Ok)`), it
+/// maps it to `Some(_)` using the given mapper function.
+pub fn take_and_map_to_result<I: ResultIterator, T, F>(
+    result_mapper: F,
+) -> impl Fn(&mut I) -> Option<Result<T, I::Err>>
+where
+    F: Fn(I::Item) -> Result<T, I::Err>,
+{
+    move |lexer| {
+        lexer
+            .next()
+            .and_then(|r| Some(r.and_then(|x| result_mapper(x))))
+    }
+}

@@ -1,94 +1,115 @@
+use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
-
-use crate::parser::type_qualifier;
+use crate::parser::name;
 use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<ExpressionNode>, QErrorNode> {
-    let opt_first = try_single_expression(lexer)?;
-    match opt_first {
-        Some(first) => try_parse_second_expression(lexer, first)
-            .map(|x| x.simplify_unary_minus_literals())
-            .map(|x| Some(x)),
-        None => Ok(None),
+pub fn take_if_expression_node<T: BufRead + 'static>(
+) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+    move |input| {
+        take_if_single_expression()(input).and_then_ok(|first_expression| {
+            let opt_op = take_if_operand(&first_expression)(input);
+            match opt_op {
+                None => Some(Ok(first_expression.simplify_unary_minus_literals())),
+                Some(Err(err)) => Some(Err(err)),
+                Some(Ok(Locatable { element: op, pos })) => demand(
+                    skipping_whitespace_pc(take_if_expression_node_boxed()),
+                    "Expected right side expression",
+                )(input)
+                .map_ok(|right_expr| {
+                    apply_priority_order(first_expression, right_expr, op, pos)
+                        .simplify_unary_minus_literals()
+                }),
+            }
+        })
     }
 }
 
-fn try_single_expression<T: BufRead>(
+// boxed needed because otherwise rust complains about an infinite recursion on the
+// concrete type
+fn take_if_expression_node_boxed<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
+    Box::new(take_if_expression_node())
+}
+
+fn take_if_single_expression<T: BufRead + 'static>(
+) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+    or_vec(vec![
+        Box::new(string_literal::take_if_string_literal()),
+        Box::new(word::take_if_word()),
+        Box::new(number_literal::take_if_number_literal()),
+        Box::new(number_literal::take_if_float_without_leading_zero()),
+        Box::new(take_if_file_handle()),
+        Box::new(take_if_parenthesis()),
+        Box::new(take_if_unary_not()),
+        Box::new(take_if_unary_minus()),
+    ])
+}
+
+#[deprecated]
+pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ExpressionNode>, QErrorNode> {
-    let p = lexer.peek_ref_ng()?;
-    if p.is_none() {
-        return Ok(None);
-    }
-    let Locatable { element: next, pos } = p.unwrap().clone();
-    match next {
-        Lexeme::Symbol('"') => string_literal::read(lexer).map(|x| Some(x)),
-        Lexeme::Word(_) => word::read(lexer).map(|x| Some(x)),
-        Lexeme::Digits(_) => number_literal::read(lexer).map(|x| Some(x)),
-        Lexeme::Symbol('.') => number_literal::read_dot_float(lexer).map(|x| Some(x)),
-        Lexeme::Symbol('-') => {
-            lexer.read_ng()?;
-            let child = read(lexer, try_read, "Expected expression after unary minus")?;
-            Ok(Some(apply_unary_priority_order(
-                child,
-                UnaryOperand::Minus,
-                pos,
-            )))
-        }
-        Lexeme::Keyword(Keyword::Not, _) => {
-            lexer.read_ng()?;
-            read_whitespace(lexer, "Expected whitespace after NOT")?;
-            let child = read(lexer, try_read, "Expected expression after NOT")?;
-            Ok(Some(apply_unary_priority_order(
-                child,
-                UnaryOperand::Not,
-                pos,
-            )))
-        }
-        Lexeme::Symbol('(') => {
-            lexer.read_ng()?;
-            skip_whitespace(lexer)?;
-            let inner = read(lexer, try_read, "Expected expression inside parenthesis")?;
-            skip_whitespace(lexer)?;
-            let closing = lexer.read()?;
-            match closing.as_ref() {
-                Lexeme::Symbol(')') => Ok(Some(Expression::Parenthesis(Box::new(inner)).at(pos))),
-                _ => Err(QError::SyntaxError(
-                    "Expected closing parenthesis".to_string(),
-                ))
-                .with_err_at(&closing),
-            }
-        }
-        Lexeme::Symbol('#') => {
-            // file handle e.g. CLOSE #1
-            lexer.read_ng()?;
-            let digits = demand_digits(lexer)?;
-            match digits.parse::<u32>() {
-                Ok(d) => Ok(Some(Expression::FileHandle(d.into()).at(pos))),
-                Err(err) => Err(err.into()).with_err_at(pos),
-            }
-        }
-        _ => Ok(None),
-    }
+    take_if_expression_node()(lexer).transpose()
 }
 
-fn try_parse_second_expression<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-    left_side: ExpressionNode,
-) -> Result<ExpressionNode, QErrorNode> {
-    let operand = try_parse_operand(lexer, &left_side)?;
-    match operand {
-        Some((op, pos)) => {
-            skip_whitespace(lexer)?;
-            let right_side = read(lexer, try_read, "Expected right side expression")?;
-            Ok(apply_priority_order(left_side, right_side, op, pos))
-        }
-        None => Ok(left_side),
-    }
+fn take_if_unary_minus<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
+{
+    apply(
+        |(l, child)| apply_unary_priority_order(child, UnaryOperand::Minus, l.pos()),
+        and(
+            take_if_symbol('-'),
+            demand(
+                take_if_expression_node_boxed(),
+                "Expected expression after unary minus",
+            ),
+        ),
+    )
+}
+
+fn take_if_unary_not<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
+{
+    apply(
+        |(l, (_, child))| apply_unary_priority_order(child, UnaryOperand::Not, l.pos()),
+        and(
+            take_if_keyword(Keyword::Not),
+            and(
+                demand(
+                    take_if_predicate(LexemeTrait::is_whitespace),
+                    "Expected whitespace after NOT",
+                ),
+                demand(
+                    take_if_expression_node_boxed(),
+                    "Expected expression after NOT",
+                ),
+            ),
+        ),
+    )
+}
+
+fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+    switch_err(
+        |(Locatable { pos, .. }, Locatable { element, .. })| match element.parse::<u32>() {
+            Ok(d) => Some(Ok(Expression::FileHandle(d.into()).at(pos))),
+            Err(err) => Some(Err(err.into()).with_err_at(pos)),
+        },
+        and(
+            take_if_symbol('#'),
+            demand(number_literal::take_if_digits(), "Expected digits after #"),
+        ),
+    )
+}
+
+fn take_if_parenthesis<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
+{
+    // TODO allow skipping whitespace inside parenthesis
+    apply(
+        |(open_parenthesis_pos, x)| Expression::Parenthesis(Box::new(x)).at(open_parenthesis_pos),
+        between('(', ')', take_if_expression_node_boxed()),
+    )
 }
 
 fn apply_priority_order(
@@ -145,133 +166,102 @@ fn apply_unary_priority_order(
     }
 }
 
-/// Parses a comma separated list of expressions.
-fn parse_expression_list_with_parentheses<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Vec<ExpressionNode>, QErrorNode> {
-    let mut args: Vec<ExpressionNode> = vec![];
-    const STATE_OPEN_PARENTHESIS: u8 = 0;
-    const STATE_CLOSE_PARENTHESIS: u8 = 1;
-    const STATE_COMMA: u8 = 2;
-    const STATE_EXPRESSION: u8 = 3;
-    let mut state = STATE_OPEN_PARENTHESIS;
-    while state != STATE_CLOSE_PARENTHESIS {
-        skip_whitespace(lexer)?;
-        let p = lexer.peek_ref_ng()?;
-        match p {
-            Some(next) => {
-                let pos = next.pos();
-                match next.as_ref() {
-                    Lexeme::Symbol(')') => {
-                        lexer.read_ng()?;
-                        if state == STATE_EXPRESSION {
-                            state = STATE_CLOSE_PARENTHESIS;
-                        } else if state == STATE_OPEN_PARENTHESIS {
-                            return Err(QError::SyntaxError("Expected expression".to_string()))
-                                .with_err_at(pos);
-                        } else {
-                            return Err(QError::SyntaxError(
-                                "Expected expression after comma".to_string(),
-                            ))
-                            .with_err_at(pos);
-                        }
-                    }
-                    Lexeme::Symbol(',') => {
-                        lexer.read_ng()?;
-                        if state == STATE_EXPRESSION {
-                            state = STATE_COMMA;
-                        } else {
-                            return Err(QError::SyntaxError("Unexpected comma".to_string()))
-                                .with_err_at(pos);
-                        }
-                    }
-                    Lexeme::EOL(_) => {
-                        return Err(QError::SyntaxError(
-                            "Premature end of expression list".to_string(),
-                        ))
-                        .with_err_at(next);
-                    }
-                    _ => {
-                        if state == STATE_EXPRESSION {
-                            return Err(QError::SyntaxError("Expected comma or )".to_string()))
-                                .with_err_at(next);
-                        }
-                        args.push(read(lexer, try_read, "Expected expression")?);
-                        state = STATE_EXPRESSION;
-                    }
-                }
-            }
-            None => {
-                // EOF
-                return Err(QError::SyntaxError(
-                    "Premature end of expression list".to_string(),
-                ))
-                .with_err_at(lexer.pos()); // TODO why does it not work with just `lexer`
-            }
-        }
-    }
-    Ok(args)
-}
-
 mod string_literal {
     use super::*;
-    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, QErrorNode> {
-        let mut buf: String = String::new();
-        let pos = lexer.read()?.pos(); // read double quote
-                                       // read until we hit the next double quote
-        loop {
-            let q = lexer.read_ng()?;
-            let p = (&q).as_ref();
-            if p.is_eof() {
-                return Err(QError::SyntaxError(
-                    "EOF while looking for end of string".to_string(),
-                ))
-                .with_err_at(&p.at(pos));
-            } else if p.is_eol() {
-                return Err(QError::SyntaxError(
-                    "Unexpected new line while looking for end of string".to_string(),
-                ))
-                .with_err_at(pos);
-            } else if p.is_symbol('"') {
-                break;
-            } else {
-                let Locatable { element, .. } = p.unwrap();
-                buf.push_str(element.to_string().as_ref());
-            }
-        }
 
-        Ok(Expression::StringLiteral(buf).at(pos))
-    }
-}
-
-fn demand_digits<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<String, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.read()?;
-    match next {
-        Lexeme::Digits(digits) => Ok(digits),
-        _ => Err(QError::SyntaxError("Expected digits".to_string())).with_err_at(pos),
+    pub fn take_if_string_literal<T: BufRead>(
+    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+        apply(
+            |(l, (string_lexemes, _))| {
+                let pos = l.pos();
+                let text = string_lexemes.into_iter().fold(
+                    String::new(),
+                    |acc, Locatable { element, .. }| {
+                        format!("{}{}", acc, element) // concatenate strings
+                    },
+                );
+                Expression::StringLiteral(text).at(pos)
+            },
+            and(
+                take_if_symbol('"'),
+                and(
+                    take_until(|x: &LexemeNode| x.is_eol() || x.is_symbol('"')),
+                    demand(take_if_symbol('"'), "Unterminated string"),
+                ),
+            ),
+        )
     }
 }
 
 mod number_literal {
     use super::*;
-    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, QErrorNode> {
-        // consume digits
-        let Locatable { element: next, pos } = lexer.read()?;
-        let digits = next.into_digits();
-        let found_decimal_point = skip_if(lexer, |lexeme| lexeme.is_symbol('.'))?;
-        if found_decimal_point {
-            parse_floating_point_literal(lexer, digits, pos)
-        } else {
-            // no decimal point, just integer
-            integer_literal_to_expression_node(digits, pos)
-        }
+
+    pub fn take_if_number_literal<T: BufRead>(
+    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+        switch_err(
+            |(l, opt_r)| {
+                let Locatable {
+                    element: int_part_as_string,
+                    pos,
+                } = l;
+                match opt_r {
+                    Some((_, frac_part_as_string, is_double)) => parse_floating_point_literal(
+                        int_part_as_string,
+                        frac_part_as_string,
+                        is_double,
+                        pos,
+                    )
+                    .map(|x| Some(x))
+                    .transpose(),
+                    None => integer_literal_to_expression_node(int_part_as_string, pos)
+                        .map(|x| Some(x))
+                        .transpose(),
+                }
+            },
+            zip_allow_right_none(
+                take_if_digits(), // integer digits
+                take_if_frac_part(),
+            ),
+        )
     }
 
-    pub fn read_dot_float<T: BufRead>(
-        lexer: &mut BufLexer<T>,
-    ) -> Result<ExpressionNode, QErrorNode> {
-        let pos = lexer.read()?.pos(); // consume . of .10
-        parse_floating_point_literal(lexer, "0".to_string(), pos)
+    pub fn take_if_float_without_leading_zero<T: BufRead>(
+    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+        switch_err(
+            |(pos, frac_part_as_string, is_double)| {
+                parse_floating_point_literal(String::from("0"), frac_part_as_string, is_double, pos)
+                    .map(|x| Some(x))
+                    .transpose()
+            },
+            take_if_frac_part(),
+        )
+    }
+
+    fn take_if_frac_part<T: BufRead>(
+    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<(Location, String, bool)> {
+        apply(
+            |(l, r)| (l.pos(), r.0, r.1.is_some()),
+            and(
+                take_if_symbol('.'),
+                zip_allow_right_none(
+                    demand(
+                        drop_location(take_if_digits()),
+                        "Expected digits after decimal point",
+                    ),
+                    take_if_symbol('#'),
+                ),
+            ),
+        )
+    }
+
+    pub fn take_if_digits<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<Locatable<String>> {
+        take_if_map(|x: LexemeNode| match x {
+            Locatable {
+                element: Lexeme::Digits(digits),
+                pos,
+            } => Some(digits.at(pos)),
+            _ => None,
+        })
     }
 
     fn integer_literal_to_expression_node(
@@ -292,13 +282,12 @@ mod number_literal {
         }
     }
 
-    fn parse_floating_point_literal<T: BufRead>(
-        lexer: &mut BufLexer<T>,
+    fn parse_floating_point_literal(
         integer_digits: String,
+        fraction_digits: String,
+        is_double: bool,
         pos: Location,
     ) -> Result<ExpressionNode, QErrorNode> {
-        let fraction_digits = demand_digits(lexer)?;
-        let is_double = skip_if(lexer, |lexeme| lexeme.is_symbol('#'))?;
         if is_double {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
                 Ok(f) => Ok(Expression::DoubleLiteral(f).at(pos)),
@@ -315,116 +304,113 @@ mod number_literal {
 
 mod word {
     use super::*;
-    pub fn read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ExpressionNode, QErrorNode> {
-        // is it maybe a qualified variable name
-        let Locatable { element: next, pos } = lexer.read()?;
-        let word = next.as_word().unwrap(); // TODO fix this
-        let qualifier = type_qualifier::try_read(lexer)?;
-        let name = Name::new(word.into(), qualifier);
-        // it could be a function call?
-        let found_opening_parenthesis = skip_if(lexer, |lexeme| lexeme.is_symbol('('))?;
-        if found_opening_parenthesis {
-            let args = parse_expression_list_with_parentheses(lexer)?;
-            Ok(Expression::FunctionCall(name, args).at(pos))
-        } else {
-            Ok(Expression::VariableName(name).at(pos))
-        }
+
+    pub fn take_if_word<T: BufRead + 'static>(
+    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+        switch_err(
+            |(name_node, opt_r)| {
+                match opt_r {
+                    // found opening parenthesis e.g. Foo() or Foo(12, 43)
+                    Some((p, r)) => {
+                        if r.is_empty() {
+                            Some(
+                                Err(QError::SyntaxError("Expected expression".to_string()))
+                                    .with_err_at(p),
+                            )
+                        } else {
+                            Some(Ok(name_node.map(|n| Expression::FunctionCall(n, r))))
+                        }
+                    }
+                    // no opening parenthesis e.g. A$ or A
+                    None => Some(Ok(name_node.map(|n| Expression::VariableName(n)))),
+                }
+            },
+            zip_allow_right_none(
+                name::take_if_name_node(),
+                between('(', ')', csv(super::take_if_expression_node_boxed())),
+            ),
+        )
     }
 }
 
-fn try_parse_operand<T: BufRead>(
-    lexer: &mut BufLexer<T>,
+fn take_if_operand<T: BufRead + 'static>(
     left_side: &ExpressionNode,
-) -> Result<Option<(Operand, Location)>, QErrorNode> {
-    // if we can't find an operand, we need to restore the whitespace as it was,
-    // in case there is a next call that will be demanding for it
-    lexer.begin_transaction();
-    let had_leading_space = skip_whitespace(lexer)?;
-    let next = lexer.read()?;
-    let Locatable { element, pos } = next;
-    match element {
-        Lexeme::Symbol('<') => {
-            lexer.commit_transaction();
-            Ok(Some((less_or_lte_or_ne(lexer)?, pos)))
-        }
-        Lexeme::Symbol('>') => {
-            lexer.commit_transaction();
-            Ok(Some((greater_or_gte(lexer)?, pos)))
-        }
-        Lexeme::Symbol('=') => {
-            lexer.commit_transaction();
-            Ok(Some((Operand::Equal, pos)))
-        }
-        Lexeme::Symbol('+') => {
-            lexer.commit_transaction();
-            Ok(Some((Operand::Plus, pos)))
-        }
-        Lexeme::Symbol('-') => {
-            lexer.commit_transaction();
-            Ok(Some((Operand::Minus, pos)))
-        }
-        Lexeme::Symbol('*') => {
-            lexer.commit_transaction();
-            Ok(Some((Operand::Multiply, pos)))
-        }
-        Lexeme::Symbol('/') => {
-            lexer.commit_transaction();
-            Ok(Some((Operand::Divide, pos)))
-        }
-        Lexeme::Keyword(Keyword::And, _) => {
-            if had_leading_space || left_side.is_parenthesis() {
-                lexer.commit_transaction();
-                Ok(Some((Operand::And, pos)))
-            } else {
-                lexer.rollback_transaction();
-                Ok(None)
-            }
-        }
-        Lexeme::Keyword(Keyword::Or, _) => {
-            if had_leading_space || left_side.is_parenthesis() {
-                lexer.commit_transaction();
-                Ok(Some((Operand::Or, pos)))
-            } else {
-                lexer.rollback_transaction();
-                Ok(None)
-            }
-        }
-        _ => {
-            lexer.rollback_transaction();
-            Ok(None)
-        }
-    }
+) -> impl Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>> {
+    let left_side_parenthesis = left_side.is_parenthesis();
+    or_vec(vec![
+        Box::new(or_vec(vec![
+            // LTE, NE
+            Box::new(apply(
+                |(l, r)| {
+                    (match r {
+                        Some('=') => Operand::LessOrEqual,
+                        Some('>') => Operand::NotEqual,
+                        _ => Operand::Less,
+                    })
+                    .at(l.pos())
+                },
+                zip_allow_right_none(
+                    skipping_whitespace_pc(take_if_symbol('<')),
+                    or(
+                        drop_location(take_if_symbol('=')),
+                        drop_location(take_if_symbol('>')),
+                    ),
+                ),
+            )),
+            // GTE
+            Box::new(apply(
+                |(l, r)| {
+                    (match r {
+                        Some('=') => Operand::GreaterOrEqual,
+                        _ => Operand::Greater,
+                    })
+                    .at(l.pos())
+                },
+                zip_allow_right_none(
+                    skipping_whitespace_pc(take_if_symbol('>')),
+                    drop_location(take_if_symbol('=')),
+                ),
+            )),
+            take_if_simple_op('=', Operand::Equal),
+            take_if_simple_op('+', Operand::Plus),
+            take_if_simple_op('-', Operand::Minus),
+            take_if_simple_op('*', Operand::Multiply),
+            take_if_simple_op('/', Operand::Divide),
+        ])),
+        // AND
+        take_and_or_op(Keyword::And, Operand::And, left_side_parenthesis),
+        take_and_or_op(Keyword::Or, Operand::Or, left_side_parenthesis),
+    ])
 }
 
-fn less_or_lte_or_ne<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, QErrorNode> {
-    match lexer.peek_ref_ng()? {
-        Some(Locatable {
-            element: Lexeme::Symbol('='),
-            ..
-        }) => {
-            lexer.read_ng()?;
-            Ok(Operand::LessOrEqual)
-        }
-        Some(Locatable {
-            element: Lexeme::Symbol('>'),
-            ..
-        }) => {
-            lexer.read_ng()?;
-            Ok(Operand::NotEqual)
-        }
-        _ => Ok(Operand::Less),
-    }
+fn take_if_simple_op<T: BufRead + 'static>(
+    ch: char,
+    op: Operand,
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
+    Box::new(map_locatable(
+        move |_| op,
+        skipping_whitespace_pc(take_if_symbol(ch)),
+    ))
 }
 
-fn greater_or_gte<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, QErrorNode> {
-    let x = skip_if(lexer, |lexeme| lexeme.is_symbol('=')).map(|found_equal_sign| {
-        if found_equal_sign {
-            Operand::GreaterOrEqual
-        } else {
-            Operand::Greater
-        }
-    })?;
-    Ok(x)
+fn take_and_or_op<T: BufRead + 'static>(
+    k: Keyword,
+    op: Operand,
+    left_side_parenthesis: bool,
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
+    Box::new(switch(
+        move |(l, r)| {
+            if l.is_some() || left_side_parenthesis {
+                Some(op.at(r.pos()))
+            } else {
+                None
+            }
+        },
+        zip_allow_left_none(
+            take_if_predicate(LexemeTrait::is_whitespace),
+            take_if_keyword(k),
+        ),
+    ))
 }
 
 #[cfg(test)]
@@ -435,7 +421,7 @@ mod tests {
 
     macro_rules! assert_expression {
         ($left:expr, $right:expr) => {
-            let program = parse(&format!("PRINT {}", $left)).demand_single_statement();
+            let program = parse(format!("PRINT {}", $left)).demand_single_statement();
             match program {
                 Statement::SubCall(_, args) => {
                     assert_eq!(1, args.len());

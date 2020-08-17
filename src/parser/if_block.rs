@@ -7,7 +7,9 @@ use crate::parser::statements::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     if !lexer.peek_ref_ng().is_keyword(Keyword::If) {
         return Ok(None);
     }
@@ -45,7 +47,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
 }
 
 /// Read the IF block, up to the first ELSE IF or ELSE or END IF
-fn read_if_block<T: BufRead>(
+fn read_if_block<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
     condition: ExpressionNode,
     is_multi_line: bool,
@@ -75,7 +77,7 @@ fn read_if_block<T: BufRead>(
     })
 }
 
-fn try_read_else_if_block<T: BufRead>(
+fn try_read_else_if_block<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ConditionalBlockNode>, QErrorNode> {
     if !lexer.peek_ref_ng().is_keyword(Keyword::ElseIf) {
@@ -97,7 +99,7 @@ fn try_read_else_if_block<T: BufRead>(
     }))
 }
 
-fn try_read_else_block<T: BufRead>(
+fn try_read_else_block<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
     is_multi_line: bool,
 ) -> Result<Option<StatementNodes>, QErrorNode> {

@@ -29,7 +29,9 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct Input {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     if lexer.peek_ref_ng().is_keyword(Keyword::Input) {
         let pos = lexer.read()?.pos();
         read_whitespace(lexer, "Expected space after INPUT")?;

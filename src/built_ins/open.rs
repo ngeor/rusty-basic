@@ -19,7 +19,9 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     if !lexer.peek_ref_ng().is_keyword(Keyword::Open) {
         return Ok(None);
     }

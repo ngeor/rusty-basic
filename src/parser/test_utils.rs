@@ -5,7 +5,7 @@ use crate::parser::types::*;
 use std::fs::File;
 
 /// Parses the given program and demands success.
-pub fn parse(input: &str) -> ProgramNode {
+pub fn parse<T: AsRef<[u8]> + 'static>(input: T) -> ProgramNode {
     parse_main_str(input).expect("Could not parse program")
 }
 
@@ -18,7 +18,7 @@ pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
 /// Parses the given input, expecting that it will fail.
 /// Returns the lexer error.
 /// Panics if parsing actually succeeded.
-pub fn parse_err<T: AsRef<[u8]>>(input: T) -> QError {
+pub fn parse_err<T: AsRef<[u8]> + 'static>(input: T) -> QError {
     parse_main_str(input).unwrap_err().into_err()
 }
 

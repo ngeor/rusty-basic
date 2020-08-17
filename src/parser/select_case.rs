@@ -8,7 +8,9 @@ use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     if !lexer.peek_ref_ng().is_keyword(Keyword::Select) {
         return Ok(None);
     }
@@ -98,7 +100,9 @@ fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNod
     Ok(found_case_else)
 }
 
-fn try_read_case<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, QErrorNode> {
+fn try_read_case<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<CaseBlockNode>, QErrorNode> {
     if !lexer.peek_ref_ng().is_keyword(Keyword::Case) {
         return Ok(None);
     }
@@ -114,7 +118,9 @@ fn try_read_case<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlock
     }
 }
 
-fn read_case_is<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<CaseBlockNode>, QErrorNode> {
+fn read_case_is<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<CaseBlockNode>, QErrorNode> {
     lexer.read_ng()?; // IS
     skip_whitespace(lexer)?;
     let op = read_relational_operator(lexer)?;
@@ -160,7 +166,7 @@ fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Opera
     }
 }
 
-fn read_case_expr<T: BufRead>(
+fn read_case_expr<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<CaseBlockNode>, QErrorNode> {
     let first_expr = read(
@@ -194,7 +200,7 @@ fn read_case_expr<T: BufRead>(
     }))
 }
 
-fn try_read_case_else<T: BufRead>(
+fn try_read_case_else<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNodes>, QErrorNode> {
     if !peek_case_else(lexer)? {

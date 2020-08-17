@@ -6,7 +6,9 @@ use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     let opt_name_node = in_transaction(lexer, do_read_left_side)?;
     match opt_name_node {
         Some(name_node) => {

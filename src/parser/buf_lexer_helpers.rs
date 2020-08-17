@@ -1,3 +1,4 @@
+use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 
@@ -89,6 +90,81 @@ where
             Some(x) => Some(x),
             None => Some(Err(QError::SyntaxError(err_msg.as_ref().to_string())).with_err_at(pos)),
         }
+    }
+}
+
+/// Creates a parser that parses between two delimiting characters.
+///
+/// Returns:
+///
+/// - A tuple with the location of the opening parenthesis and the parsed item
+/// - None, if it cannot find the opening symbol
+/// - Err, if it cannot find the closing symbol
+pub fn between<I, T, FPC>(
+    start: char,
+    stop: char,
+    parser: FPC,
+) -> impl Fn(&mut I) -> OptRes<(Location, T)>
+where
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation,
+    FPC: Fn(&mut I) -> OptRes<T>,
+{
+    apply(
+        |(l, r)| (l.pos(), r.0),
+        and(
+            take_if_symbol(start),
+            and(
+                parser,
+                demand(
+                    take_if_symbol(stop),
+                    format!("Unterminated, expected {}", stop),
+                ),
+            ),
+        ),
+    )
+}
+
+/// Creates a parser that skips the optional leading whitespace before using
+/// the given parser to return a result.
+pub fn skipping_whitespace_pc<I, T, FPC>(parser: FPC) -> impl Fn(&mut I) -> OptRes<T>
+where
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation,
+    FPC: Fn(&mut I) -> OptRes<T>,
+{
+    apply(
+        |(_, r)| r,
+        zip_allow_left_none(take_if_predicate(LexemeTrait::is_whitespace), parser),
+    )
+}
+
+/// Creates a parser that consumes a list of comma separated values.
+/// The values are parsed by the given parser.
+/// Whitespace between the elements and the commas is ignored.
+/// Trailing comma leads to error.
+pub fn csv<I, T, FPC>(item_parser: FPC) -> impl Fn(&mut I) -> OptRes<Vec<T>>
+where
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation,
+    FPC: Fn(&mut I) -> OptRes<T>,
+{
+    let item_comma_parser = zip_allow_right_none(
+        skipping_whitespace_pc(item_parser),
+        skipping_whitespace_pc(take_if_symbol(',')),
+    );
+    move |source| {
+        let mut result: Vec<T> = vec![];
+        loop {
+            match item_comma_parser(source) {
+                None => break,
+                Some(Err(err)) => return Some(Err(err)),
+                Some(Ok((item, opt_comma))) => {
+                    result.push(item);
+                    if opt_comma.is_none() {
+                        break;
+                    }
+                }
+            }
+        }
+        Some(Ok(result))
     }
 }
 

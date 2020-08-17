@@ -32,7 +32,7 @@ mod tests {
     macro_rules! assert_parse_dim_extended_built_in {
         ($keyword: literal, $qualifier: ident) => {
             let input = format!("DIM X AS {}", $keyword);
-            let p = parse(input.as_ref());
+            let p = parse(input);
             assert_eq!(
                 p,
                 vec![TopLevelToken::Statement(Statement::Dim(
@@ -95,7 +95,7 @@ mod tests {
     macro_rules! assert_parse_dim_compact {
         ($keyword: literal, $qualifier: ident) => {
             let input = format!("DIM X{}", $keyword);
-            let p = parse(input.as_ref());
+            let p = parse(input);
             assert_eq!(
                 p,
                 vec![TopLevelToken::Statement(Statement::Dim(

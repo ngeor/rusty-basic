@@ -3,7 +3,7 @@ use crate::parser::parse_main_str;
 
 pub fn linter_ok<T>(input: T) -> linter::ProgramNode
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).unwrap();
     linter::lint(program).unwrap()
@@ -11,7 +11,7 @@ where
 
 pub fn linter_err<T>(input: T) -> crate::common::QErrorNode
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).unwrap();
     linter::lint(program).unwrap_err()

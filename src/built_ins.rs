@@ -272,7 +272,7 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
 }
 
 /// Parses built-in subs which have a special syntax.
-pub fn try_read<T: BufRead>(
+pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<crate::parser::StatementNode>, QErrorNode> {
     input::try_read(lexer)

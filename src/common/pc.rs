@@ -1,7 +1,11 @@
 use super::{Locatable, Transactional};
 
 //
-// Parser combinators that are applicable to any parser
+// # Parser combinators that are applicable to any parser
+//
+
+//
+// ## Combine two parsers into one
 //
 
 /// Creates a new parsers that zips together the result of two parsers.
@@ -34,7 +38,6 @@ where
 ///
 /// - None, if the first parser returns None
 /// - Some(Err), if any of the parsers return Some(Err)
-/// - Some(Ok), if the first parser returns Some(Ok)
 pub fn zip_allow_right_none<I, A, B, FA, FB, E>(
     first_parser: FA,
     second_parser: FB,
@@ -53,6 +56,41 @@ where
         },
     }
 }
+
+/// Creates a new parser that zips together the result of two parsers.
+///
+/// The first parser may return None.
+///
+/// The new parser will return:
+///
+/// - None, if the second parser returns None
+/// - Some(Err), if any of the parsers return Some(Err)
+pub fn zip_allow_left_none<I, A, B, FA, FB, E>(
+    first_parser: FA,
+    second_parser: FB,
+) -> impl Fn(&mut I) -> Option<Result<(Option<A>, B), E>>
+where
+    FA: Fn(&mut I) -> Option<Result<A, E>>,
+    FB: Fn(&mut I) -> Option<Result<B, E>>,
+{
+    move |input| match first_parser(input) {
+        None => match second_parser(input) {
+            None => None,
+            Some(Err(err)) => Some(Err(err)),
+            Some(Ok(second)) => Some(Ok((None, second))),
+        },
+        Some(Err(err)) => Some(Err(err)),
+        Some(Ok(first)) => match second_parser(input) {
+            None => None,
+            Some(Err(err)) => Some(Err(err)),
+            Some(Ok(second)) => Some(Ok((Some(first), second))),
+        },
+    }
+}
+
+//
+// ## Transform the result of a parser
+//
 
 /// Creates a new parser that maps the result of the given parser with the
 /// specified function.
@@ -102,6 +140,24 @@ where
     }
 }
 
+// Creates a new parser that replaces the result of the given parser with the
+// result of the specified function. The function can even return `None` or
+// `Err`.
+pub fn switch_err<I, T, E, U, FMap, FPC>(
+    f: FMap,
+    parser: FPC,
+) -> impl Fn(&mut I) -> Option<Result<U, E>>
+where
+    FMap: Fn(T) -> Option<Result<U, E>>,
+    FPC: Fn(&mut I) -> Option<Result<T, E>>,
+{
+    move |input| match parser(input) {
+        None => None,
+        Some(Err(err)) => Some(Err(err)),
+        Some(Ok(x)) => f(x),
+    }
+}
+
 /// Creates a parser that returns `None` if the given predicate is not satisfied.
 pub fn filter<I, T, E, FMap, FPC>(f: FMap, parser: FPC) -> impl Fn(&mut I) -> Option<Result<T, E>>
 where
@@ -119,6 +175,10 @@ where
 {
     switch(move |x| if f(&x) { None } else { Some(x) }, parser)
 }
+
+//
+// ## Other
+//
 
 /// Creates a new parser that calls the given parser multiple times
 /// until it fails or returns `None`.
@@ -144,7 +204,7 @@ where
 }
 
 //
-// Parser combinators for Locatable
+// # Parser combinators for Locatable
 //
 
 /// Creates a parser that maps the contents of locatable nodes to different
@@ -205,7 +265,7 @@ where
 }
 
 //
-// Parser combinators for Transactional
+// # Parser combinators for Transactional
 //
 
 /// Creates a new parser that wraps the given parser inside a transaction.
@@ -225,5 +285,73 @@ where
             _ => t.rollback_transaction(),
         };
         result
+    }
+}
+
+/// Creates a new parsers that returns the successful result of one
+/// of the two given parsers.
+pub fn or<I, T, F1, F2, E>(
+    first_parser: F1,
+    second_parser: F2,
+) -> impl Fn(&mut I) -> Option<Result<T, E>>
+where
+    I: Transactional,
+    F1: Fn(&mut I) -> Option<Result<T, E>>,
+    F2: Fn(&mut I) -> Option<Result<T, E>>,
+{
+    move |input| {
+        input.begin_transaction();
+        match first_parser(input) {
+            None => {
+                // TODO reduce duplication
+                input.rollback_transaction();
+                input.begin_transaction();
+                let result = second_parser(input);
+                match &result {
+                    Some(Ok(_)) => input.commit_transaction(),
+                    _ => input.rollback_transaction(),
+                };
+                result
+            }
+            Some(Err(err)) => {
+                input.rollback_transaction();
+                Some(Err(err))
+            }
+            Some(Ok(first)) => {
+                input.commit_transaction();
+                Some(Ok(first))
+            }
+        }
+    }
+}
+
+/// Creates a new parser that returns the result from the first parser that
+/// will return `Some()`.
+pub fn or_vec<I, T, E>(
+    parsers: Vec<Box<dyn Fn(&mut I) -> Option<Result<T, E>>>>,
+) -> impl Fn(&mut I) -> Option<Result<T, E>>
+where
+    I: Transactional,
+{
+    move |input| {
+        input.begin_transaction();
+        for p in parsers.iter() {
+            match p(input) {
+                Some(Err(err)) => {
+                    input.rollback_transaction();
+                    return Some(Err(err));
+                }
+                Some(Ok(x)) => {
+                    input.commit_transaction();
+                    return Some(Ok(x));
+                }
+                _ => {
+                    input.rollback_transaction();
+                    input.begin_transaction();
+                }
+            }
+        }
+        input.rollback_transaction();
+        None
     }
 }

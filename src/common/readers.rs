@@ -1,6 +1,8 @@
 use crate::common::iter::*;
 use crate::common::location::*;
 
+// TODO: merge everything into Lexer after parser combinators are done
+
 /// Reads one item from a stream.
 ///
 /// Returns:

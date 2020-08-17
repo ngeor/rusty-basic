@@ -8,7 +8,7 @@ use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
+pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     let p = lexer.peek_ref_ng();
@@ -23,7 +23,7 @@ pub fn try_read<T: BufRead>(
     }
 }
 
-pub fn demand_function_implementation<T: BufRead>(
+pub fn demand_function_implementation<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<TopLevelToken, QErrorNode> {
     // function name
@@ -47,7 +47,7 @@ pub fn demand_function_implementation<T: BufRead>(
     Ok(TopLevelToken::FunctionImplementation(name, params, block))
 }
 
-pub fn demand_sub_implementation<T: BufRead>(
+pub fn demand_sub_implementation<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<TopLevelToken, QErrorNode> {
     // sub name

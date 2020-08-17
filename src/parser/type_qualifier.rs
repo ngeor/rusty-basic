@@ -16,8 +16,3 @@ fn mapper(l: LexemeNode) -> Option<TypeQualifier> {
         _ => None,
     }
 }
-
-#[deprecated]
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<TypeQualifier>, QErrorNode> {
-    take_if_type_qualifier()(lexer).transpose()
-}

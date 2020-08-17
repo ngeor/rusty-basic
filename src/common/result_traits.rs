@@ -152,12 +152,6 @@ pub trait ZipOptionResult<T, X, U, E> {
     /// If either is None, None will be returned.
     /// If either is an Err, the Err will be returned.
     fn zip(self, other: X) -> Option<Result<(T, U), E>>;
-
-    /// Zips two `Option<Result<>>` together.
-    ///
-    /// If either is an Err, the Err will be returned.
-    /// If the first (`self`) is None, None will be returned.
-    fn zip_allow_right_none(self, other: X) -> Option<Result<(T, Option<U>), E>>;
 }
 
 /// Zips two `Option<Result<>>` together.
@@ -170,21 +164,6 @@ impl<T, U, E> ZipOptionResult<T, Option<Result<U, E>>, U, E> for Option<Result<T
                 None => None,
                 Some(Err(err)) => Some(Err(err)),
                 Some(Ok(right)) => Some(Ok((left, right))),
-            },
-        }
-    }
-
-    fn zip_allow_right_none(
-        self,
-        other: Option<Result<U, E>>,
-    ) -> Option<Result<(T, Option<U>), E>> {
-        match self {
-            None => None,
-            Some(Err(err)) => Some(Err(err)),
-            Some(Ok(left)) => match other {
-                None => Some(Ok((left, None))),
-                Some(Err(err)) => Some(Err(err)),
-                Some(Ok(right)) => Some(Ok((left, Some(right)))),
             },
         }
     }
@@ -203,18 +182,6 @@ where
                 None => None,
                 Some(Err(err)) => Some(Err(err)),
                 Some(Ok(right)) => Some(Ok((left, right))),
-            },
-        }
-    }
-
-    fn zip_allow_right_none(self, other: F) -> Option<Result<(T, Option<U>), E>> {
-        match self {
-            None => None,
-            Some(Err(err)) => Some(Err(err)),
-            Some(Ok(left)) => match other() {
-                None => Some(Ok((left, None))),
-                Some(Err(err)) => Some(Err(err)),
-                Some(Ok(right)) => Some(Ok((left, Some(right)))),
             },
         }
     }

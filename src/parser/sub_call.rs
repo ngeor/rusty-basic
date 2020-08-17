@@ -7,7 +7,9 @@ use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     lexer.begin_transaction();
     // get the name first and ensure we are not looking at an assignment or a label
     let opt_name = name::try_read_bare(lexer)?;
@@ -59,7 +61,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     Ok(Some(Statement::SubCall(bare_name, args).at(pos)))
 }
 
-pub fn read_arg_list<T: BufRead>(
+pub fn read_arg_list<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Vec<ExpressionNode>, QErrorNode> {
     match expression::try_read(lexer)? {

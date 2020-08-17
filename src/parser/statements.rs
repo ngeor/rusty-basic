@@ -12,7 +12,7 @@ pub struct ParseStatementsOptions {
     pub err: QError,
 }
 
-pub fn parse_statements<T: BufRead, F, S: AsRef<str>>(
+pub fn parse_statements<T: BufRead + 'static, F, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     exit_predicate: F,
     err_msg: S,
@@ -30,7 +30,7 @@ where
     )
 }
 
-pub fn parse_statements_with_options<T: BufRead, F>(
+pub fn parse_statements_with_options<T: BufRead + 'static, F>(
     lexer: &mut BufLexer<T>,
     exit_predicate: F,
     options: ParseStatementsOptions,

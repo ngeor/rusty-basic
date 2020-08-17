@@ -6,7 +6,9 @@ use crate::parser::expression;
 use crate::parser::statements::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     // TODO lexer consume_if + map
     if !lexer.peek_ref_ng().is_keyword(Keyword::While) {
         return Ok(None);

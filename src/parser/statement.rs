@@ -16,7 +16,9 @@ use crate::parser::types::*;
 use crate::parser::while_wend;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     dim_parser::try_read(lexer)
         .or_try_read(|| constant::try_read(lexer))
         .or_try_read(|| comment::try_read(lexer))

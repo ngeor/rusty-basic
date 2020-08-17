@@ -8,7 +8,9 @@ use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     if !lexer.peek_ref_ng().is_keyword(Keyword::For) {
         return Ok(None);
     }
@@ -45,7 +47,7 @@ pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementN
     ))
 }
 
-fn try_parse_step<T: BufRead>(
+fn try_parse_step<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ExpressionNode>, QErrorNode> {
     const STATE_UPPER_BOUND: u8 = 0;

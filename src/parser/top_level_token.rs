@@ -18,7 +18,7 @@ use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
+pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     def_type::try_read(lexer)
@@ -27,7 +27,7 @@ pub fn try_read<T: BufRead>(
         .or_try_read(|| try_read_statement(lexer))
 }
 
-fn try_read_statement<T: BufRead>(
+fn try_read_statement<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
     statement::try_read(lexer).map(to_top_level_opt)
@@ -41,7 +41,7 @@ fn to_top_level(x: StatementNode) -> TopLevelTokenNode {
     x.map(|s| s.into())
 }
 
-pub fn parse_top_level_tokens<T: BufRead>(
+pub fn parse_top_level_tokens<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<ProgramNode, QErrorNode> {
     let mut read_separator = true; // we are the beginning of the file

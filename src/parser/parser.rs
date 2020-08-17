@@ -11,12 +11,14 @@ pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
 }
 
 #[cfg(test)]
-pub fn parse_main_str<T: AsRef<[u8]>>(s: T) -> Result<ProgramNode, QErrorNode> {
+pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
     let mut lexer = BufLexer::from(s);
     parse_main(&mut lexer)
 }
 
-pub fn parse_main<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<ProgramNode, QErrorNode> {
+pub fn parse_main<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<ProgramNode, QErrorNode> {
     top_level_token::parse_top_level_tokens(lexer)
 }
 

@@ -1,3 +1,4 @@
+use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
@@ -7,77 +8,68 @@ use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+pub fn take_if_sub_call<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
+    Box::new(in_transaction_pc(apply(
+        |(l, opt_r)| l.map(|n| Statement::SubCall(n, opt_r.unwrap_or_default())),
+        zip_allow_right_none(
+            in_transaction_pc(switch(
+                |(n, opt_blocker)| match opt_blocker {
+                    Some(_) => None,
+                    None => Some(n),
+                },
+                zip_allow_right_none(
+                    name::take_if_bare_name_node(),
+                    or(detect_label_and_abort(), detect_assignment_and_abort()),
+                ),
+            )),
+            or(take_args_parenthesis(), take_args_no_parenthesis()),
+        ),
+    )))
+}
+
+fn detect_label_and_abort<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<bool>> {
+    Box::new(apply(|_| true, take_if_symbol(':')))
+}
+
+fn detect_assignment_and_abort<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<bool>> {
+    Box::new(apply(|_| true, skipping_whitespace(take_if_symbol('='))))
+}
+
+fn take_args_no_parenthesis<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
+    Box::new(apply(
+        |(_, r)| r,
+        and(
+            take_if_predicate(LexemeTrait::is_whitespace),
+            csv(expression::take_if_expression_node()),
+        ),
+    ))
+}
+
+fn take_args_parenthesis<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
+    Box::new(apply(
+        |(_, r)| r,
+        between('(', ')', csv(expression::take_if_expression_node())),
+    ))
+}
+
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
-    lexer.begin_transaction();
-    // get the name first and ensure we are not looking at an assignment or a label
-    let opt_name = name::try_read_bare(lexer)?;
-    if opt_name.is_none() {
-        lexer.rollback_transaction();
-        return Ok(None);
-    }
-    let Locatable {
-        element: bare_name,
-        pos,
-    } = opt_name.unwrap();
-    let p = lexer.peek_ref_ng();
-    if p.is_symbol('=') || p.is_symbol(':') {
-        // assignment or label
-        lexer.rollback_transaction();
-        return Ok(None);
-    }
-
-    if p.is_symbol('(') {
-        // sub call with parenthesis e.g. Hello(1)
-        lexer.commit_transaction();
-        let args = read_arg_list(lexer)?;
-        return Ok(Some(Statement::SubCall(bare_name, args).at(pos)));
-    }
-
-    let might_have_args = if p.is_whitespace() {
-        // we might have an argument list
-        lexer.read_ng()?;
-        true
-    } else {
-        false
-    };
-    if !might_have_args {
-        // no args e.g. "PRINT"
-        lexer.commit_transaction();
-        return Ok(Some(Statement::SubCall(bare_name, vec![]).at(pos)));
-    }
-
-    // check once again to make sure we're not in assignment with extra whitespace e.g. A = 2
-    if lexer.peek_ref_ng().is_symbol('=') {
-        lexer.rollback_transaction();
-        return Ok(None);
-    }
-
-    // at this point we know it's a sub call so we commit
-    lexer.commit_transaction();
-
-    let args = read_arg_list(lexer)?;
-    Ok(Some(Statement::SubCall(bare_name, args).at(pos)))
+    take_if_sub_call()(lexer).transpose()
 }
 
+#[deprecated]
 pub fn read_arg_list<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Vec<ExpressionNode>, QErrorNode> {
-    match expression::try_read(lexer)? {
-        Some(e) => {
-            let mut args: Vec<ExpressionNode> = vec![e];
-            skip_whitespace(lexer)?;
-            if lexer.peek_ref_ng().is_symbol(',') {
-                // next args
-                lexer.read_ng()?; // read comma
-                skip_whitespace(lexer)?;
-                let mut next_args = read_arg_list(lexer)?;
-                args.append(&mut next_args);
-            }
-            Ok(args)
-        }
+    match csv(expression::take_if_expression_node())(lexer) {
         None => Ok(vec![]),
+        Some(x) => x
     }
 }
 

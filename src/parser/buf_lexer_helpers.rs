@@ -104,12 +104,13 @@ pub fn between<I, T, FPC>(
     start: char,
     stop: char,
     parser: FPC,
-) -> impl Fn(&mut I) -> OptRes<(Location, T)>
+) -> Box<dyn Fn(&mut I) -> OptRes<(Location, T)>>
 where
-    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation,
-    FPC: Fn(&mut I) -> OptRes<T>,
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation + 'static,
+    T: 'static,
+    FPC: Fn(&mut I) -> OptRes<T> + 'static,
 {
-    apply(
+    Box::new(apply(
         |(l, r)| (l.pos(), r.0),
         and(
             take_if_symbol(start),
@@ -121,7 +122,7 @@ where
                 ),
             ),
         ),
-    )
+    ))
 }
 
 /// Creates a parser that skips the optional leading whitespace before using

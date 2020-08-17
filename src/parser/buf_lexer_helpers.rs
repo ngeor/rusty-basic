@@ -79,7 +79,7 @@ where
 /// Creates a parser that demands that the next lexeme is present.
 /// If not, it will return a `SyntaxError` with the given message.
 /// This parser therefore never returns `None`.
-pub fn demand<I, T, U, FPC, S: AsRef<str>>(parser: FPC, err_msg: S) -> impl Fn(&mut I) -> OptRes<U>
+pub fn demand<I, T, U, FPC, S: AsRef<str>>(err_msg: S, parser: FPC) -> impl Fn(&mut I) -> OptRes<U>
 where
     I: ResultIterator<Item = T, Err = QErrorNode> + HasLocation,
     FPC: Fn(&mut I) -> OptRes<U>,
@@ -116,8 +116,8 @@ where
             and(
                 parser,
                 demand(
-                    take_if_symbol(stop),
                     format!("Unterminated, expected {}", stop),
+                    take_if_symbol(stop),
                 ),
             ),
         ),
@@ -126,7 +126,7 @@ where
 
 /// Creates a parser that skips the optional leading whitespace before using
 /// the given parser to return a result.
-pub fn skipping_whitespace_pc<I, T, FPC>(parser: FPC) -> impl Fn(&mut I) -> OptRes<T>
+pub fn skipping_whitespace<I, T, FPC>(parser: FPC) -> impl Fn(&mut I) -> OptRes<T>
 where
     I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation,
     FPC: Fn(&mut I) -> OptRes<T>,
@@ -135,6 +135,26 @@ where
         |(_, r)| r,
         zip_allow_left_none(take_if_predicate(LexemeTrait::is_whitespace), parser),
     )
+}
+
+/// Creates a parser that demands leading whitespace before using
+/// the given parser to return a result.
+pub fn demanding_whitespace<I, T, FPC, S: AsRef<str> + 'static>(
+    err_msg: S,
+    parser: FPC,
+) -> Box<dyn Fn(&mut I) -> OptRes<T>>
+where
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation + 'static,
+    FPC: Fn(&mut I) -> OptRes<T> + 'static,
+    T: 'static,
+{
+    Box::new(apply(
+        |(_, r)| r,
+        and(
+            demand(err_msg, take_if_predicate(LexemeTrait::is_whitespace)),
+            parser,
+        ),
+    ))
 }
 
 /// Creates a parser that consumes a list of comma separated values.
@@ -147,8 +167,8 @@ where
     FPC: Fn(&mut I) -> OptRes<T>,
 {
     let item_comma_parser = zip_allow_right_none(
-        skipping_whitespace_pc(item_parser),
-        skipping_whitespace_pc(take_if_symbol(',')),
+        skipping_whitespace(item_parser),
+        skipping_whitespace(take_if_symbol(',')),
     );
     move |source| {
         let mut result: Vec<T> = vec![];

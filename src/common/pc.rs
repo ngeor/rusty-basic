@@ -1,4 +1,4 @@
-use super::{Locatable, Transactional};
+use super::{Locatable, MapOptionResult, Transactional};
 
 //
 // # Parser combinators that are applicable to any parser
@@ -99,11 +99,7 @@ where
     FMap: Fn(T) -> U,
     FPC: Fn(&mut I) -> Option<Result<T, E>>,
 {
-    move |input| match parser(input) {
-        None => None,
-        Some(Err(err)) => Some(Err(err)),
-        Some(Ok(x)) => Some(Ok(f(x))),
-    }
+    move |input| parser(input).map_ok(|x| f(x))
 }
 
 /// Creates a new parser that maps the result of the given parser with the

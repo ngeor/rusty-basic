@@ -1,4 +1,5 @@
 use super::{Statement, StatementNode};
+use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
@@ -6,18 +7,39 @@ use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ref_ng().is_keyword(Keyword::Const) {
-        return Ok(None);
-    }
-    let pos = lexer.read()?.pos();
-    read_whitespace(lexer, "Expected whitespace after CONST")?;
-    let name_node = read(lexer, name::try_read, "Expected CONST name")?;
-    skip_whitespace(lexer)?;
-    read_symbol(lexer, '=')?;
-    skip_whitespace(lexer)?;
-    let right_side = read(lexer, expression::try_read, "Expected CONST expression")?;
-    Ok(Statement::Const(name_node, right_side).at(pos)).map(|x| Some(x))
+pub fn take_if_const<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+    apply(
+        |(l, (name_node, (_, right_side)))| {
+            let pos = l.pos();
+            Statement::Const(name_node, right_side).at(pos)
+        },
+        and(
+            take_if_keyword(Keyword::Const),
+            demanding_whitespace(
+                "Expected whitespace after CONST",
+                and(
+                    demand("Expected CONST name", name::take_if_name_node()),
+                    and(
+                        demand(
+                            "Expected = after CONST name",
+                            skipping_whitespace(take_if_symbol('=')),
+                        ),
+                        demand(
+                            "Expected CONST expression",
+                            skipping_whitespace(expression::take_if_expression_node()),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+}
+
+#[deprecated]
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
+    take_if_const()(lexer).transpose()
 }
 
 #[cfg(test)]

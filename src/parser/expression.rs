@@ -8,16 +8,18 @@ use crate::variant;
 use std::io::BufRead;
 
 pub fn take_if_expression_node<T: BufRead + 'static>(
-) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
-    move |input| {
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
+    // boxed needed because otherwise rust complains about an infinite recursion on the
+    // concrete type
+    Box::new(move |input| {
         take_if_single_expression()(input).and_then_ok(|first_expression| {
             let opt_op = take_if_operand(&first_expression)(input);
             match opt_op {
                 None => Some(Ok(first_expression.simplify_unary_minus_literals())),
                 Some(Err(err)) => Some(Err(err)),
                 Some(Ok(Locatable { element: op, pos })) => demand(
-                    skipping_whitespace_pc(take_if_expression_node_boxed()),
                     "Expected right side expression",
+                    skipping_whitespace(take_if_expression_node()),
                 )(input)
                 .map_ok(|right_expr| {
                     apply_priority_order(first_expression, right_expr, op, pos)
@@ -25,14 +27,7 @@ pub fn take_if_expression_node<T: BufRead + 'static>(
                 }),
             }
         })
-    }
-}
-
-// boxed needed because otherwise rust complains about an infinite recursion on the
-// concrete type
-fn take_if_expression_node_boxed<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
-    Box::new(take_if_expression_node())
+    })
 }
 
 fn take_if_single_expression<T: BufRead + 'static>(
@@ -63,8 +58,8 @@ fn take_if_unary_minus<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> O
         and(
             take_if_symbol('-'),
             demand(
-                take_if_expression_node_boxed(),
                 "Expected expression after unary minus",
+                take_if_expression_node(),
             ),
         ),
     )
@@ -73,18 +68,12 @@ fn take_if_unary_minus<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> O
 fn take_if_unary_not<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
 {
     apply(
-        |(l, (_, child))| apply_unary_priority_order(child, UnaryOperand::Not, l.pos()),
+        |(l, child)| apply_unary_priority_order(child, UnaryOperand::Not, l.pos()),
         and(
             take_if_keyword(Keyword::Not),
-            and(
-                demand(
-                    take_if_predicate(LexemeTrait::is_whitespace),
-                    "Expected whitespace after NOT",
-                ),
-                demand(
-                    take_if_expression_node_boxed(),
-                    "Expected expression after NOT",
-                ),
+            demanding_whitespace(
+                "Expected whitespace after NOT",
+                demand("Expected expression after NOT", take_if_expression_node()),
             ),
         ),
     )
@@ -98,7 +87,7 @@ fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<Expr
         },
         and(
             take_if_symbol('#'),
-            demand(number_literal::take_if_digits(), "Expected digits after #"),
+            demand("Expected digits after #", number_literal::take_if_digits()),
         ),
     )
 }
@@ -108,7 +97,7 @@ fn take_if_parenthesis<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> O
     // TODO allow skipping whitespace inside parenthesis
     apply(
         |(open_parenthesis_pos, x)| Expression::Parenthesis(Box::new(x)).at(open_parenthesis_pos),
-        between('(', ')', take_if_expression_node_boxed()),
+        between('(', ')', take_if_expression_node()),
     )
 }
 
@@ -186,7 +175,7 @@ mod string_literal {
                 take_if_symbol('"'),
                 and(
                     take_until(|x: &LexemeNode| x.is_eol() || x.is_symbol('"')),
-                    demand(take_if_symbol('"'), "Unterminated string"),
+                    demand("Unterminated string", take_if_symbol('"')),
                 ),
             ),
         )
@@ -245,8 +234,8 @@ mod number_literal {
                 take_if_symbol('.'),
                 zip_allow_right_none(
                     demand(
-                        drop_location(take_if_digits()),
                         "Expected digits after decimal point",
+                        drop_location(take_if_digits()),
                     ),
                     take_if_symbol('#'),
                 ),
@@ -327,7 +316,7 @@ mod word {
             },
             zip_allow_right_none(
                 name::take_if_name_node(),
-                between('(', ')', csv(super::take_if_expression_node_boxed())),
+                between('(', ')', csv(super::take_if_expression_node())),
             ),
         )
     }
@@ -350,7 +339,7 @@ fn take_if_operand<T: BufRead + 'static>(
                     .at(l.pos())
                 },
                 zip_allow_right_none(
-                    skipping_whitespace_pc(take_if_symbol('<')),
+                    skipping_whitespace(take_if_symbol('<')),
                     or(
                         drop_location(take_if_symbol('=')),
                         drop_location(take_if_symbol('>')),
@@ -367,7 +356,7 @@ fn take_if_operand<T: BufRead + 'static>(
                     .at(l.pos())
                 },
                 zip_allow_right_none(
-                    skipping_whitespace_pc(take_if_symbol('>')),
+                    skipping_whitespace(take_if_symbol('>')),
                     drop_location(take_if_symbol('=')),
                 ),
             )),
@@ -389,7 +378,7 @@ fn take_if_simple_op<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
     Box::new(map_locatable(
         move |_| op,
-        skipping_whitespace_pc(take_if_symbol(ch)),
+        skipping_whitespace(take_if_symbol(ch)),
     ))
 }
 

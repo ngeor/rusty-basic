@@ -1,4 +1,5 @@
-use super::{NameNode, Statement, StatementNode};
+use super::{Statement, StatementNode};
+use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
@@ -6,27 +7,30 @@ use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
 
+pub fn take_if_assignment<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
+    Box::new(apply(
+        |((name_node, _), right_side)| {
+            name_node.map(|name| Statement::Assignment(name, right_side))
+        },
+        and(
+            in_transaction_pc(and(
+                name::take_if_name_node(),
+                skipping_whitespace(take_if_symbol('=')),
+            )),
+            demand(
+                "Expected expression",
+                skipping_whitespace(expression::take_if_expression_node()),
+            ),
+        ),
+    ))
+}
+
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
-    let opt_name_node = in_transaction(lexer, do_read_left_side)?;
-    match opt_name_node {
-        Some(name_node) => {
-            let right_side = read(lexer, expression::try_read, "Expected expression")?;
-            Ok(Some(
-                name_node.map(|name| Statement::Assignment(name, right_side)),
-            ))
-        }
-        None => Ok(None),
-    }
-}
-
-fn do_read_left_side<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<NameNode, QErrorNode> {
-    let name_node = read(lexer, name::try_read, "Expected name")?;
-    skip_whitespace(lexer)?;
-    read_symbol(lexer, '=')?;
-    skip_whitespace(lexer)?;
-    Ok(name_node)
+    take_if_assignment()(lexer).transpose()
 }
 
 #[cfg(test)]

@@ -39,7 +39,7 @@ fn detect_assignment_and_abort<T: BufRead + 'static>(
 
 fn take_args_no_parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
-    Box::new(with_leading_space(csv(
+    Box::new(with_leading_whitespace(csv(
         expression::take_if_expression_node(),
     )))
 }

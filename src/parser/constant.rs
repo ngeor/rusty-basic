@@ -13,7 +13,7 @@ pub fn take_if_const<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> Opt
             let pos = l.pos();
             Statement::Const(name_node, right_side).at(pos)
         },
-        with_space_between(
+        with_whitespace_between(
             take_if_keyword(Keyword::Const),
             and(
                 demand("Expected CONST name", name::take_if_name_node()),

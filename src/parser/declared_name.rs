@@ -38,7 +38,7 @@ pub fn take_if_declared_name<T: BufRead + 'static>(
 fn as_part<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<TypeDefinition>> {
     Box::new(apply(
         |(_, r)| r,
-        with_leading_space(with_space_between(
+        with_leading_whitespace(with_whitespace_between(
             take_if_keyword(Keyword::As),
             take_and_map_to_result(lexeme_node_to_type_definition),
         )),

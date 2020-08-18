@@ -1,5 +1,4 @@
-// parses DIM statement
-
+use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
@@ -8,20 +7,23 @@ use crate::parser::declared_name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+/// Parses DIM statement
+pub fn take_if_dim<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
+{
+    Box::new(apply(
+        |(l, r)| Statement::Dim(r).at(l.pos()),
+        with_whitespace_between(
+            take_if_keyword(Keyword::Dim),
+            declared_name::take_if_declared_name(),
+        ),
+    ))
+}
+
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
-    // try to read DIM, if it succeeds demand it, else return None
-    if !lexer.peek_ref_ng().is_keyword(Keyword::Dim) {
-        return Ok(None);
-    }
-    // demand DIM
-    let pos = read_keyword(lexer, Keyword::Dim)?;
-    // demand whitespace
-    read_whitespace(lexer, "Expected whitespace after DIM")?;
-    // demand variable name
-    let declared_name_node = read(lexer, declared_name::try_read, "Expected variable name")?;
-    Ok(Some(Statement::Dim(declared_name_node).at(pos)))
+    take_if_dim()(lexer).transpose()
 }
 
 #[cfg(test)]

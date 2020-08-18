@@ -151,7 +151,7 @@ where
 ///
 /// Both parsers must succeed and the whitespace must be present between their
 /// invocation.
-pub fn with_space_between<I, T1, T2, F1, F2>(
+pub fn with_whitespace_between<I, T1, T2, F1, F2>(
     first: F1,
     second: F2,
 ) -> Box<dyn Fn(&mut I) -> OptRes<(T1, T2)>>
@@ -170,7 +170,7 @@ where
 
 /// Crates a parser that givens the result of the given parser, ensuring that
 /// there is a whitespace before it. The whitespace is mandatory.
-pub fn with_leading_space<I, T, F>(parser: F) -> Box<dyn Fn(&mut I) -> OptRes<T>>
+pub fn with_leading_whitespace<I, T, F>(parser: F) -> Box<dyn Fn(&mut I) -> OptRes<T>>
 where
     I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + 'static,
     T: 'static,

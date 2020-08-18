@@ -69,7 +69,7 @@ fn take_if_unary_not<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> Opt
 {
     apply(
         |(l, child)| apply_unary_priority_order(child, UnaryOperand::Not, l.pos()),
-        with_space_between(take_if_keyword(Keyword::Not), take_if_expression_node()),
+        with_whitespace_between(take_if_keyword(Keyword::Not), take_if_expression_node()),
     )
 }
 

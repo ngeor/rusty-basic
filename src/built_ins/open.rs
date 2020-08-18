@@ -8,63 +8,83 @@
 //           For sequential files, the number of characters buffered (default is 512 bytes)
 
 use super::{BuiltInLint, BuiltInRun};
+use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
 use crate::linter::ExpressionNode;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
-use crate::parser::{BareName, Expression, Statement, StatementNode};
+use crate::parser::{Expression, Statement, StatementNode};
 use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ref_ng().is_keyword(Keyword::Open) {
-        return Ok(None);
-    }
-
-    let Locatable { element: next, pos } = lexer.read()?;
-    read_whitespace(lexer, "Expected space after OPEN")?;
-    let file_name_expr = read(lexer, expression::try_read, "Expected filename")?;
-    read_whitespace(lexer, "Expected space after filename")?;
-    read_keyword(lexer, Keyword::For)?;
-    read_whitespace(lexer, "Expected space after FOR")?;
-    let mode: i32 = read_demand_file_mode(lexer)?.into();
-    read_whitespace(lexer, "Expected space after file mode")?;
-    let mut next: LexemeNode = lexer.read()?;
-    let mut access: i32 = FileAccess::Unspecified.into();
-    if next.as_ref().is_keyword(Keyword::Access) {
-        read_whitespace(lexer, "Expected space after ACCESS")?;
-        access = read_demand_file_access(lexer)?.into();
-        read_whitespace(lexer, "Expected space after file access")?;
-        next = lexer.read()?;
-    }
-    if next.as_ref().is_keyword(Keyword::As) {
-        read_whitespace(lexer, "Expected space after AS")?;
-        let file_handle = read(lexer, expression::try_read, "Expected file handle")?;
-        let bare_name: BareName = "OPEN".into();
-
-        Ok(Statement::SubCall(
-            bare_name,
-            vec![
-                file_name_expr,
-                Expression::IntegerLiteral(mode).at(Location::start()),
-                Expression::IntegerLiteral(access).at(Location::start()),
-                file_handle,
-            ],
-        )
-        .at(pos))
-        .map(|x| Some(x))
-    } else {
-        Err(QError::SyntaxError("Expected AS".to_string())).with_err_at(&next)
-    }
+pub fn take_if_open<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
+{
+    Box::new(apply(
+        |(l, (file_name_expr, (file_mode, (opt_file_access, file_handle))))| {
+            Statement::SubCall(
+                "OPEN".into(),
+                vec![
+                    file_name_expr,
+                    // TODO take actual pos
+                    Expression::IntegerLiteral(file_mode.into()).at(Location::start()),
+                    // TODO take actual pos
+                    Expression::IntegerLiteral(
+                        opt_file_access.unwrap_or(FileAccess::Unspecified).into(),
+                    )
+                    .at(Location::start()),
+                    file_handle,
+                ],
+            )
+            .at(l.pos())
+        },
+        with_whitespace_between(
+            take_if_keyword(Keyword::Open),
+            with_whitespace_between(
+                expression::take_if_expression_node(), // file name
+                with_whitespace_between(
+                    take_file_mode(),
+                    zip_allow_left_none(take_file_access(), take_file_handle()),
+                ),
+            ),
+        ),
+    ))
 }
 
-fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode, QErrorNode> {
-    let next = lexer.read()?;
+fn take_file_mode<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<FileMode>> {
+    Box::new(apply(
+        |(_, r)| r,
+        with_whitespace_between(
+            take_if_keyword(Keyword::For),
+            take_and_map_to_result(read_demand_file_mode),
+        ),
+    ))
+}
+
+fn take_file_access<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<FileAccess>> {
+    Box::new(apply(
+        |(_, r)| r,
+        with_whitespace_between(
+            take_if_keyword(Keyword::Access),
+            take_and_map_to_result(read_demand_file_access),
+        ),
+    ))
+}
+
+fn take_file_handle<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<crate::parser::ExpressionNode>> {
+    Box::new(apply(
+        |(_, r)| r,
+        with_whitespace_between(
+            take_if_keyword(Keyword::As),
+            expression::take_if_file_handle(),
+        ),
+    ))
+}
+
+fn read_demand_file_mode(next: LexemeNode) -> Result<FileMode, QErrorNode> {
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Input, _) => Ok(FileMode::Input),
         Lexeme::Keyword(Keyword::Output, _) => Ok(FileMode::Output),
@@ -76,8 +96,7 @@ fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode
     }
 }
 
-fn read_demand_file_access<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileAccess, QErrorNode> {
-    let next = lexer.read()?;
+fn read_demand_file_access(next: LexemeNode) -> Result<FileAccess, QErrorNode> {
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Read, _) => Ok(FileAccess::Read),
         _ => Err(QError::SyntaxError(

@@ -3,6 +3,7 @@
 // LINE INPUT #file-number%, variable$
 
 use super::{BuiltInLint, BuiltInRun};
+use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
@@ -10,7 +11,7 @@ use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
 use crate::linter::ExpressionNode;
 use crate::parser::buf_lexer_helpers::*;
-use crate::parser::sub_call;
+use crate::parser::expression;
 use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
 use crate::variant::Variant;
 use std::io::BufRead;
@@ -18,19 +19,18 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct LineInput {}
 
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    if lexer.peek_ref_ng().is_keyword(Keyword::Line) {
-        let pos = lexer.read()?.pos();
-        read_whitespace(lexer, "Expected space after LINE")?;
-        read_keyword(lexer, Keyword::Input)?;
-        read_whitespace(lexer, "Expected space after INPUT")?;
-        let args = sub_call::read_arg_list(lexer)?;
-        Ok(Some(Statement::SubCall("LINE INPUT".into(), args).at(pos)))
-    } else {
-        Ok(None)
-    }
+pub fn take_if_line_input<T: BufRead + 'static>(
+) -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+    apply(
+        |(l, (_, r))| Statement::SubCall("LINE INPUT".into(), r).at(l.pos()),
+        with_whitespace_between(
+            take_if_keyword(Keyword::Line),
+            with_whitespace_between(
+                take_if_keyword(Keyword::Input),
+                csv(expression::take_if_expression_node()),
+            ),
+        ),
+    )
 }
 
 impl BuiltInLint for LineInput {

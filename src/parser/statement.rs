@@ -19,12 +19,13 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
-    dim_parser::try_read(lexer)
-        .or_try_read(|| constant::try_read(lexer))
-        .or_try_read(|| comment::try_read(lexer))
-        .or_try_read(|| built_ins::try_read(lexer))
-        .or_try_read(|| sub_call::try_read(lexer))
-        .or_try_read(|| assignment::try_read(lexer))
+    dim_parser::take_if_dim()(lexer)
+        .transpose()
+        .or_try_read(|| constant::take_if_const()(lexer).transpose())
+        .or_try_read(|| comment::take_if_comment()(lexer).transpose())
+        .or_try_read(|| built_ins::take_if_built_in()(lexer).transpose())
+        .or_try_read(|| sub_call::take_if_sub_call()(lexer).transpose())
+        .or_try_read(|| assignment::take_if_assignment()(lexer).transpose())
         .or_try_read(|| try_read_label(lexer))
         .or_try_read(|| if_block::try_read(lexer))
         .or_try_read(|| for_loop::try_read(lexer))

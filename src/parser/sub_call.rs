@@ -52,23 +52,6 @@ fn take_args_parenthesis<T: BufRead + 'static>(
     ))
 }
 
-#[deprecated]
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    take_if_sub_call()(lexer).transpose()
-}
-
-#[deprecated]
-pub fn read_arg_list<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Vec<ExpressionNode>, QErrorNode> {
-    match csv(expression::take_if_expression_node())(lexer) {
-        None => Ok(vec![]),
-        Some(x) => x,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;

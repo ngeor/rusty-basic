@@ -18,6 +18,7 @@ mod val;
 // utilities for the built-ins
 mod util;
 
+use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::BufLexer;
@@ -272,11 +273,12 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
 }
 
 /// Parses built-in subs which have a special syntax.
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<crate::parser::StatementNode>, QErrorNode> {
-    input::try_read(lexer)
-        .or_try_read(|| line_input::try_read(lexer))
-        .or_try_read(|| name::try_read(lexer))
-        .or_try_read(|| open::try_read(lexer))
+pub fn take_if_built_in<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<crate::parser::StatementNode>> {
+    Box::new(or_vec(vec![
+        Box::new(input::take_if_input()),
+        Box::new(line_input::take_if_line_input()),
+        Box::new(name::take_if_name()),
+        open::take_if_open(),
+    ]))
 }

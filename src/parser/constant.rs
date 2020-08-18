@@ -32,13 +32,6 @@ pub fn take_if_const<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> Opt
     )
 }
 
-#[deprecated]
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    take_if_const()(lexer).transpose()
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;

@@ -14,6 +14,7 @@
 // after the user presses the Enter key.
 
 use super::{BuiltInLint, BuiltInRun};
+use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
@@ -21,7 +22,7 @@ use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
 use crate::linter::{Expression, ExpressionNode};
 use crate::parser::buf_lexer_helpers::*;
-use crate::parser::sub_call;
+use crate::parser::expression;
 use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
 use crate::variant::Variant;
 use std::io::BufRead;
@@ -29,17 +30,14 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct Input {}
 
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    if lexer.peek_ref_ng().is_keyword(Keyword::Input) {
-        let pos = lexer.read()?.pos();
-        read_whitespace(lexer, "Expected space after INPUT")?;
-        let args = sub_call::read_arg_list(lexer)?;
-        Ok(Some(Statement::SubCall("INPUT".into(), args).at(pos)))
-    } else {
-        Ok(None)
-    }
+pub fn take_if_input<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+    apply(
+        |(l, r)| Statement::SubCall("INPUT".into(), r).at(l.pos()),
+        with_whitespace_between(
+            take_if_keyword(Keyword::Input),
+            csv(expression::take_if_expression_node()),
+        ),
+    )
 }
 
 impl BuiltInLint for Input {

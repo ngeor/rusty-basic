@@ -3,35 +3,35 @@
 // TODO support directory
 
 use super::{BuiltInLint, BuiltInRun};
+use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
 use crate::linter::ExpressionNode;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
-use crate::parser::{BareName, Statement, StatementNode, TypeQualifier};
+use crate::parser::{Statement, StatementNode, TypeQualifier};
 use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Name {}
 
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    if lexer.peek_ref_ng().is_keyword(Keyword::Name) {
-        let pos = lexer.read()?.pos();
-        read_whitespace(lexer, "Expected space after NAME")?;
-        let old_file_name = read(lexer, expression::try_read, "Expected original filename")?;
-        read_whitespace(lexer, "Expected space after filename")?;
-        read_keyword(lexer, Keyword::As)?;
-        read_whitespace(lexer, "Expected space after AS")?;
-        let new_file_name = read(lexer, expression::try_read, "Expected new filename")?;
-        let bare_name: BareName = "NAME".into();
-        Ok(Statement::SubCall(bare_name, vec![old_file_name, new_file_name]).at(pos))
-            .map(|x| Some(x))
-    } else {
-        Ok(None)
-    }
+pub fn take_if_name<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+    apply(
+        |(l, (old_file, (_, new_file)))| {
+            Statement::SubCall("NAME".into(), vec![old_file, new_file]).at(l.pos())
+        },
+        with_whitespace_between(
+            take_if_keyword(Keyword::Name),
+            with_whitespace_between(
+                expression::take_if_expression_node(),
+                with_whitespace_between(
+                    take_if_keyword(Keyword::As),
+                    expression::take_if_expression_node(),
+                ),
+            ),
+        ),
+    )
 }
 
 impl BuiltInLint for Name {

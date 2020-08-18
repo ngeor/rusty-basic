@@ -19,13 +19,6 @@ pub fn take_if_dim<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> Op
     ))
 }
 
-#[deprecated]
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    take_if_dim()(lexer).transpose()
-}
-
 #[cfg(test)]
 mod tests {
     use crate::common::*;

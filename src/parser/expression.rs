@@ -73,7 +73,7 @@ fn take_if_unary_not<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> Opt
     )
 }
 
-fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+pub fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
     switch_err(
         |(Locatable { pos, .. }, Locatable { element, .. })| match element.parse::<u32>() {
             Ok(d) => Some(Ok(Expression::FileHandle(d.into()).at(pos))),

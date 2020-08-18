@@ -26,13 +26,6 @@ pub fn take_if_assignment<T: BufRead + 'static>(
     ))
 }
 
-#[deprecated]
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    take_if_assignment()(lexer).transpose()
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;

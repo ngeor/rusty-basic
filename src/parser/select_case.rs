@@ -66,6 +66,7 @@ pub fn try_read<T: BufRead + 'static>(
 
 /// This is a trimmed-down version of parse_statements, to parse any comments
 /// between SELECT CASE X ... until the first CASE expression
+#[deprecated]
 fn parse_inline_comments<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<StatementNodes, QErrorNode> {
@@ -88,6 +89,7 @@ fn parse_inline_comments<T: BufRead + 'static>(
     }
 }
 
+#[deprecated]
 fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_case_else = false;
     lexer.begin_transaction();
@@ -106,6 +108,7 @@ fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNod
     Ok(found_case_else)
 }
 
+#[deprecated]
 fn try_read_case<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<CaseBlockNode>, QErrorNode> {
@@ -124,6 +127,7 @@ fn try_read_case<T: BufRead + 'static>(
     }
 }
 
+#[deprecated]
 fn read_case_is<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<CaseBlockNode>, QErrorNode> {
@@ -143,6 +147,7 @@ fn read_case_is<T: BufRead + 'static>(
     }))
 }
 
+#[deprecated]
 fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Operand, QErrorNode> {
     let next = lexer.read()?;
     if next.as_ref().is_symbol('=') {
@@ -172,6 +177,7 @@ fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Opera
     }
 }
 
+#[deprecated]
 fn read_case_expr<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<CaseBlockNode>, QErrorNode> {
@@ -206,6 +212,7 @@ fn read_case_expr<T: BufRead + 'static>(
     }))
 }
 
+#[deprecated]
 fn try_read_case_else<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNodes>, QErrorNode> {

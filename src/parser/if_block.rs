@@ -12,6 +12,7 @@ pub fn take_if_if_block<T: BufRead + 'static>(
     Box::new(|lexer| try_read(lexer).transpose())
 }
 
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
@@ -52,6 +53,7 @@ pub fn try_read<T: BufRead + 'static>(
 }
 
 /// Read the IF block, up to the first ELSE IF or ELSE or END IF
+#[deprecated]
 fn read_if_block<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
     condition: ExpressionNode,
@@ -82,6 +84,7 @@ fn read_if_block<T: BufRead + 'static>(
     })
 }
 
+#[deprecated]
 fn try_read_else_if_block<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ConditionalBlockNode>, QErrorNode> {
@@ -104,6 +107,7 @@ fn try_read_else_if_block<T: BufRead + 'static>(
     }))
 }
 
+#[deprecated]
 fn try_read_else_block<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
     is_multi_line: bool,
@@ -135,6 +139,7 @@ fn try_read_else_block<T: BufRead + 'static>(
     }
 }
 
+#[deprecated]
 fn is_multi_line<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     // if we find EOL or comment, it's multi-line
     lexer.begin_transaction();

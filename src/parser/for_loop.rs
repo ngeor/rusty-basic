@@ -13,6 +13,7 @@ pub fn take_if_for_loop<T: BufRead + 'static>(
     Box::new(|lexer| try_read(lexer).transpose())
 }
 
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
@@ -52,6 +53,7 @@ pub fn try_read<T: BufRead + 'static>(
     ))
 }
 
+#[deprecated]
 fn try_parse_step<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<ExpressionNode>, QErrorNode> {
@@ -133,6 +135,7 @@ fn try_parse_step<T: BufRead + 'static>(
     Ok(expr)
 }
 
+#[deprecated]
 fn try_parse_next_counter<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<NameNode>, QErrorNode> {

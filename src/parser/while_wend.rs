@@ -1,4 +1,5 @@
 use super::{ConditionalBlockNode, Statement, StatementNode};
+use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
@@ -8,40 +9,32 @@ use std::io::BufRead;
 
 pub fn take_if_while_wend<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    Box::new(|lexer| try_read(lexer).transpose())
-}
-
-#[deprecated]
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    // TODO lexer consume_if + map
-    if !lexer.peek_ref_ng().is_keyword(Keyword::While) {
-        return Ok(None);
-    }
-    let pos = lexer.read()?.pos();
-    read_whitespace(lexer, "Expected whitespace after WHILE keyword")?;
-    let condition = read(
-        lexer,
-        expression::try_read,
-        "Expected expression after WHILE",
-    )?;
-    let statements = parse_statements_with_options(
-        lexer,
-        |x| x.is_keyword(Keyword::Wend),
-        ParseStatementsOptions {
-            first_statement_separated_by_whitespace: false,
-            err: QError::WhileWithoutWend,
+    apply(
+        |(l, (condition, (statements, _)))| {
+            Statement::While(ConditionalBlockNode {
+                condition,
+                statements,
+            })
+            .at(l.pos())
         },
-    )?;
-    lexer.read_ng()?; // read WEND
-    Ok(Some(
-        Statement::While(ConditionalBlockNode {
-            condition,
-            statements,
-        })
-        .at(pos),
-    ))
+        with_whitespace_between(
+            take_if_keyword(Keyword::While),
+            and(
+                expression::take_if_expression_node(),
+                and(
+                    take_if_statements_with_options(
+                        |x| x.is_keyword(Keyword::Wend),
+                        ParseStatementsOptions {
+                            first_statement_separated_by_whitespace: false,
+                            err: QError::WhileWithoutWend,
+                        },
+                    ),
+                    // TODO let the statements consume the predicate too
+                    take_if_keyword(Keyword::Wend),
+                ),
+            ),
+        ),
+    )
 }
 
 #[cfg(test)]

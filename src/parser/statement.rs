@@ -17,6 +17,7 @@ use crate::parser::types::*;
 use crate::parser::while_wend;
 use std::io::BufRead;
 
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
@@ -33,21 +34,22 @@ pub fn try_read<T: BufRead + 'static>(
         .or_try_read(|| select_case::try_read(lexer))
         .or_try_read(|| while_wend::try_read(lexer))
         .or_try_read(|| take_if_go_to()(lexer).transpose())
-        .or_try_read(|| try_read_on(lexer))
-        .or_try_read(|| try_read_illegal_keywords(lexer))
+        .or_try_read(|| take_if_on_error_goto()(lexer).transpose())
+        .or_try_read(|| try_read_illegal_keywords()(lexer).transpose())
 }
 
-fn try_read_illegal_keywords<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    let p = lexer.peek_ref_ng()?;
-    if p.is_keyword(Keyword::Wend) {
-        Err(QError::WendWithoutWhile).with_err_at(p.unwrap())
-    } else if p.is_keyword(Keyword::Else) {
-        Err(QError::ElseWithoutIf).with_err_at(p.unwrap())
-    } else {
-        Ok(None)
-    }
+fn try_read_illegal_keywords<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
+    Box::new(or_vec(vec![
+        Box::new(switch_err(
+            |p| Some(Err(QError::WendWithoutWhile).with_err_at(p)),
+            take_if_keyword(Keyword::Wend),
+        )),
+        Box::new(switch_err(
+            |p| Some(Err(QError::ElseWithoutIf).with_err_at(p)),
+            take_if_keyword(Keyword::Else),
+        )),
+    ]))
 }
 
 fn take_if_label<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
@@ -57,19 +59,21 @@ fn take_if_label<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptR
     )))
 }
 
-fn try_read_on<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ref_ng().is_keyword(Keyword::On) {
-        return Ok(None);
-    }
-    let pos = lexer.read()?.pos();
-    read_whitespace(lexer, "Expected space after ON")?;
-    read_keyword(lexer, Keyword::Error)?;
-    read_whitespace(lexer, "Expected space after ERROR")?;
-    read_keyword(lexer, Keyword::GoTo)?;
-    read_whitespace(lexer, "Expected space after GOTO")?;
-    let name_node = read(lexer, name::try_read_bare, "Expected label name")?;
-    let Locatable { element: name, .. } = name_node;
-    Ok(Some(Statement::ErrorHandler(name).at(pos)))
+fn take_if_on_error_goto<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
+    Box::new(apply(
+        |(l, (_, (_, r)))| Statement::ErrorHandler(r.strip_location()).at(l.pos()),
+        with_whitespace_between(
+            take_if_keyword(Keyword::On),
+            with_whitespace_between(
+                take_if_keyword(Keyword::Error),
+                with_whitespace_between(
+                    take_if_keyword(Keyword::GoTo),
+                    name::take_if_bare_name_node(),
+                ),
+            ),
+        ),
+    ))
 }
 
 fn take_if_go_to<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {

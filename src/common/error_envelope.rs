@@ -1,4 +1,4 @@
-use super::{HasLocation, Location};
+use super::{HasLocation, Locatable, Location};
 
 //
 // ErrorEnvelope
@@ -127,6 +127,13 @@ impl<TLocation: HasLocation, T, E> ToLocatableError<&TLocation, Result<T, ErrorE
 
 impl<T, E> ToLocatableError<Location, Result<T, ErrorEnvelope<E>>> for Result<T, E> {
     fn with_err_at(self, pos: Location) -> Result<T, ErrorEnvelope<E>> {
+        self.map_err(|e| ErrorEnvelope::Pos(e, pos))
+    }
+}
+
+impl<T, E, TL> ToLocatableError<Locatable<TL>, Result<T, ErrorEnvelope<E>>> for Result<T, E> {
+    fn with_err_at(self, locatable: Locatable<TL>) -> Result<T, ErrorEnvelope<E>> {
+        let Locatable { pos, .. } = locatable;
         self.map_err(|e| ErrorEnvelope::Pos(e, pos))
     }
 }

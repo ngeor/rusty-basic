@@ -145,19 +145,19 @@ fn is_multi_line<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode
     Ok(is_multi_line)
 }
 
-fn exit_predicate_if_single_line(l: &Option<&LexemeNode>) -> bool {
+fn exit_predicate_if_single_line(l: Option<&LexemeNode>) -> bool {
     l.is_eof() || l.is_eol() || l.is_keyword(Keyword::ElseIf) || l.is_keyword(Keyword::Else)
 }
 
-fn exit_predicate_if_multi_line(l: &Option<&LexemeNode>) -> bool {
+fn exit_predicate_if_multi_line(l: Option<&LexemeNode>) -> bool {
     l.is_keyword(Keyword::ElseIf) || l.is_keyword(Keyword::Else) || l.is_keyword(Keyword::End)
 }
 
-fn exit_predicate_else_single_line(l: &Option<&LexemeNode>) -> bool {
+fn exit_predicate_else_single_line(l: Option<&LexemeNode>) -> bool {
     l.is_eol_or_eof()
 }
 
-fn exit_predicate_else_multi_line(l: &Option<&LexemeNode>) -> bool {
+fn exit_predicate_else_multi_line(l: Option<&LexemeNode>) -> bool {
     l.is_keyword(Keyword::End)
 }
 

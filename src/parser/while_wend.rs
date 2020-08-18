@@ -6,6 +6,12 @@ use crate::parser::expression;
 use crate::parser::statements::*;
 use std::io::BufRead;
 
+pub fn take_if_while_wend<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
+    Box::new(|lexer| try_read(lexer).transpose())
+}
+
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {

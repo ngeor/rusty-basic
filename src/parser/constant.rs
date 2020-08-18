@@ -7,7 +7,8 @@ use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
 
-pub fn take_if_const<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+pub fn take_if_const<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(
         |(l, (name_node, (_, right_side)))| {
             let pos = l.pos();

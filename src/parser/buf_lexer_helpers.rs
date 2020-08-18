@@ -110,7 +110,7 @@ where
     T: 'static,
     FPC: Fn(&mut I) -> OptRes<T> + 'static,
 {
-    Box::new(apply(
+    apply(
         |(l, r)| (l.pos(), r.0),
         and(
             take_if_symbol(start),
@@ -122,7 +122,7 @@ where
                 ),
             ),
         ),
-    ))
+    )
 }
 
 /// Creates a parser that takes the next lexeme if it is a whitespace.
@@ -135,10 +135,10 @@ where
 
 /// Creates a parser that skips the optional leading whitespace before using
 /// the given parser to return a result.
-pub fn skipping_whitespace<I, T, FPC>(parser: FPC) -> impl Fn(&mut I) -> OptRes<T>
+pub fn skipping_whitespace<I, T: 'static, FPC>(parser: FPC) -> Box<dyn Fn(&mut I) -> OptRes<T>>
 where
-    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation,
-    FPC: Fn(&mut I) -> OptRes<T>,
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation + 'static,
+    FPC: Fn(&mut I) -> OptRes<T> + 'static,
 {
     apply(
         |(_, r)| r,
@@ -162,10 +162,10 @@ where
     F1: Fn(&mut I) -> OptRes<T1> + 'static,
     F2: Fn(&mut I) -> OptRes<T2> + 'static,
 {
-    Box::new(apply(
+    apply(
         |(l, (_, r))| (l, r),
         and(first, and(take_if_whitespace(), second)),
-    ))
+    )
 }
 
 /// Crates a parser that givens the result of the given parser, ensuring that
@@ -176,17 +176,17 @@ where
     T: 'static,
     F: Fn(&mut I) -> OptRes<T> + 'static,
 {
-    Box::new(apply(|(_, r)| r, and(take_if_whitespace(), parser)))
+    apply(|(_, r)| r, and(take_if_whitespace(), parser))
 }
 
 /// Creates a parser that consumes a list of comma separated values.
 /// The values are parsed by the given parser.
 /// Whitespace between the elements and the commas is ignored.
 /// Trailing comma leads to error.
-pub fn csv<I, T, FPC>(item_parser: FPC) -> impl Fn(&mut I) -> OptRes<Vec<T>>
+pub fn csv<I, T: 'static, FPC>(item_parser: FPC) -> impl Fn(&mut I) -> OptRes<Vec<T>>
 where
-    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation,
-    FPC: Fn(&mut I) -> OptRes<T>,
+    I: ResultIterator<Item = LexemeNode, Err = QErrorNode> + Transactional + HasLocation + 'static,
+    FPC: Fn(&mut I) -> OptRes<T> + 'static,
 {
     let item_comma_parser = zip_allow_right_none(
         skipping_whitespace(item_parser),

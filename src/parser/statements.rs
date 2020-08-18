@@ -12,6 +12,7 @@ pub struct ParseStatementsOptions {
     pub err: QError,
 }
 
+#[deprecated]
 pub fn parse_statements<T: BufRead + 'static, F, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     exit_predicate: F,
@@ -30,6 +31,7 @@ where
     )
 }
 
+#[deprecated]
 pub fn parse_statements_with_options<T: BufRead + 'static, F>(
     lexer: &mut BufLexer<T>,
     exit_predicate: F,
@@ -62,7 +64,10 @@ where
             read_separator = true;
         } else if p.is_symbol('\'') {
             // read comment, regardless of whether we've seen the separator or not
-            let s = read(lexer, statement::try_read, "Expected comment")?;
+            let s = statement::take_if_statement()(lexer).unwrap_or(
+                Err(QError::SyntaxError(format!("expected comment")))
+                    .with_err_at(Location::start()),
+            )?;
             statements.push(s);
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else if p.is_symbol(':') {
@@ -72,7 +77,10 @@ where
         } else {
             // must be a statement
             if read_separator {
-                let s = read(lexer, statement::try_read, "Expected statement")?;
+                let s = statement::take_if_statement()(lexer).unwrap_or(
+                    Err(QError::SyntaxError(format!("expected statement")))
+                        .with_err_at(Location::start()),
+                )?;
                 statements.push(s);
                 read_separator = false; // reset to ensure we have a separator for the next statement
             } else {

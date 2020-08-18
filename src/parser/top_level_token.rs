@@ -18,6 +18,7 @@ use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
@@ -27,10 +28,13 @@ pub fn try_read<T: BufRead + 'static>(
         .or_try_read(|| try_read_statement(lexer))
 }
 
+#[deprecated]
 fn try_read_statement<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    statement::try_read(lexer).map(to_top_level_opt)
+    statement::take_if_statement()(lexer)
+        .transpose()
+        .map(to_top_level_opt)
 }
 
 fn to_top_level_opt(x: Option<StatementNode>) -> Option<TopLevelTokenNode> {
@@ -41,6 +45,7 @@ fn to_top_level(x: StatementNode) -> TopLevelTokenNode {
     x.map(|s| s.into())
 }
 
+#[deprecated]
 pub fn parse_top_level_tokens<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<ProgramNode, QErrorNode> {

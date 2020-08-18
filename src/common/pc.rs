@@ -94,12 +94,15 @@ where
 
 /// Creates a new parser that maps the result of the given parser with the
 /// specified function.
-pub fn apply<I, T, U, FMap, FPC, E>(f: FMap, parser: FPC) -> impl Fn(&mut I) -> Option<Result<U, E>>
+pub fn apply<I: 'static, T: 'static, U: 'static, FMap, FPC, E: 'static>(
+    f: FMap,
+    parser: FPC,
+) -> Box<dyn Fn(&mut I) -> Option<Result<U, E>>>
 where
-    FMap: Fn(T) -> U,
-    FPC: Fn(&mut I) -> Option<Result<T, E>>,
+    FMap: Fn(T) -> U + 'static,
+    FPC: Fn(&mut I) -> Option<Result<T, E>> + 'static,
 {
-    move |input| parser(input).map_ok(|x| f(x))
+    Box::new(move |input| parser(input).map_ok(|x| f(x)))
 }
 
 /// Creates a new parser that maps the result of the given parser with the
@@ -264,6 +267,9 @@ where
 // # Parser combinators for Transactional
 //
 
+// TODO revisit transactions if possible to have a recursive read-undo pattern
+// TODO remove Lexer let parser work directly with characters instead (i.e. CharReader -> Parser directly)
+
 /// Creates a new parser that wraps the given parser inside a transaction.
 ///
 /// The transaction is committed if the result is Some(Ok),
@@ -323,13 +329,13 @@ where
 
 /// Creates a new parser that returns the result from the first parser that
 /// will return `Some()`.
-pub fn or_vec<I, T, E>(
+pub fn or_vec<I, T: 'static, E: 'static>(
     parsers: Vec<Box<dyn Fn(&mut I) -> Option<Result<T, E>>>>,
-) -> impl Fn(&mut I) -> Option<Result<T, E>>
+) -> Box<dyn Fn(&mut I) -> Option<Result<T, E>>>
 where
-    I: Transactional,
+    I: Transactional + 'static,
 {
-    move |input| {
+    Box::new(move |input| {
         input.begin_transaction();
         for p in parsers.iter() {
             match p(input) {
@@ -349,5 +355,5 @@ where
         }
         input.rollback_transaction();
         None
-    }
+    })
 }

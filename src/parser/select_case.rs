@@ -8,6 +8,12 @@ use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+pub fn take_if_select_case<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
+    Box::new(|lexer| try_read(lexer).transpose())
+}
+
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
@@ -60,7 +66,7 @@ pub fn try_read<T: BufRead + 'static>(
 
 /// This is a trimmed-down version of parse_statements, to parse any comments
 /// between SELECT CASE X ... until the first CASE expression
-fn parse_inline_comments<T: BufRead>(
+fn parse_inline_comments<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<StatementNodes, QErrorNode> {
     let mut statements: StatementNodes = vec![];

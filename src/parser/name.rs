@@ -8,7 +8,8 @@ use std::io::BufRead;
 
 // name node
 
-pub fn take_if_name_node<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<NameNode> {
+pub fn take_if_name_node<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<NameNode>>
+{
     apply(
         |(bare_name_node, opt_q)| bare_name_node.map(|n| Name::new(n, opt_q)),
         zip_allow_right_none(
@@ -48,7 +49,9 @@ fn bare_name_node_parser_combinator<T: BufRead>(
 // deprecated
 
 #[deprecated]
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<NameNode>, QErrorNode> {
     take_if_name_node()(lexer).transpose()
 }
 

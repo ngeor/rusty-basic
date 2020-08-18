@@ -7,7 +7,8 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 /// Tries to read a comment.
-pub fn take_if_comment<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+pub fn take_if_comment<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(
         |(left, lexeme_nodes)| {
             let pos = left.pos();
@@ -24,7 +25,9 @@ pub fn take_if_comment<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<Stat
 }
 
 #[deprecated]
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
+pub fn try_read<T: BufRead + 'static>(
+    lexer: &mut BufLexer<T>,
+) -> Result<Option<StatementNode>, QErrorNode> {
     take_if_comment()(lexer).transpose()
 }
 

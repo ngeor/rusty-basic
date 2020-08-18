@@ -17,30 +17,29 @@ use crate::parser::types::*;
 use crate::parser::while_wend;
 use std::io::BufRead;
 
-#[deprecated]
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    dim_parser::take_if_dim()(lexer)
-        .transpose()
-        .or_try_read(|| constant::take_if_const()(lexer).transpose())
-        .or_try_read(|| comment::take_if_comment()(lexer).transpose())
-        .or_try_read(|| built_ins::take_if_built_in()(lexer).transpose())
-        .or_try_read(|| sub_call::take_if_sub_call()(lexer).transpose())
-        .or_try_read(|| assignment::take_if_assignment()(lexer).transpose())
-        .or_try_read(|| take_if_label()(lexer).transpose())
-        .or_try_read(|| if_block::try_read(lexer))
-        .or_try_read(|| for_loop::try_read(lexer))
-        .or_try_read(|| select_case::try_read(lexer))
-        .or_try_read(|| while_wend::try_read(lexer))
-        .or_try_read(|| take_if_go_to()(lexer).transpose())
-        .or_try_read(|| take_if_on_error_goto()(lexer).transpose())
-        .or_try_read(|| try_read_illegal_keywords()(lexer).transpose())
+pub fn take_if_statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
+    or_vec(vec![
+        dim_parser::take_if_dim(),
+        constant::take_if_const(),
+        comment::take_if_comment(),
+        built_ins::take_if_built_in(),
+        sub_call::take_if_sub_call(),
+        assignment::take_if_assignment(),
+        take_if_label(),
+        if_block::take_if_if_block(),
+        for_loop::take_if_for_loop(),
+        select_case::take_if_select_case(),
+        while_wend::take_if_while_wend(),
+        take_if_go_to(),
+        take_if_on_error_goto(),
+        try_read_illegal_keywords(),
+    ])
 }
 
 fn try_read_illegal_keywords<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    Box::new(or_vec(vec![
+    or_vec(vec![
         Box::new(switch_err(
             |p| Some(Err(QError::WendWithoutWhile).with_err_at(p)),
             take_if_keyword(Keyword::Wend),
@@ -49,7 +48,7 @@ fn try_read_illegal_keywords<T: BufRead + 'static>(
             |p| Some(Err(QError::ElseWithoutIf).with_err_at(p)),
             take_if_keyword(Keyword::Else),
         )),
-    ]))
+    ])
 }
 
 fn take_if_label<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
@@ -61,7 +60,7 @@ fn take_if_label<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptR
 
 fn take_if_on_error_goto<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    Box::new(apply(
+    apply(
         |(l, (_, (_, r)))| Statement::ErrorHandler(r.strip_location()).at(l.pos()),
         with_whitespace_between(
             take_if_keyword(Keyword::On),
@@ -73,17 +72,17 @@ fn take_if_on_error_goto<T: BufRead + 'static>(
                 ),
             ),
         ),
-    ))
+    )
 }
 
 fn take_if_go_to<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    Box::new(apply(
+    apply(
         |(l, r)| Statement::GoTo(r.strip_location()).at(l.pos()),
         with_whitespace_between(
             take_if_keyword(Keyword::GoTo),
             name::take_if_bare_name_node(),
         ),
-    ))
+    )
 }
 
 #[cfg(test)]

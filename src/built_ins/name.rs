@@ -16,7 +16,8 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct Name {}
 
-pub fn take_if_name<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+pub fn take_if_name<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
+{
     apply(
         |(l, (old_file, (_, new_file)))| {
             Statement::SubCall("NAME".into(), vec![old_file, new_file]).at(l.pos())

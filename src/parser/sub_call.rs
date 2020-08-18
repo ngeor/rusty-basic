@@ -29,12 +29,12 @@ pub fn take_if_sub_call<T: BufRead + 'static>(
 }
 
 fn detect_label_and_abort<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<bool>> {
-    Box::new(apply(|_| true, take_if_symbol(':')))
+    apply(|_| true, take_if_symbol(':'))
 }
 
 fn detect_assignment_and_abort<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<bool>> {
-    Box::new(apply(|_| true, skipping_whitespace(take_if_symbol('='))))
+    apply(|_| true, skipping_whitespace(take_if_symbol('=')))
 }
 
 fn take_args_no_parenthesis<T: BufRead + 'static>(
@@ -46,10 +46,10 @@ fn take_args_no_parenthesis<T: BufRead + 'static>(
 
 fn take_args_parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
-    Box::new(apply(
+    apply(
         |(_, r)| r,
         between('(', ')', csv(expression::take_if_expression_node())),
-    ))
+    )
 }
 
 #[cfg(test)]

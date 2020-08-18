@@ -8,6 +8,11 @@ use crate::parser::statements::parse_statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+pub fn take_if_for_loop<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
+    Box::new(|lexer| try_read(lexer).transpose())
+}
+
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
@@ -128,7 +133,7 @@ fn try_parse_step<T: BufRead + 'static>(
     Ok(expr)
 }
 
-fn try_parse_next_counter<T: BufRead>(
+fn try_parse_next_counter<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<NameNode>, QErrorNode> {
     const STATE_NEXT: u8 = 0;

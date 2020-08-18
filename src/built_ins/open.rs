@@ -22,7 +22,7 @@ pub struct Open {}
 
 pub fn take_if_open<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
 {
-    Box::new(apply(
+    apply(
         |(l, (file_name_expr, (file_mode, (opt_file_access, file_handle))))| {
             Statement::SubCall(
                 "OPEN".into(),
@@ -50,38 +50,38 @@ pub fn take_if_open<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> O
                 ),
             ),
         ),
-    ))
+    )
 }
 
 fn take_file_mode<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<FileMode>> {
-    Box::new(apply(
+    apply(
         |(_, r)| r,
         with_whitespace_between(
             take_if_keyword(Keyword::For),
             take_and_map_to_result(read_demand_file_mode),
         ),
-    ))
+    )
 }
 
 fn take_file_access<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<FileAccess>> {
-    Box::new(apply(
+    apply(
         |(_, r)| r,
         with_whitespace_between(
             take_if_keyword(Keyword::Access),
             take_and_map_to_result(read_demand_file_access),
         ),
-    ))
+    )
 }
 
 fn take_file_handle<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<crate::parser::ExpressionNode>> {
-    Box::new(apply(
+    apply(
         |(_, r)| r,
         with_whitespace_between(
             take_if_keyword(Keyword::As),
             expression::take_if_file_handle(),
         ),
-    ))
+    )
 }
 
 fn read_demand_file_mode(next: LexemeNode) -> Result<FileMode, QErrorNode> {

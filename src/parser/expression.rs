@@ -31,16 +31,16 @@ pub fn take_if_expression_node<T: BufRead + 'static>(
 }
 
 fn take_if_single_expression<T: BufRead + 'static>(
-) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
     or_vec(vec![
-        Box::new(string_literal::take_if_string_literal()),
+        string_literal::take_if_string_literal(),
         Box::new(word::take_if_word()),
         Box::new(number_literal::take_if_number_literal()),
         Box::new(number_literal::take_if_float_without_leading_zero()),
         Box::new(take_if_file_handle()),
         Box::new(take_if_parenthesis()),
-        Box::new(take_if_unary_not()),
-        Box::new(take_if_unary_minus()),
+        take_if_unary_not(),
+        take_if_unary_minus(),
     ])
 }
 
@@ -51,8 +51,8 @@ pub fn try_read<T: BufRead + 'static>(
     take_if_expression_node()(lexer).transpose()
 }
 
-fn take_if_unary_minus<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
-{
+fn take_if_unary_minus<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
     apply(
         |(l, child)| apply_unary_priority_order(child, UnaryOperand::Minus, l.pos()),
         and(
@@ -65,8 +65,8 @@ fn take_if_unary_minus<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> O
     )
 }
 
-fn take_if_unary_not<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
-{
+fn take_if_unary_not<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
     apply(
         |(l, child)| apply_unary_priority_order(child, UnaryOperand::Not, l.pos()),
         with_whitespace_between(take_if_keyword(Keyword::Not), take_if_expression_node()),
@@ -152,8 +152,8 @@ fn apply_unary_priority_order(
 mod string_literal {
     use super::*;
 
-    pub fn take_if_string_literal<T: BufRead>(
-    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
+    pub fn take_if_string_literal<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
         apply(
             |(l, (string_lexemes, _))| {
                 let pos = l.pos();
@@ -179,7 +179,7 @@ mod string_literal {
 mod number_literal {
     use super::*;
 
-    pub fn take_if_number_literal<T: BufRead>(
+    pub fn take_if_number_literal<T: BufRead + 'static>(
     ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
         switch_err(
             |(l, opt_r)| {
@@ -208,7 +208,7 @@ mod number_literal {
         )
     }
 
-    pub fn take_if_float_without_leading_zero<T: BufRead>(
+    pub fn take_if_float_without_leading_zero<T: BufRead + 'static>(
     ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
         switch_err(
             |(pos, frac_part_as_string, is_double)| {
@@ -220,8 +220,8 @@ mod number_literal {
         )
     }
 
-    fn take_if_frac_part<T: BufRead>(
-    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<(Location, String, bool)> {
+    fn take_if_frac_part<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<(Location, String, bool)>> {
         apply(
             |(l, r)| (l.pos(), r.0, r.1.is_some()),
             and(
@@ -318,12 +318,12 @@ mod word {
 
 fn take_if_operand<T: BufRead + 'static>(
     left_side: &ExpressionNode,
-) -> impl Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>> {
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
     let left_side_parenthesis = left_side.is_parenthesis();
     or_vec(vec![
-        Box::new(or_vec(vec![
+        or_vec(vec![
             // LTE, NE
-            Box::new(apply(
+            apply(
                 |(l, r)| {
                     (match r {
                         Some('=') => Operand::LessOrEqual,
@@ -339,9 +339,9 @@ fn take_if_operand<T: BufRead + 'static>(
                         drop_location(take_if_symbol('>')),
                     ),
                 ),
-            )),
+            ),
             // GTE
-            Box::new(apply(
+            apply(
                 |(l, r)| {
                     (match r {
                         Some('=') => Operand::GreaterOrEqual,
@@ -353,13 +353,13 @@ fn take_if_operand<T: BufRead + 'static>(
                     skipping_whitespace(take_if_symbol('>')),
                     drop_location(take_if_symbol('=')),
                 ),
-            )),
+            ),
             take_if_simple_op('=', Operand::Equal),
             take_if_simple_op('+', Operand::Plus),
             take_if_simple_op('-', Operand::Minus),
             take_if_simple_op('*', Operand::Multiply),
             take_if_simple_op('/', Operand::Divide),
-        ])),
+        ]),
         // AND
         take_and_or_op(Keyword::And, Operand::And, left_side_parenthesis),
         take_and_or_op(Keyword::Or, Operand::Or, left_side_parenthesis),

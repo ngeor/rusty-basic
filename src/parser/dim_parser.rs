@@ -10,13 +10,13 @@ use std::io::BufRead;
 /// Parses DIM statement
 pub fn take_if_dim<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
 {
-    Box::new(apply(
+    apply(
         |(l, r)| Statement::Dim(r).at(l.pos()),
         with_whitespace_between(
             take_if_keyword(Keyword::Dim),
             declared_name::take_if_declared_name(),
         ),
-    ))
+    )
 }
 
 #[cfg(test)]

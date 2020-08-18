@@ -30,7 +30,8 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct Input {}
 
-pub fn take_if_input<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+pub fn take_if_input<T: BufRead + 'static>(
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(
         |(l, r)| Statement::SubCall("INPUT".into(), r).at(l.pos()),
         with_whitespace_between(

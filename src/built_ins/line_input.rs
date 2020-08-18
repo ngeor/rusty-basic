@@ -20,7 +20,7 @@ use std::io::BufRead;
 pub struct LineInput {}
 
 pub fn take_if_line_input<T: BufRead + 'static>(
-) -> impl Fn(&mut BufLexer<T>) -> OptRes<StatementNode> {
+) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(
         |(l, (_, r))| Statement::SubCall("LINE INPUT".into(), r).at(l.pos()),
         with_whitespace_between(

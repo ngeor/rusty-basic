@@ -9,7 +9,7 @@ use std::io::BufRead;
 
 pub fn take_if_assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    Box::new(apply(
+    apply(
         |((name_node, _), right_side)| {
             name_node.map(|name| Statement::Assignment(name, right_side))
         },
@@ -23,7 +23,7 @@ pub fn take_if_assignment<T: BufRead + 'static>(
                 skipping_whitespace(expression::take_if_expression_node()),
             ),
         ),
-    ))
+    )
 }
 
 #[cfg(test)]

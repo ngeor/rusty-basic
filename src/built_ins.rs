@@ -275,10 +275,10 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
 /// Parses built-in subs which have a special syntax.
 pub fn take_if_built_in<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<crate::parser::StatementNode>> {
-    Box::new(or_vec(vec![
-        Box::new(input::take_if_input()),
-        Box::new(line_input::take_if_line_input()),
-        Box::new(name::take_if_name()),
+    or_vec(vec![
+        input::take_if_input(),
+        line_input::take_if_line_input(),
+        name::take_if_name(),
         open::take_if_open(),
-    ]))
+    ])
 }

@@ -25,6 +25,14 @@ impl Location {
     pub fn start() -> Location {
         Location::new(1, 1)
     }
+
+    pub fn row(&self) -> u32 {
+        self.row
+    }
+
+    pub fn col(&self) -> u32 {
+        self.col
+    }
 }
 
 //

@@ -48,17 +48,11 @@ impl<T: BufRead> Lexer<T> {
     }
 
     fn peek_one(&mut self) -> Result<Option<char>, QErrorNode> {
-        self.reader
-            .peek_copy_ng()
-            .map_err(|e| e.into())
-            .with_err_at(self.pos)
+        self.reader.peek_copy_ng().patch_err_pos(self.pos)
     }
 
     fn read_one(&mut self) -> Result<Option<char>, QErrorNode> {
-        self.reader
-            .read_ng()
-            .map_err(|e| e.into())
-            .with_err_at(self.pos)
+        self.reader.read_ng().patch_err_pos(self.pos)
     }
 
     fn read_while(&mut self, predicate: fn(char) -> bool) -> Result<String, QErrorNode> {

@@ -8,20 +8,31 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 use std::str::FromStr;
 
+pub trait IsNotFoundErr {
+    fn is_not_found_err(&self) -> bool;
+}
+
 //
 // NotFoundErr
 //
 
-pub trait NotFoundErr {
-    fn is_not_found_err(&self) -> bool;
+pub trait NotFoundErr: IsNotFoundErr {
     fn not_found_err() -> Self;
 }
 
-impl NotFoundErr for QError {
+impl IsNotFoundErr for QError {
     fn is_not_found_err(&self) -> bool {
         *self == QError::CannotParse
     }
+}
 
+impl IsNotFoundErr for QErrorNode {
+    fn is_not_found_err(&self) -> bool {
+        self.as_ref().is_not_found_err()
+    }
+}
+
+impl NotFoundErr for QError {
     fn not_found_err() -> Self {
         QError::CannotParse
     }
@@ -337,7 +348,7 @@ where
     T2: 'static,
     F1: Fn(P) -> (P, Result<T1, P::Err>) + 'static,
     F2: Fn(P) -> (P, Result<T2, P::Err>) + 'static,
-    P::Err: NotFoundErr,
+    P::Err: IsNotFoundErr,
     P: ParserSource + Undo<T1> + 'static,
 {
     Box::new(move |char_reader| {
@@ -361,12 +372,11 @@ where
     })
 }
 
-pub fn or<P, F1, F2, R>(first: F1, second: F2) -> Box<dyn Fn(P) -> (P, Result<R, P::Err>)>
+pub fn or<P, F1, F2, T, E>(first: F1, second: F2) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
 where
-    R: 'static,
-    F1: Fn(P) -> (P, Result<R, P::Err>) + 'static,
-    F2: Fn(P) -> (P, Result<R, P::Err>) + 'static,
-    P::Err: NotFoundErr,
+    F1: Fn(P) -> (P, Result<T, E>) + 'static,
+    F2: Fn(P) -> (P, Result<T, E>) + 'static,
+    E: IsNotFoundErr,
     P: ParserSource + 'static,
 {
     Box::new(move |reader| {
@@ -384,29 +394,23 @@ where
     })
 }
 
-pub fn or_vec<P, T, E, F>(sources: Vec<F>) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
+pub fn or_vec<P, T, E, F>(mut sources: Vec<F>) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
 where
     P: ParserSource + 'static,
     T: 'static,
-    E: NotFoundErr + 'static,
+    E: IsNotFoundErr + 'static,
     F: Fn(P) -> (P, Result<T, E>) + 'static,
 {
-    Box::new(move |reader| {
-        let mut r = reader;
-        for source in sources.iter() {
-            let x = source(r);
-            r = x.0;
-            match x.1 {
-                Ok(x) => return (r, Ok(x)),
-                Err(err) => {
-                    if !err.is_not_found_err() {
-                        return (r, Err(err));
-                    }
-                }
-            }
-        }
-        (r, Err(E::not_found_err()))
-    })
+    if sources.len() > 2 {
+        let first = sources.remove(0);
+        or(first, or_vec(sources))
+    } else if sources.len() == 2 {
+        let second = sources.pop().unwrap();
+        let first = sources.pop().unwrap();
+        or(first, second)
+    } else {
+        panic!("or_vec must have at least two functions to choose from");
+    }
 }
 
 pub fn apply<P, S, M, R, U, E>(mapper: M, source: S) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
@@ -721,6 +725,10 @@ impl<T: BufRead> EolReader<T> {
     pub fn err<R>(self, err: QError) -> (Self, Result<R, QErrorNode>) {
         let pos: Location = self.pos;
         (self, Err(err).with_err_at(pos))
+    }
+
+    pub fn err_not_found<R>(self) -> (Self, Result<R, QErrorNode>) {
+        self.err(QError::not_found_err())
     }
 }
 

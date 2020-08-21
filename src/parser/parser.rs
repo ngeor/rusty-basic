@@ -92,7 +92,12 @@ pub fn top_level_tokens<T: BufRead + 'static>(
 
 pub fn top_level_token_one<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    or_vec(vec![
+        top_level_token_def_type(),
+        top_level_token_declaration(),
+        top_level_token_implementation(),
+        top_level_token_statement(),
+    ])
 }
 
 pub fn top_level_token_def_type<T: BufRead + 'static>(

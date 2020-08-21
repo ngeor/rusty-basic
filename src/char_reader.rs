@@ -523,7 +523,7 @@ where
     take_str_while(|ch| ch == ' ' || ch == '\t')
 }
 
-pub fn take_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, P::Err>)>
+pub fn take_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, P::Err>)>
 where
     P: ParserSource<Item = char> + 'static,
 
@@ -617,15 +617,20 @@ where
     })
 }
 
+pub fn take_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, P::Err>)>
+where
+    P: ParserSource<Item = char> + 'static,
+    P::Err: NotFoundErr,
+{
+    take_str_while(|x| x == '\r' || x == '\n')
+}
+
 pub fn take_lexeme_eol<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
 where
     P: ParserSource<Item = char> + 'static,
     P::Err: NotFoundErr,
 {
-    apply(
-        |x| Lexeme::EOL(x),
-        take_str_while(|x| x == '\r' || x == '\n'),
-    )
+    apply(|x| Lexeme::EOL(x), take_eol())
 }
 
 pub fn take_lexeme_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
@@ -659,7 +664,7 @@ where
     P: ParserSource<Item = char> + 'static,
     P::Err: NotFoundErr,
 {
-    apply(|x| Lexeme::Symbol(x), take_symbol())
+    apply(|x| Lexeme::Symbol(x), take_any_symbol())
 }
 
 pub fn take_lexeme_digits<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
@@ -711,6 +716,11 @@ impl<T: BufRead> EolReader<T> {
             pos: Location::start(),
             line_lengths: vec![],
         }
+    }
+
+    pub fn err<R>(self, err: QError) -> (Self, Result<R, QErrorNode>) {
+        let pos: Location = self.pos;
+        (self, Err(err).with_err_at(pos))
     }
 }
 

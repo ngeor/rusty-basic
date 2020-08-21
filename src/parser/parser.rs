@@ -37,114 +37,167 @@ fn parse_main_str_new<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QEr
 
 pub fn top_level_tokens<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ProgramNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |r| {
+        let mut read_separator = true; // we are at the beginning of the file
+        let mut top_level_tokens: ProgramNode = vec![];
+        let mut reader = r;
+        loop {
+            let (tmp, next) = reader.read();
+            reader = tmp;
+            match next {
+                Ok(' ') => {
+                    // skip whitespace
+                }
+                Ok('\r') | Ok('\n') | Ok(':') => {
+                    read_separator = true;
+                }
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        break;
+                    } else {
+                        return reader.err(err);
+                    }
+                }
+                Ok(ch) => {
+                    // if it is a comment, we are allowed to read it without a separator
+                    let can_read = ch == '\'' || read_separator;
+                    if can_read {
+                        let (tmp, next) = top_level_token_one()(reader.undo(ch));
+                        reader = tmp;
+                        read_separator = false;
+                        match next {
+                            Ok(top_level_token) => {
+                                top_level_tokens.push(top_level_token);
+                            }
+                            Err(err) => {
+                                if err.as_ref().is_not_found_err() {
+                                    return reader.err(QError::SyntaxError(format!(
+                                        "Expected top level statement"
+                                    )));
+                                } else {
+                                    return (reader, Err(err));
+                                }
+                            }
+                        }
+                    } else {
+                        return reader.err(QError::SyntaxError(format!("No separator")));
+                    }
+                }
+            }
+        }
+
+        (reader, Ok(top_level_tokens))
+    })
 }
 
 pub fn top_level_token_one<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn top_level_token_def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn top_level_token_declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn top_level_token_implementation<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn top_level_token_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_dim<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_const<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_comment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_built_ins<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_sub_call<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_label<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_select_case<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_while_wend<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_on_error_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    unimplemented!()
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_illegal_keywords<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    with_err_pos(switch(
-        |_| Err(QError::WendWithoutWhile),
-        take_keyword(Keyword::Wend),
+    with_err_pos(or(
+        switch(
+            |_| Err(QError::WendWithoutWhile),
+            take_keyword(Keyword::Wend),
+        ),
+        switch(|_| Err(QError::ElseWithoutIf), take_keyword(Keyword::Else)),
     ))
 }
 

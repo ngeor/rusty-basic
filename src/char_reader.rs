@@ -1,5 +1,6 @@
 use crate::common::{
-    AtLocation, HasLocation, Locatable, Location, PeekOptCopy, QError, QErrorNode, ReadOpt,
+    AtLocation, ErrorEnvelope, HasLocation, Locatable, Location, PeekOptCopy, QError, QErrorNode,
+    ReadOpt, ToLocatableError,
 };
 use crate::lexer::{Keyword, Lexeme};
 use std::collections::VecDeque;
@@ -23,17 +24,6 @@ impl NotFoundErr for QError {
 
     fn not_found_err() -> Self {
         QError::CannotParse
-    }
-}
-
-impl NotFoundErr for QErrorNode {
-    fn is_not_found_err(&self) -> bool {
-        let err: &QError = self.as_ref();
-        err.is_not_found_err()
-    }
-
-    fn not_found_err() -> Self {
-        QErrorNode::NoPos(QError::not_found_err())
     }
 }
 
@@ -80,9 +70,9 @@ pub struct CharReader<T: BufRead> {
 
 impl<T: BufRead> ParserSource for CharReader<T> {
     type Item = char;
-    type Err = QErrorNode;
+    type Err = QError;
 
-    fn read(self) -> (Self, Result<char, QErrorNode>) {
+    fn read(self) -> (Self, Result<char, QError>) {
         let Self {
             mut reader,
             mut buffer,
@@ -97,7 +87,7 @@ impl<T: BufRead> ParserSource for CharReader<T> {
                         buffer,
                         read_eof,
                     },
-                    Err(QErrorNode::not_found_err()),
+                    Err(QError::not_found_err()),
                 )
             } else {
                 let mut line = String::new();
@@ -124,7 +114,7 @@ impl<T: BufRead> ParserSource for CharReader<T> {
                                     buffer,
                                     read_eof,
                                 },
-                                Err(QErrorNode::not_found_err()),
+                                Err(QError::not_found_err()),
                             )
                         }
                     }
@@ -134,7 +124,7 @@ impl<T: BufRead> ParserSource for CharReader<T> {
                             buffer,
                             read_eof,
                         },
-                        Err(QErrorNode::NoPos(err.into())),
+                        Err(err.into()),
                     ),
                 }
             }
@@ -243,27 +233,28 @@ impl<T: BufRead> PeekOptCopy for CharReader<T> {
 // Parser combinators
 //
 
-pub fn take_any<P: ParserSource>() -> impl Fn(P) -> (P, Result<P::Item, P::Err>) {
-    |char_reader| char_reader.read()
+pub fn take_any<P>() -> Box<dyn Fn(P) -> (P, Result<P::Item, P::Err>)>
+where
+    P: ParserSource + 'static,
+{
+    Box::new(|char_reader| char_reader.read())
 }
 
-pub fn take_char<P: ParserSource<Item = char>>(
-    needle: char,
-) -> impl Fn(P) -> (P, Result<P::Item, P::Err>)
+pub fn take_char<P>(needle: char) -> Box<dyn Fn(P) -> (P, Result<P::Item, P::Err>)>
 where
+    P: ParserSource<Item = char> + 'static,
     P::Err: NotFoundErr,
 {
     take_char_if(move |ch| ch == needle)
 }
 
-pub fn take_char_if<P: ParserSource<Item = char>, F>(
-    predicate: F,
-) -> impl Fn(P) -> (P, Result<P::Item, P::Err>)
+pub fn take_char_if<P, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<P::Item, P::Err>)>
 where
-    F: Fn(char) -> bool,
+    P: ParserSource<Item = char> + 'static,
+    F: Fn(char) -> bool + 'static,
     P::Err: NotFoundErr,
 {
-    move |char_reader| {
+    Box::new(move |char_reader| {
         let (char_reader, result) = char_reader.read();
         match result {
             Ok(ch) => {
@@ -275,19 +266,21 @@ where
             }
             Err(err) => (char_reader, Err(err)),
         }
-    }
+    })
 }
 
-pub fn and<P: ParserSource, F1, F2, T1, T2>(
+pub fn and<P, F1, F2, T1, T2>(
     first: F1,
     second: F2,
-) -> impl Fn(P) -> (P, Result<(T1, T2), P::Err>)
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), P::Err>)>
 where
-    F1: Fn(P) -> (P, Result<T1, P::Err>),
-    F2: Fn(P) -> (P, Result<T2, P::Err>),
-    P: Undo<T1>,
+    T1: 'static,
+    T2: 'static,
+    F1: Fn(P) -> (P, Result<T1, P::Err>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, P::Err>) + 'static,
+    P: ParserSource + Undo<T1> + 'static,
 {
-    move |char_reader| {
+    Box::new(move |char_reader| {
         let (char_reader, res1) = first(char_reader);
         match res1 {
             Ok(r1) => {
@@ -299,20 +292,22 @@ where
             }
             Err(err) => (char_reader, Err(err)),
         }
-    }
+    })
 }
 
-pub fn zip_allow_right_none<P: ParserSource, F1, F2, T1, T2>(
+pub fn zip_allow_right_none<P, F1, F2, T1, T2>(
     first: F1,
     second: F2,
-) -> impl Fn(P) -> (P, Result<(T1, Option<T2>), P::Err>)
+) -> Box<dyn Fn(P) -> (P, Result<(T1, Option<T2>), P::Err>)>
 where
-    F1: Fn(P) -> (P, Result<T1, P::Err>),
-    F2: Fn(P) -> (P, Result<T2, P::Err>),
+    T1: 'static,
+    T2: 'static,
+    F1: Fn(P) -> (P, Result<T1, P::Err>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, P::Err>) + 'static,
     P::Err: NotFoundErr,
-    P: Undo<T1>,
+    P: ParserSource + Undo<T1> + 'static,
 {
-    move |char_reader| {
+    Box::new(move |char_reader| {
         let (char_reader, res1) = first(char_reader);
         match res1 {
             Ok(r1) => {
@@ -330,16 +325,18 @@ where
             }
             Err(err) => (char_reader, Err(err)),
         }
-    }
+    })
 }
 
-pub fn or<P: ParserSource, F1, F2, R>(first: F1, second: F2) -> impl Fn(P) -> (P, Result<R, P::Err>)
+pub fn or<P, F1, F2, R>(first: F1, second: F2) -> Box<dyn Fn(P) -> (P, Result<R, P::Err>)>
 where
-    F1: Fn(P) -> (P, Result<R, P::Err>),
-    F2: Fn(P) -> (P, Result<R, P::Err>),
+    R: 'static,
+    F1: Fn(P) -> (P, Result<R, P::Err>) + 'static,
+    F2: Fn(P) -> (P, Result<R, P::Err>) + 'static,
     P::Err: NotFoundErr,
+    P: ParserSource + 'static,
 {
-    move |char_reader| {
+    Box::new(move |char_reader| {
         let (char_reader, res1) = first(char_reader);
         match res1 {
             Ok(ch) => (char_reader, Ok(ch)),
@@ -351,34 +348,46 @@ where
                 }
             }
         }
-    }
+    })
 }
 
-pub fn apply<P: ParserSource, S, M, R, U>(
-    mapper: M,
-    source: S,
-) -> impl Fn(P) -> (P, Result<U, P::Err>)
+pub fn apply<P, S, M, R, U, E>(mapper: M, source: S) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
 where
-    M: Fn(R) -> U,
-    S: Fn(P) -> (P, Result<R, P::Err>),
+    P: ParserSource + 'static,
+    S: Fn(P) -> (P, Result<R, E>) + 'static,
+    M: Fn(R) -> U + 'static,
+    R: 'static,
+    U: 'static,
+    E: 'static,
 {
-    move |char_reader| {
+    switch(move |x| Ok(mapper(x)), source)
+}
+
+pub fn switch<P, S, M, R, U, E>(mapper: M, source: S) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+where
+    P: ParserSource + 'static,
+    S: Fn(P) -> (P, Result<R, E>) + 'static,
+    M: Fn(R) -> Result<U, E> + 'static,
+    R: 'static,
+    U: 'static,
+    E: 'static,
+{
+    Box::new(move |char_reader| {
         let (char_reader, next) = source(char_reader);
         match next {
-            Ok(ch) => (char_reader, Ok(mapper(ch))),
+            Ok(ch) => (char_reader, mapper(ch)),
             Err(err) => (char_reader, Err(err)),
         }
-    }
+    })
 }
 
-pub fn take_vec_while<P: ParserSource, FP>(
-    predicate: FP,
-) -> impl Fn(P) -> (P, Result<Vec<P::Item>, P::Err>)
+pub fn take_vec_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<Vec<P::Item>, P::Err>)>
 where
-    FP: Fn(&P::Item) -> bool,
+    FP: Fn(&P::Item) -> bool + 'static,
     P::Err: NotFoundErr,
+    P: ParserSource + 'static,
 {
-    move |char_reader| {
+    Box::new(move |char_reader| {
         let mut result: Vec<P::Item> = vec![];
         let mut cr: P = char_reader;
         loop {
@@ -407,17 +416,16 @@ where
         } else {
             (cr, Ok(result))
         }
-    }
+    })
 }
 
-pub fn take_str_while<P: ParserSource<Item = char>, FP>(
-    predicate: FP,
-) -> impl Fn(P) -> (P, Result<String, P::Err>)
+pub fn take_str_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<String, P::Err>)>
 where
-    FP: Fn(char) -> bool,
+    P: ParserSource<Item = char> + 'static,
+    FP: Fn(char) -> bool + 'static,
     P::Err: NotFoundErr,
 {
-    move |char_reader| {
+    Box::new(move |char_reader| {
         let mut result: String = String::new();
         let mut cr: P = char_reader;
         loop {
@@ -446,18 +454,21 @@ where
         } else {
             (cr, Ok(result))
         }
-    }
+    })
 }
 
-pub fn take_whitespace<P: ParserSource<Item = char>>() -> impl Fn(P) -> (P, Result<String, P::Err>)
+pub fn take_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, P::Err>)>
 where
+    P: ParserSource<Item = char> + 'static,
     P::Err: NotFoundErr,
 {
     take_str_while(|ch| ch == ' ' || ch == '\t')
 }
 
-pub fn take_symbol<P: ParserSource<Item = char>>() -> impl Fn(P) -> (P, Result<char, P::Err>)
+pub fn take_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, P::Err>)>
 where
+    P: ParserSource<Item = char> + 'static,
+
     P::Err: NotFoundErr,
 {
     take_char_if(|ch| {
@@ -468,8 +479,10 @@ where
     })
 }
 
-pub fn take_identifier<P: ParserSource<Item = char>>() -> impl Fn(P) -> (P, Result<String, P::Err>)
+pub fn take_identifier<P>() -> Box<dyn Fn(P) -> (P, Result<String, P::Err>)>
 where
+    P: ParserSource<Item = char> + 'static,
+
     P::Err: NotFoundErr,
 {
     take_str_while(|ch| {
@@ -480,13 +493,13 @@ where
     })
 }
 
-pub fn take_keyword<P: ParserSource<Item = char>>(
-) -> impl Fn(P) -> (P, Result<(Keyword, String), P::Err>)
+pub fn take_any_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), P::Err>)>
 where
+    P: ParserSource<Item = char> + Undo<String> + 'static,
+
     P::Err: NotFoundErr,
-    P: Undo<String>,
 {
-    move |reader| {
+    Box::new(move |reader| {
         let (reader, result) = take_identifier()(reader);
         match result {
             Ok(s) => {
@@ -501,27 +514,63 @@ where
             }
             Err(err) => (reader, Err(err)),
         }
-    }
+    })
 }
 
-pub fn with_pos<P: ParserSource + HasLocation, S, R>(
-    source: S,
-) -> impl Fn(P) -> (P, Result<Locatable<R>, P::Err>)
+pub fn take_keyword<P>(needle: Keyword) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), P::Err>)>
 where
-    S: Fn(P) -> (P, Result<R, P::Err>),
+    P::Err: NotFoundErr,
+    P: ParserSource<Item = char> + Undo<String> + 'static,
 {
-    move |char_reader| {
+    Box::new(move |reader| {
+        let (reader, result) = take_any_keyword()(reader);
+        match result {
+            Ok((k, s)) => {
+                if k == needle {
+                    (reader, Ok((k, s)))
+                } else {
+                    (reader.undo(s), Err(P::Err::not_found_err()))
+                }
+            }
+            Err(err) => (reader, Err(err)),
+        }
+    })
+}
+
+pub fn with_pos<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<Locatable<T>, E>)>
+where
+    P: ParserSource + HasLocation + 'static,
+    S: Fn(P) -> (P, Result<T, E>) + 'static,
+{
+    Box::new(move |char_reader| {
         let pos = char_reader.pos();
         let (char_reader, next) = source(char_reader);
         match next {
             Ok(ch) => (char_reader, Ok(ch.at(pos))),
             Err(err) => (char_reader, Err(err)),
         }
-    }
+    })
 }
 
-pub fn take_lexeme_eol<P: ParserSource<Item = char>>() -> impl Fn(P) -> (P, Result<Lexeme, P::Err>)
+pub fn with_err_pos<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, ErrorEnvelope<E>>)>
 where
+    P: ParserSource + HasLocation + 'static,
+
+    S: Fn(P) -> (P, Result<T, E>) + 'static,
+{
+    Box::new(move |char_reader| {
+        let pos = char_reader.pos();
+        let (char_reader, next) = source(char_reader);
+        match next {
+            Ok(ch) => (char_reader, Ok(ch)),
+            Err(err) => (char_reader, Err(err).with_err_at(pos)),
+        }
+    })
+}
+
+pub fn take_lexeme_eol<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
+where
+    P: ParserSource<Item = char> + 'static,
     P::Err: NotFoundErr,
 {
     apply(
@@ -530,41 +579,43 @@ where
     )
 }
 
-pub fn take_lexeme_keyword<P: ParserSource<Item = char>>(
-) -> impl Fn(P) -> (P, Result<Lexeme, P::Err>)
+pub fn take_lexeme_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
 where
+    P: ParserSource<Item = char> + Undo<String> + 'static,
+
     P::Err: NotFoundErr,
-    P: Undo<String>,
 {
-    apply(|(k, s)| Lexeme::Keyword(k, s), take_keyword())
+    apply(|(k, s)| Lexeme::Keyword(k, s), take_any_keyword())
 }
 
-pub fn take_lexeme_word<P: ParserSource<Item = char>>() -> impl Fn(P) -> (P, Result<Lexeme, P::Err>)
+pub fn take_lexeme_word<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
 where
+    P: ParserSource<Item = char> + 'static,
     P::Err: NotFoundErr,
 {
     apply(|x| Lexeme::Word(x), take_identifier())
 }
 
-pub fn take_lexeme_whitespace<P: ParserSource<Item = char>>(
-) -> impl Fn(P) -> (P, Result<Lexeme, P::Err>)
+pub fn take_lexeme_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
 where
+    P: ParserSource<Item = char> + 'static,
+
     P::Err: NotFoundErr,
 {
     apply(|x| Lexeme::Whitespace(x), take_whitespace())
 }
 
-pub fn take_lexeme_symbol<P: ParserSource<Item = char>>(
-) -> impl Fn(P) -> (P, Result<Lexeme, P::Err>)
+pub fn take_lexeme_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
 where
+    P: ParserSource<Item = char> + 'static,
     P::Err: NotFoundErr,
 {
     apply(|x| Lexeme::Symbol(x), take_symbol())
 }
 
-pub fn take_lexeme_digits<P: ParserSource<Item = char>>(
-) -> impl Fn(P) -> (P, Result<Lexeme, P::Err>)
+pub fn take_lexeme_digits<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
 where
+    P: ParserSource<Item = char> + 'static,
     P::Err: NotFoundErr,
 {
     apply(
@@ -573,10 +624,10 @@ where
     )
 }
 
-pub fn take_lexeme<P: ParserSource<Item = char>>() -> impl Fn(P) -> (P, Result<Lexeme, P::Err>)
+pub fn take_lexeme<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, P::Err>)>
 where
     P::Err: NotFoundErr,
-    P: Undo<String>,
+    P: ParserSource<Item = char> + Undo<String> + 'static,
 {
     or(
         take_lexeme_eol(),
@@ -614,11 +665,11 @@ impl<T: BufRead> EolReader<T> {
     }
 }
 
-impl<T: BufRead> ParserSource for EolReader<T> {
+impl<T: BufRead + 'static> ParserSource for EolReader<T> {
     type Item = char;
-    type Err = QErrorNode;
+    type Err = QError;
 
-    fn read(self) -> (Self, Result<char, QErrorNode>) {
+    fn read(self) -> (Self, Result<char, QError>) {
         let Self {
             char_reader,
             mut pos,
@@ -685,7 +736,7 @@ impl<T: BufRead> ParserSource for EolReader<T> {
     }
 }
 
-impl<T: BufRead> Undo<String> for EolReader<T> {
+impl<T: BufRead + 'static> Undo<String> for EolReader<T> {
     fn undo(self, s: String) -> Self {
         let mut result = self;
         for ch in s.chars().rev() {
@@ -695,13 +746,13 @@ impl<T: BufRead> Undo<String> for EolReader<T> {
     }
 }
 
-impl<T: BufRead> Undo<(Keyword, String)> for EolReader<T> {
+impl<T: BufRead + 'static> Undo<(Keyword, String)> for EolReader<T> {
     fn undo(self, s: (Keyword, String)) -> Self {
         self.undo(s.1)
     }
 }
 
-impl<T: BufRead> Undo<Lexeme> for EolReader<T> {
+impl<T: BufRead + 'static> Undo<Lexeme> for EolReader<T> {
     fn undo(self, l: Lexeme) -> Self {
         match l {
             Lexeme::EOL(_) => self.undo('\r'),
@@ -894,7 +945,7 @@ mod tests {
         let (_, result) = apply(
             |(l, (_, r))| (l, r),
             and(
-                with_pos(take_keyword()),
+                with_pos(take_any_keyword()),
                 and(take_whitespace(), with_pos(take_identifier())),
             ),
         )(eol_reader);

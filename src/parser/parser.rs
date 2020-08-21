@@ -1,5 +1,7 @@
+use crate::char_reader::*;
 use crate::common::*;
 use crate::lexer::BufLexer;
+use crate::lexer::{Keyword, Lexeme};
 use crate::parser::top_level_token;
 use crate::parser::types::*;
 use std::fs::File;
@@ -12,6 +14,10 @@ pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
 
 #[cfg(test)]
 pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
+    parse_main_str_old(s)
+}
+
+fn parse_main_str_old<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
     let mut lexer = BufLexer::from(s);
     parse_main(&mut lexer)
 }
@@ -20,6 +26,126 @@ pub fn parse_main<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<ProgramNode, QErrorNode> {
     top_level_token::parse_top_level_tokens(lexer)
+}
+
+fn parse_main_str_new<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
+    let reader = EolReader::from(s);
+    let (_, result) = top_level_tokens()(reader);
+    // TODO verify reader does not have any more characters left, i.e. it was fully parsed
+    result
+}
+
+pub fn top_level_tokens<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ProgramNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn top_level_token_one<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn top_level_token_def_type<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn top_level_token_declaration<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn top_level_token_implementation<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn top_level_token_statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statements<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_dim<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_const<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_comment<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_built_ins<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_sub_call<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_assignment<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_label<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_if_block<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_for_loop<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_select_case<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_while_wend<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_go_to<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_on_error_go_to<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    unimplemented!()
+}
+
+pub fn statement_illegal_keywords<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    with_err_pos(switch(
+        |_| Err(QError::WendWithoutWhile),
+        take_keyword(Keyword::Wend),
+    ))
 }
 
 #[cfg(test)]

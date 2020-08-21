@@ -248,25 +248,58 @@ where
     take_char_if(move |ch| ch == needle)
 }
 
+pub fn filter<P, S, F, T, E>(predicate: F, source: S) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
+where
+    P: ParserSource + Undo<T> + 'static,
+    E: NotFoundErr,
+    S: Fn(P) -> (P, Result<T, E>) + 'static,
+    F: Fn(&T) -> bool + 'static,
+{
+    Box::new(move |reader| {
+        let (reader, result) = source(reader);
+        match result {
+            Ok(ch) => {
+                if predicate(&ch) {
+                    (reader, Ok(ch))
+                } else {
+                    (reader.undo(ch), Err(E::not_found_err()))
+                }
+            }
+            Err(err) => (reader, Err(err)),
+        }
+    })
+}
+
+pub fn filter_copy<P, S, F, T, E>(predicate: F, source: S) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
+where
+    P: ParserSource + Undo<T> + 'static,
+    E: NotFoundErr,
+    S: Fn(P) -> (P, Result<T, E>) + 'static,
+    F: Fn(T) -> bool + 'static,
+    T: Copy + 'static,
+{
+    Box::new(move |reader| {
+        let (reader, result) = source(reader);
+        match result {
+            Ok(ch) => {
+                if predicate(ch) {
+                    (reader, Ok(ch))
+                } else {
+                    (reader.undo(ch), Err(E::not_found_err()))
+                }
+            }
+            Err(err) => (reader, Err(err)),
+        }
+    })
+}
+
 pub fn take_char_if<P, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<P::Item, P::Err>)>
 where
     P: ParserSource<Item = char> + 'static,
     F: Fn(char) -> bool + 'static,
     P::Err: NotFoundErr,
 {
-    Box::new(move |char_reader| {
-        let (char_reader, result) = char_reader.read();
-        match result {
-            Ok(ch) => {
-                if predicate(ch) {
-                    (char_reader, Ok(ch))
-                } else {
-                    (char_reader.undo(ch), Err(P::Err::not_found_err()))
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
+    filter_copy(predicate, take_any())
 }
 
 pub fn and<P, F1, F2, T1, T2>(
@@ -336,18 +369,43 @@ where
     P::Err: NotFoundErr,
     P: ParserSource + 'static,
 {
-    Box::new(move |char_reader| {
-        let (char_reader, res1) = first(char_reader);
+    Box::new(move |reader| {
+        let (reader, res1) = first(reader);
         match res1 {
-            Ok(ch) => (char_reader, Ok(ch)),
+            Ok(ch) => (reader, Ok(ch)),
             Err(err) => {
                 if err.is_not_found_err() {
-                    second(char_reader)
+                    second(reader)
                 } else {
-                    (char_reader, Err(err))
+                    (reader, Err(err))
                 }
             }
         }
+    })
+}
+
+pub fn or_vec<P, T, E, F>(sources: Vec<F>) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
+where
+    P: ParserSource + 'static,
+    T: 'static,
+    E: NotFoundErr + 'static,
+    F: Fn(P) -> (P, Result<T, E>) + 'static,
+{
+    Box::new(move |reader| {
+        let mut r = reader;
+        for source in sources.iter() {
+            let x = source(r);
+            r = x.0;
+            match x.1 {
+                Ok(x) => return (r, Ok(x)),
+                Err(err) => {
+                    if !err.is_not_found_err() {
+                        return (r, Err(err));
+                    }
+                }
+            }
+        }
+        (r, Err(E::not_found_err()))
     })
 }
 
@@ -493,48 +551,39 @@ where
     })
 }
 
-pub fn take_any_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), P::Err>)>
+pub fn switch_from_str<P, S, U, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<(U, String), E>)>
 where
-    P: ParserSource<Item = char> + Undo<String> + 'static,
-
-    P::Err: NotFoundErr,
+    P: ParserSource + Undo<String> + 'static,
+    S: Fn(P) -> (P, Result<String, E>) + 'static,
+    U: FromStr + 'static,
+    E: NotFoundErr + 'static,
 {
     Box::new(move |reader| {
-        let (reader, result) = take_identifier()(reader);
-        match result {
-            Ok(s) => {
-                match Keyword::from_str(&s) {
-                    Ok(k) => (reader, Ok((k, s))),
-                    Err(_) => {
-                        // need to undo all characters of the string
-                        // and return not found
-                        (reader.undo(s), Err(P::Err::not_found_err()))
-                    }
-                }
-            }
+        let (reader, next) = source(reader);
+        match next {
+            Ok(s) => match U::from_str(&s) {
+                Ok(u) => (reader, Ok((u, s))),
+                Err(_) => (reader.undo(s), Err(E::not_found_err())),
+            },
             Err(err) => (reader, Err(err)),
         }
     })
 }
 
+pub fn take_any_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), P::Err>)>
+where
+    P: ParserSource<Item = char> + Undo<String> + 'static,
+    P::Err: NotFoundErr,
+{
+    switch_from_str(take_identifier())
+}
+
 pub fn take_keyword<P>(needle: Keyword) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), P::Err>)>
 where
     P::Err: NotFoundErr,
-    P: ParserSource<Item = char> + Undo<String> + 'static,
+    P: ParserSource<Item = char> + Undo<String> + Undo<(Keyword, String)> + 'static,
 {
-    Box::new(move |reader| {
-        let (reader, result) = take_any_keyword()(reader);
-        match result {
-            Ok((k, s)) => {
-                if k == needle {
-                    (reader, Ok((k, s)))
-                } else {
-                    (reader.undo(s), Err(P::Err::not_found_err()))
-                }
-            }
-            Err(err) => (reader, Err(err)),
-        }
-    })
+    filter(move |(k, _)| *k == needle, take_any_keyword())
 }
 
 pub fn with_pos<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<Locatable<T>, E>)>

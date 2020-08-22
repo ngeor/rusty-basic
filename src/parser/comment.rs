@@ -1,5 +1,6 @@
 use crate::common::pc::*;
 use crate::common::*;
+use crate::char_reader::*;
 use crate::lexer::*;
 
 use crate::parser::buf_lexer_helpers::*;
@@ -7,6 +8,14 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 /// Tries to read a comment.
+pub fn comment<T: BufRead + 'static>() -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    map_ng(if_first_maybe_second(
+        try_read_char('\''),
+        read_any_str_while(|ch| ch != '\r' && ch != '\n')
+    ), |(_, r)| Statement::Comment(r.unwrap_or_default()))
+}
+
+#[deprecated]
 pub fn take_if_comment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(

@@ -28,7 +28,7 @@ pub fn statement<T: BufRead + 'static>(
         dim_parser::dim(),
         constant::constant(),
         comment::comment(),
-        statement_built_ins(),
+        built_ins::parse_built_in(),
         statement_sub_call(),
         statement_assignment(),
         statement_label(),
@@ -40,11 +40,6 @@ pub fn statement<T: BufRead + 'static>(
         statement_on_error_go_to(),
         statement_illegal_keywords(),
     ])
-}
-
-pub fn statement_built_ins<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_sub_call<T: BufRead + 'static>(

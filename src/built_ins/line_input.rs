@@ -3,6 +3,7 @@
 // LINE INPUT #file-number%, variable$
 
 use super::{BuiltInLint, BuiltInRun};
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::context::Argument;
@@ -19,6 +20,25 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct LineInput {}
 
+pub fn parse_line_input<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    map_ng(
+        with_some_whitespace_between(
+            try_read_keyword(Keyword::Line),
+            with_some_whitespace_between(
+                try_read_keyword(Keyword::Input),
+                csv_one_or_more(expression::expression_node(), || {
+                    QError::SyntaxError("Expected at least one variable".to_string())
+                }),
+                || QError::SyntaxError("Expected at least one variable".to_string()),
+            ),
+            || QError::SyntaxError("Expected INPUT after LINE".to_string()),
+        ),
+        |(_, (_, r))| Statement::SubCall("LINE INPUT".into(), r),
+    )
+}
+
+#[deprecated]
 pub fn take_if_line_input<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(

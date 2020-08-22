@@ -1,4 +1,5 @@
 // OPEN file$ [FOR mode] [ACCESS access] [lock] AS [#]file-number% [LEN=rec-len%]
+// OpenStatement ::= OPEN<ws+><ExpressionNode>(<ws+>FOR mode)?(<ws+>ACCESS access)?<ws+>AS<ws+>[#]<file-number%>
 //
 // mode: APPEND, BINARY, INPUT, OUTPUT, RANDOM
 // access: READ, WRITE, READ WRITE
@@ -8,6 +9,7 @@
 //           For sequential files, the number of characters buffered (default is 512 bytes)
 
 use super::{BuiltInLint, BuiltInRun};
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
@@ -20,6 +22,82 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 
+// TODO improve this
+pub fn parse_open<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    map_ng(
+        if_first_demand_second(
+            if_first_maybe_second(
+                if_first_maybe_second(
+                    with_some_whitespace_between(
+                        try_read_keyword(Keyword::Open),
+                        expression::expression_node(),
+                        || QError::SyntaxError("Expected filename after OPEN".to_string()),
+                    ),
+                    parse_open_mode(),
+                ),
+                parse_open_access(),
+            ),
+            with_some_whitespace_before_and_between(
+                try_read_keyword(Keyword::As),
+                expression::expression_node(),
+                || QError::SyntaxError("Expected file number".to_string()),
+            ),
+            || QError::SyntaxError("Expected AS".to_string()),
+        ),
+        |((((_, file_name), opt_file_mode), opt_file_access), (_, file_number))| {
+            Statement::SubCall(
+                "OPEN".into(),
+                vec![
+                    file_name,
+                    // TODO take actual pos
+                    Expression::IntegerLiteral(opt_file_mode.unwrap_or(FileMode::Input).into())
+                        .at(Location::start()),
+                    // TODO take actual pos
+                    Expression::IntegerLiteral(
+                        opt_file_access.unwrap_or(FileAccess::Unspecified).into(),
+                    )
+                    .at(Location::start()),
+                    file_number,
+                ],
+            )
+        },
+    )
+}
+
+fn parse_open_mode<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileMode, QErrorNode>)> {
+    map_ng(
+        with_some_whitespace_before_and_between(
+            try_read_keyword(Keyword::For),
+            map_or_undo(read_any_keyword(), |(k, s)| match k {
+                Keyword::Append => MapOrUndo::Ok(FileMode::Append),
+                Keyword::Input => MapOrUndo::Ok(FileMode::Input),
+                Keyword::Output => MapOrUndo::Ok(FileMode::Output),
+                _ => MapOrUndo::Undo((k, s)),
+            }),
+            || QError::SyntaxError("Invalid mode".to_string()),
+        ),
+        |(_, r)| r,
+    )
+}
+
+fn parse_open_access<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileAccess, QErrorNode>)> {
+    map_ng(
+        with_some_whitespace_before_and_between(
+            try_read_keyword(Keyword::Access),
+            map_or_undo(read_any_keyword(), |(k, s)| match k {
+                Keyword::Read => MapOrUndo::Ok(FileAccess::Read),
+                _ => MapOrUndo::Undo((k, s)),
+            }),
+            || QError::SyntaxError("Invalid access".to_string()),
+        ),
+        |(_, r)| r,
+    )
+}
+
+#[deprecated]
 pub fn take_if_open<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
 {
     apply(
@@ -53,6 +131,7 @@ pub fn take_if_open<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> O
     )
 }
 
+#[deprecated]
 fn take_file_mode<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<FileMode>> {
     apply(
         |(_, r)| r,
@@ -63,6 +142,7 @@ fn take_file_mode<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> Opt
     )
 }
 
+#[deprecated]
 fn take_file_access<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<FileAccess>> {
     apply(
         |(_, r)| r,
@@ -73,6 +153,7 @@ fn take_file_access<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> O
     )
 }
 
+#[deprecated]
 fn take_file_handle<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<crate::parser::ExpressionNode>> {
     apply(
@@ -84,6 +165,7 @@ fn take_file_handle<T: BufRead + 'static>(
     )
 }
 
+#[deprecated]
 fn read_demand_file_mode(next: LexemeNode) -> Result<FileMode, QErrorNode> {
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Input, _) => Ok(FileMode::Input),
@@ -96,6 +178,7 @@ fn read_demand_file_mode(next: LexemeNode) -> Result<FileMode, QErrorNode> {
     }
 }
 
+#[deprecated]
 fn read_demand_file_access(next: LexemeNode) -> Result<FileAccess, QErrorNode> {
     match next.as_ref() {
         Lexeme::Keyword(Keyword::Read, _) => Ok(FileAccess::Read),

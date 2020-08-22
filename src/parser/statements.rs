@@ -1,3 +1,4 @@
+use crate::char_reader::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::comment;
@@ -9,6 +10,11 @@ use std::io::BufRead;
 pub struct ParseStatementsOptions {
     pub first_statement_separated_by_whitespace: bool,
     pub err: QError,
+}
+
+pub fn statements<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+    unimplemented!()
 }
 
 #[deprecated]
@@ -25,6 +31,7 @@ where
         .map(|x| x.unwrap_or_default())
 }
 
+#[deprecated]
 pub fn take_if_statements<T: BufRead + 'static, F, S: AsRef<str> + 'static>(
     exit_predicate: F,
     err_msg: S,
@@ -55,6 +62,7 @@ where
         .map(|x| x.unwrap_or_default())
 }
 
+#[deprecated]
 pub fn take_if_statements_with_options<T: BufRead + 'static, F>(
     exit_predicate: F,
     options: ParseStatementsOptions,

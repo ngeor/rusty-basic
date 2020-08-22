@@ -1,4 +1,5 @@
 use crate::built_ins;
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
@@ -7,7 +8,6 @@ use crate::parser::buf_lexer_helpers::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim_parser;
-
 use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
@@ -17,6 +17,99 @@ use crate::parser::types::*;
 use crate::parser::while_wend;
 use std::io::BufRead;
 
+pub fn statement_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+    with_pos(statement())
+}
+
+pub fn statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    or_vec_ng(vec![
+        dim_parser::dim(),
+        constant::constant(),
+        statement_comment(),
+        statement_built_ins(),
+        statement_sub_call(),
+        statement_assignment(),
+        statement_label(),
+        statement_if_block(),
+        statement_for_loop(),
+        statement_select_case(),
+        statement_while_wend(),
+        statement_go_to(),
+        statement_on_error_go_to(),
+        statement_illegal_keywords(),
+    ])
+}
+
+pub fn statement_comment<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_built_ins<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_sub_call<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_assignment<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_label<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_if_block<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_for_loop<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_select_case<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_while_wend<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_go_to<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_on_error_go_to<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+pub fn statement_illegal_keywords<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    or_ng(
+        map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Wend)), |k| {
+            Err(QError::WendWithoutWhile).with_err_at(k)
+        }),
+        map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Else)), |k| {
+            Err(QError::ElseWithoutIf).with_err_at(k)
+        }),
+    )
+}
+
+#[deprecated]
 pub fn take_if_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     or_vec(vec![
@@ -37,6 +130,7 @@ pub fn take_if_statement<T: BufRead + 'static>(
     ])
 }
 
+#[deprecated]
 fn try_read_illegal_keywords<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     or_vec(vec![
@@ -51,6 +145,7 @@ fn try_read_illegal_keywords<T: BufRead + 'static>(
     ])
 }
 
+#[deprecated]
 fn take_if_label<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     Box::new(in_transaction_pc(apply(
         |(l, _)| l.map(|n| Statement::Label(n)),
@@ -58,6 +153,7 @@ fn take_if_label<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptR
     )))
 }
 
+#[deprecated]
 fn take_if_on_error_goto<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(
@@ -75,6 +171,7 @@ fn take_if_on_error_goto<T: BufRead + 'static>(
     )
 }
 
+#[deprecated]
 fn take_if_go_to<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(
         |(l, r)| Statement::GoTo(r.strip_location()).at(l.pos()),

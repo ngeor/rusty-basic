@@ -1134,7 +1134,7 @@ where
     })
 }
 
-pub fn demand<P, S, M, R, E>(source: S, err_fn: M) -> Box<dyn Fn(P) -> (P, Result<R, E>)>
+pub fn demand_ng<P, S, M, R, E>(source: S, err_fn: M) -> Box<dyn Fn(P) -> (P, Result<R, E>)>
 where
     P: ParserSource + 'static,
     S: Fn(P) -> (P, Result<R, E>) + 'static,

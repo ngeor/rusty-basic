@@ -1,3 +1,4 @@
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
@@ -8,6 +9,19 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 /// Parses DIM statement
+pub fn dim<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    map_ng(
+        if_first_demand_second(
+            try_read_keyword(Keyword::Dim),
+            declared_name::declared_name_node(),
+            || QError::SyntaxError("Expected name after DIM".to_string()),
+        ),
+        |(_, r)| Statement::Dim(r),
+    )
+}
+
+#[deprecated]
 pub fn take_if_dim<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
 {
     apply(

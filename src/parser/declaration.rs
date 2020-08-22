@@ -23,15 +23,28 @@ pub fn declaration<T: BufRead + 'static>(
     map_ng(
         with_some_whitespace_between(
             try_read_keyword(Keyword::Declare),
-            or_ng(function_declaration(), sub_declaration()),
+            or_ng(function_declaration_token(), sub_declaration_token()),
             || QError::SyntaxError("Unknown Declaration".to_string()),
         ),
         |(_, r)| r,
     )
 }
 
-fn function_declaration<T: BufRead + 'static>(
+fn function_declaration_token<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    map_ng(function_declaration(), |(n, p)| {
+        TopLevelToken::FunctionDeclaration(n, p)
+    })
+}
+
+pub fn function_declaration<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<(NameNode, DeclaredNameNodes), QErrorNode>,
+    ),
+> {
     map_ng(
         with_some_whitespace_between(
             try_read_keyword(Keyword::Function),
@@ -41,12 +54,25 @@ fn function_declaration<T: BufRead + 'static>(
             ),
             || QError::SyntaxError("Expected function name".to_string()),
         ),
-        |(_, (n, p))| TopLevelToken::FunctionDeclaration(n, p.unwrap()),
+        |(_, (n, p))| (n, p.unwrap_or_default()),
     )
 }
 
-fn sub_declaration<T: BufRead + 'static>(
+fn sub_declaration_token<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    map_ng(sub_declaration(), |(n, p)| {
+        TopLevelToken::SubDeclaration(n, p)
+    })
+}
+
+pub fn sub_declaration<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<(BareNameNode, DeclaredNameNodes), QErrorNode>,
+    ),
+> {
     map_ng(
         with_some_whitespace_between(
             try_read_keyword(Keyword::Sub),
@@ -56,7 +82,7 @@ fn sub_declaration<T: BufRead + 'static>(
             ),
             || QError::SyntaxError("Expected sub name".to_string()),
         ),
-        |(_, (n, p))| TopLevelToken::SubDeclaration(n, p.unwrap()),
+        |(_, (n, p))| (n, p.unwrap_or_default()),
     )
 }
 

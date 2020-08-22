@@ -1,13 +1,62 @@
+use crate::char_reader::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
-use crate::parser::declaration::try_read_declaration_parameters;
-
+use crate::parser::declaration;
 use crate::parser::name;
-use crate::parser::statements::parse_statements;
+use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+// FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
+// SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
+
+pub fn implementation<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    or_ng(function_implementation(), sub_implementation())
+}
+
+pub fn function_implementation<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    map_ng(
+        if_first_demand_second(
+            declaration::function_declaration(),
+            if_first_demand_second(
+                statements::statements(),
+                with_some_whitespace_between(
+                    try_read_keyword(Keyword::End),
+                    try_read_keyword(Keyword::Function),
+                    || QError::SyntaxError("Expected function after end".to_string()),
+                ),
+                || QError::SyntaxError("Expected END FUNCTION after function body".to_string()),
+            ),
+            || QError::SyntaxError("Expected function body".to_string()),
+        ),
+        |((n, p), (body, _))| TopLevelToken::FunctionImplementation(n, p, body),
+    )
+}
+
+pub fn sub_implementation<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    map_ng(
+        if_first_demand_second(
+            declaration::sub_declaration(),
+            if_first_demand_second(
+                statements::statements(),
+                with_some_whitespace_between(
+                    try_read_keyword(Keyword::End),
+                    try_read_keyword(Keyword::Sub),
+                    || QError::SyntaxError("Expected sub after end".to_string()),
+                ),
+                || QError::SyntaxError("Expected END SUB after sub body".to_string()),
+            ),
+            || QError::SyntaxError("Expected sub body".to_string()),
+        ),
+        |((n, p), (body, _))| TopLevelToken::SubImplementation(n, p, body),
+    )
+}
+
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
@@ -23,6 +72,7 @@ pub fn try_read<T: BufRead + 'static>(
     }
 }
 
+#[deprecated]
 pub fn demand_function_implementation<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<TopLevelToken, QErrorNode> {
@@ -32,11 +82,11 @@ pub fn demand_function_implementation<T: BufRead + 'static>(
     // function parameters
     let params: DeclaredNameNodes = read(
         lexer,
-        try_read_declaration_parameters,
+        declaration::try_read_declaration_parameters,
         "Expected function parameters",
     )?;
     // function body
-    let block = parse_statements(
+    let block = statements::parse_statements(
         lexer,
         |x| x.is_keyword(Keyword::End),
         "Function without End",
@@ -56,11 +106,12 @@ pub fn demand_sub_implementation<T: BufRead + 'static>(
     // sub parameters
     let params: DeclaredNameNodes = read(
         lexer,
-        try_read_declaration_parameters,
+        declaration::try_read_declaration_parameters,
         "Expected sub parameters",
     )?;
     // body
-    let block = parse_statements(lexer, |x| x.is_keyword(Keyword::End), "Sub without End")?;
+    let block =
+        statements::parse_statements(lexer, |x| x.is_keyword(Keyword::End), "Sub without End")?;
     read_keyword(lexer, Keyword::End)?;
     read_whitespace(lexer, "Expected whitespace after END keyword")?;
     read_keyword(lexer, Keyword::Sub)?;

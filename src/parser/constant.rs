@@ -1,4 +1,5 @@
 use super::{Statement, StatementNode};
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
@@ -7,6 +8,27 @@ use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
 
+pub fn constant<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    map_ng(
+        with_some_whitespace_between(
+            try_read_keyword(Keyword::Const),
+            with_any_whitespace_between(
+                name::name_node(),
+                with_any_whitespace_between(
+                    try_read_char('='),
+                    expression::expression_node(),
+                    || QError::SyntaxError("Expected expression after =".to_string()),
+                ),
+                || QError::SyntaxError("Expected = after name".to_string()),
+            ),
+            || QError::SyntaxError("Expected name after CONST".to_string()),
+        ),
+        |(_, (n, (_, e)))| Statement::Const(n, e),
+    )
+}
+
+#[deprecated]
 pub fn take_if_const<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(

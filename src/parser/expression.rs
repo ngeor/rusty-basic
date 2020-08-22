@@ -1,3 +1,4 @@
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
@@ -6,6 +7,11 @@ use crate::parser::name;
 use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;
+
+pub fn expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+    unimplemented!()
+}
 
 pub fn take_if_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {

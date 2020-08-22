@@ -612,42 +612,49 @@ where
     )
 }
 
+/// Reads any identifier. Note that the result might be a keyword.
+/// An identifier must start with a letter and consists of letters, numbers and the dot.
 pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
+    apply(
+    zip_allow_right_none(
+        read_any_letter(),
     read_any_str_while(|ch| {
         (ch >= 'a' && ch <= 'z')
             || (ch >= 'A' && ch <= 'Z')
             || (ch >= '0' && ch <= '9')
             || (ch == '.')
-    })
-}
-
-pub fn switch_from_str<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<(T, String), E>)>
-where
-    P: ParserSource + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<String, E>) + 'static,
-    T: FromStr + 'static,
-    E: NotFoundErr + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, next) = source(reader);
-        match next {
-            Ok(s) => match T::from_str(&s) {
-                Ok(u) => (reader, Ok((u, s))),
-                Err(_) => (reader.undo(s), Err(E::not_found_err())),
-            },
-            Err(err) => (reader, Err(err)),
+    })), |(l,opt_r)| {
+        let mut result: String = String::new();
+        result.push(l);
+        if opt_r.is_some() {
+            result.push_str(opt_r.unwrap().as_ref());
         }
+        result
     })
 }
 
+/// Reads any keyword.
 pub fn read_any_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QErrorNode>)>
 where
     P: ParserSource + Undo<String> + 'static,
 {
     switch_from_str(read_any_identifier())
+}
+
+/// Reads any word, i.e. any identifier which is not a keyword.
+pub fn read_any_word<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+where
+    P: ParserSource + Undo<String> + 'static,
+{
+    map_or_undo(read_any_identifier(), |s| {
+        match Keyword::from_str(&s) {
+            Ok(_) => MapOrUndo::Undo(s),
+            Err(_) => MapOrUndo::Ok(s)
+        }
+    })
 }
 
 pub fn read_keyword_if<P, F>(
@@ -684,74 +691,18 @@ where
     })
 }
 
-pub fn take_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn read_any_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
     read_any_str_while(|x| x == '\r' || x == '\n')
 }
 
-pub fn take_lexeme_eol<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode>)>
+pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
-    apply(take_eol(), |x| Lexeme::EOL(x))
-}
-
-pub fn take_lexeme_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode>)>
-where
-    P: ParserSource + Undo<String> + 'static,
-{
-    apply(read_any_keyword(), |(k, s)| Lexeme::Keyword(k, s))
-}
-
-pub fn take_lexeme_word<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode>)>
-where
-    P: ParserSource + 'static,
-{
-    apply(read_any_identifier(), |x| Lexeme::Word(x))
-}
-
-pub fn take_lexeme_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode>)>
-where
-    P: ParserSource + 'static,
-{
-    apply(read_any_whitespace(), |x| Lexeme::Whitespace(x))
-}
-
-pub fn take_lexeme_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode>)>
-where
-    P: ParserSource + 'static,
-{
-    apply(read_any_symbol(), |x| Lexeme::Symbol(x))
-}
-
-pub fn take_lexeme_digits<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode>)>
-where
-    P: ParserSource + 'static,
-{
-    apply(read_any_str_while(|ch| ch >= '0' && ch <= '9'), |x| {
-        Lexeme::Digits(x)
-    })
-}
-
-pub fn take_lexeme<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode>)>
-where
-    P: ParserSource + Undo<String> + 'static,
-{
-    or(
-        take_lexeme_eol(),
-        or(
-            take_lexeme_keyword(),
-            or(
-                take_lexeme_word(),
-                or(
-                    take_lexeme_whitespace(),
-                    or(take_lexeme_symbol(), take_lexeme_digits()),
-                ),
-            ),
-        ),
-    )
+    read_any_str_while(|ch| ch >= '0' && ch <= '9')
 }
 
 //
@@ -995,6 +946,79 @@ where
 // Modify the result of a parser
 //
 
+/// Maps the ok output of the `source` with the given mapper function.
+/// The mapper function has total control over the result, as it receives both
+/// the ok output of the source and the reader. This is the most flexible mapper
+/// function.
+pub fn map_to_reader<P, S, M, T, U, E>(
+    source: S,
+    mapper: M,
+) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+where
+    P: ParserSource + 'static,
+    S: Fn(P) -> (P, Result<T, E>) + 'static,
+    M: Fn(P, T) -> (P, Result<U, E>) + 'static,
+    T: 'static,
+    U: 'static,
+    E: 'static,
+{
+    Box::new(move |char_reader| {
+        let (char_reader, next) = source(char_reader);
+        match next {
+            Ok(ch) => mapper(char_reader, ch),
+            Err(err) => (char_reader, Err(err)),
+        }
+    })
+}
+
+/// Map the result of the source using the given mapper function.
+/// Be careful as it will not undo if the mapper function returns a Not Found result.
+pub fn map_to_result_no_undo<P, S, M, T, U, E>(
+    source: S,
+    mapper: M,
+) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+where
+    P: ParserSource + 'static,
+    S: Fn(P) -> (P, Result<T, E>) + 'static,
+    M: Fn(T) -> Result<U, E> + 'static,
+    T: 'static,
+    U: 'static,
+    E: 'static,
+{
+    map_to_reader(source, move |reader, ok| (reader, mapper(ok)))
+}
+
+pub enum MapOrUndo<T, U> {
+    Ok(T),
+    Undo(U)
+}
+
+/// Maps the ok output of the `source` with the given mapper function.
+/// The function can convert an ok result into a not found result.
+pub fn map_or_undo<P, S, M, T, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+where
+    P: ParserSource + 'static + Undo<T>,
+    S: Fn(P) -> (P, Result<T, E>) + 'static,
+    M: Fn(T) -> MapOrUndo<U, T> + 'static,
+    T: 'static,
+    U: 'static,
+    E: NotFoundErr + 'static,
+{
+    Box::new(move |char_reader| {
+        let (char_reader, next) = source(char_reader);
+        match next {
+            Ok(ch) => {
+                // switch it
+                match mapper(ch) {
+                    MapOrUndo::Ok(x) => (char_reader, Ok(x)),
+                    MapOrUndo::Undo(x) => (char_reader.undo(x), Err(E::not_found_err()))
+                }
+            }
+            Err(err) => (char_reader, Err(err)),
+        }
+    })
+}
+
 pub fn apply<P, S, M, R, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
 where
     P: ParserSource + 'static,
@@ -1004,72 +1028,24 @@ where
     U: 'static,
     E: 'static,
 {
-    switch(source, move |x| Ok(mapper(x)))
+    map_to_result_no_undo(source, move |x| Ok(mapper(x)))
 }
 
-pub fn switch<P, S, M, R, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+pub fn switch_from_str<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<(T, String), E>)>
 where
-    P: ParserSource + 'static,
-    S: Fn(P) -> (P, Result<R, E>) + 'static,
-    M: Fn(R) -> Result<U, E> + 'static,
-    R: 'static,
-    U: 'static,
-    E: 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, next) = source(char_reader);
-        match next {
-            Ok(ch) => (char_reader, mapper(ch)),
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
-pub fn switch_or_undo<P, S, M, R, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
-where
-    P: ParserSource + 'static + Undo<R>,
-    S: Fn(P) -> (P, Result<R, E>) + 'static,
-    M: Fn(R) -> (Option<U>, Option<R>) + 'static,
-    R: 'static,
-    U: 'static,
+    P: ParserSource + Undo<String> + 'static,
+    S: Fn(P) -> (P, Result<String, E>) + 'static,
+    T: FromStr + 'static,
     E: NotFoundErr + 'static,
 {
-    Box::new(move |char_reader| {
-        let (char_reader, next) = source(char_reader);
+    Box::new(move |reader| {
+        let (reader, next) = source(reader);
         match next {
-            Ok(ch) => {
-                // switch it
-                let (opt_ok, opt_undo) = mapper(ch);
-                if opt_ok.is_some() {
-                    (char_reader, Ok(opt_ok.unwrap()))
-                } else if opt_undo.is_some() {
-                    (char_reader.undo(opt_undo.unwrap()), Err(E::not_found_err()))
-                } else {
-                    panic!("switch_or_undo got a (None, None) result");
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
-pub fn switch_with_reader<P, S, M, R, U, E>(
-    source: S,
-    mapper: M,
-) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
-where
-    P: ParserSource + 'static,
-    S: Fn(P) -> (P, Result<R, E>) + 'static,
-    M: Fn(P, R) -> (P, Result<U, E>) + 'static,
-    R: 'static,
-    U: 'static,
-    E: 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, next) = source(char_reader);
-        match next {
-            Ok(ch) => mapper(char_reader, ch),
-            Err(err) => (char_reader, Err(err)),
+            Ok(s) => match T::from_str(&s) {
+                Ok(u) => (reader, Ok((u, s))),
+                Err(_) => (reader.undo(s), Err(E::not_found_err())),
+            },
+            Err(err) => (reader, Err(err)),
         }
     })
 }
@@ -1155,7 +1131,7 @@ where
     R: 'static,
     FE: Fn() -> QError + 'static,
 {
-    switch(
+    map_to_result_no_undo(
         take_one_or_more(
             zip_allow_right_none(
                 skipping_whitespace(source),

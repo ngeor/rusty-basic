@@ -205,10 +205,10 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
 pub fn statement_illegal_keywords<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
     or(
-        switch(with_pos(try_read_keyword(Keyword::Wend)), |k| {
+        map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Wend)), |k| {
             Err(QError::WendWithoutWhile).with_err_at(k)
         }),
-        switch(with_pos(try_read_keyword(Keyword::Else)), |k| {
+        map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Else)), |k| {
             Err(QError::ElseWithoutIf).with_err_at(k)
         }),
     )

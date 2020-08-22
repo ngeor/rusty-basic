@@ -8,9 +8,15 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
-// FunctionDeclaration   ::= FUNCTION<ws+><Name><DeclarationParameters>
-// SubDeclaration        ::= SUB<ws+><BareName><DeclarationParameters>
-// DeclarationParameters ::= <ws*>
+// FunctionDeclaration   ::= FUNCTION<ws+><Name><ws*><DeclarationParameters>
+// SubDeclaration        ::= SUB<ws+><BareName><ws*><DeclarationParameters>
+// DeclarationParameters ::= <eof> | <eol> | '(' <DeclaredNames> ')'
+// DeclaredNames         ::= <> | <DeclaredName> | <DeclaredName><ws*>,<ws*><DeclaredNames>
+// DeclaredName          ::= <BareName> | <CompactBuiltIn> | <ExtendedBuiltIn> | <UserDefined>
+// BareName              ::= [a-zA-Z]([a-zA-Z0-9\.]*) ! Keyword
+// CompactBuiltIn        ::= <BareName>[!#$%&]
+// ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
+// UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,

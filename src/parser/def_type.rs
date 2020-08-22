@@ -10,7 +10,7 @@ use crate::parser::buf_lexer_helpers::*;
 
 use crate::char_reader::{
     and, and_skip_first, apply, csv_one_or_more, or, read_any_keyword, read_any_letter,
-    read_some_letter, switch_or_undo, try_read_char, with_whitespace_between, EolReader,
+    read_some_letter, map_or_undo, MapOrUndo, try_read_char, with_whitespace_between, EolReader,
 };
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -27,13 +27,13 @@ pub fn def_type<T: BufRead + 'static>(
 
 fn def_keyword<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeQualifier, QErrorNode>)> {
-    switch_or_undo(read_any_keyword(), |(k, s)| match k {
-        Keyword::DefDbl => (Some(TypeQualifier::HashDouble), None),
-        Keyword::DefInt => (Some(TypeQualifier::PercentInteger), None),
-        Keyword::DefLng => (Some(TypeQualifier::AmpersandLong), None),
-        Keyword::DefSng => (Some(TypeQualifier::BangSingle), None),
-        Keyword::DefStr => (Some(TypeQualifier::DollarString), None),
-        _ => (None, Some((k, s))),
+    map_or_undo(read_any_keyword(), |(k, s)| match k {
+        Keyword::DefDbl => MapOrUndo::Ok(TypeQualifier::HashDouble),
+        Keyword::DefInt => MapOrUndo::Ok(TypeQualifier::PercentInteger),
+        Keyword::DefLng => MapOrUndo::Ok(TypeQualifier::AmpersandLong),
+        Keyword::DefSng => MapOrUndo::Ok(TypeQualifier::BangSingle),
+        Keyword::DefStr => MapOrUndo::Ok(TypeQualifier::DollarString),
+        _ => MapOrUndo::Undo((k, s)),
     })
 }
 

@@ -21,7 +21,7 @@ use std::io::BufRead;
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    if !lexer.peek_ref_ng().is_keyword(Keyword::Declare) {
+    if !lexer.peek_ref_dp().is_keyword(Keyword::Declare) {
         return Ok(None);
     }
 
@@ -63,7 +63,7 @@ pub fn try_read_declaration_parameters<T: BufRead + 'static>(
     lexer.begin_transaction();
     skip_whitespace(lexer)?;
 
-    let p = lexer.peek_ref_ng()?;
+    let p = lexer.peek_ref_dp()?;
     match p {
         Some(l) => {
             match l.as_ref() {
@@ -93,9 +93,9 @@ pub fn try_read_declaration_parameters<T: BufRead + 'static>(
 fn parse_parameters<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<DeclaredNameNodes, QErrorNode> {
-    lexer.read_ng()?; // read opening parenthesis
+    lexer.read_dp()?; // read opening parenthesis
     skip_whitespace(lexer)?;
-    match lexer.peek_ref_ng()? {
+    match lexer.peek_ref_dp()? {
         Some(Locatable {
             element: Lexeme::Word(_),
             ..
@@ -112,7 +112,7 @@ fn parse_parameters<T: BufRead + 'static>(
             ..
         }) => {
             // exit e.g. Sub Hello()
-            lexer.read_ng()?;
+            lexer.read_dp()?;
             Ok(vec![])
         }
         _ => Err(QError::SyntaxError(
@@ -126,12 +126,12 @@ fn parse_next_parameter<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<DeclaredNameNodes, QErrorNode> {
     skip_whitespace(lexer)?;
-    match lexer.peek_ref_ng()? {
+    match lexer.peek_ref_dp()? {
         Some(Locatable {
             element: Lexeme::Symbol(','),
             ..
         }) => {
-            lexer.read_ng()?;
+            lexer.read_dp()?;
             skip_whitespace(lexer)?;
             let first_param = parse_one_parameter(lexer)?;
             let mut remaining = parse_next_parameter(lexer)?;
@@ -143,7 +143,7 @@ fn parse_next_parameter<T: BufRead + 'static>(
             element: Lexeme::Symbol(')'),
             ..
         }) => {
-            lexer.read_ng()?;
+            lexer.read_dp()?;
             Ok(vec![])
         }
         _ => Err(QError::SyntaxError(

@@ -210,7 +210,7 @@ impl<T: BufRead> ReadOpt for CharReader<T> {
     type Item = char;
     type Err = QErrorNode;
 
-    fn read_ng(&mut self) -> Result<Option<char>, QErrorNode> {
+    fn read_dp(&mut self) -> Result<Option<char>, QErrorNode> {
         if self.read_eof {
             Ok(None)
         } else {
@@ -230,7 +230,7 @@ impl<T: BufRead> ReadOpt for CharReader<T> {
 }
 
 impl<T: BufRead> PeekOptCopy for CharReader<T> {
-    fn peek_copy_ng(&mut self) -> Result<Option<char>, QErrorNode> {
+    fn peek_copy_dp(&mut self) -> Result<Option<char>, QErrorNode> {
         if self.read_eof {
             Ok(None)
         } else {
@@ -619,21 +619,24 @@ where
     P: ParserSource + 'static,
 {
     apply(
-    zip_allow_right_none(
-        read_any_letter(),
-    read_any_str_while(|ch| {
-        (ch >= 'a' && ch <= 'z')
-            || (ch >= 'A' && ch <= 'Z')
-            || (ch >= '0' && ch <= '9')
-            || (ch == '.')
-    })), |(l,opt_r)| {
-        let mut result: String = String::new();
-        result.push(l);
-        if opt_r.is_some() {
-            result.push_str(opt_r.unwrap().as_ref());
-        }
-        result
-    })
+        zip_allow_right_none(
+            read_any_letter(),
+            read_any_str_while(|ch| {
+                (ch >= 'a' && ch <= 'z')
+                    || (ch >= 'A' && ch <= 'Z')
+                    || (ch >= '0' && ch <= '9')
+                    || (ch == '.')
+            }),
+        ),
+        |(l, opt_r)| {
+            let mut result: String = String::new();
+            result.push(l);
+            if opt_r.is_some() {
+                result.push_str(opt_r.unwrap().as_ref());
+            }
+            result
+        },
+    )
 }
 
 /// Reads any keyword.
@@ -649,11 +652,9 @@ pub fn read_any_word<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
 where
     P: ParserSource + Undo<String> + 'static,
 {
-    map_or_undo(read_any_identifier(), |s| {
-        match Keyword::from_str(&s) {
-            Ok(_) => MapOrUndo::Undo(s),
-            Err(_) => MapOrUndo::Ok(s)
-        }
+    map_or_undo(read_any_identifier(), |s| match Keyword::from_str(&s) {
+        Ok(_) => MapOrUndo::Undo(s),
+        Err(_) => MapOrUndo::Ok(s),
     })
 }
 
@@ -950,10 +951,7 @@ where
 /// The mapper function has total control over the result, as it receives both
 /// the ok output of the source and the reader. This is the most flexible mapper
 /// function.
-pub fn map_to_reader<P, S, M, T, U, E>(
-    source: S,
-    mapper: M,
-) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+pub fn map_to_reader<P, S, M, T, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
 where
     P: ParserSource + 'static,
     S: Fn(P) -> (P, Result<T, E>) + 'static,
@@ -990,7 +988,7 @@ where
 
 pub enum MapOrUndo<T, U> {
     Ok(T),
-    Undo(U)
+    Undo(U),
 }
 
 /// Maps the ok output of the `source` with the given mapper function.
@@ -1011,7 +1009,7 @@ where
                 // switch it
                 match mapper(ch) {
                     MapOrUndo::Ok(x) => (char_reader, Ok(x)),
-                    MapOrUndo::Undo(x) => (char_reader.undo(x), Err(E::not_found_err()))
+                    MapOrUndo::Undo(x) => (char_reader.undo(x), Err(E::not_found_err())),
                 }
             }
             Err(err) => (char_reader, Err(err)),
@@ -1492,10 +1490,10 @@ mod tests {
     #[test]
     fn test_eof_is_twice() {
         let mut reader: CharReader<BufReader<Cursor<&str>>> = "123".into();
-        assert_eq!(reader.read_ng().unwrap().unwrap(), '1');
-        assert_eq!(reader.read_ng().unwrap().unwrap(), '2');
-        assert_eq!(reader.read_ng().unwrap().unwrap(), '3');
-        assert_eq!(reader.read_ng().unwrap(), None);
-        assert_eq!(reader.read_ng().unwrap(), None);
+        assert_eq!(reader.read_dp().unwrap().unwrap(), '1');
+        assert_eq!(reader.read_dp().unwrap().unwrap(), '2');
+        assert_eq!(reader.read_dp().unwrap().unwrap(), '3');
+        assert_eq!(reader.read_dp().unwrap(), None);
+        assert_eq!(reader.read_dp().unwrap(), None);
     }
 }

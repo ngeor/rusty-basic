@@ -48,11 +48,11 @@ impl<T: BufRead> Lexer<T> {
     }
 
     fn peek_one(&mut self) -> Result<Option<char>, QErrorNode> {
-        self.reader.peek_copy_ng().patch_err_pos(self.pos)
+        self.reader.peek_copy_dp().patch_err_pos(self.pos)
     }
 
     fn read_one(&mut self) -> Result<Option<char>, QErrorNode> {
-        self.reader.read_ng().patch_err_pos(self.pos)
+        self.reader.read_dp().patch_err_pos(self.pos)
     }
 
     fn read_while(&mut self, predicate: fn(char) -> bool) -> Result<String, QErrorNode> {
@@ -119,7 +119,7 @@ impl<T: BufRead> ReadOpt for Lexer<T> {
     type Item = LexemeNode;
     type Err = QErrorNode;
 
-    fn read_ng(&mut self) -> Result<Option<LexemeNode>, QErrorNode> {
+    fn read_dp(&mut self) -> Result<Option<LexemeNode>, QErrorNode> {
         let peeked = self.peek_one()?;
         match peeked {
             None => Ok(None),
@@ -153,7 +153,7 @@ impl<T: BufRead> Iterator for Lexer<T> {
     type Item = Result<LexemeNode, QErrorNode>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.read_ng().transpose()
+        self.read_dp().transpose()
     }
 }
 
@@ -217,42 +217,42 @@ mod tests {
         let input = "PRINT \"Hello, world!\"";
         let mut lexer = Lexer::from(input);
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Word("PRINT".to_string()).at_rc(1, 1)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Whitespace(" ".to_string()).at_rc(1, 6)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Symbol('"').at_rc(1, 7)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Word("Hello".to_string()).at_rc(1, 8)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Symbol(',').at_rc(1, 13)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Whitespace(" ".to_string()).at_rc(1, 14)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Word("world".to_string()).at_rc(1, 15)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Symbol('!').at_rc(1, 20)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Symbol('"').at_rc(1, 21)
         );
-        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.read_dp().unwrap().is_some(), false);
         assert_eq!(lexer.pos(), Location::new(1, 22));
     }
 
@@ -260,18 +260,18 @@ mod tests {
     fn test_cr_lf() {
         let mut lexer = Lexer::from("Hi\r\n123");
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Word("Hi".to_string()).at_rc(1, 1)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::EOL("\r\n".to_string()).at_rc(1, 3)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Digits("123".to_string()).at_rc(2, 1)
         );
-        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.read_dp().unwrap().is_some(), false);
         assert_eq!(lexer.pos(), Location::new(2, 4));
     }
 
@@ -279,14 +279,14 @@ mod tests {
     fn test_cr_lf_2() {
         let mut lexer = Lexer::from("Hi\r\n\n\r");
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Word("Hi".to_string()).at_rc(1, 1)
         );
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::EOL("\r\n\n\r".to_string()).at_rc(1, 3)
         );
-        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.read_dp().unwrap().is_some(), false);
         assert_eq!(lexer.pos(), Location::new(4, 1));
     }
 
@@ -294,12 +294,12 @@ mod tests {
     fn test_eof_twice() {
         let mut lexer = Lexer::from("Hi");
         assert_eq!(
-            lexer.read_ng().unwrap().unwrap(),
+            lexer.read_dp().unwrap().unwrap(),
             Lexeme::Word("Hi".to_string()).at_rc(1, 1)
         );
-        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.read_dp().unwrap().is_some(), false);
         assert_eq!(lexer.pos(), Location::new(1, 3));
-        assert_eq!(lexer.read_ng().unwrap().is_some(), false);
+        assert_eq!(lexer.read_dp().unwrap().is_some(), false);
         assert_eq!(lexer.pos(), Location::new(1, 3));
     }
 
@@ -308,19 +308,19 @@ mod tests {
         let mut lexer = Lexer::from("PRINT 1");
         assert_eq!(lexer.pos(), Location::new(1, 1));
         lexer
-            .read_ng()
+            .read_dp()
             .unwrap()
             .expect("Read should succeed (PRINT)");
         assert_eq!(lexer.pos(), Location::new(1, 6));
         lexer
-            .read_ng()
+            .read_dp()
             .unwrap()
             .expect("Read should succeed (whitespace)");
         assert_eq!(lexer.pos(), Location::new(1, 7));
-        lexer.read_ng().unwrap().expect("Read should succeed (1)");
+        lexer.read_dp().unwrap().expect("Read should succeed (1)");
         assert_eq!(lexer.pos(), Location::new(1, 8));
         assert_eq!(
-            lexer.read_ng().unwrap().is_some(),
+            lexer.read_dp().unwrap().is_some(),
             false,
             "Read should succeed (EOF)"
         );

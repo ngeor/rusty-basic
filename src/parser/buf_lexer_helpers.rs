@@ -228,7 +228,7 @@ pub fn read<T: BufRead, TResult, F, S: AsRef<str>>(
 where
     F: FnMut(&mut BufLexer<T>) -> Result<Option<TResult>, QErrorNode>,
 {
-    let p = lexer.peek_ref_ng()?;
+    let p = lexer.peek_ref_dp()?;
     match p {
         Some(x) => {
             let pos = x.pos();
@@ -286,10 +286,10 @@ pub fn skip_if<T: BufRead, F>(lexer: &mut BufLexer<T>, f: F) -> Result<bool, QEr
 where
     F: Fn(&Lexeme) -> bool,
 {
-    match lexer.peek_ref_ng()? {
+    match lexer.peek_ref_dp()? {
         Some(next) => {
             if f(next.as_ref()) {
-                lexer.read_ng()?;
+                lexer.read_dp()?;
                 Ok(true)
             } else {
                 Ok(false)
@@ -327,8 +327,8 @@ pub fn read_symbol<T: BufRead>(lexer: &mut BufLexer<T>, symbol: char) -> Result<
 #[deprecated]
 pub fn skip_whitespace<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_whitespace = false;
-    while lexer.peek_ref_ng().is_whitespace() {
-        lexer.read_ng()?;
+    while lexer.peek_ref_dp().is_whitespace() {
+        lexer.read_dp()?;
         found_whitespace = true;
     }
     Ok(found_whitespace)
@@ -339,7 +339,7 @@ pub fn read_whitespace<T: BufRead, S: AsRef<str>>(
     lexer: &mut BufLexer<T>,
     msg: S,
 ) -> Result<(), QErrorNode> {
-    match lexer.read_ng()? {
+    match lexer.read_dp()? {
         Some(Locatable {
             element: Lexeme::Whitespace(_),
             ..

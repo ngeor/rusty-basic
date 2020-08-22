@@ -9,8 +9,9 @@ use crate::parser::buf_lexer_helpers::*;
 // Letter       ::= [a-zA-Z]
 
 use crate::char_reader::{
-    and, and_skip_first, apply, csv_one_or_more, or, read_any_keyword, read_any_letter,
-    read_some_letter, map_or_undo, MapOrUndo, try_read_char, with_whitespace_between, EolReader,
+    and, and_skip_first, apply, csv_one_or_more, map_or_undo, or, read_any_keyword,
+    read_any_letter, read_some_letter, try_read_char, with_whitespace_between, EolReader,
+    MapOrUndo,
 };
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -75,7 +76,7 @@ fn two_letter_range<T: BufRead + 'static>(
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    let next = lexer.peek_ref_ng()?;
+    let next = lexer.peek_ref_dp()?;
     if next.is_none() {
         return Ok(None);
     }
@@ -110,8 +111,8 @@ pub fn try_read<T: BufRead>(
     lexer.begin_transaction();
     while state != STATE_EOL {
         skip_whitespace(lexer)?;
-        // TODO add helper for the peek_ng / read_ng pattern
-        match lexer.peek_ref_ng()? {
+        // TODO add helper for the peek_dp / read_dp pattern
+        match lexer.peek_ref_dp()? {
             Some(Locatable {
                 element: Lexeme::Word(w),
                 pos,
@@ -123,7 +124,7 @@ pub fn try_read<T: BufRead>(
                 if state == STATE_INITIAL || state == STATE_COMMA {
                     first_letter = w.chars().next().unwrap();
                     state = STATE_FIRST_LETTER;
-                    lexer.read_ng()?;
+                    lexer.read_dp()?;
                 } else if state == STATE_DASH {
                     second_letter = w.chars().next().unwrap();
                     if first_letter > second_letter {
@@ -133,7 +134,7 @@ pub fn try_read<T: BufRead>(
                         .with_err_at(*pos);
                     }
                     state = STATE_SECOND_LETTER;
-                    lexer.read_ng()?;
+                    lexer.read_dp()?;
                 } else {
                     return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(*pos);
                 }
@@ -144,7 +145,7 @@ pub fn try_read<T: BufRead>(
             }) => {
                 if state == STATE_FIRST_LETTER {
                     state = STATE_DASH;
-                    lexer.read_ng()?;
+                    lexer.read_dp()?;
                 } else {
                     return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(*pos);
                 }
@@ -156,11 +157,11 @@ pub fn try_read<T: BufRead>(
                 if state == STATE_FIRST_LETTER {
                     ranges.push(LetterRange::Single(first_letter));
                     state = STATE_COMMA;
-                    lexer.read_ng()?;
+                    lexer.read_dp()?;
                 } else if state == STATE_SECOND_LETTER {
                     ranges.push(LetterRange::Range(first_letter, second_letter));
                     state = STATE_COMMA;
-                    lexer.read_ng()?;
+                    lexer.read_dp()?;
                 } else {
                     return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(*pos);
                 }

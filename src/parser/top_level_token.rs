@@ -54,15 +54,15 @@ pub fn parse_top_level_tokens<T: BufRead + 'static>(
 
     // allowed to start with space, eol, : (e.g. WHILE A < 5:), ' for comment
     loop {
-        let p = lexer.peek_ref_ng()?;
+        let p = lexer.peek_ref_dp()?;
         if p.is_eof() {
             return Ok(tokens);
         } else if p.is_whitespace() {
-            lexer.read_ng()?;
+            lexer.read_dp()?;
         } else if p.is_eol() {
             // now we're allowed to read a statement other than comments,
             // and we're in multi-line mode
-            lexer.read_ng()?;
+            lexer.read_dp()?;
             read_separator = true;
         } else if p.is_symbol('\'') {
             // read comment
@@ -71,7 +71,7 @@ pub fn parse_top_level_tokens<T: BufRead + 'static>(
         // Comments do not need an inline separator but they require a EOL/EOF post-separator
         } else if p.is_symbol(':') {
             // single-line statement separator (e.g. WHILE A < 5:A=A+1:WEND)
-            lexer.read_ng()?;
+            lexer.read_dp()?;
             read_separator = true;
         } else {
             // must be a statement

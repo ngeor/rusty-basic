@@ -17,7 +17,7 @@ pub fn take_if_select_case<T: BufRead + 'static>(
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ref_ng().is_keyword(Keyword::Select) {
+    if !lexer.peek_ref_dp().is_keyword(Keyword::Select) {
         return Ok(None);
     }
     let pos = lexer.read()?.pos();
@@ -73,11 +73,11 @@ fn parse_inline_comments<T: BufRead + 'static>(
     let mut statements: StatementNodes = vec![];
 
     loop {
-        let p = lexer.peek_ref_ng();
+        let p = lexer.peek_ref_dp();
         if p.is_keyword(Keyword::Case) || p.is_keyword(Keyword::End) {
             return Ok(statements);
         } else if p.is_whitespace() || p.is_eol() {
-            lexer.read_ng()?;
+            lexer.read_dp()?;
         } else if p.is_symbol('\'') {
             // read comment, regardless of whether we've seen the separator or not
             let s = read(lexer, comment::try_read, "Expected comment")?;
@@ -93,11 +93,11 @@ fn parse_inline_comments<T: BufRead + 'static>(
 fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNode> {
     let mut found_case_else = false;
     lexer.begin_transaction();
-    if lexer.peek_ref_ng().is_keyword(Keyword::Case) {
-        lexer.read_ng()?;
-        if lexer.peek_ref_ng().is_whitespace() {
-            lexer.read_ng()?;
-            found_case_else = lexer.peek_ref_ng().is_keyword(Keyword::Else);
+    if lexer.peek_ref_dp().is_keyword(Keyword::Case) {
+        lexer.read_dp()?;
+        if lexer.peek_ref_dp().is_whitespace() {
+            lexer.read_dp()?;
+            found_case_else = lexer.peek_ref_dp().is_keyword(Keyword::Else);
         } else {
             // CASE should always be followed by a space so it's okay to throw an error here
             return Err(QError::SyntaxError("Expected space after CASE".to_string()))
@@ -112,15 +112,15 @@ fn peek_case_else<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<bool, QErrorNod
 fn try_read_case<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<CaseBlockNode>, QErrorNode> {
-    if !lexer.peek_ref_ng().is_keyword(Keyword::Case) {
+    if !lexer.peek_ref_dp().is_keyword(Keyword::Case) {
         return Ok(None);
     }
     if peek_case_else(lexer)? {
         return Ok(None);
     }
-    lexer.read_ng()?; // CASE
-    lexer.read_ng()?; // whitespace
-    if lexer.peek_ref_ng().is_keyword(Keyword::Is) {
+    lexer.read_dp()?; // CASE
+    lexer.read_dp()?; // whitespace
+    if lexer.peek_ref_dp().is_keyword(Keyword::Is) {
         read_case_is(lexer) // IS
     } else {
         read_case_expr(lexer)
@@ -131,7 +131,7 @@ fn try_read_case<T: BufRead + 'static>(
 fn read_case_is<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<CaseBlockNode>, QErrorNode> {
-    lexer.read_ng()?; // IS
+    lexer.read_dp()?; // IS
     skip_whitespace(lexer)?;
     let op = read_relational_operator(lexer)?;
     skip_whitespace(lexer)?;
@@ -153,18 +153,18 @@ fn read_relational_operator<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Opera
     if next.as_ref().is_symbol('=') {
         Ok(Operand::Equal)
     } else if next.as_ref().is_symbol('>') {
-        if lexer.peek_ref_ng().is_symbol('=') {
-            lexer.read_ng()?;
+        if lexer.peek_ref_dp().is_symbol('=') {
+            lexer.read_dp()?;
             Ok(Operand::GreaterOrEqual)
         } else {
             Ok(Operand::Greater)
         }
     } else if next.as_ref().is_symbol('<') {
-        if lexer.peek_ref_ng().is_symbol('=') {
-            lexer.read_ng()?;
+        if lexer.peek_ref_dp().is_symbol('=') {
+            lexer.read_dp()?;
             Ok(Operand::LessOrEqual)
-        } else if lexer.peek_ref_ng().is_symbol('>') {
-            lexer.read_ng()?;
+        } else if lexer.peek_ref_dp().is_symbol('>') {
+            lexer.read_dp()?;
             Ok(Operand::NotEqual)
         } else {
             Ok(Operand::Less)
@@ -219,9 +219,9 @@ fn try_read_case_else<T: BufRead + 'static>(
     if !peek_case_else(lexer)? {
         return Ok(None);
     }
-    lexer.read_ng()?; // CASE
-    lexer.read_ng()?; // whitespace
-    lexer.read_ng()?; // ELSE
+    lexer.read_dp()?; // CASE
+    lexer.read_dp()?; // whitespace
+    lexer.read_dp()?; // ELSE
     let statements = parse_statements(
         lexer,
         |x| x.is_keyword(Keyword::End),

@@ -17,7 +17,7 @@ pub fn take_if_for_loop<T: BufRead + 'static>(
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek_ref_ng().is_keyword(Keyword::For) {
+    if !lexer.peek_ref_dp().is_keyword(Keyword::For) {
         return Ok(None);
     }
 
@@ -70,13 +70,13 @@ fn try_parse_step<T: BufRead + 'static>(
     lexer.begin_transaction();
 
     while state != STATE_EOL {
-        let p = lexer.peek_ref_ng()?;
+        let p = lexer.peek_ref_dp()?;
         match p {
             Some(next) => {
                 let pos = next.pos();
                 match next.as_ref() {
                     Lexeme::Whitespace(_) => {
-                        lexer.read_ng()?;
+                        lexer.read_dp()?;
                         if state == STATE_UPPER_BOUND {
                             state = STATE_WHITESPACE_BEFORE_STEP;
                         } else if state == STATE_STEP {
@@ -98,7 +98,7 @@ fn try_parse_step<T: BufRead + 'static>(
                         state = STATE_EOL;
                     }
                     Lexeme::Keyword(Keyword::Step, _) => {
-                        lexer.read_ng()?;
+                        lexer.read_dp()?;
                         if state == STATE_WHITESPACE_BEFORE_STEP {
                             state = STATE_STEP;
                         } else {
@@ -148,11 +148,11 @@ fn try_parse_next_counter<T: BufRead + 'static>(
     lexer.begin_transaction();
 
     while state != STATE_EOL_OR_EOF {
-        let p = lexer.peek_ref_ng()?;
+        let p = lexer.peek_ref_dp()?;
         match p {
             Some(next) => match next.as_ref() {
                 Lexeme::Whitespace(_) => {
-                    lexer.read_ng()?;
+                    lexer.read_dp()?;
                     if state == STATE_NEXT {
                         state = STATE_WHITESPACE_AFTER_NEXT;
                     }

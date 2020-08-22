@@ -20,7 +20,7 @@ pub trait ReadOpt {
     /// - `Ok(None)` if the end of stream is found
     /// - `Err(err)` if an error occurred when reading the item
     #[deprecated]
-    fn read_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
+    fn read_dp(&mut self) -> Result<Option<Self::Item>, Self::Err>;
 }
 
 /// Peeks one item from a stream, returning a copy of the peeked item.
@@ -28,14 +28,14 @@ pub trait ReadOpt {
 pub trait PeekOptCopy: ReadOpt {
     /// Peeks one item from a stream.
     #[deprecated]
-    fn peek_copy_ng(&mut self) -> Result<Option<Self::Item>, Self::Err>;
+    fn peek_copy_dp(&mut self) -> Result<Option<Self::Item>, Self::Err>;
 }
 
 /// Peeks one item from a stream, returning a reference of the peeked item.
 pub trait PeekOptRef: ReadOpt {
     /// Peeks one item from a stream.
     #[deprecated]
-    fn peek_ref_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err>;
+    fn peek_ref_dp(&mut self) -> Result<Option<&Self::Item>, Self::Err>;
 
     /// Peeks the next item and reads it if it tests successfully against
     /// the given predicate function.
@@ -44,11 +44,11 @@ pub trait PeekOptRef: ReadOpt {
     where
         F: FnOnce(&Self::Item) -> bool,
     {
-        let opt: Option<&Self::Item> = self.peek_ref_ng()?;
+        let opt: Option<&Self::Item> = self.peek_ref_dp()?;
         match opt {
             Some(candidate) => {
                 if predicate(candidate) {
-                    self.read_ng()
+                    self.read_dp()
                 } else {
                     Ok(None)
                 }
@@ -105,7 +105,7 @@ impl<R: ReadOpt> TransactionalPeek<R> {
 
     fn fill_buffer_if_empty(&mut self) -> Result<bool, R::Err> {
         if self.index >= self.history.len() {
-            match self.reader.read_ng()? {
+            match self.reader.read_dp()? {
                 Some(x) => {
                     self.history.push(x);
                     Ok(true)
@@ -136,8 +136,8 @@ where
     type Item = R::Item;
     type Err = R::Err;
 
-    fn read_ng(&mut self) -> Result<Option<Self::Item>, Self::Err> {
-        let result = self.peek_copy_ng();
+    fn read_dp(&mut self) -> Result<Option<Self::Item>, Self::Err> {
+        let result = self.peek_copy_dp();
         self.index += 1;
         self.clear_history();
         result
@@ -148,7 +148,7 @@ impl<R: ReadOpt> PeekOptRef for TransactionalPeek<R>
 where
     R::Item: Clone,
 {
-    fn peek_ref_ng(&mut self) -> Result<Option<&Self::Item>, Self::Err> {
+    fn peek_ref_dp(&mut self) -> Result<Option<&Self::Item>, Self::Err> {
         if self.fill_buffer_if_empty()? {
             Ok(Some(&self.history[self.index]))
         } else {
@@ -161,7 +161,7 @@ impl<R: ReadOpt> PeekOptCopy for TransactionalPeek<R>
 where
     R::Item: Clone,
 {
-    fn peek_copy_ng(&mut self) -> Result<Option<Self::Item>, Self::Err> {
+    fn peek_copy_dp(&mut self) -> Result<Option<Self::Item>, Self::Err> {
         if self.fill_buffer_if_empty()? {
             Ok(Some(self.history[self.index].clone()))
         } else {
@@ -214,6 +214,6 @@ where
     type Err = R::Err;
 
     fn next(&mut self) -> Option<Result<R::Item, R::Err>> {
-        self.read_ng().transpose()
+        self.read_dp().transpose()
     }
 }

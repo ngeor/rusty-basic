@@ -7,6 +7,11 @@ use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+// Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
+// FunctionDeclaration   ::= FUNCTION<ws+><Name><DeclarationParameters>
+// SubDeclaration        ::= SUB<ws+><BareName><DeclarationParameters>
+// DeclarationParameters ::= <ws*>
+
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {

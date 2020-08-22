@@ -582,7 +582,7 @@ where
     read_some_str_while(|ch| ch == ' ' || ch == '\t', err_fn)
 }
 
-pub fn take_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
+pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
@@ -594,14 +594,14 @@ where
     })
 }
 
-pub fn take_any_letter<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
+pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
     read_any_char_if(|ch| (ch >= 'a' && ch <= 'z') || (ch >= 'A' || ch <= 'Z'))
 }
 
-pub fn take_some_letter<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
+pub fn read_some_letter<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
 where
     P: ParserSource + HasLocation + 'static,
     FE: Fn() -> QError + 'static,
@@ -650,13 +650,23 @@ where
     switch_from_str(read_any_identifier())
 }
 
+pub fn read_keyword_if<P, F>(
+    predicate: F,
+) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QErrorNode>)>
+where
+    P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
+    F: Fn(Keyword) -> bool + 'static,
+{
+    filter_any(read_any_keyword(), move |(k, _)| predicate(*k))
+}
+
 pub fn try_read_keyword<P>(
     needle: Keyword,
 ) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QErrorNode>)>
 where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
 {
-    filter_any(read_any_keyword(), move |(k, _)| *k == needle)
+    read_keyword_if(move |k| k == needle)
 }
 
 pub fn with_pos<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<Locatable<T>, E>)>
@@ -713,7 +723,7 @@ pub fn take_lexeme_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode
 where
     P: ParserSource + 'static,
 {
-    apply(take_any_symbol(), |x| Lexeme::Symbol(x))
+    apply(read_any_symbol(), |x| Lexeme::Symbol(x))
 }
 
 pub fn take_lexeme_digits<P>() -> Box<dyn Fn(P) -> (P, Result<Lexeme, QErrorNode>)>
@@ -781,7 +791,35 @@ where
     })
 }
 
-pub fn and_both<P, F1, F2, T1, T2, FE>(
+// internal use only
+fn and_no_undo<P, F1, F2, T1, T2, E>(
+    first: F1,
+    second: F2,
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), E>)>
+where
+    T1: 'static,
+    T2: 'static,
+    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
+    P: ParserSource + 'static,
+    E: IsNotFoundErr,
+{
+    Box::new(move |char_reader| {
+        let (char_reader, res1) = first(char_reader);
+        match res1 {
+            Ok(r1) => {
+                let (char_reader, res2) = second(char_reader);
+                match res2 {
+                    Ok(r2) => (char_reader, Ok((r1, r2))),
+                    Err(err) => (char_reader, Err(err)),
+                }
+            }
+            Err(err) => (char_reader, Err(err)),
+        }
+    })
+}
+
+pub fn if_first_demand_second<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
     err_fn: FE,
@@ -934,6 +972,25 @@ where
     })
 }
 
+pub fn with_whitespace_between<P, F1, F2, T1, T2, FE>(
+    first: F1,
+    second: F2,
+    err_fn: FE,
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+where
+    P: ParserSource + HasLocation + 'static,
+    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, QErrorNode>) + 'static,
+    T1: 'static,
+    T2: 'static,
+    FE: Fn() -> QError + 'static,
+{
+    apply(
+        if_first_demand_second(first, and_no_undo(read_any_whitespace(), second), err_fn),
+        |(l, (_, r))| (l, r),
+    )
+}
+
 //
 // Modify the result of a parser
 //
@@ -968,7 +1025,38 @@ where
     })
 }
 
-pub fn switch_2<P, S, M, R, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+pub fn switch_or_undo<P, S, M, R, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+where
+    P: ParserSource + 'static + Undo<R>,
+    S: Fn(P) -> (P, Result<R, E>) + 'static,
+    M: Fn(R) -> (Option<U>, Option<R>) + 'static,
+    R: 'static,
+    U: 'static,
+    E: NotFoundErr + 'static,
+{
+    Box::new(move |char_reader| {
+        let (char_reader, next) = source(char_reader);
+        match next {
+            Ok(ch) => {
+                // switch it
+                let (opt_ok, opt_undo) = mapper(ch);
+                if opt_ok.is_some() {
+                    (char_reader, Ok(opt_ok.unwrap()))
+                } else if opt_undo.is_some() {
+                    (char_reader.undo(opt_undo.unwrap()), Err(E::not_found_err()))
+                } else {
+                    panic!("switch_or_undo got a (None, None) result");
+                }
+            }
+            Err(err) => (char_reader, Err(err)),
+        }
+    })
+}
+
+pub fn switch_with_reader<P, S, M, R, U, E>(
+    source: S,
+    mapper: M,
+) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
 where
     P: ParserSource + 'static,
     S: Fn(P) -> (P, Result<R, E>) + 'static,

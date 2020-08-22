@@ -18,6 +18,7 @@ pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QEr
     parse_main_str_old(s)
 }
 
+#[deprecated]
 fn parse_main_str_old<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
     let mut lexer = BufLexer::from(s);
     parse_main(&mut lexer)
@@ -108,7 +109,7 @@ pub fn top_level_token_one<T: BufRead + 'static>(
 
 pub fn top_level_token_def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    apply(def_type::take_def_type(), |d| TopLevelToken::DefType(d))
+    apply(def_type::def_type(), |d| TopLevelToken::DefType(d))
 }
 
 pub fn top_level_token_declaration<T: BufRead + 'static>(

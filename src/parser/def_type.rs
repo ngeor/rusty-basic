@@ -9,8 +9,8 @@ use crate::parser::buf_lexer_helpers::*;
 // Letter       ::= [a-zA-Z]
 
 use crate::char_reader::{
-    and, and_skip_first, apply, csv_one_or_more, map_or_undo, or, read_any_keyword,
-    read_any_letter, read_some_letter, try_read_char, with_whitespace_between, EolReader,
+    and_ng, and_skip_first, csv_one_or_more, map_ng, map_or_undo, or_ng, read_any_keyword,
+    read_any_letter, read_some_letter, try_read_char, with_whitespace_between_ng, EolReader,
     MapOrUndo,
 };
 use crate::parser::types::*;
@@ -18,8 +18,8 @@ use std::io::BufRead;
 
 pub fn def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QErrorNode>)> {
-    apply(
-        with_whitespace_between(def_keyword(), letter_ranges(), || {
+    map_ng(
+        with_whitespace_between_ng(def_keyword(), letter_ranges(), || {
             QError::SyntaxError("Expected letter ranges".to_string())
         }),
         |(l, r)| DefType::new(l, r),
@@ -47,7 +47,7 @@ fn letter_ranges<T: BufRead + 'static>(
 
 fn letter_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
-    or(
+    or_ng(
         two_letter_range(), // needs to be first because the second will match too
         single_letter_range(),
     )
@@ -55,13 +55,13 @@ fn letter_range<T: BufRead + 'static>(
 
 fn single_letter_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
-    apply(read_any_letter(), |l| LetterRange::Single(l))
+    map_ng(read_any_letter(), |l| LetterRange::Single(l))
 }
 
 fn two_letter_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
-    apply(
-        and(
+    map_ng(
+        and_ng(
             read_any_letter(),
             and_skip_first(
                 try_read_char('-'),

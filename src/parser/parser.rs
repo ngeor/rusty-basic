@@ -99,7 +99,7 @@ pub fn top_level_tokens<T: BufRead + 'static>(
 
 pub fn top_level_token_one<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    with_pos(or_vec(vec![
+    with_pos(or_vec_ng(vec![
         top_level_token_def_type(),
         top_level_token_declaration(),
         top_level_token_implementation(),
@@ -109,7 +109,7 @@ pub fn top_level_token_one<T: BufRead + 'static>(
 
 pub fn top_level_token_def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    apply(def_type::def_type(), |d| TopLevelToken::DefType(d))
+    map_ng(def_type::def_type(), |d| TopLevelToken::DefType(d))
 }
 
 pub fn top_level_token_declaration<T: BufRead + 'static>(
@@ -204,7 +204,7 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
 
 pub fn statement_illegal_keywords<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    or(
+    or_ng(
         map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Wend)), |k| {
             Err(QError::WendWithoutWhile).with_err_at(k)
         }),

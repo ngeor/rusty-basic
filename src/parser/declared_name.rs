@@ -8,10 +8,75 @@ use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
+use crate::parser::type_qualifier;
 
+use crate::char_reader::*;
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
+use std::str::FromStr;
+
+pub fn declared_name_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNode, QErrorNode>)> {
+    with_pos(map_ng(
+        if_first_demand_second(read_any_word(), type_definition(), || {
+            QError::SyntaxError("Could not parse name".to_string())
+        }),
+        |(l, r)| DeclaredName::new(l.into(), r),
+    ))
+}
+
+fn type_definition<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
+    or_ng(type_definition_extended(), type_definition_compact())
+}
+
+fn type_definition_extended<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
+    map_ng(
+        if_first_demand_second(
+            and_ng(read_any_whitespace(), try_read_keyword(Keyword::As)),
+            and_ng(read_any_whitespace(), extended_type()),
+            || QError::SyntaxError("Expected type after AS".to_string()),
+        ),
+        |(_, (_, r))| r,
+    )
+}
+
+fn extended_type<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
+    map_to_result_no_undo(
+        with_pos(read_any_identifier()),
+        |Locatable { element: x, pos }| match Keyword::from_str(&x) {
+            Ok(Keyword::Single) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle)),
+            Ok(Keyword::Double) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)),
+            Ok(Keyword::String_) => {
+                Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString))
+            }
+            Ok(Keyword::Integer) => Ok(TypeDefinition::ExtendedBuiltIn(
+                TypeQualifier::PercentInteger,
+            )),
+            Ok(Keyword::Long) => Ok(TypeDefinition::ExtendedBuiltIn(
+                TypeQualifier::AmpersandLong,
+            )),
+            Ok(_) => Err(QError::SyntaxError(
+                "Expected user defined type or standard type".to_string(),
+            ))
+            .with_err_at(pos),
+            Err(_) => Ok(TypeDefinition::UserDefined(x.into())),
+        },
+    )
+}
+
+fn type_definition_compact<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
+    or_ng(
+        map_ng(type_qualifier::type_qualifier(), |q| {
+            TypeDefinition::CompactBuiltIn(q)
+        }),
+        Box::new(move |reader| (reader, Ok(TypeDefinition::Bare))),
+    )
+}
 
 pub fn take_if_declared_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<DeclaredNameNode>> {

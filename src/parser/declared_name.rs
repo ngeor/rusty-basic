@@ -34,12 +34,12 @@ fn type_definition<T: BufRead + 'static>(
 fn type_definition_extended<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
     map_ng(
-        if_first_demand_second(
-            and_ng(read_any_whitespace(), try_read_keyword(Keyword::As)),
-            and_ng(read_any_whitespace(), extended_type()),
+        with_some_whitespace_before_and_between(
+            try_read_keyword(Keyword::As),
+            extended_type(),
             || QError::SyntaxError("Expected type after AS".to_string()),
         ),
-        |(_, (_, r))| r,
+        |(_, r)| r,
     )
 }
 

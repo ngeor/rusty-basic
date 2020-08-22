@@ -10,7 +10,7 @@ use crate::parser::buf_lexer_helpers::*;
 
 use crate::char_reader::{
     and_ng, and_skip_first, csv_one_or_more, map_ng, map_or_undo, or_ng, read_any_keyword,
-    read_any_letter, read_some_letter, try_read_char, with_whitespace_between_ng, EolReader,
+    read_any_letter, read_some_letter, try_read_char, with_some_whitespace_between, EolReader,
     MapOrUndo,
 };
 use crate::parser::types::*;
@@ -19,7 +19,7 @@ use std::io::BufRead;
 pub fn def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QErrorNode>)> {
     map_ng(
-        with_whitespace_between_ng(def_keyword(), letter_ranges(), || {
+        with_some_whitespace_between(def_keyword(), letter_ranges(), || {
             QError::SyntaxError("Expected letter ranges".to_string())
         }),
         |(l, r)| DefType::new(l, r),

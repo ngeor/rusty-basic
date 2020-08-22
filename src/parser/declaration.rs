@@ -1,8 +1,8 @@
+use crate::char_reader::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::declared_name;
-
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -18,6 +18,54 @@ use std::io::BufRead;
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
+pub fn declaration<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    map_ng(
+        with_some_whitespace_between(
+            try_read_keyword(Keyword::Declare),
+            or_ng(function_declaration(), sub_declaration()),
+            || QError::SyntaxError("Unknown Declaration".to_string()),
+        ),
+        |(_, r)| r,
+    )
+}
+
+fn function_declaration<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    map_ng(
+        with_some_whitespace_between(
+            try_read_keyword(Keyword::Function),
+            if_first_maybe_second(
+                name::name_node(),
+                skipping_whitespace_ng(declaration_parameters()),
+            ),
+            || QError::SyntaxError("Expected function name".to_string()),
+        ),
+        |(_, (n, p))| TopLevelToken::FunctionDeclaration(n, p.unwrap()),
+    )
+}
+
+fn sub_declaration<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    map_ng(
+        with_some_whitespace_between(
+            try_read_keyword(Keyword::Sub),
+            if_first_maybe_second(
+                name::bare_name_node(),
+                skipping_whitespace_ng(declaration_parameters()),
+            ),
+            || QError::SyntaxError("Expected sub name".to_string()),
+        ),
+        |(_, (n, p))| TopLevelToken::SubDeclaration(n, p.unwrap()),
+    )
+}
+
+fn declaration_parameters<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNodes, QErrorNode>)> {
+    in_parenthesis(csv_zero_or_more(declared_name::declared_name_node()))
+}
+
+#[deprecated]
 pub fn try_read<T: BufRead + 'static>(
     lexer: &mut BufLexer<T>,
 ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {

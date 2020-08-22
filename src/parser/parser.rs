@@ -2,6 +2,7 @@ use crate::char_reader::*;
 use crate::common::*;
 use crate::lexer::BufLexer;
 use crate::lexer::Keyword;
+use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::top_level_token;
 use crate::parser::types::*;
@@ -114,7 +115,7 @@ pub fn top_level_token_def_type<T: BufRead + 'static>(
 
 pub fn top_level_token_declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    declaration::declaration()
 }
 
 pub fn top_level_token_implementation<T: BufRead + 'static>(

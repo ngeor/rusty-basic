@@ -558,20 +558,20 @@ where
     read_any_str_while(|ch| ch == ' ' || ch == '\t')
 }
 
-pub fn skip_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<(), QErrorNode>)>
+pub fn skip_whitespace_ng<P>() -> Box<dyn Fn(P) -> (P, Result<(), QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
     skip_while(|ch| ch == ' ' || ch == '\t')
 }
 
-pub fn skipping_whitespace<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn skipping_whitespace_ng<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
 where
     P: ParserSource + 'static,
     S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
     T: 'static,
 {
-    skip_first(skip_whitespace(), source)
+    skip_first(skip_whitespace_ng(), source)
 }
 
 pub fn read_some_whitespace<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
@@ -771,6 +771,43 @@ where
     })
 }
 
+pub fn maybe_first_and_second<P, F1, F2, T1, T2, E>(
+    first: F1,
+    second: F2,
+) -> Box<dyn Fn(P) -> (P, Result<(Option<T1>, T2), E>)>
+where
+    T1: 'static,
+    T2: 'static,
+    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
+    P: ParserSource + 'static,
+    E: IsNotFoundErr,
+{
+    Box::new(move |reader| {
+        let (reader, res1) = first(reader);
+        match res1 {
+            Ok(r1) => {
+                let (reader, res2) = second(reader);
+                match res2 {
+                    Ok(r2) => (reader, Ok((Some(r1), r2))),
+                    Err(err) => (reader, Err(err)),
+                }
+            }
+            Err(err) => {
+                if err.is_not_found_err() {
+                    let (reader, res2) = second(reader);
+                    match res2 {
+                        Ok(r2) => (reader, Ok((None, r2))),
+                        Err(err) => (reader, Err(err)),
+                    }
+                } else {
+                    (reader, Err(err))
+                }
+            }
+        }
+    })
+}
+
 pub fn if_first_demand_second<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
@@ -924,7 +961,11 @@ where
     })
 }
 
-pub fn with_whitespace_between_ng<P, F1, F2, T1, T2, FE>(
+/// Combines the two given parsers, demanding that there is some whitespace between
+/// their results.
+/// If the first parser succeeds, there must be a whitespace after it and the
+/// second parser must also succeed.
+pub fn with_some_whitespace_between<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
     err_fn: FE,
@@ -941,6 +982,51 @@ where
         if_first_demand_second(first, and_no_undo(read_any_whitespace(), second), err_fn),
         |(l, (_, r))| (l, r),
     )
+}
+
+/// Combines the two given parsers, demanding that there is some whitespace before
+/// the first result as well as between the two parsed results.
+/// If the first parser succeeds, the second parser must also succeed.
+///
+/// Returns not found if there is no leading whitespace or if the first parser fails.
+pub fn with_some_whitespace_before_and_between<P, F1, F2, T1, T2, FE>(
+    first: F1,
+    second: F2,
+    err_fn: FE,
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+where
+    P: ParserSource + HasLocation + Undo<String> + 'static,
+    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, QErrorNode>) + 'static,
+    T1: 'static,
+    T2: 'static,
+    FE: Fn() -> QError + 'static,
+{
+    map_ng(
+        and_ng(
+            read_any_whitespace(),
+            with_some_whitespace_between(first, second, err_fn),
+        ),
+        |(_, r)| r,
+    )
+}
+
+/// Combines the two given parsers, allowing some optional whitespace between their results.
+/// If the first parser succeeds, the second must also succeed.
+pub fn with_any_whitespace_between<P, F1, F2, T1, T2, FE>(
+    first: F1,
+    second: F2,
+    err_fn: FE,
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+where
+    P: ParserSource + HasLocation + 'static,
+    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, QErrorNode>) + 'static,
+    T1: 'static,
+    T2: 'static,
+    FE: Fn() -> QError + 'static,
+{
+    if_first_demand_second(first, skipping_whitespace_ng(second), err_fn)
 }
 
 //
@@ -1129,21 +1215,65 @@ where
     R: 'static,
     FE: Fn() -> QError + 'static,
 {
-    map_to_result_no_undo(
-        take_one_or_more(
-            if_first_maybe_second(
-                skipping_whitespace(source),
-                skipping_whitespace(with_pos(try_read_char(','))),
-            ),
-            err_fn,
+    csv_ensure_no_trailing_comma(take_one_or_more(
+        if_first_maybe_second(
+            skipping_whitespace_ng(source),
+            skipping_whitespace_ng(with_pos(try_read_char(','))),
         ),
-        |tuples| {
-            let last_item = tuples.last().unwrap();
-            match last_item {
-                (_, Some(trailing_comma)) => Err(QError::SyntaxError("Trailing comma".to_string()))
-                    .with_err_at(trailing_comma),
-                _ => Ok(tuples.into_iter().map(|x| x.0).collect()),
+        err_fn,
+    ))
+}
+
+pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QErrorNode>)>
+where
+    P: ParserSource + HasLocation + 'static,
+    S: Fn(P) -> (P, Result<R, QErrorNode>) + 'static,
+    R: 'static,
+{
+    csv_ensure_no_trailing_comma(take_zero_or_more(if_first_maybe_second(
+        skipping_whitespace_ng(source),
+        skipping_whitespace_ng(with_pos(try_read_char(','))),
+    )))
+}
+
+fn csv_ensure_no_trailing_comma<P, R, S>(
+    source: S,
+) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QErrorNode>)>
+where
+    P: ParserSource + HasLocation + 'static,
+    S: Fn(P) -> (P, Result<Vec<(R, Option<Locatable<char>>)>, QErrorNode>) + 'static,
+    R: 'static,
+{
+    map_to_result_no_undo(source, |tuples| {
+        let last_item = tuples.last().unwrap();
+        match last_item {
+            (_, Some(trailing_comma)) => {
+                Err(QError::SyntaxError("Trailing comma".to_string())).with_err_at(trailing_comma)
             }
+            _ => Ok(tuples.into_iter().map(|x| x.0).collect()),
+        }
+    })
+}
+
+pub fn in_parenthesis<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+where
+    P: ParserSource + HasLocation + 'static,
+    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    T: 'static,
+{
+    map_to_result_no_undo(
+        and_ng(
+            try_read_char('('),
+            maybe_first_and_second(
+                source,
+                demand_char(')', || {
+                    QError::SyntaxError("Expected closing parenthesis".to_string())
+                }),
+            ),
+        ),
+        |(_, (r, _))| match r {
+            Some(x) => Ok(x),
+            None => Err(QErrorNode::not_found_err()),
         },
     )
 }

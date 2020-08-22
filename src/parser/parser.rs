@@ -1,7 +1,8 @@
 use crate::char_reader::*;
 use crate::common::*;
 use crate::lexer::BufLexer;
-use crate::lexer::{Keyword, Lexeme};
+use crate::lexer::Keyword;
+use crate::parser::def_type;
 use crate::parser::top_level_token;
 use crate::parser::types::*;
 use std::fs::File;
@@ -55,7 +56,7 @@ pub fn top_level_tokens<T: BufRead + 'static>(
                     if err.is_not_found_err() {
                         break;
                     } else {
-                        return reader.err(err);
+                        return (reader, Err(err));
                     }
                 }
                 Ok(ch) => {
@@ -70,10 +71,15 @@ pub fn top_level_tokens<T: BufRead + 'static>(
                                 top_level_tokens.push(top_level_token);
                             }
                             Err(err) => {
-                                if err.as_ref().is_not_found_err() {
-                                    return reader.err(QError::SyntaxError(format!(
-                                        "Expected top level statement"
-                                    )));
+                                if err.is_not_found_err() {
+                                    return (
+                                        reader,
+                                        Err(err.map(|_| {
+                                            QError::SyntaxError(format!(
+                                                "Expected top level statement"
+                                            ))
+                                        })),
+                                    );
                                 } else {
                                     return (reader, Err(err));
                                 }
@@ -92,31 +98,31 @@ pub fn top_level_tokens<T: BufRead + 'static>(
 
 pub fn top_level_token_one<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    or_vec(vec![
+    with_pos(or_vec(vec![
         top_level_token_def_type(),
         top_level_token_declaration(),
         top_level_token_implementation(),
         top_level_token_statement(),
-    ])
+    ]))
 }
 
 pub fn top_level_token_def_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+    apply(def_type::take_def_type(), |d| TopLevelToken::DefType(d))
 }
 
 pub fn top_level_token_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
     Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn top_level_token_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
     Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn top_level_token_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
     Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
@@ -197,13 +203,14 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
 
 pub fn statement_illegal_keywords<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
-    with_err_pos(or(
-        switch(
-            |_| Err(QError::WendWithoutWhile),
-            take_keyword(Keyword::Wend),
-        ),
-        switch(|_| Err(QError::ElseWithoutIf), take_keyword(Keyword::Else)),
-    ))
+    or(
+        switch(with_pos(try_read_keyword(Keyword::Wend)), |k| {
+            Err(QError::WendWithoutWhile).with_err_at(k)
+        }),
+        switch(with_pos(try_read_keyword(Keyword::Else)), |k| {
+            Err(QError::ElseWithoutIf).with_err_at(k)
+        }),
+    )
 }
 
 #[cfg(test)]

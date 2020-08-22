@@ -2,8 +2,70 @@ use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 
+use crate::char_reader::{
+    and, and_both, and_skip_first, apply, csv_one_or_more, read_any_keyword, read_some_whitespace,
+    switch_2, take_any_letter, take_some_letter, try_read_char, zip_allow_right_none, EolReader,
+    NotFoundErr, Undo,
+};
 use crate::parser::types::*;
 use std::io::BufRead;
+
+fn take_letter_range<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
+    apply(
+        zip_allow_right_none(
+            take_any_letter(),
+            and_skip_first(
+                try_read_char('-'),
+                take_some_letter(|| QError::SyntaxError("Expected letter after dash".to_string())),
+            ),
+        ),
+        |(l, r)| match r {
+            Some(r) => LetterRange::Range(l, r),
+            _ => LetterRange::Single(l),
+        },
+    )
+}
+
+fn take_letter_ranges<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<LetterRange>, QErrorNode>)> {
+    csv_one_or_more(take_letter_range(), || {
+        QError::SyntaxError("Expected letter range".to_string())
+    })
+}
+
+fn take_def_keyword<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeQualifier, QErrorNode>)> {
+    switch_2(read_any_keyword(), |reader: EolReader<T>, (k, s)| match k {
+        Keyword::DefDbl => (reader, Ok(TypeQualifier::HashDouble)),
+        Keyword::DefInt => (reader, Ok(TypeQualifier::PercentInteger)),
+        Keyword::DefLng => (reader, Ok(TypeQualifier::AmpersandLong)),
+        Keyword::DefSng => (reader, Ok(TypeQualifier::BangSingle)),
+        Keyword::DefStr => (reader, Ok(TypeQualifier::DollarString)),
+        _ => reader.undo_and_err_not_found(s),
+    })
+}
+
+// take one of Keyword::DefXXX
+// if matching, demand char ranges e.g. A-Z , A, B-C, E
+// needs csv combinator
+// returns DefType(type_qualifier, ranges)
+pub fn take_def_type<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QErrorNode>)> {
+    apply(
+        and_both(
+            take_def_keyword(),
+            and_skip_first(
+                read_some_whitespace(|| {
+                    QError::SyntaxError("Expected space after DEFxxx".to_string())
+                }),
+                take_letter_ranges(),
+            ),
+            || QError::SyntaxError("Could not read expression after DEFxxx".to_string()),
+        ),
+        |(l, r)| DefType::new(l, r),
+    )
+}
 
 pub fn try_read<T: BufRead>(
     lexer: &mut BufLexer<T>,

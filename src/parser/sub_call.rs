@@ -1,13 +1,65 @@
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
-
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+// SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
+// SubCallNoArgs            ::= BareName [eof | eol | ' | <ws+>: ]
+// SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
+// SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
+pub fn sub_call<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    map_ng(
+        and_ng(
+            name::bare_name(),
+            or_vec_ng(vec![
+                in_parenthesis(csv_zero_or_more(expression::expression_node())),
+                skipping_whitespace_ng(csv_zero_or_more(expression::expression_node())),
+                map_ng(
+                    and_ng(
+                        read_some_whitespace(|| QError::not_found_err()),
+                        zero_args_assignment_and_label_guard(true),
+                    ),
+                    |(_, r)| r,
+                ),
+                zero_args_assignment_and_label_guard(false),
+            ]),
+        ),
+        |(n, r)| Statement::SubCall(n, r),
+    )
+}
+
+pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
+    allow_colon: bool,
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ArgumentNodes, QErrorNode>)> {
+    Box::new(move |reader| {
+        let (reader, next) = reader.read();
+        match next {
+            Ok(ch) => {
+                if ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':') {
+                    (reader.undo(ch), Ok(vec![]))
+                } else {
+                    reader.undo_and_err_not_found(ch)
+                }
+            }
+            Err(err) => {
+                if err.is_not_found_err() {
+                    // EOF is ok
+                    (reader, Ok(vec![]))
+                } else {
+                    (reader, Err(err))
+                }
+            }
+        }
+    })
+}
+
+#[deprecated]
 pub fn take_if_sub_call<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     Box::new(in_transaction_pc(apply(
@@ -28,15 +80,18 @@ pub fn take_if_sub_call<T: BufRead + 'static>(
     )))
 }
 
+#[deprecated]
 fn detect_label_and_abort<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<bool>> {
     apply(|_| true, take_if_symbol(':'))
 }
 
+#[deprecated]
 fn detect_assignment_and_abort<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<bool>> {
     apply(|_| true, skipping_whitespace(take_if_symbol('=')))
 }
 
+#[deprecated]
 fn take_args_no_parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
     Box::new(with_leading_whitespace(csv(
@@ -44,6 +99,7 @@ fn take_args_no_parenthesis<T: BufRead + 'static>(
     )))
 }
 
+#[deprecated]
 fn take_args_parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
     apply(

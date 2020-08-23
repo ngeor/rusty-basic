@@ -8,11 +8,7 @@ use crate::parser::buf_lexer_helpers::*;
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-use crate::char_reader::{
-    and_ng, and_skip_first, csv_one_or_more, map_ng, map_or_undo, or_ng, read_any_keyword,
-    read_any_letter, read_some_letter, try_read_char, with_some_whitespace_between, EolReader,
-    MapOrUndo,
-};
+use crate::char_reader::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -63,12 +59,11 @@ fn two_letter_range<T: BufRead + 'static>(
     map_ng(
         and_ng(
             read_any_letter(),
-            and_skip_first(
-                try_read_char('-'),
-                read_some_letter(|| QError::SyntaxError("Expected letter after dash".to_string())),
-            ),
+            if_first_demand_second(try_read_char('-'), read_any_letter(), || {
+                QError::SyntaxError("Expected letter after dash".to_string())
+            }),
         ),
-        |(l, r)| LetterRange::Range(l, r),
+        |(l, (_, r))| LetterRange::Range(l, r),
     )
 }
 

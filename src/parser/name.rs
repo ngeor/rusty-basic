@@ -1,4 +1,4 @@
-use super::{BareNameNode, Name, NameNode};
+use super::{BareName, BareNameNode, Name, NameNode};
 use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
@@ -33,13 +33,18 @@ pub fn take_if_name_node<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>)
 
 pub fn bare_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<BareNameNode, QErrorNode>)> {
-    with_pos(map_to_result_no_undo(
+    with_pos(bare_name())
+}
+
+pub fn bare_name<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<BareName, QErrorNode>)> {
+    map_to_result_no_undo(
         if_first_maybe_second(read_any_word(), with_pos(type_qualifier::type_qualifier())),
         |(l, r)| match r {
             Some(x) => Err(QError::SyntaxError("Expected bare name".to_string())).with_err_at(x),
             None => Ok(l.into()),
         },
-    ))
+    )
 }
 
 #[deprecated]

@@ -1,6 +1,6 @@
 use crate::common::{
-    AtLocation, ErrorEnvelope, HasLocation, Locatable, Location, PeekOptCopy, QError, QErrorNode,
-    ReadOpt, ToLocatableError,
+    AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable, Location,
+    PeekOptCopy, QError, QErrorNode, ReadOpt, ToLocatableError,
 };
 use crate::lexer::{Keyword, Lexeme};
 use std::collections::VecDeque;
@@ -856,21 +856,6 @@ where
     })
 }
 
-pub fn and_skip_first<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<T2, E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
-    P: ParserSource + Undo<T1> + 'static,
-    E: IsNotFoundErr + 'static,
-{
-    map_ng(and_ng(first, second), |(_, r)| r)
-}
-
 pub fn if_first_maybe_second<P, F1, F2, T1, T2, E>(
     first: F1,
     second: F2,
@@ -1434,6 +1419,13 @@ impl<T: BufRead + 'static> Undo<String> for EolReader<T> {
             result = result.undo(ch);
         }
         result
+    }
+}
+
+impl<T: BufRead + 'static> Undo<CaseInsensitiveString> for EolReader<T> {
+    fn undo(self, s: CaseInsensitiveString) -> Self {
+        let inner: String = s.into();
+        self.undo(inner)
     }
 }
 

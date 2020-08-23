@@ -9,10 +9,15 @@ use std::io::BufRead;
 
 pub fn name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<NameNode, QErrorNode>)> {
-    with_pos(map_ng(
+    with_pos(name())
+}
+
+pub fn name<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Name, QErrorNode>)> {
+    map_ng(
         if_first_maybe_second(read_any_word(), type_qualifier::type_qualifier()),
         |(l, r)| Name::new(l.into(), r),
-    ))
+    )
 }
 
 // name node

@@ -30,7 +30,7 @@ pub fn statement<T: BufRead + 'static>(
         comment::comment(),
         built_ins::parse_built_in(),
         sub_call::sub_call(),
-        statement_assignment(),
+        assignment::assignment(),
         statement_label(),
         statement_if_block(),
         statement_for_loop(),
@@ -42,14 +42,11 @@ pub fn statement<T: BufRead + 'static>(
     ])
 }
 
-pub fn statement_assignment<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
-}
-
 pub fn statement_label<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    map_ng(and_ng(name::bare_name(), try_read_char(':')), |(l, _)| {
+        Statement::Label(l)
+    })
 }
 
 pub fn statement_if_block<T: BufRead + 'static>(
@@ -74,12 +71,21 @@ pub fn statement_while_wend<T: BufRead + 'static>(
 
 pub fn statement_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    map_ng(with_keyword(Keyword::GoTo, name::bare_name()), |l| {
+        Statement::GoTo(l)
+    })
 }
 
 pub fn statement_on_error_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    map_ng(
+        with_two_keywords(
+            Keyword::On,
+            Keyword::Error,
+            with_keyword(Keyword::GoTo, name::bare_name()),
+        ),
+        |l| Statement::ErrorHandler(l),
+    )
 }
 
 pub fn statement_illegal_keywords<T: BufRead + 'static>(

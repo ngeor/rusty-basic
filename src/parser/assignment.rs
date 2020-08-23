@@ -1,12 +1,43 @@
-use super::{Statement, StatementNode};
+use super::{Name, Statement, StatementNode};
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::name;
+use std::convert::TryInto;
 use std::io::BufRead;
 
+impl<T: BufRead + 'static> Undo<Name> for EolReader<T> {
+    fn undo(self, n: Name) -> Self {
+        match n {
+            Name::Bare(b) => self.undo(b),
+            Name::Qualified { name, qualifier } => {
+                let ch: char = qualifier.try_into().unwrap();
+                let first = self.undo(ch);
+                first.undo(name)
+            }
+        }
+    }
+}
+
+pub fn assignment<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    map_ng(
+        and_ng(
+            name::name(),
+            if_first_demand_second(
+                skipping_whitespace_ng(try_read_char('=')),
+                expression::expression_node(),
+                || QError::SyntaxError("Expected expression after =".to_string()),
+            ),
+        ),
+        |(l, (_, r))| Statement::Assignment(l, r),
+    )
+}
+
+#[deprecated]
 pub fn take_if_assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(

@@ -1,5 +1,5 @@
 use super::Name;
-use crate::common::{FileHandle, Locatable};
+use crate::common::{AtLocation, FileHandle, HasLocation, Locatable, Location};
 use crate::variant;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -187,5 +187,55 @@ impl ExpressionNode {
 
     pub fn is_parenthesis(&self) -> bool {
         self.as_ref().is_parenthesis()
+    }
+
+    pub fn apply_priority_order(
+        self,
+        right_side: ExpressionNode,
+        op: Operand,
+        pos: Location,
+    ) -> ExpressionNode {
+        match right_side.as_ref() {
+            Expression::BinaryExpression(r_op, r_left, r_right) => {
+                let should_flip = op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
+                    || op.is_relational() && r_op.is_binary()
+                    || op == Operand::And && *r_op == Operand::Or
+                    || (op == Operand::Multiply || op == Operand::Divide)
+                        && (*r_op == Operand::Plus || *r_op == Operand::Minus);
+                if should_flip {
+                    Expression::BinaryExpression(
+                        *r_op,
+                        Box::new(
+                            Expression::BinaryExpression(op, Box::new(self), r_left.clone())
+                                .at(pos),
+                        ),
+                        r_right.clone(),
+                    )
+                    .at(right_side.pos())
+                } else {
+                    Expression::BinaryExpression(op, Box::new(self), Box::new(right_side)).at(pos)
+                }
+            }
+            _ => Expression::BinaryExpression(op, Box::new(self), Box::new(right_side)).at(pos),
+        }
+    }
+
+    pub fn apply_unary_priority_order(self, op: UnaryOperand, pos: Location) -> ExpressionNode {
+        match self.as_ref() {
+            Expression::BinaryExpression(r_op, r_left, r_right) => {
+                let should_flip = op == UnaryOperand::Minus || r_op.is_binary();
+                if should_flip {
+                    Expression::BinaryExpression(
+                        *r_op,
+                        Box::new(Expression::UnaryExpression(op, r_left.clone()).at(pos)),
+                        r_right.clone(),
+                    )
+                    .at(self.pos())
+                } else {
+                    Expression::UnaryExpression(op, Box::new(self)).at(pos)
+                }
+            }
+            _ => Expression::UnaryExpression(op, Box::new(self)).at(pos),
+        }
     }
 }

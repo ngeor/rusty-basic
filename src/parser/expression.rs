@@ -13,6 +13,7 @@ pub fn expression_node<T: BufRead + 'static>(
     unimplemented!()
 }
 
+#[deprecated]
 pub fn take_if_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
     // boxed needed because otherwise rust complains about an infinite recursion on the
@@ -28,7 +29,8 @@ pub fn take_if_expression_node<T: BufRead + 'static>(
                     skipping_whitespace(take_if_expression_node()),
                 )(input)
                 .map_ok(|right_expr| {
-                    apply_priority_order(first_expression, right_expr, op, pos)
+                    first_expression
+                        .apply_priority_order(right_expr, op, pos)
                         .simplify_unary_minus_literals()
                 }),
             }
@@ -36,6 +38,7 @@ pub fn take_if_expression_node<T: BufRead + 'static>(
     })
 }
 
+#[deprecated]
 fn take_if_single_expression<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
     or_vec(vec![
@@ -57,10 +60,11 @@ pub fn try_read<T: BufRead + 'static>(
     take_if_expression_node()(lexer).transpose()
 }
 
+#[deprecated]
 fn take_if_unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
     apply(
-        |(l, child)| apply_unary_priority_order(child, UnaryOperand::Minus, l.pos()),
+        |(l, child)| child.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
         and(
             take_if_symbol('-'),
             demand(
@@ -71,14 +75,16 @@ fn take_if_unary_minus<T: BufRead + 'static>(
     )
 }
 
+#[deprecated]
 fn take_if_unary_not<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
     apply(
-        |(l, child)| apply_unary_priority_order(child, UnaryOperand::Not, l.pos()),
+        |(l, child)| child.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
         with_whitespace_between(take_if_keyword(Keyword::Not), take_if_expression_node()),
     )
 }
 
+#[deprecated]
 pub fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
     switch_err(
         |(Locatable { pos, .. }, Locatable { element, .. })| match element.parse::<u32>() {
@@ -92,6 +98,7 @@ pub fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<
     )
 }
 
+#[deprecated]
 fn take_if_parenthesis<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
 {
     // TODO allow skipping whitespace inside parenthesis
@@ -99,60 +106,6 @@ fn take_if_parenthesis<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> O
         |(open_parenthesis_pos, x)| Expression::Parenthesis(Box::new(x)).at(open_parenthesis_pos),
         between('(', ')', take_if_expression_node()),
     )
-}
-
-fn apply_priority_order(
-    left_side: ExpressionNode,
-    right_side: ExpressionNode,
-    op: Operand,
-    pos: Location,
-) -> ExpressionNode {
-    match right_side.as_ref() {
-        Expression::BinaryExpression(r_op, r_left, r_right) => {
-            let should_flip = op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
-                || op.is_relational() && r_op.is_binary()
-                || op == Operand::And && *r_op == Operand::Or
-                || (op == Operand::Multiply || op == Operand::Divide)
-                    && (*r_op == Operand::Plus || *r_op == Operand::Minus);
-            if should_flip {
-                Expression::BinaryExpression(
-                    *r_op,
-                    Box::new(
-                        Expression::BinaryExpression(op, Box::new(left_side), r_left.clone())
-                            .at(pos),
-                    ),
-                    r_right.clone(),
-                )
-                .at(right_side.pos())
-            } else {
-                Expression::BinaryExpression(op, Box::new(left_side), Box::new(right_side)).at(pos)
-            }
-        }
-        _ => Expression::BinaryExpression(op, Box::new(left_side), Box::new(right_side)).at(pos),
-    }
-}
-
-fn apply_unary_priority_order(
-    child: ExpressionNode,
-    op: UnaryOperand,
-    pos: Location,
-) -> ExpressionNode {
-    match child.as_ref() {
-        Expression::BinaryExpression(r_op, r_left, r_right) => {
-            let should_flip = op == UnaryOperand::Minus || r_op.is_binary();
-            if should_flip {
-                Expression::BinaryExpression(
-                    *r_op,
-                    Box::new(Expression::UnaryExpression(op, r_left.clone()).at(pos)),
-                    r_right.clone(),
-                )
-                .at(child.pos())
-            } else {
-                Expression::UnaryExpression(op, Box::new(child)).at(pos)
-            }
-        }
-        _ => Expression::UnaryExpression(op, Box::new(child)).at(pos),
-    }
 }
 
 mod string_literal {

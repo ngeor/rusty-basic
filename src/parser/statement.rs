@@ -32,10 +32,10 @@ pub fn statement<T: BufRead + 'static>(
         sub_call::sub_call(),
         assignment::assignment(),
         statement_label(),
-        statement_if_block(),
-        statement_for_loop(),
-        statement_select_case(),
-        statement_while_wend(),
+        if_block::if_block(),
+        for_loop::for_loop(),
+        select_case::select_case(),
+        while_wend::while_wend(),
         statement_go_to(),
         statement_on_error_go_to(),
         statement_illegal_keywords(),
@@ -47,26 +47,6 @@ pub fn statement_label<T: BufRead + 'static>(
     map_ng(and_ng(name::bare_name(), try_read_char(':')), |(l, _)| {
         Statement::Label(l)
     })
-}
-
-pub fn statement_if_block<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
-}
-
-pub fn statement_for_loop<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
-}
-
-pub fn statement_select_case<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
-}
-
-pub fn statement_while_wend<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
 }
 
 pub fn statement_go_to<T: BufRead + 'static>(

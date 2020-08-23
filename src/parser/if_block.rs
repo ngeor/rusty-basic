@@ -1,12 +1,18 @@
+use crate::char_reader::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
-
 use crate::parser::expression;
 use crate::parser::statements::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+pub fn if_block<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+#[deprecated]
 pub fn take_if_if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     Box::new(|lexer| try_read(lexer).transpose())

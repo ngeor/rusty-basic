@@ -1,4 +1,5 @@
 use super::{ConditionalBlockNode, Statement, StatementNode};
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
@@ -7,6 +8,12 @@ use crate::parser::expression;
 use crate::parser::statements::*;
 use std::io::BufRead;
 
+pub fn while_wend<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+}
+
+#[deprecated]
 pub fn take_if_while_wend<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
     apply(

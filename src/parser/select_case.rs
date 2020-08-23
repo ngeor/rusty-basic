@@ -8,9 +8,120 @@ use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+// SELECT CASE expr ' comment
+// CASE 1
+// CASE IS >= 2
+// CASE 5 TO 7
+// CASE ELSE
+// END SELECT
+
 pub fn select_case<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    map_ng(
+        if_first_maybe_second(
+            if_first_maybe_second(
+                if_first_maybe_second(
+                    with_two_keywords(
+                        Keyword::Select,
+                        Keyword::Case,
+                        expression::expression_node(),
+                    ),
+                    // parse inline comments after SELECT
+                    statements::statements(read_keyword_if(|k| {
+                        k == Keyword::Case || k == Keyword::End
+                    })),
+                ),
+                case_blocks(),
+            ),
+            case_else(),
+        ),
+        |(((expr, inline_statements), opt_blocks), opt_else)| {
+            Statement::SelectCase(SelectCaseNode {
+                expr,
+                case_blocks: opt_blocks.unwrap_or_default(),
+                else_block: opt_else,
+                inline_comments: inline_statements
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|x| match x {
+                        Locatable {
+                            element: Statement::Comment(text),
+                            pos,
+                        } => Locatable::new(text, pos),
+                        _ => panic!("only comments are allowed - todo improve this"),
+                    })
+                    .collect(),
+            })
+        },
+    )
+}
+
+pub fn case_else<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+    with_two_keywords(
+        Keyword::Case,
+        Keyword::Else,
+        statements::statements(try_read_keyword(Keyword::End)),
+    )
+}
+
+pub fn case_blocks<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<CaseBlockNode>, QErrorNode>)> {
+    take_zero_or_more(case_block(), |_| false)
+}
+
+pub fn case_block<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseBlockNode, QErrorNode>)> {
+    map_ng(
+        if_first_demand_second(
+            case_expr(),
+            statements::statements(read_keyword_if(|k| k == Keyword::Case || k == Keyword::End)),
+            || QError::SyntaxError("Expected statements after case expression".to_string()),
+        ),
+        |(expr, statements)| CaseBlockNode { expr, statements },
+    )
+}
+
+pub fn case_expr<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QErrorNode>)> {
+    with_keyword(
+        Keyword::Case,
+        or_vec_ng(vec![case_expr_is(), case_expr_to_or_simple()]),
+    )
+}
+
+pub fn case_expr_is<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QErrorNode>)> {
+    map_ng(
+        if_first_demand_second(
+            try_read_keyword(Keyword::Is),
+            if_first_demand_second(
+                expression::operand(false),
+                expression::single_expression_node(),
+                || QError::SyntaxError("Expected expression".to_string()),
+            ),
+            || QError::SyntaxError("Expected operand".to_string()),
+        ),
+        |(_, (op, r))| CaseExpression::Is(op.strip_location(), r),
+    )
+}
+
+pub fn case_expr_to_or_simple<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QErrorNode>)> {
+    map_ng(
+        if_first_maybe_second(
+            expression::expression_node(),
+            if_first_demand_second(
+                try_read_keyword(Keyword::To),
+                expression::expression_node(),
+                || QError::SyntaxError("Expected expression".to_string()),
+            ),
+        ),
+        |(l, opt_r)| match opt_r {
+            Some((_, r)) => CaseExpression::Range(l, r),
+            None => CaseExpression::Simple(l),
+        },
+    )
 }
 
 #[deprecated]

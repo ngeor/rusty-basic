@@ -9,7 +9,67 @@ use std::io::BufRead;
 
 pub fn if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    map_ng(
+        if_first_maybe_second(
+            if_first_maybe_second(
+                with_keyword(
+                    Keyword::If,
+                    if_first_demand_second(
+                        expression::expression_node(),
+                        statements::statements(read_keyword_if(|k| {
+                            k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
+                        })),
+                        || QError::SyntaxError("Expected statements after expression".to_string()),
+                    ),
+                ),
+                else_if_blocks(),
+            ),
+            else_block(),
+        ),
+        |(((condition, statements), opt_else_if_blocks), else_block)| {
+            Statement::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode {
+                    condition,
+                    statements,
+                },
+                else_if_blocks: opt_else_if_blocks.unwrap_or_default(),
+                else_block,
+            })
+        },
+    )
+}
+
+pub fn else_if_blocks<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<ConditionalBlockNode>, QErrorNode>)> {
+    take_zero_or_more(else_if_block(), |_| false)
+}
+
+pub fn else_if_block<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ConditionalBlockNode, QErrorNode>)> {
+    map_ng(
+        with_keyword(
+            Keyword::ElseIf,
+            if_first_demand_second(
+                expression::expression_node(),
+                statements::statements(read_keyword_if(|k| {
+                    k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
+                })),
+                || QError::SyntaxError("Expected statements after expression".to_string()),
+            ),
+        ),
+        |(condition, statements)| ConditionalBlockNode {
+            condition,
+            statements,
+        },
+    )
+}
+
+pub fn else_block<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+    with_keyword(
+        Keyword::Else,
+        statements::statements(read_keyword_if(|k| k == Keyword::End)),
+    )
 }
 
 #[deprecated]

@@ -8,9 +8,28 @@ use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;
 
+// TODO add test demand space after "AND" but not if parenthesis follows
+
 pub fn expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
-    unimplemented!()
+    map_ng(
+        if_first_maybe_second_peeking_first(single_expression_node(), |reader, first_expr_ref| {
+            if_first_demand_second(
+                operand(first_expr_ref.is_parenthesis()),
+                expression_node(),
+                || QError::SyntaxError("Expected right side expression".to_string()),
+            )(reader)
+        }),
+        |(l, r)| {
+            match r {
+                None => l,
+                Some((Locatable { element: op, pos }, right_side)) => {
+                    l.apply_priority_order(right_side, op, pos)
+                }
+            }
+            .simplify_unary_minus_literals()
+        },
+    )
 }
 
 #[deprecated]
@@ -38,6 +57,20 @@ pub fn take_if_expression_node<T: BufRead + 'static>(
     })
 }
 
+pub fn single_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+    or_vec_ng(vec![
+        with_pos(string_literal::string_literal()),
+        with_pos(word::word()),
+        number_literal::number_literal(),
+        number_literal::float_without_leading_zero(),
+        with_pos(file_handle()),
+        with_pos(parenthesis()),
+        unary_not(),
+        unary_minus(),
+    ])
+}
+
 #[deprecated]
 fn take_if_single_expression<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
@@ -60,6 +93,16 @@ pub fn try_read<T: BufRead + 'static>(
     take_if_expression_node()(lexer).transpose()
 }
 
+pub fn unary_minus<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+    map_ng(
+        if_first_demand_second(with_pos(try_read_char('-')), expression_node(), || {
+            QError::SyntaxError("Expected expression after unary minus".to_string())
+        }),
+        |(l, r)| r.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
+    )
+}
+
 #[deprecated]
 fn take_if_unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
@@ -75,6 +118,18 @@ fn take_if_unary_minus<T: BufRead + 'static>(
     )
 }
 
+pub fn unary_not<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+    map_ng(
+        with_some_whitespace_between(
+            with_pos(try_read_keyword(Keyword::Not)),
+            expression_node(),
+            || QError::SyntaxError("Expected expression after NOT".to_string()),
+        ),
+        |(l, r)| r.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
+    )
+}
+
 #[deprecated]
 fn take_if_unary_not<T: BufRead + 'static>(
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
@@ -82,6 +137,11 @@ fn take_if_unary_not<T: BufRead + 'static>(
         |(l, child)| child.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
         with_whitespace_between(take_if_keyword(Keyword::Not), take_if_expression_node()),
     )
+}
+
+pub fn file_handle<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
+    unimplemented!()
 }
 
 #[deprecated]
@@ -98,6 +158,14 @@ pub fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<
     )
 }
 
+pub fn parenthesis<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
+    // TODO allow skipping whitespace inside parenthesis
+    map_ng(in_parenthesis(expression_node()), |v| {
+        Expression::Parenthesis(Box::new(v))
+    })
+}
+
 #[deprecated]
 fn take_if_parenthesis<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
 {
@@ -111,6 +179,19 @@ fn take_if_parenthesis<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> O
 mod string_literal {
     use super::*;
 
+    pub fn string_literal<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
+        map_ng(
+            if_first_demand_second(
+                if_first_maybe_second(try_read_char('"'), read_any_str_while(|ch| ch != '"')),
+                try_read_char('"'),
+                || QError::SyntaxError("Unterminated string".to_string()),
+            ),
+            |((_, opt_str), _)| Expression::StringLiteral(opt_str.unwrap_or_default()),
+        )
+    }
+
+    #[deprecated]
     pub fn take_if_string_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
         apply(
@@ -138,6 +219,34 @@ mod string_literal {
 mod number_literal {
     use super::*;
 
+    pub fn number_literal<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+        map_to_result_no_undo(
+            if_first_maybe_second(
+                with_pos(read_any_digits()),
+                if_first_maybe_second(
+                    if_first_demand_second(try_read_char('.'), read_any_digits(), || {
+                        QError::SyntaxError("Expected digits after decimal point".to_string())
+                    }),
+                    try_read_char('#'),
+                ),
+            ),
+            |(
+                Locatable {
+                    element: int_digits,
+                    pos,
+                },
+                opt_frac,
+            )| match opt_frac {
+                Some(((_, frac_digits), opt_double)) => {
+                    parse_floating_point_literal(int_digits, frac_digits, opt_double.is_some(), pos)
+                }
+                None => integer_literal_to_expression_node(int_digits, pos),
+            },
+        )
+    }
+
+    #[deprecated]
     pub fn take_if_number_literal<T: BufRead + 'static>(
     ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
         switch_err(
@@ -167,6 +276,27 @@ mod number_literal {
         )
     }
 
+    pub fn float_without_leading_zero<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+        map_to_result_no_undo(
+            if_first_maybe_second(
+                if_first_demand_second(with_pos(try_read_char('.')), read_any_digits(), || {
+                    QError::SyntaxError("Expected digits after decimal point".to_string())
+                }),
+                try_read_char('#'),
+            ),
+            |((Locatable { pos, .. }, frac_digits), opt_double)| {
+                parse_floating_point_literal(
+                    "0".to_string(),
+                    frac_digits,
+                    opt_double.is_some(),
+                    pos,
+                )
+            },
+        )
+    }
+
+    #[deprecated]
     pub fn take_if_float_without_leading_zero<T: BufRead + 'static>(
     ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
         switch_err(
@@ -179,6 +309,7 @@ mod number_literal {
         )
     }
 
+    #[deprecated]
     fn take_if_frac_part<T: BufRead + 'static>(
     ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<(Location, String, bool)>> {
         apply(
@@ -196,6 +327,7 @@ mod number_literal {
         )
     }
 
+    #[deprecated]
     pub fn take_if_digits<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<Locatable<String>> {
         take_if_map(|x: LexemeNode| match x {
             Locatable {
@@ -247,6 +379,21 @@ mod number_literal {
 mod word {
     use super::*;
 
+    pub fn word<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
+        map_ng(
+            if_first_maybe_second(
+                name::name(),
+                in_parenthesis(csv_zero_or_more(expression_node())),
+            ),
+            |(n, opt_v)| match opt_v {
+                Some(v) => Expression::FunctionCall(n, v),
+                None => Expression::VariableName(n),
+            },
+        )
+    }
+
+    #[deprecated]
     pub fn take_if_word<T: BufRead + 'static>(
     ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
         switch_err(
@@ -275,6 +422,94 @@ mod word {
     }
 }
 
+pub fn operand<T: BufRead + 'static>(
+    had_parenthesis_before: bool,
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Locatable<Operand>, QErrorNode>)> {
+    or_vec_ng(vec![
+        skipping_whitespace_ng(with_pos(lte())),
+        skipping_whitespace_ng(with_pos(gte())),
+        map_ng(skipping_whitespace_ng(with_pos(try_read_char('='))), |x| {
+            x.map(|_| Operand::Equal)
+        }),
+        map_ng(skipping_whitespace_ng(with_pos(try_read_char('+'))), |x| {
+            x.map(|_| Operand::Plus)
+        }),
+        map_ng(skipping_whitespace_ng(with_pos(try_read_char('-'))), |x| {
+            x.map(|_| Operand::Minus)
+        }),
+        map_ng(skipping_whitespace_ng(with_pos(try_read_char('*'))), |x| {
+            x.map(|_| Operand::Multiply)
+        }),
+        map_ng(skipping_whitespace_ng(with_pos(try_read_char('/'))), |x| {
+            x.map(|_| Operand::Divide)
+        }),
+        if had_parenthesis_before {
+            // skip whitespace + AND
+            map_ng(
+                skipping_whitespace_ng(with_pos(try_read_keyword(Keyword::And))),
+                |x| x.map(|_| Operand::And),
+            )
+        } else {
+            // demand whitespace + AND
+            map_ng(
+                and_ng(
+                    read_any_whitespace(),
+                    with_pos(try_read_keyword(Keyword::And)),
+                ),
+                |(_, x)| x.map(|_| Operand::And),
+            )
+        },
+        if had_parenthesis_before {
+            // skip whitespace + OR
+            map_ng(
+                skipping_whitespace_ng(with_pos(try_read_keyword(Keyword::Or))),
+                |x| x.map(|_| Operand::Or),
+            )
+        } else {
+            // demand whitespace + OR
+            map_ng(
+                and_ng(
+                    read_any_whitespace(),
+                    with_pos(try_read_keyword(Keyword::Or)),
+                ),
+                |(_, x)| x.map(|_| Operand::Or),
+            )
+        },
+    ])
+}
+
+fn lte<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QErrorNode>)> {
+    map_to_result_no_undo(
+        if_first_maybe_second(
+            try_read_char('<'),
+            with_pos(read_any_char_if(|ch| ch == '=' || ch == '>')),
+        ),
+        |(_, opt_r)| match opt_r {
+            Some(Locatable { element: '=', .. }) => Ok(Operand::LessOrEqual),
+            Some(Locatable { element: '>', .. }) => Ok(Operand::NotEqual),
+            None => Ok(Operand::Less),
+            Some(Locatable { element, pos }) => Err(QError::SyntaxError(format!(
+                "Invalid character {} after <",
+                element
+            )))
+            .with_err_at(pos),
+        },
+    )
+}
+
+fn gte<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QErrorNode>)> {
+    map_ng(
+        if_first_maybe_second(try_read_char('>'), try_read_char('=')),
+        |(_, opt_r)| match opt_r {
+            Some(_) => Operand::GreaterOrEqual,
+            _ => Operand::Greater,
+        },
+    )
+}
+
+#[deprecated]
 fn take_if_operand<T: BufRead + 'static>(
     left_side: &ExpressionNode,
 ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
@@ -325,6 +560,7 @@ fn take_if_operand<T: BufRead + 'static>(
     ])
 }
 
+#[deprecated]
 fn take_if_simple_op<T: BufRead + 'static>(
     ch: char,
     op: Operand,
@@ -335,6 +571,7 @@ fn take_if_simple_op<T: BufRead + 'static>(
     ))
 }
 
+#[deprecated]
 fn take_and_or_op<T: BufRead + 'static>(
     k: Keyword,
     op: Operand,

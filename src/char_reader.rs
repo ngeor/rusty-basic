@@ -933,6 +933,39 @@ where
     })
 }
 
+pub fn if_first_maybe_second_peeking_first<P, F1, F2, T1, T2, E>(
+    first: F1,
+    second: F2,
+) -> Box<dyn Fn(P) -> (P, Result<(T1, Option<T2>), E>)>
+where
+    T1: 'static,
+    T2: 'static,
+    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
+    F2: Fn(P, &T1) -> (P, Result<T2, E>) + 'static,
+    E: IsNotFoundErr,
+    P: ParserSource + 'static,
+{
+    Box::new(move |char_reader| {
+        let (char_reader, res1) = first(char_reader);
+        match res1 {
+            Ok(r1) => {
+                let (char_reader, res2) = second(char_reader, &r1);
+                match res2 {
+                    Ok(r2) => (char_reader, Ok((r1, Some(r2)))),
+                    Err(err) => {
+                        if err.is_not_found_err() {
+                            (char_reader, Ok((r1, None)))
+                        } else {
+                            (char_reader, Err(err))
+                        }
+                    }
+                }
+            }
+            Err(err) => (char_reader, Err(err)),
+        }
+    })
+}
+
 pub fn or_ng<P, F1, F2, T, E>(first: F1, second: F2) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
 where
     F1: Fn(P) -> (P, Result<T, E>) + 'static,
@@ -1489,18 +1522,6 @@ impl<T: BufRead + 'static> Undo<CaseInsensitiveString> for EolReader<T> {
 impl<T: BufRead + 'static> Undo<(Keyword, String)> for EolReader<T> {
     fn undo(self, s: (Keyword, String)) -> Self {
         self.undo(s.1)
-    }
-}
-
-impl<T: BufRead + 'static> Undo<Lexeme> for EolReader<T> {
-    fn undo(self, l: Lexeme) -> Self {
-        match l {
-            Lexeme::EOL(_) => self.undo('\r'),
-            Lexeme::Keyword(_, s) | Lexeme::Word(s) | Lexeme::Whitespace(s) | Lexeme::Digits(s) => {
-                self.undo(s)
-            }
-            Lexeme::Symbol(ch) => self.undo(ch),
-        }
     }
 }
 

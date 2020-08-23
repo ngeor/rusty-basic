@@ -4,7 +4,7 @@ use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::statements::parse_statements;
+use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -142,7 +142,7 @@ fn read_case_is<T: BufRead + 'static>(
     let op = read_relational_operator(lexer)?;
     skip_whitespace(lexer)?;
     let expr = read(lexer, expression::try_read, "Expected expression after IS")?;
-    let statements = parse_statements(
+    let statements = statements::parse_statements(
         lexer,
         |x| x.is_keyword(Keyword::Case) || x.is_keyword(Keyword::End),
         "Unterminated CASE IS",
@@ -203,7 +203,7 @@ fn read_case_expr<T: BufRead + 'static>(
     } else {
         lexer.rollback_transaction();
     }
-    let statements = parse_statements(
+    let statements = statements::parse_statements(
         lexer,
         |x| x.is_keyword(Keyword::Case) || x.is_keyword(Keyword::End),
         "Unterminated CASE",
@@ -228,7 +228,7 @@ fn try_read_case_else<T: BufRead + 'static>(
     lexer.read_dp()?; // CASE
     lexer.read_dp()?; // whitespace
     lexer.read_dp()?; // ELSE
-    let statements = parse_statements(
+    let statements = statements::parse_statements(
         lexer,
         |x| x.is_keyword(Keyword::End),
         "Unterminated CASE ELSE",

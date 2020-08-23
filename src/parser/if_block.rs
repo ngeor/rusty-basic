@@ -3,7 +3,7 @@ use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
-use crate::parser::statements::*;
+use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -66,19 +66,19 @@ fn read_if_block<T: BufRead + 'static>(
     is_multi_line: bool,
 ) -> Result<ConditionalBlockNode, QErrorNode> {
     let statements = if is_multi_line {
-        parse_statements_with_options(
+        statements::parse_statements_with_options(
             lexer,
             exit_predicate_if_multi_line,
-            ParseStatementsOptions {
+            statements::ParseStatementsOptions {
                 first_statement_separated_by_whitespace: false,
                 err: QError::UnterminatedIf,
             },
         )?
     } else {
-        parse_statements_with_options(
+        statements::parse_statements_with_options(
             lexer,
             exit_predicate_if_single_line,
-            ParseStatementsOptions {
+            statements::ParseStatementsOptions {
                 first_statement_separated_by_whitespace: true,
                 err: QError::UnterminatedIf,
             },
@@ -106,7 +106,8 @@ fn try_read_else_if_block<T: BufRead + 'static>(
     )?;
     read_whitespace(lexer, "Expected whitespace before THEN keyword")?;
     read_keyword(lexer, Keyword::Then)?;
-    let statements = parse_statements(lexer, exit_predicate_if_multi_line, "Unterminated IF")?;
+    let statements =
+        statements::parse_statements(lexer, exit_predicate_if_multi_line, "Unterminated IF")?;
     Ok(Some(ConditionalBlockNode {
         condition,
         statements,
@@ -123,20 +124,20 @@ fn try_read_else_block<T: BufRead + 'static>(
     }
     lexer.read_dp()?;
     if is_multi_line {
-        parse_statements_with_options(
+        statements::parse_statements_with_options(
             lexer,
             exit_predicate_else_multi_line,
-            ParseStatementsOptions {
+            statements::ParseStatementsOptions {
                 first_statement_separated_by_whitespace: false,
                 err: QError::UnterminatedElse,
             },
         )
         .map(|x| Some(x))
     } else {
-        parse_statements_with_options(
+        statements::parse_statements_with_options(
             lexer,
             exit_predicate_else_single_line,
-            ParseStatementsOptions {
+            statements::ParseStatementsOptions {
                 first_statement_separated_by_whitespace: true,
                 err: QError::UnterminatedElse,
             },

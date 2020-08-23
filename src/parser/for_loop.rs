@@ -4,13 +4,58 @@ use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::statements::parse_statements;
+use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+// FOR I = 0 TO 5 STEP 1
+// statements
+// NEXT (I)
+
 pub fn for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    map_ng(
+        if_first_demand_second(
+            with_keyword(
+                Keyword::For,
+                with_any_whitespace_between(
+                    name::name_node(),
+                    with_any_whitespace_between(
+                        try_read_char('='),
+                        with_any_whitespace_between(
+                            expression::expression_node(),
+                            with_keyword(
+                                Keyword::To,
+                                if_first_maybe_second(
+                                    expression::expression_node(),
+                                    with_some_whitespace_before_and_between(
+                                        try_read_keyword(Keyword::Step),
+                                        expression::expression_node(),
+                                        || QError::SyntaxError(format!("")),
+                                    ),
+                                ),
+                            ),
+                            || QError::SyntaxError(format!("")),
+                        ),
+                        || QError::SyntaxError(format!("")),
+                    ),
+                    || QError::SyntaxError(format!("")),
+                ),
+            ),
+            statements::statements(try_read_keyword(Keyword::Next)),
+            || QError::SyntaxError(format!("")),
+        ),
+        |((variable_name, (_, (lower_bound, (upper_bound, opt_step)))), statements)| {
+            Statement::ForLoop(ForLoopNode {
+                variable_name,
+                lower_bound,
+                upper_bound,
+                step: opt_step.map(|x| x.1),
+                statements,
+                next_counter: None,
+            })
+        },
+    )
 }
 
 #[deprecated]
@@ -40,7 +85,8 @@ pub fn try_read<T: BufRead + 'static>(
     let upper_bound = read(lexer, expression::try_read, "Expected upper bound")?;
     let optional_step = try_parse_step(lexer)?;
 
-    let statements = parse_statements(lexer, |x| x.is_keyword(Keyword::Next), "FOR without NEXT")?;
+    let statements =
+        statements::parse_statements(lexer, |x| x.is_keyword(Keyword::Next), "FOR without NEXT")?;
     read_keyword(lexer, Keyword::Next)?;
 
     // we are past the "NEXT", maybe there is a variable name e.g. NEXT I

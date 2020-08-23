@@ -10,7 +10,23 @@ use std::io::BufRead;
 
 pub fn while_wend<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    Box::new(move |reader| (reader, Err(QErrorNode::NoPos(QError::FeatureUnavailable))))
+    map_ng(
+        with_keyword(
+            Keyword::While,
+            if_first_demand_second(
+                expression::expression_node(),
+                statements(try_read_keyword(Keyword::Wend)),
+                // TODO read WEND
+                || QError::SyntaxError("Expected WHILE statements".to_string()),
+            ),
+        ),
+        |(l, r)| {
+            Statement::While(ConditionalBlockNode {
+                condition: l,
+                statements: r,
+            })
+        },
+    )
 }
 
 #[deprecated]

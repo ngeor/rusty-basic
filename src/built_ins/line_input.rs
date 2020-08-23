@@ -23,18 +23,14 @@ pub struct LineInput {}
 pub fn parse_line_input<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(
-        with_some_whitespace_between(
-            try_read_keyword(Keyword::Line),
-            with_some_whitespace_between(
-                try_read_keyword(Keyword::Input),
-                csv_one_or_more(expression::expression_node(), || {
-                    QError::SyntaxError("Expected at least one variable".to_string())
-                }),
-                || QError::SyntaxError("Expected at least one variable".to_string()),
-            ),
-            || QError::SyntaxError("Expected INPUT after LINE".to_string()),
+        with_two_keywords(
+            Keyword::Line,
+            Keyword::Input,
+            csv_one_or_more(expression::expression_node(), || {
+                QError::SyntaxError("Expected at least one variable".to_string())
+            }),
         ),
-        |(_, (_, r))| Statement::SubCall("LINE INPUT".into(), r),
+        |r| Statement::SubCall("LINE INPUT".into(), r),
     )
 }
 

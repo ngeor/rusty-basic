@@ -34,14 +34,13 @@ pub struct Input {}
 pub fn parse_input<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(
-        with_some_whitespace_between(
-            try_read_keyword(Keyword::Input),
+        with_keyword(
+            Keyword::Input,
             csv_one_or_more(expression::expression_node(), || {
                 QError::SyntaxError("Expected at least one variable".to_string())
             }),
-            || QError::SyntaxError("Expected at least one variable".to_string()),
         ),
-        |(_, r)| Statement::SubCall("INPUT".into(), r),
+        |r| Statement::SubCall("INPUT".into(), r),
     )
 }
 

@@ -29,11 +29,7 @@ pub fn parse_open<T: BufRead + 'static>(
         if_first_demand_second(
             if_first_maybe_second(
                 if_first_maybe_second(
-                    with_some_whitespace_between(
-                        try_read_keyword(Keyword::Open),
-                        expression::expression_node(),
-                        || QError::SyntaxError("Expected filename after OPEN".to_string()),
-                    ),
+                    with_keyword(Keyword::Open, expression::expression_node()),
                     parse_open_mode(),
                 ),
                 parse_open_access(),
@@ -45,7 +41,7 @@ pub fn parse_open<T: BufRead + 'static>(
             ),
             || QError::SyntaxError("Expected AS".to_string()),
         ),
-        |((((_, file_name), opt_file_mode), opt_file_access), (_, file_number))| {
+        |(((file_name, opt_file_mode), opt_file_access), (_, file_number))| {
             Statement::SubCall(
                 "OPEN".into(),
                 vec![

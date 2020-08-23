@@ -1,6 +1,6 @@
 use crate::common::{
-    AtLocation, HasLocation, Locatable, Location, PeekOptCopy, QError, QErrorNode, ReadOpt,
-    ToLocatableError,
+    AtLocation, ErrorEnvelope, HasLocation, Locatable, Location, PeekOptCopy, QError, QErrorNode,
+    ReadOpt, ToLocatableError,
 };
 use crate::lexer::{Keyword, Lexeme};
 use std::collections::VecDeque;
@@ -311,27 +311,28 @@ pub fn filter_some<P, S, F, T, E, FE>(
     source: S,
     predicate: F,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
+) -> Box<dyn Fn(P) -> (P, Result<T, ErrorEnvelope<E>>)>
 where
-    P: ParserSource + 'static,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
+    P: ParserSource + HasLocation + 'static,
+    S: Fn(P) -> (P, Result<T, ErrorEnvelope<E>>) + 'static,
     F: Fn(&T) -> bool + 'static,
     FE: Fn() -> E + 'static,
-    E: IsNotFoundErr,
+    ErrorEnvelope<E>: IsNotFoundErr,
 {
     Box::new(move |reader| {
+        let pos = reader.pos();
         let (reader, result) = source(reader);
         match result {
             Ok(ch) => {
                 if predicate(&ch) {
                     (reader, Ok(ch))
                 } else {
-                    (reader, Err(err_fn()))
+                    (reader, Err(err_fn()).with_err_at(pos))
                 }
             }
             Err(err) => {
                 if err.is_not_found_err() {
-                    (reader, Err(err_fn()))
+                    (reader, Err(err_fn()).with_err_at(pos))
                 } else {
                     (reader, Err(err))
                 }
@@ -675,6 +676,19 @@ where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
 {
     read_keyword_if(move |k| k == needle)
+}
+
+pub fn demand_keyword<P>(
+    needle: Keyword,
+) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QErrorNode>)>
+where
+    P: ParserSource + Undo<String> + HasLocation + 'static,
+{
+    filter_some(
+        read_any_keyword(),
+        move |(k, _)| *k == needle,
+        move || QError::SyntaxError(format!("Expected keyword {}", needle)),
+    )
 }
 
 pub fn with_pos<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<Locatable<T>, E>)>
@@ -1276,6 +1290,40 @@ where
             None => Err(QErrorNode::not_found_err()),
         },
     )
+}
+
+//
+// Keyword guards
+//
+
+pub fn with_keyword<P, T, S>(
+    needle: Keyword,
+    source: S,
+) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+where
+    P: ParserSource + HasLocation + Undo<String> + Undo<(Keyword, String)> + 'static,
+    T: 'static,
+    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+{
+    map_ng(
+        with_some_whitespace_between(try_read_keyword(needle), source, move || {
+            QError::SyntaxError(format!("Expected space after {}", needle))
+        }),
+        |(_, r)| r,
+    )
+}
+
+pub fn with_two_keywords<P, T, S>(
+    first: Keyword,
+    second: Keyword,
+    source: S,
+) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+where
+    P: ParserSource + HasLocation + Undo<String> + Undo<(Keyword, String)> + 'static,
+    T: 'static,
+    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+{
+    with_keyword(first, with_keyword(second, source))
 }
 
 //

@@ -12,12 +12,8 @@ use std::io::BufRead;
 pub fn dim<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(
-        if_first_demand_second(
-            try_read_keyword(Keyword::Dim),
-            declared_name::declared_name_node(),
-            || QError::SyntaxError("Expected name after DIM".to_string()),
-        ),
-        |(_, r)| Statement::Dim(r),
+        with_keyword(Keyword::Dim, declared_name::declared_name_node()),
+        |r| Statement::Dim(r),
     )
 }
 

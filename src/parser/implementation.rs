@@ -23,11 +23,7 @@ pub fn function_implementation<T: BufRead + 'static>(
             declaration::function_declaration(),
             if_first_demand_second(
                 statements::statements(),
-                with_some_whitespace_between(
-                    try_read_keyword(Keyword::End),
-                    try_read_keyword(Keyword::Function),
-                    || QError::SyntaxError("Expected function after end".to_string()),
-                ),
+                with_keyword(Keyword::End, demand_keyword(Keyword::Function)),
                 || QError::SyntaxError("Expected END FUNCTION after function body".to_string()),
             ),
             || QError::SyntaxError("Expected function body".to_string()),
@@ -43,11 +39,7 @@ pub fn sub_implementation<T: BufRead + 'static>(
             declaration::sub_declaration(),
             if_first_demand_second(
                 statements::statements(),
-                with_some_whitespace_between(
-                    try_read_keyword(Keyword::End),
-                    try_read_keyword(Keyword::Sub),
-                    || QError::SyntaxError("Expected sub after end".to_string()),
-                ),
+                with_keyword(Keyword::End, demand_keyword(Keyword::Sub)),
                 || QError::SyntaxError("Expected END SUB after sub body".to_string()),
             ),
             || QError::SyntaxError("Expected sub body".to_string()),

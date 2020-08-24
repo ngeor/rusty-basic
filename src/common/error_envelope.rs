@@ -38,20 +38,6 @@ impl<T> ErrorEnvelope<T> {
         }
     }
 
-    pub fn into<U>(self) -> ErrorEnvelope<U>
-    where
-        T: Into<U>,
-    {
-        self.map(|x| x.into())
-    }
-
-    pub fn from<U>(other: ErrorEnvelope<U>) -> Self
-    where
-        U: Into<T>,
-    {
-        other.into()
-    }
-
     pub fn into_err(self) -> T {
         match self {
             Self::NoPos(t) | Self::Pos(t, _) | Self::Stacktrace(t, _) => t,
@@ -135,20 +121,6 @@ impl<T, E, TL> ToLocatableError<Locatable<TL>, Result<T, ErrorEnvelope<E>>> for 
     fn with_err_at(self, locatable: Locatable<TL>) -> Result<T, ErrorEnvelope<E>> {
         let Locatable { pos, .. } = locatable;
         self.map_err(|e| ErrorEnvelope::Pos(e, pos))
-    }
-}
-
-//
-// result.with_err_at_rc()
-//
-
-pub trait WithErrAtRowCol<TResult> {
-    fn with_err_at_rc(self, row: u32, col: u32) -> TResult;
-}
-
-impl<T, E> WithErrAtRowCol<Result<T, ErrorEnvelope<E>>> for Result<T, E> {
-    fn with_err_at_rc(self, row: u32, col: u32) -> Result<T, ErrorEnvelope<E>> {
-        self.map_err(|e| ErrorEnvelope::Pos(e, Location::new(row, col)))
     }
 }
 

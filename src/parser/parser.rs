@@ -1,5 +1,5 @@
-use crate::char_reader::*;
 use crate::common::*;
+use crate::parser::char_reader::*;
 use crate::parser::top_level_token;
 use crate::parser::types::*;
 use std::fs::File;

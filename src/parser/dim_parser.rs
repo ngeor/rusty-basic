@@ -1,8 +1,6 @@
-use crate::char_reader::*;
 use crate::common::*;
-use crate::lexer::*;
+use crate::parser::char_reader::*;
 use crate::parser::declared_name;
-
 use crate::parser::types::*;
 use std::io::BufRead;
 

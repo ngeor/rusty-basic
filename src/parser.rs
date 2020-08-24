@@ -1,4 +1,5 @@
 mod assignment;
+pub mod char_reader;
 mod comment;
 mod constant;
 mod declaration;

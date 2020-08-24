@@ -1,15 +1,13 @@
 use crate::common::*;
-use crate::lexer::*;
+use crate::parser::char_reader::*;
+use crate::parser::types::*;
+use std::io::BufRead;
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
 // DefKeyword   ::= DEFSNG|DEFDBL|DEFSTR|DEFINT|DEFLNG
 // LetterRanges ::= <LetterRange> | <LetterRange><ws*>,<ws*><LetterRanges>
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
-
-use crate::char_reader::*;
-use crate::parser::types::*;
-use std::io::BufRead;
 
 pub fn def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QErrorNode>)> {

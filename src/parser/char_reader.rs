@@ -2,7 +2,7 @@ use crate::common::{
     AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable, Location, QError,
     QErrorNode, ToLocatableError,
 };
-use crate::lexer::Keyword;
+use crate::parser::types::Keyword;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
@@ -1819,7 +1819,6 @@ impl<T: BufRead + 'static> Undo<(Keyword, String)> for EolReader<T> {
         self.undo(s.1)
     }
 }
-
 
 impl<T: BufRead> HasLocation for EolReader<T> {
     fn pos(&self) -> Location {

@@ -1,8 +1,7 @@
 use crate::built_ins;
-use crate::char_reader::*;
 use crate::common::*;
-use crate::lexer::*;
 use crate::parser::assignment;
+use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim_parser;

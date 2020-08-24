@@ -1,3 +1,15 @@
+use super::{BuiltInLint, BuiltInRun};
+use crate::common::*;
+use crate::interpreter::context::Argument;
+use crate::interpreter::context_owner::ContextOwner;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::{Expression, ExpressionNode};
+use crate::parser::char_reader::*;
+use crate::parser::expression;
+use crate::parser::{HasQualifier, Keyword, QualifiedName, Statement, TypeQualifier};
+use crate::variant::Variant;
+use std::io::BufRead;
+
 // INPUT [;] ["prompt"{; | ,}] variable-list
 // INPUT #file-number%, variable-list
 //
@@ -12,19 +24,6 @@
 //
 // A semicolon immediately after INPUT keeps the cursor on the same line
 // after the user presses the Enter key.
-
-use super::{BuiltInLint, BuiltInRun};
-use crate::char_reader::*;
-use crate::common::*;
-use crate::interpreter::context::Argument;
-use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, Stdlib};
-use crate::lexer::*;
-use crate::linter::{Expression, ExpressionNode};
-use crate::parser::expression;
-use crate::parser::{HasQualifier, QualifiedName, Statement, TypeQualifier};
-use crate::variant::Variant;
-use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Input {}

@@ -18,10 +18,10 @@ mod val;
 // utilities for the built-ins
 mod util;
 
-use crate::char_reader::*;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::ExpressionNode;
+use crate::parser::char_reader::*;
 use crate::parser::{HasQualifier, Name, TypeQualifier};
 use std::convert::TryFrom;
 use std::io::BufRead;

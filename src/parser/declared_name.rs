@@ -1,16 +1,15 @@
+use crate::common::*;
+use crate::parser::char_reader::*;
+use crate::parser::name;
+use crate::parser::types::*;
+use std::io::BufRead;
+use std::str::FromStr;
+
 // Parses a declared name. Possible options:
 // A
 // A%
 // A AS INTEGER
 // A AS UserDefinedType
-
-use crate::char_reader::*;
-use crate::common::*;
-use crate::lexer::*;
-use crate::parser::name;
-use crate::parser::types::*;
-use std::io::BufRead;
-use std::str::FromStr;
 
 pub fn declared_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNode, QErrorNode>)> {

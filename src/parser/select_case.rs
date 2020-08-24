@@ -1,6 +1,5 @@
-use crate::char_reader::*;
 use crate::common::*;
-use crate::lexer::*;
+use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::statements;
 use crate::parser::types::*;

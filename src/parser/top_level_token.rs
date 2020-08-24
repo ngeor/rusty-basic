@@ -7,8 +7,8 @@
 //      sub implementation |
 //      whitespace - empty line
 
-use crate::char_reader::*;
 use crate::common::*;
+use crate::parser::char_reader::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;

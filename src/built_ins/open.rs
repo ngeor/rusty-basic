@@ -1,3 +1,12 @@
+use super::{BuiltInLint, BuiltInRun};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
+use crate::parser::char_reader::*;
+use crate::parser::expression;
+use crate::parser::{Expression, Keyword, Statement};
+use std::io::BufRead;
+
 // OPEN file$ [FOR mode] [ACCESS access] [lock] AS [#]file-number% [LEN=rec-len%]
 // OpenStatement ::= OPEN<ws+><ExpressionNode>(<ws+>FOR mode)?(<ws+>ACCESS access)?<ws+>AS<ws+>[#]<file-number%>
 //
@@ -8,15 +17,6 @@
 // rec-len%: For random access files, the record length (default is 128 bytes)
 //           For sequential files, the number of characters buffered (default is 512 bytes)
 
-use super::{BuiltInLint, BuiltInRun};
-use crate::char_reader::*;
-use crate::common::*;
-use crate::interpreter::{Interpreter, Stdlib};
-use crate::lexer::*;
-use crate::linter::ExpressionNode;
-use crate::parser::expression;
-use crate::parser::{Expression, Statement};
-use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 

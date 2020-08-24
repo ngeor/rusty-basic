@@ -1,5 +1,5 @@
-use crate::char_reader::*;
 use crate::common::*;
+use crate::parser::char_reader::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;

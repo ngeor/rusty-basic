@@ -1,9 +1,7 @@
-use super::{ConditionalBlockNode, Statement, StatementNode};
+use super::{ConditionalBlockNode, Statement};
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::statements::*;
 use std::io::BufRead;
@@ -29,37 +27,6 @@ pub fn while_wend<T: BufRead + 'static>(
                 statements: r,
             })
         },
-    )
-}
-
-#[deprecated]
-pub fn take_if_while_wend<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    apply(
-        |(l, (condition, (statements, _)))| {
-            Statement::While(ConditionalBlockNode {
-                condition,
-                statements,
-            })
-            .at(l.pos())
-        },
-        with_whitespace_between(
-            take_if_keyword(Keyword::While),
-            and(
-                expression::take_if_expression_node(),
-                and(
-                    take_if_statements_with_options(
-                        |x| x.is_keyword(Keyword::Wend),
-                        ParseStatementsOptions {
-                            first_statement_separated_by_whitespace: false,
-                            err: QError::WhileWithoutWend,
-                        },
-                    ),
-                    // TODO let the statements consume the predicate too
-                    take_if_keyword(Keyword::Wend),
-                ),
-            ),
-        ),
     )
 }
 

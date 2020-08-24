@@ -1,8 +1,6 @@
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
 use crate::parser::name;
 use crate::parser::types::*;
 use crate::variant;
@@ -32,31 +30,6 @@ pub fn expression_node<T: BufRead + 'static>(
     )
 }
 
-#[deprecated]
-pub fn take_if_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
-    // boxed needed because otherwise rust complains about an infinite recursion on the
-    // concrete type
-    Box::new(move |input| {
-        take_if_single_expression()(input).and_then_ok(|first_expression| {
-            let opt_op = take_if_operand(&first_expression)(input);
-            match opt_op {
-                None => Some(Ok(first_expression.simplify_unary_minus_literals())),
-                Some(Err(err)) => Some(Err(err)),
-                Some(Ok(Locatable { element: op, pos })) => demand(
-                    "Expected right side expression",
-                    skipping_whitespace(take_if_expression_node()),
-                )(input)
-                .map_ok(|right_expr| {
-                    first_expression
-                        .apply_priority_order(right_expr, op, pos)
-                        .simplify_unary_minus_literals()
-                }),
-            }
-        })
-    })
-}
-
 pub fn single_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
     or_vec_ng(vec![
@@ -71,28 +44,6 @@ pub fn single_expression_node<T: BufRead + 'static>(
     ])
 }
 
-#[deprecated]
-fn take_if_single_expression<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
-    or_vec(vec![
-        string_literal::take_if_string_literal(),
-        Box::new(word::take_if_word()),
-        Box::new(number_literal::take_if_number_literal()),
-        Box::new(number_literal::take_if_float_without_leading_zero()),
-        Box::new(take_if_file_handle()),
-        Box::new(take_if_parenthesis()),
-        take_if_unary_not(),
-        take_if_unary_minus(),
-    ])
-}
-
-#[deprecated]
-pub fn try_read<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<ExpressionNode>, QErrorNode> {
-    take_if_expression_node()(lexer).transpose()
-}
-
 pub fn unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
     map_ng(
@@ -100,21 +51,6 @@ pub fn unary_minus<T: BufRead + 'static>(
             QError::SyntaxError("Expected expression after unary minus".to_string())
         }),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
-    )
-}
-
-#[deprecated]
-fn take_if_unary_minus<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
-    apply(
-        |(l, child)| child.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
-        and(
-            take_if_symbol('-'),
-            demand(
-                "Expected expression after unary minus",
-                take_if_expression_node(),
-            ),
-        ),
     )
 }
 
@@ -127,15 +63,6 @@ pub fn unary_not<T: BufRead + 'static>(
             || QError::SyntaxError("Expected expression after NOT".to_string()),
         ),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
-    )
-}
-
-#[deprecated]
-fn take_if_unary_not<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
-    apply(
-        |(l, child)| child.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
-        with_whitespace_between(take_if_keyword(Keyword::Not), take_if_expression_node()),
     )
 }
 
@@ -158,36 +85,12 @@ pub fn file_handle<T: BufRead + 'static>(
     )
 }
 
-#[deprecated]
-pub fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
-    switch_err(
-        |(Locatable { pos, .. }, Locatable { element, .. })| match element.parse::<u32>() {
-            Ok(d) => Some(Ok(Expression::FileHandle(d.into()).at(pos))),
-            Err(err) => Some(Err(err.into()).with_err_at(pos)),
-        },
-        and(
-            take_if_symbol('#'),
-            demand("Expected digits after #", number_literal::take_if_digits()),
-        ),
-    )
-}
-
 pub fn parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
     // TODO allow skipping whitespace inside parenthesis
     map_ng(in_parenthesis_lazy(expression_node), |v| {
         Expression::Parenthesis(Box::new(v))
     })
-}
-
-#[deprecated]
-fn take_if_parenthesis<T: BufRead + 'static>() -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>
-{
-    // TODO allow skipping whitespace inside parenthesis
-    apply(
-        |(open_parenthesis_pos, x)| Expression::Parenthesis(Box::new(x)).at(open_parenthesis_pos),
-        between('(', ')', take_if_expression_node()),
-    )
 }
 
 mod string_literal {
@@ -202,30 +105,6 @@ mod string_literal {
                 || QError::SyntaxError("Unterminated string".to_string()),
             ),
             |((_, opt_str), _)| Expression::StringLiteral(opt_str.unwrap_or_default()),
-        )
-    }
-
-    #[deprecated]
-    pub fn take_if_string_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode>> {
-        apply(
-            |(l, (string_lexemes, _))| {
-                let pos = l.pos();
-                let text = string_lexemes.into_iter().fold(
-                    String::new(),
-                    |acc, Locatable { element, .. }| {
-                        format!("{}{}", acc, element) // concatenate strings
-                    },
-                );
-                Expression::StringLiteral(text).at(pos)
-            },
-            and(
-                take_if_symbol('"'),
-                and(
-                    take_until(|x: &LexemeNode| x.is_eol() || x.is_symbol('"')),
-                    demand("Unterminated string", take_if_symbol('"')),
-                ),
-            ),
         )
     }
 }
@@ -260,36 +139,6 @@ mod number_literal {
         )
     }
 
-    #[deprecated]
-    pub fn take_if_number_literal<T: BufRead + 'static>(
-    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
-        switch_err(
-            |(l, opt_r)| {
-                let Locatable {
-                    element: int_part_as_string,
-                    pos,
-                } = l;
-                match opt_r {
-                    Some((_, frac_part_as_string, is_double)) => parse_floating_point_literal(
-                        int_part_as_string,
-                        frac_part_as_string,
-                        is_double,
-                        pos,
-                    )
-                    .map(|x| Some(x))
-                    .transpose(),
-                    None => integer_literal_to_expression_node(int_part_as_string, pos)
-                        .map(|x| Some(x))
-                        .transpose(),
-                }
-            },
-            zip_allow_right_none(
-                take_if_digits(), // integer digits
-                take_if_frac_part(),
-            ),
-        )
-    }
-
     pub fn float_without_leading_zero<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
         map_to_result_no_undo(
@@ -308,48 +157,6 @@ mod number_literal {
                 )
             },
         )
-    }
-
-    #[deprecated]
-    pub fn take_if_float_without_leading_zero<T: BufRead + 'static>(
-    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
-        switch_err(
-            |(pos, frac_part_as_string, is_double)| {
-                parse_floating_point_literal(String::from("0"), frac_part_as_string, is_double, pos)
-                    .map(|x| Some(x))
-                    .transpose()
-            },
-            take_if_frac_part(),
-        )
-    }
-
-    #[deprecated]
-    fn take_if_frac_part<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<(Location, String, bool)>> {
-        apply(
-            |(l, r)| (l.pos(), r.0, r.1.is_some()),
-            and(
-                take_if_symbol('.'),
-                zip_allow_right_none(
-                    demand(
-                        "Expected digits after decimal point",
-                        drop_location(take_if_digits()),
-                    ),
-                    take_if_symbol('#'),
-                ),
-            ),
-        )
-    }
-
-    #[deprecated]
-    pub fn take_if_digits<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<Locatable<String>> {
-        take_if_map(|x: LexemeNode| match x {
-            Locatable {
-                element: Lexeme::Digits(digits),
-                pos,
-            } => Some(digits.at(pos)),
-            _ => None,
-        })
     }
 
     fn integer_literal_to_expression_node(
@@ -406,34 +213,6 @@ mod word {
                 Some(v) => Expression::FunctionCall(n, v),
                 None => Expression::VariableName(n),
             },
-        )
-    }
-
-    #[deprecated]
-    pub fn take_if_word<T: BufRead + 'static>(
-    ) -> impl Fn(&mut BufLexer<T>) -> OptRes<ExpressionNode> {
-        switch_err(
-            |(name_node, opt_r)| {
-                match opt_r {
-                    // found opening parenthesis e.g. Foo() or Foo(12, 43)
-                    Some((p, r)) => {
-                        if r.is_empty() {
-                            Some(
-                                Err(QError::SyntaxError("Expected expression".to_string()))
-                                    .with_err_at(p),
-                            )
-                        } else {
-                            Some(Ok(name_node.map(|n| Expression::FunctionCall(n, r))))
-                        }
-                    }
-                    // no opening parenthesis e.g. A$ or A
-                    None => Some(Ok(name_node.map(|n| Expression::VariableName(n)))),
-                }
-            },
-            zip_allow_right_none(
-                name::take_if_name_node(),
-                between('(', ')', csv(super::take_if_expression_node())),
-            ),
         )
     }
 }
@@ -523,86 +302,6 @@ fn gte<T: BufRead + 'static>(
             _ => Operand::Greater,
         },
     )
-}
-
-#[deprecated]
-fn take_if_operand<T: BufRead + 'static>(
-    left_side: &ExpressionNode,
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
-    let left_side_parenthesis = left_side.is_parenthesis();
-    or_vec(vec![
-        or_vec(vec![
-            // LTE, NE
-            apply(
-                |(l, r)| {
-                    (match r {
-                        Some('=') => Operand::LessOrEqual,
-                        Some('>') => Operand::NotEqual,
-                        _ => Operand::Less,
-                    })
-                    .at(l.pos())
-                },
-                zip_allow_right_none(
-                    skipping_whitespace(take_if_symbol('<')),
-                    or(
-                        drop_location(take_if_symbol('=')),
-                        drop_location(take_if_symbol('>')),
-                    ),
-                ),
-            ),
-            // GTE
-            apply(
-                |(l, r)| {
-                    (match r {
-                        Some('=') => Operand::GreaterOrEqual,
-                        _ => Operand::Greater,
-                    })
-                    .at(l.pos())
-                },
-                zip_allow_right_none(
-                    skipping_whitespace(take_if_symbol('>')),
-                    drop_location(take_if_symbol('=')),
-                ),
-            ),
-            take_if_simple_op('=', Operand::Equal),
-            take_if_simple_op('+', Operand::Plus),
-            take_if_simple_op('-', Operand::Minus),
-            take_if_simple_op('*', Operand::Multiply),
-            take_if_simple_op('/', Operand::Divide),
-        ]),
-        // AND
-        take_and_or_op(Keyword::And, Operand::And, left_side_parenthesis),
-        take_and_or_op(Keyword::Or, Operand::Or, left_side_parenthesis),
-    ])
-}
-
-#[deprecated]
-fn take_if_simple_op<T: BufRead + 'static>(
-    ch: char,
-    op: Operand,
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
-    Box::new(map_locatable(
-        move |_| op,
-        skipping_whitespace(take_if_symbol(ch)),
-    ))
-}
-
-#[deprecated]
-fn take_and_or_op<T: BufRead + 'static>(
-    k: Keyword,
-    op: Operand,
-    left_side_parenthesis: bool,
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Locatable<Operand>>> {
-    Box::new(switch(
-        move |(had_whitespace, r)| {
-            if had_whitespace.is_some() || left_side_parenthesis {
-                Some(op.at(r.pos()))
-            } else {
-                None
-            }
-        },
-        zip_allow_left_none(take_if_whitespace(), take_if_keyword(k)),
-    ))
 }
 
 #[cfg(test)]

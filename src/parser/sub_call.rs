@@ -1,8 +1,5 @@
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
-use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::types::*;
@@ -57,55 +54,6 @@ pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
             }
         }
     })
-}
-
-#[deprecated]
-pub fn take_if_sub_call<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    Box::new(in_transaction_pc(apply(
-        |(l, opt_r)| l.map(|n| Statement::SubCall(n, opt_r.unwrap_or_default())),
-        zip_allow_right_none(
-            in_transaction_pc(switch(
-                |(n, opt_blocker)| match opt_blocker {
-                    Some(_) => None,
-                    None => Some(n),
-                },
-                zip_allow_right_none(
-                    name::take_if_bare_name_node(),
-                    or(detect_label_and_abort(), detect_assignment_and_abort()),
-                ),
-            )),
-            or(take_args_parenthesis(), take_args_no_parenthesis()),
-        ),
-    )))
-}
-
-#[deprecated]
-fn detect_label_and_abort<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<bool>> {
-    apply(|_| true, take_if_symbol(':'))
-}
-
-#[deprecated]
-fn detect_assignment_and_abort<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<bool>> {
-    apply(|_| true, skipping_whitespace(take_if_symbol('=')))
-}
-
-#[deprecated]
-fn take_args_no_parenthesis<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
-    Box::new(with_leading_whitespace(csv(
-        expression::take_if_expression_node(),
-    )))
-}
-
-#[deprecated]
-fn take_args_parenthesis<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<Vec<ExpressionNode>>> {
-    apply(
-        |(_, r)| r,
-        between('(', ')', csv(expression::take_if_expression_node())),
-    )
 }
 
 #[cfg(test)]

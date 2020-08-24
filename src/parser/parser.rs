@@ -1,126 +1,22 @@
 use crate::char_reader::*;
 use crate::common::*;
-use crate::lexer::BufLexer;
-use crate::parser::declaration;
-use crate::parser::def_type;
-use crate::parser::implementation;
-use crate::parser::statement;
 use crate::parser::top_level_token;
 use crate::parser::types::*;
 use std::fs::File;
-use std::io::BufRead;
 
 pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
-    let mut lexer = BufLexer::from(f);
-    parse_main(&mut lexer)
-}
-
-#[cfg(test)]
-pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
-    parse_main_str_new(s)
-}
-
-pub fn parse_main<T: BufRead + 'static>(
-    lexer: &mut BufLexer<T>,
-) -> Result<ProgramNode, QErrorNode> {
-    top_level_token::parse_top_level_tokens(lexer)
-}
-
-fn parse_main_str_new<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
-    let reader = EolReader::from(s);
-    let (_, result) = top_level_tokens()(reader);
+    let reader = EolReader::from(f);
+    let (_, result) = top_level_token::top_level_tokens()(reader);
     // TODO verify reader does not have any more characters left, i.e. it was fully parsed
     result
 }
 
-pub fn top_level_tokens<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ProgramNode, QErrorNode>)> {
-    Box::new(move |r| {
-        let mut read_separator = true; // we are at the beginning of the file
-        let mut top_level_tokens: ProgramNode = vec![];
-        let mut reader = r;
-        loop {
-            let (tmp, next) = reader.read();
-            reader = tmp;
-            match next {
-                Ok(' ') => {
-                    // skip whitespace
-                }
-                Ok('\r') | Ok('\n') | Ok(':') => {
-                    read_separator = true;
-                }
-                Err(err) => {
-                    if err.is_not_found_err() {
-                        break;
-                    } else {
-                        return (reader, Err(err));
-                    }
-                }
-                Ok(ch) => {
-                    // if it is a comment, we are allowed to read it without a separator
-                    let can_read = ch == '\'' || read_separator;
-                    if can_read {
-                        let (tmp, next) = top_level_token_one()(reader.undo(ch));
-                        reader = tmp;
-                        read_separator = false;
-                        match next {
-                            Ok(top_level_token) => {
-                                top_level_tokens.push(top_level_token);
-                            }
-                            Err(err) => {
-                                if err.is_not_found_err() {
-                                    return (
-                                        reader,
-                                        Err(err.map(|_| {
-                                            QError::SyntaxError(format!(
-                                                "Expected top level statement"
-                                            ))
-                                        })),
-                                    );
-                                } else {
-                                    return (reader, Err(err));
-                                }
-                            }
-                        }
-                    } else {
-                        return reader.err(QError::SyntaxError(format!("No separator: {}", ch)));
-                    }
-                }
-            }
-        }
-
-        (reader, Ok(top_level_tokens))
-    })
-}
-
-pub fn top_level_token_one<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    with_pos(or_vec_ng(vec![
-        top_level_token_def_type(),
-        top_level_token_declaration(),
-        top_level_token_implementation(),
-        top_level_token_statement(),
-    ]))
-}
-
-pub fn top_level_token_def_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    map_ng(def_type::def_type(), |d| TopLevelToken::DefType(d))
-}
-
-pub fn top_level_token_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    declaration::declaration()
-}
-
-pub fn top_level_token_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    implementation::implementation()
-}
-
-pub fn top_level_token_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    map_ng(statement::statement(), |s| TopLevelToken::Statement(s))
+#[cfg(test)]
+pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
+    let reader = EolReader::from(s);
+    let (_, result) = top_level_token::top_level_tokens()(reader);
+    // TODO verify reader does not have any more characters left, i.e. it was fully parsed
+    result
 }
 
 #[cfg(test)]

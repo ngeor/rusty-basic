@@ -15,16 +15,14 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
 use crate::linter::{Expression, ExpressionNode};
-use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
-use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
+use crate::parser::{HasQualifier, QualifiedName, Statement, TypeQualifier};
 use crate::variant::Variant;
 use std::io::BufRead;
 
@@ -41,18 +39,6 @@ pub fn parse_input<T: BufRead + 'static>(
             }),
         ),
         |r| Statement::SubCall("INPUT".into(), r),
-    )
-}
-
-#[deprecated]
-pub fn take_if_input<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    apply(
-        |(l, r)| Statement::SubCall("INPUT".into(), r).at(l.pos()),
-        with_whitespace_between(
-            take_if_keyword(Keyword::Input),
-            csv(expression::take_if_expression_node()),
-        ),
     )
 }
 

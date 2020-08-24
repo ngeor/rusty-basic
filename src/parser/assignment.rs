@@ -1,9 +1,6 @@
-use super::{Name, Statement, StatementNode};
+use super::{Name, Statement};
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
-use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
@@ -32,26 +29,6 @@ pub fn assignment<T: BufRead + 'static>(
             ),
         ),
         |(l, (_, r))| Statement::Assignment(l, r),
-    )
-}
-
-#[deprecated]
-pub fn take_if_assignment<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    apply(
-        |((name_node, _), right_side)| {
-            name_node.map(|name| Statement::Assignment(name, right_side))
-        },
-        and(
-            in_transaction_pc(and(
-                name::take_if_name_node(),
-                skipping_whitespace(take_if_symbol('=')),
-            )),
-            demand(
-                "Expected expression",
-                skipping_whitespace(expression::take_if_expression_node()),
-            ),
-        ),
     )
 }
 

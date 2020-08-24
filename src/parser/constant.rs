@@ -1,9 +1,7 @@
-use super::{Statement, StatementNode};
+use super::Statement;
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
@@ -24,33 +22,6 @@ pub fn constant<T: BufRead + 'static>(
             ),
         ),
         |(n, (_, e))| Statement::Const(n, e),
-    )
-}
-
-#[deprecated]
-pub fn take_if_const<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>> {
-    apply(
-        |(l, (name_node, (_, right_side)))| {
-            let pos = l.pos();
-            Statement::Const(name_node, right_side).at(pos)
-        },
-        with_whitespace_between(
-            take_if_keyword(Keyword::Const),
-            and(
-                demand("Expected CONST name", name::take_if_name_node()),
-                and(
-                    demand(
-                        "Expected = after CONST name",
-                        skipping_whitespace(take_if_symbol('=')),
-                    ),
-                    demand(
-                        "Expected CONST expression",
-                        skipping_whitespace(expression::take_if_expression_node()),
-                    ),
-                ),
-            ),
-        ),
     )
 }
 

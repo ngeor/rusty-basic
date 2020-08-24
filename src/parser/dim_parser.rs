@@ -1,8 +1,6 @@
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
 use crate::parser::declared_name;
 
 use crate::parser::types::*;
@@ -14,18 +12,6 @@ pub fn dim<T: BufRead + 'static>(
     map_ng(
         with_keyword_before(Keyword::Dim, declared_name::declared_name_node()),
         |r| Statement::Dim(r),
-    )
-}
-
-#[deprecated]
-pub fn take_if_dim<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
-{
-    apply(
-        |(l, r)| Statement::Dim(r).at(l.pos()),
-        with_whitespace_between(
-            take_if_keyword(Keyword::Dim),
-            declared_name::take_if_declared_name(),
-        ),
     )
 }
 

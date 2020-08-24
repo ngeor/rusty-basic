@@ -4,14 +4,12 @@
 
 use super::{BuiltInLint, BuiltInRun};
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::lexer::*;
 use crate::linter::ExpressionNode;
-use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
-use crate::parser::{Statement, StatementNode, TypeQualifier};
+use crate::parser::{Statement, TypeQualifier};
 use std::io::BufRead;
 
 #[derive(Debug)]
@@ -29,26 +27,6 @@ pub fn parse_name<T: BufRead + 'static>(
             ),
         ),
         |(l, r)| Statement::SubCall("NAME".into(), vec![l, r]),
-    )
-}
-
-#[deprecated]
-pub fn take_if_name<T: BufRead + 'static>() -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<StatementNode>>
-{
-    apply(
-        |(l, (old_file, (_, new_file)))| {
-            Statement::SubCall("NAME".into(), vec![old_file, new_file]).at(l.pos())
-        },
-        with_whitespace_between(
-            take_if_keyword(Keyword::Name),
-            with_whitespace_between(
-                expression::take_if_expression_node(),
-                with_whitespace_between(
-                    take_if_keyword(Keyword::As),
-                    expression::take_if_expression_node(),
-                ),
-            ),
-        ),
     )
 }
 

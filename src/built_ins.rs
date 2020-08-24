@@ -19,10 +19,8 @@ mod val;
 mod util;
 
 use crate::char_reader::*;
-use crate::common::pc::*;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::lexer::BufLexer;
 use crate::linter::ExpressionNode;
 use crate::parser::{HasQualifier, Name, TypeQualifier};
 use std::convert::TryFrom;
@@ -281,16 +279,5 @@ pub fn parse_built_in<T: BufRead + 'static>(
         line_input::parse_line_input(),
         name::parse_name(),
         open::parse_open(),
-    ])
-}
-
-#[deprecated]
-pub fn take_if_built_in<T: BufRead + 'static>(
-) -> Box<dyn Fn(&mut BufLexer<T>) -> OptRes<crate::parser::StatementNode>> {
-    or_vec(vec![
-        input::take_if_input(),
-        line_input::take_if_line_input(),
-        name::take_if_name(),
-        open::take_if_open(),
     ])
 }

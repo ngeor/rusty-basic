@@ -1,12 +1,35 @@
 use crate::common::{
-    AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable, Location,
-    PeekOptCopy, QError, QErrorNode, ReadOpt, ToLocatableError,
+    AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable, Location, QError,
+    QErrorNode, ToLocatableError,
 };
-use crate::lexer::{Keyword, Lexeme};
+use crate::lexer::Keyword;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 use std::str::FromStr;
+
+fn is_letter(ch: char) -> bool {
+    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+}
+
+fn is_digit(ch: char) -> bool {
+    ch >= '0' && ch <= '9'
+}
+
+fn is_whitespace(ch: char) -> bool {
+    ch == ' ' || ch == '\t'
+}
+
+fn is_eol(ch: char) -> bool {
+    ch == '\r' || ch == '\n'
+}
+
+fn is_symbol(ch: char) -> bool {
+    (ch > ' ' && ch < '0')
+        || (ch > '9' && ch < 'A')
+        || (ch > 'Z' && ch < 'a')
+        || (ch > 'z' && ch <= '~')
+}
 
 pub trait IsNotFoundErr {
     fn is_not_found_err(&self) -> bool;
@@ -187,69 +210,6 @@ impl<T: BufRead> CharReader<T> {
             reader,
             buffer: VecDeque::new(),
             read_eof: false,
-        }
-    }
-
-    #[deprecated]
-    fn fill_buffer_if_empty(&mut self) -> std::io::Result<()> {
-        if self.buffer.is_empty() {
-            self.fill_buffer()
-        } else {
-            Ok(())
-        }
-    }
-
-    #[deprecated]
-    fn fill_buffer(&mut self) -> std::io::Result<()> {
-        let mut line = String::new();
-        let bytes_read = self.reader.read_line(&mut line)?;
-        if bytes_read > 0 {
-            for c in line.chars() {
-                self.buffer.push_back(c);
-            }
-        }
-        Ok(())
-    }
-}
-
-impl<T: BufRead> ReadOpt for CharReader<T> {
-    type Item = char;
-    type Err = QErrorNode;
-
-    fn read_dp(&mut self) -> Result<Option<char>, QErrorNode> {
-        if self.read_eof {
-            Ok(None)
-        } else {
-            match self.fill_buffer_if_empty() {
-                Ok(()) => {
-                    if self.buffer.is_empty() {
-                        self.read_eof = true;
-                        Ok(None)
-                    } else {
-                        Ok(self.buffer.pop_front())
-                    }
-                }
-                Err(err) => Err(QErrorNode::NoPos(err.into())),
-            }
-        }
-    }
-}
-
-impl<T: BufRead> PeekOptCopy for CharReader<T> {
-    fn peek_copy_dp(&mut self) -> Result<Option<char>, QErrorNode> {
-        if self.read_eof {
-            Ok(None)
-        } else {
-            match self.fill_buffer_if_empty() {
-                Ok(_) => {
-                    if self.buffer.is_empty() {
-                        Ok(None)
-                    } else {
-                        Ok(Some(self.buffer[0]))
-                    }
-                }
-                Err(err) => Err(QErrorNode::NoPos(err.into())),
-            }
         }
     }
 }
@@ -534,7 +494,7 @@ pub fn read_any_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNod
 where
     P: ParserSource + 'static,
 {
-    read_any_str_while(|ch| ch == ' ' || ch == '\t')
+    read_any_str_while(is_whitespace)
 }
 
 pub fn skipping_whitespace_around<P, T, S>(
@@ -555,7 +515,7 @@ pub fn skip_whitespace_ng<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode
 where
     P: ParserSource + 'static,
 {
-    skip_while(|ch| ch == ' ' || ch == '\t')
+    skip_while(is_whitespace)
 }
 
 pub fn skip_whitespace_eol_ng<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
@@ -600,19 +560,14 @@ pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_char_if(|ch| {
-        (ch > ' ' && ch < '0')
-            || (ch > '9' && ch < 'A')
-            || (ch > 'Z' && ch < 'a')
-            || (ch > 'z' && ch <= '~')
-    })
+    read_any_char_if(is_symbol)
 }
 
 pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_char_if(|ch| (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))
+    read_any_char_if(is_letter)
 }
 
 pub fn read_some_letter<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
@@ -620,10 +575,7 @@ where
     P: ParserSource + HasLocation + 'static,
     FE: Fn() -> QError + 'static,
 {
-    read_some_char_that(
-        |ch| (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'),
-        err_fn,
-    )
+    read_some_char_that(is_letter, err_fn)
 }
 
 /// Reads any identifier. Note that the result might be a keyword.
@@ -723,7 +675,7 @@ pub fn read_any_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_str_while(|x| x == '\r' || x == '\n')
+    read_any_str_while(is_eol)
 }
 
 pub fn read_any_eol_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
@@ -737,7 +689,7 @@ pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_str_while(|ch| ch >= '0' && ch <= '9')
+    read_any_str_while(is_digit)
 }
 
 //
@@ -1806,7 +1758,7 @@ impl<T: BufRead + 'static> ParserSource for EolReader<T> {
                 }
                 pos.inc_row();
             }
-            Ok(ch) => {
+            Ok(_) => {
                 pos.inc_col();
             }
             _ => {}
@@ -2080,11 +2032,16 @@ mod tests {
 
     #[test]
     fn test_eof_is_twice() {
-        let mut reader: CharReader<BufReader<Cursor<&str>>> = "123".into();
-        assert_eq!(reader.read_dp().unwrap().unwrap(), '1');
-        assert_eq!(reader.read_dp().unwrap().unwrap(), '2');
-        assert_eq!(reader.read_dp().unwrap().unwrap(), '3');
-        assert_eq!(reader.read_dp().unwrap(), None);
-        assert_eq!(reader.read_dp().unwrap(), None);
+        let reader: CharReader<BufReader<Cursor<&str>>> = "123".into();
+        let (reader, next) = reader.read();
+        assert_eq!(next.unwrap(), '1');
+        let (reader, next) = reader.read();
+        assert_eq!(next.unwrap(), '2');
+        let (reader, next) = reader.read();
+        assert_eq!(next.unwrap(), '3');
+        let (reader, next) = reader.read();
+        assert_eq!(next.is_err(), true);
+        let (_, next) = reader.read();
+        assert_eq!(next.is_err(), true);
     }
 }

@@ -28,19 +28,13 @@ Tip: run tests continuously with `make watch` or
 
 A program is read from a file character by character.
 
-Characters form lexemes.
-
-Lexemes form parser tokens. At this point parsing is done.
-
 ```
-input (file or str) -> CharReader -> Lexer -> BufLexer -> Parser
+input (file or str) -> CharReader -> EolReader -> Parser
 ```
 
-- CharReader offers peek/read functions over the consumed source, returning
-  one `Option<char>` at a time.
-- Lexer combines characters together into lexemes (Keyword, Digits, Word, Whitespace, Symbol, etc) and keeps track of their location (row/col).
-- BufLexer offers peek/read/undo functions over the Lexer.
-- Parser builds the parse tree of declarations, statements, expressions, etc.
+- CharReader returns one character a time, working with a `BufRead` as its source.
+- EolReader adds support for row-col position, handling new lines.
+- Parsing is done with parser combinators, ending up in a parse tree of declarations, statements, expressions, etc.
 
 ### Linting
 
@@ -132,7 +126,7 @@ TODO
 
 ### Dealing with location
 
-Lexemes, parsed tokens, instructions, all have a location (row / col). The same
+Parsed tokens, instructions, all have a location (row / col). The same
 for errors. There's the question of how to propagate this information in enums.
 
 - Option 1 - Envelope
@@ -162,7 +156,7 @@ for errors. There's the question of how to propagate this information in enums.
 - Option 3 - Neither
 
   This is applicable only for errors. The location that caused the error can
-  be retrieved by the processing class (e.g. `Lexer`).
+  be retrieved by the processing class (e.g. `EolReader`).
 
 Regardless of the option, it can get more complicated for nested structs (e.g.
 `IF` blocks), where the location information needs to be preserved for inner
@@ -178,12 +172,6 @@ to wrap/unwrap the body of the envelope.
 
 **Status:** There is no silver bullet at this point. Enums tend to embed the location,
 structs use the envelope approach with a common class `Locatable`.
-
-### Code separation
-
-Classes like lexer, parser, interpreter, etc tend to be organized in multiple
-files, but they are still the same `struct` spanning multiple files. The
-design is therefore quite monolithic.
 
 ### Adding new built-in functions/subs
 

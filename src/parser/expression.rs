@@ -16,7 +16,7 @@ pub fn expression_node<T: BufRead + 'static>(
         if_first_maybe_second_peeking_first(single_expression_node(), |reader, first_expr_ref| {
             if_first_demand_second(
                 operand(first_expr_ref.is_parenthesis()),
-                expression_node(),
+                skipping_whitespace_lazy_ng(expression_node),
                 || QError::SyntaxError("Expected right side expression".to_string()),
             )(reader)
         }),
@@ -96,7 +96,7 @@ pub fn try_read<T: BufRead + 'static>(
 pub fn unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
     map_ng(
-        if_first_demand_second(with_pos(try_read_char('-')), expression_node(), || {
+        if_first_demand_second_lazy(with_pos(try_read_char('-')), expression_node, || {
             QError::SyntaxError("Expected expression after unary minus".to_string())
         }),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
@@ -121,9 +121,9 @@ fn take_if_unary_minus<T: BufRead + 'static>(
 pub fn unary_not<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
     map_ng(
-        with_some_whitespace_between(
+        with_some_whitespace_between_lazy(
             with_pos(try_read_keyword(Keyword::Not)),
-            expression_node(),
+            expression_node,
             || QError::SyntaxError("Expected expression after NOT".to_string()),
         ),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
@@ -141,7 +141,21 @@ fn take_if_unary_not<T: BufRead + 'static>(
 
 pub fn file_handle<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
-    unimplemented!()
+    map_to_result_no_undo(
+        if_first_demand_second(try_read_char('#'), with_pos(read_any_digits()), || {
+            QError::SyntaxError("Expected digits after #".to_string())
+        }),
+        |(
+            _,
+            Locatable {
+                element: digits,
+                pos,
+            },
+        )| match digits.parse::<u32>() {
+            Ok(d) => Ok(Expression::FileHandle(d.into())),
+            Err(err) => Err(err.into()).with_err_at(pos),
+        },
+    )
 }
 
 #[deprecated]
@@ -161,7 +175,7 @@ pub fn take_if_file_handle<T: BufRead>() -> impl Fn(&mut BufLexer<T>) -> OptRes<
 pub fn parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
     // TODO allow skipping whitespace inside parenthesis
-    map_ng(in_parenthesis(expression_node()), |v| {
+    map_ng(in_parenthesis_lazy(expression_node), |v| {
         Expression::Parenthesis(Box::new(v))
     })
 }
@@ -384,7 +398,9 @@ mod word {
         map_ng(
             if_first_maybe_second(
                 name::name(),
-                in_parenthesis(csv_zero_or_more(expression_node())),
+                in_parenthesis(csv_one_or_more_lazy(expression_node, || {
+                    QError::SyntaxError("Expected expression".to_string())
+                })),
             ),
             |(n, opt_v)| match opt_v {
                 Some(v) => Expression::FunctionCall(n, v),
@@ -1029,7 +1045,7 @@ mod tests {
         );
         assert_eq!(
             parse_err("PRINT 1AND 2"),
-            QError::SyntaxError("Expected top level token".to_string())
+            QError::SyntaxError("No separator: A".to_string())
         );
         assert_expression!(
             "(1 OR 2)AND 3",
@@ -1059,7 +1075,7 @@ mod tests {
         );
         assert_eq!(
             parse_err("PRINT 1OR 2"),
-            QError::SyntaxError("Expected top level token".to_string())
+            QError::SyntaxError("No separator: O".to_string())
         );
         assert_expression!(
             "(1 AND 2)OR 3",

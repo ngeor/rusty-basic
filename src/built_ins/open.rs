@@ -29,7 +29,7 @@ pub fn parse_open<T: BufRead + 'static>(
         if_first_demand_second(
             if_first_maybe_second(
                 if_first_maybe_second(
-                    with_keyword(Keyword::Open, expression::expression_node()),
+                    with_keyword_before(Keyword::Open, expression::expression_node()),
                     parse_open_mode(),
                 ),
                 parse_open_access(),

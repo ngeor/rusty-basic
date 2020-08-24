@@ -18,22 +18,30 @@ use std::io::BufRead;
 pub fn select_case<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(
-        if_first_maybe_second(
-            if_first_maybe_second(
+        with_keyword_after(
+            with_keyword_after(
                 if_first_maybe_second(
-                    with_two_keywords(
-                        Keyword::Select,
-                        Keyword::Case,
-                        expression::expression_node(),
+                    if_first_maybe_second(
+                        if_first_maybe_second(
+                            with_two_keywords(
+                                Keyword::Select,
+                                Keyword::Case,
+                                expression::expression_node(),
+                            ),
+                            // parse inline comments after SELECT
+                            statements::statements(read_keyword_if(|k| {
+                                k == Keyword::Case || k == Keyword::End
+                            })),
+                        ),
+                        case_blocks(),
                     ),
-                    // parse inline comments after SELECT
-                    statements::statements(read_keyword_if(|k| {
-                        k == Keyword::Case || k == Keyword::End
-                    })),
+                    case_else(),
                 ),
-                case_blocks(),
+                Keyword::End,
+                || QError::SyntaxError("Expected END".to_string()),
             ),
-            case_else(),
+            Keyword::Select,
+            || QError::SyntaxError("Expected SELECT".to_string()),
         ),
         |(((expr, inline_statements), opt_blocks), opt_else)| {
             Statement::SelectCase(SelectCaseNode {
@@ -58,10 +66,15 @@ pub fn select_case<T: BufRead + 'static>(
 
 pub fn case_else<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
-    with_two_keywords(
-        Keyword::Case,
-        Keyword::Else,
-        statements::statements(try_read_keyword(Keyword::End)),
+    map_ng(
+        with_keyword_before(
+            Keyword::Case,
+            and_ng(
+                try_read_keyword(Keyword::Else),
+                statements::statements(try_read_keyword(Keyword::End)),
+            ),
+        ),
+        |(_, r)| r,
     )
 }
 
@@ -84,9 +97,18 @@ pub fn case_block<T: BufRead + 'static>(
 
 pub fn case_expr<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QErrorNode>)> {
-    with_keyword(
-        Keyword::Case,
-        or_vec_ng(vec![case_expr_is(), case_expr_to_or_simple()]),
+    map_ng(
+        and_ng(
+            try_read_keyword(Keyword::Case),
+            and_ng(
+                read_any_whitespace(),
+                abort_if(
+                    try_read_keyword(Keyword::Else),
+                    or_ng(case_expr_is(), case_expr_to_or_simple()),
+                ),
+            ),
+        ),
+        |(_, (_, r))| r,
     )
 }
 
@@ -96,13 +118,17 @@ pub fn case_expr_is<T: BufRead + 'static>(
         if_first_demand_second(
             try_read_keyword(Keyword::Is),
             if_first_demand_second(
-                expression::operand(false),
-                expression::single_expression_node(),
-                || QError::SyntaxError("Expected expression".to_string()),
+                read_any_whitespace(),
+                if_first_demand_second(
+                    expression::operand(false),
+                    skipping_whitespace_ng(expression::single_expression_node()),
+                    || QError::SyntaxError("Expected expression".to_string()),
+                ),
+                || QError::SyntaxError("Expected whitespace".to_string()),
             ),
             || QError::SyntaxError("Expected operand".to_string()),
         ),
-        |(_, (op, r))| CaseExpression::Is(op.strip_location(), r),
+        |(_, (_, (op, r)))| CaseExpression::Is(op.strip_location(), r),
     )
 }
 
@@ -112,7 +138,8 @@ pub fn case_expr_to_or_simple<T: BufRead + 'static>(
         if_first_maybe_second(
             expression::expression_node(),
             if_first_demand_second(
-                try_read_keyword(Keyword::To),
+                // TODO should be demanding_whitespace_around
+                skipping_whitespace_around(try_read_keyword(Keyword::To)),
                 expression::expression_node(),
                 || QError::SyntaxError("Expected expression".to_string()),
             ),

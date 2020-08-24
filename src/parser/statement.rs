@@ -42,6 +42,37 @@ pub fn statement<T: BufRead + 'static>(
     ])
 }
 
+/// Tries to read a statement that is allowed to be on a single line IF statement,
+/// excluding comments.
+pub fn single_line_non_comment_statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    or_vec_ng(vec![
+        dim_parser::dim(),
+        constant::constant(),
+        built_ins::parse_built_in(),
+        sub_call::sub_call(),
+        assignment::assignment(),
+        statement_go_to(),
+        statement_on_error_go_to(),
+    ])
+}
+
+/// Tries to read a statement that is allowed to be on a single line IF statement,
+/// including comments.
+pub fn single_line_statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+    or_vec_ng(vec![
+        comment::comment(),
+        dim_parser::dim(),
+        constant::constant(),
+        built_ins::parse_built_in(),
+        sub_call::sub_call(),
+        assignment::assignment(),
+        statement_go_to(),
+        statement_on_error_go_to(),
+    ])
+}
+
 pub fn statement_label<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(and_ng(name::bare_name(), try_read_char(':')), |(l, _)| {
@@ -51,7 +82,7 @@ pub fn statement_label<T: BufRead + 'static>(
 
 pub fn statement_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(with_keyword(Keyword::GoTo, name::bare_name()), |l| {
+    map_ng(with_keyword_before(Keyword::GoTo, name::bare_name()), |l| {
         Statement::GoTo(l)
     })
 }
@@ -62,7 +93,7 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
         with_two_keywords(
             Keyword::On,
             Keyword::Error,
-            with_keyword(Keyword::GoTo, name::bare_name()),
+            with_keyword_before(Keyword::GoTo, name::bare_name()),
         ),
         |l| Statement::ErrorHandler(l),
     )

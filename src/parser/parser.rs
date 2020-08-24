@@ -17,13 +17,7 @@ pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
 
 #[cfg(test)]
 pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
-    parse_main_str_old(s)
-}
-
-#[deprecated]
-fn parse_main_str_old<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
-    let mut lexer = BufLexer::from(s);
-    parse_main(&mut lexer)
+    parse_main_str_new(s)
 }
 
 pub fn parse_main<T: BufRead + 'static>(
@@ -89,7 +83,7 @@ pub fn top_level_tokens<T: BufRead + 'static>(
                             }
                         }
                     } else {
-                        return reader.err(QError::SyntaxError(format!("No separator")));
+                        return reader.err(QError::SyntaxError(format!("No separator: {}", ch)));
                     }
                 }
             }

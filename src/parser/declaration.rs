@@ -20,7 +20,7 @@ use std::io::BufRead;
 
 pub fn declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    with_keyword(
+    with_keyword_before(
         Keyword::Declare,
         or_ng(function_declaration_token(), sub_declaration_token()),
     )
@@ -42,7 +42,7 @@ pub fn function_declaration<T: BufRead + 'static>() -> Box<
     ),
 > {
     map_ng(
-        with_keyword(
+        with_keyword_before(
             Keyword::Function,
             if_first_maybe_second(
                 name::name_node(),
@@ -69,7 +69,7 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
     ),
 > {
     map_ng(
-        with_keyword(
+        with_keyword_before(
             Keyword::Sub,
             if_first_maybe_second(
                 name::bare_name_node(),

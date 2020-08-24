@@ -11,14 +11,17 @@ use std::io::BufRead;
 pub fn while_wend<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(
-        with_keyword(
-            Keyword::While,
-            if_first_demand_second(
-                expression::expression_node(),
-                statements(try_read_keyword(Keyword::Wend)),
-                // TODO read WEND
-                || QError::SyntaxError("Expected WHILE statements".to_string()),
+        with_keyword_after(
+            with_keyword_before(
+                Keyword::While,
+                if_first_demand_second(
+                    expression::expression_node(),
+                    statements(try_read_keyword(Keyword::Wend)),
+                    || QError::SyntaxError("Expected WHILE statements".to_string()),
+                ),
             ),
+            Keyword::Wend,
+            || QError::WhileWithoutWend,
         ),
         |(l, r)| {
             Statement::While(ConditionalBlockNode {
@@ -69,7 +72,7 @@ mod tests {
     };
 
     #[test]
-    fn test_while_wend() {
+    fn test_while_wend_leading_whitespace() {
         let input = "
         WHILE A < 5
             SYSTEM

@@ -56,14 +56,20 @@ fn single_letter_range<T: BufRead + 'static>(
 
 fn two_letter_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
-    map_ng(
+    map_to_result_no_undo_with_err_at_pos(
         and_ng(
             read_any_letter(),
             if_first_demand_second(try_read_char('-'), read_any_letter(), || {
                 QError::SyntaxError("Expected letter after dash".to_string())
             }),
         ),
-        |(l, (_, r))| LetterRange::Range(l, r),
+        |(l, (_, r))| {
+            if l < r {
+                Ok(LetterRange::Range(l, r))
+            } else {
+                Err(QError::SyntaxError("Invalid letter range".to_string()))
+            }
+        },
     )
 }
 
@@ -261,15 +267,15 @@ mod tests {
     fn test_parse_def_int_word_instead_of_letter() {
         assert_eq!(
             parse_err("DEFINT HELLO"),
-            QError::SyntaxError("Expected single character".to_string(),)
+            QError::SyntaxError("No separator: E".to_string(),)
         );
         assert_eq!(
             parse_err("DEFINT HELLO,Z"),
-            QError::SyntaxError("Expected single character".to_string(),)
+            QError::SyntaxError("No separator: E".to_string(),)
         );
         assert_eq!(
             parse_err("DEFINT A,HELLO"),
-            QError::SyntaxError("Expected single character".to_string(),)
+            QError::SyntaxError("No separator: E".to_string(),)
         );
     }
 

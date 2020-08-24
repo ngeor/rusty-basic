@@ -2,6 +2,7 @@ use crate::char_reader::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
+use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -10,52 +11,157 @@ use std::io::BufRead;
 pub fn if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(
-        if_first_maybe_second(
-            if_first_maybe_second(
-                with_keyword(
-                    Keyword::If,
-                    if_first_demand_second(
-                        expression::expression_node(),
-                        statements::statements(read_keyword_if(|k| {
-                            k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
-                        })),
-                        || QError::SyntaxError("Expected statements after expression".to_string()),
-                    ),
-                ),
-                else_if_blocks(),
-            ),
-            else_block(),
+        if_first_demand_second(
+            if_expr_then(),
+            or_ng(single_line_if_else(), multi_line_if()),
+            || QError::SyntaxError("Expected single or multi line IF".to_string()),
         ),
-        |(((condition, statements), opt_else_if_blocks), else_block)| {
+        |(condition, (statements, else_if_blocks, else_block))| {
             Statement::IfBlock(IfBlockNode {
                 if_block: ConditionalBlockNode {
                     condition,
                     statements,
                 },
-                else_if_blocks: opt_else_if_blocks.unwrap_or_default(),
+                else_if_blocks,
                 else_block,
             })
         },
     )
 }
 
-pub fn else_if_blocks<T: BufRead + 'static>(
+// IF expr THEN ( single line if | multi line if)
+// single line if   ::= <ws+>non-comment-statements-separated-by-colon ( single-line-else | comment-statement)
+// single line else ::= ELSE non-comment-statements-separated-by-colon comment-statement
+// multi line if    ::= statements else-if-blocks else-block END IF
+
+fn if_expr_then<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+    map_ng(
+        with_keyword_before(
+            Keyword::If,
+            with_some_whitespace_between(
+                expression::expression_node(),
+                demand_keyword(Keyword::Then),
+                || QError::SyntaxError("Expected THEN".to_string()),
+            ),
+        ),
+        |(l, _)| l,
+    )
+}
+
+fn single_line_if_else<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<
+            (
+                StatementNodes,
+                Vec<ConditionalBlockNode>,
+                Option<StatementNodes>,
+            ),
+            QErrorNode,
+        >,
+    ),
+> {
+    map_ng(
+        if_first_maybe_second(
+            single_line_if(),
+            or_ng(
+                map_ng(
+                    and_ng(read_any_whitespace(), with_pos(comment::comment())),
+                    |(_, r)| vec![r],
+                ),
+                single_line_else(),
+            ),
+        ),
+        |(l, r)| (l, vec![], r),
+    )
+}
+
+fn single_line_if<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+    statements::single_line_non_comment_statements()
+}
+
+fn single_line_else<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+    map_ng(
+        and_ng(
+            read_any_whitespace(),
+            and_ng(
+                try_read_keyword(Keyword::Else),
+                statements::single_line_statements(),
+            ),
+        ),
+        |(_, (_, r))| r,
+    )
+}
+
+fn multi_line_if<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<
+            (
+                StatementNodes,
+                Vec<ConditionalBlockNode>,
+                Option<StatementNodes>,
+            ),
+            QErrorNode,
+        >,
+    ),
+> {
+    map_ng(
+        if_first_demand_second(
+            if_first_maybe_second(
+                if_first_maybe_second(
+                    statements::statements(read_keyword_if(|k| {
+                        k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
+                    })),
+                    else_if_blocks(),
+                ),
+                else_block(),
+            ),
+            end_if(),
+            || QError::SyntaxError("Expected END IF".to_string()),
+        ),
+        |(((if_block, opt_else_if_blocks), opt_else), _)| {
+            (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
+        },
+    )
+}
+
+fn else_if_expr_then<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+    map_ng(
+        with_keyword_before(
+            Keyword::ElseIf,
+            with_some_whitespace_between(
+                expression::expression_node(),
+                demand_keyword(Keyword::Then),
+                || QError::SyntaxError("Expected THEN".to_string()),
+            ),
+        ),
+        |(l, _)| l,
+    )
+}
+
+fn else_if_blocks<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<ConditionalBlockNode>, QErrorNode>)> {
     take_zero_or_more(else_if_block(), |_| false)
 }
 
-pub fn else_if_block<T: BufRead + 'static>(
+fn else_if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ConditionalBlockNode, QErrorNode>)> {
     map_ng(
-        with_keyword(
-            Keyword::ElseIf,
-            if_first_demand_second(
-                expression::expression_node(),
-                statements::statements(read_keyword_if(|k| {
-                    k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
-                })),
-                || QError::SyntaxError("Expected statements after expression".to_string()),
-            ),
+        if_first_demand_second(
+            else_if_expr_then(),
+            statements::statements(read_keyword_if(|k| {
+                k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
+            })),
+            || QError::SyntaxError("Expected statements after expression".to_string()),
         ),
         |(condition, statements)| ConditionalBlockNode {
             condition,
@@ -64,12 +170,22 @@ pub fn else_if_block<T: BufRead + 'static>(
     )
 }
 
-pub fn else_block<T: BufRead + 'static>(
+fn else_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
-    with_keyword(
-        Keyword::Else,
-        statements::statements(read_keyword_if(|k| k == Keyword::End)),
+    map_ng(
+        if_first_demand_second(
+            try_read_keyword(Keyword::Else),
+            // TODO add here an EOL else separator
+            statements::statements(read_keyword_if(|k| k == Keyword::End)),
+            || QError::SyntaxError("Expected statements after ELSE".to_string()),
+        ),
+        |(_, r)| r,
     )
+}
+
+fn end_if<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Keyword, String), QErrorNode>)> {
+    with_keyword_before(Keyword::End, try_read_keyword(Keyword::If))
 }
 
 #[deprecated]

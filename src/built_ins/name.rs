@@ -20,11 +20,11 @@ pub struct Name {}
 pub fn parse_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(
-        with_keyword(
+        with_keyword_before(
             Keyword::Name,
             with_some_whitespace_between(
                 expression::expression_node(),
-                with_keyword(Keyword::As, expression::expression_node()),
+                with_keyword_before(Keyword::As, expression::expression_node()),
                 || QError::SyntaxError("Expected AS".to_string()),
             ),
         ),

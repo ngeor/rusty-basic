@@ -1,11 +1,19 @@
-use super::{BareName, BareNameNode, Name, NameNode};
+use super::{BareName, BareNameNode, Name, NameNode, TypeQualifier};
 use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::type_qualifier;
+use std::convert::TryInto;
 use std::io::BufRead;
+
+impl<T: BufRead + 'static> Undo<TypeQualifier> for EolReader<T> {
+    fn undo(self, s: TypeQualifier) -> Self {
+        let ch: char = s.try_into().unwrap();
+        self.undo(ch)
+    }
+}
 
 pub fn name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<NameNode, QErrorNode>)> {
@@ -43,12 +51,9 @@ pub fn bare_name_node<T: BufRead + 'static>(
 
 pub fn bare_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<BareName, QErrorNode>)> {
-    map_to_result_no_undo(
-        if_first_maybe_second(read_any_word(), with_pos(type_qualifier::type_qualifier())),
-        |(l, r)| match r {
-            Some(x) => Err(QError::SyntaxError("Expected bare name".to_string())).with_err_at(x),
-            None => Ok(l.into()),
-        },
+    map_ng(
+        and_ng(read_any_word(), negate(type_qualifier::type_qualifier())),
+        |(l, _)| l.into(),
     )
 }
 

@@ -6,7 +6,6 @@ use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
 use crate::parser::expression;
 use crate::parser::name;
-use std::convert::TryInto;
 use std::io::BufRead;
 
 impl<T: BufRead + 'static> Undo<Name> for EolReader<T> {
@@ -14,8 +13,7 @@ impl<T: BufRead + 'static> Undo<Name> for EolReader<T> {
         match n {
             Name::Bare(b) => self.undo(b),
             Name::Qualified { name, qualifier } => {
-                let ch: char = qualifier.try_into().unwrap();
-                let first = self.undo(ch);
+                let first = self.undo(qualifier);
                 first.undo(name)
             }
         }
@@ -29,7 +27,7 @@ pub fn assignment<T: BufRead + 'static>(
             name::name(),
             if_first_demand_second(
                 skipping_whitespace_ng(try_read_char('=')),
-                expression::expression_node(),
+                skipping_whitespace_ng(expression::expression_node()),
                 || QError::SyntaxError("Expected expression after =".to_string()),
             ),
         ),
@@ -84,7 +82,7 @@ mod tests {
     fn test_numeric_assignment_to_keyword_not_allowed() {
         assert_eq!(
             parse_err("FOR = 42"),
-            QError::SyntaxError("Expected FOR counter variable".to_string())
+            QError::SyntaxError("Cannot parse after FOR".to_string())
         );
     }
 

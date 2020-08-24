@@ -22,7 +22,7 @@ pub fn sub_call<T: BufRead + 'static>(
                 skipping_whitespace_ng(csv_zero_or_more(expression::expression_node())),
                 map_ng(
                     and_ng(
-                        read_some_whitespace(|| QError::not_found_err()),
+                        read_any_whitespace(),
                         zero_args_assignment_and_label_guard(true),
                     ),
                     |(_, r)| r,

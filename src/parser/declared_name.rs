@@ -4,13 +4,11 @@
 // A AS INTEGER
 // A AS UserDefinedType
 
+use crate::char_reader::*;
 use crate::common::pc::*;
 use crate::common::*;
 use crate::lexer::*;
 use crate::parser::buf_lexer_helpers::*;
-use crate::parser::type_qualifier;
-
-use crate::char_reader::*;
 use crate::parser::name;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -18,17 +16,25 @@ use std::str::FromStr;
 
 pub fn declared_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNode, QErrorNode>)> {
-    with_pos(map_ng(
-        if_first_demand_second(read_any_word(), type_definition(), || {
-            QError::SyntaxError("Could not parse name".to_string())
-        }),
-        |(l, r)| DeclaredName::new(l.into(), r),
-    ))
-}
-
-fn type_definition<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
-    or_ng(type_definition_extended(), type_definition_compact())
+    map_to_result_no_undo(
+        if_first_maybe_second(with_pos(name::name()), type_definition_extended()),
+        |(Locatable { element: name, pos }, opt_type_definition)| match name {
+            Name::Bare(b) => match opt_type_definition {
+                Some(t) => Ok(DeclaredName::new(b, t).at(pos)),
+                None => Ok(DeclaredName::new(b, TypeDefinition::Bare).at(pos)),
+            },
+            Name::Qualified {
+                name: n,
+                qualifier: q,
+            } => match opt_type_definition {
+                Some(t) => Err(QError::SyntaxError(
+                    "Identifier cannot end with %, &, !, #, or $".to_string(),
+                ))
+                .with_err_at(pos),
+                None => Ok(DeclaredName::new(n, TypeDefinition::CompactBuiltIn(q)).at(pos)),
+            },
+        },
+    )
 }
 
 fn type_definition_extended<T: BufRead + 'static>(
@@ -60,21 +66,11 @@ fn extended_type<T: BufRead + 'static>(
                 TypeQualifier::AmpersandLong,
             )),
             Ok(_) => Err(QError::SyntaxError(
-                "Expected user defined type or standard type".to_string(),
+                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
             ))
             .with_err_at(pos),
             Err(_) => Ok(TypeDefinition::UserDefined(x.into())),
         },
-    )
-}
-
-fn type_definition_compact<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
-    or_ng(
-        map_ng(type_qualifier::type_qualifier(), |q| {
-            TypeDefinition::CompactBuiltIn(q)
-        }),
-        Box::new(move |reader| (reader, Ok(TypeDefinition::Bare))),
     )
 }
 

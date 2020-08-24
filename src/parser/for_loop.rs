@@ -16,45 +16,97 @@ pub fn for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map_ng(
         if_first_demand_second(
-            with_keyword(
-                Keyword::For,
-                with_any_whitespace_between(
-                    name::name_node(),
-                    with_any_whitespace_between(
-                        try_read_char('='),
-                        with_any_whitespace_between(
+            if_first_demand_second(
+                with_keyword_before(
+                    Keyword::For,
+                    if_first_maybe_second(
+                        var_equal_lower_to_upper(),
+                        with_some_whitespace_before_and_between(
+                            try_read_keyword(Keyword::Step),
                             expression::expression_node(),
-                            with_keyword(
-                                Keyword::To,
-                                if_first_maybe_second(
-                                    expression::expression_node(),
-                                    with_some_whitespace_before_and_between(
-                                        try_read_keyword(Keyword::Step),
-                                        expression::expression_node(),
-                                        || QError::SyntaxError(format!("")),
-                                    ),
-                                ),
-                            ),
-                            || QError::SyntaxError(format!("")),
+                            || QError::SyntaxError(format!("Cannot parse STEP")),
                         ),
-                        || QError::SyntaxError(format!("")),
                     ),
-                    || QError::SyntaxError(format!("")),
                 ),
+                statements::statements(try_read_keyword(Keyword::Next)),
+                || QError::SyntaxError(format!("Expected FOR statements")),
             ),
-            statements::statements(try_read_keyword(Keyword::Next)),
-            || QError::SyntaxError(format!("")),
+            next_counter(),
+            || QError::ForWithoutNext,
         ),
-        |((variable_name, (_, (lower_bound, (upper_bound, opt_step)))), statements)| {
+        |((((variable_name, lower_bound, upper_bound), opt_step), statements), next_counter)| {
             Statement::ForLoop(ForLoopNode {
                 variable_name,
                 lower_bound,
                 upper_bound,
                 step: opt_step.map(|x| x.1),
                 statements,
-                next_counter: None,
+                next_counter,
             })
         },
+    )
+}
+
+fn next_counter<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QErrorNode>)> {
+    map_ng(
+        if_first_maybe_second(
+            try_read_keyword(Keyword::Next),
+            and_ng(read_any_whitespace(), name::name_node()),
+        ),
+        |(_, opt_second)| opt_second.map(|x| x.1),
+    )
+}
+
+fn var_equal_lower_to_upper<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<(NameNode, ExpressionNode, ExpressionNode), QErrorNode>,
+    ),
+> {
+    map_ng(
+        if_first_demand_second(
+            name::name_node(),
+            if_first_demand_second(
+                skipping_whitespace_around(try_read_char('=')),
+                lower_to_upper(),
+                || QError::SyntaxError("Expected lower expression".to_string()),
+            ),
+            || QError::SyntaxError("Expected =".to_string()),
+        ),
+        |(n, (_, (l, u)))| (n, l, u),
+    )
+}
+
+fn lower_to_upper<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<(ExpressionNode, ExpressionNode), QErrorNode>,
+    ),
+> {
+    map_ng(
+        if_first_demand_second(
+            expression::expression_node(),
+            if_first_demand_second(
+                read_any_whitespace(),
+                if_first_demand_second(
+                    try_read_keyword(Keyword::To),
+                    if_first_demand_second(
+                        read_any_whitespace(),
+                        expression::expression_node(),
+                        || QError::SyntaxError("Expected upper expression".to_string()),
+                    ),
+                    || QError::SyntaxError("Expected space after TO".to_string()),
+                ),
+                || QError::SyntaxError("Expected TO".to_string()),
+            ),
+            || QError::SyntaxError("Expected space after lower expression".to_string()),
+        ),
+        |(l, (_, (_, (_, r))))| (l, r),
     )
 }
 

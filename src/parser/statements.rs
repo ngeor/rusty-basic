@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::pc::{IsNotFoundErr, Undo};
+use crate::parser::pc::{IsNotFoundErr, Reader, Undo};
 use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;

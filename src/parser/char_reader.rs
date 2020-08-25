@@ -33,11 +33,7 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
-pub trait ParserSource: Sized {
-    fn read(self) -> (Self, Result<char, QErrorNode>);
-
-    fn undo_item(self, item: char) -> Self;
-}
+pub trait ParserSource: Reader<Item = char, Err = QErrorNode> {}
 
 impl IsNotFoundErr for QError {
     fn is_not_found_err(&self) -> bool {
@@ -123,7 +119,12 @@ pub struct CharReader<T: BufRead> {
     read_eof: bool,
 }
 
-impl<T: BufRead> ParserSource for CharReader<T> {
+impl<T: BufRead + 'static> ParserSource for CharReader<T> {}
+
+impl<T: BufRead> Reader for CharReader<T> {
+    type Item = char;
+    type Err = QErrorNode;
+
     fn read(self) -> (Self, Result<char, QErrorNode>) {
         let Self {
             mut reader,
@@ -1745,7 +1746,12 @@ impl<T: BufRead> EolReader<T> {
     }
 }
 
-impl<T: BufRead + 'static> ParserSource for EolReader<T> {
+impl<T: BufRead + 'static> ParserSource for EolReader<T> {}
+
+impl<T: BufRead + 'static> Reader for EolReader<T> {
+    type Item = char;
+    type Err = QErrorNode;
+
     fn read(self) -> (Self, Result<char, QErrorNode>) {
         let Self {
             char_reader,

@@ -11,7 +11,7 @@ use std::io::BufRead;
 
 pub fn def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QErrorNode>)> {
-    map_ng(
+    map(
         with_some_whitespace_between(def_keyword(), letter_ranges(), || {
             QError::SyntaxError("Expected letter ranges".to_string())
         }),
@@ -40,7 +40,7 @@ fn letter_ranges<T: BufRead + 'static>(
 
 fn letter_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
-    or_ng(
+    or(
         two_letter_range(), // needs to be first because the second will match too
         single_letter_range(),
     )
@@ -48,13 +48,13 @@ fn letter_range<T: BufRead + 'static>(
 
 fn single_letter_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
-    map_ng(read_any_letter(), |l| LetterRange::Single(l))
+    map(read_any_letter(), |l| LetterRange::Single(l))
 }
 
 fn two_letter_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
     map_to_result_no_undo_with_err_at_pos(
-        and_ng(
+        and(
             read_any_letter(),
             if_first_demand_second(try_read_char('-'), read_any_letter(), || {
                 QError::SyntaxError("Expected letter after dash".to_string())

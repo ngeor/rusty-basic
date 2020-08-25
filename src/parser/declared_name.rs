@@ -36,7 +36,7 @@ pub fn declared_name_node<T: BufRead + 'static>(
 
 fn type_definition_extended<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
-    map_ng(
+    map(
         with_some_whitespace_before_and_between(
             try_read_keyword(Keyword::As),
             extended_type(),

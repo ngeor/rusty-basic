@@ -19,12 +19,12 @@ impl<T: BufRead + 'static> Undo<Name> for EolReader<T> {
 
 pub fn assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
-        and_ng(
+    map(
+        and(
             name::name(),
             if_first_demand_second(
-                skipping_whitespace_ng(try_read_char('=')),
-                skipping_whitespace_ng(expression::expression_node()),
+                skipping_whitespace(try_read_char('=')),
+                skipping_whitespace(expression::expression_node()),
                 || QError::SyntaxError("Expected expression after =".to_string()),
             ),
         ),

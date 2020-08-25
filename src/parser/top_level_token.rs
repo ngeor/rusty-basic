@@ -78,7 +78,7 @@ pub fn top_level_tokens<T: BufRead + 'static>(
 
 pub fn top_level_token_one<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
-    with_pos(or_vec_ng(vec![
+    with_pos(or_vec(vec![
         top_level_token_def_type(),
         top_level_token_declaration(),
         top_level_token_implementation(),
@@ -88,7 +88,7 @@ pub fn top_level_token_one<T: BufRead + 'static>(
 
 pub fn top_level_token_def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    map_ng(def_type::def_type(), |d| TopLevelToken::DefType(d))
+    map(def_type::def_type(), |d| TopLevelToken::DefType(d))
 }
 
 pub fn top_level_token_declaration<T: BufRead + 'static>(
@@ -103,5 +103,5 @@ pub fn top_level_token_implementation<T: BufRead + 'static>(
 
 pub fn top_level_token_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    map_ng(statement::statement(), |s| TopLevelToken::Statement(s))
+    map(statement::statement(), |s| TopLevelToken::Statement(s))
 }

@@ -23,7 +23,7 @@ pub struct Open {}
 // TODO improve this
 pub fn parse_open<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_demand_second(
             if_first_maybe_second(
                 if_first_maybe_second(
@@ -61,7 +61,7 @@ pub fn parse_open<T: BufRead + 'static>(
 
 fn parse_open_mode<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileMode, QErrorNode>)> {
-    map_ng(
+    map(
         with_some_whitespace_before_and_between(
             try_read_keyword(Keyword::For),
             map_or_undo(read_any_keyword(), |(k, s)| match k {
@@ -78,7 +78,7 @@ fn parse_open_mode<T: BufRead + 'static>(
 
 fn parse_open_access<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileAccess, QErrorNode>)> {
-    map_ng(
+    map(
         with_some_whitespace_before_and_between(
             try_read_keyword(Keyword::Access),
             map_or_undo(read_any_keyword(), |(k, s)| match k {

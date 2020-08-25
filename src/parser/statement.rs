@@ -21,7 +21,7 @@ pub fn statement_node<T: BufRead + 'static>(
 
 pub fn statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    or_vec_ng(vec![
+    or_vec(vec![
         dim_parser::dim(),
         constant::constant(),
         comment::comment(),
@@ -43,7 +43,7 @@ pub fn statement<T: BufRead + 'static>(
 /// excluding comments.
 pub fn single_line_non_comment_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    or_vec_ng(vec![
+    or_vec(vec![
         dim_parser::dim(),
         constant::constant(),
         built_ins::parse_built_in(),
@@ -58,7 +58,7 @@ pub fn single_line_non_comment_statement<T: BufRead + 'static>(
 /// including comments.
 pub fn single_line_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    or_vec_ng(vec![
+    or_vec(vec![
         comment::comment(),
         dim_parser::dim(),
         constant::constant(),
@@ -72,21 +72,21 @@ pub fn single_line_statement<T: BufRead + 'static>(
 
 pub fn statement_label<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(and_ng(name::bare_name(), try_read_char(':')), |(l, _)| {
+    map(and(name::bare_name(), try_read_char(':')), |(l, _)| {
         Statement::Label(l)
     })
 }
 
 pub fn statement_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(with_keyword_before(Keyword::GoTo, name::bare_name()), |l| {
+    map(with_keyword_before(Keyword::GoTo, name::bare_name()), |l| {
         Statement::GoTo(l)
     })
 }
 
 pub fn statement_on_error_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
+    map(
         with_two_keywords(
             Keyword::On,
             Keyword::Error,
@@ -98,7 +98,7 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
 
 pub fn statement_illegal_keywords<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    or_ng(
+    or(
         map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Wend)), |k| {
             Err(QError::WendWithoutWhile).with_err_at(k)
         }),

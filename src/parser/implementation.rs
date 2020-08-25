@@ -10,12 +10,12 @@ use std::io::BufRead;
 
 pub fn implementation<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    or_ng(function_implementation(), sub_implementation())
+    or(function_implementation(), sub_implementation())
 }
 
 pub fn function_implementation<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_demand_second(
             declaration::function_declaration(),
             if_first_demand_second(
@@ -31,7 +31,7 @@ pub fn function_implementation<T: BufRead + 'static>(
 
 pub fn sub_implementation<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_demand_second(
             declaration::sub_declaration(),
             if_first_demand_second(

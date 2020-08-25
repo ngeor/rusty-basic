@@ -19,7 +19,7 @@ pub struct LineInput {}
 
 pub fn parse_line_input<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
+    map(
         with_two_keywords(
             Keyword::Line,
             Keyword::Input,

@@ -12,7 +12,7 @@ use std::io::BufRead;
 
 pub fn for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_demand_second(
             if_first_demand_second(
                 with_keyword_before(
@@ -47,10 +47,10 @@ pub fn for_loop<T: BufRead + 'static>(
 
 fn next_counter<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_maybe_second(
             try_read_keyword(Keyword::Next),
-            and_ng(read_any_whitespace(), name::name_node()),
+            and(read_any_whitespace(), name::name_node()),
         ),
         |(_, opt_second)| opt_second.map(|x| x.1),
     )
@@ -64,7 +64,7 @@ fn var_equal_lower_to_upper<T: BufRead + 'static>() -> Box<
         Result<(NameNode, ExpressionNode, ExpressionNode), QErrorNode>,
     ),
 > {
-    map_ng(
+    map(
         if_first_demand_second(
             name::name_node(),
             if_first_demand_second(
@@ -86,7 +86,7 @@ fn lower_to_upper<T: BufRead + 'static>() -> Box<
         Result<(ExpressionNode, ExpressionNode), QErrorNode>,
     ),
 > {
-    map_ng(
+    map(
         if_first_demand_second(
             expression::expression_node(),
             if_first_demand_second(

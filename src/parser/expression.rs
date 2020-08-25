@@ -9,11 +9,11 @@ use std::io::BufRead;
 
 pub fn expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_maybe_second_peeking_first(single_expression_node(), |reader, first_expr_ref| {
             if_first_demand_second(
                 operand(first_expr_ref.is_parenthesis()),
-                skipping_whitespace_lazy_ng(expression_node),
+                skipping_whitespace_lazy(expression_node),
                 || QError::SyntaxError("Expected right side expression".to_string()),
             )(reader)
         }),
@@ -31,7 +31,7 @@ pub fn expression_node<T: BufRead + 'static>(
 
 pub fn single_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
-    or_vec_ng(vec![
+    or_vec(vec![
         with_pos(string_literal::string_literal()),
         with_pos(word::word()),
         number_literal::number_literal(),
@@ -45,7 +45,7 @@ pub fn single_expression_node<T: BufRead + 'static>(
 
 pub fn unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_demand_second_lazy(with_pos(try_read_char('-')), expression_node, || {
             QError::SyntaxError("Expected expression after unary minus".to_string())
         }),
@@ -55,7 +55,7 @@ pub fn unary_minus<T: BufRead + 'static>(
 
 pub fn unary_not<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
-    map_ng(
+    map(
         with_some_whitespace_between_lazy(
             with_pos(try_read_keyword(Keyword::Not)),
             expression_node,
@@ -87,7 +87,7 @@ pub fn file_handle<T: BufRead + 'static>(
 pub fn parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
     // TODO allow skipping whitespace inside parenthesis
-    map_ng(in_parenthesis_lazy(expression_node), |v| {
+    map(in_parenthesis_lazy(expression_node), |v| {
         Expression::Parenthesis(Box::new(v))
     })
 }
@@ -97,7 +97,7 @@ mod string_literal {
 
     pub fn string_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
-        map_ng(
+        map(
             if_first_demand_second(
                 if_first_maybe_second(try_read_char('"'), read_any_str_while(|ch| ch != '"')),
                 try_read_char('"'),
@@ -201,7 +201,7 @@ mod word {
 
     pub fn word<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
-        map_ng(
+        map(
             if_first_maybe_second(
                 name::name(),
                 in_parenthesis(csv_one_or_more_lazy(expression_node, || {
@@ -219,34 +219,34 @@ mod word {
 pub fn operand<T: BufRead + 'static>(
     had_parenthesis_before: bool,
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Locatable<Operand>, QErrorNode>)> {
-    or_vec_ng(vec![
-        skipping_whitespace_ng(with_pos(lte())),
-        skipping_whitespace_ng(with_pos(gte())),
-        map_ng(skipping_whitespace_ng(with_pos(try_read_char('='))), |x| {
+    or_vec(vec![
+        skipping_whitespace(with_pos(lte())),
+        skipping_whitespace(with_pos(gte())),
+        map(skipping_whitespace(with_pos(try_read_char('='))), |x| {
             x.map(|_| Operand::Equal)
         }),
-        map_ng(skipping_whitespace_ng(with_pos(try_read_char('+'))), |x| {
+        map(skipping_whitespace(with_pos(try_read_char('+'))), |x| {
             x.map(|_| Operand::Plus)
         }),
-        map_ng(skipping_whitespace_ng(with_pos(try_read_char('-'))), |x| {
+        map(skipping_whitespace(with_pos(try_read_char('-'))), |x| {
             x.map(|_| Operand::Minus)
         }),
-        map_ng(skipping_whitespace_ng(with_pos(try_read_char('*'))), |x| {
+        map(skipping_whitespace(with_pos(try_read_char('*'))), |x| {
             x.map(|_| Operand::Multiply)
         }),
-        map_ng(skipping_whitespace_ng(with_pos(try_read_char('/'))), |x| {
+        map(skipping_whitespace(with_pos(try_read_char('/'))), |x| {
             x.map(|_| Operand::Divide)
         }),
         if had_parenthesis_before {
             // skip whitespace + AND
-            map_ng(
-                skipping_whitespace_ng(with_pos(try_read_keyword(Keyword::And))),
+            map(
+                skipping_whitespace(with_pos(try_read_keyword(Keyword::And))),
                 |x| x.map(|_| Operand::And),
             )
         } else {
             // demand whitespace + AND
-            map_ng(
-                and_ng(
+            map(
+                and(
                     read_any_whitespace(),
                     with_pos(try_read_keyword(Keyword::And)),
                 ),
@@ -255,14 +255,14 @@ pub fn operand<T: BufRead + 'static>(
         },
         if had_parenthesis_before {
             // skip whitespace + OR
-            map_ng(
-                skipping_whitespace_ng(with_pos(try_read_keyword(Keyword::Or))),
+            map(
+                skipping_whitespace(with_pos(try_read_keyword(Keyword::Or))),
                 |x| x.map(|_| Operand::Or),
             )
         } else {
             // demand whitespace + OR
-            map_ng(
-                and_ng(
+            map(
+                and(
                     read_any_whitespace(),
                     with_pos(try_read_keyword(Keyword::Or)),
                 ),
@@ -294,7 +294,7 @@ fn lte<T: BufRead + 'static>(
 
 fn gte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_maybe_second(try_read_char('>'), try_read_char('=')),
         |(_, opt_r)| match opt_r {
             Some(_) => Operand::GreaterOrEqual,

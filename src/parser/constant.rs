@@ -8,7 +8,7 @@ use std::io::BufRead;
 
 pub fn constant<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
+    map(
         with_keyword_before(
             Keyword::Const,
             with_any_whitespace_between(

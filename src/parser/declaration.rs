@@ -20,13 +20,13 @@ pub fn declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
     with_keyword_before(
         Keyword::Declare,
-        or_ng(function_declaration_token(), sub_declaration_token()),
+        or(function_declaration_token(), sub_declaration_token()),
     )
 }
 
 fn function_declaration_token<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    map_ng(function_declaration(), |(n, p)| {
+    map(function_declaration(), |(n, p)| {
         TopLevelToken::FunctionDeclaration(n, p)
     })
 }
@@ -39,12 +39,12 @@ pub fn function_declaration<T: BufRead + 'static>() -> Box<
         Result<(NameNode, DeclaredNameNodes), QErrorNode>,
     ),
 > {
-    map_ng(
+    map(
         with_keyword_before(
             Keyword::Function,
             if_first_maybe_second(
                 name::name_node(),
-                skipping_whitespace_ng(declaration_parameters()),
+                skipping_whitespace(declaration_parameters()),
             ),
         ),
         |(n, opt_p)| (n, opt_p.unwrap_or_default()),
@@ -53,7 +53,7 @@ pub fn function_declaration<T: BufRead + 'static>() -> Box<
 
 fn sub_declaration_token<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
-    map_ng(sub_declaration(), |(n, p)| {
+    map(sub_declaration(), |(n, p)| {
         TopLevelToken::SubDeclaration(n, p)
     })
 }
@@ -66,12 +66,12 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
         Result<(BareNameNode, DeclaredNameNodes), QErrorNode>,
     ),
 > {
-    map_ng(
+    map(
         with_keyword_before(
             Keyword::Sub,
             if_first_maybe_second(
                 name::bare_name_node(),
-                skipping_whitespace_ng(declaration_parameters()),
+                skipping_whitespace(declaration_parameters()),
             ),
         ),
         |(n, opt_p)| (n, opt_p.unwrap_or_default()),

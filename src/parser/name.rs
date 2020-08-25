@@ -21,7 +21,7 @@ pub fn name_node<T: BufRead + 'static>(
 
 pub fn name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Name, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_maybe_second(read_any_word(), type_qualifier::type_qualifier()),
         |(l, r)| Name::new(l.into(), r),
     )
@@ -36,8 +36,8 @@ pub fn bare_name_node<T: BufRead + 'static>(
 
 pub fn bare_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<BareName, QErrorNode>)> {
-    map_ng(
-        and_ng(read_any_word(), negate(type_qualifier::type_qualifier())),
+    map(
+        and(read_any_word(), negate(type_qualifier::type_qualifier())),
         |(l, _)| l.into(),
     )
 }

@@ -13,10 +13,10 @@ pub struct ParseStatementsOptions {
 
 pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
-    map_ng(
-        and_ng(
+    map(
+        and(
             read_any_whitespace(),
-            map_ng(
+            map(
                 take_zero_or_more(
                     if_first_maybe_second(
                         with_pos(statement::single_line_non_comment_statement()),
@@ -33,10 +33,10 @@ pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 
 pub fn single_line_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
-    map_ng(
-        and_ng(
+    map(
+        and(
             read_any_whitespace(),
-            map_ng(
+            map(
                 take_zero_or_more(
                     if_first_maybe_second(
                         with_pos(statement::single_line_statement()),
@@ -55,7 +55,7 @@ pub fn skip_until_first_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QErrorNode>)> {
     Box::new(move |reader| {
         let mut buf: String = String::new();
-        let (reader, res) = skip_whitespace_ng()(reader);
+        let (reader, res) = skip_whitespace()(reader);
         match res {
             Err(err) => return (reader, Err(err)),
             Ok(x) => {
@@ -68,11 +68,11 @@ pub fn skip_until_first_statement<T: BufRead + 'static>(
             Err(err) => (reader, Err(err)),
             Ok('\r') | Ok('\n') => {
                 buf.push('\n');
-                map_ng(skip_whitespace_eol_ng(), move |x| format!("{}{}", buf, x))(reader)
+                map(skip_whitespace_eol(), move |x| format!("{}{}", buf, x))(reader)
             }
             Ok(':') => {
                 buf.push(':');
-                map_ng(skip_whitespace_ng(), move |x| format!("{}{}", buf, x))(reader)
+                map(skip_whitespace(), move |x| format!("{}{}", buf, x))(reader)
             }
             Ok(ch) => (reader.undo(ch), Ok(buf)),
         }
@@ -86,7 +86,7 @@ where
     S: Fn(EolReader<T>) -> (EolReader<T>, Result<X, QErrorNode>) + 'static,
     EolReader<T>: Undo<X>,
 {
-    map_ng(
+    map(
         maybe_first_and_second_no_undo(
             skip_until_first_statement(),
             take_zero_or_more_to_default(
@@ -129,7 +129,7 @@ fn statement_node_and_separator<T: BufRead + 'static>(
                 let (reader, sep) = if is_comment {
                     comment_separator()(reader)
                 } else {
-                    skipping_whitespace_ng(non_comment_separator())(reader)
+                    skipping_whitespace(non_comment_separator())(reader)
                 };
                 match sep {
                     Ok(x) => (reader, Ok((s_node, x))),
@@ -149,7 +149,7 @@ fn statement_node_and_separator<T: BufRead + 'static>(
 
 pub fn comment_separator<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_maybe_second(read_any_eol(), read_any_eol_whitespace()),
         |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
     )
@@ -160,15 +160,15 @@ pub fn non_comment_separator<T: BufRead + 'static>(
     // ws* : ws*
     // ws* eol (ws | eol)*
     // ws*' comment
-    or_vec_ng(vec![
-        map_ng(
+    or_vec(vec![
+        map(
             if_first_maybe_second(try_read_char(':'), read_any_whitespace()),
             |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
         ),
-        map_ng(
+        map(
             if_first_maybe_second(read_any_eol(), read_any_eol_whitespace()),
             |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
         ),
-        map_ng(undo_if_ok(try_read_char('\'')), |c| format!("{}", c)),
+        map(undo_if_ok(try_read_char('\'')), |c| format!("{}", c)),
     ])
 }

@@ -7,7 +7,7 @@ use std::io::BufRead;
 /// Parses DIM statement
 pub fn dim<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
+    map(
         with_keyword_before(Keyword::Dim, declared_name::declared_name_node()),
         |r| Statement::Dim(r),
     )

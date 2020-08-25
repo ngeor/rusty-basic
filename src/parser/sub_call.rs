@@ -11,14 +11,14 @@ use std::io::BufRead;
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 pub fn sub_call<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
-        and_ng(
+    map(
+        and(
             name::bare_name(),
-            or_vec_ng(vec![
+            or_vec(vec![
                 in_parenthesis(csv_zero_or_more(expression::expression_node())),
-                skipping_whitespace_ng(csv_zero_or_more(expression::expression_node())),
-                map_ng(
-                    and_ng(
+                skipping_whitespace(csv_zero_or_more(expression::expression_node())),
+                map(
+                    and(
                         read_any_whitespace(),
                         zero_args_assignment_and_label_guard(true),
                     ),

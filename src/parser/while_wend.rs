@@ -7,7 +7,7 @@ use std::io::BufRead;
 
 pub fn while_wend<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
+    map(
         with_keyword_after(
             with_keyword_before(
                 Keyword::While,

@@ -8,10 +8,10 @@ use std::io::BufRead;
 
 pub fn if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_demand_second(
             if_expr_then(),
-            or_ng(single_line_if_else(), multi_line_if()),
+            or(single_line_if_else(), multi_line_if()),
             || QError::SyntaxError("Expected single or multi line IF".to_string()),
         ),
         |(condition, (statements, else_if_blocks, else_block))| {
@@ -34,7 +34,7 @@ pub fn if_block<T: BufRead + 'static>(
 
 fn if_expr_then<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
-    map_ng(
+    map(
         with_keyword_before(
             Keyword::If,
             with_some_whitespace_between(
@@ -62,12 +62,12 @@ fn single_line_if_else<T: BufRead + 'static>() -> Box<
         >,
     ),
 > {
-    map_ng(
+    map(
         if_first_maybe_second(
             single_line_if(),
-            or_ng(
-                map_ng(
-                    and_ng(read_any_whitespace(), with_pos(comment::comment())),
+            or(
+                map(
+                    and(read_any_whitespace(), with_pos(comment::comment())),
                     |(_, r)| vec![r],
                 ),
                 single_line_else(),
@@ -84,10 +84,10 @@ fn single_line_if<T: BufRead + 'static>(
 
 fn single_line_else<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
-    map_ng(
-        and_ng(
+    map(
+        and(
             read_any_whitespace(),
-            and_ng(
+            and(
                 try_read_keyword(Keyword::Else),
                 statements::single_line_statements(),
             ),
@@ -111,7 +111,7 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
         >,
     ),
 > {
-    map_ng(
+    map(
         if_first_demand_second(
             if_first_maybe_second(
                 if_first_maybe_second(
@@ -133,7 +133,7 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
 
 fn else_if_expr_then<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
-    map_ng(
+    map(
         with_keyword_before(
             Keyword::ElseIf,
             with_some_whitespace_between(
@@ -153,7 +153,7 @@ fn else_if_blocks<T: BufRead + 'static>(
 
 fn else_if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ConditionalBlockNode, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_demand_second(
             else_if_expr_then(),
             statements::statements(read_keyword_if(|k| {
@@ -170,7 +170,7 @@ fn else_if_block<T: BufRead + 'static>(
 
 fn else_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
-    map_ng(
+    map(
         if_first_demand_second(
             try_read_keyword(Keyword::Else),
             // TODO add here an EOL else separator

@@ -505,55 +505,51 @@ where
     T: 'static,
     S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
 {
-    map_ng(
-        and_ng(skip_whitespace_ng(), and_ng(source, skip_whitespace_ng())),
+    map(
+        and(skip_whitespace(), and(source, skip_whitespace())),
         |(_, (l, _))| l,
     )
 }
 
-pub fn skip_whitespace_ng<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn skip_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
     skip_while(is_whitespace)
 }
 
-pub fn skip_whitespace_eol_ng<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn skip_whitespace_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
     skip_while(|ch| ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
 }
 
-pub fn skipping_whitespace_ng<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn skipping_whitespace<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
 where
     P: ParserSource + Undo<String> + 'static,
     S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
     T: 'static,
 {
-    skip_first(skip_whitespace_ng(), source)
+    skip_first(skip_whitespace(), source)
 }
 
-pub fn skipping_whitespace_lazy_ng<P, S, T>(
-    source: S,
-) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn skipping_whitespace_lazy<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
 where
     P: ParserSource + Undo<String> + 'static,
     S: Fn() -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)> + 'static,
     T: 'static,
 {
-    skip_first_lazy(skip_whitespace_ng(), source)
+    skip_first_lazy(skip_whitespace(), source)
 }
 
-pub fn skipping_whitespace_eol_ng<P, S, T>(
-    source: S,
-) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn skipping_whitespace_eol<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
 where
     P: ParserSource + Undo<String> + 'static,
     S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
     T: 'static,
 {
-    skip_first(skip_whitespace_eol_ng(), source)
+    skip_first(skip_whitespace_eol(), source)
 }
 
 pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
@@ -584,7 +580,7 @@ pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNod
 where
     P: ParserSource + 'static,
 {
-    map_ng(
+    map(
         if_first_maybe_second(
             read_any_letter(),
             read_any_str_while(|ch| {
@@ -696,7 +692,7 @@ where
 // Combine two or more parsers
 //
 
-pub fn and_ng<P, F1, F2, T1, T2, E>(
+pub fn and<P, F1, F2, T1, T2, E>(
     first: F1,
     second: F2,
 ) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), E>)>
@@ -993,7 +989,7 @@ where
     })
 }
 
-pub fn or_ng<P, F1, F2, T, E>(first: F1, second: F2) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
+pub fn or<P, F1, F2, T, E>(first: F1, second: F2) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
 where
     F1: Fn(P) -> (P, Result<T, E>) + 'static,
     F2: Fn(P) -> (P, Result<T, E>) + 'static,
@@ -1015,7 +1011,7 @@ where
     })
 }
 
-pub fn or_vec_ng<P, T, E, F>(mut sources: Vec<F>) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
+pub fn or_vec<P, T, E, F>(mut sources: Vec<F>) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
 where
     P: ParserSource + 'static,
     T: 'static,
@@ -1024,11 +1020,11 @@ where
 {
     if sources.len() > 2 {
         let first = sources.remove(0);
-        or_ng(first, or_vec_ng(sources))
+        or(first, or_vec(sources))
     } else if sources.len() == 2 {
         let second = sources.pop().unwrap();
         let first = sources.pop().unwrap();
-        or_ng(first, second)
+        or(first, second)
     } else {
         panic!("or_vec must have at least two functions to choose from");
     }
@@ -1127,7 +1123,7 @@ where
     F1: Fn(P) -> (P, Result<T1, E>) + 'static,
     F2: Fn(P) -> (P, Result<T2, E>) + 'static,
 {
-    map_ng(and_ng(negate(predicate_source), source), |(_, r)| r)
+    map(and(negate(predicate_source), source), |(_, r)| r)
 }
 
 pub fn negate<P, T, E, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<(), E>)>
@@ -1169,7 +1165,7 @@ where
     T2: 'static,
     FE: Fn() -> QError + 'static,
 {
-    map_ng(
+    map(
         if_first_demand_second(first, and_no_undo(read_any_whitespace(), second), err_fn),
         |(l, (_, r))| (l, r),
     )
@@ -1188,7 +1184,7 @@ where
     T2: 'static,
     FE: Fn() -> QError + 'static,
 {
-    map_ng(
+    map(
         if_first_demand_second(
             first,
             and_no_undo_lazy(read_any_whitespace(), second),
@@ -1216,8 +1212,8 @@ where
     T2: 'static,
     FE: Fn() -> QError + 'static,
 {
-    map_ng(
-        and_ng(
+    map(
+        and(
             read_any_whitespace(),
             with_some_whitespace_between(first, second, err_fn),
         ),
@@ -1240,7 +1236,7 @@ where
     T2: 'static,
     FE: Fn() -> QError + 'static,
 {
-    if_first_demand_second(first, skipping_whitespace_ng(second), err_fn)
+    if_first_demand_second(first, skipping_whitespace(second), err_fn)
 }
 
 //
@@ -1372,7 +1368,7 @@ where
     })
 }
 
-pub fn map_ng<P, S, M, R, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
+pub fn map<P, S, M, R, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
 where
     P: ParserSource + 'static,
     S: Fn(P) -> (P, Result<R, E>) + 'static,
@@ -1403,7 +1399,7 @@ where
     })
 }
 
-pub fn demand_ng<P, S, M, R, E>(source: S, err_fn: M) -> Box<dyn Fn(P) -> (P, Result<R, E>)>
+pub fn demand<P, S, M, R, E>(source: S, err_fn: M) -> Box<dyn Fn(P) -> (P, Result<R, E>)>
 where
     P: ParserSource + 'static,
     S: Fn(P) -> (P, Result<R, E>) + 'static,
@@ -1520,11 +1516,11 @@ where
     R: 'static,
     FE: Fn() -> QError + 'static,
 {
-    map_ng(
+    map(
         take_one_or_more(
             if_first_maybe_second(
-                skipping_whitespace_ng(source),
-                skipping_whitespace_ng(with_pos(try_read_char(','))),
+                skipping_whitespace(source),
+                skipping_whitespace(with_pos(try_read_char(','))),
             ),
             |x| x.1.is_none(),
             err_fn,
@@ -1543,11 +1539,11 @@ where
     R: 'static,
     FE: Fn() -> QError + 'static,
 {
-    map_ng(
+    map(
         take_one_or_more(
             if_first_maybe_second(
-                skipping_whitespace_lazy_ng(source),
-                skipping_whitespace_ng(with_pos(try_read_char(','))),
+                skipping_whitespace_lazy(source),
+                skipping_whitespace(with_pos(try_read_char(','))),
             ),
             |x| x.1.is_none(),
             err_fn,
@@ -1562,11 +1558,11 @@ where
     S: Fn(P) -> (P, Result<R, QErrorNode>) + 'static,
     R: 'static,
 {
-    map_ng(
+    map(
         take_zero_or_more(
             if_first_maybe_second(
-                skipping_whitespace_ng(source),
-                skipping_whitespace_ng(with_pos(try_read_char(','))),
+                skipping_whitespace(source),
+                skipping_whitespace(with_pos(try_read_char(','))),
             ),
             |x| x.1.is_none(),
         ),
@@ -1582,11 +1578,11 @@ where
     S: Fn() -> Box<dyn Fn(P) -> (P, Result<R, QErrorNode>)> + 'static,
     R: 'static,
 {
-    map_ng(
+    map(
         take_zero_or_more(
             if_first_maybe_second(
-                skipping_whitespace_lazy_ng(source),
-                skipping_whitespace_ng(with_pos(try_read_char(','))),
+                skipping_whitespace_lazy(source),
+                skipping_whitespace(with_pos(try_read_char(','))),
             ),
             |x| x.1.is_none(),
         ),
@@ -1601,7 +1597,7 @@ where
     T: 'static,
 {
     map_to_result_no_undo(
-        and_ng(
+        and(
             try_read_char('('),
             maybe_first_and_second_no_undo(
                 source,
@@ -1624,7 +1620,7 @@ where
     T: 'static,
 {
     map_to_result_no_undo(
-        and_ng(
+        and(
             try_read_char('('),
             maybe_first_lazy_and_second_no_undo(
                 source,
@@ -1653,7 +1649,7 @@ where
     T: 'static,
     S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
 {
-    map_ng(
+    map(
         with_some_whitespace_between(try_read_keyword(needle), source, move || {
             QError::SyntaxError(format!("Cannot parse after {}", needle))
         }),
@@ -1672,11 +1668,11 @@ where
     S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
     FE: Fn() -> QError + 'static,
 {
-    // TODO remove the skipping_whitespace_ng , remove with_keyword_after altogether
-    map_ng(
+    // TODO remove the skipping_whitespace , remove with_keyword_after altogether
+    map(
         if_first_demand_second(
             source,
-            skipping_whitespace_ng(try_read_keyword(needle)),
+            skipping_whitespace(try_read_keyword(needle)),
             err_fn,
         ),
         |(l, _)| l,
@@ -1736,10 +1732,10 @@ impl<T: BufRead + 'static> ParserSource for EolReader<T> {
             mut pos,
             mut line_lengths,
         } = self;
-        let (char_reader, next) = or_ng(
-            or_ng(
+        let (char_reader, next) = or(
+            or(
                 try_read_char('\n'),
-                map_ng(
+                map(
                     // Tradeoff: CRLF becomes just CR
                     // Alternatives:
                     // - Return a String instead of a char

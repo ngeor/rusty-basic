@@ -1,21 +1,9 @@
-use super::{Name, Statement};
+use super::Statement;
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
 use std::io::BufRead;
-
-impl<T: BufRead + 'static> Undo<Name> for EolReader<T> {
-    fn undo(self, n: Name) -> Self {
-        match n {
-            Name::Bare(b) => self.undo(b),
-            Name::Qualified { name, qualifier } => {
-                let first = self.undo(qualifier);
-                first.undo(name)
-            }
-        }
-    }
-}
 
 pub fn assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {

@@ -2,8 +2,10 @@ use crate::common::{
     AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable, Location, QError,
     QErrorNode, ToLocatableError,
 };
-use crate::parser::types::Keyword;
+use crate::parser::pc::*;
+use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 use std::str::FromStr;
@@ -31,16 +33,10 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
-pub trait IsNotFoundErr {
-    fn is_not_found_err(&self) -> bool;
-}
+pub trait ParserSource: Sized {
+    fn read(self) -> (Self, Result<char, QErrorNode>);
 
-//
-// NotFoundErr
-//
-
-pub trait NotFoundErr: IsNotFoundErr {
-    fn not_found_err() -> Self;
+    fn undo_item(self, item: char) -> Self;
 }
 
 impl IsNotFoundErr for QError {
@@ -67,17 +63,7 @@ impl NotFoundErr for QErrorNode {
     }
 }
 
-//
-// ParserSource
-//
-
-pub trait ParserSource: Sized {
-    fn read(self) -> (Self, Result<char, QErrorNode>);
-
-    fn undo_item(self, item: char) -> Self;
-}
-
-fn wrap_err<P, T>(p: P, err: QError) -> (P, Result<T, QErrorNode>)
+pub fn wrap_err<P, T>(p: P, err: QError) -> (P, Result<T, QErrorNode>)
 where
     P: ParserSource + HasLocation,
 {
@@ -85,12 +71,11 @@ where
     (p, Err(err).with_err_at(pos))
 }
 
-//
-// Undo
-//
-
-pub trait Undo<T> {
-    fn undo(self, item: T) -> Self;
+pub fn undo_and_err_not_found<P, T, U>(p: P, item: T) -> (P, Result<U, QErrorNode>)
+where
+    P: ParserSource + HasLocation + Undo<T>,
+{
+    wrap_err(p.undo(item), QError::not_found_err())
 }
 
 impl<P: ParserSource> Undo<char> for P {
@@ -102,6 +87,25 @@ impl<P: ParserSource> Undo<char> for P {
 impl<P: ParserSource> Undo<()> for P {
     fn undo(self, _item: ()) -> Self {
         self
+    }
+}
+
+impl<T: BufRead + 'static> Undo<Name> for EolReader<T> {
+    fn undo(self, n: Name) -> Self {
+        match n {
+            Name::Bare(b) => self.undo(b),
+            Name::Qualified { name, qualifier } => {
+                let first = self.undo(qualifier);
+                first.undo(name)
+            }
+        }
+    }
+}
+
+impl<T: BufRead + 'static> Undo<TypeQualifier> for EolReader<T> {
+    fn undo(self, s: TypeQualifier) -> Self {
+        let ch: char = s.try_into().unwrap();
+        self.undo(ch)
     }
 }
 
@@ -686,6 +690,34 @@ where
     P: ParserSource + 'static,
 {
     read_any_str_while(is_digit)
+}
+
+pub fn default_if_predicate<P, T, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+where
+    P: ParserSource + HasLocation + 'static,
+    T: Default + 'static,
+    F: Fn(char) -> bool + 'static,
+{
+    Box::new(move |reader| {
+        let (reader, next) = reader.read();
+        match next {
+            Ok(ch) => {
+                if predicate(ch) {
+                    (reader.undo_item(ch), Ok(T::default()))
+                } else {
+                    undo_and_err_not_found(reader, ch)
+                }
+            }
+            Err(err) => {
+                if err.is_not_found_err() {
+                    // EOF is ok
+                    (reader, Ok(T::default()))
+                } else {
+                    (reader, Err(err))
+                }
+            }
+        }
+    })
 }
 
 //
@@ -1710,18 +1742,6 @@ impl<T: BufRead> EolReader<T> {
             pos: Location::start(),
             line_lengths: vec![],
         }
-    }
-
-    pub fn err<R>(self, err: QError) -> (Self, Result<R, QErrorNode>) {
-        let pos: Location = self.pos;
-        (self, Err(err).with_err_at(pos))
-    }
-
-    pub fn undo_and_err_not_found<R, U>(self, item: U) -> (Self, Result<R, QErrorNode>)
-    where
-        Self: Undo<U>,
-    {
-        self.undo(item).err(QError::not_found_err())
     }
 }
 

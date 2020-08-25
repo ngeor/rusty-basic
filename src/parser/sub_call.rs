@@ -34,25 +34,8 @@ pub fn sub_call<T: BufRead + 'static>(
 pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
     allow_colon: bool,
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ArgumentNodes, QErrorNode>)> {
-    Box::new(move |reader| {
-        let (reader, next) = reader.read();
-        match next {
-            Ok(ch) => {
-                if ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':') {
-                    (reader.undo(ch), Ok(vec![]))
-                } else {
-                    reader.undo_and_err_not_found(ch)
-                }
-            }
-            Err(err) => {
-                if err.is_not_found_err() {
-                    // EOF is ok
-                    (reader, Ok(vec![]))
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
+    default_if_predicate(move |ch| {
+        ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':')
     })
 }
 

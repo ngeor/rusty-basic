@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
+use crate::parser::pc::{IsNotFoundErr, Undo};
 use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -95,7 +96,7 @@ where
                     match exit_result {
                         Ok(x) => {
                             // found the exit
-                            reader.undo_and_err_not_found(x)
+                            undo_and_err_not_found(reader, x)
                         }
                         Err(err) => {
                             if err.is_not_found_err() {

@@ -1,16 +1,8 @@
-use super::{BareName, BareNameNode, Name, NameNode, TypeQualifier};
+use super::{BareName, BareNameNode, Name, NameNode};
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::type_qualifier;
-use std::convert::TryInto;
 use std::io::BufRead;
-
-impl<T: BufRead + 'static> Undo<TypeQualifier> for EolReader<T> {
-    fn undo(self, s: TypeQualifier) -> Self {
-        let ch: char = s.try_into().unwrap();
-        self.undo(ch)
-    }
-}
 
 // name node
 

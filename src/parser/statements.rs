@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::loc::*;
 use crate::parser::pc::traits::*;
 use crate::parser::statement;
 use crate::parser::types::*;

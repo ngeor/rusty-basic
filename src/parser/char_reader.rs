@@ -1,9 +1,10 @@
 use crate::common::{
-    AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable, Location, QError,
-    QErrorNode, ToLocatableError,
+    CaseInsensitiveString, ErrorEnvelope, HasLocation, Location, QError, QErrorNode,
+    ToLocatableError,
 };
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::loc::*;
 use crate::parser::pc::traits::*;
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
@@ -567,21 +568,6 @@ where
         move |(k, _)| *k == needle,
         move || QError::SyntaxError(format!("Expected keyword {}", needle)),
     )
-}
-
-pub fn with_pos<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<Locatable<T>, E>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-{
-    Box::new(move |char_reader| {
-        let pos = char_reader.pos();
-        let (char_reader, next) = source(char_reader);
-        match next {
-            Ok(ch) => (char_reader, Ok(ch.at(pos))),
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
 }
 
 pub fn read_any_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>

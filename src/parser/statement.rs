@@ -9,6 +9,7 @@ use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::loc::*;
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;

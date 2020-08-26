@@ -35,18 +35,6 @@ pub mod common {
         |reader| reader.read()
     }
 
-    /// Returns a function that gets the next item from a reader, ensuring that
-    /// it is not a Not Found result.
-    pub fn read_some<R: Reader + 'static, FE>(
-        err_fn: FE,
-    ) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>
-    where
-        FE: Fn() -> R::Err + 'static,
-        R::Err: IsNotFoundErr,
-    {
-        demand(read_any(), err_fn)
-    }
-
     // ========================================================
     // simple parsing combinators
     // ========================================================
@@ -164,3 +152,23 @@ pub mod copy {
 // ========================================================
 // when Reader + HasLocation
 // ========================================================
+
+pub mod loc {
+    use super::traits::*;
+    use crate::common::{AtLocation, HasLocation, Locatable};
+
+    /// Creates a function that maps the result of the source into a locatable result,
+    /// using the position of the reader just before invoking the source.
+    pub fn with_pos<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<Locatable<T>, E>)>
+    where
+        R: Reader<Err = E> + HasLocation + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+    {
+        Box::new(move |reader| {
+            let pos = reader.pos();
+            let (reader, result) = source(reader);
+            let loc_result = result.map(|x| x.at(pos));
+            (reader, loc_result)
+        })
+    }
+}

@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
+use crate::parser::pc::loc::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 use std::str::FromStr;

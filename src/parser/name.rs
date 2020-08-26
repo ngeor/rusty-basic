@@ -1,6 +1,7 @@
 use super::{BareName, BareNameNode, Name, NameNode};
 use crate::common::*;
 use crate::parser::char_reader::*;
+use crate::parser::pc::loc::*;
 use crate::parser::type_qualifier;
 use std::io::BufRead;
 

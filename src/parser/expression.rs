@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::loc::*;
 use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;

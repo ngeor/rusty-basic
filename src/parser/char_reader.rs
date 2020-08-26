@@ -229,33 +229,6 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn read_any<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
-where
-    P: ParserSource + 'static,
-{
-    Box::new(|char_reader| char_reader.read())
-}
-
-pub fn read_some<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
-where
-    P: ParserSource + 'static,
-    FE: Fn() -> QErrorNode + 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, result) = char_reader.read();
-        match result {
-            Err(err) => {
-                if err.is_not_found_err() {
-                    (char_reader, Err(err_fn()))
-                } else {
-                    (char_reader, Err(err))
-                }
-            }
-            _ => (char_reader, result),
-        }
-    })
-}
-
 pub fn filter_any<P, T, E, S, F>(source: S, predicate: F) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
 where
     P: ParserSource + Undo<T> + 'static,
@@ -1428,29 +1401,6 @@ where
                 Err(_) => (reader.undo(s), Err(E::not_found_err())),
             },
             Err(err) => (reader, Err(err)),
-        }
-    })
-}
-
-pub fn demand<P, S, M, R, E>(source: S, err_fn: M) -> Box<dyn Fn(P) -> (P, Result<R, E>)>
-where
-    P: ParserSource + 'static,
-    S: Fn(P) -> (P, Result<R, E>) + 'static,
-    M: Fn() -> E + 'static,
-    R: 'static,
-    E: IsNotFoundErr + 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, next) = source(char_reader);
-        match next {
-            Ok(ch) => (char_reader, Ok(ch)),
-            Err(err) => {
-                if err.is_not_found_err() {
-                    (char_reader, Err(err_fn()))
-                } else {
-                    (char_reader, Err(err))
-                }
-            }
         }
     })
 }

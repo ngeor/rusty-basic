@@ -149,6 +149,22 @@ pub mod copy {
         })
     }
 
+    pub fn filter_some<R, S, T, E, F, FE>(
+        source: S,
+        predicate: F,
+        err_fn: FE,
+    ) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader<Err = E> + Undo<T> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: Copy + 'static,
+        E: NotFoundErr + 'static,
+        F: Fn(T) -> bool + 'static,
+        FE: Fn() -> E + 'static,
+    {
+        common::demand(filter_any(source, predicate), err_fn)
+    }
+
     pub fn read_any_if<R, T, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>
     where
         R: Reader<Item = T> + Undo<T> + 'static,
@@ -166,6 +182,23 @@ pub mod copy {
         R::Err: NotFoundErr,
     {
         read_any_if(move |ch| ch == needle)
+    }
+
+    /// Undoes the read item if it was successful but still returns it.
+    #[deprecated]
+    pub fn undo_if_ok<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + Undo<T> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: Copy + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, result) = source(reader);
+            match result {
+                Ok(ch) => (reader.undo(ch), Ok(ch)),
+                Err(err) => (reader, Err(err)),
+            }
+        })
     }
 }
 

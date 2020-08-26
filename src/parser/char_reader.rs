@@ -1,7 +1,4 @@
-use crate::common::{
-    CaseInsensitiveString, ErrorEnvelope, HasLocation, Location, QError, QErrorNode,
-    ToLocatableError,
-};
+use crate::common::{CaseInsensitiveString, HasLocation, Location, QError};
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
@@ -44,21 +41,9 @@ impl IsNotFoundErr for QError {
     }
 }
 
-impl IsNotFoundErr for QErrorNode {
-    fn is_not_found_err(&self) -> bool {
-        self.as_ref().is_not_found_err()
-    }
-}
-
 impl NotFoundErr for QError {
     fn not_found_err() -> Self {
         QError::CannotParse
-    }
-}
-
-impl NotFoundErr for QErrorNode {
-    fn not_found_err() -> Self {
-        QErrorNode::NoPos(QError::CannotParse)
     }
 }
 
@@ -217,55 +202,6 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn undo_if_ok<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
-where
-    P: ParserSource + Undo<T> + 'static,
-    E: NotFoundErr,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-    T: Copy + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, result) = source(reader);
-        match result {
-            Ok(ch) => (reader.undo(ch), Ok(ch)),
-            Err(err) => (reader, Err(err)),
-        }
-    })
-}
-
-pub fn filter_copy_some<P, S, F, T, FE>(
-    source: S,
-    predicate: F,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-    F: Fn(T) -> bool + 'static,
-    T: Copy + 'static,
-    FE: Fn() -> QError + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, result) = source(reader);
-        match result {
-            Ok(ch) => {
-                if predicate(ch) {
-                    (reader, Ok(ch))
-                } else {
-                    (reader, Err(err_fn()))
-                }
-            }
-            Err(err) => {
-                if err.is_not_found_err() {
-                    (reader, Err(err_fn()))
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
 pub fn read_some_char_that<P, F, FE>(
     predicate: F,
     err_fn: FE,
@@ -275,7 +211,7 @@ where
     F: Fn(char) -> bool + 'static,
     FE: Fn() -> QError + 'static,
 {
-    filter_copy_some(read_any(), predicate, err_fn)
+    super::pc::copy::filter_some(read_any(), predicate, err_fn)
 }
 
 pub fn demand_char<P, FE>(needle: char, err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
@@ -491,7 +427,7 @@ where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
     F: Fn(Keyword) -> bool + 'static,
 {
-    crate::parser::pc::common::filter_any(read_any_keyword(), move |(k, _)| predicate(*k))
+    super::pc::common::filter_any(read_any_keyword(), move |(k, _)| predicate(*k))
 }
 
 pub fn try_read_keyword<P>(
@@ -509,7 +445,7 @@ pub fn demand_keyword<P>(
 where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + HasLocation + 'static,
 {
-    filter_some(
+    super::pc::common::filter_some(
         read_any_keyword(),
         move |(k, _)| *k == needle,
         move || QError::SyntaxError(format!("Expected keyword {}", needle)),
@@ -1152,31 +1088,6 @@ where
         let (char_reader, next) = source(char_reader);
         match next {
             Ok(ch) => mapper(char_reader, ch),
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
-pub fn map_to_reader_with_err_at_pos<P, S, M, T, U, E>(
-    source: S,
-    mapper: M,
-) -> Box<dyn Fn(P) -> (P, Result<U, ErrorEnvelope<E>>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, ErrorEnvelope<E>>) + 'static,
-    M: Fn(P, T) -> (P, Result<U, E>) + 'static,
-    T: 'static,
-    U: 'static,
-    E: 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, next) = source(char_reader);
-        match next {
-            Ok(ch) => {
-                let pos = char_reader.pos();
-                let (char_reader, res) = mapper(char_reader, ch);
-                (char_reader, res.with_err_at(pos))
-            }
             Err(err) => (char_reader, Err(err)),
         }
     })

@@ -2,7 +2,9 @@ use crate::common::{
     AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable, Location, QError,
     QErrorNode, ToLocatableError,
 };
-use crate::parser::pc::*;
+use crate::parser::pc::common::*;
+use crate::parser::pc::copy::*;
+use crate::parser::pc::traits::*;
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
 use std::convert::TryInto;
@@ -229,28 +231,6 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn filter_any<P, T, E, S, F>(source: S, predicate: F) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
-where
-    P: ParserSource + Undo<T> + 'static,
-    E: NotFoundErr,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-    F: Fn(&T) -> bool + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, result) = source(reader);
-        match result {
-            Ok(ch) => {
-                if predicate(&ch) {
-                    (reader, Ok(ch))
-                } else {
-                    (reader.undo(ch), Err(E::not_found_err()))
-                }
-            }
-            Err(err) => (reader, Err(err)),
-        }
-    })
-}
-
 pub fn filter_some<P, S, F, T, E, FE>(
     source: S,
     predicate: F,
@@ -281,32 +261,6 @@ where
                     (reader, Err(err))
                 }
             }
-        }
-    })
-}
-
-pub fn filter_copy_any<P, S, F, T, E>(
-    source: S,
-    predicate: F,
-) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
-where
-    P: ParserSource + Undo<T> + 'static,
-    E: NotFoundErr,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-    F: Fn(T) -> bool + 'static,
-    T: Copy + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, result) = source(reader);
-        match result {
-            Ok(ch) => {
-                if predicate(ch) {
-                    (reader, Ok(ch))
-                } else {
-                    (reader.undo(ch), Err(E::not_found_err()))
-                }
-            }
-            Err(err) => (reader, Err(err)),
         }
     })
 }
@@ -360,14 +314,6 @@ where
     })
 }
 
-pub fn read_any_char_if<P, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
-where
-    P: ParserSource + 'static,
-    F: Fn(char) -> bool + 'static,
-{
-    filter_copy_any(read_any(), predicate)
-}
-
 pub fn read_some_char_that<P, F, FE>(
     predicate: F,
     err_fn: FE,
@@ -378,13 +324,6 @@ where
     FE: Fn() -> QError + 'static,
 {
     filter_copy_some(read_any(), predicate, err_fn)
-}
-
-pub fn try_read_char<P>(needle: char) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
-where
-    P: ParserSource + 'static,
-{
-    read_any_char_if(move |ch| ch == needle)
 }
 
 pub fn demand_char<P, FE>(
@@ -534,14 +473,14 @@ pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_char_if(is_symbol)
+    read_any_if(is_symbol)
 }
 
 pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_char_if(is_letter)
+    read_any_if(is_letter)
 }
 
 pub fn read_some_letter<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
@@ -605,7 +544,7 @@ where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
     F: Fn(Keyword) -> bool + 'static,
 {
-    filter_any(read_any_keyword(), move |(k, _)| predicate(*k))
+    crate::parser::pc::common::filter_any(read_any_keyword(), move |(k, _)| predicate(*k))
 }
 
 pub fn try_read_keyword<P>(
@@ -1503,7 +1442,7 @@ where
         take_one_or_more(
             if_first_maybe_second(
                 skipping_whitespace(source),
-                skipping_whitespace(with_pos(try_read_char(','))),
+                skipping_whitespace(with_pos(try_read(','))),
             ),
             |x| x.1.is_none(),
             err_fn,
@@ -1526,7 +1465,7 @@ where
         take_one_or_more(
             if_first_maybe_second(
                 skipping_whitespace_lazy(source),
-                skipping_whitespace(with_pos(try_read_char(','))),
+                skipping_whitespace(with_pos(try_read(','))),
             ),
             |x| x.1.is_none(),
             err_fn,
@@ -1545,7 +1484,7 @@ where
         take_zero_or_more(
             if_first_maybe_second(
                 skipping_whitespace(source),
-                skipping_whitespace(with_pos(try_read_char(','))),
+                skipping_whitespace(with_pos(try_read(','))),
             ),
             |x| x.1.is_none(),
         ),
@@ -1565,7 +1504,7 @@ where
         take_zero_or_more(
             if_first_maybe_second(
                 skipping_whitespace_lazy(source),
-                skipping_whitespace(with_pos(try_read_char(','))),
+                skipping_whitespace(with_pos(try_read(','))),
             ),
             |x| x.1.is_none(),
         ),
@@ -1581,7 +1520,7 @@ where
 {
     map_to_result_no_undo(
         and(
-            try_read_char('('),
+            try_read('('),
             maybe_first_and_second_no_undo(
                 source,
                 demand_char(')', || {
@@ -1604,7 +1543,7 @@ where
 {
     map_to_result_no_undo(
         and(
-            try_read_char('('),
+            try_read('('),
             maybe_first_lazy_and_second_no_undo(
                 source,
                 demand_char(')', || {
@@ -1710,14 +1649,14 @@ impl<T: BufRead + 'static> Reader for EolReader<T> {
         } = self;
         let (char_reader, next) = or(
             or(
-                try_read_char('\n'),
+                try_read('\n'),
                 map(
                     // Tradeoff: CRLF becomes just CR
                     // Alternatives:
                     // - Return a String instead of a char
                     // - Return a new enum type instead of a char
                     // - Encode CRLF as a special char e.g. CR = 13 + LF = 10 -> CRLF = 23
-                    if_first_maybe_second(try_read_char('\r'), try_read_char('\n')),
+                    if_first_maybe_second(try_read('\r'), try_read('\n')),
                     |(cr, _)| cr,
                 ),
             ),

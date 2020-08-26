@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::pc::copy::*;
 use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -68,7 +69,7 @@ fn var_equal_lower_to_upper<T: BufRead + 'static>() -> Box<
         if_first_demand_second(
             name::name_node(),
             if_first_demand_second(
-                skipping_whitespace_around(try_read_char('=')),
+                skipping_whitespace_around(try_read('=')),
                 lower_to_upper(),
                 || QError::SyntaxError("Expected lower expression".to_string()),
             ),

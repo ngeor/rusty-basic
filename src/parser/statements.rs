@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::pc::{IsNotFoundErr, Reader, Undo};
+use crate::parser::pc::copy::*;
+use crate::parser::pc::traits::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -21,7 +22,7 @@ pub fn single_line_non_comment_statements<T: BufRead + 'static>(
                 take_zero_or_more(
                     if_first_maybe_second(
                         with_pos(statement::single_line_non_comment_statement()),
-                        skipping_whitespace_around(try_read_char(':')),
+                        skipping_whitespace_around(try_read(':')),
                     ),
                     |x| x.1.is_none(),
                 ),
@@ -41,7 +42,7 @@ pub fn single_line_statements<T: BufRead + 'static>(
                 take_zero_or_more(
                     if_first_maybe_second(
                         with_pos(statement::single_line_statement()),
-                        skipping_whitespace_around(try_read_char(':')),
+                        skipping_whitespace_around(try_read(':')),
                     ),
                     |x| x.1.is_none(),
                 ),
@@ -163,13 +164,13 @@ pub fn non_comment_separator<T: BufRead + 'static>(
     // ws*' comment
     or_vec(vec![
         map(
-            if_first_maybe_second(try_read_char(':'), read_any_whitespace()),
+            if_first_maybe_second(try_read(':'), read_any_whitespace()),
             |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
         ),
         map(
             if_first_maybe_second(read_any_eol(), read_any_eol_whitespace()),
             |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
         ),
-        map(undo_if_ok(try_read_char('\'')), |c| format!("{}", c)),
+        map(undo_if_ok(try_read('\'')), |c| format!("{}", c)),
     ])
 }

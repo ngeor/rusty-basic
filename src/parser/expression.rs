@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
+use crate::parser::pc::copy::*;
 use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;
@@ -46,7 +47,7 @@ pub fn single_expression_node<T: BufRead + 'static>(
 pub fn unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
     map(
-        if_first_demand_second_lazy(with_pos(try_read_char('-')), expression_node, || {
+        if_first_demand_second_lazy(with_pos(try_read('-')), expression_node, || {
             QError::SyntaxError("Expected expression after unary minus".to_string())
         }),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
@@ -68,7 +69,7 @@ pub fn unary_not<T: BufRead + 'static>(
 pub fn file_handle<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
     map_to_result_no_undo(
-        if_first_demand_second(try_read_char('#'), with_pos(read_any_digits()), || {
+        if_first_demand_second(try_read('#'), with_pos(read_any_digits()), || {
             QError::SyntaxError("Expected digits after #".to_string())
         }),
         |(
@@ -99,8 +100,8 @@ mod string_literal {
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
         map(
             if_first_demand_second(
-                if_first_maybe_second(try_read_char('"'), read_any_str_while(|ch| ch != '"')),
-                try_read_char('"'),
+                if_first_maybe_second(try_read('"'), read_any_str_while(|ch| ch != '"')),
+                try_read('"'),
                 || QError::SyntaxError("Unterminated string".to_string()),
             ),
             |((_, opt_str), _)| Expression::StringLiteral(opt_str.unwrap_or_default()),
@@ -117,10 +118,10 @@ mod number_literal {
             if_first_maybe_second(
                 with_pos(read_any_digits()),
                 if_first_maybe_second(
-                    if_first_demand_second(try_read_char('.'), read_any_digits(), || {
+                    if_first_demand_second(try_read('.'), read_any_digits(), || {
                         QError::SyntaxError("Expected digits after decimal point".to_string())
                     }),
-                    try_read_char('#'),
+                    try_read('#'),
                 ),
             ),
             |(
@@ -142,10 +143,10 @@ mod number_literal {
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
         map_to_result_no_undo(
             if_first_maybe_second(
-                if_first_demand_second(with_pos(try_read_char('.')), read_any_digits(), || {
+                if_first_demand_second(with_pos(try_read('.')), read_any_digits(), || {
                     QError::SyntaxError("Expected digits after decimal point".to_string())
                 }),
-                try_read_char('#'),
+                try_read('#'),
             ),
             |((Locatable { pos, .. }, frac_digits), opt_double)| {
                 parse_floating_point_literal(
@@ -222,19 +223,19 @@ pub fn operand<T: BufRead + 'static>(
     or_vec(vec![
         skipping_whitespace(with_pos(lte())),
         skipping_whitespace(with_pos(gte())),
-        map(skipping_whitespace(with_pos(try_read_char('='))), |x| {
+        map(skipping_whitespace(with_pos(try_read('='))), |x| {
             x.map(|_| Operand::Equal)
         }),
-        map(skipping_whitespace(with_pos(try_read_char('+'))), |x| {
+        map(skipping_whitespace(with_pos(try_read('+'))), |x| {
             x.map(|_| Operand::Plus)
         }),
-        map(skipping_whitespace(with_pos(try_read_char('-'))), |x| {
+        map(skipping_whitespace(with_pos(try_read('-'))), |x| {
             x.map(|_| Operand::Minus)
         }),
-        map(skipping_whitespace(with_pos(try_read_char('*'))), |x| {
+        map(skipping_whitespace(with_pos(try_read('*'))), |x| {
             x.map(|_| Operand::Multiply)
         }),
-        map(skipping_whitespace(with_pos(try_read_char('/'))), |x| {
+        map(skipping_whitespace(with_pos(try_read('/'))), |x| {
             x.map(|_| Operand::Divide)
         }),
         if had_parenthesis_before {
@@ -276,8 +277,8 @@ fn lte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QErrorNode>)> {
     map_to_result_no_undo(
         if_first_maybe_second(
-            try_read_char('<'),
-            with_pos(read_any_char_if(|ch| ch == '=' || ch == '>')),
+            try_read('<'),
+            with_pos(read_any_if(|ch| ch == '=' || ch == '>')),
         ),
         |(_, opt_r)| match opt_r {
             Some(Locatable { element: '=', .. }) => Ok(Operand::LessOrEqual),
@@ -295,7 +296,7 @@ fn lte<T: BufRead + 'static>(
 fn gte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QErrorNode>)> {
     map(
-        if_first_maybe_second(try_read_char('>'), try_read_char('=')),
+        if_first_maybe_second(try_read('>'), try_read('=')),
         |(_, opt_r)| match opt_r {
             Some(_) => Operand::GreaterOrEqual,
             _ => Operand::Greater,

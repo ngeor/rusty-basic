@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
+use crate::parser::pc::copy::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -56,7 +57,7 @@ fn two_letter_range<T: BufRead + 'static>(
     map_to_result_no_undo_with_err_at_pos(
         and(
             read_any_letter(),
-            if_first_demand_second(try_read_char('-'), read_any_letter(), || {
+            if_first_demand_second(try_read('-'), read_any_letter(), || {
                 QError::SyntaxError("Expected letter after dash".to_string())
             }),
         ),

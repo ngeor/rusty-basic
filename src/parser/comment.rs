@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
+use crate::parser::pc::copy::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -8,7 +9,7 @@ pub fn comment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
     map(
         if_first_maybe_second(
-            try_read_char('\''),
+            try_read('\''),
             read_any_str_while(|ch| ch != '\r' && ch != '\n'),
         ),
         |(_, r)| Statement::Comment(r.unwrap_or_default()),

@@ -8,6 +8,7 @@ use crate::parser::dim_parser;
 use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
+use crate::parser::pc::copy::*;
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;
@@ -72,7 +73,7 @@ pub fn single_line_statement<T: BufRead + 'static>(
 
 pub fn statement_label<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
-    map(and(name::bare_name(), try_read_char(':')), |(l, _)| {
+    map(and(name::bare_name(), try_read(':')), |(l, _)| {
         Statement::Label(l)
     })
 }

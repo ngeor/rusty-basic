@@ -3,6 +3,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::pc::copy::*;
 use crate::parser::types::Keyword;
 use std::io::BufRead;
 
@@ -13,11 +14,9 @@ pub fn constant<T: BufRead + 'static>(
             Keyword::Const,
             with_any_whitespace_between(
                 name::name_node(),
-                with_any_whitespace_between(
-                    try_read_char('='),
-                    expression::expression_node(),
-                    || QError::SyntaxError("Expected expression after =".to_string()),
-                ),
+                with_any_whitespace_between(try_read('='), expression::expression_node(), || {
+                    QError::SyntaxError("Expected expression after =".to_string())
+                }),
                 || QError::SyntaxError("Expected = after name".to_string()),
             ),
         ),

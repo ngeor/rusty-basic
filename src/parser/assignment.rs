@@ -3,6 +3,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::pc::copy::*;
 use std::io::BufRead;
 
 pub fn assignment<T: BufRead + 'static>(
@@ -11,7 +12,7 @@ pub fn assignment<T: BufRead + 'static>(
         and(
             name::name(),
             if_first_demand_second(
-                skipping_whitespace(try_read_char('=')),
+                skipping_whitespace(try_read('=')),
                 skipping_whitespace(expression::expression_node()),
                 || QError::SyntaxError("Expected expression after =".to_string()),
             ),

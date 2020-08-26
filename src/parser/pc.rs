@@ -20,6 +20,14 @@ pub mod traits {
         type Err;
         fn read(self) -> (Self, Result<Self::Item, Self::Err>);
         fn undo_item(self, item: Self::Item) -> Self;
+
+        fn undo_and_err_not_found<T, R>(self, item: T) -> (Self, Result<R, Self::Err>)
+        where
+            Self: Undo<T>,
+            Self::Err: NotFoundErr,
+        {
+            (self.undo(item), Err(Self::Err::not_found_err()))
+        }
     }
 }
 

@@ -98,7 +98,7 @@ where
                     match exit_result {
                         Ok(x) => {
                             // found the exit
-                            undo_and_err_not_found(reader, x)
+                            reader.undo_and_err_not_found(x)
                         }
                         Err(err) => {
                             if err.is_not_found_err() {

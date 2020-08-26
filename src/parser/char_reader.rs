@@ -62,21 +62,6 @@ impl NotFoundErr for QErrorNode {
     }
 }
 
-pub fn wrap_err<P, T>(p: P, err: QError) -> (P, Result<T, QErrorNode>)
-where
-    P: ParserSource + HasLocation,
-{
-    let pos = p.pos();
-    (p, Err(err).with_err_at(pos))
-}
-
-pub fn undo_and_err_not_found<P, T, U>(p: P, item: T) -> (P, Result<U, QError>)
-where
-    P: ParserSource + HasLocation + Undo<T>,
-{
-    (p.undo(item), Err(QError::not_found_err()))
-}
-
 impl<P: ParserSource> Undo<char> for P {
     fn undo(self, item: char) -> Self {
         self.undo_item(item)
@@ -565,7 +550,7 @@ where
                 if predicate(ch) {
                     (reader.undo_item(ch), Ok(T::default()))
                 } else {
-                    undo_and_err_not_found(reader, ch)
+                    reader.undo_and_err_not_found(ch)
                 }
             }
             Err(err) => {

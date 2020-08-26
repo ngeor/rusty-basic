@@ -7,7 +7,7 @@ use crate::parser::pc::copy::*;
 use std::io::BufRead;
 
 pub fn assignment<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         and(
             name::name(),

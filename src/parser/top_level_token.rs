@@ -19,7 +19,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn top_level_tokens<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ProgramNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ProgramNode, QError>)> {
     Box::new(move |r| {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
@@ -56,11 +56,9 @@ pub fn top_level_tokens<T: BufRead + 'static>(
                                 if err.is_not_found_err() {
                                     return (
                                         reader,
-                                        Err(err.map(|_| {
-                                            QError::SyntaxError(format!(
-                                                "Expected top level statement"
-                                            ))
-                                        })),
+                                        Err(QError::SyntaxError(format!(
+                                            "Expected top level statement"
+                                        ))),
                                     );
                                 } else {
                                     return (reader, Err(err));
@@ -68,9 +66,9 @@ pub fn top_level_tokens<T: BufRead + 'static>(
                             }
                         }
                     } else {
-                        return wrap_err(
+                        return (
                             reader,
-                            QError::SyntaxError(format!("No separator: {}", ch)),
+                            Err(QError::SyntaxError(format!("No separator: {}", ch))),
                         );
                     }
                 }
@@ -82,7 +80,7 @@ pub fn top_level_tokens<T: BufRead + 'static>(
 }
 
 pub fn top_level_token_one<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelTokenNode, QError>)> {
     with_pos(or_vec(vec![
         top_level_token_def_type(),
         top_level_token_declaration(),
@@ -92,21 +90,21 @@ pub fn top_level_token_one<T: BufRead + 'static>(
 }
 
 pub fn top_level_token_def_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     map(def_type::def_type(), |d| TopLevelToken::DefType(d))
 }
 
 pub fn top_level_token_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     declaration::declaration()
 }
 
 pub fn top_level_token_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     implementation::implementation()
 }
 
 pub fn top_level_token_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     map(statement::statement(), |s| TopLevelToken::Statement(s))
 }

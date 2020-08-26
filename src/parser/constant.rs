@@ -8,7 +8,7 @@ use crate::parser::types::Keyword;
 use std::io::BufRead;
 
 pub fn constant<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         with_keyword_before(
             Keyword::Const,

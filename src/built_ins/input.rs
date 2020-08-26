@@ -29,7 +29,7 @@ use std::io::BufRead;
 pub struct Input {}
 
 pub fn parse_input<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         with_keyword_before(
             Keyword::Input,

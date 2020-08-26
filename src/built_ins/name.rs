@@ -15,7 +15,7 @@ use std::io::BufRead;
 pub struct Name {}
 
 pub fn parse_name<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         with_keyword_before(
             Keyword::Name,

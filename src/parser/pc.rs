@@ -72,7 +72,7 @@ pub mod common {
     where
         R: Reader<Err = E> + Undo<T> + 'static,
         S: Fn(R) -> (R, Result<T, E>) + 'static,
-        E: NotFoundErr,
+        E: NotFoundErr + 'static,
         F: Fn(&T) -> bool + 'static,
     {
         Box::new(move |reader| {
@@ -88,6 +88,22 @@ pub mod common {
                 Err(err) => (reader, Err(err)),
             }
         })
+    }
+
+    pub fn filter_some<R, S, T, E, F, FE>(
+        source: S,
+        predicate: F,
+        err_fn: FE,
+    ) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader<Err = E> + Undo<T> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: 'static,
+        E: NotFoundErr + 'static,
+        F: Fn(&T) -> bool + 'static,
+        FE: Fn() -> E + 'static,
+    {
+        demand(filter_any(source, predicate), err_fn)
     }
 }
 
@@ -165,10 +181,39 @@ pub mod loc {
         S: Fn(R) -> (R, Result<T, E>) + 'static,
     {
         Box::new(move |reader| {
+            // capture pos before invoking source
             let pos = reader.pos();
             let (reader, result) = source(reader);
             let loc_result = result.map(|x| x.at(pos));
             (reader, loc_result)
+        })
+    }
+}
+
+// ========================================================
+// Converting error to error at a position
+// ========================================================
+
+pub mod err {
+    use super::traits::*;
+
+    use crate::common::{ErrorEnvelope, HasLocation};
+
+    pub fn with_err_at<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, ErrorEnvelope<E>>)>
+    where
+        R: Reader<Err = E> + HasLocation + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, result) = source(reader);
+            match result {
+                Ok(x) => (reader, Ok(x)),
+                Err(err) => {
+                    // capture pos after invoking source
+                    let pos = reader.pos();
+                    (reader, Err(ErrorEnvelope::Pos(err, pos)))
+                }
+            }
         })
     }
 }

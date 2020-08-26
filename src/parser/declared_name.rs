@@ -13,7 +13,7 @@ use std::str::FromStr;
 // A AS UserDefinedType
 
 pub fn declared_name_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNode, QError>)> {
     map_to_result_no_undo(
         if_first_maybe_second(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
@@ -27,8 +27,7 @@ pub fn declared_name_node<T: BufRead + 'static>(
             } => match opt_type_definition {
                 Some(_) => Err(QError::SyntaxError(
                     "Identifier cannot end with %, &, !, #, or $".to_string(),
-                ))
-                .with_err_at(pos),
+                )),
                 None => Ok(DeclaredName::new(n, TypeDefinition::CompactBuiltIn(q)).at(pos)),
             },
         },
@@ -36,7 +35,7 @@ pub fn declared_name_node<T: BufRead + 'static>(
 }
 
 fn type_definition_extended<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QError>)> {
     map(
         with_some_whitespace_before_and_between(
             try_read_keyword(Keyword::As),
@@ -48,10 +47,10 @@ fn type_definition_extended<T: BufRead + 'static>(
 }
 
 fn extended_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QError>)> {
     map_to_result_no_undo(
         with_pos(read_any_identifier()),
-        |Locatable { element: x, pos }| match Keyword::from_str(&x) {
+        |Locatable { element: x, .. }| match Keyword::from_str(&x) {
             Ok(Keyword::Single) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle)),
             Ok(Keyword::Double) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)),
             Ok(Keyword::String_) => {
@@ -65,8 +64,7 @@ fn extended_type<T: BufRead + 'static>(
             )),
             Ok(_) => Err(QError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
-            ))
-            .with_err_at(pos),
+            )),
             Err(_) => Ok(TypeDefinition::UserDefined(x.into())),
         },
     )

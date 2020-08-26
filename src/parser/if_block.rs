@@ -8,7 +8,7 @@ use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn if_block<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         if_first_demand_second(
             if_expr_then(),
@@ -34,7 +34,7 @@ pub fn if_block<T: BufRead + 'static>(
 // multi line if    ::= statements else-if-blocks else-block END IF
 
 fn if_expr_then<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
         with_keyword_before(
             Keyword::If,
@@ -59,7 +59,7 @@ fn single_line_if_else<T: BufRead + 'static>() -> Box<
                 Vec<ConditionalBlockNode>,
                 Option<StatementNodes>,
             ),
-            QErrorNode,
+            QError,
         >,
     ),
 > {
@@ -79,12 +79,12 @@ fn single_line_if_else<T: BufRead + 'static>() -> Box<
 }
 
 fn single_line_if<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     statements::single_line_non_comment_statements()
 }
 
 fn single_line_else<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     map(
         and(
             read_any_whitespace(),
@@ -108,7 +108,7 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
                 Vec<ConditionalBlockNode>,
                 Option<StatementNodes>,
             ),
-            QErrorNode,
+            QError,
         >,
     ),
 > {
@@ -133,7 +133,7 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
 }
 
 fn else_if_expr_then<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
         with_keyword_before(
             Keyword::ElseIf,
@@ -148,12 +148,12 @@ fn else_if_expr_then<T: BufRead + 'static>(
 }
 
 fn else_if_blocks<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<ConditionalBlockNode>, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<ConditionalBlockNode>, QError>)> {
     take_zero_or_more(else_if_block(), |_| false)
 }
 
 fn else_if_block<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ConditionalBlockNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ConditionalBlockNode, QError>)> {
     map(
         if_first_demand_second(
             else_if_expr_then(),
@@ -170,7 +170,7 @@ fn else_if_block<T: BufRead + 'static>(
 }
 
 fn else_block<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     map(
         if_first_demand_second(
             try_read_keyword(Keyword::Else),
@@ -183,7 +183,7 @@ fn else_block<T: BufRead + 'static>(
 }
 
 fn end_if<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Keyword, String), QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Keyword, String), QError>)> {
     with_keyword_before(Keyword::End, try_read_keyword(Keyword::If))
 }
 

@@ -11,7 +11,7 @@ use std::io::BufRead;
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QError>)> {
     map(
         with_some_whitespace_between(def_keyword(), letter_ranges(), || {
             QError::SyntaxError("Expected letter ranges".to_string())
@@ -21,7 +21,7 @@ pub fn def_type<T: BufRead + 'static>(
 }
 
 fn def_keyword<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeQualifier, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeQualifier, QError>)> {
     map_or_undo(read_any_keyword(), |(k, s)| match k {
         Keyword::DefDbl => MapOrUndo::Ok(TypeQualifier::HashDouble),
         Keyword::DefInt => MapOrUndo::Ok(TypeQualifier::PercentInteger),
@@ -33,14 +33,14 @@ fn def_keyword<T: BufRead + 'static>(
 }
 
 fn letter_ranges<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<LetterRange>, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<LetterRange>, QError>)> {
     csv_one_or_more(letter_range(), || {
         QError::SyntaxError("Expected letter range".to_string())
     })
 }
 
 fn letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
     or(
         two_letter_range(), // needs to be first because the second will match too
         single_letter_range(),
@@ -48,13 +48,13 @@ fn letter_range<T: BufRead + 'static>(
 }
 
 fn single_letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
     map(read_any_letter(), |l| LetterRange::Single(l))
 }
 
 fn two_letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QErrorNode>)> {
-    map_to_result_no_undo_with_err_at_pos(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
+    map_to_result_no_undo(
         and(
             read_any_letter(),
             if_first_demand_second(try_read('-'), read_any_letter(), || {

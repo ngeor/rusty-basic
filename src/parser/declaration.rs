@@ -17,7 +17,7 @@ use std::io::BufRead;
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     with_keyword_before(
         Keyword::Declare,
         or(function_declaration_token(), sub_declaration_token()),
@@ -25,20 +25,14 @@ pub fn declaration<T: BufRead + 'static>(
 }
 
 fn function_declaration_token<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     map(function_declaration(), |(n, p)| {
         TopLevelToken::FunctionDeclaration(n, p)
     })
 }
 
-pub fn function_declaration<T: BufRead + 'static>() -> Box<
-    dyn Fn(
-        EolReader<T>,
-    ) -> (
-        EolReader<T>,
-        Result<(NameNode, DeclaredNameNodes), QErrorNode>,
-    ),
-> {
+pub fn function_declaration<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(NameNode, DeclaredNameNodes), QError>)> {
     map(
         with_keyword_before(
             Keyword::Function,
@@ -52,7 +46,7 @@ pub fn function_declaration<T: BufRead + 'static>() -> Box<
 }
 
 fn sub_declaration_token<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     map(sub_declaration(), |(n, p)| {
         TopLevelToken::SubDeclaration(n, p)
     })
@@ -63,7 +57,7 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
         EolReader<T>,
     ) -> (
         EolReader<T>,
-        Result<(BareNameNode, DeclaredNameNodes), QErrorNode>,
+        Result<(BareNameNode, DeclaredNameNodes), QError>,
     ),
 > {
     map(
@@ -79,7 +73,7 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
 }
 
 fn declaration_parameters<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNodes, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNodes, QError>)> {
     in_parenthesis(csv_zero_or_more(declared_name::declared_name_node()))
 }
 

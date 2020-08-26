@@ -12,7 +12,7 @@ use std::io::BufRead;
 // NEXT (I)
 
 pub fn for_loop<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         if_first_demand_second(
             if_first_demand_second(
@@ -47,7 +47,7 @@ pub fn for_loop<T: BufRead + 'static>(
 }
 
 fn next_counter<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QError>)> {
     map(
         if_first_maybe_second(
             try_read_keyword(Keyword::Next),
@@ -62,7 +62,7 @@ fn var_equal_lower_to_upper<T: BufRead + 'static>() -> Box<
         EolReader<T>,
     ) -> (
         EolReader<T>,
-        Result<(NameNode, ExpressionNode, ExpressionNode), QErrorNode>,
+        Result<(NameNode, ExpressionNode, ExpressionNode), QError>,
     ),
 > {
     map(
@@ -84,7 +84,7 @@ fn lower_to_upper<T: BufRead + 'static>() -> Box<
         EolReader<T>,
     ) -> (
         EolReader<T>,
-        Result<(ExpressionNode, ExpressionNode), QErrorNode>,
+        Result<(ExpressionNode, ExpressionNode), QError>,
     ),
 > {
     map(

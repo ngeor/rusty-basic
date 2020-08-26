@@ -9,12 +9,12 @@ use std::io::BufRead;
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
 pub fn implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     or(function_implementation(), sub_implementation())
 }
 
 pub fn function_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     map(
         if_first_demand_second(
             declaration::function_declaration(),
@@ -30,7 +30,7 @@ pub fn function_implementation<T: BufRead + 'static>(
 }
 
 pub fn sub_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     map(
         if_first_demand_second(
             declaration::sub_declaration(),

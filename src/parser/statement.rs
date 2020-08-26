@@ -17,12 +17,12 @@ use crate::parser::while_wend;
 use std::io::BufRead;
 
 pub fn statement_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QError>)> {
     with_pos(statement())
 }
 
 pub fn statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     or_vec(vec![
         dim_parser::dim(),
         constant::constant(),
@@ -44,7 +44,7 @@ pub fn statement<T: BufRead + 'static>(
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
 pub fn single_line_non_comment_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     or_vec(vec![
         dim_parser::dim(),
         constant::constant(),
@@ -59,7 +59,7 @@ pub fn single_line_non_comment_statement<T: BufRead + 'static>(
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
 pub fn single_line_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     or_vec(vec![
         comment::comment(),
         dim_parser::dim(),
@@ -73,21 +73,21 @@ pub fn single_line_statement<T: BufRead + 'static>(
 }
 
 pub fn statement_label<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(and(name::bare_name(), try_read(':')), |(l, _)| {
         Statement::Label(l)
     })
 }
 
 pub fn statement_go_to<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(with_keyword_before(Keyword::GoTo, name::bare_name()), |l| {
         Statement::GoTo(l)
     })
 }
 
 pub fn statement_on_error_go_to<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         with_two_keywords(
             Keyword::On,
@@ -99,13 +99,13 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
 }
 
 pub fn statement_illegal_keywords<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     or(
-        map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Wend)), |k| {
-            Err(QError::WendWithoutWhile).with_err_at(k)
+        map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Wend)), |_| {
+            Err(QError::WendWithoutWhile)
         }),
-        map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Else)), |k| {
-            Err(QError::ElseWithoutIf).with_err_at(k)
+        map_to_result_no_undo(with_pos(try_read_keyword(Keyword::Else)), |_| {
+            Err(QError::ElseWithoutIf)
         }),
     )
 }

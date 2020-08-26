@@ -18,7 +18,7 @@ use std::io::BufRead;
 pub struct LineInput {}
 
 pub fn parse_line_input<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         with_two_keywords(
             Keyword::Line,

@@ -36,7 +36,7 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
-pub trait ParserSource: Reader<Item = char, Err = QErrorNode> {}
+pub trait ParserSource: Reader<Item = char, Err = QError> {}
 
 impl IsNotFoundErr for QError {
     fn is_not_found_err(&self) -> bool {
@@ -70,11 +70,11 @@ where
     (p, Err(err).with_err_at(pos))
 }
 
-pub fn undo_and_err_not_found<P, T, U>(p: P, item: T) -> (P, Result<U, QErrorNode>)
+pub fn undo_and_err_not_found<P, T, U>(p: P, item: T) -> (P, Result<U, QError>)
 where
     P: ParserSource + HasLocation + Undo<T>,
 {
-    wrap_err(p.undo(item), QError::not_found_err())
+    (p.undo(item), Err(QError::not_found_err()))
 }
 
 impl<P: ParserSource> Undo<char> for P {
@@ -126,9 +126,9 @@ impl<T: BufRead + 'static> ParserSource for CharReader<T> {}
 
 impl<T: BufRead> Reader for CharReader<T> {
     type Item = char;
-    type Err = QErrorNode;
+    type Err = QError;
 
-    fn read(self) -> (Self, Result<char, QErrorNode>) {
+    fn read(self) -> (Self, Result<char, QError>) {
         let Self {
             mut reader,
             mut buffer,
@@ -143,7 +143,7 @@ impl<T: BufRead> Reader for CharReader<T> {
                         buffer,
                         read_eof,
                     },
-                    Err(QErrorNode::not_found_err()),
+                    Err(QError::not_found_err()),
                 )
             } else {
                 let mut line = String::new();
@@ -170,7 +170,7 @@ impl<T: BufRead> Reader for CharReader<T> {
                                     buffer,
                                     read_eof,
                                 },
-                                Err(QErrorNode::not_found_err()),
+                                Err(QError::not_found_err()),
                             )
                         }
                     }
@@ -180,7 +180,7 @@ impl<T: BufRead> Reader for CharReader<T> {
                             buffer,
                             read_eof,
                         },
-                        Err(QErrorNode::NoPos(err.into())),
+                        Err(err.into()),
                     ),
                 }
             }
@@ -232,40 +232,6 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn filter_some<P, S, F, T, E, FE>(
-    source: S,
-    predicate: F,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<T, ErrorEnvelope<E>>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, ErrorEnvelope<E>>) + 'static,
-    F: Fn(&T) -> bool + 'static,
-    FE: Fn() -> E + 'static,
-    ErrorEnvelope<E>: IsNotFoundErr,
-{
-    Box::new(move |reader| {
-        let pos = reader.pos();
-        let (reader, result) = source(reader);
-        match result {
-            Ok(ch) => {
-                if predicate(&ch) {
-                    (reader, Ok(ch))
-                } else {
-                    (reader, Err(err_fn()).with_err_at(pos))
-                }
-            }
-            Err(err) => {
-                if err.is_not_found_err() {
-                    (reader, Err(err_fn()).with_err_at(pos))
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
 pub fn undo_if_ok<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
 where
     P: ParserSource + Undo<T> + 'static,
@@ -286,10 +252,10 @@ pub fn filter_copy_some<P, S, F, T, FE>(
     source: S,
     predicate: F,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
     F: Fn(T) -> bool + 'static,
     T: Copy + 'static,
     FE: Fn() -> QError + 'static,
@@ -301,12 +267,12 @@ where
                 if predicate(ch) {
                     (reader, Ok(ch))
                 } else {
-                    wrap_err(reader, err_fn())
+                    (reader, Err(err_fn()))
                 }
             }
             Err(err) => {
                 if err.is_not_found_err() {
-                    wrap_err(reader, err_fn())
+                    (reader, Err(err_fn()))
                 } else {
                     (reader, Err(err))
                 }
@@ -318,7 +284,7 @@ where
 pub fn read_some_char_that<P, F, FE>(
     predicate: F,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
     F: Fn(char) -> bool + 'static,
@@ -327,10 +293,7 @@ where
     filter_copy_some(read_any(), predicate, err_fn)
 }
 
-pub fn demand_char<P, FE>(
-    needle: char,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
+pub fn demand_char<P, FE>(needle: char, err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
     FE: Fn() -> QError + 'static,
@@ -338,7 +301,7 @@ where
     read_some_char_that(move |ch| ch == needle, err_fn)
 }
 
-pub fn skip_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn skip_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
     FP: Fn(char) -> bool + 'static,
@@ -371,7 +334,7 @@ where
     })
 }
 
-pub fn read_any_str_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn read_any_str_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
     FP: Fn(char) -> bool + 'static,
@@ -401,27 +364,25 @@ where
             }
         }
         if result.is_empty() {
-            (cr, Err(QErrorNode::not_found_err()))
+            (cr, Err(QError::not_found_err()))
         } else {
             (cr, Ok(result))
         }
     })
 }
 
-pub fn read_any_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn read_any_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
     read_any_str_while(is_whitespace)
 }
 
-pub fn skipping_whitespace_around<P, T, S>(
-    source: S,
-) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn skipping_whitespace_around<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + Undo<String> + Undo<T> + 'static,
     T: 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
 {
     map(
         and(skip_whitespace(), and(source, skip_whitespace())),
@@ -429,62 +390,62 @@ where
     )
 }
 
-pub fn skip_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn skip_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
     skip_while(is_whitespace)
 }
 
-pub fn skip_whitespace_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn skip_whitespace_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
     skip_while(|ch| ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
 }
 
-pub fn skipping_whitespace<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn skipping_whitespace<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
     T: 'static,
 {
     skip_first(skip_whitespace(), source)
 }
 
-pub fn skipping_whitespace_lazy<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn skipping_whitespace_lazy<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + Undo<String> + 'static,
-    S: Fn() -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)> + 'static,
+    S: Fn() -> Box<dyn Fn(P) -> (P, Result<T, QError>)> + 'static,
     T: 'static,
 {
     skip_first_lazy(skip_whitespace(), source)
 }
 
-pub fn skipping_whitespace_eol<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn skipping_whitespace_eol<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
     T: 'static,
 {
     skip_first(skip_whitespace_eol(), source)
 }
 
-pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
+pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
 where
     P: ParserSource + 'static,
 {
     read_any_if(is_symbol)
 }
 
-pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
+pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
 where
     P: ParserSource + 'static,
 {
     read_any_if(is_letter)
 }
 
-pub fn read_some_letter<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QErrorNode>)>
+pub fn read_some_letter<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
     FE: Fn() -> QError + 'static,
@@ -494,7 +455,7 @@ where
 
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
@@ -520,7 +481,7 @@ where
 }
 
 /// Reads any keyword.
-pub fn read_any_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QErrorNode>)>
+pub fn read_any_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
 where
     P: ParserSource + Undo<String> + 'static,
 {
@@ -528,7 +489,7 @@ where
 }
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-pub fn read_any_word<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn read_any_word<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + Undo<String> + 'static,
 {
@@ -540,7 +501,7 @@ where
 
 pub fn read_keyword_if<P, F>(
     predicate: F,
-) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
 where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
     F: Fn(Keyword) -> bool + 'static,
@@ -550,7 +511,7 @@ where
 
 pub fn try_read_keyword<P>(
     needle: Keyword,
-) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
 where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
 {
@@ -559,9 +520,9 @@ where
 
 pub fn demand_keyword<P>(
     needle: Keyword,
-) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
 where
-    P: ParserSource + Undo<String> + HasLocation + 'static,
+    P: ParserSource + Undo<String> + Undo<(Keyword, String)> + HasLocation + 'static,
 {
     filter_some(
         read_any_keyword(),
@@ -570,28 +531,28 @@ where
     )
 }
 
-pub fn read_any_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn read_any_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
     read_any_str_while(is_eol)
 }
 
-pub fn read_any_eol_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn read_any_eol_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
     read_any_str_while(|x| x == '\r' || x == '\n' || x == ' ' || x == '\t')
 }
 
-pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QErrorNode>)>
+pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
     read_any_str_while(is_digit)
 }
 
-pub fn default_if_predicate<P, T, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn default_if_predicate<P, T, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
     T: Default + 'static,
@@ -790,13 +751,13 @@ pub fn if_first_demand_second<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
 where
     P: ParserSource + HasLocation + 'static,
     T1: 'static,
     T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, QErrorNode>) + 'static,
+    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, QError>) + 'static,
     FE: Fn() -> QError + 'static,
 {
     Box::new(move |char_reader| {
@@ -808,7 +769,7 @@ where
                     Ok(r2) => (char_reader, Ok((r1, r2))),
                     Err(err) => {
                         if err.is_not_found_err() {
-                            wrap_err(char_reader, err_fn())
+                            (char_reader, Err(err_fn()))
                         } else {
                             (char_reader, Err(err))
                         }
@@ -824,13 +785,13 @@ pub fn if_first_demand_second_lazy<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
 where
     P: ParserSource + HasLocation + 'static,
     T1: 'static,
     T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
-    F2: Fn() -> Box<dyn Fn(P) -> (P, Result<T2, QErrorNode>)> + 'static,
+    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
+    F2: Fn() -> Box<dyn Fn(P) -> (P, Result<T2, QError>)> + 'static,
     FE: Fn() -> QError + 'static,
 {
     Box::new(move |char_reader| {
@@ -842,7 +803,7 @@ where
                     Ok(r2) => (char_reader, Ok((r1, r2))),
                     Err(err) => {
                         if err.is_not_found_err() {
-                            wrap_err(char_reader, err_fn())
+                            (char_reader, Err(err_fn()))
                         } else {
                             (char_reader, Err(err))
                         }
@@ -1087,11 +1048,11 @@ pub fn with_some_whitespace_between<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
 where
     P: ParserSource + HasLocation + 'static,
-    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, QErrorNode>) + 'static,
+    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, QError>) + 'static,
     T1: 'static,
     T2: 'static,
     FE: Fn() -> QError + 'static,
@@ -1106,11 +1067,11 @@ pub fn with_some_whitespace_between_lazy<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
 where
     P: ParserSource + HasLocation + 'static,
-    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
-    F2: Fn() -> Box<dyn Fn(P) -> (P, Result<T2, QErrorNode>)> + 'static,
+    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
+    F2: Fn() -> Box<dyn Fn(P) -> (P, Result<T2, QError>)> + 'static,
     T1: 'static,
     T2: 'static,
     FE: Fn() -> QError + 'static,
@@ -1134,11 +1095,11 @@ pub fn with_some_whitespace_before_and_between<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
-    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, QErrorNode>) + 'static,
+    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, QError>) + 'static,
     T1: 'static,
     T2: 'static,
     FE: Fn() -> QError + 'static,
@@ -1158,11 +1119,11 @@ pub fn with_any_whitespace_between<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
-    F1: Fn(P) -> (P, Result<T1, QErrorNode>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, QErrorNode>) + 'static,
+    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
+    F2: Fn(P) -> (P, Result<T2, QError>) + 'static,
     T1: 'static,
     T2: 'static,
     FE: Fn() -> QError + 'static,
@@ -1253,21 +1214,6 @@ where
     map_to_reader(source, move |reader, ok| (reader, mapper(ok)))
 }
 
-pub fn map_to_result_no_undo_with_err_at_pos<P, S, M, T, U, E>(
-    source: S,
-    mapper: M,
-) -> Box<dyn Fn(P) -> (P, Result<U, ErrorEnvelope<E>>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, ErrorEnvelope<E>>) + 'static,
-    M: Fn(T) -> Result<U, E> + 'static,
-    T: 'static,
-    U: 'static,
-    E: 'static,
-{
-    map_to_reader_with_err_at_pos(source, move |reader, ok| (reader, mapper(ok)))
-}
-
 pub enum MapOrUndo<T, U> {
     Ok(T),
     Undo(U),
@@ -1337,10 +1283,10 @@ where
 pub fn take_zero_or_more_to_default<P, S, T, F>(
     source: S,
     is_terminal: F,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
     T: 'static,
     F: Fn(&T) -> bool + 'static,
 {
@@ -1362,10 +1308,10 @@ where
 pub fn take_zero_or_more<P, S, T, F>(
     source: S,
     is_terminal: F,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
     T: 'static,
     F: Fn(&T) -> bool + 'static,
 {
@@ -1376,10 +1322,10 @@ pub fn take_one_or_more<P, S, T, F, FE>(
     source: S,
     is_terminal: F,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
     F: Fn(&T) -> bool + 'static,
     FE: Fn() -> QError + 'static,
 {
@@ -1407,7 +1353,7 @@ where
             }
         }
         if result.is_empty() {
-            wrap_err(cr, err_fn())
+            (cr, Err(err_fn()))
         } else {
             (cr, Ok(result))
         }
@@ -1417,10 +1363,10 @@ where
 pub fn csv_one_or_more<P, S, R, FE>(
     source: S,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<R, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<R, QError>) + 'static,
     R: 'static,
     FE: Fn() -> QError + 'static,
 {
@@ -1440,10 +1386,10 @@ where
 pub fn csv_one_or_more_lazy<P, S, R, FE>(
     source: S,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn() -> Box<dyn Fn(P) -> (P, Result<R, QErrorNode>)> + 'static,
+    S: Fn() -> Box<dyn Fn(P) -> (P, Result<R, QError>)> + 'static,
     R: 'static,
     FE: Fn() -> QError + 'static,
 {
@@ -1460,10 +1406,10 @@ where
     )
 }
 
-pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QErrorNode>)>
+pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<R, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<R, QError>) + 'static,
     R: 'static,
 {
     map(
@@ -1478,12 +1424,10 @@ where
     )
 }
 
-pub fn csv_zero_or_more_lazy<P, S, R>(
-    source: S,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QErrorNode>)>
+pub fn csv_zero_or_more_lazy<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn() -> Box<dyn Fn(P) -> (P, Result<R, QErrorNode>)> + 'static,
+    S: Fn() -> Box<dyn Fn(P) -> (P, Result<R, QError>)> + 'static,
     R: 'static,
 {
     map(
@@ -1498,10 +1442,10 @@ where
     )
 }
 
-pub fn in_parenthesis<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn in_parenthesis<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
     T: 'static,
 {
     map_to_result_no_undo(
@@ -1516,15 +1460,15 @@ where
         ),
         |(_, (r, _))| match r {
             Some(x) => Ok(x),
-            None => Err(QErrorNode::not_found_err()),
+            None => Err(QError::not_found_err()),
         },
     )
 }
 
-pub fn in_parenthesis_lazy<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+pub fn in_parenthesis_lazy<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
-    S: Fn() -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)> + 'static,
+    S: Fn() -> Box<dyn Fn(P) -> (P, Result<T, QError>)> + 'static,
     T: 'static,
 {
     map_to_result_no_undo(
@@ -1539,7 +1483,7 @@ where
         ),
         |(_, (r, _))| match r {
             Some(x) => Ok(x),
-            None => Err(QErrorNode::not_found_err()),
+            None => Err(QError::not_found_err()),
         },
     )
 }
@@ -1551,11 +1495,11 @@ where
 pub fn with_keyword_before<P, T, S>(
     needle: Keyword,
     source: S,
-) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + Undo<(Keyword, String)> + 'static,
     T: 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
 {
     map(
         with_some_whitespace_between(try_read_keyword(needle), source, move || {
@@ -1569,11 +1513,11 @@ pub fn with_keyword_after<P, T, S, FE>(
     source: S,
     needle: Keyword,
     err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + Undo<(Keyword, String)> + 'static,
     T: 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
     FE: Fn() -> QError + 'static,
 {
     // TODO remove the skipping_whitespace , remove with_keyword_after altogether
@@ -1591,11 +1535,11 @@ pub fn with_two_keywords<P, T, S>(
     first: Keyword,
     second: Keyword,
     source: S,
-) -> Box<dyn Fn(P) -> (P, Result<T, QErrorNode>)>
+) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + Undo<(Keyword, String)> + 'static,
     T: 'static,
-    S: Fn(P) -> (P, Result<T, QErrorNode>) + 'static,
+    S: Fn(P) -> (P, Result<T, QError>) + 'static,
 {
     with_keyword_before(first, with_keyword_before(second, source))
 }
@@ -1625,9 +1569,9 @@ impl<T: BufRead + 'static> ParserSource for EolReader<T> {}
 
 impl<T: BufRead + 'static> Reader for EolReader<T> {
     type Item = char;
-    type Err = QErrorNode;
+    type Err = QError;
 
-    fn read(self) -> (Self, Result<char, QErrorNode>) {
+    fn read(self) -> (Self, Result<char, QError>) {
         let Self {
             char_reader,
             mut pos,

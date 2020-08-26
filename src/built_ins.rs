@@ -273,7 +273,7 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
 
 /// Parses built-in subs which have a special syntax.
 pub fn parse_built_in<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::Statement, QError>)> {
     or_vec(vec![
         input::parse_input(),
         line_input::parse_line_input(),

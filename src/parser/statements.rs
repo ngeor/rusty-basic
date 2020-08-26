@@ -15,7 +15,7 @@ pub struct ParseStatementsOptions {
 }
 
 pub fn single_line_non_comment_statements<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     map(
         and(
             read_any_whitespace(),
@@ -35,7 +35,7 @@ pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 }
 
 pub fn single_line_statements<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     map(
         and(
             read_any_whitespace(),
@@ -55,7 +55,7 @@ pub fn single_line_statements<T: BufRead + 'static>(
 }
 
 pub fn skip_until_first_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
     Box::new(move |reader| {
         let mut buf: String = String::new();
         let (reader, res) = skip_whitespace()(reader);
@@ -84,9 +84,9 @@ pub fn skip_until_first_statement<T: BufRead + 'static>(
 
 pub fn statements<T: BufRead + 'static, S, X>(
     exit_source: S,
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)>
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)>
 where
-    S: Fn(EolReader<T>) -> (EolReader<T>, Result<X, QErrorNode>) + 'static,
+    S: Fn(EolReader<T>) -> (EolReader<T>, Result<X, QError>) + 'static,
     EolReader<T>: Undo<X>,
 {
     map(
@@ -119,7 +119,7 @@ where
 }
 
 fn statement_node_and_separator<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(StatementNode, String), QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(StatementNode, String), QError>)> {
     Box::new(move |reader| {
         let (reader, statement_result) = statement::statement_node()(reader);
         match statement_result {
@@ -151,7 +151,7 @@ fn statement_node_and_separator<T: BufRead + 'static>(
 }
 
 pub fn comment_separator<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
     map(
         if_first_maybe_second(read_any_eol(), read_any_eol_whitespace()),
         |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
@@ -159,7 +159,7 @@ pub fn comment_separator<T: BufRead + 'static>(
 }
 
 pub fn non_comment_separator<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
     // ws* : ws*
     // ws* eol (ws | eol)*
     // ws*' comment

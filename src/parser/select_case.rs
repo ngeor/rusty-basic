@@ -13,7 +13,7 @@ use std::io::BufRead;
 // END SELECT
 
 pub fn select_case<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         with_keyword_after(
             with_keyword_after(
@@ -62,7 +62,7 @@ pub fn select_case<T: BufRead + 'static>(
 }
 
 pub fn case_else<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     map(
         with_keyword_before(
             Keyword::Case,
@@ -76,12 +76,12 @@ pub fn case_else<T: BufRead + 'static>(
 }
 
 pub fn case_blocks<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<CaseBlockNode>, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<CaseBlockNode>, QError>)> {
     take_zero_or_more(case_block(), |_| false)
 }
 
 pub fn case_block<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseBlockNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseBlockNode, QError>)> {
     map(
         if_first_demand_second(
             case_expr(),
@@ -93,7 +93,7 @@ pub fn case_block<T: BufRead + 'static>(
 }
 
 pub fn case_expr<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QError>)> {
     map(
         and(
             try_read_keyword(Keyword::Case),
@@ -110,7 +110,7 @@ pub fn case_expr<T: BufRead + 'static>(
 }
 
 pub fn case_expr_is<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QError>)> {
     map(
         if_first_demand_second(
             try_read_keyword(Keyword::Is),
@@ -130,7 +130,7 @@ pub fn case_expr_is<T: BufRead + 'static>(
 }
 
 pub fn case_expr_to_or_simple<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QError>)> {
     map(
         if_first_maybe_second(
             expression::expression_node(),

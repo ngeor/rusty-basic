@@ -10,7 +10,7 @@ use std::io::BufRead;
 // TODO add test demand space after "AND" but not if parenthesis follows
 
 pub fn expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
         if_first_maybe_second_peeking_first(single_expression_node(), |reader, first_expr_ref| {
             if_first_demand_second(
@@ -32,7 +32,7 @@ pub fn expression_node<T: BufRead + 'static>(
 }
 
 pub fn single_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     or_vec(vec![
         with_pos(string_literal::string_literal()),
         with_pos(word::word()),
@@ -46,7 +46,7 @@ pub fn single_expression_node<T: BufRead + 'static>(
 }
 
 pub fn unary_minus<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
         if_first_demand_second_lazy(with_pos(try_read('-')), expression_node, || {
             QError::SyntaxError("Expected expression after unary minus".to_string())
@@ -56,7 +56,7 @@ pub fn unary_minus<T: BufRead + 'static>(
 }
 
 pub fn unary_not<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
         with_some_whitespace_between_lazy(
             with_pos(try_read_keyword(Keyword::Not)),
@@ -68,7 +68,7 @@ pub fn unary_not<T: BufRead + 'static>(
 }
 
 pub fn file_handle<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
     map_to_result_no_undo(
         if_first_demand_second(try_read('#'), with_pos(read_any_digits()), || {
             QError::SyntaxError("Expected digits after #".to_string())
@@ -76,18 +76,17 @@ pub fn file_handle<T: BufRead + 'static>(
         |(
             _,
             Locatable {
-                element: digits,
-                pos,
+                element: digits, ..
             },
         )| match digits.parse::<u32>() {
             Ok(d) => Ok(Expression::FileHandle(d.into())),
-            Err(err) => Err(err.into()).with_err_at(pos),
+            Err(err) => Err(err.into()),
         },
     )
 }
 
 pub fn parenthesis<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
     // TODO allow skipping whitespace inside parenthesis
     map(in_parenthesis_lazy(expression_node), |v| {
         Expression::Parenthesis(Box::new(v))
@@ -98,7 +97,7 @@ mod string_literal {
     use super::*;
 
     pub fn string_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
         map(
             if_first_demand_second(
                 if_first_maybe_second(try_read('"'), read_any_str_while(|ch| ch != '"')),
@@ -114,7 +113,7 @@ mod number_literal {
     use super::*;
 
     pub fn number_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
         map_to_result_no_undo(
             if_first_maybe_second(
                 with_pos(read_any_digits()),
@@ -141,7 +140,7 @@ mod number_literal {
     }
 
     pub fn float_without_leading_zero<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QErrorNode>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
         map_to_result_no_undo(
             if_first_maybe_second(
                 if_first_demand_second(with_pos(try_read('.')), read_any_digits(), || {
@@ -163,7 +162,7 @@ mod number_literal {
     fn integer_literal_to_expression_node(
         s: String,
         pos: Location,
-    ) -> Result<ExpressionNode, QErrorNode> {
+    ) -> Result<ExpressionNode, QError> {
         match s.parse::<u32>() {
             Ok(u) => {
                 if u <= variant::MAX_INTEGER as u32 {
@@ -174,7 +173,7 @@ mod number_literal {
                     Ok(Expression::DoubleLiteral(u as f64).at(pos))
                 }
             }
-            Err(e) => Err(e.into()).with_err_at(pos),
+            Err(e) => Err(e.into()),
         }
     }
 
@@ -183,16 +182,16 @@ mod number_literal {
         fraction_digits: String,
         is_double: bool,
         pos: Location,
-    ) -> Result<ExpressionNode, QErrorNode> {
+    ) -> Result<ExpressionNode, QError> {
         if is_double {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
                 Ok(f) => Ok(Expression::DoubleLiteral(f).at(pos)),
-                Err(err) => Err(err.into()).with_err_at(pos),
+                Err(err) => Err(err.into()),
             }
         } else {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
                 Ok(f) => Ok(Expression::SingleLiteral(f).at(pos)),
-                Err(err) => Err(err.into()).with_err_at(pos),
+                Err(err) => Err(err.into()),
             }
         }
     }
@@ -202,7 +201,7 @@ mod word {
     use super::*;
 
     pub fn word<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QErrorNode>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
         map(
             if_first_maybe_second(
                 name::name(),
@@ -220,7 +219,7 @@ mod word {
 
 pub fn operand<T: BufRead + 'static>(
     had_parenthesis_before: bool,
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Locatable<Operand>, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Locatable<Operand>, QError>)> {
     or_vec(vec![
         skipping_whitespace(with_pos(lte())),
         skipping_whitespace(with_pos(gte())),
@@ -275,7 +274,7 @@ pub fn operand<T: BufRead + 'static>(
 }
 
 fn lte<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QError>)> {
     map_to_result_no_undo(
         if_first_maybe_second(
             try_read('<'),
@@ -285,17 +284,16 @@ fn lte<T: BufRead + 'static>(
             Some(Locatable { element: '=', .. }) => Ok(Operand::LessOrEqual),
             Some(Locatable { element: '>', .. }) => Ok(Operand::NotEqual),
             None => Ok(Operand::Less),
-            Some(Locatable { element, pos }) => Err(QError::SyntaxError(format!(
+            Some(Locatable { element, .. }) => Err(QError::SyntaxError(format!(
                 "Invalid character {} after <",
                 element
-            )))
-            .with_err_at(pos),
+            ))),
         },
     )
 }
 
 fn gte<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QError>)> {
     map(
         if_first_maybe_second(try_read('>'), try_read('=')),
         |(_, opt_r)| match opt_r {

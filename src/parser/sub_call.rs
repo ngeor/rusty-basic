@@ -10,7 +10,7 @@ use std::io::BufRead;
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 pub fn sub_call<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         and(
             name::bare_name(),
@@ -33,7 +33,7 @@ pub fn sub_call<T: BufRead + 'static>(
 
 pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
     allow_colon: bool,
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ArgumentNodes, QErrorNode>)> {
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ArgumentNodes, QError>)> {
     default_if_predicate(move |ch| {
         ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':')
     })

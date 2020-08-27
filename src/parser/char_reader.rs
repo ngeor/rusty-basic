@@ -202,26 +202,6 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn read_some_char_that<P, F, FE>(
-    predicate: F,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    F: Fn(char) -> bool + 'static,
-    FE: Fn() -> QError + 'static,
-{
-    super::pc::copy::filter_some(read_any(), predicate, err_fn)
-}
-
-pub fn demand_char<P, FE>(needle: char, err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    FE: Fn() -> QError + 'static,
-{
-    read_some_char_that(move |ch| ch == needle, err_fn)
-}
-
 pub fn skip_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
@@ -365,15 +345,6 @@ where
 {
     read_any_if(is_letter)
 }
-
-pub fn read_some_letter<P, FE>(err_fn: FE) -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    FE: Fn() -> QError + 'static,
-{
-    read_some_char_that(is_letter, err_fn)
-}
-
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
 pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
@@ -445,9 +416,8 @@ pub fn demand_keyword<P>(
 where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + HasLocation + 'static,
 {
-    super::pc::common::filter_some(
-        read_any_keyword(),
-        move |(k, _)| *k == needle,
+    demand(
+        super::pc::common::filter_any(read_any_keyword(), move |(k, _)| *k == needle),
         move || QError::SyntaxError(format!("Expected keyword {}", needle)),
     )
 }
@@ -1349,7 +1319,7 @@ where
             try_read('('),
             maybe_first_and_second_no_undo(
                 source,
-                demand_char(')', || {
+                demand(try_read(')'), || {
                     QError::SyntaxError("Expected closing parenthesis".to_string())
                 }),
             ),
@@ -1372,7 +1342,7 @@ where
             try_read('('),
             maybe_first_lazy_and_second_no_undo(
                 source,
-                demand_char(')', || {
+                demand(try_read(')'), || {
                     QError::SyntaxError("Expected closing parenthesis".to_string())
                 }),
             ),

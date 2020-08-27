@@ -97,22 +97,6 @@ pub mod common {
             }
         })
     }
-
-    pub fn filter_some<R, S, T, E, F, FE>(
-        source: S,
-        predicate: F,
-        err_fn: FE,
-    ) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
-    where
-        R: Reader<Err = E> + Undo<T> + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        T: 'static,
-        E: NotFoundErr + 'static,
-        F: Fn(&T) -> bool + 'static,
-        FE: Fn() -> E + 'static,
-    {
-        demand(filter_any(source, predicate), err_fn)
-    }
 }
 
 // ========================================================
@@ -147,22 +131,6 @@ pub mod copy {
                 Err(err) => (reader, Err(err)),
             }
         })
-    }
-
-    pub fn filter_some<R, S, T, E, F, FE>(
-        source: S,
-        predicate: F,
-        err_fn: FE,
-    ) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
-    where
-        R: Reader<Err = E> + Undo<T> + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        T: Copy + 'static,
-        E: NotFoundErr + 'static,
-        F: Fn(T) -> bool + 'static,
-        FE: Fn() -> E + 'static,
-    {
-        common::demand(filter_any(source, predicate), err_fn)
     }
 
     pub fn read_any_if<R, T, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>

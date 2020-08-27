@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
+use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
 use crate::parser::types::*;
@@ -250,11 +251,8 @@ pub fn operand<T: BufRead + 'static>(
         } else {
             // demand whitespace + AND
             map(
-                and(
-                    read_any_whitespace(),
-                    with_pos(try_read_keyword(Keyword::And)),
-                ),
-                |(_, x)| x.map(|_| Operand::And),
+                crate::parser::pc::ws::with_leading(with_pos(try_read_keyword(Keyword::And))),
+                |locatable| locatable.map(|_| Operand::And),
             )
         },
         if had_parenthesis_before {
@@ -266,11 +264,8 @@ pub fn operand<T: BufRead + 'static>(
         } else {
             // demand whitespace + OR
             map(
-                and(
-                    read_any_whitespace(),
-                    with_pos(try_read_keyword(Keyword::Or)),
-                ),
-                |(_, x)| x.map(|_| Operand::Or),
+                crate::parser::pc::ws::with_leading(with_pos(try_read_keyword(Keyword::Or))),
+                |locatable| locatable.map(|_| Operand::Or),
             )
         },
     ])

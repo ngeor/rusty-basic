@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
+use crate::parser::pc::common::*;
 use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -97,15 +98,12 @@ pub fn case_expr<T: BufRead + 'static>(
     map(
         and(
             try_read_keyword(Keyword::Case),
-            and(
-                read_any_whitespace(),
-                abort_if(
-                    try_read_keyword(Keyword::Else),
-                    or(case_expr_is(), case_expr_to_or_simple()),
-                ),
-            ),
+            crate::parser::pc::ws::with_leading(abort_if(
+                try_read_keyword(Keyword::Else),
+                or(case_expr_is(), case_expr_to_or_simple()),
+            )),
         ),
-        |(_, (_, r))| r,
+        |(_, r)| r,
     )
 }
 
@@ -114,18 +112,17 @@ pub fn case_expr_is<T: BufRead + 'static>(
     map(
         if_first_demand_second(
             try_read_keyword(Keyword::Is),
-            if_first_demand_second(
-                read_any_whitespace(),
+            crate::parser::pc::ws::with_leading(demand(
                 if_first_demand_second(
                     expression::operand(false),
                     skipping_whitespace(expression::single_expression_node()),
                     || QError::SyntaxError("Expected expression".to_string()),
                 ),
                 || QError::SyntaxError("Expected whitespace".to_string()),
-            ),
+            )),
             || QError::SyntaxError("Expected operand".to_string()),
         ),
-        |(_, (_, (op, r)))| CaseExpression::Is(op.strip_location(), r),
+        |(_, (op, r))| CaseExpression::Is(op.strip_location(), r),
     )
 }
 

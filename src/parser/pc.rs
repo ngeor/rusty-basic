@@ -39,7 +39,7 @@ pub mod common {
     use super::traits::*;
 
     /// Returns a function that gets the next item from a reader.
-    pub fn read_any<R: Reader + 'static>() -> impl Fn(R) -> (R, Result<R::Item, R::Err>) {
+    pub fn read<R: Reader + 'static>() -> impl Fn(R) -> (R, Result<R::Item, R::Err>) {
         |reader| reader.read()
     }
 
@@ -100,6 +100,8 @@ pub mod common {
 
     /// Applies the given mapping function to the successful result of the given source.
     ///
+    /// This is similar to `Result.and_then`
+    ///
     /// Note that if the mapping function returns Not Found, no undo will take place.
     pub fn and_then<R, S, T, E, F, U>(source: S, map: F) -> Box<dyn Fn(R) -> (R, Result<U, E>)>
     where
@@ -117,6 +119,83 @@ pub mod common {
             };
             (reader, result)
         })
+    }
+
+    /// Applies the given mapping function to the successful result of the given source.
+    ///
+    /// This is similar to `Result.map`
+    pub fn map<R, S, T, E, F, U>(source: S, map: F) -> Box<dyn Fn(R) -> (R, Result<U, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        F: Fn(T) -> U + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, result) = source(reader);
+            // the following is equivalent to result = result.map(map),
+            // but rust does not like the nested closures
+            let result = match result {
+                Ok(x) => Ok(map(x)),
+                Err(err) => Err(err),
+            };
+            (reader, result)
+        })
+    }
+
+    /// Combines the results of the two given sources into one tuple.
+    ///
+    /// If either source returns an error, the error will be returned.
+    /// If the first source returns an error, the second will not be called.
+    /// If the second source returns a Not Found error, the first result will be undone.
+    pub fn and<R, F1, F2, T1, T2, E>(
+        first: F1,
+        second: F2,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2), E>)>
+    where
+        R: Reader + Undo<T1> + 'static,
+        F1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        F2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        E: IsNotFoundErr,
+    {
+        Box::new(move |reader| {
+            let (reader, res1) = first(reader);
+            match res1 {
+                Ok(r1) => {
+                    let (reader, res2) = second(reader);
+                    match res2 {
+                        Ok(r2) => (reader, Ok((r1, r2))),
+                        Err(err) => {
+                            if err.is_not_found_err() {
+                                (reader.undo(r1), Err(err))
+                            } else {
+                                (reader, Err(err))
+                            }
+                        }
+                    }
+                }
+                Err(err) => (reader, Err(err)),
+            }
+        })
+    }
+
+    /// Drops the left part of a tuple result.
+    pub fn drop_left<R, S, T1, T2, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T2, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<(T1, T2), E>) + 'static,
+    {
+        map(source, |(_, r)| r)
+    }
+
+    /// Drops the right part of a tuple result.
+    pub fn drop_right<R, S, T1, T2, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T1, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<(T1, T2), E>) + 'static,
+    {
+        map(source, |(l, _)| l)
     }
 }
 
@@ -161,7 +240,7 @@ pub mod copy {
         R::Err: NotFoundErr,
         F: Fn(T) -> bool + 'static,
     {
-        filter_any(common::read_any(), predicate)
+        filter_any(common::read(), predicate)
     }
 
     pub fn try_read<R, T>(needle: T) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>
@@ -305,5 +384,44 @@ pub mod str {
                 Ok(s)
             }
         })
+    }
+}
+
+// ========================================================
+// Dealing with whitespace
+// ========================================================
+
+pub mod ws {
+    use super::common::{and, drop_left};
+    use super::str::*;
+    use super::traits::*;
+
+    pub fn is_whitespace(ch: char) -> bool {
+        ch == ' ' || ch == '\t'
+    }
+
+    /// Reads any whitespace.
+    ///
+    /// If no whitespace is found, it results to a Not Found result.
+    pub fn read_any<R>() -> Box<dyn Fn(R) -> (R, Result<String, R::Err>)>
+    where
+        R: Reader<Item = char> + 'static,
+        R::Err: NotFoundErr,
+    {
+        take_one_or_more(is_whitespace)
+    }
+
+    /// Reads some whitespace before the source and then returns the result of the source.
+    ///
+    /// If no whitespace exists before the source, the source will not be invoked and
+    /// a Not Found result will be returned.
+    pub fn with_leading<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader<Item = char, Err = E> + Undo<String> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: 'static,
+        E: NotFoundErr + 'static,
+    {
+        drop_left(and(read_any(), source))
     }
 }

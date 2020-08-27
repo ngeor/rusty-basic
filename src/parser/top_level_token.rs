@@ -12,6 +12,7 @@ use crate::parser::char_reader::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
+use crate::parser::pc::common::*;
 use crate::parser::pc::loc::*;
 use crate::parser::pc::traits::*;
 use crate::parser::statement;

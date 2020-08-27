@@ -3,6 +3,7 @@ use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
 use crate::parser::pc::traits::*;
+use crate::parser::pc::ws::is_whitespace;
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
 use std::convert::TryInto;
@@ -16,10 +17,6 @@ fn is_letter(ch: char) -> bool {
 
 fn is_digit(ch: char) -> bool {
     ch >= '0' && ch <= '9'
-}
-
-fn is_whitespace(ch: char) -> bool {
-    ch == ' ' || ch == '\t'
 }
 
 fn is_eol(ch: char) -> bool {
@@ -205,13 +202,6 @@ impl<T: BufRead> CharReader<T> {
 //
 // Parser combinators
 //
-
-pub fn read_any_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
-where
-    P: ParserSource + 'static,
-{
-    super::pc::str::take_one_or_more(is_whitespace)
-}
 
 pub fn skipping_whitespace_around<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
@@ -406,39 +396,6 @@ where
 //
 // Combine two or more parsers
 //
-
-pub fn and<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
-    P: ParserSource + Undo<T1> + 'static,
-    E: IsNotFoundErr,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, res1) = first(char_reader);
-        match res1 {
-            Ok(r1) => {
-                let (char_reader, res2) = second(char_reader);
-                match res2 {
-                    Ok(r2) => (char_reader, Ok((r1, r2))),
-                    Err(err) => {
-                        if err.is_not_found_err() {
-                            (char_reader.undo(r1), Err(err))
-                        } else {
-                            (char_reader, Err(err))
-                        }
-                    }
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
 
 // internal use only
 fn and_no_undo<P, F1, F2, T1, T2, E>(
@@ -881,7 +838,11 @@ where
     FE: Fn() -> QError + 'static,
 {
     map(
-        if_first_demand_second(first, and_no_undo(read_any_whitespace(), second), err_fn),
+        if_first_demand_second(
+            first,
+            and_no_undo(super::pc::ws::read_any(), second),
+            err_fn,
+        ),
         |(l, (_, r))| (l, r),
     )
 }
@@ -902,7 +863,7 @@ where
     map(
         if_first_demand_second(
             first,
-            and_no_undo_lazy(read_any_whitespace(), second),
+            and_no_undo_lazy(super::pc::ws::read_any(), second),
             err_fn,
         ),
         |(l, (_, r))| (l, r),
@@ -927,13 +888,7 @@ where
     T2: 'static,
     FE: Fn() -> QError + 'static,
 {
-    map(
-        and(
-            read_any_whitespace(),
-            with_some_whitespace_between(first, second, err_fn),
-        ),
-        |(_, r)| r,
-    )
+    super::pc::ws::with_leading(with_some_whitespace_between(first, second, err_fn))
 }
 
 /// Combines the two given parsers, allowing some optional whitespace between their results.
@@ -1041,18 +996,6 @@ where
             Err(err) => (char_reader, Err(err)),
         }
     })
-}
-
-pub fn map<P, S, M, R, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
-where
-    P: ParserSource + 'static,
-    S: Fn(P) -> (P, Result<R, E>) + 'static,
-    M: Fn(R) -> U + 'static,
-    R: 'static,
-    U: 'static,
-    E: 'static,
-{
-    map_to_result_no_undo(source, move |x| Ok(mapper(x)))
 }
 
 pub fn switch_from_str<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<(T, String), E>)>
@@ -1388,7 +1331,7 @@ impl<T: BufRead + 'static> Reader for EolReader<T> {
                     |(cr, _)| cr,
                 ),
             ),
-            read_any(),
+            read(),
         )(char_reader);
         match next {
             Ok('\r') | Ok('\n') => {

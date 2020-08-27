@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -51,9 +52,9 @@ fn next_counter<T: BufRead + 'static>(
     map(
         if_first_maybe_second(
             try_read_keyword(Keyword::Next),
-            and(read_any_whitespace(), name::name_node()),
+            crate::parser::pc::ws::with_leading(name::name_node()),
         ),
-        |(_, opt_second)| opt_second.map(|x| x.1),
+        |(_, opt_second)| opt_second,
     )
 }
 
@@ -90,22 +91,20 @@ fn lower_to_upper<T: BufRead + 'static>() -> Box<
     map(
         if_first_demand_second(
             expression::expression_node(),
-            if_first_demand_second(
-                read_any_whitespace(),
+            crate::parser::pc::ws::with_leading(demand(
                 if_first_demand_second(
                     try_read_keyword(Keyword::To),
-                    if_first_demand_second(
-                        read_any_whitespace(),
+                    crate::parser::pc::ws::with_leading(demand(
                         expression::expression_node(),
                         || QError::SyntaxError("Expected upper expression".to_string()),
-                    ),
+                    )),
                     || QError::SyntaxError("Expected space after TO".to_string()),
                 ),
                 || QError::SyntaxError("Expected TO".to_string()),
-            ),
+            )),
             || QError::SyntaxError("Expected space after lower expression".to_string()),
         ),
-        |(l, (_, (_, (_, r))))| (l, r),
+        |(l, (_, r))| (l, r),
     )
 }
 

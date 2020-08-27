@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::pc::common::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -17,13 +18,7 @@ pub fn sub_call<T: BufRead + 'static>(
             or_vec(vec![
                 in_parenthesis(csv_zero_or_more(expression::expression_node())),
                 skipping_whitespace(csv_zero_or_more(expression::expression_node())),
-                map(
-                    and(
-                        read_any_whitespace(),
-                        zero_args_assignment_and_label_guard(true),
-                    ),
-                    |(_, r)| r,
-                ),
+                crate::parser::pc::ws::with_leading(zero_args_assignment_and_label_guard(true)),
                 zero_args_assignment_and_label_guard(false),
             ]),
         ),

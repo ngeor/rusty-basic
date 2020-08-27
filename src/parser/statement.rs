@@ -8,6 +8,7 @@ use crate::parser::dim_parser;
 use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
+use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
 use crate::parser::select_case;

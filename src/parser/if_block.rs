@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::expression;
+use crate::parser::pc::common::*;
 use crate::parser::pc::loc::*;
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -68,8 +69,8 @@ fn single_line_if_else<T: BufRead + 'static>() -> Box<
             single_line_if(),
             or(
                 map(
-                    and(read_any_whitespace(), with_pos(comment::comment())),
-                    |(_, r)| vec![r],
+                    crate::parser::pc::ws::with_leading(with_pos(comment::comment())),
+                    |r| vec![r],
                 ),
                 single_line_else(),
             ),
@@ -86,14 +87,11 @@ fn single_line_if<T: BufRead + 'static>(
 fn single_line_else<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     map(
-        and(
-            read_any_whitespace(),
-            and(
-                try_read_keyword(Keyword::Else),
-                statements::single_line_statements(),
-            ),
-        ),
-        |(_, (_, r))| r,
+        crate::parser::pc::ws::with_leading(and(
+            try_read_keyword(Keyword::Else),
+            statements::single_line_statements(),
+        )),
+        |(_, r)| r,
     )
 }
 

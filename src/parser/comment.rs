@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::str::take_zero_or_more;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -10,7 +11,7 @@ pub fn comment<T: BufRead + 'static>(
     map(
         if_first_maybe_second(
             try_read('\''),
-            read_any_str_while(|ch| ch != '\r' && ch != '\n'),
+            take_zero_or_more(|ch| ch != '\r' && ch != '\n'),
         ),
         |(_, r)| Statement::Comment(r.unwrap_or_default()),
     )

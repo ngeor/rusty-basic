@@ -26,6 +26,10 @@ fn is_eol(ch: char) -> bool {
     ch == '\r' || ch == '\n'
 }
 
+fn is_eol_or_whitespace(ch: char) -> bool {
+    is_eol(ch) || is_whitespace(ch)
+}
+
 fn is_symbol(ch: char) -> bool {
     (ch > ' ' && ch < '0')
         || (ch > '9' && ch < 'A')
@@ -202,81 +206,11 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn skip_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
-where
-    P: ParserSource + 'static,
-    FP: Fn(char) -> bool + 'static,
-{
-    Box::new(move |char_reader| {
-        let mut result: String = String::new();
-        let mut cr: P = char_reader;
-        loop {
-            let (x, next) = cr.read();
-            cr = x;
-            match next {
-                Err(err) => {
-                    if err.is_not_found_err() {
-                        break;
-                    } else {
-                        return (cr, Err(err));
-                    }
-                }
-                Ok(ch) => {
-                    if predicate(ch) {
-                        result.push(ch);
-                    } else {
-                        cr = cr.undo(ch);
-                        break;
-                    }
-                }
-            }
-        }
-        (cr, Ok(result))
-    })
-}
-
-pub fn read_any_str_while<P, FP>(predicate: FP) -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
-where
-    P: ParserSource + 'static,
-    FP: Fn(char) -> bool + 'static,
-{
-    Box::new(move |char_reader| {
-        let mut result: String = String::new();
-        let mut cr: P = char_reader;
-        loop {
-            let (x, next) = cr.read();
-            cr = x;
-            match next {
-                Err(err) => {
-                    if err.is_not_found_err() {
-                        break;
-                    } else {
-                        return (cr, Err(err));
-                    }
-                }
-                Ok(ch) => {
-                    if predicate(ch) {
-                        result.push(ch);
-                    } else {
-                        cr = cr.undo(ch);
-                        break;
-                    }
-                }
-            }
-        }
-        if result.is_empty() {
-            (cr, Err(QError::not_found_err()))
-        } else {
-            (cr, Ok(result))
-        }
-    })
-}
-
 pub fn read_any_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_str_while(is_whitespace)
+    super::pc::str::take_one_or_more(is_whitespace)
 }
 
 pub fn skipping_whitespace_around<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
@@ -295,14 +229,14 @@ pub fn skip_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
-    skip_while(is_whitespace)
+    super::pc::str::take_zero_or_more(is_whitespace)
 }
 
 pub fn skip_whitespace_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
-    skip_while(|ch| ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
+    super::pc::str::take_zero_or_more(is_eol_or_whitespace)
 }
 
 pub fn skipping_whitespace<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
@@ -354,7 +288,7 @@ where
     map(
         if_first_maybe_second(
             read_any_letter(),
-            read_any_str_while(|ch| {
+            super::pc::str::take_zero_or_more(|ch| {
                 (ch >= 'a' && ch <= 'z')
                     || (ch >= 'A' && ch <= 'Z')
                     || (ch >= '0' && ch <= '9')
@@ -364,9 +298,7 @@ where
         |(l, opt_r)| {
             let mut result: String = String::new();
             result.push(l);
-            if opt_r.is_some() {
-                result.push_str(opt_r.unwrap().as_ref());
-            }
+            result.push_str(opt_r.unwrap_or_default().as_ref());
             result
         },
     )
@@ -426,21 +358,21 @@ pub fn read_any_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_str_while(is_eol)
+    super::pc::str::take_one_or_more(is_eol)
 }
 
 pub fn read_any_eol_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_str_while(|x| x == '\r' || x == '\n' || x == ' ' || x == '\t')
+    super::pc::str::take_one_or_more(is_eol_or_whitespace)
 }
 
 pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_str_while(is_digit)
+    super::pc::str::take_one_or_more(is_digit)
 }
 
 pub fn default_if_predicate<P, T, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>

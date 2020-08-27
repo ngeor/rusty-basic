@@ -100,7 +100,10 @@ mod string_literal {
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
         map(
             if_first_demand_second(
-                if_first_maybe_second(try_read('"'), read_any_str_while(|ch| ch != '"')),
+                if_first_maybe_second(
+                    try_read('"'),
+                    crate::parser::pc::str::take_zero_or_more(|ch| ch != '"'),
+                ),
                 try_read('"'),
                 || QError::SyntaxError("Unterminated string".to_string()),
             ),

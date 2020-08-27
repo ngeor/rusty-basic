@@ -97,6 +97,27 @@ pub mod common {
             }
         })
     }
+
+    /// Applies the given mapping function to the successful result of the given source.
+    ///
+    /// Note that if the mapping function returns Not Found, no undo will take place.
+    pub fn and_then<R, S, T, E, F, U>(source: S, map: F) -> Box<dyn Fn(R) -> (R, Result<U, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        F: Fn(T) -> Result<U, E> + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, result) = source(reader);
+            // the following is equivalent to result = result.and_then(map),
+            // but rust does not like the nested closures
+            let result = match result {
+                Ok(x) => map(x),
+                Err(err) => Err(err),
+            };
+            (reader, result)
+        })
+    }
 }
 
 // ========================================================
@@ -171,10 +192,6 @@ pub mod copy {
 }
 
 // ========================================================
-// when Item = char
-// ========================================================
-
-// ========================================================
 // when Reader + HasLocation
 // ========================================================
 
@@ -222,6 +239,70 @@ pub mod err {
                     let pos = reader.pos();
                     (reader, Err(ErrorEnvelope::Pos(err, pos)))
                 }
+            }
+        })
+    }
+}
+
+// ========================================================
+// dealing with characters and strings
+// ========================================================
+
+pub mod str {
+    use super::common::and_then;
+    use super::traits::*;
+
+    /// Reads characters into a string as long as they satisfy the predicate.
+    ///
+    /// This function will return an empty string if no characters match.
+    pub fn take_zero_or_more<R, E, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<String, E>)>
+    where
+        R: Reader<Item = char, Err = E> + 'static,
+        E: IsNotFoundErr + 'static,
+        F: Fn(char) -> bool + 'static,
+    {
+        Box::new(move |char_reader| {
+            let mut result: String = String::new();
+            let mut cr: R = char_reader;
+            loop {
+                let (x, next) = cr.read();
+                cr = x;
+                match next {
+                    Err(err) => {
+                        if err.is_not_found_err() {
+                            break;
+                        } else {
+                            return (cr, Err(err));
+                        }
+                    }
+                    Ok(ch) => {
+                        if predicate(ch) {
+                            result.push(ch);
+                        } else {
+                            cr = cr.undo_item(ch);
+                            break;
+                        }
+                    }
+                }
+            }
+            (cr, Ok(result))
+        })
+    }
+
+    /// Reads characters into a string as long as they satisfy the predicate.
+    ///
+    /// This function will return a Not Found result if no characters match.
+    pub fn take_one_or_more<R, E, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<String, E>)>
+    where
+        R: Reader<Item = char, Err = E> + 'static,
+        E: NotFoundErr + 'static,
+        F: Fn(char) -> bool + 'static,
+    {
+        and_then(take_zero_or_more(predicate), |s| {
+            if s.is_empty() {
+                Err(E::not_found_err())
+            } else {
+                Ok(s)
             }
         })
     }

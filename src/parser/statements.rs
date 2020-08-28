@@ -145,7 +145,7 @@ fn statement_node_and_separator<T: BufRead + 'static>(
     })
 }
 
-pub fn comment_separator<T: BufRead + 'static>(
+fn comment_separator<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
     map_default_to_not_found(zero_or_more_if_leading_remaining(
         is_eol,
@@ -153,7 +153,7 @@ pub fn comment_separator<T: BufRead + 'static>(
     ))
 }
 
-pub fn non_comment_separator<T: BufRead + 'static>(
+fn non_comment_separator<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
     // ws* : ws*
     // ws* eol (ws | eol)*
@@ -164,6 +164,8 @@ pub fn non_comment_separator<T: BufRead + 'static>(
             is_whitespace,
         )),
         comment_separator(),
-        map(undo_if_ok(try_read('\'')), |c| format!("{}", c)),
+        map_fully_ok(try_read('\''), |reader: EolReader<T>, c| {
+            (reader.undo(c), Ok(format!("{}", c)))
+        }),
     ])
 }

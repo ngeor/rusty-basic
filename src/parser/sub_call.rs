@@ -3,6 +3,7 @@ use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::common::*;
+use crate::parser::pc::traits::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -33,9 +34,17 @@ pub fn sub_call<T: BufRead + 'static>(
 pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
     allow_colon: bool,
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ArgumentNodes, QError>)> {
-    default_if_predicate(move |ch| {
-        ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':')
-    })
+    map_fully_ok_or_not_found(
+        read(),
+        move |reader: EolReader<T>, ch| {
+            if ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':') {
+                (reader.undo(ch), Ok(vec![]))
+            } else {
+                (reader.undo(ch), Err(QError::not_found_err()))
+            }
+        },
+        |_| Ok(vec![]),
+    )
 }
 
 #[cfg(test)]

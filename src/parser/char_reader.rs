@@ -281,34 +281,6 @@ where
     super::pc::str::one_or_more_if(is_digit)
 }
 
-pub fn default_if_predicate<P, T, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    T: Default + 'static,
-    F: Fn(char) -> bool + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, next) = reader.read();
-        match next {
-            Ok(ch) => {
-                if predicate(ch) {
-                    (reader.undo_item(ch), Ok(T::default()))
-                } else {
-                    reader.undo_and_err_not_found(ch)
-                }
-            }
-            Err(err) => {
-                if err.is_not_found_err() {
-                    // EOF is ok
-                    (reader, Ok(T::default()))
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
 //
 // Combine two or more parsers
 //

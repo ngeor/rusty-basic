@@ -109,6 +109,77 @@ pub mod common {
         })
     }
 
+    pub fn map_fully<R, S, T, E, U, F1, F2, F3>(
+        source: S,
+        f_ok: F1,
+        f_not_found: F2,
+        f_err: F3,
+    ) -> Box<dyn Fn(R) -> (R, U)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        E: IsNotFoundErr + 'static,
+        F1: Fn(R, T) -> (R, U) + 'static,
+        F2: Fn(E) -> U + 'static,
+        F3: Fn(E) -> U + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, result) = source(reader);
+            match result {
+                Ok(ch) => f_ok(reader, ch),
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        (reader, f_not_found(err))
+                    } else {
+                        (reader, f_err(err))
+                    }
+                }
+            }
+        })
+    }
+
+    pub fn map_fully_ok_or_not_found<R, S, T, E, U, F1, F2>(
+        source: S,
+        f_ok: F1,
+        f_not_found: F2,
+    ) -> Box<dyn Fn(R) -> (R, Result<U, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        E: IsNotFoundErr + 'static,
+        F1: Fn(R, T) -> (R, Result<U, E>) + 'static,
+        F2: Fn(E) -> Result<U, E> + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, result) = source(reader);
+            match result {
+                Ok(ch) => f_ok(reader, ch),
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        (reader, f_not_found(err))
+                    } else {
+                        (reader, Err(err))
+                    }
+                }
+            }
+        })
+    }
+
+    pub fn map_fully_ok<R, S, T, E, U, F>(source: S, f_ok: F) -> Box<dyn Fn(R) -> (R, Result<U, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        F: Fn(R, T) -> (R, Result<U, E>) + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, result) = source(reader);
+            match result {
+                Ok(ch) => f_ok(reader, ch),
+                Err(err) => (reader, Err(err)),
+            }
+        })
+    }
+
     /// Applies the given mapping function to the successful result of the given source.
     ///
     /// This is similar to `Result.and_then`
@@ -120,16 +191,7 @@ pub mod common {
         S: Fn(R) -> (R, Result<T, E>) + 'static,
         F: Fn(T) -> Result<U, E> + 'static,
     {
-        Box::new(move |reader| {
-            let (reader, result) = source(reader);
-            // the following is equivalent to result = result.and_then(map),
-            // but rust does not like the nested closures
-            let result = match result {
-                Ok(x) => map(x),
-                Err(err) => Err(err),
-            };
-            (reader, result)
-        })
+        map_fully_ok(source, move |reader, x| (reader, map(x)))
     }
 
     /// Applies the given mapping function to the successful result of the given source.
@@ -141,16 +203,69 @@ pub mod common {
         S: Fn(R) -> (R, Result<T, E>) + 'static,
         F: Fn(T) -> U + 'static,
     {
+        and_then(source, move |x| Ok(map(x)))
+    }
+
+    pub fn map_fully_err<R, S, T, E, F>(source: S, f_err: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        F: Fn(R, E) -> (R, Result<T, E>) + 'static,
+    {
         Box::new(move |reader| {
             let (reader, result) = source(reader);
-            // the following is equivalent to result = result.map(map),
-            // but rust does not like the nested closures
-            let result = match result {
-                Ok(x) => Ok(map(x)),
-                Err(err) => Err(err),
-            };
-            (reader, result)
+            match result {
+                Ok(ch) => (reader, Ok(ch)),
+                Err(err) => f_err(reader, err),
+            }
         })
+    }
+
+    pub fn or_else<R, S, T, E, F>(source: S, map: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        F: Fn(E) -> Result<T, E> + 'static,
+    {
+        map_fully_err(source, move |reader, err| (reader, map(err)))
+    }
+
+    pub fn map_fully_not_found_err<R, S, T, E, F>(
+        source: S,
+        f_err: F,
+    ) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        E: IsNotFoundErr,
+        F: Fn(R, E) -> (R, Result<T, E>) + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, result) = source(reader);
+            match result {
+                Ok(ch) => (reader, Ok(ch)),
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        f_err(reader, err)
+                    } else {
+                        (reader, Err(err))
+                    }
+                }
+            }
+        })
+    }
+
+    pub fn or_else_if_not_found<R, S, T, E, F>(
+        source: S,
+        map: F,
+    ) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        E: IsNotFoundErr + 'static,
+        F: Fn(E) -> Result<T, E> + 'static,
+    {
+        map_fully_not_found_err(source, move |reader, err| (reader, map(err)))
     }
 
     /// Map the Ok result of the given source to Not Found, if it is equal to the default value
@@ -186,25 +301,19 @@ pub mod common {
         F2: Fn(R) -> (R, Result<T2, E>) + 'static,
         T1: 'static,
         T2: 'static,
-        E: IsNotFoundErr,
+        E: IsNotFoundErr + 'static,
     {
-        Box::new(move |reader| {
-            let (reader, res1) = first(reader);
-            match res1 {
-                Ok(r1) => {
-                    let (reader, res2) = second(reader);
-                    match res2 {
-                        Ok(r2) => (reader, Ok((r1, r2))),
-                        Err(err) => {
-                            if err.is_not_found_err() {
-                                (reader.undo(r1), Err(err))
-                            } else {
-                                (reader, Err(err))
-                            }
-                        }
+        map_fully_ok(first, move |reader, r1| {
+            let (reader, res2) = second(reader);
+            match res2 {
+                Ok(r2) => (reader, Ok((r1, r2))),
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        (reader.undo(r1), Err(err))
+                    } else {
+                        (reader, Err(err))
                     }
                 }
-                Err(err) => (reader, Err(err)),
             }
         })
     }
@@ -223,25 +332,19 @@ pub mod common {
         F2: Fn(R) -> (R, Result<T2, E>) + 'static,
         T1: 'static,
         T2: 'static,
-        E: IsNotFoundErr,
+        E: IsNotFoundErr + 'static,
     {
-        Box::new(move |reader| {
-            let (reader, res1) = first(reader);
-            match res1 {
-                Ok(r1) => {
-                    let (reader, res2) = second(reader);
-                    match res2 {
-                        Ok(r2) => (reader, Ok((r1, Some(r2)))),
-                        Err(err) => {
-                            if err.is_not_found_err() {
-                                (reader, Ok((r1, None)))
-                            } else {
-                                (reader, Err(err))
-                            }
-                        }
+        map_fully_ok(first, move |reader, r1| {
+            let (reader, res2) = second(reader);
+            match res2 {
+                Ok(r2) => (reader, Ok((r1, Some(r2)))),
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        (reader, Ok((r1, None)))
+                    } else {
+                        (reader, Err(err))
                     }
                 }
-                Err(err) => (reader, Err(err)),
             }
         })
     }
@@ -284,17 +387,11 @@ pub mod copy {
         E: NotFoundErr,
         F: Fn(T) -> bool + 'static,
     {
-        Box::new(move |reader| {
-            let (reader, result) = source(reader);
-            match result {
-                Ok(ch) => {
-                    if predicate(ch) {
-                        (reader, Ok(ch))
-                    } else {
-                        (reader.undo(ch), Err(E::not_found_err()))
-                    }
-                }
-                Err(err) => (reader, Err(err)),
+        common::map_fully_ok(source, move |reader, ch| {
+            if predicate(ch) {
+                (reader, Ok(ch))
+            } else {
+                (reader.undo(ch), Err(E::not_found_err()))
             }
         })
     }
@@ -316,23 +413,6 @@ pub mod copy {
         R::Err: NotFoundErr,
     {
         read_any_if(move |ch| ch == needle)
-    }
-
-    /// Undoes the read item if it was successful but still returns it.
-    #[deprecated]
-    pub fn undo_if_ok<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
-    where
-        R: Reader + Undo<T> + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        T: Copy + 'static,
-    {
-        Box::new(move |reader| {
-            let (reader, result) = source(reader);
-            match result {
-                Ok(ch) => (reader.undo(ch), Ok(ch)),
-                Err(err) => (reader, Err(err)),
-            }
-        })
     }
 }
 

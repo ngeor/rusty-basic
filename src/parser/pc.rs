@@ -142,6 +142,24 @@ pub mod common {
         })
     }
 
+    /// Map the Ok result of the given source to Not Found, if it is equal to the default value
+    /// for that type (e.g. empty string, empty vector).
+    pub fn map_default_to_not_found<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: Default + PartialEq<T> + 'static,
+        E: NotFoundErr + 'static,
+    {
+        and_then(source, |x| {
+            if x == T::default() {
+                Err(E::not_found_err())
+            } else {
+                Ok(x)
+            }
+        })
+    }
+
     /// Combines the results of the two given sources into one tuple.
     ///
     /// If either source returns an error, the error will be returned.
@@ -169,6 +187,43 @@ pub mod common {
                         Err(err) => {
                             if err.is_not_found_err() {
                                 (reader.undo(r1), Err(err))
+                            } else {
+                                (reader, Err(err))
+                            }
+                        }
+                    }
+                }
+                Err(err) => (reader, Err(err)),
+            }
+        })
+    }
+
+    /// Combines the results of the two given sources into one tuple.
+    ///
+    /// If either source returns a fatal error, the error will be returned.
+    /// If the second source returns a Not Found error, the first result will be still returned.
+    pub fn if_first_maybe_second<R, F1, F2, T1, T2, E>(
+        first: F1,
+        second: F2,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, Option<T2>), E>)>
+    where
+        R: Reader + 'static,
+        F1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        F2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        E: IsNotFoundErr,
+    {
+        Box::new(move |reader| {
+            let (reader, res1) = first(reader);
+            match res1 {
+                Ok(r1) => {
+                    let (reader, res2) = second(reader);
+                    match res2 {
+                        Ok(r2) => (reader, Ok((r1, Some(r2)))),
+                        Err(err) => {
+                            if err.is_not_found_err() {
+                                (reader, Ok((r1, None)))
                             } else {
                                 (reader, Err(err))
                             }
@@ -331,10 +386,56 @@ pub mod str {
     use super::common::and_then;
     use super::traits::*;
 
+    /// Reads characters into a string as long as they satisfy the predicates.
+    ///
+    /// The first character must satisfy the `leading_predicate` and the remaining
+    /// characters must satisfy the `remaining_predicate`.
+    ///
+    /// This function will return an empty string if no characters match.
+    pub fn zero_or_more_if_leading_remaining<R, E, F1, F2>(
+        leading_predicate: F1,
+        remaining_predicate: F2,
+    ) -> Box<dyn Fn(R) -> (R, Result<String, E>)>
+    where
+        R: Reader<Item = char, Err = E> + 'static,
+        E: IsNotFoundErr + 'static,
+        F1: Fn(char) -> bool + 'static,
+        F2: Fn(char) -> bool + 'static,
+    {
+        Box::new(move |char_reader| {
+            let mut result: String = String::new();
+            let mut cr: R = char_reader;
+            loop {
+                let (x, next) = cr.read();
+                cr = x;
+                match next {
+                    Err(err) => {
+                        if err.is_not_found_err() {
+                            break;
+                        } else {
+                            return (cr, Err(err));
+                        }
+                    }
+                    Ok(ch) => {
+                        if (result.is_empty() && leading_predicate(ch))
+                            || (!result.is_empty() && remaining_predicate(ch))
+                        {
+                            result.push(ch);
+                        } else {
+                            cr = cr.undo_item(ch);
+                            break;
+                        }
+                    }
+                }
+            }
+            (cr, Ok(result))
+        })
+    }
+
     /// Reads characters into a string as long as they satisfy the predicate.
     ///
     /// This function will return an empty string if no characters match.
-    pub fn take_zero_or_more<R, E, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<String, E>)>
+    pub fn zero_or_more_if<R, E, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<String, E>)>
     where
         R: Reader<Item = char, Err = E> + 'static,
         E: IsNotFoundErr + 'static,
@@ -371,13 +472,13 @@ pub mod str {
     /// Reads characters into a string as long as they satisfy the predicate.
     ///
     /// This function will return a Not Found result if no characters match.
-    pub fn take_one_or_more<R, E, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<String, E>)>
+    pub fn one_or_more_if<R, E, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<String, E>)>
     where
         R: Reader<Item = char, Err = E> + 'static,
         E: NotFoundErr + 'static,
         F: Fn(char) -> bool + 'static,
     {
-        and_then(take_zero_or_more(predicate), |s| {
+        and_then(zero_or_more_if(predicate), |s| {
             if s.is_empty() {
                 Err(E::not_found_err())
             } else {
@@ -392,7 +493,7 @@ pub mod str {
 // ========================================================
 
 pub mod ws {
-    use super::common::{and, drop_left};
+    use super::common::{and, drop_left, drop_right, if_first_maybe_second};
     use super::str::*;
     use super::traits::*;
 
@@ -400,28 +501,80 @@ pub mod ws {
         ch == ' ' || ch == '\t'
     }
 
+    pub fn is_eol(ch: char) -> bool {
+        ch == '\r' || ch == '\n'
+    }
+
+    pub fn is_eol_or_whitespace(ch: char) -> bool {
+        is_eol(ch) || is_whitespace(ch)
+    }
+
     /// Reads any whitespace.
     ///
     /// If no whitespace is found, it results to a Not Found result.
-    pub fn read_any<R>() -> Box<dyn Fn(R) -> (R, Result<String, R::Err>)>
+    pub fn one_or_more<R>() -> Box<dyn Fn(R) -> (R, Result<String, R::Err>)>
     where
         R: Reader<Item = char> + 'static,
         R::Err: NotFoundErr,
     {
-        take_one_or_more(is_whitespace)
+        one_or_more_if(is_whitespace)
     }
 
     /// Reads some whitespace before the source and then returns the result of the source.
     ///
     /// If no whitespace exists before the source, the source will not be invoked and
     /// a Not Found result will be returned.
-    pub fn with_leading<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    pub fn one_or_more_leading<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
     where
         R: Reader<Item = char, Err = E> + Undo<String> + 'static,
         S: Fn(R) -> (R, Result<T, E>) + 'static,
         T: 'static,
         E: NotFoundErr + 'static,
     {
-        drop_left(and(read_any(), source))
+        drop_left(and(one_or_more(), source))
+    }
+
+    /// Reads any whitespace.
+    ///
+    /// If no whitespace is found, it results to an Ok empty string.
+    pub fn zero_or_more<R>() -> Box<dyn Fn(R) -> (R, Result<String, R::Err>)>
+    where
+        R: Reader<Item = char> + 'static,
+        R::Err: NotFoundErr,
+    {
+        zero_or_more_if(is_whitespace)
+    }
+
+    /// Skips any whitespace before the source and returns the result of the source.
+    pub fn zero_or_more_leading<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader<Item = char, Err = E> + Undo<String> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: 'static,
+        E: NotFoundErr + 'static,
+    {
+        drop_left(and(zero_or_more(), source))
+    }
+
+    /// Skips any whitespace after the source and returns the result of the source.
+    pub fn zero_or_more_trailing<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader<Item = char, Err = E> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: 'static,
+        E: NotFoundErr + 'static,
+    {
+        drop_right(if_first_maybe_second(source, zero_or_more()))
+    }
+
+    /// Skips any whitespace around the source and returns the source's result.
+    pub fn zero_or_more_around<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader<Item = char, Err = E> + Undo<String> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: 'static,
+        E: NotFoundErr + 'static,
+    {
+        zero_or_more_trailing(zero_or_more_leading(source))
     }
 }

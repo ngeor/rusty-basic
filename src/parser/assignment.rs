@@ -13,8 +13,8 @@ pub fn assignment<T: BufRead + 'static>(
         and(
             name::name(),
             if_first_demand_second(
-                skipping_whitespace(try_read('=')),
-                skipping_whitespace(expression::expression_node()),
+                crate::parser::pc::ws::zero_or_more_leading(try_read('=')),
+                crate::parser::pc::ws::zero_or_more_leading(expression::expression_node()),
                 || QError::SyntaxError("Expected expression after =".to_string()),
             ),
         ),

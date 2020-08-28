@@ -69,7 +69,7 @@ fn single_line_if_else<T: BufRead + 'static>() -> Box<
             single_line_if(),
             or(
                 map(
-                    crate::parser::pc::ws::with_leading(with_pos(comment::comment())),
+                    crate::parser::pc::ws::one_or_more_leading(with_pos(comment::comment())),
                     |r| vec![r],
                 ),
                 single_line_else(),
@@ -87,7 +87,7 @@ fn single_line_if<T: BufRead + 'static>(
 fn single_line_else<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     map(
-        crate::parser::pc::ws::with_leading(and(
+        crate::parser::pc::ws::one_or_more_leading(and(
             try_read_keyword(Keyword::Else),
             statements::single_line_statements(),
         )),

@@ -2,18 +2,20 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
-use crate::parser::pc::str::take_zero_or_more;
+use crate::parser::pc::str::zero_or_more_if;
+use crate::parser::pc::ws::is_eol;
 use crate::parser::types::*;
 use std::io::BufRead;
+
+fn is_not_eol(ch: char) -> bool {
+    !is_eol(ch)
+}
 
 /// Tries to read a comment.
 pub fn comment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        if_first_maybe_second(
-            try_read('\''),
-            take_zero_or_more(|ch| ch != '\r' && ch != '\n'),
-        ),
+        if_first_maybe_second(try_read('\''), zero_or_more_if(is_not_eol)),
         |(_, r)| Statement::Comment(r.unwrap_or_default()),
     )
 }

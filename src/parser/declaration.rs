@@ -39,7 +39,7 @@ pub fn function_declaration<T: BufRead + 'static>(
             Keyword::Function,
             if_first_maybe_second(
                 name::name_node(),
-                skipping_whitespace(declaration_parameters()),
+                crate::parser::pc::ws::zero_or_more_leading(declaration_parameters()),
             ),
         ),
         |(n, opt_p)| (n, opt_p.unwrap_or_default()),
@@ -66,7 +66,7 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
             Keyword::Sub,
             if_first_maybe_second(
                 name::bare_name_node(),
-                skipping_whitespace(declaration_parameters()),
+                crate::parser::pc::ws::zero_or_more_leading(declaration_parameters()),
             ),
         ),
         |(n, opt_p)| (n, opt_p.unwrap_or_default()),

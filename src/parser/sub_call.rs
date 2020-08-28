@@ -17,8 +17,12 @@ pub fn sub_call<T: BufRead + 'static>(
             name::bare_name(),
             or_vec(vec![
                 in_parenthesis(csv_zero_or_more(expression::expression_node())),
-                skipping_whitespace(csv_zero_or_more(expression::expression_node())),
-                crate::parser::pc::ws::with_leading(zero_args_assignment_and_label_guard(true)),
+                crate::parser::pc::ws::zero_or_more_leading(csv_zero_or_more(
+                    expression::expression_node(),
+                )),
+                crate::parser::pc::ws::one_or_more_leading(zero_args_assignment_and_label_guard(
+                    true,
+                )),
                 zero_args_assignment_and_label_guard(false),
             ]),
         ),

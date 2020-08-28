@@ -3,7 +3,6 @@ use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
 use crate::parser::pc::traits::*;
-use crate::parser::pc::ws::is_whitespace;
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
 use std::convert::TryInto;
@@ -15,16 +14,12 @@ fn is_letter(ch: char) -> bool {
     (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
 }
 
+fn is_non_leading_identifier(ch: char) -> bool {
+    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '.')
+}
+
 fn is_digit(ch: char) -> bool {
     ch >= '0' && ch <= '9'
-}
-
-fn is_eol(ch: char) -> bool {
-    ch == '\r' || ch == '\n'
-}
-
-fn is_eol_or_whitespace(ch: char) -> bool {
-    is_eol(ch) || is_whitespace(ch)
 }
 
 fn is_symbol(ch: char) -> bool {
@@ -203,57 +198,13 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn skipping_whitespace_around<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + Undo<String> + Undo<T> + 'static,
-    T: 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-{
-    map(
-        and(skip_whitespace(), and(source, skip_whitespace())),
-        |(_, (l, _))| l,
-    )
-}
-
-pub fn skip_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
-where
-    P: ParserSource + 'static,
-{
-    super::pc::str::take_zero_or_more(is_whitespace)
-}
-
-pub fn skip_whitespace_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
-where
-    P: ParserSource + 'static,
-{
-    super::pc::str::take_zero_or_more(is_eol_or_whitespace)
-}
-
-pub fn skipping_whitespace<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-    T: 'static,
-{
-    skip_first(skip_whitespace(), source)
-}
-
 pub fn skipping_whitespace_lazy<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + Undo<String> + 'static,
     S: Fn() -> Box<dyn Fn(P) -> (P, Result<T, QError>)> + 'static,
     T: 'static,
 {
-    skip_first_lazy(skip_whitespace(), source)
-}
-
-pub fn skipping_whitespace_eol<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-    T: 'static,
-{
-    skip_first(skip_whitespace_eol(), source)
+    skip_first_lazy(crate::parser::pc::ws::zero_or_more(), source)
 }
 
 pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
@@ -269,29 +220,17 @@ where
 {
     read_any_if(is_letter)
 }
+
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
 pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
-    map(
-        if_first_maybe_second(
-            read_any_letter(),
-            super::pc::str::take_zero_or_more(|ch| {
-                (ch >= 'a' && ch <= 'z')
-                    || (ch >= 'A' && ch <= 'Z')
-                    || (ch >= '0' && ch <= '9')
-                    || (ch == '.')
-            }),
-        ),
-        |(l, opt_r)| {
-            let mut result: String = String::new();
-            result.push(l);
-            result.push_str(opt_r.unwrap_or_default().as_ref());
-            result
-        },
-    )
+    map_default_to_not_found(super::pc::str::zero_or_more_if_leading_remaining(
+        is_letter,
+        is_non_leading_identifier,
+    ))
 }
 
 /// Reads any keyword.
@@ -344,25 +283,11 @@ where
     )
 }
 
-pub fn read_any_eol<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
-where
-    P: ParserSource + 'static,
-{
-    super::pc::str::take_one_or_more(is_eol)
-}
-
-pub fn read_any_eol_whitespace<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
-where
-    P: ParserSource + 'static,
-{
-    super::pc::str::take_one_or_more(is_eol_or_whitespace)
-}
-
 pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
 {
-    super::pc::str::take_one_or_more(is_digit)
+    super::pc::str::one_or_more_if(is_digit)
 }
 
 pub fn default_if_predicate<P, T, F>(predicate: F) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
@@ -595,39 +520,6 @@ where
     })
 }
 
-pub fn if_first_maybe_second<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, Option<T2>), E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
-    E: IsNotFoundErr,
-    P: ParserSource + 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, res1) = first(char_reader);
-        match res1 {
-            Ok(r1) => {
-                let (char_reader, res2) = second(char_reader);
-                match res2 {
-                    Ok(r2) => (char_reader, Ok((r1, Some(r2)))),
-                    Err(err) => {
-                        if err.is_not_found_err() {
-                            (char_reader, Ok((r1, None)))
-                        } else {
-                            (char_reader, Err(err))
-                        }
-                    }
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
 pub fn if_first_maybe_second_peeking_first<P, F1, F2, T1, T2, E>(
     first: F1,
     second: F2,
@@ -840,7 +732,7 @@ where
     map(
         if_first_demand_second(
             first,
-            and_no_undo(super::pc::ws::read_any(), second),
+            and_no_undo(super::pc::ws::one_or_more(), second),
             err_fn,
         ),
         |(l, (_, r))| (l, r),
@@ -863,7 +755,7 @@ where
     map(
         if_first_demand_second(
             first,
-            and_no_undo_lazy(super::pc::ws::read_any(), second),
+            and_no_undo_lazy(super::pc::ws::one_or_more(), second),
             err_fn,
         ),
         |(l, (_, r))| (l, r),
@@ -888,7 +780,7 @@ where
     T2: 'static,
     FE: Fn() -> QError + 'static,
 {
-    super::pc::ws::with_leading(with_some_whitespace_between(first, second, err_fn))
+    crate::parser::pc::ws::one_or_more_leading(with_some_whitespace_between(first, second, err_fn))
 }
 
 /// Combines the two given parsers, allowing some optional whitespace between their results.
@@ -906,7 +798,11 @@ where
     T2: 'static,
     FE: Fn() -> QError + 'static,
 {
-    if_first_demand_second(first, skipping_whitespace(second), err_fn)
+    if_first_demand_second(
+        first,
+        crate::parser::pc::ws::zero_or_more_leading(second),
+        err_fn,
+    )
 }
 
 //
@@ -1114,8 +1010,8 @@ where
     map(
         take_one_or_more(
             if_first_maybe_second(
-                skipping_whitespace(source),
-                skipping_whitespace(with_pos(try_read(','))),
+                crate::parser::pc::ws::zero_or_more_leading(source),
+                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read(','))),
             ),
             |x| x.1.is_none(),
             err_fn,
@@ -1138,7 +1034,7 @@ where
         take_one_or_more(
             if_first_maybe_second(
                 skipping_whitespace_lazy(source),
-                skipping_whitespace(with_pos(try_read(','))),
+                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read(','))),
             ),
             |x| x.1.is_none(),
             err_fn,
@@ -1156,8 +1052,8 @@ where
     map(
         take_zero_or_more(
             if_first_maybe_second(
-                skipping_whitespace(source),
-                skipping_whitespace(with_pos(try_read(','))),
+                crate::parser::pc::ws::zero_or_more_leading(source),
+                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read(','))),
             ),
             |x| x.1.is_none(),
         ),
@@ -1175,7 +1071,7 @@ where
         take_zero_or_more(
             if_first_maybe_second(
                 skipping_whitespace_lazy(source),
-                skipping_whitespace(with_pos(try_read(','))),
+                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read(','))),
             ),
             |x| x.1.is_none(),
         ),
@@ -1265,7 +1161,7 @@ where
     map(
         if_first_demand_second(
             source,
-            skipping_whitespace(try_read_keyword(needle)),
+            crate::parser::pc::ws::zero_or_more_leading(try_read_keyword(needle)),
             err_fn,
         ),
         |(l, _)| l,

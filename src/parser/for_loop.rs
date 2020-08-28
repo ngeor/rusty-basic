@@ -52,7 +52,7 @@ fn next_counter<T: BufRead + 'static>(
     map(
         if_first_maybe_second(
             try_read_keyword(Keyword::Next),
-            crate::parser::pc::ws::with_leading(name::name_node()),
+            crate::parser::pc::ws::one_or_more_leading(name::name_node()),
         ),
         |(_, opt_second)| opt_second,
     )
@@ -70,7 +70,7 @@ fn var_equal_lower_to_upper<T: BufRead + 'static>() -> Box<
         if_first_demand_second(
             name::name_node(),
             if_first_demand_second(
-                skipping_whitespace_around(try_read('=')),
+                crate::parser::pc::ws::zero_or_more_around(try_read('=')),
                 lower_to_upper(),
                 || QError::SyntaxError("Expected lower expression".to_string()),
             ),
@@ -91,10 +91,10 @@ fn lower_to_upper<T: BufRead + 'static>() -> Box<
     map(
         if_first_demand_second(
             expression::expression_node(),
-            crate::parser::pc::ws::with_leading(demand(
+            crate::parser::pc::ws::one_or_more_leading(demand(
                 if_first_demand_second(
                     try_read_keyword(Keyword::To),
-                    crate::parser::pc::ws::with_leading(demand(
+                    crate::parser::pc::ws::one_or_more_leading(demand(
                         expression::expression_node(),
                         || QError::SyntaxError("Expected upper expression".to_string()),
                     )),

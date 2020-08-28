@@ -97,13 +97,17 @@ pub fn parenthesis<T: BufRead + 'static>(
 mod string_literal {
     use super::*;
 
+    fn is_not_quote(ch: char) -> bool {
+        ch != '"'
+    }
+
     pub fn string_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
         map(
             if_first_demand_second(
                 if_first_maybe_second(
                     try_read('"'),
-                    crate::parser::pc::str::take_zero_or_more(|ch| ch != '"'),
+                    crate::parser::pc::str::zero_or_more_if(is_not_quote),
                 ),
                 try_read('"'),
                 || QError::SyntaxError("Unterminated string".to_string()),
@@ -225,46 +229,57 @@ pub fn operand<T: BufRead + 'static>(
     had_parenthesis_before: bool,
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Locatable<Operand>, QError>)> {
     or_vec(vec![
-        skipping_whitespace(with_pos(lte())),
-        skipping_whitespace(with_pos(gte())),
-        map(skipping_whitespace(with_pos(try_read('='))), |x| {
-            x.map(|_| Operand::Equal)
-        }),
-        map(skipping_whitespace(with_pos(try_read('+'))), |x| {
-            x.map(|_| Operand::Plus)
-        }),
-        map(skipping_whitespace(with_pos(try_read('-'))), |x| {
-            x.map(|_| Operand::Minus)
-        }),
-        map(skipping_whitespace(with_pos(try_read('*'))), |x| {
-            x.map(|_| Operand::Multiply)
-        }),
-        map(skipping_whitespace(with_pos(try_read('/'))), |x| {
-            x.map(|_| Operand::Divide)
-        }),
+        crate::parser::pc::ws::zero_or_more_leading(with_pos(lte())),
+        crate::parser::pc::ws::zero_or_more_leading(with_pos(gte())),
+        map(
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('='))),
+            |x| x.map(|_| Operand::Equal),
+        ),
+        map(
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('+'))),
+            |x| x.map(|_| Operand::Plus),
+        ),
+        map(
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('-'))),
+            |x| x.map(|_| Operand::Minus),
+        ),
+        map(
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('*'))),
+            |x| x.map(|_| Operand::Multiply),
+        ),
+        map(
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('/'))),
+            |x| x.map(|_| Operand::Divide),
+        ),
         if had_parenthesis_before {
             // skip whitespace + AND
             map(
-                skipping_whitespace(with_pos(try_read_keyword(Keyword::And))),
+                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read_keyword(
+                    Keyword::And,
+                ))),
                 |x| x.map(|_| Operand::And),
             )
         } else {
             // demand whitespace + AND
             map(
-                crate::parser::pc::ws::with_leading(with_pos(try_read_keyword(Keyword::And))),
+                crate::parser::pc::ws::one_or_more_leading(with_pos(try_read_keyword(
+                    Keyword::And,
+                ))),
                 |locatable| locatable.map(|_| Operand::And),
             )
         },
         if had_parenthesis_before {
             // skip whitespace + OR
             map(
-                skipping_whitespace(with_pos(try_read_keyword(Keyword::Or))),
+                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read_keyword(
+                    Keyword::Or,
+                ))),
                 |x| x.map(|_| Operand::Or),
             )
         } else {
             // demand whitespace + OR
             map(
-                crate::parser::pc::ws::with_leading(with_pos(try_read_keyword(Keyword::Or))),
+                crate::parser::pc::ws::one_or_more_leading(with_pos(try_read_keyword(Keyword::Or))),
                 |locatable| locatable.map(|_| Operand::Or),
             )
         },

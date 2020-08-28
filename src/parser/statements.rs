@@ -3,7 +3,9 @@ use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
+use crate::parser::pc::str::*;
 use crate::parser::pc::traits::*;
+use crate::parser::pc::ws::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -17,11 +19,11 @@ pub struct ParseStatementsOptions {
 
 pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
-    crate::parser::pc::ws::with_leading(map(
+    crate::parser::pc::ws::one_or_more_leading(map(
         take_zero_or_more(
             if_first_maybe_second(
                 with_pos(statement::single_line_non_comment_statement()),
-                skipping_whitespace_around(try_read(':')),
+                crate::parser::pc::ws::zero_or_more_around(try_read(':')),
             ),
             |x| x.1.is_none(),
         ),
@@ -31,11 +33,11 @@ pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 
 pub fn single_line_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
-    crate::parser::pc::ws::with_leading(map(
+    crate::parser::pc::ws::one_or_more_leading(map(
         take_zero_or_more(
             if_first_maybe_second(
                 with_pos(statement::single_line_statement()),
-                skipping_whitespace_around(try_read(':')),
+                crate::parser::pc::ws::zero_or_more_around(try_read(':')),
             ),
             |x| x.1.is_none(),
         ),
@@ -47,7 +49,7 @@ pub fn skip_until_first_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
     Box::new(move |reader| {
         let mut buf: String = String::new();
-        let (reader, res) = skip_whitespace()(reader);
+        let (reader, res) = crate::parser::pc::ws::zero_or_more()(reader);
         match res {
             Err(err) => return (reader, Err(err)),
             Ok(x) => {
@@ -60,11 +62,15 @@ pub fn skip_until_first_statement<T: BufRead + 'static>(
             Err(err) => (reader, Err(err)),
             Ok('\r') | Ok('\n') => {
                 buf.push('\n');
-                map(skip_whitespace_eol(), move |x| format!("{}{}", buf, x))(reader)
+                map(zero_or_more_if(is_eol_or_whitespace), move |x| {
+                    format!("{}{}", buf, x)
+                })(reader)
             }
             Ok(':') => {
                 buf.push(':');
-                map(skip_whitespace(), move |x| format!("{}{}", buf, x))(reader)
+                map(crate::parser::pc::ws::zero_or_more(), move |x| {
+                    format!("{}{}", buf, x)
+                })(reader)
             }
             Ok(ch) => (reader.undo(ch), Ok(buf)),
         }
@@ -121,7 +127,7 @@ fn statement_node_and_separator<T: BufRead + 'static>(
                 let (reader, sep) = if is_comment {
                     comment_separator()(reader)
                 } else {
-                    skipping_whitespace(non_comment_separator())(reader)
+                    crate::parser::pc::ws::zero_or_more_leading(non_comment_separator())(reader)
                 };
                 match sep {
                     Ok(x) => (reader, Ok((s_node, x))),
@@ -141,10 +147,10 @@ fn statement_node_and_separator<T: BufRead + 'static>(
 
 pub fn comment_separator<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
-    map(
-        if_first_maybe_second(read_any_eol(), read_any_eol_whitespace()),
-        |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
-    )
+    map_default_to_not_found(zero_or_more_if_leading_remaining(
+        is_eol,
+        is_eol_or_whitespace,
+    ))
 }
 
 pub fn non_comment_separator<T: BufRead + 'static>(
@@ -153,14 +159,11 @@ pub fn non_comment_separator<T: BufRead + 'static>(
     // ws* eol (ws | eol)*
     // ws*' comment
     or_vec(vec![
-        map(
-            if_first_maybe_second(try_read(':'), crate::parser::pc::ws::read_any()),
-            |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
-        ),
-        map(
-            if_first_maybe_second(read_any_eol(), read_any_eol_whitespace()),
-            |(l, r)| format!("{}{}", l, r.unwrap_or_default()),
-        ),
+        map_default_to_not_found(zero_or_more_if_leading_remaining(
+            |ch| ch == ':',
+            is_whitespace,
+        )),
+        comment_separator(),
         map(undo_if_ok(try_read('\'')), |c| format!("{}", c)),
     ])
 }

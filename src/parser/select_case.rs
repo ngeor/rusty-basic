@@ -98,7 +98,7 @@ pub fn case_expr<T: BufRead + 'static>(
     map(
         and(
             try_read_keyword(Keyword::Case),
-            crate::parser::pc::ws::with_leading(abort_if(
+            crate::parser::pc::ws::one_or_more_leading(abort_if(
                 try_read_keyword(Keyword::Else),
                 or(case_expr_is(), case_expr_to_or_simple()),
             )),
@@ -112,10 +112,12 @@ pub fn case_expr_is<T: BufRead + 'static>(
     map(
         if_first_demand_second(
             try_read_keyword(Keyword::Is),
-            crate::parser::pc::ws::with_leading(demand(
+            crate::parser::pc::ws::one_or_more_leading(demand(
                 if_first_demand_second(
                     expression::operand(false),
-                    skipping_whitespace(expression::single_expression_node()),
+                    crate::parser::pc::ws::zero_or_more_leading(
+                        expression::single_expression_node(),
+                    ),
                     || QError::SyntaxError("Expected expression".to_string()),
                 ),
                 || QError::SyntaxError("Expected whitespace".to_string()),
@@ -133,7 +135,7 @@ pub fn case_expr_to_or_simple<T: BufRead + 'static>(
             expression::expression_node(),
             if_first_demand_second(
                 // TODO should be demanding_whitespace_around
-                skipping_whitespace_around(try_read_keyword(Keyword::To)),
+                crate::parser::pc::ws::zero_or_more_around(try_read_keyword(Keyword::To)),
                 expression::expression_node(),
                 || QError::SyntaxError("Expected expression".to_string()),
             ),

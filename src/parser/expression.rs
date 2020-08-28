@@ -16,7 +16,7 @@ pub fn expression_node<T: BufRead + 'static>(
         if_first_maybe_second_peeking_first(single_expression_node(), |reader, first_expr_ref| {
             if_first_demand_second(
                 operand(first_expr_ref.is_parenthesis()),
-                skipping_whitespace_lazy(expression_node),
+                crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
                 || QError::SyntaxError("Expected right side expression".to_string()),
             )(reader)
         }),
@@ -49,7 +49,7 @@ pub fn single_expression_node<T: BufRead + 'static>(
 pub fn unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
-        if_first_demand_second_lazy(with_pos(try_read('-')), expression_node, || {
+        if_first_demand_second(with_pos(try_read('-')), lazy(expression_node), || {
             QError::SyntaxError("Expected expression after unary minus".to_string())
         }),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
@@ -59,9 +59,9 @@ pub fn unary_minus<T: BufRead + 'static>(
 pub fn unary_not<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
-        with_some_whitespace_between_lazy(
+        with_some_whitespace_between(
             with_pos(try_read_keyword(Keyword::Not)),
-            expression_node,
+            lazy(expression_node),
             || QError::SyntaxError("Expected expression after NOT".to_string()),
         ),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
@@ -89,7 +89,7 @@ pub fn file_handle<T: BufRead + 'static>(
 pub fn parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
     // TODO allow skipping whitespace inside parenthesis
-    map(in_parenthesis_lazy(expression_node), |v| {
+    map(in_parenthesis(lazy(expression_node)), |v| {
         Expression::Parenthesis(Box::new(v))
     })
 }
@@ -213,7 +213,7 @@ mod word {
         map(
             if_first_maybe_second(
                 name::name(),
-                in_parenthesis(csv_one_or_more_lazy(expression_node, || {
+                in_parenthesis(csv_one_or_more(lazy(expression_node), || {
                     QError::SyntaxError("Expected expression".to_string())
                 })),
             ),

@@ -198,15 +198,6 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn skipping_whitespace_lazy<P, S, T>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + Undo<String> + 'static,
-    S: Fn() -> Box<dyn Fn(P) -> (P, Result<T, QError>)> + 'static,
-    T: 'static,
-{
-    skip_first_lazy(crate::parser::pc::ws::zero_or_more(), source)
-}
-
 pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
 where
     P: ParserSource + 'static,
@@ -350,34 +341,6 @@ where
     })
 }
 
-// internal use only
-fn and_no_undo_lazy<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn() -> Box<dyn Fn(P) -> (P, Result<T2, E>)> + 'static,
-    P: ParserSource + 'static,
-    E: IsNotFoundErr,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, res1) = first(char_reader);
-        match res1 {
-            Ok(r1) => {
-                let (char_reader, res2) = second()(char_reader);
-                match res2 {
-                    Ok(r2) => (char_reader, Ok((r1, r2))),
-                    Err(err) => (char_reader, Err(err)),
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
 pub fn maybe_first_and_second_no_undo<P, F1, F2, T1, T2, E>(
     first: F1,
     second: F2,
@@ -392,43 +355,6 @@ where
 {
     Box::new(move |reader| {
         let (reader, res1) = first(reader);
-        match res1 {
-            Ok(r1) => {
-                let (reader, res2) = second(reader);
-                match res2 {
-                    Ok(r2) => (reader, Ok((Some(r1), r2))),
-                    Err(err) => (reader, Err(err)),
-                }
-            }
-            Err(err) => {
-                if err.is_not_found_err() {
-                    let (reader, res2) = second(reader);
-                    match res2 {
-                        Ok(r2) => (reader, Ok((None, r2))),
-                        Err(err) => (reader, Err(err)),
-                    }
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
-pub fn maybe_first_lazy_and_second_no_undo<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<(Option<T1>, T2), E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn() -> Box<dyn Fn(P) -> (P, Result<T1, E>)> + 'static,
-    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
-    P: ParserSource + 'static,
-    E: IsNotFoundErr,
-{
-    Box::new(move |reader| {
-        let (reader, res1) = first()(reader);
         match res1 {
             Ok(r1) => {
                 let (reader, res2) = second(reader);
@@ -470,40 +396,6 @@ where
         match res1 {
             Ok(r1) => {
                 let (char_reader, res2) = second(char_reader);
-                match res2 {
-                    Ok(r2) => (char_reader, Ok((r1, r2))),
-                    Err(err) => {
-                        if err.is_not_found_err() {
-                            (char_reader, Err(err_fn()))
-                        } else {
-                            (char_reader, Err(err))
-                        }
-                    }
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
-pub fn if_first_demand_second_lazy<P, F1, F2, T1, T2, FE>(
-    first: F1,
-    second: F2,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
-    F2: Fn() -> Box<dyn Fn(P) -> (P, Result<T2, QError>)> + 'static,
-    FE: Fn() -> QError + 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, res1) = first(char_reader);
-        match res1 {
-            Ok(r1) => {
-                let (char_reader, res2) = second()(char_reader);
                 match res2 {
                     Ok(r2) => (char_reader, Ok((r1, r2))),
                     Err(err) => {
@@ -636,45 +528,6 @@ where
     })
 }
 
-pub fn skip_first_lazy<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<T2, E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn() -> Box<dyn Fn(P) -> (P, Result<T2, E>)> + 'static,
-    P: ParserSource + Undo<T1> + 'static,
-    E: IsNotFoundErr,
-{
-    Box::new(move |reader| {
-        let (reader, first_result) = first(reader);
-        match first_result {
-            Ok(first_ok) => {
-                let (reader, second_result) = second()(reader);
-                match second_result {
-                    Ok(ch) => (reader, Ok(ch)),
-                    Err(err) => {
-                        if err.is_not_found_err() {
-                            (reader.undo(first_ok), Err(err))
-                        } else {
-                            (reader, Err(err))
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                if err.is_not_found_err() {
-                    second()(reader)
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
 pub fn abort_if<P, T1, T2, E, F1, F2>(
     predicate_source: F1,
     source: F2,
@@ -733,29 +586,6 @@ where
         if_first_demand_second(
             first,
             and_no_undo(super::pc::ws::one_or_more(), second),
-            err_fn,
-        ),
-        |(l, (_, r))| (l, r),
-    )
-}
-
-pub fn with_some_whitespace_between_lazy<P, F1, F2, T1, T2, FE>(
-    first: F1,
-    second: F2,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
-    F2: Fn() -> Box<dyn Fn(P) -> (P, Result<T2, QError>)> + 'static,
-    T1: 'static,
-    T2: 'static,
-    FE: Fn() -> QError + 'static,
-{
-    map(
-        if_first_demand_second(
-            first,
-            and_no_undo_lazy(super::pc::ws::one_or_more(), second),
             err_fn,
         ),
         |(l, (_, r))| (l, r),
@@ -1020,29 +850,6 @@ where
     )
 }
 
-pub fn csv_one_or_more_lazy<P, S, R, FE>(
-    source: S,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
-where
-    P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn() -> Box<dyn Fn(P) -> (P, Result<R, QError>)> + 'static,
-    R: 'static,
-    FE: Fn() -> QError + 'static,
-{
-    map(
-        take_one_or_more(
-            if_first_maybe_second(
-                skipping_whitespace_lazy(source),
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read(','))),
-            ),
-            |x| x.1.is_none(),
-            err_fn,
-        ),
-        |x| x.into_iter().map(|x| x.0).collect(),
-    )
-}
-
 pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
@@ -1061,24 +868,6 @@ where
     )
 }
 
-pub fn csv_zero_or_more_lazy<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
-where
-    P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn() -> Box<dyn Fn(P) -> (P, Result<R, QError>)> + 'static,
-    R: 'static,
-{
-    map(
-        take_zero_or_more(
-            if_first_maybe_second(
-                skipping_whitespace_lazy(source),
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read(','))),
-            ),
-            |x| x.1.is_none(),
-        ),
-        |x| x.into_iter().map(|x| x.0).collect(),
-    )
-}
-
 pub fn in_parenthesis<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
 where
     P: ParserSource + HasLocation + 'static,
@@ -1089,29 +878,6 @@ where
         and(
             try_read('('),
             maybe_first_and_second_no_undo(
-                source,
-                demand(try_read(')'), || {
-                    QError::SyntaxError("Expected closing parenthesis".to_string())
-                }),
-            ),
-        ),
-        |(_, (r, _))| match r {
-            Some(x) => Ok(x),
-            None => Err(QError::not_found_err()),
-        },
-    )
-}
-
-pub fn in_parenthesis_lazy<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn() -> Box<dyn Fn(P) -> (P, Result<T, QError>)> + 'static,
-    T: 'static,
-{
-    map_to_result_no_undo(
-        and(
-            try_read('('),
-            maybe_first_lazy_and_second_no_undo(
                 source,
                 demand(try_read(')'), || {
                     QError::SyntaxError("Expected closing parenthesis".to_string())

@@ -73,6 +73,17 @@ pub mod common {
         })
     }
 
+    /// Creates a parsing function which will get a result by creating a different
+    /// function at runtime. The function is provided by the given factory.
+    /// This can be used to solve recursive structures that cause stack overflow.
+    pub fn lazy<R, S, T, E>(lazy_source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn() -> Box<dyn Fn(R) -> (R, Result<T, E>)> + 'static,
+    {
+        Box::new(move |reader| lazy_source()(reader))
+    }
+
     /// Returns a function that filters the given source with the given predicate.
     /// If the predicate returns `true`, the value of the source is returned as-is.
     /// Otherwise, a Not Found error will be returned.

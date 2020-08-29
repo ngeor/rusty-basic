@@ -78,16 +78,20 @@ fn parse_select_case_expr<T: BufRead + 'static>(
 
 fn case_blocks<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<CaseBlockNode>, QError>)> {
-    map_default_to_not_found(take_zero_or_more(case_block(), |_| false))
+    map_default_to_not_found(zero_or_more(map(case_block(), |x| (x, Some(())))))
 }
 
 fn case_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseBlockNode, QError>)> {
     map(
-        if_first_demand_second(
+        seq2(
             case_expr(),
-            statements::statements(read_keyword_if(|k| k == Keyword::Case || k == Keyword::End)),
-            || QError::SyntaxError("Expected statements after case expression".to_string()),
+            demand(
+                statements::statements(read_keyword_if(|k| {
+                    k == Keyword::Case || k == Keyword::End
+                })),
+                QError::syntax_error_fn("Expected statements after case expression"),
+            ),
         ),
         |(expr, statements)| CaseBlockNode { expr, statements },
     )
@@ -107,21 +111,22 @@ fn case_expr<T: BufRead + 'static>(
 fn case_expr_is<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QError>)> {
     map(
-        if_first_demand_second(
+        seq4(
             try_read_keyword(Keyword::Is),
-            crate::parser::pc::ws::one_or_more_leading(demand(
-                if_first_demand_second(
-                    expression::operand(false),
-                    crate::parser::pc::ws::zero_or_more_leading(
-                        expression::single_expression_node(),
-                    ),
-                    || QError::SyntaxError("Expected expression".to_string()),
-                ),
-                QError::syntax_error_fn("Expected whitespace"),
-            )),
-            || QError::SyntaxError("Expected operand".to_string()),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace after IS"),
+            ),
+            demand(
+                expression::operand(false),
+                QError::syntax_error_fn("Expected operand after IS"),
+            ),
+            demand(
+                crate::parser::pc::ws::zero_or_more_leading(expression::expression_node()),
+                QError::syntax_error_fn("Expected expression"),
+            ),
         ),
-        |(_, (op, r))| CaseExpression::Is(op.strip_location(), r),
+        |(_, _, op, r)| CaseExpression::Is(op.strip_location(), r),
     )
 }
 
@@ -130,15 +135,20 @@ fn case_expr_to_or_simple<T: BufRead + 'static>(
     map(
         if_first_maybe_second(
             expression::expression_node(),
-            if_first_demand_second(
-                // TODO should be demanding_whitespace_around
-                crate::parser::pc::ws::zero_or_more_around(try_read_keyword(Keyword::To)),
-                expression::expression_node(),
-                || QError::SyntaxError("Expected expression".to_string()),
-            ),
+            drop_left(and(
+                crate::parser::pc::ws::one_or_more(),
+                drop_left(crate::parser::pc::ws::seq2(
+                    try_read_keyword(Keyword::To),
+                    demand(
+                        expression::expression_node(),
+                        QError::syntax_error_fn("Expected expression after TO"),
+                    ),
+                    QError::syntax_error_fn("Expected whitespace after TO"),
+                )),
+            )),
         ),
         |(l, opt_r)| match opt_r {
-            Some((_, r)) => CaseExpression::Range(l, r),
+            Some(r) => CaseExpression::Range(l, r),
             None => CaseExpression::Simple(l),
         },
     )

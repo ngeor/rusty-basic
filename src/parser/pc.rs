@@ -253,14 +253,15 @@ pub mod common {
     ///
     /// If either source returns a fatal error, the error will be returned.
     /// If the second source returns a Not Found error, the first result will be still returned.
-    pub fn if_first_maybe_second<R, F1, F2, T1, T2, E>(
-        first: F1,
-        second: F2,
+    #[deprecated(note = "try to make something more generic like seq")]
+    pub fn if_first_maybe_second<R, S1, S2, T1, T2, E>(
+        first: S1,
+        second: S2,
     ) -> Box<dyn Fn(R) -> (R, Result<(T1, Option<T2>), E>)>
     where
         R: Reader + 'static,
-        F1: Fn(R) -> (R, Result<T1, E>) + 'static,
-        F2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
         T1: 'static,
         T2: 'static,
         E: IsNotFoundErr + 'static,
@@ -519,14 +520,14 @@ pub mod common {
     /// If either source returns an error, the error will be returned.
     /// If the first source returns an error, the second will not be called.
     /// If the second source returns a Not Found error, the first result will be undone.
-    pub fn and<R, F1, F2, T1, T2, E>(
-        first: F1,
-        second: F2,
+    pub fn and<R, S1, S2, T1, T2, E>(
+        first: S1,
+        second: S2,
     ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2), E>)>
     where
         R: Reader + Undo<T1> + 'static,
-        F1: Fn(R) -> (R, Result<T1, E>) + 'static,
-        F2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
         T1: 'static,
         T2: 'static,
         E: NotFoundErr + 'static,
@@ -592,6 +593,80 @@ pub mod common {
             |reader, x| (reader.undo(x), Err(E::not_found_err())),
             |_| Ok(()),
         )
+    }
+
+    pub fn or<R, S1, S2, T, E>(first: S1, second: S2) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T, E>) + 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, res1) = first(reader);
+            match res1 {
+                Ok(ch) => (reader, Ok(ch)),
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        second(reader)
+                    } else {
+                        (reader, Err(err))
+                    }
+                }
+            }
+        })
+    }
+
+    pub fn or_vec<R, T, E, F>(mut sources: Vec<F>) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        T: 'static,
+        E: IsNotFoundErr + 'static,
+        F: Fn(R) -> (R, Result<T, E>) + 'static,
+    {
+        if sources.len() > 2 {
+            let first = sources.remove(0);
+            or(first, or_vec(sources))
+        } else if sources.len() == 2 {
+            let second = sources.pop().unwrap();
+            let first = sources.pop().unwrap();
+            or(first, second)
+        } else {
+            panic!("or_vec must have at least two functions to choose from");
+        }
+    }
+
+    pub fn zero_or_more<R, S, T1, T2, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<Vec<T1>, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<(T1, Option<T2>), E>) + 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        Box::new(move |char_reader| {
+            let mut result: Vec<T1> = vec![];
+            let mut cr: R = char_reader;
+            loop {
+                let (x, next) = source(cr);
+                cr = x;
+                match next {
+                    Err(err) => {
+                        if err.is_not_found_err() {
+                            break;
+                        } else {
+                            return (cr, Err(err));
+                        }
+                    }
+                    Ok((t1, opt_t2)) => {
+                        let last = opt_t2.is_none();
+                        result.push(t1);
+                        if last {
+                            break;
+                        }
+                    }
+                }
+            }
+            (cr, Ok(result))
+        })
     }
 }
 

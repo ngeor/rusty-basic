@@ -65,9 +65,13 @@ fn two_letter_range<T: BufRead + 'static>(
     and_then(
         and(
             read_any_letter(),
-            if_first_demand_second(try_read('-'), read_any_letter(), || {
-                QError::SyntaxError("Expected letter after dash".to_string())
-            }),
+            seq2(
+                try_read('-'),
+                demand(
+                    read_any_letter(),
+                    QError::syntax_error_fn("Expected letter after dash"),
+                ),
+            ),
         ),
         |(l, (_, r))| {
             if l < r {

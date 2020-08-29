@@ -273,120 +273,6 @@ where
 }
 
 //
-// Combine two or more parsers
-//
-
-#[deprecated]
-pub fn if_first_demand_second<P, F1, F2, T1, T2, FE>(
-    first: F1,
-    second: F2,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, QError>) + 'static,
-    FE: Fn() -> QError + 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, res1) = first(char_reader);
-        match res1 {
-            Ok(r1) => {
-                let (char_reader, res2) = second(char_reader);
-                match res2 {
-                    Ok(r2) => (char_reader, Ok((r1, r2))),
-                    Err(err) => {
-                        if err.is_not_found_err() {
-                            (char_reader, Err(err_fn()))
-                        } else {
-                            (char_reader, Err(err))
-                        }
-                    }
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
-#[deprecated]
-pub fn if_first_maybe_second_peeking_first<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, Option<T2>), E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn(P, &T1) -> (P, Result<T2, E>) + 'static,
-    E: IsNotFoundErr,
-    P: ParserSource + 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, res1) = first(char_reader);
-        match res1 {
-            Ok(r1) => {
-                let (char_reader, res2) = second(char_reader, &r1);
-                match res2 {
-                    Ok(r2) => (char_reader, Ok((r1, Some(r2)))),
-                    Err(err) => {
-                        if err.is_not_found_err() {
-                            (char_reader, Ok((r1, None)))
-                        } else {
-                            (char_reader, Err(err))
-                        }
-                    }
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
-pub fn or<P, F1, F2, T, E>(first: F1, second: F2) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
-where
-    F1: Fn(P) -> (P, Result<T, E>) + 'static,
-    F2: Fn(P) -> (P, Result<T, E>) + 'static,
-    E: IsNotFoundErr,
-    P: ParserSource + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, res1) = first(reader);
-        match res1 {
-            Ok(ch) => (reader, Ok(ch)),
-            Err(err) => {
-                if err.is_not_found_err() {
-                    second(reader)
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
-pub fn or_vec<P, T, E, F>(mut sources: Vec<F>) -> Box<dyn Fn(P) -> (P, Result<T, E>)>
-where
-    P: ParserSource + 'static,
-    T: 'static,
-    E: IsNotFoundErr + 'static,
-    F: Fn(P) -> (P, Result<T, E>) + 'static,
-{
-    if sources.len() > 2 {
-        let first = sources.remove(0);
-        or(first, or_vec(sources))
-    } else if sources.len() == 2 {
-        let second = sources.pop().unwrap();
-        let first = sources.pop().unwrap();
-        or(first, second)
-    } else {
-        panic!("or_vec must have at least two functions to choose from");
-    }
-}
-
-//
 // Modify the result of a parser
 //
 
@@ -413,59 +299,16 @@ where
 // Take multiple items
 //
 
-pub fn take_zero_or_more<P, S, T, F>(
-    source: S,
-    is_terminal: F,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-    T: 'static,
-    F: Fn(&T) -> bool + 'static,
-{
-    Box::new(move |char_reader| {
-        let mut result: Vec<T> = vec![];
-        let mut cr: P = char_reader;
-        loop {
-            let (x, next) = source(cr);
-            cr = x;
-            match next {
-                Err(err) => {
-                    if err.is_not_found_err() {
-                        break;
-                    } else {
-                        return (cr, Err(err));
-                    }
-                }
-                Ok(ch) => {
-                    let last = is_terminal(&ch);
-                    result.push(ch);
-                    if last {
-                        break;
-                    }
-                }
-            }
-        }
-        (cr, Ok(result))
-    })
-}
-
 pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
     S: Fn(P) -> (P, Result<R, QError>) + 'static,
     R: 'static,
 {
-    map(
-        take_zero_or_more(
-            if_first_maybe_second(
-                source,
-                crate::parser::pc::ws::zero_or_more_around(try_read(',')),
-            ),
-            |x| x.1.is_none(),
-        ),
-        |x| x.into_iter().map(|x| x.0).collect(),
-    )
+    zero_or_more(if_first_maybe_second(
+        source,
+        crate::parser::pc::ws::zero_or_more_around(try_read(',')),
+    ))
 }
 
 pub fn in_parenthesis<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>

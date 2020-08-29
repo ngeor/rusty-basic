@@ -1,11 +1,11 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
-use crate::parser::pc::copy::*;
-use crate::parser::pc::loc::*;
-use crate::parser::pc::str::*;
+use crate::parser::pc::copy::try_read;
+use crate::parser::pc::loc::with_pos;
+use crate::parser::pc::str::{zero_or_more_if, zero_or_more_if_leading_remaining};
 use crate::parser::pc::traits::*;
-use crate::parser::pc::ws::*;
+use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace, is_whitespace};
 use crate::parser::statement;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -19,30 +19,22 @@ pub struct ParseStatementsOptions {
 
 pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
-    crate::parser::pc::ws::one_or_more_leading(map(
-        map_default_to_not_found(take_zero_or_more(
-            if_first_maybe_second(
-                with_pos(statement::single_line_non_comment_statement()),
-                crate::parser::pc::ws::zero_or_more_around(try_read(':')),
-            ),
-            |x| x.1.is_none(),
-        )),
-        |x| x.into_iter().map(|i| i.0).collect(),
-    ))
+    crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(zero_or_more(
+        if_first_maybe_second(
+            with_pos(statement::single_line_non_comment_statement()),
+            crate::parser::pc::ws::zero_or_more_around(try_read(':')),
+        ),
+    )))
 }
 
 pub fn single_line_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
-    crate::parser::pc::ws::one_or_more_leading(map(
-        map_default_to_not_found(take_zero_or_more(
-            if_first_maybe_second(
-                with_pos(statement::single_line_statement()),
-                crate::parser::pc::ws::zero_or_more_around(try_read(':')),
-            ),
-            |x| x.1.is_none(),
-        )),
-        |x| x.into_iter().map(|i| i.0).collect(),
-    ))
+    crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(zero_or_more(
+        if_first_maybe_second(
+            with_pos(statement::single_line_statement()),
+            crate::parser::pc::ws::zero_or_more_around(try_read(':')),
+        ),
+    )))
 }
 
 pub fn skip_until_first_statement<T: BufRead + 'static>(
@@ -88,37 +80,37 @@ where
     S: Fn(EolReader<T>) -> (EolReader<T>, Result<X, QError>) + 'static,
     EolReader<T>: Undo<X>,
 {
-    map(
-        and(
-            skip_until_first_statement(),
-            take_zero_or_more(
-                move |reader| {
-                    let (reader, exit_result) = exit_source(reader);
-                    match exit_result {
-                        Ok(x) => {
-                            // found the exit
-                            reader.undo_and_err_not_found(x)
-                        }
-                        Err(err) => {
-                            if err.is_not_found_err() {
-                                // did not find the exit, we can parse a statement
-                                statement_node_and_separator()(reader)
-                            } else {
-                                // something else happened, abort
-                                (reader, Err(err))
-                            }
-                        }
+    drop_left(and(
+        skip_until_first_statement(),
+        zero_or_more(move |reader| {
+            let (reader, exit_result) = exit_source(reader);
+            match exit_result {
+                Ok(x) => {
+                    // found the exit
+                    reader.undo_and_err_not_found(x)
+                }
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        // did not find the exit, we can parse a statement
+                        statement_node_and_separator()(reader)
+                    } else {
+                        // something else happened, abort
+                        (reader, Err(err))
                     }
-                },
-                |x: &(StatementNode, String)| x.1.is_empty(),
-            ),
-        ),
-        |(_, x)| x.into_iter().map(|x| x.0).collect(),
-    )
+                }
+            }
+        }),
+    ))
 }
 
-fn statement_node_and_separator<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(StatementNode, String), QError>)> {
+fn statement_node_and_separator<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<(StatementNode, Option<String>), QError>,
+    ),
+> {
     Box::new(move |reader| {
         let (reader, statement_result) = statement::statement_node()(reader);
         match statement_result {
@@ -134,10 +126,10 @@ fn statement_node_and_separator<T: BufRead + 'static>(
                     crate::parser::pc::ws::zero_or_more_leading(non_comment_separator())(reader)
                 };
                 match sep {
-                    Ok(x) => (reader, Ok((s_node, x))),
+                    Ok(x) => (reader, Ok((s_node, Some(x)))),
                     Err(err) => {
                         if err.is_not_found_err() {
-                            (reader, Ok((s_node, String::new())))
+                            (reader, Ok((s_node, None)))
                         } else {
                             (reader, Err(err))
                         }

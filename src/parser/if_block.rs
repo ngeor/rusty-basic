@@ -11,10 +11,12 @@ use std::io::BufRead;
 pub fn if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        if_first_demand_second(
+        seq2(
             if_expr_then(),
-            or(single_line_if_else(), multi_line_if()),
-            || QError::SyntaxError("Expected single or multi line IF".to_string()),
+            demand(
+                or(single_line_if_else(), multi_line_if()),
+                QError::syntax_error_fn("Expected single or multi line IF"),
+            ),
         ),
         |(condition, (statements, else_if_blocks, else_block))| {
             Statement::IfBlock(IfBlockNode {
@@ -115,7 +117,7 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
     ),
 > {
     map(
-        if_first_demand_second(
+        seq2(
             if_first_maybe_second(
                 if_first_maybe_second(
                     statements::statements(read_keyword_if(|k| {
@@ -125,8 +127,7 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
                 ),
                 else_block(),
             ),
-            end_if(),
-            || QError::SyntaxError("Expected END IF".to_string()),
+            demand(end_if(), QError::syntax_error_fn("Expected END IF")),
         ),
         |(((if_block, opt_else_if_blocks), opt_else), _)| {
             (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
@@ -155,18 +156,20 @@ fn else_if_expr_then<T: BufRead + 'static>(
 
 fn else_if_blocks<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<ConditionalBlockNode>, QError>)> {
-    map_default_to_not_found(take_zero_or_more(else_if_block(), |_| false))
+    map_default_to_not_found(zero_or_more(map(else_if_block(), |x| (x, Some(())))))
 }
 
 fn else_if_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ConditionalBlockNode, QError>)> {
     map(
-        if_first_demand_second(
+        seq2(
             else_if_expr_then(),
-            statements::statements(read_keyword_if(|k| {
-                k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
-            })),
-            || QError::SyntaxError("Expected statements after expression".to_string()),
+            demand(
+                statements::statements(read_keyword_if(|k| {
+                    k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
+                })),
+                QError::syntax_error_fn("Expected statements after expression"),
+            ),
         ),
         |(condition, statements)| ConditionalBlockNode {
             condition,
@@ -177,15 +180,14 @@ fn else_if_block<T: BufRead + 'static>(
 
 fn else_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
-    map(
-        if_first_demand_second(
-            try_read_keyword(Keyword::Else),
-            // TODO add here an EOL else separator
+    drop_left(seq2(
+        try_read_keyword(Keyword::Else),
+        // TODO add here an EOL else separator
+        demand(
             statements::statements(read_keyword_if(|k| k == Keyword::End)),
-            || QError::SyntaxError("Expected statements after ELSE".to_string()),
+            QError::syntax_error_fn("Expected statements after ELSE"),
         ),
-        |(_, r)| r,
-    )
+    ))
 }
 
 fn end_if<T: BufRead + 'static>() -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(), QError>)>

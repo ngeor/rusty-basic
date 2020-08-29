@@ -4,6 +4,7 @@ use crate::parser::name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
+use crate::parser::pc::traits::*;
 use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;
@@ -12,27 +13,49 @@ use std::io::BufRead;
 
 pub fn expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
-    map(
-        if_first_maybe_second_peeking_first(single_expression_node(), |reader, first_expr_ref| {
-            if_first_demand_second(
-                operand(first_expr_ref.is_parenthesis()),
-                crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
-                || QError::SyntaxError("Expected right side expression".to_string()),
-            )(reader)
-        }),
-        |(l, r)| {
-            match r {
-                None => l,
-                Some((Locatable { element: op, pos }, right_side)) => {
-                    l.apply_priority_order(right_side, op, pos)
-                }
+    Box::new(move |reader| {
+        let (reader, first_res) = single_expression_node()(reader);
+        match first_res {
+            Ok(first_expr) => {
+                let (reader, second_res) = try_second_expression(reader, first_expr);
+                let second_res = second_res.map(|x| x.simplify_unary_minus_literals());
+                (reader, second_res)
             }
-            .simplify_unary_minus_literals()
-        },
-    )
+            Err(err) => (reader, Err(err)),
+        }
+    })
 }
 
-pub fn single_expression_node<T: BufRead + 'static>(
+fn try_second_expression<T: BufRead + 'static>(
+    reader: EolReader<T>,
+    first_expr: ExpressionNode,
+) -> (EolReader<T>, Result<ExpressionNode, QError>) {
+    let (reader, second_res) = seq2(
+        operand(first_expr.is_parenthesis()),
+        demand(
+            crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
+            QError::syntax_error_fn("Expected right side expression"),
+        ),
+    )(reader);
+    match second_res {
+        Ok((loc_op, second_expr)) => {
+            let Locatable { element: op, pos } = loc_op;
+            (
+                reader,
+                Ok(first_expr.apply_priority_order(second_expr, op, pos)),
+            )
+        }
+        Err(err) => {
+            if err.is_not_found_err() {
+                (reader, Ok(first_expr))
+            } else {
+                (reader, Err(err))
+            }
+        }
+    }
+}
+
+fn single_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     or_vec(vec![
         with_pos(string_literal::string_literal()),
@@ -49,9 +72,13 @@ pub fn single_expression_node<T: BufRead + 'static>(
 pub fn unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
-        if_first_demand_second(with_pos(try_read('-')), lazy(expression_node), || {
-            QError::SyntaxError("Expected expression after unary minus".to_string())
-        }),
+        seq2(
+            with_pos(try_read('-')),
+            demand(
+                lazy(expression_node),
+                QError::syntax_error_fn("Expected expression after unary minus"),
+            ),
+        ),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
     )
 }
@@ -74,15 +101,14 @@ pub fn unary_not<T: BufRead + 'static>(
 pub fn file_handle<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
     and_then(
-        if_first_demand_second(try_read('#'), with_pos(read_any_digits()), || {
-            QError::SyntaxError("Expected digits after #".to_string())
-        }),
-        |(
-            _,
-            Locatable {
-                element: digits, ..
-            },
-        )| match digits.parse::<u32>() {
+        seq2(
+            try_read('#'),
+            demand(
+                read_any_digits(),
+                QError::syntax_error_fn("Expected digits after #"),
+            ),
+        ),
+        |(_, digits)| match digits.parse::<u32>() {
             Ok(d) => Ok(Expression::FileHandle(d.into())),
             Err(err) => Err(err.into()),
         },
@@ -109,15 +135,15 @@ mod string_literal {
     pub fn string_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
         map(
-            if_first_demand_second(
-                if_first_maybe_second(
-                    try_read('"'),
-                    crate::parser::pc::str::zero_or_more_if(is_not_quote),
-                ),
+            seq3(
                 try_read('"'),
-                || QError::SyntaxError("Unterminated string".to_string()),
+                crate::parser::pc::str::zero_or_more_if(is_not_quote),
+                demand(
+                    try_read('"'),
+                    QError::syntax_error_fn("Unterminated string"),
+                ),
             ),
-            |((_, opt_str), _)| Expression::StringLiteral(opt_str.unwrap_or_default()),
+            |(_, s, _)| Expression::StringLiteral(s),
         )
     }
 }
@@ -131,9 +157,13 @@ mod number_literal {
             if_first_maybe_second(
                 with_pos(read_any_digits()),
                 if_first_maybe_second(
-                    if_first_demand_second(try_read('.'), read_any_digits(), || {
-                        QError::SyntaxError("Expected digits after decimal point".to_string())
-                    }),
+                    seq2(
+                        with_pos(try_read('.')),
+                        demand(
+                            read_any_digits(),
+                            QError::syntax_error_fn("Expected digits after decimal point"),
+                        ),
+                    ),
                     try_read('#'),
                 ),
             ),
@@ -156,9 +186,13 @@ mod number_literal {
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
         and_then(
             if_first_maybe_second(
-                if_first_demand_second(with_pos(try_read('.')), read_any_digits(), || {
-                    QError::SyntaxError("Expected digits after decimal point".to_string())
-                }),
+                seq2(
+                    with_pos(try_read('.')),
+                    demand(
+                        read_any_digits(),
+                        QError::syntax_error_fn("Expected digits after decimal point"),
+                    ),
+                ),
                 try_read('#'),
             ),
             |((Locatable { pos, .. }, frac_digits), opt_double)| {

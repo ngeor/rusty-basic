@@ -16,28 +16,27 @@ use std::io::BufRead;
 pub fn select_case<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        with_keyword_after(
-            with_keyword_after(
+        seq2(
+            // TODO some seq_opt or something for this
+            if_first_maybe_second(
                 if_first_maybe_second(
                     if_first_maybe_second(
-                        if_first_maybe_second(
-                            parse_select_case_expr(),
-                            // parse inline comments after SELECT
-                            statements::statements(read_keyword_if(|k| {
-                                k == Keyword::Case || k == Keyword::End
-                            })),
-                        ),
-                        case_blocks(),
+                        parse_select_case_expr(),
+                        // parse inline comments after SELECT
+                        statements::statements(read_keyword_if(|k| {
+                            k == Keyword::Case || k == Keyword::End
+                        })),
                     ),
-                    case_else(),
+                    case_blocks(),
                 ),
-                Keyword::End,
-                || QError::SyntaxError("Expected END".to_string()),
+                case_else(),
             ),
-            Keyword::Select,
-            || QError::SyntaxError("Expected SELECT".to_string()),
+            demand(
+                parse_end_select(),
+                QError::syntax_error_fn("Expected END SELECT"),
+            ),
         ),
-        |(((expr, inline_statements), opt_blocks), opt_else)| {
+        |((((expr, inline_statements), opt_blocks), opt_else), _)| {
             Statement::SelectCase(SelectCaseNode {
                 expr,
                 case_blocks: opt_blocks.unwrap_or_default(),
@@ -58,13 +57,38 @@ pub fn select_case<T: BufRead + 'static>(
     )
 }
 
-fn parse_select_case_expr<T: BufRead + 'static>() -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
-    map(crate::parser::pc::ws::seq3(
-        try_read_keyword(Keyword::Select),
-        demand(try_read_keyword(Keyword::Case), QError::syntax_error_fn("Expected CASE")),
-        demand(expression::expression_node(), QError::syntax_error_fn("Expected expression")),
-        QError::syntax_error_fn_fn("Expected whitespace"),
-    ), |(_,_,e)| e)
+fn parse_select_case_expr<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    map(
+        crate::parser::pc::ws::seq3(
+            try_read_keyword(Keyword::Select),
+            demand(
+                try_read_keyword(Keyword::Case),
+                QError::syntax_error_fn("Expected CASE"),
+            ),
+            demand(
+                expression::expression_node(),
+                QError::syntax_error_fn("Expected expression"),
+            ),
+            QError::syntax_error_fn_fn("Expected whitespace"),
+        ),
+        |(_, _, e)| e,
+    )
+}
+
+fn parse_end_select<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(), QError>)> {
+    map(
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::End),
+            demand(
+                try_read_keyword(Keyword::Select),
+                QError::syntax_error_fn("Expected SELECT"),
+            ),
+            QError::syntax_error_fn("Expected whitespace after CASE"),
+        ),
+        |(_, _)| (),
+    )
 }
 
 pub fn case_else<T: BufRead + 'static>(

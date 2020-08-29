@@ -809,28 +809,6 @@ where
     )
 }
 
-#[deprecated]
-pub fn with_keyword_after<P, T, S, FE>(
-    source: S,
-    needle: Keyword,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + HasLocation + Undo<String> + Undo<(Keyword, String)> + 'static,
-    T: 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-    FE: Fn() -> QError + 'static,
-{
-    map(
-        if_first_demand_second(
-            source,
-            crate::parser::pc::ws::zero_or_more_leading(try_read_keyword(needle)),
-            err_fn,
-        ),
-        |(l, _)| l,
-    )
-}
-
 //
 // EolReader
 //

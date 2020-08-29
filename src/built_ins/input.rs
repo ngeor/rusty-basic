@@ -31,19 +31,25 @@ pub struct Input {}
 
 pub fn parse_input<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
-    map(
-        parse_input_args(),
-        |r| Statement::SubCall("INPUT".into(), r),
-    )
+    map(parse_input_args(), |r| {
+        Statement::SubCall("INPUT".into(), r)
+    })
 }
 
-pub fn parse_input_args<T: BufRead + 'static>() -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<crate::parser::ExpressionNode>, QError>)> {
+pub fn parse_input_args<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<Vec<crate::parser::ExpressionNode>, QError>,
+    ),
+> {
     drop_left(crate::parser::pc::ws::seq2(
         try_read_keyword(Keyword::Input),
         csv_one_or_more(expression::expression_node(), || {
             QError::SyntaxError("Expected at least one variable".to_string())
         }),
-        QError::syntax_error_fn("Expected whitespace after INPUT")
+        QError::syntax_error_fn("Expected whitespace after INPUT"),
     ))
 }
 

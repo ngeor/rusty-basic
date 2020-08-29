@@ -1,33 +1,42 @@
-use super::{ConditionalBlockNode, Keyword, Statement};
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::pc::common::*;
 use crate::parser::statements::*;
+use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn while_wend<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        with_keyword_after(
-            with_keyword_before(
-                Keyword::While,
-                if_first_demand_second(
-                    expression::expression_node(),
-                    statements(try_read_keyword(Keyword::Wend)),
-                    || QError::SyntaxError("Expected WHILE statements".to_string()),
-                ),
+        seq3(
+            parse_while_expression(),
+            demand(
+                statements(try_read_keyword(Keyword::Wend)),
+                QError::syntax_error_fn("Expected WHILE statements"),
             ),
-            Keyword::Wend,
-            || QError::WhileWithoutWend,
+            demand(try_read_keyword(Keyword::Wend), || QError::WhileWithoutWend),
         ),
-        |(l, r)| {
+        |(l, r, _)| {
             Statement::While(ConditionalBlockNode {
                 condition: l,
                 statements: r,
             })
         },
     )
+}
+
+fn parse_while_expression<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    drop_left(crate::parser::pc::ws::seq2(
+        try_read_keyword(Keyword::While),
+        demand(
+            expression::expression_node(),
+            QError::syntax_error_fn("Expected WHILE condition"),
+        ),
+        // TODO is WHILE(X>1) acceptable in QB?
+        QError::syntax_error_fn("Expected whitespace after WHILE"),
+    ))
 }
 
 #[cfg(test)]

@@ -236,10 +236,13 @@ pub fn read_any_word<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + Undo<String> + 'static,
 {
-    map_or_undo(read_any_identifier(), |s| match Keyword::from_str(&s) {
-        Ok(_) => MapOrUndo::Undo(s),
-        Err(_) => MapOrUndo::Ok(s),
-    })
+    map_fully_ok(
+        read_any_identifier(),
+        |reader: P, s| match Keyword::from_str(&s) {
+            Ok(_) => (reader.undo(s), Err(QError::not_found_err())),
+            Err(_) => (reader, Ok(s)),
+        },
+    )
 }
 
 pub fn read_keyword_if<P, F>(
@@ -423,38 +426,6 @@ where
 //
 // Modify the result of a parser
 //
-
-pub enum MapOrUndo<T, U> {
-    Ok(T),
-    Undo(U),
-}
-
-/// Maps the ok output of the `source` with the given mapper function.
-/// The function can convert an ok result into a not found result.
-#[deprecated]
-pub fn map_or_undo<P, S, M, T, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
-where
-    P: ParserSource + 'static + Undo<T>,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-    M: Fn(T) -> MapOrUndo<U, T> + 'static,
-    T: 'static,
-    U: 'static,
-    E: NotFoundErr + 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, next) = source(char_reader);
-        match next {
-            Ok(ch) => {
-                // switch it
-                match mapper(ch) {
-                    MapOrUndo::Ok(x) => (char_reader, Ok(x)),
-                    MapOrUndo::Undo(x) => (char_reader.undo(x), Err(E::not_found_err())),
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
 
 pub fn switch_from_str<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<(T, String), E>)>
 where

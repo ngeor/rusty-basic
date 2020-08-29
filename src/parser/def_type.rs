@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::traits::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -31,13 +32,13 @@ pub fn def_type<T: BufRead + 'static>(
 
 fn def_keyword<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeQualifier, QError>)> {
-    map_or_undo(read_any_keyword(), |(k, s)| match k {
-        Keyword::DefDbl => MapOrUndo::Ok(TypeQualifier::HashDouble),
-        Keyword::DefInt => MapOrUndo::Ok(TypeQualifier::PercentInteger),
-        Keyword::DefLng => MapOrUndo::Ok(TypeQualifier::AmpersandLong),
-        Keyword::DefSng => MapOrUndo::Ok(TypeQualifier::BangSingle),
-        Keyword::DefStr => MapOrUndo::Ok(TypeQualifier::DollarString),
-        _ => MapOrUndo::Undo((k, s)),
+    map_fully_ok(read_any_keyword(), |reader: EolReader<T>, (k, s)| match k {
+        Keyword::DefDbl => (reader, Ok(TypeQualifier::HashDouble)),
+        Keyword::DefInt => (reader, Ok(TypeQualifier::PercentInteger)),
+        Keyword::DefLng => (reader, Ok(TypeQualifier::AmpersandLong)),
+        Keyword::DefSng => (reader, Ok(TypeQualifier::BangSingle)),
+        Keyword::DefStr => (reader, Ok(TypeQualifier::DollarString)),
+        _ => (reader.undo(s), Err(QError::not_found_err())),
     })
 }
 

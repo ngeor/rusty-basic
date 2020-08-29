@@ -277,44 +277,6 @@ where
 //
 
 #[deprecated]
-pub fn maybe_first_and_second_no_undo<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<(Option<T1>, T2), E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
-    P: ParserSource + 'static,
-    E: IsNotFoundErr,
-{
-    Box::new(move |reader| {
-        let (reader, res1) = first(reader);
-        match res1 {
-            Ok(r1) => {
-                let (reader, res2) = second(reader);
-                match res2 {
-                    Ok(r2) => (reader, Ok((Some(r1), r2))),
-                    Err(err) => (reader, Err(err)),
-                }
-            }
-            Err(err) => {
-                if err.is_not_found_err() {
-                    let (reader, res2) = second(reader);
-                    match res2 {
-                        Ok(r2) => (reader, Ok((None, r2))),
-                        Err(err) => (reader, Err(err)),
-                    }
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
-#[deprecated]
 pub fn if_first_demand_second<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
@@ -349,6 +311,7 @@ where
     })
 }
 
+#[deprecated]
 pub fn if_first_maybe_second_peeking_first<P, F1, F2, T1, T2, E>(
     first: F1,
     second: F2,

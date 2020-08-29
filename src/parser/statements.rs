@@ -49,6 +49,8 @@ pub fn skip_until_first_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
     Box::new(move |reader| {
         let mut buf: String = String::new();
+
+        // skip whitespace
         let (reader, res) = crate::parser::pc::ws::zero_or_more()(reader);
         match res {
             Err(err) => return (reader, Err(err)),
@@ -61,12 +63,14 @@ pub fn skip_until_first_statement<T: BufRead + 'static>(
         match res {
             Err(err) => (reader, Err(err)),
             Ok('\r') | Ok('\n') => {
+                // take EOL, continue taking eol or whitespace
                 buf.push('\n');
                 map(zero_or_more_if(is_eol_or_whitespace), move |x| {
                     format!("{}{}", buf, x)
                 })(reader)
             }
             Ok(':') => {
+                // take colon separator, continue taking whitespace
                 buf.push(':');
                 map(crate::parser::pc::ws::zero_or_more(), move |x| {
                     format!("{}{}", buf, x)
@@ -85,7 +89,7 @@ where
     EolReader<T>: Undo<X>,
 {
     map(
-        maybe_first_and_second_no_undo(
+        and(
             skip_until_first_statement(),
             take_zero_or_more(
                 move |reader| {

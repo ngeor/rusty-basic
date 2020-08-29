@@ -14,10 +14,18 @@ use std::io::BufRead;
 pub fn def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QError>)> {
     map(
-        with_some_whitespace_between(def_keyword(), letter_ranges(), || {
-            QError::SyntaxError("Expected letter ranges".to_string())
-        }),
-        |(l, r)| DefType::new(l, r),
+        seq3(
+            def_keyword(),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace"),
+            ),
+            demand(
+                letter_ranges(),
+                QError::syntax_error_fn("Expected letter ranges"),
+            ),
+        ),
+        |(l, _, r)| DefType::new(l, r),
     )
 }
 

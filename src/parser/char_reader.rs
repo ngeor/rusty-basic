@@ -270,7 +270,7 @@ where
 {
     demand(
         super::pc::common::filter_any(read_any_keyword(), move |(k, _)| *k == needle),
-        move || QError::SyntaxError(format!("Expected keyword {}", needle)),
+        QError::syntax_error_fn(format!("Expected keyword {}", needle)),
     )
 }
 
@@ -286,6 +286,7 @@ where
 //
 
 // internal use only
+#[deprecated]
 fn and_no_undo<P, F1, F2, T1, T2, E>(
     first: F1,
     second: F2,
@@ -350,6 +351,7 @@ where
     })
 }
 
+#[deprecated]
 pub fn if_first_demand_second<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
@@ -458,48 +460,7 @@ where
     }
 }
 
-/// Skips the result of the first parser and returns the result of the second one.
-/// The only case where the result of the first parser is returned is if
-/// it returns an unrecoverable error.
-pub fn skip_first<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<T2, E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
-    P: ParserSource + Undo<T1> + 'static,
-    E: IsNotFoundErr,
-{
-    Box::new(move |reader| {
-        let (reader, first_result) = first(reader);
-        match first_result {
-            Ok(first_ok) => {
-                let (reader, second_result) = second(reader);
-                match second_result {
-                    Ok(ch) => (reader, Ok(ch)),
-                    Err(err) => {
-                        if err.is_not_found_err() {
-                            (reader.undo(first_ok), Err(err))
-                        } else {
-                            (reader, Err(err))
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                if err.is_not_found_err() {
-                    second(reader)
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
+#[deprecated]
 pub fn abort_if<P, T1, T2, E, F1, F2>(
     predicate_source: F1,
     source: F2,
@@ -541,6 +502,7 @@ where
 /// their results.
 /// If the first parser succeeds, there must be a whitespace after it and the
 /// second parser must also succeed.
+#[deprecated]
 pub fn with_some_whitespace_between<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
@@ -569,6 +531,7 @@ where
 /// If the first parser succeeds, the second parser must also succeed.
 ///
 /// Returns not found if there is no leading whitespace or if the first parser fails.
+#[deprecated]
 pub fn with_some_whitespace_before_and_between<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
@@ -587,6 +550,7 @@ where
 
 /// Combines the two given parsers, allowing some optional whitespace between their results.
 /// If the first parser succeeds, the second must also succeed.
+#[deprecated]
 pub fn with_any_whitespace_between<P, F1, F2, T1, T2, FE>(
     first: F1,
     second: F2,
@@ -611,6 +575,7 @@ where
 // Modify the result of a parser
 //
 
+#[deprecated]
 fn map_all<P, S, M, T, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
 where
     P: ParserSource + 'static,
@@ -630,6 +595,7 @@ where
 /// The mapper function has total control over the result, as it receives both
 /// the ok output of the source and the reader. This is the most flexible mapper
 /// function.
+#[deprecated]
 pub fn map_to_reader<P, S, M, T, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
 where
     P: ParserSource + 'static,
@@ -650,6 +616,7 @@ where
 
 /// Map the result of the source using the given mapper function.
 /// Be careful as it will not undo if the mapper function returns a Not Found result.
+#[deprecated]
 pub fn map_to_result_no_undo<P, S, M, T, U, E>(
     source: S,
     mapper: M,
@@ -672,6 +639,7 @@ pub enum MapOrUndo<T, U> {
 
 /// Maps the ok output of the `source` with the given mapper function.
 /// The function can convert an ok result into a not found result.
+#[deprecated]
 pub fn map_or_undo<P, S, M, T, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
 where
     P: ParserSource + 'static + Undo<T>,
@@ -851,9 +819,10 @@ where
             try_read('('),
             maybe_first_and_second_no_undo(
                 source,
-                demand(try_read(')'), || {
-                    QError::SyntaxError("Expected closing parenthesis".to_string())
-                }),
+                demand(
+                    try_read(')'),
+                    QError::syntax_error_fn("Expected closing parenthesis"),
+                ),
             ),
         ),
         |(_, (r, _))| match r {
@@ -867,6 +836,7 @@ where
 // Keyword guards
 //
 
+#[deprecated]
 pub fn with_keyword_before<P, T, S>(
     needle: Keyword,
     source: S,
@@ -884,6 +854,7 @@ where
     )
 }
 
+#[deprecated]
 pub fn with_keyword_after<P, T, S, FE>(
     source: S,
     needle: Keyword,
@@ -906,6 +877,7 @@ where
     )
 }
 
+#[deprecated]
 pub fn with_two_keywords<P, T, S>(
     first: Keyword,
     second: Keyword,

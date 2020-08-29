@@ -188,6 +188,16 @@ pub enum QError {
     Other(String),
 }
 
+impl QError {
+    pub fn syntax_error_fn<S: AsRef<str> + 'static>(msg: S) -> impl Fn() -> QError {
+        move || QError::SyntaxError(format!("{}", msg.as_ref()))
+    }
+
+    pub fn syntax_error_fn_fn(msg: &'static str) -> impl Fn() -> Box<dyn Fn() -> QError> {
+        move || Box::new(move || QError::SyntaxError(format!("{}", msg)))
+    }
+}
+
 pub type QErrorNode = ErrorEnvelope<QError>;
 
 impl From<&std::io::Error> for QError {

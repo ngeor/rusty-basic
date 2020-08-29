@@ -37,15 +37,19 @@ pub fn if_block<T: BufRead + 'static>(
 fn if_expr_then<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
-        with_keyword_before(
-            Keyword::If,
-            with_some_whitespace_between(
+        crate::parser::pc::ws::seq3(
+            try_read_keyword(Keyword::If),
+            demand(
                 expression::expression_node(),
-                demand_keyword(Keyword::Then),
-                || QError::SyntaxError("Expected THEN".to_string()),
+                QError::syntax_error_fn("Expected expression after IF"),
             ),
+            demand(
+                try_read_keyword(Keyword::Then),
+                QError::syntax_error_fn("Expected THEN"),
+            ),
+            QError::syntax_error_fn_fn("Expected whitespace"),
         ),
-        |(l, _)| l,
+        |(_, e, _)| e,
     )
 }
 
@@ -133,15 +137,19 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
 fn else_if_expr_then<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
-        with_keyword_before(
-            Keyword::ElseIf,
-            with_some_whitespace_between(
+        crate::parser::pc::ws::seq3(
+            try_read_keyword(Keyword::ElseIf),
+            demand(
                 expression::expression_node(),
-                demand_keyword(Keyword::Then),
-                || QError::SyntaxError("Expected THEN".to_string()),
+                QError::syntax_error_fn("Expected expression after ELSEIF"),
             ),
+            demand(
+                try_read_keyword(Keyword::Then),
+                QError::syntax_error_fn("Expected THEN"),
+            ),
+            QError::syntax_error_fn_fn("Expected whitespace"),
         ),
-        |(l, _)| l,
+        |(_, e, _)| e,
     )
 }
 

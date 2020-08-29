@@ -18,15 +18,23 @@ pub struct Name {}
 pub fn parse_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        with_keyword_before(
-            Keyword::Name,
-            with_some_whitespace_between(
+        crate::parser::pc::ws::seq4(
+            try_read_keyword(Keyword::Name),
+            demand(
                 expression::expression_node(),
-                with_keyword_before(Keyword::As, expression::expression_node()),
-                || QError::SyntaxError("Expected AS".to_string()),
+                QError::syntax_error_fn("Expected old filename"),
             ),
+            demand(
+                try_read_keyword(Keyword::As),
+                QError::syntax_error_fn("Expected AS"),
+            ),
+            demand(
+                expression::expression_node(),
+                QError::syntax_error_fn("Expected new filename"),
+            ),
+            QError::syntax_error_fn_fn("Expected whitespace"),
         ),
-        |(l, r)| Statement::SubCall("NAME".into(), vec![l, r]),
+        |(_, l, _, r)| Statement::SubCall("NAME".into(), vec![l, r]),
     )
 }
 

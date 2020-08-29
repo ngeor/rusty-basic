@@ -59,10 +59,13 @@ pub fn unary_minus<T: BufRead + 'static>(
 pub fn unary_not<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
-        with_some_whitespace_between(
+        crate::parser::pc::ws::seq2(
             with_pos(try_read_keyword(Keyword::Not)),
-            lazy(expression_node),
-            || QError::SyntaxError("Expected expression after NOT".to_string()),
+            demand(
+                lazy(expression_node),
+                QError::syntax_error_fn("Expected expression after NOT"),
+            ),
+            QError::syntax_error_fn("Expected whitespace after NOT"),
         ),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
     )

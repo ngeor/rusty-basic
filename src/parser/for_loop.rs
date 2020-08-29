@@ -96,11 +96,11 @@ fn lower_to_upper<T: BufRead + 'static>() -> Box<
                     try_read_keyword(Keyword::To),
                     crate::parser::pc::ws::one_or_more_leading(demand(
                         expression::expression_node(),
-                        || QError::SyntaxError("Expected upper expression".to_string()),
+                        QError::syntax_error_fn("Expected upper expression"),
                     )),
                     || QError::SyntaxError("Expected space after TO".to_string()),
                 ),
-                || QError::SyntaxError("Expected TO".to_string()),
+                QError::syntax_error_fn("Expected TO"),
             )),
             || QError::SyntaxError("Expected space after lower expression".to_string()),
         ),

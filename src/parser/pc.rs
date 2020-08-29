@@ -47,32 +47,6 @@ pub mod common {
     // simple parsing combinators
     // ========================================================
 
-    /// Returns a function that ensures that we don't get a Not Found result from
-    /// the given source.
-    ///
-    /// Not found results are converted to the error provided from the given function.
-    pub fn demand<R, S, T, E, FE>(source: S, err_fn: FE) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
-    where
-        R: Reader<Err = E> + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        E: IsNotFoundErr + 'static,
-        FE: Fn() -> E + 'static,
-    {
-        Box::new(move |reader| {
-            let (reader, next) = source(reader);
-            match next {
-                Ok(x) => (reader, Ok(x)),
-                Err(err) => {
-                    if err.is_not_found_err() {
-                        (reader, Err(err_fn()))
-                    } else {
-                        (reader, Err(err))
-                    }
-                }
-            }
-        })
-    }
-
     /// Creates a parsing function which will get a result by creating a different
     /// function at runtime. The function is provided by the given factory.
     /// This can be used to solve recursive structures that cause stack overflow.
@@ -82,31 +56,6 @@ pub mod common {
         S: Fn() -> Box<dyn Fn(R) -> (R, Result<T, E>)> + 'static,
     {
         Box::new(move |reader| lazy_source()(reader))
-    }
-
-    /// Returns a function that filters the given source with the given predicate.
-    /// If the predicate returns `true`, the value of the source is returned as-is.
-    /// Otherwise, a Not Found error will be returned.
-    pub fn filter_any<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
-    where
-        R: Reader<Err = E> + Undo<T> + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        E: NotFoundErr + 'static,
-        F: Fn(&T) -> bool + 'static,
-    {
-        Box::new(move |reader| {
-            let (reader, result) = source(reader);
-            match result {
-                Ok(ch) => {
-                    if predicate(&ch) {
-                        (reader, Ok(ch))
-                    } else {
-                        (reader.undo(ch), Err(E::not_found_err()))
-                    }
-                }
-                Err(err) => (reader, Err(err)),
-            }
-        })
     }
 
     pub fn map_fully<R, S, T, E, U, F1, F2, F3>(
@@ -268,6 +217,20 @@ pub mod common {
         map_fully_not_found_err(source, move |reader, err| (reader, map(err)))
     }
 
+    /// Returns a function that ensures that we don't get a Not Found result from
+    /// the given source.
+    ///
+    /// Not found results are converted to the error provided from the given function.
+    pub fn demand<R, S, T, E, FE>(source: S, err_fn: FE) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        E: IsNotFoundErr + 'static,
+        FE: Fn() -> E + 'static,
+    {
+        or_else_if_not_found(source, move |_| Err(err_fn()))
+    }
+
     /// Map the Ok result of the given source to Not Found, if it is equal to the default value
     /// for that type (e.g. empty string, empty vector).
     pub fn map_default_to_not_found<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
@@ -282,38 +245,6 @@ pub mod common {
                 Err(E::not_found_err())
             } else {
                 Ok(x)
-            }
-        })
-    }
-
-    /// Combines the results of the two given sources into one tuple.
-    ///
-    /// If either source returns an error, the error will be returned.
-    /// If the first source returns an error, the second will not be called.
-    /// If the second source returns a Not Found error, the first result will be undone.
-    pub fn and<R, F1, F2, T1, T2, E>(
-        first: F1,
-        second: F2,
-    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2), E>)>
-    where
-        R: Reader + Undo<T1> + 'static,
-        F1: Fn(R) -> (R, Result<T1, E>) + 'static,
-        F2: Fn(R) -> (R, Result<T2, E>) + 'static,
-        T1: 'static,
-        T2: 'static,
-        E: IsNotFoundErr + 'static,
-    {
-        map_fully_ok(first, move |reader, r1| {
-            let (reader, res2) = second(reader);
-            match res2 {
-                Ok(r2) => (reader, Ok((r1, r2))),
-                Err(err) => {
-                    if err.is_not_found_err() {
-                        (reader.undo(r1), Err(err))
-                    } else {
-                        (reader, Err(err))
-                    }
-                }
             }
         })
     }
@@ -349,6 +280,185 @@ pub mod common {
         })
     }
 
+    pub fn seq2<R, S1, S2, T1, T2, E>(
+        first: S1,
+        second: S2,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        and_then(
+            if_first_maybe_second(first, second),
+            move |(r1, opt_r2)| match opt_r2 {
+                Some(r2) => Ok((r1, r2)),
+                None => panic!("`seq2` second function returned None, wrap it in a `demand`"),
+            },
+        )
+    }
+
+    pub fn seq3<R, S1, S2, S3, T1, T2, T3, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(seq2(first, seq2(second, third)), |(a, (b, c))| (a, b, c))
+    }
+
+    pub fn seq4<R, S1, S2, S3, S4, T1, T2, T3, T4, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(
+            seq2(first, seq3(second, third, fourth)),
+            |(a, (b, c, d))| (a, b, c, d),
+        )
+    }
+
+    pub fn seq5<R, S1, S2, S3, S4, S5, T1, T2, T3, T4, T5, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+        fifth: S5,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4, T5), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
+        S5: Fn(R) -> (R, Result<T5, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        T5: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(
+            seq2(first, seq4(second, third, fourth, fifth)),
+            |(a, (b, c, d, e))| (a, b, c, d, e),
+        )
+    }
+
+    pub fn seq6<R, S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+        fifth: S5,
+        sixth: S6,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4, T5, T6), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
+        S5: Fn(R) -> (R, Result<T5, E>) + 'static,
+        S6: Fn(R) -> (R, Result<T6, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        T5: 'static,
+        T6: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(
+            seq2(first, seq5(second, third, fourth, fifth, sixth)),
+            |(a, (b, c, d, e, f))| (a, b, c, d, e, f),
+        )
+    }
+
+    pub fn seq7<R, S1, S2, S3, S4, S5, S6, S7, T1, T2, T3, T4, T5, T6, T7, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+        fifth: S5,
+        sixth: S6,
+        seventh: S7,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4, T5, T6, T7), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
+        S5: Fn(R) -> (R, Result<T5, E>) + 'static,
+        S6: Fn(R) -> (R, Result<T6, E>) + 'static,
+        S7: Fn(R) -> (R, Result<T7, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        T5: 'static,
+        T6: 'static,
+        T7: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(
+            seq2(first, seq6(second, third, fourth, fifth, sixth, seventh)),
+            |(a, (b, c, d, e, f, g))| (a, b, c, d, e, f, g),
+        )
+    }
+
+    /// Combines the results of the two given sources into one tuple.
+    ///
+    /// If either source returns an error, the error will be returned.
+    /// If the first source returns an error, the second will not be called.
+    /// If the second source returns a Not Found error, the first result will be undone.
+    pub fn and<R, F1, F2, T1, T2, E>(
+        first: F1,
+        second: F2,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2), E>)>
+    where
+        R: Reader + Undo<T1> + 'static,
+        F1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        F2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        E: NotFoundErr + 'static,
+    {
+        map_fully_ok(
+            if_first_maybe_second(first, second),
+            move |reader, (r1, opt_r2)| match opt_r2 {
+                Some(r2) => (reader, Ok((r1, r2))),
+                None => (reader.undo(r1), Err(E::not_found_err())),
+            },
+        )
+    }
+
     /// Drops the left part of a tuple result.
     pub fn drop_left<R, S, T1, T2, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<T2, E>)>
     where
@@ -365,6 +475,25 @@ pub mod common {
         S: Fn(R) -> (R, Result<(T1, T2), E>) + 'static,
     {
         map(source, |(l, _)| l)
+    }
+
+    /// Returns a function that filters the given source with the given predicate.
+    /// If the predicate returns `true`, the value of the source is returned as-is.
+    /// Otherwise, a Not Found error will be returned.
+    pub fn filter_any<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader<Err = E> + Undo<T> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        E: NotFoundErr + 'static,
+        F: Fn(&T) -> bool + 'static,
+    {
+        map_fully_ok(source, move |reader, ch| {
+            if predicate(&ch) {
+                (reader, Ok(ch))
+            } else {
+                (reader.undo(ch), Err(E::not_found_err()))
+            }
+        })
     }
 }
 
@@ -584,7 +713,7 @@ pub mod str {
 // ========================================================
 
 pub mod ws {
-    use super::common::{and, drop_left, drop_right, if_first_maybe_second};
+    use super::common;
     use super::str::*;
     use super::traits::*;
 
@@ -622,7 +751,7 @@ pub mod ws {
         T: 'static,
         E: NotFoundErr + 'static,
     {
-        drop_left(and(one_or_more(), source))
+        common::drop_left(common::and(one_or_more(), source))
     }
 
     /// Reads any whitespace.
@@ -644,7 +773,7 @@ pub mod ws {
         T: 'static,
         E: NotFoundErr + 'static,
     {
-        drop_left(and(zero_or_more(), source))
+        common::drop_left(common::and(zero_or_more(), source))
     }
 
     /// Skips any whitespace after the source and returns the result of the source.
@@ -655,7 +784,7 @@ pub mod ws {
         T: 'static,
         E: NotFoundErr + 'static,
     {
-        drop_right(if_first_maybe_second(source, zero_or_more()))
+        common::drop_right(common::if_first_maybe_second(source, zero_or_more()))
     }
 
     /// Skips any whitespace around the source and returns the source's result.
@@ -667,5 +796,92 @@ pub mod ws {
         E: NotFoundErr + 'static,
     {
         zero_or_more_trailing(zero_or_more_leading(source))
+    }
+
+    pub fn seq2<R, S1, S2, T1, T2, E, FE>(
+        first: S1,
+        second: S2,
+        err_fn_expected_whitespace: FE,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2), E>)>
+    where
+        R: Reader<Item = char, Err = E> + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        E: NotFoundErr + 'static,
+        FE: Fn() -> E + 'static,
+    {
+        common::map(
+            common::seq3(
+                first,
+                common::demand(one_or_more(), err_fn_expected_whitespace),
+                second,
+            ),
+            |(l, _, r)| (l, r),
+        )
+    }
+
+    pub fn seq3<R, S1, S2, S3, T1, T2, T3, E, FE>(
+        first: S1,
+        second: S2,
+        third: S3,
+        err_fn_fn_expected_whitespace: FE,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3), E>)>
+    where
+        R: Reader<Item = char, Err = E> + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        E: NotFoundErr + 'static,
+        FE: Fn() -> Box<dyn Fn() -> E> + 'static,
+    {
+        common::map(
+            common::seq5(
+                first,
+                common::demand(one_or_more(), err_fn_fn_expected_whitespace()),
+                second,
+                common::demand(one_or_more(), err_fn_fn_expected_whitespace()),
+                third,
+            ),
+            |(a, _, b, _, c)| (a, b, c),
+        )
+    }
+
+    pub fn seq4<R, S1, S2, S3, S4, T1, T2, T3, T4, E, FE>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+        err_fn_fn_expected_whitespace: FE,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4), E>)>
+    where
+        R: Reader<Item = char, Err = E> + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        E: NotFoundErr + 'static,
+        FE: Fn() -> Box<dyn Fn() -> E> + 'static,
+    {
+        common::map(
+            common::seq7(
+                first,
+                common::demand(one_or_more(), err_fn_fn_expected_whitespace()),
+                second,
+                common::demand(one_or_more(), err_fn_fn_expected_whitespace()),
+                third,
+                common::demand(one_or_more(), err_fn_fn_expected_whitespace()),
+                fourth,
+            ),
+            |(a, _, b, _, c, _, d)| (a, b, c, d),
+        )
     }
 }

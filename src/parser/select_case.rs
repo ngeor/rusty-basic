@@ -120,7 +120,7 @@ pub fn case_expr_is<T: BufRead + 'static>(
                     ),
                     || QError::SyntaxError("Expected expression".to_string()),
                 ),
-                || QError::SyntaxError("Expected whitespace".to_string()),
+                QError::syntax_error_fn("Expected whitespace"),
             )),
             || QError::SyntaxError("Expected operand".to_string()),
         ),

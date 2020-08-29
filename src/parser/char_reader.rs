@@ -526,51 +526,6 @@ where
     )
 }
 
-/// Combines the two given parsers, demanding that there is some whitespace before
-/// the first result as well as between the two parsed results.
-/// If the first parser succeeds, the second parser must also succeed.
-///
-/// Returns not found if there is no leading whitespace or if the first parser fails.
-#[deprecated]
-pub fn with_some_whitespace_before_and_between<P, F1, F2, T1, T2, FE>(
-    first: F1,
-    second: F2,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
-where
-    P: ParserSource + HasLocation + Undo<String> + 'static,
-    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, QError>) + 'static,
-    T1: 'static,
-    T2: 'static,
-    FE: Fn() -> QError + 'static,
-{
-    crate::parser::pc::ws::one_or_more_leading(with_some_whitespace_between(first, second, err_fn))
-}
-
-/// Combines the two given parsers, allowing some optional whitespace between their results.
-/// If the first parser succeeds, the second must also succeed.
-#[deprecated]
-pub fn with_any_whitespace_between<P, F1, F2, T1, T2, FE>(
-    first: F1,
-    second: F2,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
-where
-    P: ParserSource + HasLocation + Undo<String> + 'static,
-    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, QError>) + 'static,
-    T1: 'static,
-    T2: 'static,
-    FE: Fn() -> QError + 'static,
-{
-    if_first_demand_second(
-        first,
-        crate::parser::pc::ws::zero_or_more_leading(second),
-        err_fn,
-    )
-}
-
 //
 // Modify the result of a parser
 //
@@ -866,7 +821,6 @@ where
     S: Fn(P) -> (P, Result<T, QError>) + 'static,
     FE: Fn() -> QError + 'static,
 {
-    // TODO remove the skipping_whitespace , remove with_keyword_after altogether
     map(
         if_first_demand_second(
             source,

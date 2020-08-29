@@ -37,14 +37,14 @@ pub fn declared_name_node<T: BufRead + 'static>(
 
 fn type_definition_extended<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QError>)> {
-    map(
-        with_some_whitespace_before_and_between(
-            try_read_keyword(Keyword::As),
+    drop_left(crate::parser::pc::ws::seq2(
+        crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::As)),
+        demand(
             extended_type(),
-            || QError::SyntaxError("Expected type after AS".to_string()),
+            QError::syntax_error_fn("Expected type after AS"),
         ),
-        |(_, r)| r,
-    )
+        QError::syntax_error_fn("Expected whitespace after AS"),
+    ))
 }
 
 fn extended_type<T: BufRead + 'static>(

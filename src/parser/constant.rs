@@ -1,27 +1,30 @@
 use super::Statement;
 use crate::common::*;
+use crate::parser::assignment;
 use crate::parser::char_reader::*;
-use crate::parser::expression;
-use crate::parser::name;
 use crate::parser::pc::common::*;
-use crate::parser::pc::copy::*;
+use crate::parser::pc::loc::with_pos;
 use crate::parser::types::Keyword;
 use std::io::BufRead;
 
 pub fn constant<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        with_keyword_before(
-            Keyword::Const,
-            with_any_whitespace_between(
-                name::name_node(),
-                with_any_whitespace_between(try_read('='), expression::expression_node(), || {
-                    QError::SyntaxError("Expected expression after =".to_string())
-                }),
-                || QError::SyntaxError("Expected = after name".to_string()),
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::Const),
+            demand(
+                with_pos(assignment::assignment_tuple()),
+                QError::syntax_error_fn("Expected name"),
             ),
+            QError::syntax_error_fn("Expected whitespace after CONST"),
         ),
-        |(n, (_, e))| Statement::Const(n, e),
+        |(
+            _,
+            Locatable {
+                element: (n, e),
+                pos,
+            },
+        )| Statement::Const(n.at(pos), e),
     )
 }
 

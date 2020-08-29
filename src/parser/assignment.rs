@@ -1,24 +1,32 @@
-use super::Statement;
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
+use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(assignment_tuple(), |(l, r)| Statement::Assignment(l, r))
+}
+
+pub fn assignment_tuple<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Name, ExpressionNode), QError>)> {
+    // not using seq3 in case it's not an assignment but a sub call
     map(
         and(
             name::name(),
-            if_first_demand_second(
+            seq2(
                 crate::parser::pc::ws::zero_or_more_leading(try_read('=')),
-                crate::parser::pc::ws::zero_or_more_leading(expression::expression_node()),
-                || QError::SyntaxError("Expected expression after =".to_string()),
+                demand(
+                    crate::parser::pc::ws::zero_or_more_leading(expression::expression_node()),
+                    QError::syntax_error_fn("Expected expression after ="),
+                ),
             ),
         ),
-        |(l, (_, r))| Statement::Assignment(l, r),
+        |(l, (_, r))| (l, r),
     )
 }
 

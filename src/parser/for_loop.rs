@@ -21,11 +21,16 @@ pub fn for_loop<T: BufRead + 'static>(
                     Keyword::For,
                     if_first_maybe_second(
                         var_equal_lower_to_upper(),
-                        with_some_whitespace_before_and_between(
-                            try_read_keyword(Keyword::Step),
-                            expression::expression_node(),
-                            || QError::SyntaxError(format!("Cannot parse STEP")),
-                        ),
+                        drop_left(crate::parser::pc::ws::seq2(
+                            crate::parser::pc::ws::one_or_more_leading(try_read_keyword(
+                                Keyword::Step,
+                            )),
+                            demand(
+                                expression::expression_node(),
+                                QError::syntax_error_fn("Expected expression after STEP"),
+                            ),
+                            QError::syntax_error_fn("Expected whitespace after STEP"),
+                        )),
                     ),
                 ),
                 statements::statements(try_read_keyword(Keyword::Next)),
@@ -39,7 +44,7 @@ pub fn for_loop<T: BufRead + 'static>(
                 variable_name,
                 lower_bound,
                 upper_bound,
-                step: opt_step.map(|x| x.1),
+                step: opt_step,
                 statements,
                 next_counter,
             })

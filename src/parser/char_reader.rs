@@ -642,31 +642,6 @@ where
 // Take multiple items
 //
 
-pub fn take_zero_or_more_to_default<P, S, T, F>(
-    source: S,
-    is_terminal: F,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-    T: 'static,
-    F: Fn(&T) -> bool + 'static,
-{
-    map_all(
-        take_one_or_more(source, is_terminal, QError::not_found_err),
-        |reader, res| match res {
-            Ok(v) => (reader, Ok(v)),
-            Err(err) => {
-                if err.is_not_found_err() {
-                    (reader, Ok(vec![]))
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        },
-    )
-}
-
 pub fn take_zero_or_more<P, S, T, F>(
     source: S,
     is_terminal: F,
@@ -676,20 +651,6 @@ where
     S: Fn(P) -> (P, Result<T, QError>) + 'static,
     T: 'static,
     F: Fn(&T) -> bool + 'static,
-{
-    take_one_or_more(source, is_terminal, QError::not_found_err)
-}
-
-pub fn take_one_or_more<P, S, T, F, FE>(
-    source: S,
-    is_terminal: F,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<T>, QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-    F: Fn(&T) -> bool + 'static,
-    FE: Fn() -> QError + 'static,
 {
     Box::new(move |char_reader| {
         let mut result: Vec<T> = vec![];
@@ -714,35 +675,8 @@ where
                 }
             }
         }
-        if result.is_empty() {
-            (cr, Err(err_fn()))
-        } else {
-            (cr, Ok(result))
-        }
+        (cr, Ok(result))
     })
-}
-
-pub fn csv_one_or_more<P, S, R, FE>(
-    source: S,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
-where
-    P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<R, QError>) + 'static,
-    R: 'static,
-    FE: Fn() -> QError + 'static,
-{
-    map(
-        take_one_or_more(
-            if_first_maybe_second(
-                crate::parser::pc::ws::zero_or_more_leading(source),
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read(','))),
-            ),
-            |x| x.1.is_none(),
-            err_fn,
-        ),
-        |x| x.into_iter().map(|x| x.0).collect(),
-    )
 }
 
 pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
@@ -754,8 +688,8 @@ where
     map(
         take_zero_or_more(
             if_first_maybe_second(
-                crate::parser::pc::ws::zero_or_more_leading(source),
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read(','))),
+                source,
+                crate::parser::pc::ws::zero_or_more_around(try_read(',')),
             ),
             |x| x.1.is_none(),
         ),
@@ -769,21 +703,16 @@ where
     S: Fn(P) -> (P, Result<T, QError>) + 'static,
     T: 'static,
 {
-    map_to_result_no_undo(
-        and(
+    map(
+        seq3(
             try_read('('),
-            maybe_first_and_second_no_undo(
-                source,
-                demand(
-                    try_read(')'),
-                    QError::syntax_error_fn("Expected closing parenthesis"),
-                ),
+            source,
+            demand(
+                try_read(')'),
+                QError::syntax_error_fn("Expected closing parenthesis"),
             ),
         ),
-        |(_, (r, _))| match r {
-            Some(x) => Ok(x),
-            None => Err(QError::not_found_err()),
-        },
+        |(_, r, _)| r,
     )
 }
 

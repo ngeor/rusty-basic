@@ -29,7 +29,7 @@ pub fn select_case<T: BufRead + 'static>(
                     ),
                     case_blocks(),
                 ),
-                case_else(),
+                case_else_statements(),
             ),
             demand(
                 parse_end_select(),
@@ -91,7 +91,7 @@ fn parse_end_select<T: BufRead + 'static>(
     )
 }
 
-pub fn case_else<T: BufRead + 'static>(
+fn case_else_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     map(
         with_keyword_before(
@@ -107,7 +107,7 @@ pub fn case_else<T: BufRead + 'static>(
 
 pub fn case_blocks<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<CaseBlockNode>, QError>)> {
-    take_zero_or_more(case_block(), |_| false)
+    map_default_to_not_found(take_zero_or_more(case_block(), |_| false))
 }
 
 pub fn case_block<T: BufRead + 'static>(

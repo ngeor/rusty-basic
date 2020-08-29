@@ -20,13 +20,13 @@ pub struct ParseStatementsOptions {
 pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     crate::parser::pc::ws::one_or_more_leading(map(
-        take_zero_or_more(
+        map_default_to_not_found(take_zero_or_more(
             if_first_maybe_second(
                 with_pos(statement::single_line_non_comment_statement()),
                 crate::parser::pc::ws::zero_or_more_around(try_read(':')),
             ),
             |x| x.1.is_none(),
-        ),
+        )),
         |x| x.into_iter().map(|i| i.0).collect(),
     ))
 }
@@ -34,13 +34,13 @@ pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 pub fn single_line_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     crate::parser::pc::ws::one_or_more_leading(map(
-        take_zero_or_more(
+        map_default_to_not_found(take_zero_or_more(
             if_first_maybe_second(
                 with_pos(statement::single_line_statement()),
                 crate::parser::pc::ws::zero_or_more_around(try_read(':')),
             ),
             |x| x.1.is_none(),
-        ),
+        )),
         |x| x.into_iter().map(|i| i.0).collect(),
     ))
 }
@@ -87,7 +87,7 @@ where
     map(
         maybe_first_and_second_no_undo(
             skip_until_first_statement(),
-            take_zero_or_more_to_default(
+            take_zero_or_more(
                 move |reader| {
                     let (reader, exit_result) = exit_source(reader);
                     match exit_result {

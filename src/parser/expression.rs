@@ -91,10 +91,12 @@ pub fn file_handle<T: BufRead + 'static>(
 
 pub fn parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
-    // TODO allow skipping whitespace inside parenthesis
-    map(in_parenthesis(lazy(expression_node)), |v| {
-        Expression::Parenthesis(Box::new(v))
-    })
+    map(
+        in_parenthesis(crate::parser::pc::ws::zero_or_more_around(lazy(
+            expression_node,
+        ))),
+        |v| Expression::Parenthesis(Box::new(v)),
+    )
 }
 
 mod string_literal {
@@ -216,8 +218,14 @@ mod word {
         map(
             if_first_maybe_second(
                 name::name(),
-                in_parenthesis(csv_one_or_more(lazy(expression_node), || {
-                    QError::SyntaxError("Expected expression".to_string())
+                in_parenthesis(and_then(csv_zero_or_more(lazy(expression_node)), |v| {
+                    if v.is_empty() {
+                        Err(QError::syntax_error(
+                            "Cannot have function call without arguments",
+                        ))
+                    } else {
+                        Ok(v)
+                    }
                 })),
             ),
             |(n, opt_v)| match opt_v {
@@ -378,7 +386,7 @@ mod tests {
         fn test_function_call_expression_no_args() {
             assert_eq!(
                 parse_err("PRINT IsValid()"),
-                QError::SyntaxError("Expected expression".to_string())
+                QError::SyntaxError("Cannot have function call without arguments".to_string())
             );
         }
 
@@ -386,7 +394,7 @@ mod tests {
         fn test_function_call_qualified_expression_no_args() {
             assert_eq!(
                 parse_err("PRINT IsValid%()"),
-                QError::SyntaxError("Expected expression".to_string())
+                QError::SyntaxError("Cannot have function call without arguments".to_string())
             );
         }
 

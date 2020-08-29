@@ -19,10 +19,14 @@ use std::io::BufRead;
 
 pub fn declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
-    with_keyword_before(
-        Keyword::Declare,
-        or(function_declaration_token(), sub_declaration_token()),
-    )
+    drop_left(crate::parser::pc::ws::seq2(
+        try_read_keyword(Keyword::Declare),
+        demand(
+            or(function_declaration_token(), sub_declaration_token()),
+            QError::syntax_error_fn("Expected FUNCTION or SUB after DECLARE"),
+        ),
+        QError::syntax_error_fn("Expected whitespace after DECLARE"),
+    ))
 }
 
 fn function_declaration_token<T: BufRead + 'static>(
@@ -35,14 +39,20 @@ fn function_declaration_token<T: BufRead + 'static>(
 pub fn function_declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(NameNode, DeclaredNameNodes), QError>)> {
     map(
-        with_keyword_before(
-            Keyword::Function,
-            if_first_maybe_second(
-                name::name_node(),
-                crate::parser::pc::ws::zero_or_more_leading(declaration_parameters()),
+        seq5(
+            try_read_keyword(Keyword::Function),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace after FUNCTION"),
             ),
+            demand(
+                name::name_node(),
+                QError::syntax_error_fn("Expected function name"),
+            ),
+            crate::parser::pc::ws::zero_or_more(),
+            opt_declaration_parameters(),
         ),
-        |(n, opt_p)| (n, opt_p.unwrap_or_default()),
+        |(_, _, n, _, opt_p)| (n, opt_p),
     )
 }
 
@@ -62,20 +72,29 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
     ),
 > {
     map(
-        with_keyword_before(
-            Keyword::Sub,
-            if_first_maybe_second(
-                name::bare_name_node(),
-                crate::parser::pc::ws::zero_or_more_leading(declaration_parameters()),
+        seq5(
+            try_read_keyword(Keyword::Sub),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace after SUB"),
             ),
+            demand(
+                name::bare_name_node(),
+                QError::syntax_error_fn("Expected sub name"),
+            ),
+            crate::parser::pc::ws::zero_or_more(),
+            opt_declaration_parameters(),
         ),
-        |(n, opt_p)| (n, opt_p.unwrap_or_default()),
+        |(_, _, n, _, opt_p)| (n, opt_p),
     )
 }
 
-fn declaration_parameters<T: BufRead + 'static>(
+fn opt_declaration_parameters<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNodes, QError>)> {
-    in_parenthesis(csv_zero_or_more(declared_name::declared_name_node()))
+    or_else_if_not_found(
+        in_parenthesis(csv_zero_or_more(declared_name::declared_name_node())),
+        |_| Ok(vec![]),
+    )
 }
 
 #[cfg(test)]

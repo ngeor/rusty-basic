@@ -46,9 +46,10 @@ pub fn parse_input_args<T: BufRead + 'static>() -> Box<
 > {
     drop_left(crate::parser::pc::ws::seq2(
         try_read_keyword(Keyword::Input),
-        csv_one_or_more(expression::expression_node(), || {
-            QError::SyntaxError("Expected at least one variable".to_string())
-        }),
+        demand(
+            map_default_to_not_found(csv_zero_or_more(expression::expression_node())),
+            QError::syntax_error_fn("Expected at least one variable"),
+        ),
         QError::syntax_error_fn("Expected whitespace after INPUT"),
     ))
 }

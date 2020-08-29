@@ -43,9 +43,7 @@ fn def_keyword<T: BufRead + 'static>(
 
 fn letter_ranges<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<LetterRange>, QError>)> {
-    csv_one_or_more(letter_range(), || {
-        QError::SyntaxError("Expected letter range".to_string())
-    })
+    map_default_to_not_found(csv_zero_or_more(letter_range()))
 }
 
 fn letter_range<T: BufRead + 'static>(

@@ -155,7 +155,7 @@ fn else_if_expr_then<T: BufRead + 'static>(
 
 fn else_if_blocks<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<ConditionalBlockNode>, QError>)> {
-    take_zero_or_more(else_if_block(), |_| false)
+    map_default_to_not_found(take_zero_or_more(else_if_block(), |_| false))
 }
 
 fn else_if_block<T: BufRead + 'static>(

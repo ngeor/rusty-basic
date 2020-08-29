@@ -17,13 +17,19 @@ pub fn sub_call<T: BufRead + 'static>(
         and(
             name::bare_name(),
             or_vec(vec![
-                in_parenthesis(csv_zero_or_more(expression::expression_node())),
-                crate::parser::pc::ws::zero_or_more_leading(csv_zero_or_more(
+                // e.g. PRINT("hello", "world")
+                map_default_to_not_found(in_parenthesis(csv_zero_or_more(
                     expression::expression_node(),
+                ))),
+                // e.g. PRINT "hello", "world"
+                crate::parser::pc::ws::zero_or_more_leading(map_default_to_not_found(
+                    csv_zero_or_more(expression::expression_node()),
                 )),
+                // prevent against e.g. A = "oops"
                 crate::parser::pc::ws::one_or_more_leading(zero_args_assignment_and_label_guard(
                     true,
                 )),
+                // prevent against e.g. A: or A="oops"
                 zero_args_assignment_and_label_guard(false),
             ]),
         ),

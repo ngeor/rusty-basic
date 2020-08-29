@@ -21,11 +21,7 @@ pub fn select_case<T: BufRead + 'static>(
                 if_first_maybe_second(
                     if_first_maybe_second(
                         if_first_maybe_second(
-                            with_two_keywords(
-                                Keyword::Select,
-                                Keyword::Case,
-                                expression::expression_node(),
-                            ),
+                            parse_select_case_expr(),
                             // parse inline comments after SELECT
                             statements::statements(read_keyword_if(|k| {
                                 k == Keyword::Case || k == Keyword::End
@@ -60,6 +56,15 @@ pub fn select_case<T: BufRead + 'static>(
             })
         },
     )
+}
+
+fn parse_select_case_expr<T: BufRead + 'static>() -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    map(crate::parser::pc::ws::seq3(
+        try_read_keyword(Keyword::Select),
+        demand(try_read_keyword(Keyword::Case), QError::syntax_error_fn("Expected CASE")),
+        demand(expression::expression_node(), QError::syntax_error_fn("Expected expression")),
+        QError::syntax_error_fn_fn("Expected whitespace"),
+    ), |(_,_,e)| e)
 }
 
 pub fn case_else<T: BufRead + 'static>(

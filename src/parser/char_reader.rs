@@ -831,20 +831,6 @@ where
     )
 }
 
-#[deprecated]
-pub fn with_two_keywords<P, T, S>(
-    first: Keyword,
-    second: Keyword,
-    source: S,
-) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + HasLocation + Undo<String> + Undo<(Keyword, String)> + 'static,
-    T: 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-{
-    with_keyword_before(first, with_keyword_before(second, source))
-}
-
 //
 // EolReader
 //

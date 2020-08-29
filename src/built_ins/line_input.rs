@@ -5,11 +5,11 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::ExpressionNode;
 use crate::parser::char_reader::*;
-use crate::parser::expression;
 use crate::parser::pc::common::*;
 use crate::parser::{HasQualifier, Keyword, QualifiedName, Statement, TypeQualifier};
 use crate::variant::Variant;
 use std::io::BufRead;
+use crate::built_ins::input::parse_input_args;
 
 // LINE INPUT -> see INPUT
 // LINE INPUT [;] ["prompt";] variable$
@@ -21,14 +21,15 @@ pub struct LineInput {}
 pub fn parse_line_input<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        with_two_keywords(
-            Keyword::Line,
-            Keyword::Input,
-            csv_one_or_more(expression::expression_node(), || {
-                QError::SyntaxError("Expected at least one variable".to_string())
-            }),
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::Line),
+            demand(
+                parse_input_args(),
+                QError::syntax_error_fn("Expected INPUT after LINE")
+            ),
+            QError::syntax_error_fn("Expected whitespace after LINE")
         ),
-        |r| Statement::SubCall("LINE INPUT".into(), r),
+        |(_, r)| Statement::SubCall("LINE INPUT".into(), r),
     )
 }
 

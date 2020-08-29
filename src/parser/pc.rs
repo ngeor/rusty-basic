@@ -778,6 +778,7 @@ pub mod err {
 pub mod str {
     use super::common::and_then;
     use super::traits::*;
+    use std::str::FromStr;
 
     /// Reads characters into a string as long as they satisfy the predicates.
     ///
@@ -876,6 +877,25 @@ pub mod str {
                 Err(E::not_found_err())
             } else {
                 Ok(s)
+            }
+        })
+    }
+
+    pub fn switch_from_str<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<(T, String), E>)>
+    where
+        R: Reader + Undo<String> + 'static,
+        S: Fn(R) -> (R, Result<String, E>) + 'static,
+        T: FromStr + 'static,
+        E: NotFoundErr + 'static,
+    {
+        Box::new(move |reader| {
+            let (reader, next) = source(reader);
+            match next {
+                Ok(s) => match T::from_str(&s) {
+                    Ok(u) => (reader, Ok((u, s))),
+                    Err(_) => (reader.undo(s), Err(E::not_found_err())),
+                },
+                Err(err) => (reader, Err(err)),
             }
         })
     }

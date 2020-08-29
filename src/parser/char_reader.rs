@@ -228,7 +228,7 @@ pub fn read_any_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), Q
 where
     P: ParserSource + Undo<String> + 'static,
 {
-    switch_from_str(read_any_identifier())
+    crate::parser::pc::str::switch_from_str(read_any_identifier())
 }
 
 /// Reads any word, i.e. any identifier which is not a keyword.
@@ -275,25 +275,6 @@ where
 //
 // Modify the result of a parser
 //
-
-pub fn switch_from_str<P, S, T, E>(source: S) -> Box<dyn Fn(P) -> (P, Result<(T, String), E>)>
-where
-    P: ParserSource + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<String, E>) + 'static,
-    T: FromStr + 'static,
-    E: NotFoundErr + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, next) = source(reader);
-        match next {
-            Ok(s) => match T::from_str(&s) {
-                Ok(u) => (reader, Ok((u, s))),
-                Err(_) => (reader.undo(s), Err(E::not_found_err())),
-            },
-            Err(err) => (reader, Err(err)),
-        }
-    })
-}
 
 //
 // Take multiple items

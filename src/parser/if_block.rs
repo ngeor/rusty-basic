@@ -71,7 +71,7 @@ fn single_line_if_else<T: BufRead + 'static>() -> Box<
     ),
 > {
     map(
-        if_first_maybe_second(
+        opt_seq2(
             single_line_if(),
             or(
                 map(
@@ -118,18 +118,16 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
 > {
     map(
         seq2(
-            if_first_maybe_second(
-                if_first_maybe_second(
-                    statements::statements(read_keyword_if(|k| {
-                        k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
-                    })),
-                    else_if_blocks(),
-                ),
+            opt_seq3(
+                statements::statements(read_keyword_if(|k| {
+                    k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
+                })),
+                else_if_blocks(),
                 else_block(),
             ),
             demand(end_if(), QError::syntax_error_fn("Expected END IF")),
         ),
-        |(((if_block, opt_else_if_blocks), opt_else), _)| {
+        |((if_block, opt_else_if_blocks, opt_else), _)| {
             (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
         },
     )

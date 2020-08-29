@@ -16,7 +16,7 @@ use std::str::FromStr;
 pub fn declared_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNode, QError>)> {
     and_then(
-        if_first_maybe_second(with_pos(name::name()), type_definition_extended()),
+        opt_seq2(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
             Name::Bare(b) => match opt_type_definition {
                 Some(t) => Ok(DeclaredName::new(b, t).at(pos)),

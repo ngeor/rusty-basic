@@ -15,7 +15,7 @@ fn is_not_eol(ch: char) -> bool {
 pub fn comment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        if_first_maybe_second(try_read('\''), zero_or_more_if(is_not_eol)),
+        opt_seq2(try_read('\''), zero_or_more_if(is_not_eol)),
         |(_, r)| Statement::Comment(r.unwrap_or_default()),
     )
 }

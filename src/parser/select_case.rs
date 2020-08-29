@@ -17,18 +17,13 @@ pub fn select_case<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         seq2(
-            // TODO some seq_opt or something for this
-            if_first_maybe_second(
-                if_first_maybe_second(
-                    if_first_maybe_second(
-                        parse_select_case_expr(),
-                        // parse inline comments after SELECT
-                        statements::statements(read_keyword_if(|k| {
-                            k == Keyword::Case || k == Keyword::End
-                        })),
-                    ),
-                    case_blocks(),
-                ),
+            opt_seq4(
+                parse_select_case_expr(),
+                // parse inline comments after SELECT
+                statements::statements(read_keyword_if(|k| {
+                    k == Keyword::Case || k == Keyword::End
+                })),
+                case_blocks(),
                 case_else_statements(),
             ),
             demand(
@@ -36,7 +31,7 @@ pub fn select_case<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected END SELECT"),
             ),
         ),
-        |((((expr, inline_statements), opt_blocks), opt_else), _)| {
+        |((expr, inline_statements, opt_blocks, opt_else), _)| {
             Statement::SelectCase(SelectCaseNode {
                 expr,
                 case_blocks: opt_blocks.unwrap_or_default(),
@@ -133,7 +128,7 @@ fn case_expr_is<T: BufRead + 'static>(
 fn case_expr_to_or_simple<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QError>)> {
     map(
-        if_first_maybe_second(
+        opt_seq2(
             expression::expression_node(),
             drop_left(and(
                 crate::parser::pc::ws::one_or_more(),

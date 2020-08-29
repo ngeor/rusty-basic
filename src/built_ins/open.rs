@@ -27,17 +27,14 @@ pub fn parse_open<T: BufRead + 'static>(
     map(
         crate::parser::pc::ws::seq2(
             // TODO seq_opt or something
-            if_first_maybe_second(
-                if_first_maybe_second(parse_filename(), parse_open_mode()),
-                parse_open_access(),
-            ),
+            opt_seq3(parse_filename(), parse_open_mode(), parse_open_access()),
             demand(
                 parse_file_number(),
                 QError::syntax_error_fn("Expected AS file-number"),
             ),
             QError::syntax_error_fn("Expected whitespace before AS"),
         ),
-        |(((file_name, opt_file_mode), opt_file_access), file_number)| {
+        |((file_name, opt_file_mode, opt_file_access), file_number)| {
             Statement::SubCall(
                 "OPEN".into(),
                 vec![

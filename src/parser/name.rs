@@ -16,7 +16,7 @@ pub fn name_node<T: BufRead + 'static>(
 pub fn name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Name, QError>)> {
     map(
-        if_first_maybe_second(read_any_word(), type_qualifier::type_qualifier()),
+        opt_seq2(read_any_word(), type_qualifier::type_qualifier()),
         |(l, r)| Name::new(l.into(), r),
     )
 }

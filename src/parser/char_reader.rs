@@ -286,7 +286,7 @@ where
     S: Fn(P) -> (P, Result<R, QError>) + 'static,
     R: 'static,
 {
-    zero_or_more(if_first_maybe_second(
+    zero_or_more(opt_seq2(
         source,
         crate::parser::pc::ws::zero_or_more_around(try_read(',')),
     ))
@@ -353,7 +353,7 @@ impl<T: BufRead + 'static> Reader for EolReader<T> {
                     // - Return a String instead of a char
                     // - Return a new enum type instead of a char
                     // - Encode CRLF as a special char e.g. CR = 13 + LF = 10 -> CRLF = 23
-                    if_first_maybe_second(try_read('\r'), try_read('\n')),
+                    opt_seq2(try_read('\r'), try_read('\n')),
                     |(cr, _)| cr,
                 ),
             ),

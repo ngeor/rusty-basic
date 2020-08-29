@@ -16,7 +16,7 @@ pub fn for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         seq3(
-            if_first_maybe_second(
+            opt_seq2(
                 parse_for(),
                 drop_left(crate::parser::pc::ws::seq2(
                     crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Step)),
@@ -49,7 +49,7 @@ pub fn for_loop<T: BufRead + 'static>(
 fn next_counter<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QError>)> {
     map(
-        if_first_maybe_second(
+        opt_seq2(
             try_read_keyword(Keyword::Next),
             crate::parser::pc::ws::one_or_more_leading(name::name_node()),
         ),

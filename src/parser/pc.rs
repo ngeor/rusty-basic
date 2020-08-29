@@ -253,8 +253,7 @@ pub mod common {
     ///
     /// If either source returns a fatal error, the error will be returned.
     /// If the second source returns a Not Found error, the first result will be still returned.
-    #[deprecated(note = "try to make something more generic like seq")]
-    pub fn if_first_maybe_second<R, S1, S2, T1, T2, E>(
+    pub fn opt_seq2<R, S1, S2, T1, T2, E>(
         first: S1,
         second: S2,
     ) -> Box<dyn Fn(R) -> (R, Result<(T1, Option<T2>), E>)>
@@ -281,6 +280,50 @@ pub mod common {
         })
     }
 
+    pub fn opt_seq3<R, S1, S2, S3, T1, T2, T3, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, Option<T2>, Option<T3>), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(opt_seq2(opt_seq2(first, second), third), |((a, b), c)| {
+            (a, b, c)
+        })
+    }
+
+    pub fn opt_seq4<R, S1, S2, S3, S4, T1, T2, T3, T4, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, Option<T2>, Option<T3>, Option<T4>), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(
+            opt_seq2(opt_seq3(first, second, third), fourth),
+            |((a, b, c), d)| (a, b, c, d),
+        )
+    }
+
     pub fn seq2<R, S1, S2, T1, T2, E>(
         first: S1,
         second: S2,
@@ -293,13 +336,10 @@ pub mod common {
         T2: 'static,
         E: IsNotFoundErr + 'static,
     {
-        and_then(
-            if_first_maybe_second(first, second),
-            move |(r1, opt_r2)| match opt_r2 {
-                Some(r2) => Ok((r1, r2)),
-                None => panic!("`seq2` second function returned None, wrap it in a `demand`"),
-            },
-        )
+        and_then(opt_seq2(first, second), move |(r1, opt_r2)| match opt_r2 {
+            Some(r2) => Ok((r1, r2)),
+            None => panic!("`seq2` second function returned None, wrap it in a `demand`"),
+        })
     }
 
     pub fn seq3<R, S1, S2, S3, T1, T2, T3, E>(
@@ -533,7 +573,7 @@ pub mod common {
         E: NotFoundErr + 'static,
     {
         map_fully_ok(
-            if_first_maybe_second(first, second),
+            opt_seq2(first, second),
             move |reader, (r1, opt_r2)| match opt_r2 {
                 Some(r2) => (reader, Ok((r1, r2))),
                 None => (reader.undo(r1), Err(E::not_found_err())),
@@ -977,7 +1017,7 @@ pub mod ws {
         T: 'static,
         E: NotFoundErr + 'static,
     {
-        common::drop_right(common::if_first_maybe_second(source, zero_or_more()))
+        common::drop_right(common::opt_seq2(source, zero_or_more()))
     }
 
     /// Skips any whitespace around the source and returns the source's result.

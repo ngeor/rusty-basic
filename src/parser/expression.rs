@@ -154,18 +154,16 @@ mod number_literal {
     pub fn number_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
         and_then(
-            if_first_maybe_second(
+            opt_seq3(
                 with_pos(read_any_digits()),
-                if_first_maybe_second(
-                    seq2(
-                        with_pos(try_read('.')),
-                        demand(
-                            read_any_digits(),
-                            QError::syntax_error_fn("Expected digits after decimal point"),
-                        ),
+                seq2(
+                    with_pos(try_read('.')),
+                    demand(
+                        read_any_digits(),
+                        QError::syntax_error_fn("Expected digits after decimal point"),
                     ),
-                    try_read('#'),
                 ),
+                try_read('#'),
             ),
             |(
                 Locatable {
@@ -173,8 +171,9 @@ mod number_literal {
                     pos,
                 },
                 opt_frac,
+                opt_double,
             )| match opt_frac {
-                Some(((_, frac_digits), opt_double)) => {
+                Some((_, frac_digits)) => {
                     parse_floating_point_literal(int_digits, frac_digits, opt_double.is_some(), pos)
                 }
                 None => integer_literal_to_expression_node(int_digits, pos),
@@ -185,20 +184,18 @@ mod number_literal {
     pub fn float_without_leading_zero<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
         and_then(
-            if_first_maybe_second(
-                seq2(
-                    with_pos(try_read('.')),
-                    demand(
-                        read_any_digits(),
-                        QError::syntax_error_fn("Expected digits after decimal point"),
-                    ),
+            opt_seq3(
+                with_pos(try_read('.')),
+                demand(
+                    read_any_digits(),
+                    QError::syntax_error_fn("Expected digits after decimal point"),
                 ),
                 try_read('#'),
             ),
-            |((Locatable { pos, .. }, frac_digits), opt_double)| {
+            |(Locatable { pos, .. }, opt_frac_digits, opt_double)| {
                 parse_floating_point_literal(
                     "0".to_string(),
-                    frac_digits,
+                    opt_frac_digits.unwrap(),
                     opt_double.is_some(),
                     pos,
                 )
@@ -250,7 +247,7 @@ mod word {
     pub fn word<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
         map(
-            if_first_maybe_second(
+            opt_seq2(
                 name::name(),
                 in_parenthesis(and_then(csv_zero_or_more(lazy(expression_node)), |v| {
                     if v.is_empty() {
@@ -334,7 +331,7 @@ pub fn operand<T: BufRead + 'static>(
 fn lte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QError>)> {
     and_then(
-        if_first_maybe_second(
+        opt_seq2(
             try_read('<'),
             with_pos(read_any_if(|ch| ch == '=' || ch == '>')),
         ),
@@ -353,7 +350,7 @@ fn lte<T: BufRead + 'static>(
 fn gte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QError>)> {
     map(
-        if_first_maybe_second(try_read('>'), try_read('=')),
+        opt_seq2(try_read('>'), try_read('=')),
         |(_, opt_r)| match opt_r {
             Some(_) => Operand::GreaterOrEqual,
             _ => Operand::Greater,

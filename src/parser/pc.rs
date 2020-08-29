@@ -433,6 +433,87 @@ pub mod common {
         )
     }
 
+    pub fn seq8<R, S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+        fifth: S5,
+        sixth: S6,
+        seventh: S7,
+        eighth: S8,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4, T5, T6, T7, T8), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
+        S5: Fn(R) -> (R, Result<T5, E>) + 'static,
+        S6: Fn(R) -> (R, Result<T6, E>) + 'static,
+        S7: Fn(R) -> (R, Result<T7, E>) + 'static,
+        S8: Fn(R) -> (R, Result<T8, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        T5: 'static,
+        T6: 'static,
+        T7: 'static,
+        T8: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(
+            seq2(
+                first,
+                seq7(second, third, fourth, fifth, sixth, seventh, eighth),
+            ),
+            |(a, (b, c, d, e, f, g, h))| (a, b, c, d, e, f, g, h),
+        )
+    }
+
+    pub fn seq9<R, S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8, T9, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+        fifth: S5,
+        sixth: S6,
+        seventh: S7,
+        eighth: S8,
+        ninth: S9,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4, T5, T6, T7, T8, T9), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
+        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
+        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
+        S5: Fn(R) -> (R, Result<T5, E>) + 'static,
+        S6: Fn(R) -> (R, Result<T6, E>) + 'static,
+        S7: Fn(R) -> (R, Result<T7, E>) + 'static,
+        S8: Fn(R) -> (R, Result<T8, E>) + 'static,
+        S9: Fn(R) -> (R, Result<T9, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        T5: 'static,
+        T6: 'static,
+        T7: 'static,
+        T8: 'static,
+        T9: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map(
+            seq2(
+                first,
+                seq8(second, third, fourth, fifth, sixth, seventh, eighth, ninth),
+            ),
+            |(a, (b, c, d, e, f, g, h, i))| (a, b, c, d, e, f, g, h, i),
+        )
+    }
+
     /// Combines the results of the two given sources into one tuple.
     ///
     /// If either source returns an error, the error will be returned.
@@ -494,6 +575,23 @@ pub mod common {
                 (reader.undo(ch), Err(E::not_found_err()))
             }
         })
+    }
+
+    /// Reverses the result of the given source. If the source returns a successful
+    /// result, it returns a Not Found result. If the source returns a Not Found
+    /// result, it returns an Ok result.
+    pub fn negate<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<(), E>)>
+    where
+        R: Reader + Undo<T> + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: 'static,
+        E: NotFoundErr + 'static,
+    {
+        map_fully_ok_or_not_found(
+            source,
+            |reader, x| (reader.undo(x), Err(E::not_found_err())),
+            |_| Ok(()),
+        )
     }
 }
 

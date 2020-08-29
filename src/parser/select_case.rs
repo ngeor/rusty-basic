@@ -76,41 +76,12 @@ fn parse_select_case_expr<T: BufRead + 'static>(
     )
 }
 
-fn parse_end_select<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(), QError>)> {
-    map(
-        crate::parser::pc::ws::seq2(
-            try_read_keyword(Keyword::End),
-            demand(
-                try_read_keyword(Keyword::Select),
-                QError::syntax_error_fn("Expected SELECT"),
-            ),
-            QError::syntax_error_fn("Expected whitespace after CASE"),
-        ),
-        |(_, _)| (),
-    )
-}
-
-fn case_else_statements<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
-    map(
-        with_keyword_before(
-            Keyword::Case,
-            and(
-                try_read_keyword(Keyword::Else),
-                statements::statements(try_read_keyword(Keyword::End)),
-            ),
-        ),
-        |(_, r)| r,
-    )
-}
-
-pub fn case_blocks<T: BufRead + 'static>(
+fn case_blocks<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<CaseBlockNode>, QError>)> {
     map_default_to_not_found(take_zero_or_more(case_block(), |_| false))
 }
 
-pub fn case_block<T: BufRead + 'static>(
+fn case_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseBlockNode, QError>)> {
     map(
         if_first_demand_second(
@@ -122,21 +93,18 @@ pub fn case_block<T: BufRead + 'static>(
     )
 }
 
-pub fn case_expr<T: BufRead + 'static>(
+fn case_expr<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QError>)> {
-    map(
-        and(
-            try_read_keyword(Keyword::Case),
-            crate::parser::pc::ws::one_or_more_leading(abort_if(
-                try_read_keyword(Keyword::Else),
-                or(case_expr_is(), case_expr_to_or_simple()),
-            )),
-        ),
-        |(_, r)| r,
-    )
+    drop_left(and(
+        try_read_keyword(Keyword::Case),
+        crate::parser::pc::ws::one_or_more_leading(drop_left(and(
+            negate(try_read_keyword(Keyword::Else)),
+            or(case_expr_is(), case_expr_to_or_simple()),
+        ))),
+    ))
 }
 
-pub fn case_expr_is<T: BufRead + 'static>(
+fn case_expr_is<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QError>)> {
     map(
         if_first_demand_second(
@@ -157,7 +125,7 @@ pub fn case_expr_is<T: BufRead + 'static>(
     )
 }
 
-pub fn case_expr_to_or_simple<T: BufRead + 'static>(
+fn case_expr_to_or_simple<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<CaseExpression, QError>)> {
     map(
         if_first_maybe_second(
@@ -173,6 +141,41 @@ pub fn case_expr_to_or_simple<T: BufRead + 'static>(
             Some((_, r)) => CaseExpression::Range(l, r),
             None => CaseExpression::Simple(l),
         },
+    )
+}
+
+fn case_else_statements<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
+    // all other CASE variations have been parsed by the time we're here, it must be CASE ELSE
+    map(
+        seq4(
+            try_read_keyword(Keyword::Case),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace after CASE"),
+            ),
+            demand(
+                try_read_keyword(Keyword::Else),
+                QError::syntax_error_fn("Expected ELSE after CASE"),
+            ),
+            statements::statements(try_read_keyword(Keyword::End)),
+        ),
+        |(_, _, _, r)| r,
+    )
+}
+
+fn parse_end_select<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(), QError>)> {
+    map(
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::End),
+            demand(
+                try_read_keyword(Keyword::Select),
+                QError::syntax_error_fn("Expected SELECT"),
+            ),
+            QError::syntax_error_fn("Expected whitespace after CASE"),
+        ),
+        |(_, _)| (),
     )
 }
 

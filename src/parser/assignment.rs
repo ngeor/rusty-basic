@@ -57,7 +57,7 @@ mod tests {
     fn test_numeric_assignment_to_keyword_not_allowed() {
         assert_eq!(
             parse_err("FOR = 42"),
-            QError::SyntaxError("Cannot parse after FOR".to_string())
+            QError::SyntaxError("Expected name after FOR".to_string())
         );
     }
 

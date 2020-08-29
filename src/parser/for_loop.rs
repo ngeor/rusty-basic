@@ -15,31 +15,25 @@ use std::io::BufRead;
 pub fn for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        if_first_demand_second(
-            if_first_demand_second(
-                with_keyword_before(
-                    Keyword::For,
-                    if_first_maybe_second(
-                        var_equal_lower_to_upper(),
-                        drop_left(crate::parser::pc::ws::seq2(
-                            crate::parser::pc::ws::one_or_more_leading(try_read_keyword(
-                                Keyword::Step,
-                            )),
-                            demand(
-                                expression::expression_node(),
-                                QError::syntax_error_fn("Expected expression after STEP"),
-                            ),
-                            QError::syntax_error_fn("Expected whitespace after STEP"),
-                        )),
+        seq3(
+            if_first_maybe_second(
+                parse_for(),
+                drop_left(crate::parser::pc::ws::seq2(
+                    crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Step)),
+                    demand(
+                        expression::expression_node(),
+                        QError::syntax_error_fn("Expected expression after STEP"),
                     ),
-                ),
-                statements::statements(try_read_keyword(Keyword::Next)),
-                || QError::SyntaxError(format!("Expected FOR statements")),
+                    QError::syntax_error_fn("Expected whitespace after STEP"),
+                )),
             ),
-            next_counter(),
-            || QError::ForWithoutNext,
+            demand(
+                statements::statements(try_read_keyword(Keyword::Next)),
+                QError::syntax_error_fn("Expected FOR statements"),
+            ),
+            demand(next_counter(), || QError::ForWithoutNext),
         ),
-        |((((variable_name, lower_bound, upper_bound), opt_step), statements), next_counter)| {
+        |(((variable_name, lower_bound, upper_bound), opt_step), statements, next_counter)| {
             Statement::ForLoop(ForLoopNode {
                 variable_name,
                 lower_bound,
@@ -63,7 +57,7 @@ fn next_counter<T: BufRead + 'static>(
     )
 }
 
-fn var_equal_lower_to_upper<T: BufRead + 'static>() -> Box<
+fn parse_for<T: BufRead + 'static>() -> Box<
     dyn Fn(
         EolReader<T>,
     ) -> (
@@ -72,44 +66,42 @@ fn var_equal_lower_to_upper<T: BufRead + 'static>() -> Box<
     ),
 > {
     map(
-        if_first_demand_second(
-            name::name_node(),
-            if_first_demand_second(
-                crate::parser::pc::ws::zero_or_more_around(try_read('=')),
-                lower_to_upper(),
-                || QError::SyntaxError("Expected lower expression".to_string()),
+        seq9(
+            try_read_keyword(Keyword::For),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace after FOR"),
             ),
-            || QError::SyntaxError("Expected =".to_string()),
-        ),
-        |(n, (_, (l, u)))| (n, l, u),
-    )
-}
-
-fn lower_to_upper<T: BufRead + 'static>() -> Box<
-    dyn Fn(
-        EolReader<T>,
-    ) -> (
-        EolReader<T>,
-        Result<(ExpressionNode, ExpressionNode), QError>,
-    ),
-> {
-    map(
-        if_first_demand_second(
-            expression::expression_node(),
-            crate::parser::pc::ws::one_or_more_leading(demand(
-                if_first_demand_second(
-                    try_read_keyword(Keyword::To),
-                    crate::parser::pc::ws::one_or_more_leading(demand(
-                        expression::expression_node(),
-                        QError::syntax_error_fn("Expected upper expression"),
-                    )),
-                    || QError::SyntaxError("Expected space after TO".to_string()),
-                ),
+            demand(
+                name::name_node(),
+                QError::syntax_error_fn("Expected name after FOR"),
+            ),
+            demand(
+                crate::parser::pc::ws::zero_or_more_leading(try_read('=')),
+                QError::syntax_error_fn("Expected = after name"),
+            ),
+            demand(
+                crate::parser::pc::ws::zero_or_more_leading(expression::expression_node()),
+                QError::syntax_error_fn("Expected lower bound"),
+            ),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace before TO"),
+            ),
+            demand(
+                try_read_keyword(Keyword::To),
                 QError::syntax_error_fn("Expected TO"),
-            )),
-            || QError::SyntaxError("Expected space after lower expression".to_string()),
+            ),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace after TO"),
+            ),
+            demand(
+                expression::expression_node(),
+                QError::syntax_error_fn("Expected upper bound"),
+            ),
         ),
-        |(l, (_, r))| (l, r),
+        |(_, _, n, _, l, _, _, _, u)| (n, l, u),
     )
 }
 

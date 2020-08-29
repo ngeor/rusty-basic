@@ -188,9 +188,19 @@ fn else_block<T: BufRead + 'static>(
     )
 }
 
-fn end_if<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Keyword, String), QError>)> {
-    with_keyword_before(Keyword::End, try_read_keyword(Keyword::If))
+fn end_if<T: BufRead + 'static>() -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(), QError>)>
+{
+    map(
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::End),
+            demand(
+                try_read_keyword(Keyword::If),
+                QError::syntax_error_fn("Expected IF after END"),
+            ),
+            QError::syntax_error_fn("Expected whitespace after END"),
+        ),
+        |_| (),
+    )
 }
 
 #[cfg(test)]

@@ -9,8 +9,15 @@ use std::io::BufRead;
 pub fn dim<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        with_keyword_before(Keyword::Dim, declared_name::declared_name_node()),
-        |r| Statement::Dim(r),
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::Dim),
+            demand(
+                declared_name::declared_name_node(),
+                QError::syntax_error_fn("Expected name after DIM"),
+            ),
+            QError::syntax_error_fn("Expected whitespace after DIM"),
+        ),
+        |(_, r)| Statement::Dim(r),
     )
 }
 

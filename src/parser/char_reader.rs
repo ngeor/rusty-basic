@@ -1,7 +1,6 @@
 use crate::common::{CaseInsensitiveString, HasLocation, Location, QError};
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
-use crate::parser::pc::loc::*;
 use crate::parser::pc::traits::*;
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
@@ -253,6 +252,7 @@ where
     super::pc::common::filter_any(read_any_keyword(), move |(k, _)| predicate(*k))
 }
 
+// TODO optimize
 pub fn try_read_keyword<P>(
     needle: Keyword,
 ) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
@@ -260,18 +260,6 @@ where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
 {
     read_keyword_if(move |k| k == needle)
-}
-
-pub fn demand_keyword<P>(
-    needle: Keyword,
-) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
-where
-    P: ParserSource + Undo<String> + Undo<(Keyword, String)> + HasLocation + 'static,
-{
-    demand(
-        super::pc::common::filter_any(read_any_keyword(), move |(k, _)| *k == needle),
-        QError::syntax_error_fn(format!("Expected keyword {}", needle)),
-    )
 }
 
 pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
@@ -285,35 +273,7 @@ where
 // Combine two or more parsers
 //
 
-// internal use only
 #[deprecated]
-fn and_no_undo<P, F1, F2, T1, T2, E>(
-    first: F1,
-    second: F2,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), E>)>
-where
-    T1: 'static,
-    T2: 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
-    P: ParserSource + 'static,
-    E: IsNotFoundErr,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, res1) = first(char_reader);
-        match res1 {
-            Ok(r1) => {
-                let (char_reader, res2) = second(char_reader);
-                match res2 {
-                    Ok(r2) => (char_reader, Ok((r1, r2))),
-                    Err(err) => (char_reader, Err(err)),
-                }
-            }
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
 pub fn maybe_first_and_second_no_undo<P, F1, F2, T1, T2, E>(
     first: F1,
     second: F2,
@@ -460,91 +420,9 @@ where
     }
 }
 
-#[deprecated]
-pub fn abort_if<P, T1, T2, E, F1, F2>(
-    predicate_source: F1,
-    source: F2,
-) -> Box<dyn Fn(P) -> (P, Result<T2, E>)>
-where
-    P: ParserSource + Undo<()> + Undo<T1> + 'static,
-    T1: 'static,
-    T2: 'static,
-    E: NotFoundErr + 'static,
-    F1: Fn(P) -> (P, Result<T1, E>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, E>) + 'static,
-{
-    map(and(negate(predicate_source), source), |(_, r)| r)
-}
-
-pub fn negate<P, T, E, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<(), E>)>
-where
-    P: ParserSource + Undo<T> + 'static,
-    T: 'static,
-    E: NotFoundErr + 'static,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-{
-    Box::new(move |reader| {
-        let (reader, res) = source(reader);
-        match res {
-            Ok(x) => (reader.undo(x), Err(E::not_found_err())),
-            Err(err) => {
-                if err.is_not_found_err() {
-                    (reader, Ok(()))
-                } else {
-                    (reader, Err(err))
-                }
-            }
-        }
-    })
-}
-
-/// Combines the two given parsers, demanding that there is some whitespace between
-/// their results.
-/// If the first parser succeeds, there must be a whitespace after it and the
-/// second parser must also succeed.
-#[deprecated]
-pub fn with_some_whitespace_between<P, F1, F2, T1, T2, FE>(
-    first: F1,
-    second: F2,
-    err_fn: FE,
-) -> Box<dyn Fn(P) -> (P, Result<(T1, T2), QError>)>
-where
-    P: ParserSource + HasLocation + 'static,
-    F1: Fn(P) -> (P, Result<T1, QError>) + 'static,
-    F2: Fn(P) -> (P, Result<T2, QError>) + 'static,
-    T1: 'static,
-    T2: 'static,
-    FE: Fn() -> QError + 'static,
-{
-    map(
-        if_first_demand_second(
-            first,
-            and_no_undo(super::pc::ws::one_or_more(), second),
-            err_fn,
-        ),
-        |(l, (_, r))| (l, r),
-    )
-}
-
 //
 // Modify the result of a parser
 //
-
-#[deprecated]
-fn map_all<P, S, M, T, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
-where
-    P: ParserSource + 'static,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-    M: Fn(P, Result<T, E>) -> (P, Result<U, E>) + 'static,
-    T: 'static,
-    U: 'static,
-    E: 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, res) = source(char_reader);
-        mapper(char_reader, res)
-    })
-}
 
 /// Maps the ok output of the `source` with the given mapper function.
 /// The mapper function has total control over the result, as it receives both
@@ -713,28 +591,6 @@ where
             ),
         ),
         |(_, r, _)| r,
-    )
-}
-
-//
-// Keyword guards
-//
-
-#[deprecated]
-pub fn with_keyword_before<P, T, S>(
-    needle: Keyword,
-    source: S,
-) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
-where
-    P: ParserSource + HasLocation + Undo<String> + Undo<(Keyword, String)> + 'static,
-    T: 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
-{
-    map(
-        with_some_whitespace_between(try_read_keyword(needle), source, move || {
-            QError::SyntaxError(format!("Cannot parse after {}", needle))
-        }),
-        |(_, r)| r,
     )
 }
 

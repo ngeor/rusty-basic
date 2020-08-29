@@ -17,31 +17,45 @@ pub fn implementation<T: BufRead + 'static>(
 pub fn function_implementation<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     map(
-        if_first_demand_second(
+        seq5(
             declaration::function_declaration(),
-            if_first_demand_second(
-                statements::statements(try_read_keyword(Keyword::End)),
-                with_keyword_before(Keyword::End, demand_keyword(Keyword::Function)),
-                || QError::SyntaxError("Expected END FUNCTION after function body".to_string()),
+            statements::statements(try_read_keyword(Keyword::End)),
+            demand(
+                try_read_keyword(Keyword::End),
+                QError::syntax_error_fn("Expected END FUNCTION"),
             ),
-            || QError::SyntaxError("Expected function body".to_string()),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace after END"),
+            ),
+            demand(
+                try_read_keyword(Keyword::Function),
+                QError::syntax_error_fn("Expected FUNCTION after END"),
+            ),
         ),
-        |((n, p), (body, _))| TopLevelToken::FunctionImplementation(n, p, body),
+        |((n, p), body, _, _, _)| TopLevelToken::FunctionImplementation(n, p, body),
     )
 }
 
 pub fn sub_implementation<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
     map(
-        if_first_demand_second(
+        seq5(
             declaration::sub_declaration(),
-            if_first_demand_second(
-                statements::statements(try_read_keyword(Keyword::End)),
-                with_keyword_before(Keyword::End, demand_keyword(Keyword::Sub)),
-                || QError::SyntaxError("Expected END SUB after sub body".to_string()),
+            statements::statements(try_read_keyword(Keyword::End)),
+            demand(
+                try_read_keyword(Keyword::End),
+                QError::syntax_error_fn("Expected END SUB"),
             ),
-            || QError::SyntaxError("Expected sub body".to_string()),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected whitespace after END"),
+            ),
+            demand(
+                try_read_keyword(Keyword::Sub),
+                QError::syntax_error_fn("Expected SUB after END"),
+            ),
         ),
-        |((n, p), (body, _))| TopLevelToken::SubImplementation(n, p, body),
+        |((n, p), body, _, _, _)| TopLevelToken::SubImplementation(n, p, body),
     )
 }

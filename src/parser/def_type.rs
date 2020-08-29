@@ -61,7 +61,7 @@ fn single_letter_range<T: BufRead + 'static>(
 
 fn two_letter_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
-    map_to_result_no_undo(
+    and_then(
         and(
             read_any_letter(),
             if_first_demand_second(try_read('-'), read_any_letter(), || {

@@ -73,7 +73,7 @@ pub fn unary_not<T: BufRead + 'static>(
 
 pub fn file_handle<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
-    map_to_result_no_undo(
+    and_then(
         if_first_demand_second(try_read('#'), with_pos(read_any_digits()), || {
             QError::SyntaxError("Expected digits after #".to_string())
         }),
@@ -127,7 +127,7 @@ mod number_literal {
 
     pub fn number_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
-        map_to_result_no_undo(
+        and_then(
             if_first_maybe_second(
                 with_pos(read_any_digits()),
                 if_first_maybe_second(
@@ -154,7 +154,7 @@ mod number_literal {
 
     pub fn float_without_leading_zero<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
-        map_to_result_no_undo(
+        and_then(
             if_first_maybe_second(
                 if_first_demand_second(with_pos(try_read('.')), read_any_digits(), || {
                     QError::SyntaxError("Expected digits after decimal point".to_string())
@@ -299,7 +299,7 @@ pub fn operand<T: BufRead + 'static>(
 
 fn lte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QError>)> {
-    map_to_result_no_undo(
+    and_then(
         if_first_maybe_second(
             try_read('<'),
             with_pos(read_any_if(|ch| ch == '=' || ch == '>')),

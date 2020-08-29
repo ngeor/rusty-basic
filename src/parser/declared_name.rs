@@ -15,7 +15,7 @@ use std::str::FromStr;
 
 pub fn declared_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNode, QError>)> {
-    map_to_result_no_undo(
+    and_then(
         if_first_maybe_second(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
             Name::Bare(b) => match opt_type_definition {
@@ -49,7 +49,7 @@ fn type_definition_extended<T: BufRead + 'static>(
 
 fn extended_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QError>)> {
-    map_to_result_no_undo(
+    and_then(
         with_pos(read_any_identifier()),
         |Locatable { element: x, .. }| match Keyword::from_str(&x) {
             Ok(Keyword::Single) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle)),

@@ -424,47 +424,6 @@ where
 // Modify the result of a parser
 //
 
-/// Maps the ok output of the `source` with the given mapper function.
-/// The mapper function has total control over the result, as it receives both
-/// the ok output of the source and the reader. This is the most flexible mapper
-/// function.
-#[deprecated]
-pub fn map_to_reader<P, S, M, T, U, E>(source: S, mapper: M) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
-where
-    P: ParserSource + 'static,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-    M: Fn(P, T) -> (P, Result<U, E>) + 'static,
-    T: 'static,
-    U: 'static,
-    E: 'static,
-{
-    Box::new(move |char_reader| {
-        let (char_reader, next) = source(char_reader);
-        match next {
-            Ok(ch) => mapper(char_reader, ch),
-            Err(err) => (char_reader, Err(err)),
-        }
-    })
-}
-
-/// Map the result of the source using the given mapper function.
-/// Be careful as it will not undo if the mapper function returns a Not Found result.
-#[deprecated]
-pub fn map_to_result_no_undo<P, S, M, T, U, E>(
-    source: S,
-    mapper: M,
-) -> Box<dyn Fn(P) -> (P, Result<U, E>)>
-where
-    P: ParserSource + 'static,
-    S: Fn(P) -> (P, Result<T, E>) + 'static,
-    M: Fn(T) -> Result<U, E> + 'static,
-    T: 'static,
-    U: 'static,
-    E: 'static,
-{
-    map_to_reader(source, move |reader, ok| (reader, mapper(ok)))
-}
-
 pub enum MapOrUndo<T, U> {
     Ok(T),
     Undo(U),

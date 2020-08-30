@@ -1,3 +1,16 @@
+use super::{BuiltInLint, BuiltInRun};
+use crate::common::*;
+use crate::interpreter::context::Argument;
+use crate::interpreter::context_owner::ContextOwner;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::{Expression, ExpressionNode};
+use crate::parser::char_reader::*;
+use crate::parser::expression;
+use crate::parser::pc::common::*;
+use crate::parser::{HasQualifier, Keyword, QualifiedName, Statement, TypeQualifier};
+use crate::variant::Variant;
+use std::io::BufRead;
+
 // INPUT [;] ["prompt"{; | ,}] variable-list
 // INPUT #file-number%, variable-list
 //
@@ -13,32 +26,33 @@
 // A semicolon immediately after INPUT keeps the cursor on the same line
 // after the user presses the Enter key.
 
-use super::{BuiltInLint, BuiltInRun};
-use crate::common::*;
-use crate::interpreter::context::Argument;
-use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, Stdlib};
-use crate::lexer::*;
-use crate::linter::{Expression, ExpressionNode};
-use crate::parser::buf_lexer_helpers::*;
-use crate::parser::sub_call;
-use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
-use crate::variant::Variant;
-use std::io::BufRead;
-
 #[derive(Debug)]
 pub struct Input {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.peek()?;
-    if next.is_keyword(Keyword::Input) {
-        lexer.read()?;
-        read_whitespace(lexer, "Expected space after INPUT")?;
-        let args = sub_call::read_arg_list(lexer)?;
-        Ok(Some(Statement::SubCall("INPUT".into(), args).at(pos)))
-    } else {
-        Ok(None)
-    }
+pub fn parse_input<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(parse_input_args(), |r| {
+        Statement::SubCall("INPUT".into(), r)
+    })
+}
+
+pub fn parse_input_args<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<Vec<crate::parser::ExpressionNode>, QError>,
+    ),
+> {
+    drop_left(crate::parser::pc::ws::seq2(
+        try_read_keyword(Keyword::Input),
+        demand(
+            // TODO demand variable expression directly
+            map_default_to_not_found(csv_zero_or_more(expression::expression_node())),
+            QError::syntax_error_fn("Expected: at least one variable"),
+        ),
+        QError::syntax_error_fn("Expected: whitespace after INPUT"),
+    ))
 }
 
 impl BuiltInLint for Input {
@@ -65,7 +79,7 @@ impl BuiltInRun for Input {
                         do_input_one_var(interpreter, a, n)?;
                     }
                     _ => {
-                        panic!("Expected variable (linter should have caught this)");
+                        panic!("Expected: variable (linter should have caught this)");
                     }
                 },
                 None => {

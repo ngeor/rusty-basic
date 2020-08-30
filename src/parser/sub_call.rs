@@ -1,82 +1,56 @@
 use crate::common::*;
-use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
-
+use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::pc::common::*;
+use crate::parser::pc::traits::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    lexer.begin_transaction();
-    // get the name first and ensure we are not looking at an assignment or a label
-    let opt_name = name::try_read_bare(lexer)?;
-    if opt_name.is_none() {
-        lexer.rollback_transaction();
-        return Ok(None);
-    }
-    let Locatable {
-        element: bare_name,
-        pos,
-    } = opt_name.unwrap();
-    let p = lexer.peek()?;
-    if p.as_ref().is_symbol('=') || p.as_ref().is_symbol(':') {
-        // assignment or label
-        lexer.rollback_transaction();
-        return Ok(None);
-    }
-
-    if p.as_ref().is_symbol('(') {
-        // sub call with parenthesis e.g. Hello(1)
-        lexer.commit_transaction();
-        let args = read_arg_list(lexer)?;
-        return Ok(Some(Statement::SubCall(bare_name, args).at(pos)));
-    }
-
-    let might_have_args = if p.as_ref().is_whitespace() {
-        // we might have an argument list
-        lexer.read()?;
-        true
-    } else {
-        false
-    };
-    if !might_have_args {
-        // no args e.g. "PRINT"
-        lexer.commit_transaction();
-        return Ok(Some(Statement::SubCall(bare_name, vec![]).at(pos)));
-    }
-
-    // check once again to make sure we're not in assignment with extra whitespace e.g. A = 2
-    if lexer.peek()?.as_ref().is_symbol('=') {
-        lexer.rollback_transaction();
-        return Ok(None);
-    }
-
-    // at this point we know it's a sub call so we commit
-    lexer.commit_transaction();
-
-    let args = read_arg_list(lexer)?;
-    Ok(Some(Statement::SubCall(bare_name, args).at(pos)))
+// SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
+// SubCallNoArgs            ::= BareName [eof | eol | ' | <ws+>: ]
+// SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
+// SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
+pub fn sub_call<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        and(
+            name::bare_name(),
+            or_vec(vec![
+                // e.g. PRINT("hello", "world")
+                map_default_to_not_found(in_parenthesis(csv_zero_or_more(
+                    expression::expression_node(),
+                ))),
+                // e.g. PRINT "hello", "world"
+                crate::parser::pc::ws::zero_or_more_leading(map_default_to_not_found(
+                    csv_zero_or_more(expression::expression_node()),
+                )),
+                // prevent against e.g. A = "oops"
+                crate::parser::pc::ws::one_or_more_leading(zero_args_assignment_and_label_guard(
+                    true,
+                )),
+                // prevent against e.g. A: or A="oops"
+                zero_args_assignment_and_label_guard(false),
+            ]),
+        ),
+        |(n, r)| Statement::SubCall(n, r),
+    )
 }
 
-pub fn read_arg_list<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Vec<ExpressionNode>, QErrorNode> {
-    match expression::try_read(lexer)? {
-        Some(e) => {
-            let mut args: Vec<ExpressionNode> = vec![e];
-            skip_whitespace(lexer)?;
-            if lexer.peek()?.as_ref().is_symbol(',') {
-                // next args
-                lexer.read()?; // read comma
-                skip_whitespace(lexer)?;
-                let mut next_args = read_arg_list(lexer)?;
-                args.append(&mut next_args);
+pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
+    allow_colon: bool,
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ArgumentNodes, QError>)> {
+    map_fully_ok_or_not_found(
+        read(),
+        move |reader: EolReader<T>, ch| {
+            if ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':') {
+                (reader.undo(ch), Ok(vec![]))
+            } else {
+                (reader.undo(ch), Err(QError::not_found_err()))
             }
-            Ok(args)
-        }
-        None => Ok(vec![]),
-    }
+        },
+        |_| Ok(vec![]),
+    )
 }
 
 #[cfg(test)]

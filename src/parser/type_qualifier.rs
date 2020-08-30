@@ -1,22 +1,18 @@
 use crate::common::*;
-use crate::lexer::*;
-
+use crate::parser::char_reader::*;
+use crate::parser::pc::common::*;
+use crate::parser::pc::traits::*;
 use crate::parser::types::TypeQualifier;
-use std::convert::TryFrom;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<TypeQualifier>, QErrorNode> {
-    match lexer.peek()? {
-        Locatable {
-            element: Lexeme::Symbol(ch),
-            ..
-        } => match TypeQualifier::try_from(ch) {
-            Ok(t) => {
-                lexer.read()?;
-                Ok(Some(t))
-            }
-            _ => Ok(None),
+/// Returns a function that can parse a `TypeQualifier`.
+pub fn type_qualifier<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeQualifier, QError>)> {
+    map_fully_ok(
+        read_any_symbol(),
+        |reader: EolReader<T>, ch| match TypeQualifier::from_char(ch) {
+            Some(t) => (reader, Ok(t)),
+            None => (reader.undo(ch), Err(QError::not_found_err())),
         },
-        _ => Ok(None),
-    }
+    )
 }

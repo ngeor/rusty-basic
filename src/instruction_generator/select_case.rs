@@ -35,13 +35,13 @@ impl InstructionGenerator {
                 CaseExpression::Is(op, e) => {
                     // evaluate CASE IS y -> A
                     self.generate_expression_instructions(e);
-                    self.push(Instruction::SwapAWithB, pos);
                     match op {
-                        Operand::Less => self.push(Instruction::Less, pos),
-                        Operand::LessOrEqual => self.push(Instruction::LessOrEqual, pos),
+                        Operand::Less => self.push(Instruction::GreaterOrEqual, pos),
+                        Operand::LessOrEqual => self.push(Instruction::Greater, pos),
+                        Operand::Greater => self.push(Instruction::LessOrEqual, pos),
+                        Operand::GreaterOrEqual => self.push(Instruction::Less, pos),
                         Operand::Equal => self.push(Instruction::Equal, pos),
-                        Operand::GreaterOrEqual => self.push(Instruction::GreaterOrEqual, pos),
-                        Operand::Greater => self.push(Instruction::Greater, pos),
+                        Operand::NotEqual => self.push(Instruction::NotEqual, pos),
                         _ => panic!("Unexpected CASE IS operator {:?}", op),
                     }
                     self.jump_if_false(next_case_label(case_blocks_len, has_else, idx), pos);

@@ -33,6 +33,32 @@ impl TypeQualifier {
             _ => other != Self::DollarString && other != Self::FileHandle,
         }
     }
+
+    /// Maps the given character into a `TypeQualifier`.
+    /// If the character does not represent a type qualifier, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rusty_basic::parser::TypeQualifier;
+    /// assert_eq!(TypeQualifier::from_char('#'), Some(TypeQualifier::HashDouble));
+    /// assert_eq!(TypeQualifier::from_char('1'), None);
+    /// ```
+    pub fn from_char(ch: char) -> Option<Self> {
+        if ch == '!' {
+            Some(TypeQualifier::BangSingle)
+        } else if ch == '#' {
+            Some(TypeQualifier::HashDouble)
+        } else if ch == '$' {
+            Some(TypeQualifier::DollarString)
+        } else if ch == '%' {
+            Some(TypeQualifier::PercentInteger)
+        } else if ch == '&' {
+            Some(TypeQualifier::AmpersandLong)
+        } else {
+            None
+        }
+    }
 }
 
 impl Display for TypeQualifier {
@@ -70,19 +96,7 @@ impl FromStr for TypeQualifier {
 impl TryFrom<char> for TypeQualifier {
     type Error = String;
     fn try_from(ch: char) -> Result<TypeQualifier, String> {
-        if ch == '!' {
-            Ok(TypeQualifier::BangSingle)
-        } else if ch == '#' {
-            Ok(TypeQualifier::HashDouble)
-        } else if ch == '$' {
-            Ok(TypeQualifier::DollarString)
-        } else if ch == '%' {
-            Ok(TypeQualifier::PercentInteger)
-        } else if ch == '&' {
-            Ok(TypeQualifier::AmpersandLong)
-        } else {
-            Err(format!("Invalid type qualifier {}", ch))
-        }
+        TypeQualifier::from_char(ch).ok_or_else(|| format!("Invalid type qualifier {}", ch))
     }
 }
 

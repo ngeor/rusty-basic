@@ -1,68 +1,67 @@
 use crate::common::*;
-use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
-use crate::parser::declaration::try_read_declaration_parameters;
-
-use crate::parser::name;
-use crate::parser::statements::parse_statements;
+use crate::parser::char_reader::*;
+use crate::parser::declaration;
+use crate::parser::pc::common::*;
+use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    let p = lexer.peek()?;
-    if p.as_ref().is_keyword(Keyword::Function) {
-        let pos = lexer.read()?.pos();
-        demand_function_implementation(lexer).map(|x| Some(x.at(pos)))
-    } else if p.as_ref().is_keyword(Keyword::Sub) {
-        let pos = lexer.read()?.pos();
-        demand_sub_implementation(lexer).map(|x| Some(x.at(pos)))
-    } else {
-        Ok(None)
-    }
+// FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
+// SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
+
+pub fn implementation<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+    or(function_implementation(), sub_implementation())
 }
 
-pub fn demand_function_implementation<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<TopLevelToken, QErrorNode> {
-    // function name
-    read_whitespace(lexer, "Expected whitespace after FUNCTION keyword")?;
-    let name = read(lexer, name::try_read, "Expected function name")?;
-    // function parameters
-    let params: DeclaredNameNodes = read(
-        lexer,
-        try_read_declaration_parameters,
-        "Expected function parameters",
-    )?;
-    // function body
-    let block = parse_statements(
-        lexer,
-        |x| x.is_keyword(Keyword::End),
-        "Function without End",
-    )?;
-    read_keyword(lexer, Keyword::End)?;
-    read_whitespace(lexer, "Expected whitespace after END keyword")?;
-    read_keyword(lexer, Keyword::Function)?;
-    Ok(TopLevelToken::FunctionImplementation(name, params, block))
+pub fn function_implementation<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+    map(
+        seq5(
+            declaration::function_declaration(),
+            statements::statements(
+                try_read_keyword(Keyword::End),
+                QError::syntax_error_fn("Expected: end-of-statement"),
+            ),
+            demand(
+                try_read_keyword(Keyword::End),
+                QError::syntax_error_fn("Expected: END FUNCTION"),
+            ),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected: whitespace after END"),
+            ),
+            demand(
+                try_read_keyword(Keyword::Function),
+                QError::syntax_error_fn("Expected: FUNCTION after END"),
+            ),
+        ),
+        |((n, p), body, _, _, _)| TopLevelToken::FunctionImplementation(n, p, body),
+    )
 }
 
-pub fn demand_sub_implementation<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<TopLevelToken, QErrorNode> {
-    // sub name
-    read_whitespace(lexer, "Expected whitespace after SUB keyword")?;
-    let name = read(lexer, name::try_read_bare, "Expected sub name")?;
-    // sub parameters
-    let params: DeclaredNameNodes = read(
-        lexer,
-        try_read_declaration_parameters,
-        "Expected sub parameters",
-    )?;
-    // body
-    let block = parse_statements(lexer, |x| x.is_keyword(Keyword::End), "Sub without End")?;
-    read_keyword(lexer, Keyword::End)?;
-    read_whitespace(lexer, "Expected whitespace after END keyword")?;
-    read_keyword(lexer, Keyword::Sub)?;
-    Ok(TopLevelToken::SubImplementation(name, params, block))
+pub fn sub_implementation<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+    map(
+        seq5(
+            declaration::sub_declaration(),
+            statements::statements(
+                try_read_keyword(Keyword::End),
+                QError::syntax_error_fn("Expected: end-of-statement"),
+            ),
+            demand(
+                try_read_keyword(Keyword::End),
+                QError::syntax_error_fn("Expected: END SUB"),
+            ),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected: whitespace after END"),
+            ),
+            demand(
+                try_read_keyword(Keyword::Sub),
+                QError::syntax_error_fn("Expected: SUB after END"),
+            ),
+        ),
+        |((n, p), body, _, _, _)| TopLevelToken::SubImplementation(n, p, body),
+    )
 }

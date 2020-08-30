@@ -1,4 +1,15 @@
+use super::{BuiltInLint, BuiltInRun};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
+use crate::parser::char_reader::*;
+use crate::parser::expression;
+use crate::parser::pc::common::*;
+use crate::parser::{Expression, Keyword, Statement};
+use std::io::BufRead;
+
 // OPEN file$ [FOR mode] [ACCESS access] [lock] AS [#]file-number% [LEN=rec-len%]
+// OpenStatement ::= OPEN<ws+><ExpressionNode>(<ws+>FOR mode)?(<ws+>ACCESS access)?<ws+>AS<ws+>[#]<file-number%>
 //
 // mode: APPEND, BINARY, INPUT, OUTPUT, RANDOM
 // access: READ, WRITE, READ WRITE
@@ -7,83 +18,94 @@
 // rec-len%: For random access files, the record length (default is 128 bytes)
 //           For sequential files, the number of characters buffered (default is 512 bytes)
 
-use super::{BuiltInLint, BuiltInRun};
-use crate::common::*;
-use crate::interpreter::{Interpreter, Stdlib};
-use crate::lexer::{BufLexer, Keyword, Lexeme, LexemeNode};
-use crate::linter::ExpressionNode;
-use crate::parser::buf_lexer_helpers::*;
-use crate::parser::expression;
-use crate::parser::{BareName, Expression, Statement, StatementNode};
-use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.peek()?;
-    if !next.is_keyword(Keyword::Open) {
-        return Ok(None);
-    }
-
-    lexer.read()?;
-    read_whitespace(lexer, "Expected space after OPEN")?;
-    let file_name_expr = read(lexer, expression::try_read, "Expected filename")?;
-    read_whitespace(lexer, "Expected space after filename")?;
-    read_keyword(lexer, Keyword::For)?;
-    read_whitespace(lexer, "Expected space after FOR")?;
-    let mode: i32 = read_demand_file_mode(lexer)?.into();
-    read_whitespace(lexer, "Expected space after file mode")?;
-    let mut next: LexemeNode = lexer.read()?;
-    let mut access: i32 = FileAccess::Unspecified.into();
-    if next.as_ref().is_keyword(Keyword::Access) {
-        read_whitespace(lexer, "Expected space after ACCESS")?;
-        access = read_demand_file_access(lexer)?.into();
-        read_whitespace(lexer, "Expected space after file access")?;
-        next = lexer.read()?;
-    }
-    if next.as_ref().is_keyword(Keyword::As) {
-        read_whitespace(lexer, "Expected space after AS")?;
-        let file_handle = read(lexer, expression::try_read, "Expected file handle")?;
-        let bare_name: BareName = "OPEN".into();
-
-        Ok(Statement::SubCall(
-            bare_name,
-            vec![
-                file_name_expr,
-                Expression::IntegerLiteral(mode).at(Location::start()),
-                Expression::IntegerLiteral(access).at(Location::start()),
-                file_handle,
-            ],
-        )
-        .at(pos))
-        .map(|x| Some(x))
-    } else {
-        Err(QError::SyntaxError("Expected AS".to_string())).with_err_at(&next)
-    }
+pub fn parse_open<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        crate::parser::pc::ws::seq2(
+            opt_seq3(parse_filename(), parse_open_mode(), parse_open_access()),
+            demand(
+                parse_file_number(),
+                QError::syntax_error_fn("Expected: AS file-number"),
+            ),
+            QError::syntax_error_fn("Expected: whitespace before AS"),
+        ),
+        |((file_name, opt_file_mode, opt_file_access), file_number)| {
+            Statement::SubCall(
+                "OPEN".into(),
+                vec![
+                    file_name,
+                    // TODO take actual pos
+                    Expression::IntegerLiteral(opt_file_mode.unwrap_or(FileMode::Input).into())
+                        .at(Location::start()),
+                    // TODO take actual pos
+                    Expression::IntegerLiteral(
+                        opt_file_access.unwrap_or(FileAccess::Unspecified).into(),
+                    )
+                    .at(Location::start()),
+                    file_number,
+                ],
+            )
+        },
+    )
 }
 
-fn read_demand_file_mode<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileMode, QErrorNode> {
-    let next = lexer.read()?;
-    match next.as_ref() {
-        Lexeme::Keyword(Keyword::Input, _) => Ok(FileMode::Input),
-        Lexeme::Keyword(Keyword::Output, _) => Ok(FileMode::Output),
-        Lexeme::Keyword(Keyword::Append, _) => Ok(FileMode::Append),
-        _ => Err(QError::SyntaxError(
-            "Expected INPUT|OUTPUT|APPEND after FOR".to_string(),
-        ))
-        .with_err_at(&next),
-    }
+fn parse_filename<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::ExpressionNode, QError>)> {
+    drop_left(crate::parser::pc::ws::seq2(
+        try_read_keyword(Keyword::Open),
+        demand(
+            expression::expression_node(),
+            QError::syntax_error_fn("Expected: filename after OPEN"),
+        ),
+        QError::syntax_error_fn("Expected: whitespace after OPEN"),
+    ))
 }
 
-fn read_demand_file_access<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<FileAccess, QErrorNode> {
-    let next = lexer.read()?;
-    match next.as_ref() {
-        Lexeme::Keyword(Keyword::Read, _) => Ok(FileAccess::Read),
-        _ => Err(QError::SyntaxError(
-            "Expected READ after ACCESS".to_string(),
-        ))
-        .with_err_at(&next),
-    }
+fn parse_open_mode<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileMode, QError>)> {
+    drop_left(crate::parser::pc::ws::seq2(
+        crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::For)),
+        demand(
+            and_then(read_any_keyword(), |(k, _)| match k {
+                Keyword::Append => Ok(FileMode::Append),
+                Keyword::Input => Ok(FileMode::Input),
+                Keyword::Output => Ok(FileMode::Output),
+                _ => Err(QError::syntax_error("Invalid file mode")),
+            }),
+            QError::syntax_error_fn("Invalid file mode"),
+        ),
+        QError::syntax_error_fn("Expected: whitespace after FOR"),
+    ))
+}
+
+fn parse_open_access<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileAccess, QError>)> {
+    drop_left(crate::parser::pc::ws::seq2(
+        crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Access)),
+        demand(
+            and_then(read_any_keyword(), |(k, _)| match k {
+                Keyword::Read => Ok(FileAccess::Read),
+                _ => Err(QError::syntax_error("Invalid file access")),
+            }),
+            QError::syntax_error_fn("Invalid file access"),
+        ),
+        QError::syntax_error_fn("Expected: whitespace after ACCESS"),
+    ))
+}
+
+fn parse_file_number<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::ExpressionNode, QError>)> {
+    drop_left(crate::parser::pc::ws::seq2(
+        try_read_keyword(Keyword::As),
+        demand(
+            expression::expression_node(),
+            QError::syntax_error_fn("Expected: file number"),
+        ),
+        QError::syntax_error_fn("Expected: whitespace after AS"),
+    ))
 }
 
 impl BuiltInLint for Open {

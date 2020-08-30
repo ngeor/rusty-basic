@@ -183,7 +183,7 @@ mod tests {
             );
             if interpret(program).stdlib.output.len() > 0 {
                 panic!(format!(
-                    "Expected condition to be true but was false: {}",
+                    "Expected: condition to be true but was false: {}",
                     $condition
                 ))
             }
@@ -202,7 +202,7 @@ mod tests {
             );
             if interpret(program).stdlib.output.len() > 0 {
                 panic!(format!(
-                    "Expected condition to be false but was true: {}",
+                    "Expected: condition to be false but was true: {}",
                     $condition
                 ))
             }

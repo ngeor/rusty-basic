@@ -1,25 +1,24 @@
-// parses DIM statement
-
 use crate::common::*;
-use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
+use crate::parser::char_reader::*;
 use crate::parser::declared_name;
-
+use crate::parser::pc::common::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    // try to read DIM, if it succeeds demand it, else return None
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::Dim) {
-        return Ok(None);
-    }
-    // demand DIM
-    let pos = read_keyword(lexer, Keyword::Dim)?;
-    // demand whitespace
-    read_whitespace(lexer, "Expected whitespace after DIM")?;
-    // demand variable name
-    let declared_name_node = read(lexer, declared_name::try_read, "Expected variable name")?;
-    Ok(Some(Statement::Dim(declared_name_node).at(pos)))
+/// Parses DIM statement
+pub fn dim<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::Dim),
+            demand(
+                declared_name::declared_name_node(),
+                QError::syntax_error_fn("Expected: name after DIM"),
+            ),
+            QError::syntax_error_fn("Expected: whitespace after DIM"),
+        ),
+        |(_, r)| Statement::Dim(r),
+    )
 }
 
 #[cfg(test)]
@@ -32,7 +31,7 @@ mod tests {
     macro_rules! assert_parse_dim_extended_built_in {
         ($keyword: literal, $qualifier: ident) => {
             let input = format!("DIM X AS {}", $keyword);
-            let p = parse(input.as_ref());
+            let p = parse(input);
             assert_eq!(
                 p,
                 vec![TopLevelToken::Statement(Statement::Dim(
@@ -95,7 +94,7 @@ mod tests {
     macro_rules! assert_parse_dim_compact {
         ($keyword: literal, $qualifier: ident) => {
             let input = format!("DIM X{}", $keyword);
-            let p = parse(input.as_ref());
+            let p = parse(input);
             assert_eq!(
                 p,
                 vec![TopLevelToken::Statement(Statement::Dim(

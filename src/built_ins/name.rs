@@ -1,36 +1,31 @@
+use super::{BuiltInLint, BuiltInRun};
+use crate::common::*;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::linter::ExpressionNode;
+use crate::parser::char_reader::*;
+use crate::parser::expression;
+use crate::parser::pc::common::*;
+use crate::parser::{Keyword, Statement, TypeQualifier};
+use std::io::BufRead;
+
 // NAME old$ AS new$
 // Renames a file or directory.
 // TODO support directory
 
-use super::{BuiltInLint, BuiltInRun};
-use crate::common::*;
-use crate::interpreter::{Interpreter, Stdlib};
-use crate::lexer::{BufLexer, Keyword};
-use crate::linter::ExpressionNode;
-use crate::parser::buf_lexer_helpers::*;
-use crate::parser::expression;
-use crate::parser::{BareName, Statement, StatementNode, TypeQualifier};
-use std::io::BufRead;
-
 #[derive(Debug)]
 pub struct Name {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.peek()?;
-    if next.is_keyword(Keyword::Name) {
-        lexer.read()?;
-        read_whitespace(lexer, "Expected space after NAME")?;
-        let old_file_name = read(lexer, expression::try_read, "Expected original filename")?;
-        read_whitespace(lexer, "Expected space after filename")?;
-        read_keyword(lexer, Keyword::As)?;
-        read_whitespace(lexer, "Expected space after AS")?;
-        let new_file_name = read(lexer, expression::try_read, "Expected new filename")?;
-        let bare_name: BareName = "NAME".into();
-        Ok(Statement::SubCall(bare_name, vec![old_file_name, new_file_name]).at(pos))
-            .map(|x| Some(x))
-    } else {
-        Ok(None)
-    }
+pub fn parse_name<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        seq4(
+            try_read_keyword(Keyword::Name),
+            expression::demand_back_guarded_expression_node(),
+            demand_keyword(Keyword::As),
+            expression::demand_guarded_expression_node(),
+        ),
+        |(_, l, _, r)| Statement::SubCall("NAME".into(), vec![l, r]),
+    )
 }
 
 impl BuiltInLint for Name {
@@ -76,6 +71,22 @@ mod tests {
         let contents = std::fs::read_to_string("TEST4.NEW").unwrap_or("".to_string());
         std::fs::remove_file("TEST4.OLD").unwrap_or(());
         std::fs::remove_file("TEST4.NEW").unwrap_or(());
+        assert_eq!(contents, "hi");
+    }
+
+    #[test]
+    fn test_can_rename_file_parenthesis() {
+        // arrange
+        std::fs::write("TEST5.OLD", "hi").unwrap_or(());
+        let input = r#"
+        NAME("TEST5.OLD")AS("TEST5.NEW")
+        "#;
+        // act
+        interpret(input);
+        // assert
+        let contents = std::fs::read_to_string("TEST5.NEW").unwrap_or("".to_string());
+        std::fs::remove_file("TEST5.OLD").unwrap_or(());
+        std::fs::remove_file("TEST5.NEW").unwrap_or(());
         assert_eq!(contents, "hi");
     }
 

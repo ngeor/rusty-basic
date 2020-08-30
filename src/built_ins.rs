@@ -20,8 +20,9 @@ mod util;
 
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::lexer::BufLexer;
 use crate::linter::ExpressionNode;
+use crate::parser::char_reader::*;
+use crate::parser::pc::common::*;
 use crate::parser::{HasQualifier, Name, TypeQualifier};
 use std::convert::TryFrom;
 use std::io::BufRead;
@@ -272,11 +273,12 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
 }
 
 /// Parses built-in subs which have a special syntax.
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<crate::parser::StatementNode>, QErrorNode> {
-    input::try_read(lexer)
-        .or_try_read(|| line_input::try_read(lexer))
-        .or_try_read(|| name::try_read(lexer))
-        .or_try_read(|| open::try_read(lexer))
+pub fn parse_built_in<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::Statement, QError>)> {
+    or_vec(vec![
+        input::parse_input(),
+        line_input::parse_line_input(),
+        name::parse_name(),
+        open::parse_open(),
+    ])
 }

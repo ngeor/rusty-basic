@@ -1,45 +1,37 @@
 use super::{BareName, BareNameNode, Name, NameNode};
 use crate::common::*;
-use crate::lexer::{BufLexer, Lexeme};
+use crate::parser::char_reader::*;
+use crate::parser::pc::common::*;
+use crate::parser::pc::loc::*;
 use crate::parser::type_qualifier;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<NameNode>, QErrorNode> {
-    let Locatable { element, pos } = lexer.peek()?;
-    match element {
-        Lexeme::Word(word) => {
-            lexer.read()?;
-            let q = type_qualifier::try_read(lexer)?;
-            Ok(Some(Name::new(word.into(), q).at(pos)))
-        }
-        _ => Ok(None),
-    }
+// name node
+
+pub fn name_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<NameNode, QError>)> {
+    with_pos(name())
 }
 
-pub fn try_read_bare<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<BareNameNode>, QErrorNode> {
-    lexer.begin_transaction();
-    let Locatable { element, pos } = lexer.peek()?;
-    match element {
-        Lexeme::Word(word) => {
-            lexer.read()?;
+pub fn name<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Name, QError>)> {
+    map(
+        opt_seq2(read_any_word(), type_qualifier::type_qualifier()),
+        |(l, r)| Name::new(l.into(), r),
+    )
+}
 
-            // if we have a type qualifier next, then it's not a bare name actually
-            match type_qualifier::try_read(lexer)? {
-                Some(_) => {
-                    lexer.rollback_transaction();
-                    Ok(None)
-                }
-                None => {
-                    lexer.commit_transaction();
-                    Ok(Some(BareName::new(word).at(pos)))
-                }
-            }
-        }
-        _ => {
-            lexer.rollback_transaction();
-            Ok(None)
-        }
-    }
+// bare name node
+
+pub fn bare_name_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<BareNameNode, QError>)> {
+    with_pos(bare_name())
+}
+
+pub fn bare_name<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<BareName, QError>)> {
+    map(
+        and(read_any_word(), negate(type_qualifier::type_qualifier())),
+        |(l, _)| l.into(),
+    )
 }

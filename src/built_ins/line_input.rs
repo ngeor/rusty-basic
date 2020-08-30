@@ -1,35 +1,36 @@
-// LINE INPUT -> see INPUT
-// LINE INPUT [;] ["prompt";] variable$
-// LINE INPUT #file-number%, variable$
-
 use super::{BuiltInLint, BuiltInRun};
+use crate::built_ins::input::parse_input_args;
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::lexer::{BufLexer, Keyword};
 use crate::linter::ExpressionNode;
-use crate::parser::buf_lexer_helpers::*;
-use crate::parser::sub_call;
-use crate::parser::{HasQualifier, QualifiedName, Statement, StatementNode, TypeQualifier};
+use crate::parser::char_reader::*;
+use crate::parser::pc::common::*;
+use crate::parser::{HasQualifier, Keyword, QualifiedName, Statement, TypeQualifier};
 use crate::variant::Variant;
 use std::io::BufRead;
+
+// LINE INPUT -> see INPUT
+// LINE INPUT [;] ["prompt";] variable$
+// LINE INPUT #file-number%, variable$
 
 #[derive(Debug)]
 pub struct LineInput {}
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    let Locatable { element: next, pos } = lexer.peek()?;
-    if next.is_keyword(Keyword::Line) {
-        lexer.read()?;
-        read_whitespace(lexer, "Expected space after LINE")?;
-        read_keyword(lexer, Keyword::Input)?;
-        read_whitespace(lexer, "Expected space after INPUT")?;
-        let args = sub_call::read_arg_list(lexer)?;
-        Ok(Some(Statement::SubCall("LINE INPUT".into(), args).at(pos)))
-    } else {
-        Ok(None)
-    }
+pub fn parse_line_input<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::Line),
+            demand(
+                parse_input_args(),
+                QError::syntax_error_fn("Expected: INPUT after LINE"),
+            ),
+            QError::syntax_error_fn("Expected: whitespace after LINE"),
+        ),
+        |(_, r)| Statement::SubCall("LINE INPUT".into(), r),
+    )
 }
 
 impl BuiltInLint for LineInput {

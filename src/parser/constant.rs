@@ -1,23 +1,31 @@
-use super::{Statement, StatementNode};
+use super::Statement;
 use crate::common::*;
-use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
-use crate::parser::expression;
-use crate::parser::name;
+use crate::parser::assignment;
+use crate::parser::char_reader::*;
+use crate::parser::pc::common::*;
+use crate::parser::pc::loc::with_pos;
+use crate::parser::types::Keyword;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::Const) {
-        return Ok(None);
-    }
-    let pos = lexer.read()?.pos();
-    read_whitespace(lexer, "Expected whitespace after CONST")?;
-    let name_node = read(lexer, name::try_read, "Expected CONST name")?;
-    skip_whitespace(lexer)?;
-    read_symbol(lexer, '=')?;
-    skip_whitespace(lexer)?;
-    let right_side = read(lexer, expression::try_read, "Expected CONST expression")?;
-    Ok(Statement::Const(name_node, right_side).at(pos)).map(|x| Some(x))
+pub fn constant<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::Const),
+            demand(
+                with_pos(assignment::assignment_tuple()),
+                QError::syntax_error_fn("Expected: name"),
+            ),
+            QError::syntax_error_fn("Expected: whitespace after CONST"),
+        ),
+        |(
+            _,
+            Locatable {
+                element: (n, e),
+                pos,
+            },
+        )| Statement::Const(n.at(pos), e),
+    )
 }
 
 #[cfg(test)]

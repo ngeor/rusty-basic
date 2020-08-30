@@ -1,93 +1,133 @@
 use crate::built_ins;
 use crate::common::*;
-use crate::lexer::{BufLexer, Keyword};
 use crate::parser::assignment;
-use crate::parser::buf_lexer_helpers::*;
+use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim_parser;
-
 use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
+use crate::parser::pc::common::*;
+use crate::parser::pc::copy::*;
+use crate::parser::pc::loc::*;
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    dim_parser::try_read(lexer)
-        .or_try_read(|| constant::try_read(lexer))
-        .or_try_read(|| comment::try_read(lexer))
-        .or_try_read(|| built_ins::try_read(lexer))
-        .or_try_read(|| sub_call::try_read(lexer))
-        .or_try_read(|| assignment::try_read(lexer))
-        .or_try_read(|| try_read_label(lexer))
-        .or_try_read(|| if_block::try_read(lexer))
-        .or_try_read(|| for_loop::try_read(lexer))
-        .or_try_read(|| select_case::try_read(lexer))
-        .or_try_read(|| while_wend::try_read(lexer))
-        .or_try_read(|| try_read_go_to(lexer))
-        .or_try_read(|| try_read_on(lexer))
-        .or_try_read(|| try_read_illegal_keywords(lexer))
+pub fn statement_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QError>)> {
+    with_pos(statement())
 }
 
-fn try_read_illegal_keywords<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    let Locatable { element, pos } = lexer.peek()?;
-    if element.is_keyword(Keyword::Wend) {
-        Err(QError::WendWithoutWhile).with_err_at(pos)
-    } else if element.is_keyword(Keyword::Else) {
-        Err(QError::ElseWithoutIf).with_err_at(pos)
-    } else {
-        Ok(None)
-    }
+pub fn statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    or_vec(vec![
+        dim_parser::dim(),
+        constant::constant(),
+        comment::comment(),
+        built_ins::parse_built_in(),
+        sub_call::sub_call(),
+        assignment::assignment(),
+        statement_label(),
+        if_block::if_block(),
+        for_loop::for_loop(),
+        select_case::select_case(),
+        while_wend::while_wend(),
+        statement_go_to(),
+        statement_on_error_go_to(),
+        statement_illegal_keywords(),
+    ])
 }
 
-fn try_read_label<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    in_transaction(lexer, do_read_label)
+/// Tries to read a statement that is allowed to be on a single line IF statement,
+/// excluding comments.
+pub fn single_line_non_comment_statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    or_vec(vec![
+        dim_parser::dim(),
+        constant::constant(),
+        built_ins::parse_built_in(),
+        sub_call::sub_call(),
+        assignment::assignment(),
+        statement_go_to(),
+        statement_on_error_go_to(),
+    ])
 }
 
-fn do_read_label<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<StatementNode, QErrorNode> {
-    let Locatable {
-        element: bare_name,
-        pos,
-    } = read(lexer, name::try_read_bare, "Expected bare name")?;
-    read_symbol(lexer, ':')?;
-    Ok(Statement::Label(bare_name).at(pos))
+/// Tries to read a statement that is allowed to be on a single line IF statement,
+/// including comments.
+pub fn single_line_statement<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    or_vec(vec![
+        comment::comment(),
+        dim_parser::dim(),
+        constant::constant(),
+        built_ins::parse_built_in(),
+        sub_call::sub_call(),
+        assignment::assignment(),
+        statement_go_to(),
+        statement_on_error_go_to(),
+    ])
 }
 
-fn try_read_on<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::On) {
-        return Ok(None);
-    }
-    let pos = lexer.read()?.pos();
-    read_whitespace(lexer, "Expected space after ON")?;
-    read_keyword(lexer, Keyword::Error)?;
-    read_whitespace(lexer, "Expected space after ERROR")?;
-    read_keyword(lexer, Keyword::GoTo)?;
-    read_whitespace(lexer, "Expected space after GOTO")?;
-    let name_node = read(lexer, name::try_read_bare, "Expected label name")?;
-    let Locatable { element: name, .. } = name_node;
-    Ok(Some(Statement::ErrorHandler(name).at(pos)))
+pub fn statement_label<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(and(name::bare_name(), try_read(':')), |(l, _)| {
+        Statement::Label(l)
+    })
 }
 
-fn try_read_go_to<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::GoTo) {
-        return Ok(None);
-    }
+pub fn statement_go_to<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        crate::parser::pc::ws::seq2(
+            try_read_keyword(Keyword::GoTo),
+            demand(
+                name::bare_name(),
+                QError::syntax_error_fn("Expected: label"),
+            ),
+            QError::syntax_error_fn("Expected: whitespace"),
+        ),
+        |(_, l)| Statement::GoTo(l),
+    )
+}
 
-    let pos = lexer.read()?.pos();
-    read_whitespace(lexer, "Expected space after GOTO")?;
-    let name_node = read(lexer, name::try_read_bare, "Expected label name")?;
-    let Locatable { element: name, .. } = name_node;
-    Ok(Some(Statement::GoTo(name).at(pos)))
+pub fn statement_on_error_go_to<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        crate::parser::pc::ws::seq4(
+            try_read_keyword(Keyword::On),
+            demand(
+                try_read_keyword(Keyword::Error),
+                QError::syntax_error_fn("Expected: ERROR"),
+            ),
+            demand(
+                try_read_keyword(Keyword::GoTo),
+                QError::syntax_error_fn("Expected: GOTO"),
+            ),
+            demand(
+                name::bare_name(),
+                QError::syntax_error_fn("Expected: label"),
+            ),
+            QError::syntax_error_fn_fn("Expected: whitespace"),
+        ),
+        |(_, _, _, l)| Statement::ErrorHandler(l),
+    )
+}
+
+pub fn statement_illegal_keywords<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    or(
+        and_then(with_pos(try_read_keyword(Keyword::Wend)), |_| {
+            Err(QError::WendWithoutWhile)
+        }),
+        and_then(with_pos(try_read_keyword(Keyword::Else)), |_| {
+            Err(QError::ElseWithoutIf)
+        }),
+    )
 }
 
 #[cfg(test)]

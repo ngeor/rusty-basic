@@ -152,4 +152,14 @@ mod tests {
         ";
         assert_prints!(input, "1 3", "1 4", "2 3", "2 4");
     }
+
+    #[test]
+    fn test_for_loop_parenthesis_expressions() {
+        let input = "
+        FOR I=(1+2)TO(2+3)STEP(1+0)
+            PRINT I
+        NEXT
+        ";
+        assert_prints!(input, "3", "4", "5");
+    }
 }

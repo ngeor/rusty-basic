@@ -12,7 +12,7 @@ use std::fs::File;
 
 pub fn generate_instructions<T>(input: T) -> Vec<InstructionNode>
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).unwrap();
     let linted_program = linter::lint(program).unwrap();
@@ -21,7 +21,7 @@ where
 
 pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + 'static,
 {
     let instructions = generate_instructions(input);
     // for i in instructions.iter() {
@@ -36,7 +36,7 @@ where
 
 pub fn interpret_with_stdlib<T, TStdlib>(input: T, stdlib: TStdlib) -> Interpreter<TStdlib>
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + 'static,
     TStdlib: Stdlib,
 {
     let instructions = generate_instructions(input);
@@ -49,7 +49,7 @@ where
 
 pub fn interpret_err<T>(input: T) -> QErrorNode
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + 'static,
 {
     let instructions = generate_instructions(input);
     let mut interpreter = Interpreter::new(MockStdlib::new());

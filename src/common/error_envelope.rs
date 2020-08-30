@@ -1,10 +1,10 @@
-use super::{HasLocation, Location};
+use super::{HasLocation, Locatable, Location};
 
 //
 // ErrorEnvelope
 //
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ErrorEnvelope<T> {
     NoPos(T),
     Pos(T, Location),
@@ -36,20 +36,6 @@ impl<T> ErrorEnvelope<T> {
             Self::Pos(x, pos) => ErrorEnvelope::Pos(f(x), pos),
             Self::Stacktrace(x, s) => ErrorEnvelope::Stacktrace(f(x), s),
         }
-    }
-
-    pub fn into<U>(self) -> ErrorEnvelope<U>
-    where
-        T: Into<U>,
-    {
-        self.map(|x| x.into())
-    }
-
-    pub fn from<U>(other: ErrorEnvelope<U>) -> Self
-    where
-        U: Into<T>,
-    {
-        other.into()
     }
 
     pub fn into_err(self) -> T {
@@ -131,17 +117,10 @@ impl<T, E> ToLocatableError<Location, Result<T, ErrorEnvelope<E>>> for Result<T,
     }
 }
 
-//
-// result.with_err_at_rc()
-//
-
-pub trait WithErrAtRowCol<TResult> {
-    fn with_err_at_rc(self, row: u32, col: u32) -> TResult;
-}
-
-impl<T, E> WithErrAtRowCol<Result<T, ErrorEnvelope<E>>> for Result<T, E> {
-    fn with_err_at_rc(self, row: u32, col: u32) -> Result<T, ErrorEnvelope<E>> {
-        self.map_err(|e| ErrorEnvelope::Pos(e, Location::new(row, col)))
+impl<T, E, TL> ToLocatableError<Locatable<TL>, Result<T, ErrorEnvelope<E>>> for Result<T, E> {
+    fn with_err_at(self, locatable: Locatable<TL>) -> Result<T, ErrorEnvelope<E>> {
+        let Locatable { pos, .. } = locatable;
+        self.map_err(|e| ErrorEnvelope::Pos(e, pos))
     }
 }
 

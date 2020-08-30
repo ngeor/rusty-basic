@@ -1,37 +1,36 @@
-use super::{ConditionalBlockNode, Statement, StatementNode};
 use crate::common::*;
-use crate::lexer::{BufLexer, Keyword};
-use crate::parser::buf_lexer_helpers::*;
+use crate::parser::char_reader::*;
 use crate::parser::expression;
+use crate::parser::pc::common::*;
 use crate::parser::statements::*;
+use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::While) {
-        return Ok(None);
-    }
-    let pos = lexer.read()?.pos();
-    read_whitespace(lexer, "Expected whitespace after WHILE keyword")?;
-    let condition = read(
-        lexer,
-        expression::try_read,
-        "Expected expression after WHILE",
-    )?;
-    let statements = parse_statements_with_options(
-        lexer,
-        |x| x.is_keyword(Keyword::Wend),
-        ParseStatementsOptions {
-            first_statement_separated_by_whitespace: false,
-            err: QError::WhileWithoutWend,
+pub fn while_wend<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        seq3(
+            parse_while_expression(),
+            statements(
+                try_read_keyword(Keyword::Wend),
+                QError::syntax_error_fn("Expected: end-of-statement"),
+            ),
+            demand(try_read_keyword(Keyword::Wend), || QError::WhileWithoutWend),
+        ),
+        |(l, r, _)| {
+            Statement::While(ConditionalBlockNode {
+                condition: l,
+                statements: r,
+            })
         },
-    )?;
-    lexer.read()?; // read WEND
-    Ok(Some(
-        Statement::While(ConditionalBlockNode {
-            condition,
-            statements,
-        })
-        .at(pos),
+    )
+}
+
+fn parse_while_expression<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    drop_left(seq2(
+        try_read_keyword(Keyword::While),
+        expression::demand_guarded_expression_node(),
     ))
 }
 
@@ -40,11 +39,12 @@ mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
-        BareName, ConditionalBlockNode, Expression, Operand, Statement, TopLevelToken,
+        parse_main_str, BareName, ConditionalBlockNode, Expression, Operand, Statement,
+        TopLevelToken,
     };
 
     #[test]
-    fn test_while_wend() {
+    fn test_while_wend_leading_whitespace() {
         let input = "
         WHILE A < 5
             SYSTEM
@@ -134,5 +134,82 @@ mod tests {
         PRINT X
         "#;
         assert_eq!(parse_err(input), QError::WhileWithoutWend);
+    }
+
+    #[test]
+    fn test_while_condition_in_parenthesis() {
+        let input = r#"
+        WHILE(X > 0)
+            PRINT X
+        WEND"#;
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::While(ConditionalBlockNode {
+                condition: Expression::Parenthesis(Box::new(
+                    Expression::BinaryExpression(
+                        Operand::Greater,
+                        Box::new("X".as_var_expr(2, 15)),
+                        Box::new(0.as_lit_expr(2, 19))
+                    )
+                    .at_rc(2, 17)
+                ))
+                .at_rc(2, 14),
+                statements: vec![
+                    Statement::SubCall("PRINT".into(), vec!["X".as_var_expr(3, 19)]).at_rc(3, 13)
+                ]
+            })
+        );
+    }
+
+    #[test]
+    fn test_while_wend_without_colon_separator() {
+        let input = r#"
+        WHILE X > 0
+            PRINT X WEND
+        "#;
+        assert_eq!(
+            parse_main_str(input).unwrap_err(),
+            QErrorNode::Pos(
+                QError::syntax_error("Expected: end-of-statement"),
+                Location::new(3, 21)
+            )
+        );
+    }
+
+    #[test]
+    fn test_while_wend_wend_same_line_on_last_statement() {
+        let program = parse(
+            r#"
+        WHILE A < 5
+            A = A + 1
+            PRINT A: WEND"#,
+        )
+        .demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::While(ConditionalBlockNode {
+                condition: Expression::BinaryExpression(
+                    Operand::Less,
+                    Box::new("A".as_var_expr(2, 15)),
+                    Box::new(5.as_lit_expr(2, 19))
+                )
+                .at_rc(2, 17),
+                statements: vec![
+                    Statement::Assignment(
+                        "A".into(),
+                        Expression::BinaryExpression(
+                            Operand::Plus,
+                            Box::new("A".as_var_expr(3, 17)),
+                            Box::new(1.as_lit_expr(3, 21))
+                        )
+                        .at_rc(3, 19)
+                    )
+                    .at_rc(3, 13),
+                    Statement::SubCall(BareName::from("PRINT"), vec!["A".as_var_expr(4, 19)])
+                        .at_rc(4, 13)
+                ]
+            })
+        );
     }
 }

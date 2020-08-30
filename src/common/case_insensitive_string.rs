@@ -13,6 +13,12 @@ impl CaseInsensitiveString {
     }
 }
 
+impl From<CaseInsensitiveString> for String {
+    fn from(x: CaseInsensitiveString) -> String {
+        x.inner
+    }
+}
+
 impl From<String> for CaseInsensitiveString {
     fn from(x: String) -> CaseInsensitiveString {
         CaseInsensitiveString::new(x)

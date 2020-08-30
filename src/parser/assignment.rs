@@ -1,30 +1,30 @@
-use super::{NameNode, Statement, StatementNode};
 use crate::common::*;
-use crate::lexer::BufLexer;
-use crate::parser::buf_lexer_helpers::*;
+use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::pc::common::*;
+use crate::parser::pc::copy::*;
+use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    let opt_name_node = in_transaction(lexer, do_read_left_side)?;
-    match opt_name_node {
-        Some(name_node) => {
-            let right_side = read(lexer, expression::try_read, "Expected expression")?;
-            Ok(Some(
-                name_node.map(|name| Statement::Assignment(name, right_side)),
-            ))
-        }
-        None => Ok(None),
-    }
+pub fn assignment<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(assignment_tuple(), |(l, r)| Statement::Assignment(l, r))
 }
 
-fn do_read_left_side<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<NameNode, QErrorNode> {
-    let name_node = read(lexer, name::try_read, "Expected name")?;
-    skip_whitespace(lexer)?;
-    read_symbol(lexer, '=')?;
-    skip_whitespace(lexer)?;
-    Ok(name_node)
+pub fn assignment_tuple<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Name, ExpressionNode), QError>)> {
+    // not using seq3 in case it's not an assignment but a sub call
+    map(
+        and(
+            name::name(),
+            seq2(
+                crate::parser::pc::ws::zero_or_more_around(try_read('=')),
+                expression::demand_expression_node(),
+            ),
+        ),
+        |(l, (_, r))| (l, r),
+    )
 }
 
 #[cfg(test)]
@@ -40,7 +40,7 @@ mod tests {
                     assert_eq!(n, Name::from($name));
                     assert_eq!(v, Expression::IntegerLiteral($value));
                 }
-                _ => panic!("expected assignment"),
+                _ => panic!("Expected: assignment"),
             }
         };
     }
@@ -48,13 +48,16 @@ mod tests {
     #[test]
     fn test_numeric_assignment() {
         assert_top_level_assignment!("A = 42", "A", 42);
+        assert_top_level_assignment!("B=1", "B", 1);
+        assert_top_level_assignment!("CD =100", "CD", 100);
+        assert_top_level_assignment!("E= 3", "E", 3);
     }
 
     #[test]
     fn test_numeric_assignment_to_keyword_not_allowed() {
         assert_eq!(
             parse_err("FOR = 42"),
-            QError::SyntaxError("Expected FOR counter variable".to_string())
+            QError::SyntaxError("Expected: name after FOR".to_string())
         );
     }
 

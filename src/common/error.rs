@@ -179,14 +179,37 @@ pub enum QError {
     // Lexer errors
     UnsupportedCharacter(char),
 
+    /// Indicates that a parser failed to meet its expectations.
+    /// This is often an internally recoverable error. An alternative implementation
+    /// could be to use `Ok(None)` but the code then becomes more complicated.
+    CannotParse,
+
     // General fallback
     Other(String),
 }
 
+impl QError {
+    pub fn syntax_error<S: AsRef<str>>(msg: S) -> Self {
+        QError::SyntaxError(format!("{}", msg.as_ref()))
+    }
+
+    pub fn syntax_error_fn<S: AsRef<str>>(msg: S) -> impl Fn() -> QError {
+        // repeating of format due to "cannot move out of closure"
+        move || QError::syntax_error(format!("{}", msg.as_ref()))
+    }
+
+    pub fn syntax_error_fn_fn<S: AsRef<str> + 'static>(
+        msg: S,
+    ) -> impl Fn() -> Box<dyn Fn() -> QError> {
+        // repeating of format due to "cannot move out of closure"
+        move || Box::new(QError::syntax_error_fn(format!("{}", msg.as_ref())))
+    }
+}
+
 pub type QErrorNode = ErrorEnvelope<QError>;
 
-impl From<std::io::Error> for QError {
-    fn from(e: std::io::Error) -> Self {
+impl From<&std::io::Error> for QError {
+    fn from(e: &std::io::Error) -> Self {
         if e.kind() == std::io::ErrorKind::NotFound {
             Self::FileNotFound
         } else if e.kind() == std::io::ErrorKind::UnexpectedEof {
@@ -194,6 +217,13 @@ impl From<std::io::Error> for QError {
         } else {
             Self::DeviceIOError(e.to_string())
         }
+    }
+}
+
+impl From<std::io::Error> for QError {
+    fn from(e: std::io::Error) -> Self {
+        let x: &std::io::Error = &e;
+        x.into()
     }
 }
 

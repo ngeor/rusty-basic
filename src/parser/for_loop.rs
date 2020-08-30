@@ -1,166 +1,107 @@
 use crate::common::*;
-use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
-
+use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::statements::parse_statements;
+use crate::parser::pc::common::*;
+use crate::parser::pc::copy::*;
+use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(lexer: &mut BufLexer<T>) -> Result<Option<StatementNode>, QErrorNode> {
-    if !lexer.peek()?.as_ref().is_keyword(Keyword::For) {
-        return Ok(None);
-    }
+// FOR I = 0 TO 5 STEP 1
+// statements
+// NEXT (I)
 
-    let pos = lexer.read()?.pos();
-    read_whitespace(lexer, "Expected whitespace after FOR keyword")?;
-    let for_counter_variable = read(lexer, name::try_read, "Expected FOR counter variable")?;
-    skip_whitespace(lexer)?;
-    read_symbol(lexer, '=')?;
-    skip_whitespace(lexer)?;
-    let lower_bound = read(lexer, expression::try_read, "Expected lower bound")?;
-    read_whitespace(lexer, "Expected whitespace before TO keyword")?;
-    read_keyword(lexer, Keyword::To)?;
-    read_whitespace(lexer, "Expected whitespace after TO keyword")?;
-    let upper_bound = read(lexer, expression::try_read, "Expected upper bound")?;
-    let optional_step = try_parse_step(lexer)?;
-
-    let statements = parse_statements(lexer, |x| x.is_keyword(Keyword::Next), "FOR without NEXT")?;
-    read_keyword(lexer, Keyword::Next)?;
-
-    // we are past the "NEXT", maybe there is a variable name e.g. NEXT I
-    let next_counter = try_parse_next_counter(lexer)?;
-
-    Ok(Some(
-        Statement::ForLoop(ForLoopNode {
-            variable_name: for_counter_variable,
-            lower_bound,
-            upper_bound,
-            step: optional_step,
-            statements,
-            next_counter,
-        })
-        .at(pos),
-    ))
+pub fn for_loop<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    map(
+        seq3(
+            opt_seq2_comb(parse_for(), parse_step()),
+            statements::statements(
+                try_read_keyword(Keyword::Next),
+                QError::syntax_error_fn("Expected: STEP or end-of-statement"),
+            ),
+            demand(next_counter(), || QError::ForWithoutNext),
+        ),
+        |(((variable_name, lower_bound, upper_bound), opt_step), statements, next_counter)| {
+            Statement::ForLoop(ForLoopNode {
+                variable_name,
+                lower_bound,
+                upper_bound,
+                step: opt_step,
+                statements,
+                next_counter,
+            })
+        },
+    )
 }
 
-fn try_parse_step<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<ExpressionNode>, QErrorNode> {
-    const STATE_UPPER_BOUND: u8 = 0;
-    const STATE_WHITESPACE_BEFORE_STEP: u8 = 1;
-    const STATE_STEP: u8 = 2;
-    const STATE_WHITESPACE_AFTER_STEP: u8 = 3;
-    const STATE_STEP_EXPR: u8 = 4;
-    const STATE_WHITESPACE_BEFORE_EOL: u8 = 5;
-    const STATE_EOL: u8 = 6;
-    let mut state = STATE_UPPER_BOUND;
-    let mut expr: Option<ExpressionNode> = None;
-
-    lexer.begin_transaction();
-
-    while state != STATE_EOL {
-        let next = lexer.peek()?;
-        match next.as_ref() {
-            Lexeme::Whitespace(_) => {
-                lexer.read()?;
-                if state == STATE_UPPER_BOUND {
-                    state = STATE_WHITESPACE_BEFORE_STEP;
-                } else if state == STATE_STEP {
-                    state = STATE_WHITESPACE_AFTER_STEP;
-                } else if state == STATE_STEP_EXPR {
-                    state = STATE_WHITESPACE_BEFORE_EOL;
-                } else {
-                    return Err(QError::SyntaxError("Unexpected whitespace".to_string()))
-                        .with_err_at(&next);
-                }
-            }
-            Lexeme::EOF => {
-                return Err(QError::SyntaxError("FOR without NEXT".to_string())).with_err_at(&next)
-            }
-            Lexeme::EOL(_) => {
-                if state == STATE_STEP || state == STATE_WHITESPACE_AFTER_STEP {
-                    return Err(QError::SyntaxError(
-                        "Expected expression after STEP".to_string(),
-                    ))
-                    .with_err_at(&next);
-                }
-                state = STATE_EOL;
-            }
-            Lexeme::Keyword(Keyword::Step, _) => {
-                lexer.read()?;
-                if state == STATE_WHITESPACE_BEFORE_STEP {
-                    state = STATE_STEP;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
-                }
-            }
-            _ => {
-                if state == STATE_UPPER_BOUND || state == STATE_WHITESPACE_BEFORE_STEP {
-                    // bail out, we didn't find the STEP keyword but something else (maybe a comment?)
-                    state = STATE_EOL;
-                } else if state == STATE_WHITESPACE_AFTER_STEP {
-                    expr = Some(read(
-                        lexer,
-                        expression::try_read,
-                        "Expected expression after STEP",
-                    )?);
-                    state = STATE_STEP_EXPR;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
-                }
-            }
-        }
-    }
-    lexer.commit_transaction();
-    Ok(expr)
+fn parse_for<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+    ) -> (
+        EolReader<T>,
+        Result<(NameNode, ExpressionNode, ExpressionNode), QError>,
+    ),
+> {
+    map(
+        seq7(
+            try_read_keyword(Keyword::For),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected: whitespace after FOR"),
+            ),
+            demand(
+                name::name_node(),
+                QError::syntax_error_fn("Expected: name after FOR"),
+            ),
+            demand(
+                crate::parser::pc::ws::zero_or_more_leading(try_read('=')),
+                QError::syntax_error_fn("Expected: = after name"),
+            ),
+            expression::demand_back_guarded_expression_node(),
+            demand(
+                try_read_keyword(Keyword::To),
+                QError::syntax_error_fn("Expected: TO"),
+            ),
+            expression::demand_guarded_expression_node(),
+        ),
+        |(_, _, n, _, l, _, u)| (n, l, u),
+    )
 }
 
-fn try_parse_next_counter<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<NameNode>, QErrorNode> {
-    const STATE_NEXT: u8 = 0;
-    const STATE_WHITESPACE_AFTER_NEXT: u8 = 1;
-    const STATE_EOL_OR_EOF: u8 = 2;
-    let mut state = STATE_NEXT;
-    let mut name: Option<NameNode> = None;
-
-    lexer.begin_transaction();
-
-    while state != STATE_EOL_OR_EOF {
-        let next = lexer.peek()?;
-        match next.as_ref() {
-            Lexeme::Whitespace(_) => {
-                lexer.read()?;
-                if state == STATE_NEXT {
-                    state = STATE_WHITESPACE_AFTER_NEXT;
-                }
-            }
-            Lexeme::EOL(_) | Lexeme::EOF => {
-                state = STATE_EOL_OR_EOF;
-            }
-            Lexeme::Word(_) => {
-                if state == STATE_WHITESPACE_AFTER_NEXT {
-                    name = Some(read(
-                        lexer,
-                        name::try_read,
-                        "Expected NEXT counter variable",
-                    )?);
-                    state = STATE_EOL_OR_EOF;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
-                }
-            }
-            _ => {
-                state = STATE_EOL_OR_EOF;
-            }
+fn parse_step<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+        &(NameNode, ExpressionNode, ExpressionNode),
+    ) -> (EolReader<T>, Result<ExpressionNode, QError>),
+> {
+    Box::new(move |reader, first| {
+        let (_, _, upper) = first;
+        let parenthesis = upper.is_parenthesis();
+        if parenthesis {
+            drop_left(seq2(
+                crate::parser::pc::ws::zero_or_more_leading(try_read_keyword(Keyword::Step)),
+                expression::demand_guarded_expression_node(),
+            ))(reader)
+        } else {
+            drop_left(seq2(
+                crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Step)),
+                expression::demand_guarded_expression_node(),
+            ))(reader)
         }
-    }
+    })
+}
 
-    lexer.commit_transaction();
-
-    Ok(name)
+fn next_counter<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QError>)> {
+    map(
+        opt_seq2(
+            try_read_keyword(Keyword::Next),
+            crate::parser::pc::ws::one_or_more_leading(name::name_node()),
+        ),
+        |(_, opt_second)| opt_second,
+    )
 }
 
 #[cfg(test)]
@@ -315,6 +256,22 @@ mod tests {
                 TopLevelToken::Statement(Statement::Comment(" end of loop".to_string()))
                     .at_rc(4, 14)
             ]
+        );
+    }
+
+    #[test]
+    fn test_no_space_before_step() {
+        let input = "
+        FOR I = 0 TO 2STEP 1
+        NEXT I
+        ";
+        let result = parse_main_str(input).unwrap_err();
+        assert_eq!(
+            result,
+            QErrorNode::Pos(
+                QError::syntax_error("Expected: STEP or end-of-statement"),
+                Location::new(2, 23)
+            )
         );
     }
 }

@@ -71,3 +71,20 @@ impl<T, E> ToLocatableOk<Location, Result<Locatable<T>, E>> for Result<T, E> {
         self.map(|e| e.at(pos))
     }
 }
+
+impl<T, E> ToLocatableOk<Location, Option<Result<Locatable<T>, E>>> for Option<Result<T, E>> {
+    fn with_ok_pos(self, pos: Location) -> Option<Result<Locatable<T>, E>> {
+        self.map(|r| r.map(|x| x.at(pos)))
+    }
+}
+
+impl<T, E> ToLocatableOk<Option<Location>, Option<Result<Locatable<T>, E>>>
+    for Option<Result<T, E>>
+{
+    fn with_ok_pos(self, opt_pos: Option<Location>) -> Option<Result<Locatable<T>, E>> {
+        match opt_pos {
+            Some(pos) => self.with_ok_pos(pos),
+            None => None,
+        }
+    }
+}

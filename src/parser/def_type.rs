@@ -1,120 +1,86 @@
 use crate::common::*;
-use crate::lexer::*;
-use crate::parser::buf_lexer_helpers::*;
-
+use crate::parser::char_reader::*;
+use crate::parser::pc::common::*;
+use crate::parser::pc::copy::*;
+use crate::parser::pc::traits::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-pub fn try_read<T: BufRead>(
-    lexer: &mut BufLexer<T>,
-) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-    let next = lexer.peek()?;
-    let opt_qualifier = match next.as_ref() {
-        Lexeme::Keyword(keyword, _) => match keyword {
-            Keyword::DefDbl => Some(TypeQualifier::HashDouble),
-            Keyword::DefInt => Some(TypeQualifier::PercentInteger),
-            Keyword::DefLng => Some(TypeQualifier::AmpersandLong),
-            Keyword::DefSng => Some(TypeQualifier::BangSingle),
-            Keyword::DefStr => Some(TypeQualifier::DollarString),
-            _ => None,
+// DefType      ::= <DefKeyword><ws+><LetterRanges>
+// DefKeyword   ::= DEFSNG|DEFDBL|DEFSTR|DEFINT|DEFLNG
+// LetterRanges ::= <LetterRange> | <LetterRange><ws*>,<ws*><LetterRanges>
+// LetterRange  ::= <Letter> | <Letter>-<Letter>
+// Letter       ::= [a-zA-Z]
+
+pub fn def_type<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QError>)> {
+    map(
+        seq3(
+            def_keyword(),
+            demand(
+                crate::parser::pc::ws::one_or_more(),
+                QError::syntax_error_fn("Expected: whitespace"),
+            ),
+            demand(
+                letter_ranges(),
+                QError::syntax_error_fn("Expected: letter ranges"),
+            ),
+        ),
+        |(l, _, r)| DefType::new(l, r),
+    )
+}
+
+fn def_keyword<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeQualifier, QError>)> {
+    map_fully_ok(read_any_keyword(), |reader: EolReader<T>, (k, s)| match k {
+        Keyword::DefDbl => (reader, Ok(TypeQualifier::HashDouble)),
+        Keyword::DefInt => (reader, Ok(TypeQualifier::PercentInteger)),
+        Keyword::DefLng => (reader, Ok(TypeQualifier::AmpersandLong)),
+        Keyword::DefSng => (reader, Ok(TypeQualifier::BangSingle)),
+        Keyword::DefStr => (reader, Ok(TypeQualifier::DollarString)),
+        _ => (reader.undo(s), Err(QError::not_found_err())),
+    })
+}
+
+fn letter_ranges<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<LetterRange>, QError>)> {
+    map_default_to_not_found(csv_zero_or_more(letter_range()))
+}
+
+fn letter_range<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
+    or(
+        two_letter_range(), // needs to be first because the second will match too
+        single_letter_range(),
+    )
+}
+
+fn single_letter_range<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
+    map(read_any_letter(), |l| LetterRange::Single(l))
+}
+
+fn two_letter_range<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
+    and_then(
+        and(
+            read_any_letter(),
+            seq2(
+                try_read('-'),
+                demand(
+                    read_any_letter(),
+                    QError::syntax_error_fn("Expected: letter after dash"),
+                ),
+            ),
+        ),
+        |(l, (_, r))| {
+            if l < r {
+                Ok(LetterRange::Range(l, r))
+            } else {
+                Err(QError::SyntaxError("Invalid letter range".to_string()))
+            }
         },
-        _ => None,
-    };
-    if opt_qualifier.is_none() {
-        return Ok(None);
-    }
-
-    let pos = lexer.read()?.pos(); // read DEF* keyword
-    read_whitespace(lexer, "Expected whitespace after DEF* keyword")?;
-    let mut ranges: Vec<LetterRange> = vec![];
-    const STATE_INITIAL: u8 = 0;
-    const STATE_FIRST_LETTER: u8 = 1;
-    const STATE_DASH: u8 = 2;
-    const STATE_SECOND_LETTER: u8 = 3;
-    const STATE_COMMA: u8 = 4;
-    const STATE_EOL: u8 = 5;
-    let mut state = STATE_INITIAL;
-    let mut first_letter = ' ';
-    let mut second_letter = ' ';
-
-    lexer.begin_transaction();
-    while state != STATE_EOL {
-        skip_whitespace(lexer)?;
-        let next = lexer.peek()?;
-        match next.as_ref() {
-            Lexeme::Word(w) => {
-                lexer.read()?;
-                if w.len() != 1 {
-                    return Err(QError::SyntaxError("Expected single character".to_string()))
-                        .with_err_at(&next);
-                }
-                if state == STATE_INITIAL || state == STATE_COMMA {
-                    first_letter = w.chars().next().unwrap();
-                    state = STATE_FIRST_LETTER;
-                } else if state == STATE_DASH {
-                    second_letter = w.chars().next().unwrap();
-                    if first_letter > second_letter {
-                        return Err(QError::SyntaxError(
-                            "Invalid letter range".to_string().to_string(),
-                        ))
-                        .with_err_at(&next);
-                    }
-                    state = STATE_SECOND_LETTER;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
-                }
-            }
-            Lexeme::Symbol('-') => {
-                lexer.read()?;
-                if state == STATE_FIRST_LETTER {
-                    state = STATE_DASH;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
-                }
-            }
-            Lexeme::Symbol(',') => {
-                lexer.read()?;
-                if state == STATE_FIRST_LETTER {
-                    ranges.push(LetterRange::Single(first_letter));
-                    state = STATE_COMMA;
-                } else if state == STATE_SECOND_LETTER {
-                    ranges.push(LetterRange::Range(first_letter, second_letter));
-                    state = STATE_COMMA;
-                } else {
-                    return Err(QError::SyntaxError("Syntax error".to_string())).with_err_at(&next);
-                }
-            }
-            _ => {
-                // bail out
-                if state == STATE_DASH {
-                    return Err(QError::SyntaxError(
-                        "Expected letter after dash".to_string(),
-                    ))
-                    .with_err_at(&next);
-                } else if state == STATE_COMMA {
-                    return Err(QError::SyntaxError(
-                        "Expected letter range after comma".to_string(),
-                    ))
-                    .with_err_at(&next);
-                } else if state == STATE_FIRST_LETTER {
-                    ranges.push(LetterRange::Single(first_letter));
-                    state = STATE_EOL;
-                } else if state == STATE_SECOND_LETTER {
-                    ranges.push(LetterRange::Range(first_letter, second_letter));
-                    state = STATE_EOL;
-                } else {
-                    return Err(QError::SyntaxError(
-                        "Expected at least one letter range".to_string(),
-                    ))
-                    .with_err_at(&next);
-                }
-            }
-        }
-    }
-    lexer.commit_transaction();
-    Ok(Some(
-        TopLevelToken::DefType(DefType::new(opt_qualifier.unwrap(), ranges)).at(pos),
-    ))
+    )
 }
 
 #[cfg(test)]
@@ -184,15 +150,15 @@ mod tests {
     fn test_parse_def_int_word_instead_of_letter() {
         assert_eq!(
             parse_err("DEFINT HELLO"),
-            QError::SyntaxError("Expected single character".to_string(),)
+            QError::SyntaxError("No separator: E".to_string(),)
         );
         assert_eq!(
             parse_err("DEFINT HELLO,Z"),
-            QError::SyntaxError("Expected single character".to_string(),)
+            QError::SyntaxError("No separator: E".to_string(),)
         );
         assert_eq!(
             parse_err("DEFINT A,HELLO"),
-            QError::SyntaxError("Expected single character".to_string(),)
+            QError::SyntaxError("No separator: E".to_string(),)
         );
     }
 

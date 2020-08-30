@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
+use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::pc::common::*;
 use crate::parser::statements;
@@ -22,13 +23,10 @@ pub fn select_case<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         seq2(
-            opt_seq3(
+            seq3(
                 parse_select_case_expr(),
                 // parse inline comments after SELECT
-                statements::statements(
-                    read_keyword_if(|k| k == Keyword::Case || k == Keyword::End),
-                    QError::syntax_error_fn("Expected: end-of-statement"),
-                ),
+                comment::comments(),
                 zero_or_more(parse_case_any()),
             ),
             demand(
@@ -36,8 +34,7 @@ pub fn select_case<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected: END SELECT"),
             ),
         ),
-        |((expr, inline_statements, opt_vec), _)| {
-            let v = opt_vec.unwrap_or_default();
+        |((expr, inline_comments, v), _)| {
             let mut case_blocks: Vec<CaseBlockNode> = vec![];
             let mut else_block: Option<StatementNodes> = None;
             for (opt_case_expr, s) in v {
@@ -60,18 +57,7 @@ pub fn select_case<T: BufRead + 'static>(
                 expr,
                 case_blocks,
                 else_block,
-                inline_comments: inline_statements
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|x| match x {
-                        Locatable {
-                            element: Statement::Comment(text),
-                            pos,
-                        } => Locatable::new(text, pos),
-                        // TODO improve this
-                        _ => panic!("only comments are allowed"),
-                    })
-                    .collect(),
+                inline_comments,
             })
         },
     )
@@ -350,7 +336,10 @@ mod tests {
         let result = parse_main_str(input).unwrap_err();
         assert_eq!(
             result,
-            QErrorNode::Pos(QError::syntax_error("Syntax error"), Location::new(3, 9))
+            QErrorNode::Pos(
+                QError::syntax_error("Expected: END SELECT"),
+                Location::new(3, 9)
+            )
         );
     }
 

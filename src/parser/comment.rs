@@ -2,8 +2,9 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::loc::with_pos;
 use crate::parser::pc::str::zero_or_more_if;
-use crate::parser::pc::ws::is_eol;
+use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace};
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -15,9 +16,29 @@ fn is_not_eol(ch: char) -> bool {
 pub fn comment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        opt_seq2(try_read('\''), zero_or_more_if(is_not_eol)),
-        |(_, r)| Statement::Comment(r.unwrap_or_default()),
+        and(try_read('\''), zero_or_more_if(is_not_eol)),
+        |(_, r)| Statement::Comment(r),
     )
+}
+
+/// Reads multiple comments
+pub fn comments<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<Locatable<String>>, QError>)> {
+    // skip while ws or eol
+    // if "'", undo and read comment
+    // repeat
+
+    drop_left(and(
+        // leading whitespace / eol
+        zero_or_more_if(is_eol_or_whitespace),
+        zero_or_more(map(
+            with_pos(drop_right(and(
+                drop_left(and(try_read('\''), zero_or_more_if(is_not_eol))),
+                zero_or_more_if(is_eol_or_whitespace),
+            ))),
+            |Locatable { element, pos }| (element.at(pos), Some(())),
+        )),
+    ))
 }
 
 #[cfg(test)]

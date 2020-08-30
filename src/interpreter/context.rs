@@ -358,7 +358,7 @@ impl SubContext {
         value: Variant,
     ) -> Result<(), QError> {
         match arg {
-            Argument::ByVal(_) => panic!("Expected variable"),
+            Argument::ByVal(_) => panic!("Expected: variable"),
             Argument::ByRef(n) => {
                 let q = n.clone(); // clone to break duplicate borrow
                 self.set_variable_parent(q, value)

@@ -18,21 +18,11 @@ pub struct Name {}
 pub fn parse_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
-        crate::parser::pc::ws::seq4(
+        seq4(
             try_read_keyword(Keyword::Name),
-            demand(
-                expression::expression_node(),
-                QError::syntax_error_fn("Expected old filename"),
-            ),
-            demand(
-                try_read_keyword(Keyword::As),
-                QError::syntax_error_fn("Expected AS"),
-            ),
-            demand(
-                expression::expression_node(),
-                QError::syntax_error_fn("Expected new filename"),
-            ),
-            QError::syntax_error_fn_fn("Expected whitespace"),
+            expression::demand_back_guarded_expression_node(),
+            demand_keyword(Keyword::As),
+            expression::demand_guarded_expression_node(),
         ),
         |(_, l, _, r)| Statement::SubCall("NAME".into(), vec![l, r]),
     )
@@ -74,6 +64,22 @@ mod tests {
         std::fs::write("TEST4.OLD", "hi").unwrap_or(());
         let input = r#"
         NAME "TEST4.OLD" AS "TEST4.NEW"
+        "#;
+        // act
+        interpret(input);
+        // assert
+        let contents = std::fs::read_to_string("TEST4.NEW").unwrap_or("".to_string());
+        std::fs::remove_file("TEST4.OLD").unwrap_or(());
+        std::fs::remove_file("TEST4.NEW").unwrap_or(());
+        assert_eq!(contents, "hi");
+    }
+
+    #[test]
+    fn test_can_rename_file_parenthesis() {
+        // arrange
+        std::fs::write("TEST4.OLD", "hi").unwrap_or(());
+        let input = r#"
+        NAME("TEST4.OLD")AS("TEST4.NEW")
         "#;
         // act
         interpret(input);

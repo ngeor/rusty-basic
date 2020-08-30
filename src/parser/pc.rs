@@ -249,6 +249,33 @@ pub mod common {
         })
     }
 
+    pub fn opt_seq2_comb<R, S1, S2, T1, T2, E>(
+        first: S1,
+        second: S2,
+    ) -> Box<dyn Fn(R) -> (R, Result<(T1, Option<T2>), E>)>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
+        S2: Fn(R, &T1) -> (R, Result<T2, E>) + 'static,
+        T1: 'static,
+        T2: 'static,
+        E: IsNotFoundErr + 'static,
+    {
+        map_fully_ok(first, move |reader, r1| {
+            let (reader, res2) = second(reader, &r1);
+            match res2 {
+                Ok(r2) => (reader, Ok((r1, Some(r2)))),
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        (reader, Ok((r1, None)))
+                    } else {
+                        (reader, Err(err))
+                    }
+                }
+            }
+        })
+    }
+
     /// Combines the results of the two given sources into one tuple.
     ///
     /// If either source returns a fatal error, the error will be returned.
@@ -756,6 +783,15 @@ pub mod copy {
     {
         read_any_if(move |ch| ch == needle)
     }
+
+    pub fn peek<R, T>(needle: T) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>
+    where
+        R: Reader<Item = T> + Undo<T> + 'static,
+        T: Copy + PartialEq + 'static,
+        R::Err: NotFoundErr,
+    {
+        common::map_fully_ok(try_read(needle), |reader: R, c| (reader.undo(c), Ok(c)))
+    }
 }
 
 // ========================================================
@@ -779,6 +815,33 @@ pub mod loc {
             let (reader, result) = source(reader);
             let loc_result = result.map(|x| x.at(pos));
             (reader, loc_result)
+        })
+    }
+
+    pub fn log<R, S, T, E, M>(msg: M, source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    where
+        R: Reader + HasLocation + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: 'static,
+        E: 'static,
+        M: AsRef<str> + 'static,
+    {
+        Box::new(move |reader| {
+            // TODO only in debug mode or for tests
+            println!(
+                "begin {} at {}:{}",
+                msg.as_ref(),
+                reader.pos().row(),
+                reader.pos().col()
+            );
+            let (reader, res) = source(reader);
+            println!(
+                "end {} at {}:{}",
+                msg.as_ref(),
+                reader.pos().row(),
+                reader.pos().col()
+            );
+            (reader, res)
         })
     }
 }
@@ -816,7 +879,7 @@ pub mod err {
 // ========================================================
 
 pub mod str {
-    use super::common::and_then;
+    use super::common;
     use super::traits::*;
     use std::str::FromStr;
 
@@ -912,7 +975,7 @@ pub mod str {
         E: NotFoundErr + 'static,
         F: Fn(char) -> bool + 'static,
     {
-        and_then(zero_or_more_if(predicate), |s| {
+        common::and_then(zero_or_more_if(predicate), |s| {
             if s.is_empty() {
                 Err(E::not_found_err())
             } else {
@@ -938,6 +1001,16 @@ pub mod str {
                 Err(err) => (reader, Err(err)),
             }
         })
+    }
+
+    pub fn map_to_str<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<String, E>)>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> (R, Result<T, E>) + 'static,
+        T: std::fmt::Display + 'static,
+        E: 'static,
+    {
+        common::map(source, |x| x.to_string())
     }
 }
 

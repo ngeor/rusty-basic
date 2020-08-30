@@ -30,9 +30,9 @@ pub fn parse_open<T: BufRead + 'static>(
             opt_seq3(parse_filename(), parse_open_mode(), parse_open_access()),
             demand(
                 parse_file_number(),
-                QError::syntax_error_fn("Expected AS file-number"),
+                QError::syntax_error_fn("Expected: AS file-number"),
             ),
-            QError::syntax_error_fn("Expected whitespace before AS"),
+            QError::syntax_error_fn("Expected: whitespace before AS"),
         ),
         |((file_name, opt_file_mode, opt_file_access), file_number)| {
             Statement::SubCall(
@@ -60,9 +60,9 @@ fn parse_filename<T: BufRead + 'static>(
         try_read_keyword(Keyword::Open),
         demand(
             expression::expression_node(),
-            QError::syntax_error_fn("Expected filename after OPEN"),
+            QError::syntax_error_fn("Expected: filename after OPEN"),
         ),
-        QError::syntax_error_fn("Expected whitespace after OPEN"),
+        QError::syntax_error_fn("Expected: whitespace after OPEN"),
     ))
 }
 
@@ -79,7 +79,7 @@ fn parse_open_mode<T: BufRead + 'static>(
             }),
             QError::syntax_error_fn("Invalid file mode"),
         ),
-        QError::syntax_error_fn("Expected whitespace after FOR"),
+        QError::syntax_error_fn("Expected: whitespace after FOR"),
     ))
 }
 
@@ -94,7 +94,7 @@ fn parse_open_access<T: BufRead + 'static>(
             }),
             QError::syntax_error_fn("Invalid file access"),
         ),
-        QError::syntax_error_fn("Expected whitespace after ACCESS"),
+        QError::syntax_error_fn("Expected: whitespace after ACCESS"),
     ))
 }
 
@@ -104,9 +104,9 @@ fn parse_file_number<T: BufRead + 'static>(
         try_read_keyword(Keyword::As),
         demand(
             expression::expression_node(),
-            QError::syntax_error_fn("Expected file number"),
+            QError::syntax_error_fn("Expected: file number"),
         ),
-        QError::syntax_error_fn("Expected whitespace after AS"),
+        QError::syntax_error_fn("Expected: whitespace after AS"),
     ))
 }
 

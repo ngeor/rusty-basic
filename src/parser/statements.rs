@@ -1,9 +1,9 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
-use crate::parser::pc::copy::try_read;
+use crate::parser::pc::copy::{peek, try_read};
 use crate::parser::pc::loc::with_pos;
-use crate::parser::pc::str::{zero_or_more_if, zero_or_more_if_leading_remaining};
+use crate::parser::pc::str::{map_to_str, zero_or_more_if_leading_remaining};
 use crate::parser::pc::traits::*;
 use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace, is_whitespace};
 use crate::parser::statement;
@@ -33,70 +33,96 @@ pub fn single_line_statements<T: BufRead + 'static>(
     ))))
 }
 
-pub fn skip_until_first_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)> {
+fn parse_first_statement_separator<T: BufRead + 'static, FE>(
+    err_fn: FE,
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<String, QError>)>
+where
+    FE: Fn() -> QError + 'static,
+{
+    // Allowed to read:
+    // <ws*> ' -- and if it is comment, put it back
+    // <ws*> :
+    // <ws*> EOL
     Box::new(move |reader| {
+        let mut r = reader;
         let mut buf: String = String::new();
-
-        // skip whitespace
-        let (reader, res) = crate::parser::pc::ws::zero_or_more()(reader);
-        match res {
-            Err(err) => return (reader, Err(err)),
-            Ok(x) => {
-                buf.push_str(&x);
+        let mut found = false;
+        loop {
+            let (reader, res) = r.read();
+            r = reader;
+            match res {
+                Ok(ch) => {
+                    if crate::parser::pc::ws::is_whitespace(ch) {
+                        if found {
+                            buf.push(ch);
+                        } else {
+                            // skip over it, so that the error will hit the
+                            // first non-whitespace character
+                        }
+                    } else if ch == ':' || crate::parser::pc::ws::is_eol(ch) {
+                        // exit
+                        buf.push(ch);
+                        found = true;
+                    } else if ch == '\'' {
+                        return (r.undo(ch), Ok(buf));
+                    } else {
+                        r = r.undo(ch);
+                        break;
+                    }
+                }
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        break;
+                    } else {
+                        return (r, Err(err));
+                    }
+                }
             }
-        };
-
-        let (reader, res) = reader.read();
-        match res {
-            Err(err) => (reader, Err(err)),
-            Ok('\r') | Ok('\n') => {
-                // take EOL, continue taking eol or whitespace
-                buf.push('\n');
-                map(zero_or_more_if(is_eol_or_whitespace), move |x| {
-                    format!("{}{}", buf, x)
-                })(reader)
-            }
-            Ok(':') => {
-                // take colon separator, continue taking whitespace
-                buf.push(':');
-                map(crate::parser::pc::ws::zero_or_more(), move |x| {
-                    format!("{}{}", buf, x)
-                })(reader)
-            }
-            Ok(ch) => (reader.undo(ch), Ok(buf)),
+        }
+        if found {
+            (r, Ok(buf))
+        } else {
+            (r.undo(buf), Err(err_fn()))
         }
     })
 }
 
-pub fn statements<T: BufRead + 'static, S, X>(
+// When `statements` is called, it must always read first the first statement separator.
+// `top_level_token` handles the case where the first statement does not start with
+// a separator.
+pub fn statements<T: BufRead + 'static, S, X, FE>(
     exit_source: S,
+    err_fn: FE,
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)>
 where
     S: Fn(EolReader<T>) -> (EolReader<T>, Result<X, QError>) + 'static,
     EolReader<T>: Undo<X>,
+    FE: Fn() -> QError + 'static,
 {
-    drop_left(and(
-        skip_until_first_statement(),
-        zero_or_more(move |reader| {
-            let (reader, exit_result) = exit_source(reader);
-            match exit_result {
-                Ok(x) => {
-                    // found the exit
-                    reader.undo_and_err_not_found(x)
-                }
-                Err(err) => {
-                    if err.is_not_found_err() {
-                        // did not find the exit, we can parse a statement
-                        statement_node_and_separator()(reader)
-                    } else {
-                        // something else happened, abort
-                        (reader, Err(err))
+    crate::parser::pc::loc::log(
+        "statements",
+        drop_left(and(
+            parse_first_statement_separator(err_fn),
+            zero_or_more(move |reader| {
+                let (reader, exit_result) = exit_source(reader);
+                match exit_result {
+                    Ok(x) => {
+                        // found the exit
+                        reader.undo_and_err_not_found(x)
+                    }
+                    Err(err) => {
+                        if err.is_not_found_err() {
+                            // did not find the exit, we can parse a statement
+                            statement_node_and_separator()(reader)
+                        } else {
+                            // something else happened, abort
+                            (reader, Err(err))
+                        }
                     }
                 }
-            }
-        }),
-    ))
+            }),
+        )),
+    )
 }
 
 fn statement_node_and_separator<T: BufRead + 'static>() -> Box<
@@ -156,8 +182,16 @@ fn non_comment_separator<T: BufRead + 'static>(
             is_whitespace,
         )),
         comment_separator(),
-        map_fully_ok(try_read('\''), |reader: EolReader<T>, c| {
-            (reader.undo(c), Ok(format!("{}", c)))
-        }),
+        map_to_str(peek('\'')),
+        crate::parser::pc::ws::zero_or_more_leading(map_fully_ok(
+            read(),
+            // undo so that the error will be positioned at the offending character
+            |reader: EolReader<T>, ch| {
+                (
+                    reader.undo(ch),
+                    Err(QError::syntax_error("Expected: end-of-statement")),
+                )
+            },
+        )),
     ])
 }

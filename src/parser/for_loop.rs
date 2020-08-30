@@ -16,20 +16,10 @@ pub fn for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         seq3(
-            opt_seq2(
-                parse_for(),
-                drop_left(crate::parser::pc::ws::seq2(
-                    crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Step)),
-                    demand(
-                        expression::expression_node(),
-                        QError::syntax_error_fn("Expected expression after STEP"),
-                    ),
-                    QError::syntax_error_fn("Expected whitespace after STEP"),
-                )),
-            ),
-            demand(
-                statements::statements(try_read_keyword(Keyword::Next)),
-                QError::syntax_error_fn("Expected FOR statements"),
+            opt_seq2_comb(parse_for(), parse_step()),
+            statements::statements(
+                try_read_keyword(Keyword::Next),
+                QError::syntax_error_fn("Expected: STEP or end-of-statement"),
             ),
             demand(next_counter(), || QError::ForWithoutNext),
         ),
@@ -46,17 +36,6 @@ pub fn for_loop<T: BufRead + 'static>(
     )
 }
 
-fn next_counter<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QError>)> {
-    map(
-        opt_seq2(
-            try_read_keyword(Keyword::Next),
-            crate::parser::pc::ws::one_or_more_leading(name::name_node()),
-        ),
-        |(_, opt_second)| opt_second,
-    )
-}
-
 fn parse_for<T: BufRead + 'static>() -> Box<
     dyn Fn(
         EolReader<T>,
@@ -66,42 +45,62 @@ fn parse_for<T: BufRead + 'static>() -> Box<
     ),
 > {
     map(
-        seq9(
+        seq7(
             try_read_keyword(Keyword::For),
             demand(
                 crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected whitespace after FOR"),
+                QError::syntax_error_fn("Expected: whitespace after FOR"),
             ),
             demand(
                 name::name_node(),
-                QError::syntax_error_fn("Expected name after FOR"),
+                QError::syntax_error_fn("Expected: name after FOR"),
             ),
             demand(
                 crate::parser::pc::ws::zero_or_more_leading(try_read('=')),
-                QError::syntax_error_fn("Expected = after name"),
+                QError::syntax_error_fn("Expected: = after name"),
             ),
-            demand(
-                crate::parser::pc::ws::zero_or_more_leading(expression::expression_node()),
-                QError::syntax_error_fn("Expected lower bound"),
-            ),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected whitespace before TO"),
-            ),
+            expression::demand_back_guarded_expression_node(),
             demand(
                 try_read_keyword(Keyword::To),
-                QError::syntax_error_fn("Expected TO"),
+                QError::syntax_error_fn("Expected: TO"),
             ),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected whitespace after TO"),
-            ),
-            demand(
-                expression::expression_node(),
-                QError::syntax_error_fn("Expected upper bound"),
-            ),
+            expression::demand_guarded_expression_node(),
         ),
-        |(_, _, n, _, l, _, _, _, u)| (n, l, u),
+        |(_, _, n, _, l, _, u)| (n, l, u),
+    )
+}
+
+fn parse_step<T: BufRead + 'static>() -> Box<
+    dyn Fn(
+        EolReader<T>,
+        &(NameNode, ExpressionNode, ExpressionNode),
+    ) -> (EolReader<T>, Result<ExpressionNode, QError>),
+> {
+    Box::new(move |reader, first| {
+        let (_, _, upper) = first;
+        let parenthesis = upper.is_parenthesis();
+        if parenthesis {
+            drop_left(seq2(
+                crate::parser::pc::ws::zero_or_more_leading(try_read_keyword(Keyword::Step)),
+                expression::demand_guarded_expression_node(),
+            ))(reader)
+        } else {
+            drop_left(seq2(
+                crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Step)),
+                expression::demand_guarded_expression_node(),
+            ))(reader)
+        }
+    })
+}
+
+fn next_counter<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QError>)> {
+    map(
+        opt_seq2(
+            try_read_keyword(Keyword::Next),
+            crate::parser::pc::ws::one_or_more_leading(name::name_node()),
+        ),
+        |(_, opt_second)| opt_second,
     )
 }
 
@@ -257,6 +256,22 @@ mod tests {
                 TopLevelToken::Statement(Statement::Comment(" end of loop".to_string()))
                     .at_rc(4, 14)
             ]
+        );
+    }
+
+    #[test]
+    fn test_no_space_before_step() {
+        let input = "
+        FOR I = 0 TO 2STEP 1
+        NEXT I
+        ";
+        let result = parse_main_str(input).unwrap_err();
+        assert_eq!(
+            result,
+            QErrorNode::Pos(
+                QError::syntax_error("Expected: STEP or end-of-statement"),
+                Location::new(2, 23)
+            )
         );
     }
 }

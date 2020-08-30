@@ -45,7 +45,7 @@ impl ProgramNodeHelper for ProgramNode {
                 element: TopLevelToken::Statement(s),
                 ..
             } => s,
-            _ => panic!(format!("Expected statement, found {:?}", t)),
+            _ => panic!(format!("Expected: statement, found {:?}", t)),
         }
     }
 }

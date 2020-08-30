@@ -13,9 +13,9 @@ pub fn dim<T: BufRead + 'static>(
             try_read_keyword(Keyword::Dim),
             demand(
                 declared_name::declared_name_node(),
-                QError::syntax_error_fn("Expected name after DIM"),
+                QError::syntax_error_fn("Expected: name after DIM"),
             ),
-            QError::syntax_error_fn("Expected whitespace after DIM"),
+            QError::syntax_error_fn("Expected: whitespace after DIM"),
         ),
         |(_, r)| Statement::Dim(r),
     )

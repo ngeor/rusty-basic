@@ -11,9 +11,9 @@ pub fn while_wend<T: BufRead + 'static>(
     map(
         seq3(
             parse_while_expression(),
-            demand(
-                statements(try_read_keyword(Keyword::Wend)),
-                QError::syntax_error_fn("Expected WHILE statements"),
+            statements(
+                try_read_keyword(Keyword::Wend),
+                QError::syntax_error_fn("Expected: end-of-statement"),
             ),
             demand(try_read_keyword(Keyword::Wend), || QError::WhileWithoutWend),
         ),
@@ -28,14 +28,9 @@ pub fn while_wend<T: BufRead + 'static>(
 
 fn parse_while_expression<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
-    drop_left(crate::parser::pc::ws::seq2(
+    drop_left(seq2(
         try_read_keyword(Keyword::While),
-        demand(
-            expression::expression_node(),
-            QError::syntax_error_fn("Expected WHILE condition"),
-        ),
-        // TODO is WHILE(X>1) acceptable in QB?
-        QError::syntax_error_fn("Expected whitespace after WHILE"),
+        expression::demand_guarded_expression_node(),
     ))
 }
 
@@ -44,7 +39,8 @@ mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
-        BareName, ConditionalBlockNode, Expression, Operand, Statement, TopLevelToken,
+        parse_main_str, BareName, ConditionalBlockNode, Expression, Operand, Statement,
+        TopLevelToken,
     };
 
     #[test]
@@ -138,5 +134,82 @@ mod tests {
         PRINT X
         "#;
         assert_eq!(parse_err(input), QError::WhileWithoutWend);
+    }
+
+    #[test]
+    fn test_while_condition_in_parenthesis() {
+        let input = r#"
+        WHILE(X > 0)
+            PRINT X
+        WEND"#;
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::While(ConditionalBlockNode {
+                condition: Expression::Parenthesis(Box::new(
+                    Expression::BinaryExpression(
+                        Operand::Greater,
+                        Box::new("X".as_var_expr(2, 15)),
+                        Box::new(0.as_lit_expr(2, 19))
+                    )
+                    .at_rc(2, 17)
+                ))
+                .at_rc(2, 14),
+                statements: vec![
+                    Statement::SubCall("PRINT".into(), vec!["X".as_var_expr(3, 19)]).at_rc(3, 13)
+                ]
+            })
+        );
+    }
+
+    #[test]
+    fn test_while_wend_without_colon_separator() {
+        let input = r#"
+        WHILE X > 0
+            PRINT X WEND
+        "#;
+        assert_eq!(
+            parse_main_str(input).unwrap_err(),
+            QErrorNode::Pos(
+                QError::syntax_error("Expected: end-of-statement"),
+                Location::new(3, 21)
+            )
+        );
+    }
+
+    #[test]
+    fn test_while_wend_wend_same_line_on_last_statement() {
+        let program = parse(
+            r#"
+        WHILE A < 5
+            A = A + 1
+            PRINT A: WEND"#,
+        )
+        .demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::While(ConditionalBlockNode {
+                condition: Expression::BinaryExpression(
+                    Operand::Less,
+                    Box::new("A".as_var_expr(2, 15)),
+                    Box::new(5.as_lit_expr(2, 19))
+                )
+                .at_rc(2, 17),
+                statements: vec![
+                    Statement::Assignment(
+                        "A".into(),
+                        Expression::BinaryExpression(
+                            Operand::Plus,
+                            Box::new("A".as_var_expr(3, 17)),
+                            Box::new(1.as_lit_expr(3, 21))
+                        )
+                        .at_rc(3, 19)
+                    )
+                    .at_rc(3, 13),
+                    Statement::SubCall(BareName::from("PRINT"), vec!["A".as_var_expr(4, 19)])
+                        .at_rc(4, 13)
+                ]
+            })
+        );
     }
 }

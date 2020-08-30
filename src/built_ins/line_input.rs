@@ -25,9 +25,9 @@ pub fn parse_line_input<T: BufRead + 'static>(
             try_read_keyword(Keyword::Line),
             demand(
                 parse_input_args(),
-                QError::syntax_error_fn("Expected INPUT after LINE"),
+                QError::syntax_error_fn("Expected: INPUT after LINE"),
             ),
-            QError::syntax_error_fn("Expected whitespace after LINE"),
+            QError::syntax_error_fn("Expected: whitespace after LINE"),
         ),
         |(_, r)| Statement::SubCall("LINE INPUT".into(), r),
     )

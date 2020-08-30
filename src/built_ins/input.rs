@@ -47,10 +47,11 @@ pub fn parse_input_args<T: BufRead + 'static>() -> Box<
     drop_left(crate::parser::pc::ws::seq2(
         try_read_keyword(Keyword::Input),
         demand(
+            // TODO demand variable expression directly
             map_default_to_not_found(csv_zero_or_more(expression::expression_node())),
-            QError::syntax_error_fn("Expected at least one variable"),
+            QError::syntax_error_fn("Expected: at least one variable"),
         ),
-        QError::syntax_error_fn("Expected whitespace after INPUT"),
+        QError::syntax_error_fn("Expected: whitespace after INPUT"),
     ))
 }
 
@@ -78,7 +79,7 @@ impl BuiltInRun for Input {
                         do_input_one_var(interpreter, a, n)?;
                     }
                     _ => {
-                        panic!("Expected variable (linter should have caught this)");
+                        panic!("Expected: variable (linter should have caught this)");
                     }
                 },
                 None => {

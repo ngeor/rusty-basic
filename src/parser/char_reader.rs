@@ -265,6 +265,27 @@ where
     read_keyword_if(move |k| k == needle)
 }
 
+pub fn demand_keyword<T: BufRead + 'static>(
+    needle: Keyword,
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Keyword, String), QError>)> {
+    demand(
+        try_read_keyword(needle),
+        QError::syntax_error_fn(format!("Expected: {}", needle)),
+    )
+}
+
+pub fn demand_guarded_keyword<T: BufRead + 'static>(
+    needle: Keyword,
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Keyword, String), QError>)> {
+    drop_left(and(
+        demand(
+            crate::parser::pc::ws::one_or_more(),
+            QError::syntax_error_fn(format!("Expected: whitespace before {}", needle)),
+        ),
+        demand_keyword(needle),
+    ))
+}
+
 pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
 where
     P: ParserSource + 'static,
@@ -304,7 +325,7 @@ where
             source,
             demand(
                 try_read(')'),
-                QError::syntax_error_fn("Expected closing parenthesis"),
+                QError::syntax_error_fn("Expected: closing parenthesis"),
             ),
         ),
         |(_, r, _)| r,

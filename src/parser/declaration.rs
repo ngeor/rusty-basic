@@ -23,9 +23,9 @@ pub fn declaration<T: BufRead + 'static>(
         try_read_keyword(Keyword::Declare),
         demand(
             or(function_declaration_token(), sub_declaration_token()),
-            QError::syntax_error_fn("Expected FUNCTION or SUB after DECLARE"),
+            QError::syntax_error_fn("Expected: FUNCTION or SUB after DECLARE"),
         ),
-        QError::syntax_error_fn("Expected whitespace after DECLARE"),
+        QError::syntax_error_fn("Expected: whitespace after DECLARE"),
     ))
 }
 
@@ -43,11 +43,11 @@ pub fn function_declaration<T: BufRead + 'static>(
             try_read_keyword(Keyword::Function),
             demand(
                 crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected whitespace after FUNCTION"),
+                QError::syntax_error_fn("Expected: whitespace after FUNCTION"),
             ),
             demand(
                 name::name_node(),
-                QError::syntax_error_fn("Expected function name"),
+                QError::syntax_error_fn("Expected: function name"),
             ),
             crate::parser::pc::ws::zero_or_more(),
             opt_declaration_parameters(),
@@ -76,11 +76,11 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
             try_read_keyword(Keyword::Sub),
             demand(
                 crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected whitespace after SUB"),
+                QError::syntax_error_fn("Expected: whitespace after SUB"),
             ),
             demand(
                 name::bare_name_node(),
-                QError::syntax_error_fn("Expected sub name"),
+                QError::syntax_error_fn("Expected: sub name"),
             ),
             crate::parser::pc::ws::zero_or_more(),
             opt_declaration_parameters(),

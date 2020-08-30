@@ -58,7 +58,7 @@ pub fn top_level_tokens<T: BufRead + 'static>(
                                     return (
                                         reader,
                                         Err(QError::SyntaxError(format!(
-                                            "Expected top level statement"
+                                            "Expected: top level statement"
                                         ))),
                                     );
                                 } else {

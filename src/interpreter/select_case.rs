@@ -158,4 +158,32 @@ mod tests {
         "#;
         assert_prints!(input, "pi");
     }
+
+    #[test]
+    fn test_select_parenthesis_expressions() {
+        let input = "
+        SELECT CASE(5+2)
+        CASE(6+5)
+            PRINT 11
+        CASE(4+3)
+            PRINT 7
+        CASE(2)TO(5)
+            PRINT 2
+        END SELECT
+        ";
+        assert_prints!(input, "7");
+    }
+
+    #[test]
+    fn test_select_case_is_no_whitespace() {
+        let input = r#"
+        SELECT CASE 7
+        CASE IS<5
+            PRINT "less than five"
+        CASE IS>5
+            PRINT "more than five"
+        END SELECT
+        "#;
+        assert_prints!(input, "more than five");
+    }
 }

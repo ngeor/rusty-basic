@@ -19,11 +19,11 @@ pub fn def_type<T: BufRead + 'static>(
             def_keyword(),
             demand(
                 crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected whitespace"),
+                QError::syntax_error_fn("Expected: whitespace"),
             ),
             demand(
                 letter_ranges(),
-                QError::syntax_error_fn("Expected letter ranges"),
+                QError::syntax_error_fn("Expected: letter ranges"),
             ),
         ),
         |(l, _, r)| DefType::new(l, r),
@@ -69,7 +69,7 @@ fn two_letter_range<T: BufRead + 'static>(
                 try_read('-'),
                 demand(
                     read_any_letter(),
-                    QError::syntax_error_fn("Expected letter after dash"),
+                    QError::syntax_error_fn("Expected: letter after dash"),
                 ),
             ),
         ),

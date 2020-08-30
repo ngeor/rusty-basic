@@ -9,8 +9,75 @@ use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;
 
-// TODO add test demand space after "AND" but not if parenthesis follows
+pub fn demand_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    demand(
+        expression_node(),
+        QError::syntax_error_fn("Expected: expression"),
+    )
+}
 
+fn guarded_parenthesis_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    // ws* ( expr )
+    map(
+        seq3(
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('('))),
+            // caveat: once it reads the opening parenthesis, it goes into demand mode,
+            // which is not consistent with the name of the function
+            demand_expression_node(),
+            demand(try_read(')'), QError::syntax_error_fn("Expected: )")),
+        ),
+        |(Locatable { pos, .. }, e, _)| Expression::Parenthesis(Box::new(e)).at(pos),
+    )
+}
+
+fn guarded_whitespace_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    // ws+ expr
+    crate::parser::pc::ws::one_or_more_leading(expression_node())
+}
+
+pub fn guarded_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    // ws* ( expr )
+    // ws+ expr
+    or(
+        guarded_parenthesis_expression_node(),
+        guarded_whitespace_expression_node(),
+    )
+}
+
+pub fn demand_guarded_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    // ws* ( expr )
+    // ws+ expr
+    demand(
+        guarded_expression_node(),
+        QError::syntax_error_fn("Expected: expression"),
+    )
+}
+
+pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    // ws* ( expr )
+    // ws+ expr ws+
+    demand(
+        or(
+            guarded_parenthesis_expression_node(),
+            drop_right(seq2(
+                guarded_whitespace_expression_node(),
+                demand(
+                    crate::parser::pc::ws::one_or_more(),
+                    QError::syntax_error_fn("Expected: whitespace after expression"),
+                ),
+            )),
+        ),
+        QError::syntax_error_fn("Expected: expression"),
+    )
+}
+
+/// Parses an expression
 pub fn expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     Box::new(move |reader| {
@@ -34,7 +101,7 @@ fn try_second_expression<T: BufRead + 'static>(
         operand(first_expr.is_parenthesis()),
         demand(
             crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
-            QError::syntax_error_fn("Expected right side expression"),
+            QError::syntax_error_fn("Expected: right side expression"),
         ),
     )(reader);
     match second_res {
@@ -76,7 +143,7 @@ pub fn unary_minus<T: BufRead + 'static>(
             with_pos(try_read('-')),
             demand(
                 lazy(expression_node),
-                QError::syntax_error_fn("Expected expression after unary minus"),
+                QError::syntax_error_fn("Expected: expression after unary minus"),
             ),
         ),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
@@ -90,9 +157,9 @@ pub fn unary_not<T: BufRead + 'static>(
             with_pos(try_read_keyword(Keyword::Not)),
             demand(
                 lazy(expression_node),
-                QError::syntax_error_fn("Expected expression after NOT"),
+                QError::syntax_error_fn("Expected: expression after NOT"),
             ),
-            QError::syntax_error_fn("Expected whitespace after NOT"),
+            QError::syntax_error_fn("Expected: whitespace after NOT"),
         ),
         |(l, r)| r.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
     )
@@ -105,7 +172,7 @@ pub fn file_handle<T: BufRead + 'static>(
             try_read('#'),
             demand(
                 read_any_digits(),
-                QError::syntax_error_fn("Expected digits after #"),
+                QError::syntax_error_fn("Expected: digits after #"),
             ),
         ),
         |(_, digits)| match digits.parse::<u32>() {
@@ -160,7 +227,7 @@ mod number_literal {
                     with_pos(try_read('.')),
                     demand(
                         read_any_digits(),
-                        QError::syntax_error_fn("Expected digits after decimal point"),
+                        QError::syntax_error_fn("Expected: digits after decimal point"),
                     ),
                 ),
                 try_read('#'),
@@ -188,7 +255,7 @@ mod number_literal {
                 with_pos(try_read('.')),
                 demand(
                     read_any_digits(),
-                    QError::syntax_error_fn("Expected digits after decimal point"),
+                    QError::syntax_error_fn("Expected: digits after decimal point"),
                 ),
                 try_read('#'),
             ),
@@ -376,7 +443,7 @@ mod tests {
                     } = first_arg_node;
                     assert_eq!(first_arg, &$right);
                 }
-                _ => panic!("Expected sub-call"),
+                _ => panic!("Expected: sub-call"),
             }
         };
     }

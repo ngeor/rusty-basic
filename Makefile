@@ -7,10 +7,10 @@ test:
 	cargo test
 
 fmt:
-	find . -type f -iname "*.rs" -exec rustfmt \{\} \;
+	cargo fmt
 
 watch:
-	nodemon -e rs -x "cargo test --jobs 1 -- --test-threads=1"
+	nodemon -e rs -x "cargo test"
 
 wc:
 	find . -type f -iname "*.rs" -exec wc -l \{\} \; | sort -n

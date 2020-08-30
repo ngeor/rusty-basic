@@ -41,9 +41,9 @@ fn type_definition_extended<T: BufRead + 'static>(
         crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::As)),
         demand(
             extended_type(),
-            QError::syntax_error_fn("Expected type after AS"),
+            QError::syntax_error_fn("Expected: type after AS"),
         ),
-        QError::syntax_error_fn("Expected whitespace after AS"),
+        QError::syntax_error_fn("Expected: whitespace after AS"),
     ))
 }
 

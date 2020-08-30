@@ -15,7 +15,7 @@ pub fn if_block<T: BufRead + 'static>(
             if_expr_then(),
             demand(
                 or(single_line_if_else(), multi_line_if()),
-                QError::syntax_error_fn("Expected single or multi line IF"),
+                QError::syntax_error_fn("Expected: single or multi line IF"),
             ),
         ),
         |(condition, (statements, else_if_blocks, else_block))| {
@@ -39,17 +39,10 @@ pub fn if_block<T: BufRead + 'static>(
 fn if_expr_then<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
-        crate::parser::pc::ws::seq3(
+        seq3(
             try_read_keyword(Keyword::If),
-            demand(
-                expression::expression_node(),
-                QError::syntax_error_fn("Expected expression after IF"),
-            ),
-            demand(
-                try_read_keyword(Keyword::Then),
-                QError::syntax_error_fn("Expected THEN"),
-            ),
-            QError::syntax_error_fn_fn("Expected whitespace"),
+            expression::demand_back_guarded_expression_node(),
+            demand_keyword(Keyword::Then),
         ),
         |(_, e, _)| e,
     )
@@ -119,13 +112,16 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
     map(
         seq2(
             opt_seq3(
-                statements::statements(read_keyword_if(|k| {
-                    k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
-                })),
+                statements::statements(
+                    read_keyword_if(|k| {
+                        k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
+                    }),
+                    QError::syntax_error_fn("Expected: end-of-statement"),
+                ),
                 else_if_blocks(),
                 else_block(),
             ),
-            demand(end_if(), QError::syntax_error_fn("Expected END IF")),
+            demand(end_if(), QError::syntax_error_fn("Expected: END IF")),
         ),
         |((if_block, opt_else_if_blocks, opt_else), _)| {
             (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
@@ -136,17 +132,10 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
 fn else_if_expr_then<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     map(
-        crate::parser::pc::ws::seq3(
+        seq3(
             try_read_keyword(Keyword::ElseIf),
-            demand(
-                expression::expression_node(),
-                QError::syntax_error_fn("Expected expression after ELSEIF"),
-            ),
-            demand(
-                try_read_keyword(Keyword::Then),
-                QError::syntax_error_fn("Expected THEN"),
-            ),
-            QError::syntax_error_fn_fn("Expected whitespace"),
+            expression::demand_back_guarded_expression_node(),
+            demand_keyword(Keyword::Then),
         ),
         |(_, e, _)| e,
     )
@@ -162,11 +151,11 @@ fn else_if_block<T: BufRead + 'static>(
     map(
         seq2(
             else_if_expr_then(),
-            demand(
-                statements::statements(read_keyword_if(|k| {
+            statements::statements(
+                read_keyword_if(|k| {
                     k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
-                })),
-                QError::syntax_error_fn("Expected statements after expression"),
+                }),
+                QError::syntax_error_fn("Expected: end-of-statement"),
             ),
         ),
         |(condition, statements)| ConditionalBlockNode {
@@ -180,10 +169,9 @@ fn else_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNodes, QError>)> {
     drop_left(seq2(
         try_read_keyword(Keyword::Else),
-        // TODO add here an EOL else separator
-        demand(
-            statements::statements(read_keyword_if(|k| k == Keyword::End)),
-            QError::syntax_error_fn("Expected statements after ELSE"),
+        statements::statements(
+            try_read_keyword(Keyword::End),
+            QError::syntax_error_fn("Expected: end-of-statement"),
         ),
     ))
 }
@@ -195,9 +183,9 @@ fn end_if<T: BufRead + 'static>() -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, 
             try_read_keyword(Keyword::End),
             demand(
                 try_read_keyword(Keyword::If),
-                QError::syntax_error_fn("Expected IF after END"),
+                QError::syntax_error_fn("Expected: IF after END"),
             ),
-            QError::syntax_error_fn("Expected whitespace after END"),
+            QError::syntax_error_fn("Expected: whitespace after END"),
         ),
         |_| (),
     )
@@ -519,5 +507,62 @@ end if"#;
     fn test_else_without_if() {
         let input = "ELSE";
         assert_eq!(parse_err(input), QError::ElseWithoutIf);
+    }
+
+    #[test]
+    fn test_if_else_if_no_space_needed_if_condition_in_parenthesis() {
+        let input = r#"
+        IF(X>0)THEN
+            PRINT "positive"
+        ELSEIF(X<0)THEN
+            PRINT "negative"
+        ELSE
+            PRINT "zero"
+        END IF
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![TopLevelToken::Statement(Statement::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode {
+                    condition: Expression::Parenthesis(Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Greater,
+                            Box::new("X".as_var_expr(2, 12)),
+                            Box::new(0.as_lit_expr(2, 14)),
+                        )
+                        .at_rc(2, 13)
+                    ))
+                    .at_rc(2, 11),
+                    statements: vec![Statement::SubCall(
+                        "PRINT".into(),
+                        vec!["positive".as_lit_expr(3, 19)]
+                    )
+                    .at_rc(3, 13),],
+                },
+                else_if_blocks: vec![ConditionalBlockNode {
+                    condition: Expression::Parenthesis(Box::new(
+                        Expression::BinaryExpression(
+                            Operand::Less,
+                            Box::new("X".as_var_expr(4, 16)),
+                            Box::new(0.as_lit_expr(4, 18)),
+                        )
+                        .at_rc(4, 17)
+                    ))
+                    .at_rc(4, 15),
+                    statements: vec![Statement::SubCall(
+                        "PRINT".into(),
+                        vec!["negative".as_lit_expr(5, 19)]
+                    )
+                    .at_rc(5, 13),],
+                }],
+                else_block: Some(vec![Statement::SubCall(
+                    "PRINT".into(),
+                    vec!["zero".as_lit_expr(7, 19)]
+                )
+                .at_rc(7, 13),])
+            }))
+            .at_rc(2, 9),]
+        );
     }
 }

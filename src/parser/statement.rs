@@ -85,8 +85,11 @@ pub fn statement_go_to<T: BufRead + 'static>(
     map(
         crate::parser::pc::ws::seq2(
             try_read_keyword(Keyword::GoTo),
-            demand(name::bare_name(), QError::syntax_error_fn("Expected label")),
-            QError::syntax_error_fn("Expected whitespace"),
+            demand(
+                name::bare_name(),
+                QError::syntax_error_fn("Expected: label"),
+            ),
+            QError::syntax_error_fn("Expected: whitespace"),
         ),
         |(_, l)| Statement::GoTo(l),
     )
@@ -99,14 +102,17 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
             try_read_keyword(Keyword::On),
             demand(
                 try_read_keyword(Keyword::Error),
-                QError::syntax_error_fn("Expected ERROR"),
+                QError::syntax_error_fn("Expected: ERROR"),
             ),
             demand(
                 try_read_keyword(Keyword::GoTo),
-                QError::syntax_error_fn("Expected GOTO"),
+                QError::syntax_error_fn("Expected: GOTO"),
             ),
-            demand(name::bare_name(), QError::syntax_error_fn("Expected label")),
-            QError::syntax_error_fn_fn("Expected whitespace"),
+            demand(
+                name::bare_name(),
+                QError::syntax_error_fn("Expected: label"),
+            ),
+            QError::syntax_error_fn_fn("Expected: whitespace"),
         ),
         |(_, _, _, l)| Statement::ErrorHandler(l),
     )

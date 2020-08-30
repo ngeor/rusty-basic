@@ -14,9 +14,9 @@ pub fn constant<T: BufRead + 'static>(
             try_read_keyword(Keyword::Const),
             demand(
                 with_pos(assignment::assignment_tuple()),
-                QError::syntax_error_fn("Expected name"),
+                QError::syntax_error_fn("Expected: name"),
             ),
-            QError::syntax_error_fn("Expected whitespace after CONST"),
+            QError::syntax_error_fn("Expected: whitespace after CONST"),
         ),
         |(
             _,

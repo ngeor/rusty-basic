@@ -21,12 +21,10 @@ use std::io::BufRead;
 #[derive(Debug)]
 pub struct Open {}
 
-// TODO improve this
 pub fn parse_open<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
     map(
         crate::parser::pc::ws::seq2(
-            // TODO seq_opt or something
             opt_seq3(parse_filename(), parse_open_mode(), parse_open_access()),
             demand(
                 parse_file_number(),

@@ -99,30 +99,27 @@ where
     EolReader<T>: Undo<X>,
     FE: Fn() -> QError + 'static,
 {
-    crate::parser::pc::loc::log(
-        "statements",
-        drop_left(and(
-            parse_first_statement_separator(err_fn),
-            zero_or_more(move |reader| {
-                let (reader, exit_result) = exit_source(reader);
-                match exit_result {
-                    Ok(x) => {
-                        // found the exit
-                        reader.undo_and_err_not_found(x)
-                    }
-                    Err(err) => {
-                        if err.is_not_found_err() {
-                            // did not find the exit, we can parse a statement
-                            statement_node_and_separator()(reader)
-                        } else {
-                            // something else happened, abort
-                            (reader, Err(err))
-                        }
+    drop_left(and(
+        parse_first_statement_separator(err_fn),
+        zero_or_more(move |reader| {
+            let (reader, exit_result) = exit_source(reader);
+            match exit_result {
+                Ok(x) => {
+                    // found the exit
+                    reader.undo_and_err_not_found(x)
+                }
+                Err(err) => {
+                    if err.is_not_found_err() {
+                        // did not find the exit, we can parse a statement
+                        statement_node_and_separator()(reader)
+                    } else {
+                        // something else happened, abort
+                        (reader, Err(err))
                     }
                 }
-            }),
-        )),
-    )
+            }
+        }),
+    ))
 }
 
 fn statement_node_and_separator<T: BufRead + 'static>() -> Box<

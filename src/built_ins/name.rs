@@ -77,16 +77,16 @@ mod tests {
     #[test]
     fn test_can_rename_file_parenthesis() {
         // arrange
-        std::fs::write("TEST4.OLD", "hi").unwrap_or(());
+        std::fs::write("TEST5.OLD", "hi").unwrap_or(());
         let input = r#"
-        NAME("TEST4.OLD")AS("TEST4.NEW")
+        NAME("TEST5.OLD")AS("TEST5.NEW")
         "#;
         // act
         interpret(input);
         // assert
-        let contents = std::fs::read_to_string("TEST4.NEW").unwrap_or("".to_string());
-        std::fs::remove_file("TEST4.OLD").unwrap_or(());
-        std::fs::remove_file("TEST4.NEW").unwrap_or(());
+        let contents = std::fs::read_to_string("TEST5.NEW").unwrap_or("".to_string());
+        std::fs::remove_file("TEST5.OLD").unwrap_or(());
+        std::fs::remove_file("TEST5.NEW").unwrap_or(());
         assert_eq!(contents, "hi");
     }
 

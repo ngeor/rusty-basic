@@ -817,33 +817,6 @@ pub mod loc {
             (reader, loc_result)
         })
     }
-
-    pub fn log<R, S, T, E, M>(msg: M, source: S) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
-    where
-        R: Reader + HasLocation + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        T: 'static,
-        E: 'static,
-        M: AsRef<str> + 'static,
-    {
-        Box::new(move |reader| {
-            // TODO only in debug mode or for tests
-            println!(
-                "begin {} at {}:{}",
-                msg.as_ref(),
-                reader.pos().row(),
-                reader.pos().col()
-            );
-            let (reader, res) = source(reader);
-            println!(
-                "end {} at {}:{}",
-                msg.as_ref(),
-                reader.pos().row(),
-                reader.pos().col()
-            );
-            (reader, res)
-        })
-    }
 }
 
 // ========================================================

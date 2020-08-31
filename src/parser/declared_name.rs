@@ -37,6 +37,7 @@ pub fn declared_name_node<T: BufRead + 'static>(
 
 fn type_definition_extended<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QError>)> {
+    // <ws+> AS <ws+> identifier
     drop_left(crate::parser::pc::ws::seq2(
         crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::As)),
         demand(

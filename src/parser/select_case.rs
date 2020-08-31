@@ -174,6 +174,7 @@ fn parse_case_simple_or_range<T: BufRead + 'static>(
 fn parse_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>, &ExpressionNode) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
     Box::new(move |reader, first_expr_ref| {
+        // TODO refactor this
         let parenthesis = first_expr_ref.is_parenthesis();
         if parenthesis {
             drop_left(drop_left(and(

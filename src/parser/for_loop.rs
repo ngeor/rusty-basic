@@ -79,6 +79,7 @@ fn parse_step<T: BufRead + 'static>() -> Box<
     Box::new(move |reader, first| {
         let (_, _, upper) = first;
         let parenthesis = upper.is_parenthesis();
+        // TODO refactor this
         if parenthesis {
             drop_left(seq2(
                 crate::parser::pc::ws::zero_or_more_leading(try_read_keyword(Keyword::Step)),

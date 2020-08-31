@@ -93,6 +93,7 @@ pub fn expression_node<T: BufRead + 'static>(
     })
 }
 
+// TODO refactor this
 fn try_second_expression<T: BufRead + 'static>(
     reader: EolReader<T>,
     first_expr: ExpressionNode,

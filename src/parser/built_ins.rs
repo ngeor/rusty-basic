@@ -84,6 +84,9 @@ mod open {
 
     pub fn parse_open<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+        // TODO support OPEN("file.txt")FOR INPUT ACCESS READ AS 1
+        // TODO support OPEN("file.txt")ACCESS READ AS 1
+        // TODO support OPEN("file.txt")AS 1
         map(
             crate::parser::pc::ws::seq2(
                 opt_seq3(parse_filename(), parse_open_mode(), parse_open_access()),

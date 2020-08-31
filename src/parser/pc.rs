@@ -790,13 +790,7 @@ pub mod str {
         E: NotFoundErr + 'static,
         F: Fn(char) -> bool + 'static,
     {
-        common::and_then(zero_or_more_if(predicate), |s| {
-            if s.is_empty() {
-                Err(E::not_found_err())
-            } else {
-                Ok(s)
-            }
-        })
+        common::map_default_to_not_found(zero_or_more_if(predicate))
     }
 
     pub fn switch_from_str<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> (R, Result<(T, String), E>)>
@@ -858,7 +852,7 @@ pub mod ws {
         R: Reader<Item = char> + 'static,
         R::Err: NotFoundErr,
     {
-        one_or_more_if(is_whitespace)
+        common::map_default_to_not_found(zero_or_more())
     }
 
     /// Reads some whitespace before the source and then returns the result of the source.

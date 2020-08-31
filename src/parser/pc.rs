@@ -58,35 +58,6 @@ pub mod common {
         Box::new(move |reader| lazy_source()(reader))
     }
 
-    pub fn map_fully<R, S, T, E, U, F1, F2, F3>(
-        source: S,
-        f_ok: F1,
-        f_not_found: F2,
-        f_err: F3,
-    ) -> Box<dyn Fn(R) -> (R, U)>
-    where
-        R: Reader + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        E: IsNotFoundErr + 'static,
-        F1: Fn(R, T) -> (R, U) + 'static,
-        F2: Fn(E) -> U + 'static,
-        F3: Fn(E) -> U + 'static,
-    {
-        Box::new(move |reader| {
-            let (reader, result) = source(reader);
-            match result {
-                Ok(ch) => f_ok(reader, ch),
-                Err(err) => {
-                    if err.is_not_found_err() {
-                        (reader, f_not_found(err))
-                    } else {
-                        (reader, f_err(err))
-                    }
-                }
-            }
-        })
-    }
-
     pub fn map_fully_ok_or_not_found<R, S, T, E, U, F1, F2>(
         source: S,
         f_ok: F1,
@@ -153,30 +124,6 @@ pub mod common {
         F: Fn(T) -> U + 'static,
     {
         and_then(source, move |x| Ok(map(x)))
-    }
-
-    pub fn map_fully_err<R, S, T, E, F>(source: S, f_err: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
-    where
-        R: Reader + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        F: Fn(R, E) -> (R, Result<T, E>) + 'static,
-    {
-        Box::new(move |reader| {
-            let (reader, result) = source(reader);
-            match result {
-                Ok(ch) => (reader, Ok(ch)),
-                Err(err) => f_err(reader, err),
-            }
-        })
-    }
-
-    pub fn or_else<R, S, T, E, F>(source: S, map: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
-    where
-        R: Reader + 'static,
-        S: Fn(R) -> (R, Result<T, E>) + 'static,
-        F: Fn(E) -> Result<T, E> + 'static,
-    {
-        map_fully_err(source, move |reader, err| (reader, map(err)))
     }
 
     pub fn map_fully_not_found_err<R, S, T, E, F>(
@@ -327,30 +274,6 @@ pub mod common {
         })
     }
 
-    pub fn opt_seq4<R, S1, S2, S3, S4, T1, T2, T3, T4, E>(
-        first: S1,
-        second: S2,
-        third: S3,
-        fourth: S4,
-    ) -> Box<dyn Fn(R) -> (R, Result<(T1, Option<T2>, Option<T3>, Option<T4>), E>)>
-    where
-        R: Reader + 'static,
-        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
-        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
-        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
-        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
-        T1: 'static,
-        T2: 'static,
-        T3: 'static,
-        T4: 'static,
-        E: IsNotFoundErr + 'static,
-    {
-        map(
-            opt_seq2(opt_seq3(first, second, third), fourth),
-            |((a, b, c), d)| (a, b, c, d),
-        )
-    }
-
     pub fn seq2<R, S1, S2, T1, T2, E>(
         first: S1,
         second: S2,
@@ -498,87 +421,6 @@ pub mod common {
         map(
             seq2(first, seq6(second, third, fourth, fifth, sixth, seventh)),
             |(a, (b, c, d, e, f, g))| (a, b, c, d, e, f, g),
-        )
-    }
-
-    pub fn seq8<R, S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8, E>(
-        first: S1,
-        second: S2,
-        third: S3,
-        fourth: S4,
-        fifth: S5,
-        sixth: S6,
-        seventh: S7,
-        eighth: S8,
-    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4, T5, T6, T7, T8), E>)>
-    where
-        R: Reader + 'static,
-        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
-        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
-        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
-        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
-        S5: Fn(R) -> (R, Result<T5, E>) + 'static,
-        S6: Fn(R) -> (R, Result<T6, E>) + 'static,
-        S7: Fn(R) -> (R, Result<T7, E>) + 'static,
-        S8: Fn(R) -> (R, Result<T8, E>) + 'static,
-        T1: 'static,
-        T2: 'static,
-        T3: 'static,
-        T4: 'static,
-        T5: 'static,
-        T6: 'static,
-        T7: 'static,
-        T8: 'static,
-        E: IsNotFoundErr + 'static,
-    {
-        map(
-            seq2(
-                first,
-                seq7(second, third, fourth, fifth, sixth, seventh, eighth),
-            ),
-            |(a, (b, c, d, e, f, g, h))| (a, b, c, d, e, f, g, h),
-        )
-    }
-
-    pub fn seq9<R, S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8, T9, E>(
-        first: S1,
-        second: S2,
-        third: S3,
-        fourth: S4,
-        fifth: S5,
-        sixth: S6,
-        seventh: S7,
-        eighth: S8,
-        ninth: S9,
-    ) -> Box<dyn Fn(R) -> (R, Result<(T1, T2, T3, T4, T5, T6, T7, T8, T9), E>)>
-    where
-        R: Reader + 'static,
-        S1: Fn(R) -> (R, Result<T1, E>) + 'static,
-        S2: Fn(R) -> (R, Result<T2, E>) + 'static,
-        S3: Fn(R) -> (R, Result<T3, E>) + 'static,
-        S4: Fn(R) -> (R, Result<T4, E>) + 'static,
-        S5: Fn(R) -> (R, Result<T5, E>) + 'static,
-        S6: Fn(R) -> (R, Result<T6, E>) + 'static,
-        S7: Fn(R) -> (R, Result<T7, E>) + 'static,
-        S8: Fn(R) -> (R, Result<T8, E>) + 'static,
-        S9: Fn(R) -> (R, Result<T9, E>) + 'static,
-        T1: 'static,
-        T2: 'static,
-        T3: 'static,
-        T4: 'static,
-        T5: 'static,
-        T6: 'static,
-        T7: 'static,
-        T8: 'static,
-        T9: 'static,
-        E: IsNotFoundErr + 'static,
-    {
-        map(
-            seq2(
-                first,
-                seq8(second, third, fourth, fifth, sixth, seventh, eighth, ninth),
-            ),
-            |(a, (b, c, d, e, f, g, h, i))| (a, b, c, d, e, f, g, h, i),
         )
     }
 

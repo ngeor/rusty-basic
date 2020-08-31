@@ -400,7 +400,7 @@ fn lte<T: BufRead + 'static>(
     and_then(
         opt_seq2(
             try_read('<'),
-            with_pos(read_any_if(|ch| ch == '=' || ch == '>')),
+            with_pos(read_if(|ch| ch == '=' || ch == '>')),
         ),
         |(_, opt_r)| match opt_r {
             Some(Locatable { element: '=', .. }) => Ok(Operand::LessOrEqual),

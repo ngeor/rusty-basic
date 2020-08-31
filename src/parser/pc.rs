@@ -471,7 +471,7 @@ pub mod common {
     /// Returns a function that filters the given source with the given predicate.
     /// If the predicate returns `true`, the value of the source is returned as-is.
     /// Otherwise, a Not Found error will be returned.
-    pub fn filter_any<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    pub fn filter<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
     where
         R: Reader<Err = E> + Undo<T> + 'static,
         S: Fn(R) -> (R, Result<T, E>) + 'static,
@@ -590,7 +590,7 @@ pub mod copy {
     /// Returns a function that filters the given source with the given predicate.
     /// If the predicate returns `true`, the value of the source is returned as-is.
     /// Otherwise, a Not Found error will be returned.
-    pub fn filter_any<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
+    pub fn filter<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> (R, Result<T, E>)>
     where
         R: Reader<Err = E> + Undo<T> + 'static,
         S: Fn(R) -> (R, Result<T, E>) + 'static,
@@ -607,14 +607,14 @@ pub mod copy {
         })
     }
 
-    pub fn read_any_if<R, T, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>
+    pub fn read_if<R, T, F>(predicate: F) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>
     where
         R: Reader<Item = T> + Undo<T> + 'static,
         T: Copy,
         R::Err: NotFoundErr,
         F: Fn(T) -> bool + 'static,
     {
-        filter_any(common::read(), predicate)
+        filter(common::read(), predicate)
     }
 
     pub fn try_read<R, T>(needle: T) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>
@@ -623,7 +623,7 @@ pub mod copy {
         T: Copy + PartialEq + 'static,
         R::Err: NotFoundErr,
     {
-        read_any_if(move |ch| ch == needle)
+        read_if(move |ch| ch == needle)
     }
 
     pub fn peek<R, T>(needle: T) -> Box<dyn Fn(R) -> (R, Result<R::Item, R::Err>)>

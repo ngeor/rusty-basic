@@ -188,12 +188,6 @@ impl<T: BufRead> CharReader<T> {
 }
 
 //
-// Naming conventions
-//
-// read_any  : reads the next item. Err::NotFound is okay.
-// read_some : reads the next item. Err::NotFound is mapped to the given error.
-
-//
 // Parser combinators
 //
 
@@ -201,14 +195,14 @@ pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_if(is_symbol)
+    read_if(is_symbol)
 }
 
 pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
 where
     P: ParserSource + 'static,
 {
-    read_any_if(is_letter)
+    read_if(is_letter)
 }
 
 /// Reads any identifier. Note that the result might be a keyword.
@@ -252,7 +246,7 @@ where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
     F: Fn(Keyword) -> bool + 'static,
 {
-    super::pc::common::filter_any(read_any_keyword(), move |(k, _)| predicate(*k))
+    super::pc::common::filter(read_any_keyword(), move |(k, _)| predicate(*k))
 }
 
 // TODO optimize

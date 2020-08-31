@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::declaration;
 use crate::parser::pc::common::*;
+use crate::parser::pc::*;
 use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -10,12 +11,12 @@ use std::io::BufRead;
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
 pub fn implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     or(function_implementation(), sub_implementation())
 }
 
 pub fn function_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     map(
         seq5(
             declaration::function_declaration(),
@@ -41,7 +42,7 @@ pub fn function_implementation<T: BufRead + 'static>(
 }
 
 pub fn sub_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     map(
         seq5(
             declaration::sub_declaration(),

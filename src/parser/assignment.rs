@@ -4,16 +4,17 @@ use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn assignment<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(assignment_tuple(), |(l, r)| Statement::Assignment(l, r))
 }
 
 pub fn assignment_tuple<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Name, ExpressionNode), QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Name, ExpressionNode), QError>> {
     // not using seq3 in case it's not an assignment but a sub call
     map(
         and(

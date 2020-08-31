@@ -3,7 +3,7 @@ use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::common::*;
-use crate::parser::pc::traits::*;
+use crate::parser::pc::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -12,7 +12,7 @@ use std::io::BufRead;
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 pub fn sub_call<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         and(
             name::bare_name(),
@@ -39,17 +39,17 @@ pub fn sub_call<T: BufRead + 'static>(
 
 pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
     allow_colon: bool,
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ArgumentNodes, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ArgumentNodes, QError>> {
     map_fully_ok_or_not_found(
         read(),
         move |reader: EolReader<T>, ch| {
             if ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':') {
-                (reader.undo(ch), Ok(vec![]))
+                Ok((reader.undo(ch), Some(vec![])))
             } else {
-                (reader.undo(ch), Err(QError::not_found_err()))
+                Ok((reader.undo(ch), None))
             }
         },
-        |_| Ok(vec![]),
+        || Ok(Some(vec![])),
     )
 }
 

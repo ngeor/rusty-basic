@@ -2,12 +2,13 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::pc::common::*;
+use crate::parser::pc::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
 /// Parses built-in subs which have a special syntax.
 pub fn parse_built_in<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::Statement, QError>> {
     or_vec(vec![
         input::parse_input(),
         line_input::parse_line_input(),
@@ -19,7 +20,7 @@ pub fn parse_built_in<T: BufRead + 'static>(
 mod input {
     use super::*;
     pub fn parse_input<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(parse_input_args(), |r| {
             Statement::SubCall("INPUT".into(), r)
         })
@@ -28,10 +29,7 @@ mod input {
     pub fn parse_input_args<T: BufRead + 'static>() -> Box<
         dyn Fn(
             EolReader<T>,
-        ) -> (
-            EolReader<T>,
-            Result<Vec<crate::parser::ExpressionNode>, QError>,
-        ),
+        ) -> ReaderResult<EolReader<T>, Vec<crate::parser::ExpressionNode>, QError>,
     > {
         drop_left(crate::parser::pc::ws::seq2(
             try_read_keyword(Keyword::Input),
@@ -48,7 +46,7 @@ mod input {
 mod line_input {
     use super::*;
     pub fn parse_line_input<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(
             crate::parser::pc::ws::seq2(
                 try_read_keyword(Keyword::Line),
@@ -66,7 +64,7 @@ mod line_input {
 mod name {
     use super::*;
     pub fn parse_name<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(
             seq4(
                 try_read_keyword(Keyword::Name),
@@ -83,7 +81,7 @@ mod open {
     use super::*;
 
     pub fn parse_open<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         // TODO support OPEN("file.txt")FOR INPUT ACCESS READ AS 1
         // TODO support OPEN("file.txt")ACCESS READ AS 1
         // TODO support OPEN("file.txt")AS 1
@@ -116,9 +114,9 @@ mod open {
         )
     }
 
-    fn parse_filename<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::ExpressionNode, QError>)>
-    {
+    fn parse_filename<T: BufRead + 'static>() -> Box<
+        dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::ExpressionNode, QError>,
+    > {
         drop_left(crate::parser::pc::ws::seq2(
             try_read_keyword(Keyword::Open),
             demand(
@@ -130,15 +128,15 @@ mod open {
     }
 
     fn parse_open_mode<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileMode, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileMode, QError>> {
         drop_left(crate::parser::pc::ws::seq2(
             crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::For)),
             demand(
-                and_then(read_any_keyword(), |(k, _)| match k {
-                    Keyword::Append => Ok(FileMode::Append),
-                    Keyword::Input => Ok(FileMode::Input),
-                    Keyword::Output => Ok(FileMode::Output),
-                    _ => Err(QError::syntax_error("Invalid file mode")),
+                opt_map(read_any_keyword(), |(k, _)| match k {
+                    Keyword::Append => Some(FileMode::Append),
+                    Keyword::Input => Some(FileMode::Input),
+                    Keyword::Output => Some(FileMode::Output),
+                    _ => None,
                 }),
                 QError::syntax_error_fn("Invalid file mode"),
             ),
@@ -147,13 +145,13 @@ mod open {
     }
 
     fn parse_open_access<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileAccess, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileAccess, QError>> {
         drop_left(crate::parser::pc::ws::seq2(
             crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Access)),
             demand(
-                and_then(read_any_keyword(), |(k, _)| match k {
-                    Keyword::Read => Ok(FileAccess::Read),
-                    _ => Err(QError::syntax_error("Invalid file access")),
+                opt_map(read_any_keyword(), |(k, _)| match k {
+                    Keyword::Read => Some(FileAccess::Read),
+                    _ => None,
                 }),
                 QError::syntax_error_fn("Invalid file access"),
             ),
@@ -161,9 +159,9 @@ mod open {
         ))
     }
 
-    fn parse_file_number<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::ExpressionNode, QError>)>
-    {
+    fn parse_file_number<T: BufRead + 'static>() -> Box<
+        dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::ExpressionNode, QError>,
+    > {
         drop_left(crate::parser::pc::ws::seq2(
             try_read_keyword(Keyword::As),
             demand(

@@ -2,12 +2,13 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::declared_name;
 use crate::parser::pc::common::*;
+use crate::parser::pc::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
 /// Parses DIM statement
 pub fn dim<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         crate::parser::pc::ws::seq2(
             try_read_keyword(Keyword::Dim),

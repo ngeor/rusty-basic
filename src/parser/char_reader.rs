@@ -1,7 +1,7 @@
 use crate::common::{CaseInsensitiveString, HasLocation, Location, QError};
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
-use crate::parser::pc::traits::*;
+use crate::parser::pc::*;
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
 use std::convert::TryInto;
@@ -29,18 +29,6 @@ fn is_symbol(ch: char) -> bool {
 }
 
 pub trait ParserSource: Reader<Item = char, Err = QError> {}
-
-impl IsNotFoundErr for QError {
-    fn is_not_found_err(&self) -> bool {
-        *self == QError::CannotParse
-    }
-}
-
-impl NotFoundErr for QError {
-    fn not_found_err() -> Self {
-        QError::CannotParse
-    }
-}
 
 impl<P: ParserSource> Undo<char> for P {
     fn undo(self, item: char) -> Self {
@@ -93,7 +81,7 @@ impl<T: BufRead> Reader for CharReader<T> {
     type Item = char;
     type Err = QError;
 
-    fn read(self) -> (Self, Result<char, QError>) {
+    fn read(self) -> ReaderResult<Self, char, QError> {
         let Self {
             mut reader,
             mut buffer,
@@ -101,15 +89,15 @@ impl<T: BufRead> Reader for CharReader<T> {
         } = self;
         if buffer.is_empty() {
             if read_eof {
-                (
+                Ok((
                     // TODO throw IO error EOF here?
                     Self {
                         reader,
                         buffer,
                         read_eof,
                     },
-                    Err(QError::not_found_err()),
-                )
+                    None,
+                ))
             } else {
                 let mut line = String::new();
                 match reader.read_line(&mut line) {
@@ -119,46 +107,46 @@ impl<T: BufRead> Reader for CharReader<T> {
                                 buffer.push_back(c);
                             }
                             let ch = buffer.pop_front().unwrap();
-                            (
+                            Ok((
                                 Self {
                                     reader,
                                     buffer,
                                     read_eof,
                                 },
-                                Ok(ch),
-                            )
+                                Some(ch),
+                            ))
                         } else {
                             read_eof = true;
-                            (
+                            Ok((
                                 Self {
                                     reader,
                                     buffer,
                                     read_eof,
                                 },
-                                Err(QError::not_found_err()),
-                            )
+                                None,
+                            ))
                         }
                     }
-                    Err(err) => (
+                    Err(err) => Err((
                         Self {
                             reader,
                             buffer,
                             read_eof,
                         },
-                        Err(err.into()),
-                    ),
+                        err.into(),
+                    )),
                 }
             }
         } else {
             let ch = buffer.pop_front().unwrap();
-            (
+            Ok((
                 Self {
                     reader,
                     buffer,
                     read_eof,
                 },
-                Ok(ch),
-            )
+                Some(ch),
+            ))
         }
     }
 
@@ -191,14 +179,14 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
+pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> ReaderResult<P, char, QError>>
 where
     P: ParserSource + 'static,
 {
     read_if(is_symbol)
 }
 
-pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> (P, Result<char, QError>)>
+pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> ReaderResult<P, char, QError>>
 where
     P: ParserSource + 'static,
 {
@@ -207,7 +195,7 @@ where
 
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
+pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> ReaderResult<P, String, QError>>
 where
     P: ParserSource + 'static,
 {
@@ -218,7 +206,7 @@ where
 }
 
 /// Reads any keyword.
-pub fn read_any_keyword<P>() -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
+pub fn read_any_keyword<P>() -> Box<dyn Fn(P) -> ReaderResult<P, (Keyword, String), QError>>
 where
     P: ParserSource + Undo<String> + 'static,
 {
@@ -226,22 +214,22 @@ where
 }
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-pub fn read_any_word<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
+pub fn read_any_word<P>() -> Box<dyn Fn(P) -> ReaderResult<P, String, QError>>
 where
     P: ParserSource + Undo<String> + 'static,
 {
     map_fully_ok(
         read_any_identifier(),
         |reader: P, s| match Keyword::from_str(&s) {
-            Ok(_) => (reader.undo(s), Err(QError::not_found_err())),
-            Err(_) => (reader, Ok(s)),
+            Ok(_) => Ok((reader.undo(s), None)),
+            Err(_) => Ok((reader, Some(s))),
         },
     )
 }
 
 pub fn read_keyword_if<P, F>(
     predicate: F,
-) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
+) -> Box<dyn Fn(P) -> ReaderResult<P, (Keyword, String), QError>>
 where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
     F: Fn(Keyword) -> bool + 'static,
@@ -252,7 +240,7 @@ where
 // TODO optimize
 pub fn try_read_keyword<P>(
     needle: Keyword,
-) -> Box<dyn Fn(P) -> (P, Result<(Keyword, String), QError>)>
+) -> Box<dyn Fn(P) -> ReaderResult<P, (Keyword, String), QError>>
 where
     P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
 {
@@ -261,7 +249,7 @@ where
 
 pub fn demand_keyword<T: BufRead + 'static>(
     needle: Keyword,
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Keyword, String), QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Keyword, String), QError>> {
     demand(
         try_read_keyword(needle),
         QError::syntax_error_fn(format!("Expected: {}", needle)),
@@ -270,7 +258,7 @@ pub fn demand_keyword<T: BufRead + 'static>(
 
 pub fn demand_guarded_keyword<T: BufRead + 'static>(
     needle: Keyword,
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Keyword, String), QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Keyword, String), QError>> {
     drop_left(and(
         demand(
             crate::parser::pc::ws::one_or_more(),
@@ -280,7 +268,7 @@ pub fn demand_guarded_keyword<T: BufRead + 'static>(
     ))
 }
 
-pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> (P, Result<String, QError>)>
+pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> ReaderResult<P, String, QError>>
 where
     P: ParserSource + 'static,
 {
@@ -295,10 +283,10 @@ where
 // Take multiple items
 //
 
-pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> (P, Result<Vec<R>, QError>)>
+pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> ReaderResult<P, Vec<R>, QError>>
 where
     P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn(P) -> (P, Result<R, QError>) + 'static,
+    S: Fn(P) -> ReaderResult<P, R, QError> + 'static,
     R: 'static,
 {
     zero_or_more(opt_seq2(
@@ -307,10 +295,10 @@ where
     ))
 }
 
-pub fn in_parenthesis<P, T, S>(source: S) -> Box<dyn Fn(P) -> (P, Result<T, QError>)>
+pub fn in_parenthesis<P, T, S>(source: S) -> Box<dyn Fn(P) -> ReaderResult<P, T, QError>>
 where
     P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> (P, Result<T, QError>) + 'static,
+    S: Fn(P) -> ReaderResult<P, T, QError> + 'static,
     T: 'static,
 {
     map(
@@ -353,13 +341,13 @@ impl<T: BufRead + 'static> Reader for EolReader<T> {
     type Item = char;
     type Err = QError;
 
-    fn read(self) -> (Self, Result<char, QError>) {
+    fn read(self) -> ReaderResult<Self, char, QError> {
         let Self {
             char_reader,
             mut pos,
             mut line_lengths,
         } = self;
-        let (char_reader, next) = or(
+        let res = or(
             or(
                 try_read('\n'),
                 map(
@@ -374,26 +362,39 @@ impl<T: BufRead + 'static> Reader for EolReader<T> {
             ),
             read(),
         )(char_reader);
-        match next {
-            Ok('\r') | Ok('\n') => {
-                if line_lengths.len() + 1 == (pos.row() as usize) {
-                    line_lengths.push(pos.col());
+        match res {
+            Ok((char_reader, opt_res)) => {
+                match &opt_res {
+                    Some('\r') | Some('\n') => {
+                        if line_lengths.len() + 1 == (pos.row() as usize) {
+                            line_lengths.push(pos.col());
+                        }
+                        pos.inc_row();
+                    }
+                    Some(_) => {
+                        pos.inc_col();
+                    }
+                    _ => {}
                 }
-                pos.inc_row();
+
+                Ok((
+                    Self {
+                        char_reader,
+                        pos,
+                        line_lengths,
+                    },
+                    opt_res,
+                ))
             }
-            Ok(_) => {
-                pos.inc_col();
-            }
-            _ => {}
+            Err((char_reader, err)) => Err((
+                Self {
+                    char_reader,
+                    pos,
+                    line_lengths,
+                },
+                err,
+            )),
         }
-        (
-            Self {
-                char_reader,
-                pos,
-                line_lengths,
-            },
-            next,
-        )
     }
 
     fn undo_item(self, x: char) -> Self {
@@ -494,15 +495,15 @@ mod tests {
     #[test]
     fn test_eof_is_twice() {
         let reader: CharReader<BufReader<Cursor<&str>>> = "123".into();
-        let (reader, next) = reader.read();
+        let (reader, next) = reader.read().unwrap();
         assert_eq!(next.unwrap(), '1');
-        let (reader, next) = reader.read();
+        let (reader, next) = reader.read().unwrap();
         assert_eq!(next.unwrap(), '2');
-        let (reader, next) = reader.read();
+        let (reader, next) = reader.read().unwrap();
         assert_eq!(next.unwrap(), '3');
-        let (reader, next) = reader.read();
-        assert_eq!(next.is_err(), true);
-        let (_, next) = reader.read();
-        assert_eq!(next.is_err(), true);
+        let (reader, next) = reader.read().unwrap();
+        assert_eq!(next.is_some(), false);
+        let (_, next) = reader.read().unwrap();
+        assert_eq!(next.is_some(), false);
     }
 }

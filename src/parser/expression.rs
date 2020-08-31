@@ -4,13 +4,13 @@ use crate::parser::name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
-use crate::parser::pc::traits::*;
+use crate::parser::pc::*;
 use crate::parser::types::*;
 use crate::variant;
 use std::io::BufRead;
 
 pub fn demand_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     demand(
         expression_node(),
         QError::syntax_error_fn("Expected: expression"),
@@ -18,7 +18,7 @@ pub fn demand_expression_node<T: BufRead + 'static>(
 }
 
 fn guarded_parenthesis_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     // ws* ( expr )
     map(
         seq3(
@@ -33,13 +33,13 @@ fn guarded_parenthesis_expression_node<T: BufRead + 'static>(
 }
 
 fn guarded_whitespace_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     // ws+ expr
     crate::parser::pc::ws::one_or_more_leading(expression_node())
 }
 
 pub fn guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     // ws* ( expr )
     // ws+ expr
     or(
@@ -49,7 +49,7 @@ pub fn guarded_expression_node<T: BufRead + 'static>(
 }
 
 pub fn demand_guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     // ws* ( expr )
     // ws+ expr
     demand(
@@ -59,7 +59,7 @@ pub fn demand_guarded_expression_node<T: BufRead + 'static>(
 }
 
 pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     // ws* ( expr )
     // ws+ expr ws+
     demand(
@@ -79,17 +79,18 @@ pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
 
 /// Parses an expression
 pub fn expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
-    Box::new(move |reader| {
-        let (reader, first_res) = single_expression_node()(reader);
-        match first_res {
-            Ok(first_expr) => {
-                let (reader, second_res) = try_second_expression(reader, first_expr);
-                let second_res = second_res.map(|x| x.simplify_unary_minus_literals());
-                (reader, second_res)
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    // TODO just use map_fully_ok
+    Box::new(move |reader| match single_expression_node()(reader) {
+        Ok((reader, opt_res)) => match opt_res {
+            Some(first_expr) => {
+                try_second_expression(reader, first_expr).and_then(|(reader, res)| {
+                    Ok((reader, res.map(|x| x.simplify_unary_minus_literals())))
+                })
             }
-            Err(err) => (reader, Err(err)),
-        }
+            None => Ok((reader, None)),
+        },
+        Err(err) => Err(err),
     })
 }
 
@@ -97,34 +98,31 @@ pub fn expression_node<T: BufRead + 'static>(
 fn try_second_expression<T: BufRead + 'static>(
     reader: EolReader<T>,
     first_expr: ExpressionNode,
-) -> (EolReader<T>, Result<ExpressionNode, QError>) {
-    let (reader, second_res) = seq2(
+) -> ReaderResult<EolReader<T>, ExpressionNode, QError> {
+    match seq2(
         operand(first_expr.is_parenthesis()),
         demand(
             crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
             QError::syntax_error_fn("Expected: right side expression"),
         ),
-    )(reader);
-    match second_res {
-        Ok((loc_op, second_expr)) => {
-            let Locatable { element: op, pos } = loc_op;
-            (
-                reader,
-                Ok(first_expr.apply_priority_order(second_expr, op, pos)),
-            )
-        }
-        Err(err) => {
-            if err.is_not_found_err() {
-                (reader, Ok(first_expr))
-            } else {
-                (reader, Err(err))
+    )(reader)
+    {
+        Ok((reader, opt_second)) => match opt_second {
+            Some((loc_op, second_expr)) => {
+                let Locatable { element: op, pos } = loc_op;
+                Ok((
+                    reader,
+                    Some(first_expr.apply_priority_order(second_expr, op, pos)),
+                ))
             }
-        }
+            None => Ok((reader, Some(first_expr))),
+        },
+        Err(err) => Err(err),
     }
 }
 
 fn single_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     or_vec(vec![
         with_pos(string_literal::string_literal()),
         with_pos(word::word()),
@@ -138,7 +136,7 @@ fn single_expression_node<T: BufRead + 'static>(
 }
 
 pub fn unary_minus<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
         seq2(
             with_pos(try_read('-')),
@@ -152,7 +150,7 @@ pub fn unary_minus<T: BufRead + 'static>(
 }
 
 pub fn unary_not<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
         crate::parser::pc::ws::seq2(
             with_pos(try_read_keyword(Keyword::Not)),
@@ -167,7 +165,7 @@ pub fn unary_not<T: BufRead + 'static>(
 }
 
 pub fn file_handle<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
     and_then(
         seq2(
             try_read('#'),
@@ -177,14 +175,14 @@ pub fn file_handle<T: BufRead + 'static>(
             ),
         ),
         |(_, digits)| match digits.parse::<u32>() {
-            Ok(d) => Ok(Expression::FileHandle(d.into())),
+            Ok(d) => Ok(Some(Expression::FileHandle(d.into()))),
             Err(err) => Err(err.into()),
         },
     )
 }
 
 pub fn parenthesis<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
     map(
         in_parenthesis(crate::parser::pc::ws::zero_or_more_around(lazy(
             expression_node,
@@ -201,7 +199,7 @@ mod string_literal {
     }
 
     pub fn string_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
         map(
             seq3(
                 try_read('"'),
@@ -220,7 +218,7 @@ mod number_literal {
     use super::*;
 
     pub fn number_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
         and_then(
             opt_seq3(
                 with_pos(read_any_digits()),
@@ -243,14 +241,15 @@ mod number_literal {
             )| match opt_frac {
                 Some((_, frac_digits)) => {
                     parse_floating_point_literal(int_digits, frac_digits, opt_double.is_some(), pos)
+                        .map(|x| Some(x))
                 }
-                None => integer_literal_to_expression_node(int_digits, pos),
+                None => integer_literal_to_expression_node(int_digits, pos).map(|x| Some(x)),
             },
         )
     }
 
     pub fn float_without_leading_zero<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
         and_then(
             opt_seq3(
                 with_pos(try_read('.')),
@@ -267,6 +266,7 @@ mod number_literal {
                     opt_double.is_some(),
                     pos,
                 )
+                .map(|x| Some(x))
             },
         )
     }
@@ -313,7 +313,7 @@ mod word {
     use super::*;
 
     pub fn word<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Expression, QError>)> {
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
         map(
             opt_seq2(
                 name::name(),
@@ -323,7 +323,7 @@ mod word {
                             "Cannot have function call without arguments",
                         ))
                     } else {
-                        Ok(v)
+                        Ok(Some(v))
                     }
                 })),
             ),
@@ -337,7 +337,7 @@ mod word {
 
 pub fn operand<T: BufRead + 'static>(
     had_parenthesis_before: bool,
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Locatable<Operand>, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operand>, QError>> {
     or_vec(vec![
         crate::parser::pc::ws::zero_or_more_leading(with_pos(lte())),
         crate::parser::pc::ws::zero_or_more_leading(with_pos(gte())),
@@ -397,16 +397,16 @@ pub fn operand<T: BufRead + 'static>(
 }
 
 fn lte<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
     and_then(
         opt_seq2(
             try_read('<'),
             with_pos(read_if(|ch| ch == '=' || ch == '>')),
         ),
         |(_, opt_r)| match opt_r {
-            Some(Locatable { element: '=', .. }) => Ok(Operand::LessOrEqual),
-            Some(Locatable { element: '>', .. }) => Ok(Operand::NotEqual),
-            None => Ok(Operand::Less),
+            Some(Locatable { element: '=', .. }) => Ok(Some(Operand::LessOrEqual)),
+            Some(Locatable { element: '>', .. }) => Ok(Some(Operand::NotEqual)),
+            None => Ok(Some(Operand::Less)),
             Some(Locatable { element, .. }) => Err(QError::SyntaxError(format!(
                 "Invalid character {} after <",
                 element
@@ -416,7 +416,7 @@ fn lte<T: BufRead + 'static>(
 }
 
 fn gte<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Operand, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
     map(
         opt_seq2(try_read('>'), try_read('=')),
         |(_, opt_r)| match opt_r {

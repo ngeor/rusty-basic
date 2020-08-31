@@ -4,27 +4,11 @@
 // MID$(str_var$, start%[, length%]) = str_expr$
 // if the length is omitted, returns or replaces all remaining characters
 
-use super::{util, BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 
 pub struct Mid {}
-
-impl BuiltInLint for Mid {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() == 2 {
-            util::require_string_argument(args, 0)?;
-            util::require_integer_argument(args, 1)
-        } else if args.len() == 3 {
-            util::require_string_argument(args, 0)?;
-            util::require_integer_argument(args, 1)?;
-            util::require_integer_argument(args, 2)
-        } else {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        }
-    }
-}
 
 impl BuiltInRun for Mid {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

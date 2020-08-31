@@ -15,12 +15,9 @@ mod print;
 mod str_fn;
 mod system;
 mod val;
-// utilities for the built-ins
-mod util;
 
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 use crate::parser::{HasQualifier, Name, TypeQualifier};
 use std::convert::TryFrom;
 
@@ -57,10 +54,6 @@ pub enum BuiltInSub {
     Name,
 }
 
-pub trait BuiltInLint {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode>;
-}
-
 pub trait BuiltInRun {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode>;
 }
@@ -82,37 +75,6 @@ static PRINT: print::Print = print::Print {};
 static STR_FN: str_fn::StrFn = str_fn::StrFn {};
 static SYSTEM: system::System = system::System {};
 static VAL: val::Val = val::Val {};
-
-impl BuiltInLint for BuiltInFunction {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        match self {
-            Self::Chr => CHR.lint(args),
-            Self::Environ => ENVIRON_FN.lint(args),
-            Self::Eof => EOF.lint(args),
-            Self::InStr => INSTR.lint(args),
-            Self::Len => LEN.lint(args),
-            Self::Mid => MID.lint(args),
-            Self::Str => STR_FN.lint(args),
-            Self::Val => VAL.lint(args),
-        }
-    }
-}
-
-impl BuiltInLint for BuiltInSub {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        match self {
-            Self::Close => CLOSE.lint(args),
-            Self::Environ => ENVIRON_SUB.lint(args),
-            Self::Input => INPUT.lint(args),
-            Self::Kill => KILL.lint(args),
-            Self::LineInput => LINE_INPUT.lint(args),
-            Self::Name => NAME.lint(args),
-            Self::Open => OPEN.lint(args),
-            Self::Print => PRINT.lint(args),
-            Self::System => SYSTEM.lint(args),
-        }
-    }
-}
 
 impl BuiltInRun for BuiltInFunction {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

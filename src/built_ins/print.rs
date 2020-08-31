@@ -2,19 +2,12 @@
 // ; -> output immediately after the last value
 // , -> print at the start of the next print zone (print zones are 14 characters wide)
 
-use super::{BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 use crate::variant::Variant;
 
 pub struct Print {}
-
-impl BuiltInLint for Print {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        Ok(())
-    }
-}
 
 impl BuiltInRun for Print {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

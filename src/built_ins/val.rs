@@ -1,19 +1,12 @@
 // VAL(str-expr$) converts a string representation of a number to a number.
 
-use super::{util, BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 use crate::variant;
 use crate::variant::Variant;
 
 pub struct Val {}
-
-impl BuiltInLint for Val {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        util::require_single_string_argument(args)
-    }
-}
 
 impl BuiltInRun for Val {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

@@ -1,9 +1,8 @@
-use super::{BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 use crate::parser::{HasQualifier, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
@@ -13,13 +12,6 @@ use crate::variant::Variant;
 
 #[derive(Debug)]
 pub struct LineInput {}
-
-impl BuiltInLint for LineInput {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        // TODO lint
-        Ok(())
-    }
-}
 
 impl BuiltInRun for LineInput {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

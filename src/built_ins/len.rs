@@ -1,35 +1,13 @@
 // LEN(str_expr$) -> number of characters in string
 // LEN(variable) -> number of bytes required to store a variable
 
-use super::{BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::{Expression, ExpressionNode, TypeQualifier};
 use crate::variant::Variant;
 use std::convert::TryInto;
 
 pub struct Len {}
-
-impl BuiltInLint for Len {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() != 1 {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else {
-            let arg: &Expression = args[0].as_ref();
-            match arg {
-                Expression::Variable(_) => Ok(()),
-                _ => {
-                    let q = args[0].try_qualifier()?;
-                    if q != TypeQualifier::DollarString {
-                        Err(QError::VariableRequired).with_err_at(&args[0])
-                    } else {
-                        Ok(())
-                    }
-                }
-            }
-        }
-    }
-}
 
 impl BuiltInRun for Len {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

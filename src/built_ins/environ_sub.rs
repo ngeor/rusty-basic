@@ -1,26 +1,12 @@
 // ENVIRON str-expr$ -> sets the variable.
 // Parameter must be in the form of name=value or name value (TODO support the latter)
 
-use super::{BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
-use crate::parser::TypeQualifier;
 use crate::variant::Variant;
 
 pub struct Environ {}
-
-impl BuiltInLint for Environ {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() != 1 {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
-            Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
-        } else {
-            Ok(())
-        }
-    }
-}
 
 impl BuiltInRun for Environ {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

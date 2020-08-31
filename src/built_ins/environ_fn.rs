@@ -1,19 +1,12 @@
 // ENVIRON$ (env-variable$) -> returns the variable
 // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
 
-use super::{util, BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 use crate::variant::Variant;
 
 pub struct Environ {}
-
-impl BuiltInLint for Environ {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        util::require_single_string_argument(args)
-    }
-}
 
 impl BuiltInRun for Environ {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

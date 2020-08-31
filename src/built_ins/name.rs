@@ -1,8 +1,6 @@
-use super::{BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
-use crate::parser::{ TypeQualifier};
 
 // NAME old$ AS new$
 // Renames a file or directory.
@@ -10,20 +8,6 @@ use crate::parser::{ TypeQualifier};
 
 #[derive(Debug)]
 pub struct Name {}
-
-impl BuiltInLint for Name {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() != 2 {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
-            Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
-        } else if args[1].try_qualifier()? != TypeQualifier::DollarString {
-            Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])
-        } else {
-            Ok(())
-        }
-    }
-}
 
 impl BuiltInRun for Name {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

@@ -1,17 +1,10 @@
 // KILL file-spec$ -> deletes files from disk
 
-use super::{util, BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 
 pub struct Kill {}
-
-impl BuiltInLint for Kill {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        util::require_single_string_argument(args)
-    }
-}
 
 impl BuiltInRun for Kill {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

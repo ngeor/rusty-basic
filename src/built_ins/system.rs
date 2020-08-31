@@ -1,22 +1,11 @@
 // SYSTEM closes all open files and returns control to the operating system
 // TODO close all open files
 
-use super::{BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 
 pub struct System {}
-
-impl BuiltInLint for System {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() != 0 {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else {
-            Ok(())
-        }
-    }
-}
 
 impl BuiltInRun for System {
     fn run<S: Stdlib>(&self, _interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

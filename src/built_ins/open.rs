@@ -1,7 +1,6 @@
-use super::{BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 
 // OPEN file$ [FOR mode] [ACCESS access] [lock] AS [#]file-number% [LEN=rec-len%]
 //
@@ -14,13 +13,6 @@ use crate::linter::ExpressionNode;
 
 #[derive(Debug)]
 pub struct Open {}
-
-impl BuiltInLint for Open {
-    fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        // not needed because of special parsing
-        Ok(())
-    }
-}
 
 impl BuiltInRun for Open {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

@@ -2,28 +2,12 @@
 // if start% is omitted, INSTR starts at position 1
 // returns the first occurrence of needle$ inside hay$
 
-use super::{util, BuiltInLint, BuiltInRun};
+use super::BuiltInRun;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
 use crate::variant::Variant;
 
 pub struct InStr {}
-
-impl BuiltInLint for InStr {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() == 2 {
-            util::require_string_argument(args, 0)?;
-            util::require_string_argument(args, 1)
-        } else if args.len() == 3 {
-            util::require_integer_argument(args, 0)?;
-            util::require_string_argument(args, 1)?;
-            util::require_string_argument(args, 2)
-        } else {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        }
-    }
-}
 
 impl BuiltInRun for InStr {
     fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {

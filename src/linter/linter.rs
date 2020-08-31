@@ -29,10 +29,7 @@ fn apply_linters(
     let linter = super::for_next_counter_match::ForNextCounterMatch {};
     linter.visit_program(&result)?;
 
-    let linter = super::built_in_function_linter::BuiltInFunctionLinter {};
-    linter.visit_program(&result)?;
-
-    let linter = super::built_in_sub_linter::BuiltInSubLinter {};
+    let linter = super::built_in_linter::BuiltInLinter {};
     linter.visit_program(&result)?;
 
     let linter = super::user_defined_function_linter::UserDefinedFunctionLinter {

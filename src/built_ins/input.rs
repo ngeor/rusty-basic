@@ -4,12 +4,8 @@ use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::{Expression, ExpressionNode};
-use crate::parser::char_reader::*;
-use crate::parser::expression;
-use crate::parser::pc::common::*;
-use crate::parser::{HasQualifier, Keyword, QualifiedName, Statement, TypeQualifier};
+use crate::parser::{HasQualifier, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
-use std::io::BufRead;
 
 // INPUT [;] ["prompt"{; | ,}] variable-list
 // INPUT #file-number%, variable-list
@@ -28,32 +24,6 @@ use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Input {}
-
-pub fn parse_input<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
-    map(parse_input_args(), |r| {
-        Statement::SubCall("INPUT".into(), r)
-    })
-}
-
-pub fn parse_input_args<T: BufRead + 'static>() -> Box<
-    dyn Fn(
-        EolReader<T>,
-    ) -> (
-        EolReader<T>,
-        Result<Vec<crate::parser::ExpressionNode>, QError>,
-    ),
-> {
-    drop_left(crate::parser::pc::ws::seq2(
-        try_read_keyword(Keyword::Input),
-        demand(
-            // TODO demand variable expression directly
-            map_default_to_not_found(csv_zero_or_more(expression::expression_node())),
-            QError::syntax_error_fn("Expected: at least one variable"),
-        ),
-        QError::syntax_error_fn("Expected: whitespace after INPUT"),
-    ))
-}
 
 impl BuiltInLint for Input {
     fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {

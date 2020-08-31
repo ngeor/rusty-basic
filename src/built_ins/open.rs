@@ -2,14 +2,8 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::ExpressionNode;
-use crate::parser::char_reader::*;
-use crate::parser::expression;
-use crate::parser::pc::common::*;
-use crate::parser::{Expression, Keyword, Statement};
-use std::io::BufRead;
 
 // OPEN file$ [FOR mode] [ACCESS access] [lock] AS [#]file-number% [LEN=rec-len%]
-// OpenStatement ::= OPEN<ws+><ExpressionNode>(<ws+>FOR mode)?(<ws+>ACCESS access)?<ws+>AS<ws+>[#]<file-number%>
 //
 // mode: APPEND, BINARY, INPUT, OUTPUT, RANDOM
 // access: READ, WRITE, READ WRITE
@@ -20,93 +14,6 @@ use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Open {}
-
-pub fn parse_open<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
-    map(
-        crate::parser::pc::ws::seq2(
-            opt_seq3(parse_filename(), parse_open_mode(), parse_open_access()),
-            demand(
-                parse_file_number(),
-                QError::syntax_error_fn("Expected: AS file-number"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace before AS"),
-        ),
-        |((file_name, opt_file_mode, opt_file_access), file_number)| {
-            Statement::SubCall(
-                "OPEN".into(),
-                vec![
-                    file_name,
-                    // TODO take actual pos
-                    Expression::IntegerLiteral(opt_file_mode.unwrap_or(FileMode::Input).into())
-                        .at(Location::start()),
-                    // TODO take actual pos
-                    Expression::IntegerLiteral(
-                        opt_file_access.unwrap_or(FileAccess::Unspecified).into(),
-                    )
-                    .at(Location::start()),
-                    file_number,
-                ],
-            )
-        },
-    )
-}
-
-fn parse_filename<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::ExpressionNode, QError>)> {
-    drop_left(crate::parser::pc::ws::seq2(
-        try_read_keyword(Keyword::Open),
-        demand(
-            expression::expression_node(),
-            QError::syntax_error_fn("Expected: filename after OPEN"),
-        ),
-        QError::syntax_error_fn("Expected: whitespace after OPEN"),
-    ))
-}
-
-fn parse_open_mode<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileMode, QError>)> {
-    drop_left(crate::parser::pc::ws::seq2(
-        crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::For)),
-        demand(
-            and_then(read_any_keyword(), |(k, _)| match k {
-                Keyword::Append => Ok(FileMode::Append),
-                Keyword::Input => Ok(FileMode::Input),
-                Keyword::Output => Ok(FileMode::Output),
-                _ => Err(QError::syntax_error("Invalid file mode")),
-            }),
-            QError::syntax_error_fn("Invalid file mode"),
-        ),
-        QError::syntax_error_fn("Expected: whitespace after FOR"),
-    ))
-}
-
-fn parse_open_access<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<FileAccess, QError>)> {
-    drop_left(crate::parser::pc::ws::seq2(
-        crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Access)),
-        demand(
-            and_then(read_any_keyword(), |(k, _)| match k {
-                Keyword::Read => Ok(FileAccess::Read),
-                _ => Err(QError::syntax_error("Invalid file access")),
-            }),
-            QError::syntax_error_fn("Invalid file access"),
-        ),
-        QError::syntax_error_fn("Expected: whitespace after ACCESS"),
-    ))
-}
-
-fn parse_file_number<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::ExpressionNode, QError>)> {
-    drop_left(crate::parser::pc::ws::seq2(
-        try_read_keyword(Keyword::As),
-        demand(
-            expression::expression_node(),
-            QError::syntax_error_fn("Expected: file number"),
-        ),
-        QError::syntax_error_fn("Expected: whitespace after AS"),
-    ))
-}
 
 impl BuiltInLint for Open {
     fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {

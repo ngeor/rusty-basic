@@ -21,11 +21,8 @@ mod util;
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::ExpressionNode;
-use crate::parser::char_reader::*;
-use crate::parser::pc::common::*;
 use crate::parser::{HasQualifier, Name, TypeQualifier};
 use std::convert::TryFrom;
-use std::io::BufRead;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BuiltInFunction {
@@ -270,15 +267,4 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
             None
         }
     }
-}
-
-/// Parses built-in subs which have a special syntax.
-pub fn parse_built_in<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::Statement, QError>)> {
-    or_vec(vec![
-        input::parse_input(),
-        line_input::parse_line_input(),
-        name::parse_name(),
-        open::parse_open(),
-    ])
 }

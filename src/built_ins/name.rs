@@ -2,11 +2,7 @@ use super::{BuiltInLint, BuiltInRun};
 use crate::common::*;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::ExpressionNode;
-use crate::parser::char_reader::*;
-use crate::parser::expression;
-use crate::parser::pc::common::*;
-use crate::parser::{Keyword, Statement, TypeQualifier};
-use std::io::BufRead;
+use crate::parser::{ TypeQualifier};
 
 // NAME old$ AS new$
 // Renames a file or directory.
@@ -14,19 +10,6 @@ use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Name {}
-
-pub fn parse_name<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
-    map(
-        seq4(
-            try_read_keyword(Keyword::Name),
-            expression::demand_back_guarded_expression_node(),
-            demand_keyword(Keyword::As),
-            expression::demand_guarded_expression_node(),
-        ),
-        |(_, l, _, r)| Statement::SubCall("NAME".into(), vec![l, r]),
-    )
-}
 
 impl BuiltInLint for Name {
     fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {

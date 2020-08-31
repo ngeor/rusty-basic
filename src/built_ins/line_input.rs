@@ -1,15 +1,11 @@
 use super::{BuiltInLint, BuiltInRun};
-use crate::built_ins::input::parse_input_args;
 use crate::common::*;
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::ExpressionNode;
-use crate::parser::char_reader::*;
-use crate::parser::pc::common::*;
-use crate::parser::{HasQualifier, Keyword, QualifiedName, Statement, TypeQualifier};
+use crate::parser::{HasQualifier, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
-use std::io::BufRead;
 
 // LINE INPUT -> see INPUT
 // LINE INPUT [;] ["prompt";] variable$
@@ -17,21 +13,6 @@ use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct LineInput {}
-
-pub fn parse_line_input<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
-    map(
-        crate::parser::pc::ws::seq2(
-            try_read_keyword(Keyword::Line),
-            demand(
-                parse_input_args(),
-                QError::syntax_error_fn("Expected: INPUT after LINE"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace after LINE"),
-        ),
-        |(_, r)| Statement::SubCall("LINE INPUT".into(), r),
-    )
-}
 
 impl BuiltInLint for LineInput {
     fn lint(&self, _args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {

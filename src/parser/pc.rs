@@ -22,31 +22,11 @@ pub trait Reader: Sized {
 }
 
 // ========================================================
-// simple parsing functions
+// Map sources with a function
 // ========================================================
 
-pub mod common {
+pub mod map {
     use super::*;
-
-    /// Returns a function that gets the next item from a reader.
-    pub fn read<R: Reader + 'static>() -> impl Fn(R) -> ReaderResult<R, R::Item, R::Err> {
-        |reader| reader.read()
-    }
-
-    // ========================================================
-    // simple parsing combinators
-    // ========================================================
-
-    /// Creates a parsing function which will get a result by creating a different
-    /// function at runtime. The function is provided by the given factory.
-    /// This can be used to solve recursive structures that cause stack overflow.
-    pub fn lazy<R, LS, T, E>(lazy_source: LS) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
-    where
-        R: Reader + 'static,
-        LS: Fn() -> Box<dyn Fn(R) -> ReaderResult<R, T, E>> + 'static,
-    {
-        Box::new(move |reader| lazy_source()(reader))
-    }
 
     /// Gets the result of the source and maps it with the given function.
     /// The mapping function has access to the reader and is called for Ok(Some) and Ok(None) values.
@@ -139,6 +119,35 @@ pub mod common {
         F: Fn(T) -> U + 'static,
     {
         opt_map(source, move |x| Some(map(x)))
+    }
+}
+
+// ========================================================
+// simple parsing functions
+// ========================================================
+
+pub mod common {
+    use super::map::*;
+    use super::*;
+
+    /// Returns a function that gets the next item from a reader.
+    pub fn read<R: Reader + 'static>() -> impl Fn(R) -> ReaderResult<R, R::Item, R::Err> {
+        |reader| reader.read()
+    }
+
+    // ========================================================
+    // simple parsing combinators
+    // ========================================================
+
+    /// Creates a parsing function which will get a result by creating a different
+    /// function at runtime. The function is provided by the given factory.
+    /// This can be used to solve recursive structures that cause stack overflow.
+    pub fn lazy<R, LS, T, E>(lazy_source: LS) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
+    where
+        R: Reader + 'static,
+        LS: Fn() -> Box<dyn Fn(R) -> ReaderResult<R, T, E>> + 'static,
+    {
+        Box::new(move |reader| lazy_source()(reader))
     }
 
     /// Returns a function that ensures that we don't get a Not Found result from
@@ -541,6 +550,7 @@ pub mod common {
 
 pub mod copy {
     use super::common;
+    use super::map::source_and_then_some;
     use super::*;
 
     /// Returns a function that filters the given source with the given predicate.
@@ -553,7 +563,7 @@ pub mod copy {
         T: Copy,
         F: Fn(T) -> bool + 'static,
     {
-        common::source_and_then_some(source, move |reader, ch| {
+        source_and_then_some(source, move |reader, ch| {
             if predicate(ch) {
                 Ok((reader, Some(ch)))
             } else {
@@ -584,7 +594,7 @@ pub mod copy {
         R: Reader<Item = T> + Undo<T> + 'static,
         T: Copy + PartialEq + 'static,
     {
-        common::source_and_then_some(try_read(needle), |reader: R, c| {
+        source_and_then_some(try_read(needle), |reader: R, c| {
             Ok((reader.undo(c), Some(c)))
         })
     }
@@ -649,6 +659,7 @@ pub mod err {
 
 pub mod str {
     use super::common;
+    use super::map::map;
     use super::*;
     use std::str::FromStr;
 
@@ -779,7 +790,7 @@ pub mod str {
         T: std::fmt::Display + 'static,
         E: 'static,
     {
-        common::map(source, |x| x.to_string())
+        map(source, |x| x.to_string())
     }
 }
 
@@ -789,6 +800,7 @@ pub mod str {
 
 pub mod ws {
     use super::common;
+    use super::map::map;
     use super::str::*;
     use super::*;
 
@@ -885,7 +897,7 @@ pub mod ws {
         E: 'static,
         FE: Fn() -> E + 'static,
     {
-        common::map(
+        map(
             common::seq3(
                 first,
                 common::demand(one_or_more(), err_fn_expected_whitespace),
@@ -912,7 +924,7 @@ pub mod ws {
         E: 'static,
         FE: Fn() -> Box<dyn Fn() -> E> + 'static,
     {
-        common::map(
+        map(
             common::seq5(
                 first,
                 common::demand(one_or_more(), err_fn_fn_expected_whitespace()),
@@ -944,7 +956,7 @@ pub mod ws {
         E: 'static,
         FE: Fn() -> Box<dyn Fn() -> E> + 'static,
     {
-        common::map(
+        map(
             common::seq7(
                 first,
                 common::demand(one_or_more(), err_fn_fn_expected_whitespace()),

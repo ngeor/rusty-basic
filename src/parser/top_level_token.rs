@@ -14,6 +14,7 @@ use crate::parser::def_type;
 use crate::parser::implementation;
 use crate::parser::pc::common::*;
 use crate::parser::pc::loc::*;
+use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::statement;
 use crate::parser::types::*;

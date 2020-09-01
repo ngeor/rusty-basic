@@ -1,6 +1,7 @@
 use crate::common::{CaseInsensitiveString, HasLocation, Location, QError};
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::map::{map, source_and_then_some};
 use crate::parser::pc::*;
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;

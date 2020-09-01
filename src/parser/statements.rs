@@ -3,6 +3,7 @@ use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::{peek, try_read};
 use crate::parser::pc::loc::with_pos;
+use crate::parser::pc::map::source_and_then_some;
 use crate::parser::pc::str::{map_to_str, zero_or_more_if_leading_remaining};
 use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace, is_whitespace};
 use crate::parser::pc::*;

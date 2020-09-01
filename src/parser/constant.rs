@@ -4,6 +4,7 @@ use crate::parser::assignment;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::loc::with_pos;
+use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::types::Keyword;
 use std::io::BufRead;

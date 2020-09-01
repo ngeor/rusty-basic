@@ -20,8 +20,8 @@ pub fn declared_name_node<T: BufRead + 'static>(
         opt_seq2(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
             Name::Bare(b) => match opt_type_definition {
-                Some(t) => Ok(Some(DeclaredName::new(b, t).at(pos))),
-                None => Ok(Some(DeclaredName::new(b, TypeDefinition::Bare).at(pos))),
+                Some(t) => Ok(DeclaredName::new(b, t).at(pos)),
+                None => Ok(DeclaredName::new(b, TypeDefinition::Bare).at(pos)),
             },
             Name::Qualified {
                 name: n,
@@ -30,9 +30,7 @@ pub fn declared_name_node<T: BufRead + 'static>(
                 Some(_) => Err(QError::SyntaxError(
                     "Identifier cannot end with %, &, !, #, or $".to_string(),
                 )),
-                None => Ok(Some(
-                    DeclaredName::new(n, TypeDefinition::CompactBuiltIn(q)).at(pos),
-                )),
+                None => Ok(DeclaredName::new(n, TypeDefinition::CompactBuiltIn(q)).at(pos)),
             },
         },
     )
@@ -56,25 +54,21 @@ fn extended_type<T: BufRead + 'static>(
     and_then(
         with_pos(read_any_identifier()),
         |Locatable { element: x, .. }| match Keyword::from_str(&x) {
-            Ok(Keyword::Single) => Ok(Some(TypeDefinition::ExtendedBuiltIn(
-                TypeQualifier::BangSingle,
-            ))),
-            Ok(Keyword::Double) => Ok(Some(TypeDefinition::ExtendedBuiltIn(
-                TypeQualifier::HashDouble,
-            ))),
-            Ok(Keyword::String_) => Ok(Some(TypeDefinition::ExtendedBuiltIn(
-                TypeQualifier::DollarString,
-            ))),
-            Ok(Keyword::Integer) => Ok(Some(TypeDefinition::ExtendedBuiltIn(
+            Ok(Keyword::Single) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle)),
+            Ok(Keyword::Double) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)),
+            Ok(Keyword::String_) => {
+                Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString))
+            }
+            Ok(Keyword::Integer) => Ok(TypeDefinition::ExtendedBuiltIn(
                 TypeQualifier::PercentInteger,
-            ))),
-            Ok(Keyword::Long) => Ok(Some(TypeDefinition::ExtendedBuiltIn(
+            )),
+            Ok(Keyword::Long) => Ok(TypeDefinition::ExtendedBuiltIn(
                 TypeQualifier::AmpersandLong,
-            ))),
+            )),
             Ok(_) => Err(QError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
             )),
-            Err(_) => Ok(Some(TypeDefinition::UserDefined(x.into()))),
+            Err(_) => Ok(TypeDefinition::UserDefined(x.into())),
         },
     )
 }

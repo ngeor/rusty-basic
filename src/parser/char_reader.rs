@@ -218,7 +218,7 @@ pub fn read_any_word<P>() -> Box<dyn Fn(P) -> ReaderResult<P, String, QError>>
 where
     P: ParserSource + Undo<String> + 'static,
 {
-    map_fully_ok(
+    source_and_then_some(
         read_any_identifier(),
         |reader: P, s| match Keyword::from_str(&s) {
             Ok(_) => Ok((reader.undo(s), None)),

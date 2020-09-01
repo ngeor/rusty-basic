@@ -40,16 +40,19 @@ pub fn sub_call<T: BufRead + 'static>(
 pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
     allow_colon: bool,
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ArgumentNodes, QError>> {
-    source_map(read(), move |res: (EolReader<T>, Option<char>)| match res {
-        (reader, Some(ch)) => {
-            if ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':') {
-                (reader.undo(ch), Some(vec![]))
-            } else {
-                (reader.undo(ch), None)
+    source_map(
+        read(),
+        move |reader: EolReader<T>, res: Option<char>| match res {
+            Some(ch) => {
+                if ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':') {
+                    (reader.undo(ch), Some(vec![]))
+                } else {
+                    (reader.undo(ch), None)
+                }
             }
-        }
-        (reader, None) => (reader, Some(vec![])),
-    })
+            None => (reader, Some(vec![])),
+        },
+    )
 }
 
 #[cfg(test)]

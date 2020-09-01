@@ -33,7 +33,7 @@ pub fn def_type<T: BufRead + 'static>(
 fn def_keyword<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeQualifier, QError>> {
     // TODO make a pc for this
-    map_fully_ok(read_any_keyword(), |reader: EolReader<T>, (k, s)| match k {
+    source_and_then_some(read_any_keyword(), |reader: EolReader<T>, (k, s)| match k {
         Keyword::DefDbl => Ok((reader, Some(TypeQualifier::HashDouble))),
         Keyword::DefInt => Ok((reader, Some(TypeQualifier::PercentInteger))),
         Keyword::DefLng => Ok((reader, Some(TypeQualifier::AmpersandLong))),
@@ -76,7 +76,7 @@ fn two_letter_range<T: BufRead + 'static>(
         ),
         |(l, (_, r))| {
             if l < r {
-                Ok(Some(LetterRange::Range(l, r)))
+                Ok(LetterRange::Range(l, r))
             } else {
                 Err(QError::SyntaxError("Invalid letter range".to_string()))
             }

@@ -80,7 +80,7 @@ pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
 /// Parses an expression
 pub fn expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // TODO just use map_fully_ok
+    // TODO just use source_and_then_some
     Box::new(move |reader| match single_expression_node()(reader) {
         Ok((reader, opt_res)) => match opt_res {
             Some(first_expr) => {
@@ -175,7 +175,7 @@ pub fn file_handle<T: BufRead + 'static>(
             ),
         ),
         |(_, digits)| match digits.parse::<u32>() {
-            Ok(d) => Ok(Some(Expression::FileHandle(d.into()))),
+            Ok(d) => Ok(Expression::FileHandle(d.into())),
             Err(err) => Err(err.into()),
         },
     )
@@ -241,9 +241,8 @@ mod number_literal {
             )| match opt_frac {
                 Some((_, frac_digits)) => {
                     parse_floating_point_literal(int_digits, frac_digits, opt_double.is_some(), pos)
-                        .map(|x| Some(x))
                 }
-                None => integer_literal_to_expression_node(int_digits, pos).map(|x| Some(x)),
+                None => integer_literal_to_expression_node(int_digits, pos),
             },
         )
     }
@@ -266,7 +265,6 @@ mod number_literal {
                     opt_double.is_some(),
                     pos,
                 )
-                .map(|x| Some(x))
             },
         )
     }
@@ -323,7 +321,7 @@ mod word {
                             "Cannot have function call without arguments",
                         ))
                     } else {
-                        Ok(Some(v))
+                        Ok(v)
                     }
                 })),
             ),
@@ -404,9 +402,9 @@ fn lte<T: BufRead + 'static>(
             with_pos(read_if(|ch| ch == '=' || ch == '>')),
         ),
         |(_, opt_r)| match opt_r {
-            Some(Locatable { element: '=', .. }) => Ok(Some(Operand::LessOrEqual)),
-            Some(Locatable { element: '>', .. }) => Ok(Some(Operand::NotEqual)),
-            None => Ok(Some(Operand::Less)),
+            Some(Locatable { element: '=', .. }) => Ok(Operand::LessOrEqual),
+            Some(Locatable { element: '>', .. }) => Ok(Operand::NotEqual),
+            None => Ok(Operand::Less),
             Some(Locatable { element, .. }) => Err(QError::SyntaxError(format!(
                 "Invalid character {} after <",
                 element

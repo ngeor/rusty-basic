@@ -175,7 +175,7 @@ fn non_comment_separator<T: BufRead + 'static>(
         )),
         comment_separator(),
         map_to_str(peek('\'')),
-        crate::parser::pc::ws::zero_or_more_leading(map_fully_ok(
+        crate::parser::pc::ws::zero_or_more_leading(source_and_then_some(
             read(),
             |reader: EolReader<T>, ch| {
                 // undo so that the error will be positioned at the offending character

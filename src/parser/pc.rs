@@ -2,6 +2,8 @@
 // types
 // ========================================================
 
+// the R is needed in the error in order to be able to get error location
+
 pub type ReaderResult<R, T, E> = Result<(R, Option<T>), (R, E)>;
 
 // ========================================================
@@ -38,26 +40,41 @@ pub mod common {
     /// Creates a parsing function which will get a result by creating a different
     /// function at runtime. The function is provided by the given factory.
     /// This can be used to solve recursive structures that cause stack overflow.
-    pub fn lazy<R, S, T, E>(lazy_source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
+    pub fn lazy<R, LS, T, E>(lazy_source: LS) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
     where
         R: Reader + 'static,
-        S: Fn() -> Box<dyn Fn(R) -> ReaderResult<R, T, E>> + 'static,
+        LS: Fn() -> Box<dyn Fn(R) -> ReaderResult<R, T, E>> + 'static,
     {
         Box::new(move |reader| lazy_source()(reader))
     }
 
+    /// Gets the result of the source and maps it with the given function.
     pub fn source_map<R, S, T, E, U, F>(source: S, f: F) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
     where
         R: Reader + 'static,
         S: Fn(R) -> ReaderResult<R, T, E> + 'static,
         T: 'static,
         E: 'static,
-        F: Fn((R, Option<T>)) -> (R, Option<U>) + 'static,
+        F: Fn(R, Option<T>) -> (R, Option<U>) + 'static,
     {
-        Box::new(move |reader| source(reader).map(|res| f(res)))
+        Box::new(move |reader| source(reader).map(|(r, opt_res)| f(r, opt_res)))
     }
 
-    pub fn map_fully_ok<R, S, T, E, U, F>(
+    /// Gets the result of the source and then switches it to the result of the given function.
+    pub fn source_and_then<R, S, T, E, U, F>(
+        source: S,
+        f: F,
+    ) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
+        F: Fn(R, Option<T>) -> ReaderResult<R, U, E> + 'static,
+    {
+        Box::new(move |reader| source(reader).and_then(|(r, opt_res)| f(r, opt_res)))
+    }
+
+    /// Gets the result of the source and if it had some value it switches it to the result of the given function.
+    pub fn source_and_then_some<R, S, T, E, U, F>(
         source: S,
         f_ok: F,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
@@ -66,27 +83,22 @@ pub mod common {
         S: Fn(R) -> ReaderResult<R, T, E> + 'static,
         F: Fn(R, T) -> ReaderResult<R, U, E> + 'static,
     {
-        Box::new(move |reader| {
-            source(reader).and_then(|(reader, opt_res)| match opt_res {
-                Some(ch) => f_ok(reader, ch),
-                None => Ok((reader, None)),
-            })
+        source_and_then(source, move |reader, opt_res| match opt_res {
+            Some(ch) => f_ok(reader, ch),
+            None => Ok((reader, None)),
         })
     }
 
     /// Applies the given mapping function to the successful result of the given source.
-    ///
-    /// This is similar to `Result.and_then`
-    ///
-    /// Note that if the mapping function returns Not Found, no undo will take place.
+    /// The mapping function does not have access to the reader and can return Ok or Err.
     pub fn and_then<R, S, T, E, F, U>(source: S, map: F) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
     where
         R: Reader + 'static,
         S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        F: Fn(T) -> Result<Option<U>, E> + 'static,
+        F: Fn(T) -> Result<U, E> + 'static,
     {
-        map_fully_ok(source, move |reader, x| match map(x) {
-            Ok(y) => Ok((reader, y)),
+        source_and_then_some(source, move |reader, x| match map(x) {
+            Ok(y) => Ok((reader, Some(y))),
             Err(e) => Err((reader, e)),
         })
     }
@@ -97,7 +109,7 @@ pub mod common {
         S: Fn(R) -> ReaderResult<R, T, E> + 'static,
         F: Fn(T) -> Option<U> + 'static,
     {
-        and_then(source, move |x| Ok(map(x)))
+        source_and_then_some(source, move |reader, x| Ok((reader, map(x))))
     }
 
     /// Applies the given mapping function to the successful result of the given source.
@@ -185,7 +197,7 @@ pub mod common {
         T2: 'static,
         E: 'static,
     {
-        map_fully_ok(first, move |reader, r1| match second(reader, &r1) {
+        source_and_then_some(first, move |reader, r1| match second(reader, &r1) {
             Ok((reader, opt_res2)) => match opt_res2 {
                 Some(r2) => Ok((reader, Some((r1, Some(r2))))),
                 None => Ok((reader, Some((r1, None)))),
@@ -210,7 +222,7 @@ pub mod common {
         T2: 'static,
         E: 'static,
     {
-        map_fully_ok(first, move |reader, r1| match second(reader) {
+        source_and_then_some(first, move |reader, r1| match second(reader) {
             Ok((reader, opt_res2)) => match opt_res2 {
                 Some(r2) => Ok((reader, Some((r1, Some(r2))))),
                 None => Ok((reader, Some((r1, None)))),
@@ -406,7 +418,7 @@ pub mod common {
         T2: 'static,
         E: 'static,
     {
-        map_fully_ok(
+        source_and_then_some(
             opt_seq2(first, second),
             move |reader, (r1, opt_r2)| match opt_r2 {
                 Some(r2) => Ok((reader, Some((r1, r2)))),
@@ -443,7 +455,7 @@ pub mod common {
         E: 'static,
         F: Fn(&T) -> bool + 'static,
     {
-        map_fully_ok(source, move |reader, ch| {
+        source_and_then_some(source, move |reader, ch| {
             if predicate(&ch) {
                 Ok((reader, Some(ch)))
             } else {
@@ -462,9 +474,9 @@ pub mod common {
         T: 'static,
         E: 'static,
     {
-        source_map(source, |res| match res {
-            (reader, Some(x)) => (reader.undo(x), None),
-            (reader, None) => (reader, Some(())),
+        source_map(source, |reader, res| match res {
+            Some(x) => (reader.undo(x), None),
+            None => (reader, Some(())),
         })
     }
 
@@ -557,7 +569,7 @@ pub mod copy {
         T: Copy,
         F: Fn(T) -> bool + 'static,
     {
-        common::map_fully_ok(source, move |reader, ch| {
+        common::source_and_then_some(source, move |reader, ch| {
             if predicate(ch) {
                 Ok((reader, Some(ch)))
             } else {
@@ -588,7 +600,7 @@ pub mod copy {
         R: Reader<Item = T> + Undo<T> + 'static,
         T: Copy + PartialEq + 'static,
     {
-        common::map_fully_ok(try_read(needle), |reader: R, c| {
+        common::source_and_then_some(try_read(needle), |reader: R, c| {
             Ok((reader.undo(c), Some(c)))
         })
     }

@@ -22,7 +22,7 @@ pub trait Reader: Sized {
 }
 
 // ========================================================
-// Map sources with a function
+// Parsers that apply a function to a source
 // ========================================================
 
 pub mod map {
@@ -123,6 +123,32 @@ pub mod map {
 }
 
 // ========================================================
+// Combine two or more sources
+// ========================================================
+
+pub mod combine {
+    use super::map::*;
+    use super::*;
+
+    /// Combines the two given sources, letting the second use the value returned by the first one.
+    /// The second source is only used if the first result was `Ok(Some)`.
+    /// Errors from any source have priority.
+    pub fn combine_some<R, S1, PS2, T1, T2, E>(
+        first: S1,
+        second: PS2,
+    ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, Option<T2>), E>>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
+        PS2: Fn(&T1) -> Box<dyn Fn(R) -> ReaderResult<R, T2, E>> + 'static,
+    {
+        source_and_then_some(first, move |reader, r1| {
+            second(&r1)(reader).and_then(|(reader, opt_r2)| Ok((reader, Some((r1, opt_r2)))))
+        })
+    }
+}
+
+// ========================================================
 // simple parsing functions
 // ========================================================
 
@@ -178,27 +204,6 @@ pub mod common {
         opt_map(source, |x| if x == T::default() { None } else { Some(x) })
     }
 
-    pub fn opt_seq2_comb<R, S1, S2, T1, T2, E>(
-        first: S1,
-        second: S2,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, Option<T2>), E>>
-    where
-        R: Reader + 'static,
-        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
-        S2: Fn(R, &T1) -> ReaderResult<R, T2, E> + 'static,
-        T1: 'static,
-        T2: 'static,
-        E: 'static,
-    {
-        source_and_then_some(first, move |reader, r1| match second(reader, &r1) {
-            Ok((reader, opt_res2)) => match opt_res2 {
-                Some(r2) => Ok((reader, Some((r1, Some(r2))))),
-                None => Ok((reader, Some((r1, None)))),
-            },
-            Err(err) => Err(err),
-        })
-    }
-
     /// Combines the results of the two given sources into one tuple.
     ///
     /// If either source returns a fatal error, the error will be returned.
@@ -215,12 +220,8 @@ pub mod common {
         T2: 'static,
         E: 'static,
     {
-        source_and_then_some(first, move |reader, r1| match second(reader) {
-            Ok((reader, opt_res2)) => match opt_res2 {
-                Some(r2) => Ok((reader, Some((r1, Some(r2))))),
-                None => Ok((reader, Some((r1, None)))),
-            },
-            Err(err) => Err(err),
+        source_and_then_some(first, move |reader, r1| {
+            second(reader).and_then(|(reader, opt_r2)| Ok((reader, Some((r1, opt_r2)))))
         })
     }
 
@@ -480,12 +481,9 @@ pub mod common {
         S2: Fn(R) -> ReaderResult<R, T, E> + 'static,
         E: 'static,
     {
-        Box::new(move |reader| match first(reader) {
-            Ok((reader, opt_res1)) => match opt_res1 {
-                Some(ch) => Ok((reader, Some(ch))),
-                None => second(reader),
-            },
-            Err(err) => Err(err),
+        source_and_then(first, move |reader, opt_res1| match opt_res1 {
+            Some(ch) => Ok((reader, Some(ch))),
+            None => second(reader),
         })
     }
 
@@ -659,7 +657,7 @@ pub mod err {
 
 pub mod str {
     use super::common;
-    use super::map::map;
+    use super::map::{map, source_and_then_some};
     use super::*;
     use std::str::FromStr;
 
@@ -771,15 +769,9 @@ pub mod str {
         T: FromStr + 'static,
         E: 'static,
     {
-        Box::new(move |reader| match source(reader) {
-            Ok((reader, opt_res)) => match opt_res {
-                Some(s) => match T::from_str(&s) {
-                    Ok(u) => Ok((reader, Some((u, s)))),
-                    Err(_) => Ok((reader.undo(s), None)),
-                },
-                None => Ok((reader, None)),
-            },
-            Err(err) => Err(err),
+        source_and_then_some(source, |reader, s| match T::from_str(&s) {
+            Ok(u) => Ok((reader, Some((u, s)))),
+            Err(_) => Ok((reader.undo(s), None)),
         })
     }
 

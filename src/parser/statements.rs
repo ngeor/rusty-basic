@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
+use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::{peek, try_read};
 use crate::parser::pc::loc::with_pos;
@@ -123,37 +124,23 @@ where
 fn statement_node_and_separator<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (StatementNode, Option<String>), QError>>
 {
-    Box::new(move |reader| {
-        match statement::statement_node()(reader) {
-            Ok((reader, opt_res)) => {
-                match opt_res {
-                    Some(s_node) => {
-                        // if the statement is a comment, the only valid separator is EOL (or EOF)
-                        let is_comment = match s_node.as_ref() {
-                            Statement::Comment(_) => true,
-                            _ => false,
-                        };
-                        let next = if is_comment {
-                            comment_separator()(reader)
-                        } else {
-                            crate::parser::pc::ws::zero_or_more_leading(non_comment_separator())(
-                                reader,
-                            )
-                        };
-                        match next {
-                            Ok((reader, opt_next)) => match opt_next {
-                                Some(x) => Ok((reader, Some((s_node, Some(x))))),
-                                None => Ok((reader, Some((s_node, None)))),
-                            },
-                            Err(err) => Err(err),
-                        }
-                    }
-                    None => Ok((reader, None)),
-                }
+    combine_some(
+        // first part is the statement node
+        statement::statement_node(),
+        // second part the separator, which is used by the zero_or_more to understand if it's the terminal statement
+        |s_node| {
+            // if the statement is a comment, the only valid separator is EOL (or EOF)
+            let is_comment = match s_node.as_ref() {
+                Statement::Comment(_) => true,
+                _ => false,
+            };
+            if is_comment {
+                comment_separator()
+            } else {
+                crate::parser::pc::ws::zero_or_more_leading(non_comment_separator())
             }
-            Err(err) => Err(err),
-        }
-    })
+        },
+    )
 }
 
 fn comment_separator<T: BufRead + 'static>(

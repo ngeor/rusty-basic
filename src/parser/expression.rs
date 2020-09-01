@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
+use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
@@ -81,45 +82,32 @@ pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
 /// Parses an expression
 pub fn expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // TODO just use source_and_then_some
-    Box::new(move |reader| match single_expression_node()(reader) {
-        Ok((reader, opt_res)) => match opt_res {
-            Some(first_expr) => {
-                try_second_expression(reader, first_expr).and_then(|(reader, res)| {
-                    Ok((reader, res.map(|x| x.simplify_unary_minus_literals())))
-                })
-            }
-            None => Ok((reader, None)),
-        },
-        Err(err) => Err(err),
-    })
-}
-
-// TODO refactor this
-fn try_second_expression<T: BufRead + 'static>(
-    reader: EolReader<T>,
-    first_expr: ExpressionNode,
-) -> ReaderResult<EolReader<T>, ExpressionNode, QError> {
-    match seq2(
-        operand(first_expr.is_parenthesis()),
-        demand(
-            crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
-            QError::syntax_error_fn("Expected: right side expression"),
+    map(
+        combine_some(
+            // left side
+            single_expression_node(),
+            // maybe right side
+            |first_expr| {
+                seq2(
+                    operand(first_expr.is_parenthesis()),
+                    demand(
+                        crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
+                        QError::syntax_error_fn("Expected: right side expression"),
+                    ),
+                )
+            },
         ),
-    )(reader)
-    {
-        Ok((reader, opt_second)) => match opt_second {
-            Some((loc_op, second_expr)) => {
-                let Locatable { element: op, pos } = loc_op;
-                Ok((
-                    reader,
-                    Some(first_expr.apply_priority_order(second_expr, op, pos)),
-                ))
-            }
-            None => Ok((reader, Some(first_expr))),
+        |(left_side, opt_right_side)| {
+            (match opt_right_side {
+                Some((loc_op, right_side)) => {
+                    let Locatable { element: op, pos } = loc_op;
+                    left_side.apply_priority_order(right_side, op, pos)
+                }
+                None => left_side,
+            })
+            .simplify_unary_minus_literals()
         },
-        Err(err) => Err(err),
-    }
+    )
 }
 
 fn single_expression_node<T: BufRead + 'static>(

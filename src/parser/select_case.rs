@@ -2,6 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::expression;
+use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
@@ -167,7 +168,7 @@ fn parse_case_is<T: BufRead + 'static>(
 fn parse_case_simple_or_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
     map(
-        opt_seq2_comb(expression::guarded_expression_node(), parse_range()),
+        combine_some(expression::guarded_expression_node(), parse_range),
         |(l, opt_r)| match opt_r {
             Some(r) => ExprOrElse::Expr(CaseExpression::Range(l, r)),
             _ => ExprOrElse::Expr(CaseExpression::Simple(l)),
@@ -176,36 +177,33 @@ fn parse_case_simple_or_range<T: BufRead + 'static>(
 }
 
 fn parse_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>, &ExpressionNode) -> ReaderResult<EolReader<T>, ExpressionNode, QError>>
-{
-    Box::new(move |reader, first_expr_ref| {
-        // TODO refactor this
-        let parenthesis = first_expr_ref.is_parenthesis();
-        if parenthesis {
-            drop_left(drop_left(and(
-                crate::parser::pc::ws::zero_or_more(),
-                seq2(
-                    try_read_keyword(Keyword::To),
-                    demand(
-                        expression::guarded_expression_node(),
-                        QError::syntax_error_fn("Expected: expression after TO"),
-                    ),
+    first_expr_ref: &ExpressionNode,
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    let parenthesis = first_expr_ref.is_parenthesis();
+    if parenthesis {
+        drop_left(drop_left(and(
+            crate::parser::pc::ws::zero_or_more(),
+            seq2(
+                try_read_keyword(Keyword::To),
+                demand(
+                    expression::guarded_expression_node(),
+                    QError::syntax_error_fn("Expected: expression after TO"),
                 ),
-            )))(reader)
-        } else {
-            // one or more
-            drop_left(drop_left(and(
-                crate::parser::pc::ws::one_or_more(),
-                seq2(
-                    try_read_keyword(Keyword::To),
-                    demand(
-                        expression::guarded_expression_node(),
-                        QError::syntax_error_fn("Expected: expression after TO"),
-                    ),
+            ),
+        )))
+    } else {
+        // one or more
+        drop_left(drop_left(and(
+            crate::parser::pc::ws::one_or_more(),
+            seq2(
+                try_read_keyword(Keyword::To),
+                demand(
+                    expression::guarded_expression_node(),
+                    QError::syntax_error_fn("Expected: expression after TO"),
                 ),
-            )))(reader)
-        }
-    })
+            ),
+        )))
+    }
 }
 
 fn parse_end_select<T: BufRead + 'static>(

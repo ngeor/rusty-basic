@@ -88,7 +88,7 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
 
 fn opt_declaration_parameters<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DeclaredNameNodes, QError>> {
-    or_else_if_not_found(
+    and_then_none(
         in_parenthesis(csv_zero_or_more(declared_name::declared_name_node())),
         || Ok(vec![]),
     )

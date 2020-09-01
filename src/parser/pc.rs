@@ -49,6 +49,7 @@ pub mod common {
     }
 
     /// Gets the result of the source and maps it with the given function.
+    /// The mapping function has access to the reader and is called for Ok(Some) and Ok(None) values.
     pub fn source_map<R, S, T, E, U, F>(source: S, f: F) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
     where
         R: Reader + 'static,
@@ -61,6 +62,7 @@ pub mod common {
     }
 
     /// Gets the result of the source and then switches it to the result of the given function.
+    /// The mapping function has access to the reader and is called for Ok(Some) and Ok(None) values.
     pub fn source_and_then<R, S, T, E, U, F>(
         source: S,
         f: F,
@@ -89,6 +91,21 @@ pub mod common {
         })
     }
 
+    pub fn and_then_none<R, S, T, E, F>(source: S, f: F) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
+        F: Fn() -> Result<T, E> + 'static,
+    {
+        source_and_then(source, move |reader, opt_res| match opt_res {
+            Some(ch) => Ok((reader, Some(ch))),
+            None => match f() {
+                Ok(ch) => Ok((reader, Some(ch))),
+                Err(e) => Err((reader, e)),
+            },
+        })
+    }
+
     /// Applies the given mapping function to the successful result of the given source.
     /// The mapping function does not have access to the reader and can return Ok or Err.
     pub fn and_then<R, S, T, E, F, U>(source: S, map: F) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
@@ -103,6 +120,8 @@ pub mod common {
         })
     }
 
+    /// Applies the given mapping function to the successful result of the given source.
+    /// The mapping function does not have access to the reader and can return Some or None.
     pub fn opt_map<R, S, T, E, F, U>(source: S, map: F) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
     where
         R: Reader + 'static,
@@ -113,8 +132,6 @@ pub mod common {
     }
 
     /// Applies the given mapping function to the successful result of the given source.
-    ///
-    /// This is similar to `Result.map`
     pub fn map<R, S, T, E, F, U>(source: S, map: F) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
     where
         R: Reader + 'static,
@@ -122,39 +139,6 @@ pub mod common {
         F: Fn(T) -> U + 'static,
     {
         opt_map(source, move |x| Some(map(x)))
-    }
-
-    pub fn map_fully_not_found_err<R, S, T, E, F>(
-        source: S,
-        f_err: F,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
-    where
-        R: Reader + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        F: Fn(R) -> ReaderResult<R, T, E> + 'static,
-    {
-        Box::new(move |reader| {
-            source(reader).and_then(|(reader, opt_res)| match opt_res {
-                Some(ch) => Ok((reader, Some(ch))),
-                None => f_err(reader),
-            })
-        })
-    }
-
-    pub fn or_else_if_not_found<R, S, T, E, F>(
-        source: S,
-        map: F,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
-    where
-        R: Reader + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        E: 'static,
-        F: Fn() -> Result<T, E> + 'static,
-    {
-        map_fully_not_found_err(source, move |reader| match map() {
-            Ok(x) => Ok((reader, Some(x))),
-            Err(e) => Err((reader, e)),
-        })
     }
 
     /// Returns a function that ensures that we don't get a Not Found result from
@@ -168,7 +152,7 @@ pub mod common {
         E: 'static,
         FE: Fn() -> E + 'static,
     {
-        or_else_if_not_found(source, move || Err(err_fn()))
+        and_then_none(source, move || Err(err_fn()))
     }
 
     /// Map the Ok result of the given source to Not Found, if it is equal to the default value

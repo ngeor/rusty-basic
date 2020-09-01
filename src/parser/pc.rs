@@ -46,28 +46,15 @@ pub mod common {
         Box::new(move |reader| lazy_source()(reader))
     }
 
-    pub fn map_fully_ok_or_not_found<R, S, T, E, U, F1, F2>(
-        source: S,
-        f_ok: F1,
-        f_not_found: F2,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
+    pub fn source_map<R, S, T, E, U, F>(source: S, f: F) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
     where
         R: Reader + 'static,
         S: Fn(R) -> ReaderResult<R, T, E> + 'static,
+        T: 'static,
         E: 'static,
-        F1: Fn(R, T) -> ReaderResult<R, U, E> + 'static,
-        F2: Fn() -> Result<Option<U>, E> + 'static,
+        F: Fn((R, Option<T>)) -> (R, Option<U>) + 'static,
     {
-        Box::new(move |reader| match source(reader) {
-            Ok((reader, opt_res)) => match opt_res {
-                Some(ch) => f_ok(reader, ch),
-                None => match f_not_found() {
-                    Ok(x) => Ok((reader, x)),
-                    Err(e) => Err((reader, e)),
-                },
-            },
-            Err(err) => Err(err),
-        })
+        Box::new(move |reader| source(reader).map(|res| f(res)))
     }
 
     pub fn map_fully_ok<R, S, T, E, U, F>(
@@ -79,12 +66,11 @@ pub mod common {
         S: Fn(R) -> ReaderResult<R, T, E> + 'static,
         F: Fn(R, T) -> ReaderResult<R, U, E> + 'static,
     {
-        Box::new(move |reader| match source(reader) {
-            Ok((reader, opt_res)) => match opt_res {
+        Box::new(move |reader| {
+            source(reader).and_then(|(reader, opt_res)| match opt_res {
                 Some(ch) => f_ok(reader, ch),
                 None => Ok((reader, None)),
-            },
-            Err(err) => Err(err),
+            })
         })
     }
 
@@ -135,12 +121,11 @@ pub mod common {
         S: Fn(R) -> ReaderResult<R, T, E> + 'static,
         F: Fn(R) -> ReaderResult<R, T, E> + 'static,
     {
-        Box::new(move |reader| match source(reader) {
-            Ok((reader, opt_res)) => match opt_res {
+        Box::new(move |reader| {
+            source(reader).and_then(|(reader, opt_res)| match opt_res {
                 Some(ch) => Ok((reader, Some(ch))),
                 None => f_err(reader),
-            },
-            Err(err) => Err(err),
+            })
         })
     }
 
@@ -477,11 +462,10 @@ pub mod common {
         T: 'static,
         E: 'static,
     {
-        map_fully_ok_or_not_found(
-            source,
-            |reader, x| Ok((reader.undo(x), None)),
-            || Ok(Some(())),
-        )
+        source_map(source, |res| match res {
+            (reader, Some(x)) => (reader.undo(x), None),
+            (reader, None) => (reader, Some(())),
+        })
     }
 
     pub fn or<R, S1, S2, T, E>(first: S1, second: S2) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>

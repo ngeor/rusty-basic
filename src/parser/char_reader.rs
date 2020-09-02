@@ -29,39 +29,6 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
-pub trait ParserSource: Reader<Item = char, Err = QError> {}
-
-impl<P: ParserSource> Undo<char> for P {
-    fn undo(self, item: char) -> Self {
-        self.undo_item(item)
-    }
-}
-
-impl<P: ParserSource> Undo<()> for P {
-    fn undo(self, _item: ()) -> Self {
-        self
-    }
-}
-
-impl<T: BufRead + 'static> Undo<Name> for EolReader<T> {
-    fn undo(self, n: Name) -> Self {
-        match n {
-            Name::Bare(b) => self.undo(b),
-            Name::Qualified { name, qualifier } => {
-                let first = self.undo(qualifier);
-                first.undo(name)
-            }
-        }
-    }
-}
-
-impl<T: BufRead + 'static> Undo<TypeQualifier> for EolReader<T> {
-    fn undo(self, s: TypeQualifier) -> Self {
-        let ch: char = s.try_into().unwrap();
-        self.undo(ch)
-    }
-}
-
 /// Reads one character at a time out of a `BufRead`.
 ///
 /// Returns a `Result<Option<char>>` where:
@@ -75,8 +42,6 @@ pub struct CharReader<T: BufRead> {
     buffer: VecDeque<char>,
     read_eof: bool,
 }
-
-impl<T: BufRead + 'static> ParserSource for CharReader<T> {}
 
 impl<T: BufRead> Reader for CharReader<T> {
     type Item = char;
@@ -180,25 +145,26 @@ impl<T: BufRead> CharReader<T> {
 // Parser combinators
 //
 
-pub fn read_any_symbol<P>() -> Box<dyn Fn(P) -> ReaderResult<P, char, QError>>
+pub fn read_any_symbol<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
 where
-    P: ParserSource + 'static,
+    R: Reader<Item = char, Err = E> + 'static,
 {
     read_if(is_symbol)
 }
 
-pub fn read_any_letter<P>() -> Box<dyn Fn(P) -> ReaderResult<P, char, QError>>
+pub fn read_any_letter<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
 where
-    P: ParserSource + 'static,
+R: Reader<Item = char, Err = E> + 'static,
 {
     read_if(is_letter)
 }
 
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn read_any_identifier<P>() -> Box<dyn Fn(P) -> ReaderResult<P, String, QError>>
+pub fn read_any_identifier<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
 where
-    P: ParserSource + 'static,
+R: Reader<Item = char, Err = E> + 'static,
+E: 'static,
 {
     map_default_to_not_found(super::pc::str::zero_or_more_if_leading_remaining(
         is_letter,
@@ -207,43 +173,47 @@ where
 }
 
 /// Reads any keyword.
-pub fn read_any_keyword<P>() -> Box<dyn Fn(P) -> ReaderResult<P, (Keyword, String), QError>>
+pub fn read_any_keyword<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
 where
-    P: ParserSource + Undo<String> + 'static,
+R: Reader<Item = char, Err = E> + 'static,
+E: 'static,
 {
     crate::parser::pc::str::switch_from_str(read_any_identifier())
 }
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-pub fn read_any_word<P>() -> Box<dyn Fn(P) -> ReaderResult<P, String, QError>>
+pub fn read_any_word<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R,  String, E>>
 where
-    P: ParserSource + Undo<String> + 'static,
+R: Reader<Item = char, Err = E> + 'static,
+E: 'static
 {
     source_and_then_some(
         read_any_identifier(),
-        |reader: P, s| match Keyword::from_str(&s) {
+        |reader: R, s| match Keyword::from_str(&s) {
             Ok(_) => Ok((reader.undo(s), None)),
             Err(_) => Ok((reader, Some(s))),
         },
     )
 }
 
-pub fn read_keyword_if<P, F>(
+pub fn read_keyword_if<R, E, F>(
     predicate: F,
-) -> Box<dyn Fn(P) -> ReaderResult<P, (Keyword, String), QError>>
+) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
 where
-    P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
+    R: Reader<Item = char, Err = E> + 'static,
     F: Fn(Keyword) -> bool + 'static,
+E: 'static
 {
     super::pc::common::filter(read_any_keyword(), move |(k, _)| predicate(*k))
 }
 
 // TODO optimize
-pub fn try_read_keyword<P>(
+pub fn try_read_keyword<R, E>(
     needle: Keyword,
-) -> Box<dyn Fn(P) -> ReaderResult<P, (Keyword, String), QError>>
+) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
 where
-    P: ParserSource + Undo<String> + Undo<(Keyword, String)> + 'static,
+R: Reader<Item = char, Err = E> + 'static,
+E: 'static
 {
     read_keyword_if(move |k| k == needle)
 }
@@ -269,9 +239,10 @@ pub fn demand_guarded_keyword<T: BufRead + 'static>(
     ))
 }
 
-pub fn read_any_digits<P>() -> Box<dyn Fn(P) -> ReaderResult<P, String, QError>>
+pub fn read_any_digits<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R,  String, E>>
 where
-    P: ParserSource + 'static,
+R: Reader<Item = char, Err = E> + 'static,
+E: 'static
 {
     super::pc::str::one_or_more_if(is_digit)
 }
@@ -284,11 +255,12 @@ where
 // Take multiple items
 //
 
-pub fn csv_zero_or_more<P, S, R>(source: S) -> Box<dyn Fn(P) -> ReaderResult<P, Vec<R>, QError>>
+pub fn csv_zero_or_more<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
 where
-    P: ParserSource + HasLocation + Undo<String> + 'static,
-    S: Fn(P) -> ReaderResult<P, R, QError> + 'static,
-    R: 'static,
+    R: Reader<Item = char, Err = E> + 'static,
+    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
+    T: 'static,
+    E: 'static
 {
     zero_or_more(opt_seq2(
         source,
@@ -296,10 +268,10 @@ where
     ))
 }
 
-pub fn in_parenthesis<P, T, S>(source: S) -> Box<dyn Fn(P) -> ReaderResult<P, T, QError>>
+pub fn in_parenthesis<R, S, T>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, QError>>
 where
-    P: ParserSource + HasLocation + 'static,
-    S: Fn(P) -> ReaderResult<P, T, QError> + 'static,
+    R: Reader<Item = char, Err = QError> + 'static,
+    S: Fn(R) -> ReaderResult<R, T, QError> + 'static,
     T: 'static,
 {
     map(
@@ -335,8 +307,6 @@ impl<T: BufRead> EolReader<T> {
         }
     }
 }
-
-impl<T: BufRead + 'static> ParserSource for EolReader<T> {}
 
 impl<T: BufRead + 'static> Reader for EolReader<T> {
     type Item = char;
@@ -422,38 +392,67 @@ impl<T: BufRead + 'static> Reader for EolReader<T> {
     }
 }
 
-impl<T: BufRead + 'static> Undo<String> for EolReader<T> {
-    fn undo(self, s: String) -> Self {
-        let mut result = self;
-        for ch in s.chars().rev() {
-            result = result.undo(ch);
-        }
-        result
-    }
-}
-
-impl<T: BufRead + 'static> Undo<CaseInsensitiveString> for EolReader<T> {
-    fn undo(self, s: CaseInsensitiveString) -> Self {
-        let inner: String = s.into();
-        self.undo(inner)
-    }
-}
-
-impl<T: BufRead + 'static> Undo<(Keyword, String)> for EolReader<T> {
-    fn undo(self, s: (Keyword, String)) -> Self {
-        self.undo(s.1)
-    }
-}
-
 impl<T: BufRead> HasLocation for EolReader<T> {
     fn pos(&self) -> Location {
         self.pos
     }
 }
 
-//
+// ========================================================
+// Undo support
+// ========================================================
+
+impl<R: Reader<Item = char>> Undo<char> for R {
+    fn undo(self, item: char) -> Self {
+        self.undo_item(item)
+    }
+}
+
+impl<R: Reader<Item = char>> Undo<TypeQualifier> for R {
+    fn undo(self, s: TypeQualifier) -> Self {
+        let ch: char = s.try_into().unwrap();
+        self.undo_item(ch)
+    }
+}
+
+impl<R: Reader<Item = char>> Undo<String> for R {
+    fn undo(self, s: String) -> Self {
+        let mut result = self;
+        for ch in s.chars().rev() {
+            result = result.undo_item(ch);
+        }
+        result
+    }
+}
+
+impl<R: Reader<Item = char>> Undo<CaseInsensitiveString> for R {
+    fn undo(self, s: CaseInsensitiveString) -> Self {
+        let inner: String = s.into();
+        self.undo(inner)
+    }
+}
+
+impl<R: Reader<Item = char>> Undo<Name> for R {
+    fn undo(self, n: Name) -> Self {
+        match n {
+            Name::Bare(b) => self.undo(b),
+            Name::Qualified { name, qualifier } => {
+                let first = self.undo(qualifier);
+                first.undo(name)
+            }
+        }
+    }
+}
+
+impl<R: Reader<Item = char>> Undo<(Keyword, String)> for R {
+    fn undo(self, s: (Keyword, String)) -> Self {
+        self.undo(s.1)
+    }
+}
+
+// ========================================================
 // Converters from str and File
-//
+// ========================================================
 
 // bytes || &str -> CharReader
 impl<T> From<T> for CharReader<BufReader<Cursor<T>>>
@@ -462,13 +461,6 @@ where
 {
     fn from(input: T) -> Self {
         CharReader::new(BufReader::new(Cursor::new(input)))
-    }
-}
-
-// File -> CharReader
-impl From<File> for CharReader<BufReader<File>> {
-    fn from(input: File) -> Self {
-        CharReader::new(BufReader::new(input))
     }
 }
 

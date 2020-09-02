@@ -199,7 +199,6 @@ pub mod common {
         R: Reader + 'static,
         S: Fn(R) -> ReaderResult<R, T, E> + 'static,
         T: Default + PartialEq<T> + 'static,
-        E: 'static,
     {
         opt_map(source, |x| if x == T::default() { None } else { Some(x) })
     }
@@ -673,7 +672,6 @@ pub mod str {
     ) -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
     where
         R: Reader<Item = char, Err = E> + 'static,
-        E: 'static,
         F1: Fn(char) -> bool + 'static,
         F2: Fn(char) -> bool + 'static,
     {
@@ -767,7 +765,6 @@ pub mod str {
         R: Reader + Undo<String> + 'static,
         S: Fn(R) -> ReaderResult<R, String, E> + 'static,
         T: FromStr + 'static,
-        E: 'static,
     {
         source_and_then_some(source, |reader, s| match T::from_str(&s) {
             Ok(u) => Ok((reader, Some((u, s)))),

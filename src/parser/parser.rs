@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::pc::err::*;
+use crate::parser::pc_specific::with_err_at;
 use crate::parser::top_level_token;
 use crate::parser::types::*;
 use std::fs::File;

@@ -2,11 +2,11 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
-use crate::parser::pc::loc::with_pos;
 use crate::parser::pc::map::map;
 use crate::parser::pc::str::zero_or_more_if;
 use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace};
 use crate::parser::pc::*;
+use crate::parser::pc_specific::with_pos;
 use crate::parser::types::*;
 use std::io::BufRead;
 

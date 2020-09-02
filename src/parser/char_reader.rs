@@ -1,11 +1,9 @@
-use crate::common::{CaseInsensitiveString, HasLocation, Location, QError};
+use crate::common::{HasLocation, Location, QError};
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
-use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
-use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
@@ -229,58 +227,6 @@ impl<T: BufRead + 'static> Reader for EolReader<T> {
 impl<T: BufRead> HasLocation for EolReader<T> {
     fn pos(&self) -> Location {
         self.pos
-    }
-}
-
-// ========================================================
-// Undo support
-// ========================================================
-
-impl<R: Reader<Item = char>> Undo<char> for R {
-    fn undo(self, item: char) -> Self {
-        self.undo_item(item)
-    }
-}
-
-impl<R: Reader<Item = char>> Undo<TypeQualifier> for R {
-    fn undo(self, s: TypeQualifier) -> Self {
-        let ch: char = s.try_into().unwrap();
-        self.undo_item(ch)
-    }
-}
-
-impl<R: Reader<Item = char>> Undo<String> for R {
-    fn undo(self, s: String) -> Self {
-        let mut result = self;
-        for ch in s.chars().rev() {
-            result = result.undo_item(ch);
-        }
-        result
-    }
-}
-
-impl<R: Reader<Item = char>> Undo<CaseInsensitiveString> for R {
-    fn undo(self, s: CaseInsensitiveString) -> Self {
-        let inner: String = s.into();
-        self.undo(inner)
-    }
-}
-
-impl<R: Reader<Item = char>> Undo<Name> for R {
-    fn undo(self, n: Name) -> Self {
-        match n {
-            Name::Bare(b) => self.undo(b),
-            Name::Qualified { name, qualifier } => {
-                let first = self.undo(qualifier);
-                first.undo(name)
-            }
-        }
-    }
-}
-
-impl<R: Reader<Item = char>> Undo<(Keyword, String)> for R {
-    fn undo(self, s: (Keyword, String)) -> Self {
-        self.undo(s.1)
     }
 }
 

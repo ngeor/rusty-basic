@@ -2,7 +2,9 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
 use crate::parser::pc::common::*;
-use crate::parser::pc::loc::*;
+use crate::parser::pc::map::and_then;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 use std::str::FromStr;
@@ -14,7 +16,7 @@ use std::str::FromStr;
 // A AS UserDefinedType
 
 pub fn declared_name_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DeclaredNameNode, QError>> {
     and_then(
         opt_seq2(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
@@ -36,7 +38,8 @@ pub fn declared_name_node<T: BufRead + 'static>(
 }
 
 fn type_definition_extended<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeDefinition, QError>> {
+    // <ws+> AS <ws+> identifier
     drop_left(crate::parser::pc::ws::seq2(
         crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::As)),
         demand(
@@ -48,7 +51,7 @@ fn type_definition_extended<T: BufRead + 'static>(
 }
 
 fn extended_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeDefinition, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeDefinition, QError>> {
     and_then(
         with_pos(read_any_identifier()),
         |Locatable { element: x, .. }| match Keyword::from_str(&x) {

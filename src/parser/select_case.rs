@@ -2,7 +2,11 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::expression;
+use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
+use crate::parser::pc::map::map;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -20,7 +24,7 @@ use std::io::BufRead;
 // CASE <expr>
 
 pub fn select_case<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         seq2(
             seq3(
@@ -64,7 +68,7 @@ pub fn select_case<T: BufRead + 'static>(
 }
 
 fn parse_select_case_expr<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
         seq3(
             try_read_keyword(Keyword::Select),
@@ -83,10 +87,11 @@ enum ExprOrElse {
 fn parse_case_any<T: BufRead + 'static>() -> Box<
     dyn Fn(
         EolReader<T>,
-    ) -> (
+    ) -> ReaderResult<
         EolReader<T>,
-        Result<((Option<CaseExpression>, StatementNodes), Option<()>), QError>,
-    ),
+        ((Option<CaseExpression>, StatementNodes), Option<()>),
+        QError,
+    >,
 > {
     map(
         seq2(
@@ -113,11 +118,12 @@ fn parse_case_any<T: BufRead + 'static>() -> Box<
                         QError::syntax_error_fn("Expected: TO or end-of-statement"),
                     ),
                 ),
+                // TODO make pc for this
                 Box::new(|reader| {
-                    (
+                    Err((
                         reader,
-                        Err(QError::syntax_error("Expected: ELSE, IS, expression")),
-                    )
+                        QError::syntax_error("Expected: ELSE, IS, expression"),
+                    ))
                 }),
             ]),
         ),
@@ -129,7 +135,7 @@ fn parse_case_any<T: BufRead + 'static>() -> Box<
 }
 
 fn parse_case_else<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExprOrElse, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
     map(
         and(
             crate::parser::pc::ws::one_or_more(),
@@ -140,7 +146,7 @@ fn parse_case_else<T: BufRead + 'static>(
 }
 
 fn parse_case_is<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExprOrElse, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
     map(
         seq5(
             and(
@@ -161,9 +167,9 @@ fn parse_case_is<T: BufRead + 'static>(
 }
 
 fn parse_case_simple_or_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ExprOrElse, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
     map(
-        opt_seq2_comb(expression::guarded_expression_node(), parse_range()),
+        combine_some(expression::guarded_expression_node(), parse_range),
         |(l, opt_r)| match opt_r {
             Some(r) => ExprOrElse::Expr(CaseExpression::Range(l, r)),
             _ => ExprOrElse::Expr(CaseExpression::Simple(l)),
@@ -172,38 +178,37 @@ fn parse_case_simple_or_range<T: BufRead + 'static>(
 }
 
 fn parse_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>, &ExpressionNode) -> (EolReader<T>, Result<ExpressionNode, QError>)> {
-    Box::new(move |reader, first_expr_ref| {
-        let parenthesis = first_expr_ref.is_parenthesis();
-        if parenthesis {
-            drop_left(drop_left(and(
-                crate::parser::pc::ws::zero_or_more(),
-                seq2(
-                    try_read_keyword(Keyword::To),
-                    demand(
-                        expression::guarded_expression_node(),
-                        QError::syntax_error_fn("Expected: expression after TO"),
-                    ),
+    first_expr_ref: &ExpressionNode,
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    let parenthesis = first_expr_ref.is_parenthesis();
+    if parenthesis {
+        drop_left(drop_left(and(
+            crate::parser::pc::ws::zero_or_more(),
+            seq2(
+                try_read_keyword(Keyword::To),
+                demand(
+                    expression::guarded_expression_node(),
+                    QError::syntax_error_fn("Expected: expression after TO"),
                 ),
-            )))(reader)
-        } else {
-            // one or more
-            drop_left(drop_left(and(
-                crate::parser::pc::ws::one_or_more(),
-                seq2(
-                    try_read_keyword(Keyword::To),
-                    demand(
-                        expression::guarded_expression_node(),
-                        QError::syntax_error_fn("Expected: expression after TO"),
-                    ),
+            ),
+        )))
+    } else {
+        // one or more
+        drop_left(drop_left(and(
+            crate::parser::pc::ws::one_or_more(),
+            seq2(
+                try_read_keyword(Keyword::To),
+                demand(
+                    expression::guarded_expression_node(),
+                    QError::syntax_error_fn("Expected: expression after TO"),
                 ),
-            )))(reader)
-        }
-    })
+            ),
+        )))
+    }
 }
 
 fn parse_end_select<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(), QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (), QError>> {
     map(
         seq2(
             try_read_keyword(Keyword::End),

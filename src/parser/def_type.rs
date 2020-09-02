@@ -2,7 +2,9 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
-use crate::parser::pc::traits::*;
+use crate::parser::pc::map::{and_then, map, source_and_then_some};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -13,7 +15,7 @@ use std::io::BufRead;
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DefType, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DefType, QError>> {
     map(
         seq3(
             def_keyword(),
@@ -31,24 +33,25 @@ pub fn def_type<T: BufRead + 'static>(
 }
 
 fn def_keyword<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TypeQualifier, QError>)> {
-    map_fully_ok(read_any_keyword(), |reader: EolReader<T>, (k, s)| match k {
-        Keyword::DefDbl => (reader, Ok(TypeQualifier::HashDouble)),
-        Keyword::DefInt => (reader, Ok(TypeQualifier::PercentInteger)),
-        Keyword::DefLng => (reader, Ok(TypeQualifier::AmpersandLong)),
-        Keyword::DefSng => (reader, Ok(TypeQualifier::BangSingle)),
-        Keyword::DefStr => (reader, Ok(TypeQualifier::DollarString)),
-        _ => (reader.undo(s), Err(QError::not_found_err())),
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeQualifier, QError>> {
+    // TODO make a pc for this
+    source_and_then_some(read_any_keyword(), |reader: EolReader<T>, (k, s)| match k {
+        Keyword::DefDbl => Ok((reader, Some(TypeQualifier::HashDouble))),
+        Keyword::DefInt => Ok((reader, Some(TypeQualifier::PercentInteger))),
+        Keyword::DefLng => Ok((reader, Some(TypeQualifier::AmpersandLong))),
+        Keyword::DefSng => Ok((reader, Some(TypeQualifier::BangSingle))),
+        Keyword::DefStr => Ok((reader, Some(TypeQualifier::DollarString))),
+        _ => Ok((reader.undo(s), None)),
     })
 }
 
 fn letter_ranges<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Vec<LetterRange>, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<LetterRange>, QError>> {
     map_default_to_not_found(csv_zero_or_more(letter_range()))
 }
 
 fn letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, LetterRange, QError>> {
     or(
         two_letter_range(), // needs to be first because the second will match too
         single_letter_range(),
@@ -56,12 +59,12 @@ fn letter_range<T: BufRead + 'static>(
 }
 
 fn single_letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, LetterRange, QError>> {
     map(read_any_letter(), |l| LetterRange::Single(l))
 }
 
 fn two_letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<LetterRange, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, LetterRange, QError>> {
     and_then(
         and(
             read_any_letter(),

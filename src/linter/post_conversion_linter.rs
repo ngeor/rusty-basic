@@ -90,7 +90,7 @@ pub trait PostConversionLinter {
         _name: &CaseInsensitiveString,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), QErrorNode> {
-        args.iter().map(|e| self.visit_expression(e)).collect()
+        self.visit_expressions(args)
     }
 
     fn visit_built_in_sub_call(
@@ -98,7 +98,7 @@ pub trait PostConversionLinter {
         _name: &BuiltInSub,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), QErrorNode> {
-        args.iter().map(|e| self.visit_expression(e)).collect()
+        self.visit_expressions(args)
     }
 
     fn visit_assignment(
@@ -164,5 +164,9 @@ pub trait PostConversionLinter {
 
     fn visit_expression(&self, _e: &ExpressionNode) -> Result<(), QErrorNode> {
         Ok(())
+    }
+
+    fn visit_expressions(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        args.iter().map(|e| self.visit_expression(e)).collect()
     }
 }

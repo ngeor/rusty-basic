@@ -1,6 +1,6 @@
-use crate::built_ins;
 use crate::common::*;
 use crate::parser::assignment;
+use crate::parser::built_ins;
 use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::constant;
@@ -10,7 +10,9 @@ use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
-use crate::parser::pc::loc::*;
+use crate::parser::pc::map::{and_then, map};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;
@@ -18,12 +20,12 @@ use crate::parser::while_wend;
 use std::io::BufRead;
 
 pub fn statement_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<StatementNode, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNode, QError>> {
     with_pos(statement())
 }
 
 pub fn statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or_vec(vec![
         dim_parser::dim(),
         constant::constant(),
@@ -45,7 +47,7 @@ pub fn statement<T: BufRead + 'static>(
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
 pub fn single_line_non_comment_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or_vec(vec![
         dim_parser::dim(),
         constant::constant(),
@@ -60,7 +62,7 @@ pub fn single_line_non_comment_statement<T: BufRead + 'static>(
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
 pub fn single_line_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or_vec(vec![
         comment::comment(),
         dim_parser::dim(),
@@ -74,14 +76,14 @@ pub fn single_line_statement<T: BufRead + 'static>(
 }
 
 pub fn statement_label<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(and(name::bare_name(), try_read(':')), |(l, _)| {
         Statement::Label(l)
     })
 }
 
 pub fn statement_go_to<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         crate::parser::pc::ws::seq2(
             try_read_keyword(Keyword::GoTo),
@@ -96,7 +98,7 @@ pub fn statement_go_to<T: BufRead + 'static>(
 }
 
 pub fn statement_on_error_go_to<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         crate::parser::pc::ws::seq4(
             try_read_keyword(Keyword::On),
@@ -119,12 +121,12 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
 }
 
 pub fn statement_illegal_keywords<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or(
-        and_then(with_pos(try_read_keyword(Keyword::Wend)), |_| {
+        and_then(try_read_keyword(Keyword::Wend), |_| {
             Err(QError::WendWithoutWhile)
         }),
-        and_then(with_pos(try_read_keyword(Keyword::Else)), |_| {
+        and_then(try_read_keyword(Keyword::Else), |_| {
             Err(QError::ElseWithoutIf)
         }),
     )

@@ -2,8 +2,11 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::common::*;
-use crate::parser::pc::traits::*;
+use crate::parser::pc::common::{and, map_default_to_not_found, or_vec};
+use crate::parser::pc::map::map;
+use crate::parser::pc::ws::{is_eol, one_or_more_leading, zero_or_more_leading};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::{csv_zero_or_more, in_parenthesis};
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -12,7 +15,7 @@ use std::io::BufRead;
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 pub fn sub_call<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         and(
             name::bare_name(),
@@ -22,35 +25,50 @@ pub fn sub_call<T: BufRead + 'static>(
                     expression::expression_node(),
                 ))),
                 // e.g. PRINT "hello", "world"
-                crate::parser::pc::ws::zero_or_more_leading(map_default_to_not_found(
-                    csv_zero_or_more(expression::expression_node()),
-                )),
+                zero_or_more_leading(map_default_to_not_found(csv_zero_or_more(
+                    expression::expression_node(),
+                ))),
                 // prevent against e.g. A = "oops"
-                crate::parser::pc::ws::one_or_more_leading(zero_args_assignment_and_label_guard(
-                    true,
+                one_or_more_leading(zero_args_assignment_and_label_guard(
+                    statement_terminator_after_whitespace,
                 )),
                 // prevent against e.g. A: or A="oops"
-                zero_args_assignment_and_label_guard(false),
+                zero_args_assignment_and_label_guard(statement_terminator),
             ]),
         ),
         |(n, r)| Statement::SubCall(n, r),
     )
 }
 
-pub fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
-    allow_colon: bool,
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<ArgumentNodes, QError>)> {
-    map_fully_ok_or_not_found(
-        read(),
-        move |reader: EolReader<T>, ch| {
-            if ch == '\'' || ch == '\r' || ch == '\n' || (allow_colon && ch == ':') {
-                (reader.undo(ch), Ok(vec![]))
-            } else {
-                (reader.undo(ch), Err(QError::not_found_err()))
+fn statement_terminator(ch: char) -> bool {
+    ch == '\'' || is_eol(ch)
+}
+
+fn statement_terminator_after_whitespace(ch: char) -> bool {
+    statement_terminator(ch) || ch == ':'
+}
+
+fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
+    is_statement_terminator: fn(char) -> bool,
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ArgumentNodes, QError>> {
+    Box::new(move |reader| {
+        reader.read().and_then(|(reader, opt_res)| match opt_res {
+            Some(ch) => {
+                let res: Option<ArgumentNodes> = if is_statement_terminator(ch) {
+                    // found statement terminator
+                    Some(vec![])
+                } else {
+                    // found something else
+                    None
+                };
+                Ok((reader.undo(ch), res))
             }
-        },
-        |_| Ok(vec![]),
-    )
+            None => {
+                // EOF e.g. PRINT followed by EOF
+                Ok((reader, Some(vec![])))
+            }
+        })
+    })
 }
 
 #[cfg(test)]

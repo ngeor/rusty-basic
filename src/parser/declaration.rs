@@ -3,6 +3,9 @@ use crate::parser::char_reader::*;
 use crate::parser::declared_name;
 use crate::parser::name;
 use crate::parser::pc::common::*;
+use crate::parser::pc::map::{and_then_none, map};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -18,7 +21,7 @@ use std::io::BufRead;
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     drop_left(crate::parser::pc::ws::seq2(
         try_read_keyword(Keyword::Declare),
         demand(
@@ -30,14 +33,15 @@ pub fn declaration<T: BufRead + 'static>(
 }
 
 fn function_declaration_token<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     map(function_declaration(), |(n, p)| {
         TopLevelToken::FunctionDeclaration(n, p)
     })
 }
 
 pub fn function_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(NameNode, DeclaredNameNodes), QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (NameNode, DeclaredNameNodes), QError>>
+{
     map(
         seq5(
             try_read_keyword(Keyword::Function),
@@ -57,19 +61,14 @@ pub fn function_declaration<T: BufRead + 'static>(
 }
 
 fn sub_declaration_token<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<TopLevelToken, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     map(sub_declaration(), |(n, p)| {
         TopLevelToken::SubDeclaration(n, p)
     })
 }
 
 pub fn sub_declaration<T: BufRead + 'static>() -> Box<
-    dyn Fn(
-        EolReader<T>,
-    ) -> (
-        EolReader<T>,
-        Result<(BareNameNode, DeclaredNameNodes), QError>,
-    ),
+    dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, DeclaredNameNodes), QError>,
 > {
     map(
         seq5(
@@ -90,10 +89,10 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
 }
 
 fn opt_declaration_parameters<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<DeclaredNameNodes, QError>)> {
-    or_else_if_not_found(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DeclaredNameNodes, QError>> {
+    and_then_none(
         in_parenthesis(csv_zero_or_more(declared_name::declared_name_node())),
-        |_| Ok(vec![]),
+        || Ok(vec![]),
     )
 }
 

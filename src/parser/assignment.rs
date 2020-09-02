@@ -1,29 +1,37 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
+use crate::parser::char_reader::EolReader;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::common::*;
-use crate::parser::pc::copy::*;
+use crate::parser::pc::common::{and, drop_right, seq2};
+use crate::parser::pc::copy::try_read;
+use crate::parser::pc::map::map;
+use crate::parser::pc::ws::zero_or_more_around;
+use crate::parser::pc::ReaderResult;
 use crate::parser::types::*;
 use std::io::BufRead;
 
 pub fn assignment<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(assignment_tuple(), |(l, r)| Statement::Assignment(l, r))
 }
 
+/// Parses `<name> <ws*> = <ws*> <expression-node>`.
+///
+/// If the equals sign is read, the expression must be read.
+///
+/// Examples:
+///
+/// ```basic
+/// A = 42
+/// A$ = "hello" + ", world"
+/// A%=1
+/// ```
 pub fn assignment_tuple<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<(Name, ExpressionNode), QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Name, ExpressionNode), QError>> {
     // not using seq3 in case it's not an assignment but a sub call
-    map(
-        and(
-            name::name(),
-            seq2(
-                crate::parser::pc::ws::zero_or_more_around(try_read('=')),
-                expression::demand_expression_node(),
-            ),
-        ),
-        |(l, (_, r))| (l, r),
+    seq2(
+        drop_right(and(name::name(), zero_or_more_around(try_read('=')))),
+        expression::demand_expression_node(),
     )
 }
 

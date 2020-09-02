@@ -3,12 +3,14 @@ use crate::common::*;
 use crate::parser::assignment;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
-use crate::parser::pc::loc::with_pos;
+use crate::parser::pc::map::map;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::Keyword;
 use std::io::BufRead;
 
 pub fn constant<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         crate::parser::pc::ws::seq2(
             try_read_keyword(Keyword::Const),

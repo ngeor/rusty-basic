@@ -179,11 +179,6 @@ pub enum QError {
     // Lexer errors
     UnsupportedCharacter(char),
 
-    /// Indicates that a parser failed to meet its expectations.
-    /// This is often an internally recoverable error. An alternative implementation
-    /// could be to use `Ok(None)` but the code then becomes more complicated.
-    CannotParse,
-
     // General fallback
     Other(String),
 }

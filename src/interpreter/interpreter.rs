@@ -1,6 +1,6 @@
-use crate::built_ins::BuiltInRun;
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
+use crate::interpreter::built_ins;
 use crate::interpreter::casting::cast;
 use crate::interpreter::context::*;
 use crate::interpreter::context_owner::ContextOwner;
@@ -319,11 +319,11 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                n.run(self)?;
+                built_ins::run_sub(n, self)?;
             }
             Instruction::BuiltInFunction(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                n.run(self)?;
+                built_ins::run_function(n, self)?;
             }
             Instruction::UnresolvedJump(_)
             | Instruction::UnresolvedJumpIfFalse(_)

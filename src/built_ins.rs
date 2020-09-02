@@ -1,31 +1,6 @@
-mod chr;
-mod close;
-mod environ_fn;
-mod environ_sub;
-mod eof;
-mod input;
-mod instr;
-mod kill;
-mod len;
-mod line_input;
-mod mid;
-mod name;
-mod open;
-mod print;
-mod str_fn;
-mod system;
-mod val;
-// utilities for the built-ins
-mod util;
-
 use crate::common::*;
-use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::ExpressionNode;
-use crate::parser::char_reader::*;
-use crate::parser::pc::common::*;
 use crate::parser::{HasQualifier, Name, TypeQualifier};
 use std::convert::TryFrom;
-use std::io::BufRead;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BuiltInFunction {
@@ -58,94 +33,6 @@ pub enum BuiltInSub {
     Kill,
     LineInput,
     Name,
-}
-
-pub trait BuiltInLint {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode>;
-}
-
-pub trait BuiltInRun {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode>;
-}
-
-static CHR: chr::Chr = chr::Chr {};
-static CLOSE: close::Close = close::Close {};
-static ENVIRON_FN: environ_fn::Environ = environ_fn::Environ {};
-static ENVIRON_SUB: environ_sub::Environ = environ_sub::Environ {};
-static EOF: eof::Eof = eof::Eof {};
-static INPUT: input::Input = input::Input {};
-static INSTR: instr::InStr = instr::InStr {};
-static KILL: kill::Kill = kill::Kill {};
-static LEN: len::Len = len::Len {};
-static LINE_INPUT: line_input::LineInput = line_input::LineInput {};
-static MID: mid::Mid = mid::Mid {};
-static NAME: name::Name = name::Name {};
-static OPEN: open::Open = open::Open {};
-static PRINT: print::Print = print::Print {};
-static STR_FN: str_fn::StrFn = str_fn::StrFn {};
-static SYSTEM: system::System = system::System {};
-static VAL: val::Val = val::Val {};
-
-impl BuiltInLint for BuiltInFunction {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        match self {
-            Self::Chr => CHR.lint(args),
-            Self::Environ => ENVIRON_FN.lint(args),
-            Self::Eof => EOF.lint(args),
-            Self::InStr => INSTR.lint(args),
-            Self::Len => LEN.lint(args),
-            Self::Mid => MID.lint(args),
-            Self::Str => STR_FN.lint(args),
-            Self::Val => VAL.lint(args),
-        }
-    }
-}
-
-impl BuiltInLint for BuiltInSub {
-    fn lint(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        match self {
-            Self::Close => CLOSE.lint(args),
-            Self::Environ => ENVIRON_SUB.lint(args),
-            Self::Input => INPUT.lint(args),
-            Self::Kill => KILL.lint(args),
-            Self::LineInput => LINE_INPUT.lint(args),
-            Self::Name => NAME.lint(args),
-            Self::Open => OPEN.lint(args),
-            Self::Print => PRINT.lint(args),
-            Self::System => SYSTEM.lint(args),
-        }
-    }
-}
-
-impl BuiltInRun for BuiltInFunction {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        match self {
-            Self::Chr => CHR.run(interpreter),
-            Self::Environ => ENVIRON_FN.run(interpreter),
-            Self::Eof => EOF.run(interpreter),
-            Self::InStr => INSTR.run(interpreter),
-            Self::Len => LEN.run(interpreter),
-            Self::Mid => MID.run(interpreter),
-            Self::Str => STR_FN.run(interpreter),
-            Self::Val => VAL.run(interpreter),
-        }
-    }
-}
-
-impl BuiltInRun for BuiltInSub {
-    fn run<S: Stdlib>(&self, interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        match self {
-            Self::Close => CLOSE.run(interpreter),
-            Self::Environ => ENVIRON_SUB.run(interpreter),
-            Self::Input => INPUT.run(interpreter),
-            Self::Kill => KILL.run(interpreter),
-            Self::LineInput => LINE_INPUT.run(interpreter),
-            Self::Name => NAME.run(interpreter),
-            Self::Open => OPEN.run(interpreter),
-            Self::Print => PRINT.run(interpreter),
-            Self::System => SYSTEM.run(interpreter),
-        }
-    }
 }
 
 impl HasQualifier for BuiltInFunction {
@@ -270,15 +157,4 @@ impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
             None
         }
     }
-}
-
-/// Parses built-in subs which have a special syntax.
-pub fn parse_built_in<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<crate::parser::Statement, QError>)> {
-    or_vec(vec![
-        input::parse_input(),
-        line_input::parse_line_input(),
-        name::parse_name(),
-        open::parse_open(),
-    ])
 }

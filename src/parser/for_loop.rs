@@ -2,8 +2,12 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
+use crate::parser::pc::map::map;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::statements;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -13,10 +17,10 @@ use std::io::BufRead;
 // NEXT (I)
 
 pub fn for_loop<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Statement, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         seq3(
-            opt_seq2_comb(parse_for(), parse_step()),
+            combine_some(parse_for(), parse_step),
             statements::statements(
                 try_read_keyword(Keyword::Next),
                 QError::syntax_error_fn("Expected: STEP or end-of-statement"),
@@ -39,10 +43,7 @@ pub fn for_loop<T: BufRead + 'static>(
 fn parse_for<T: BufRead + 'static>() -> Box<
     dyn Fn(
         EolReader<T>,
-    ) -> (
-        EolReader<T>,
-        Result<(NameNode, ExpressionNode, ExpressionNode), QError>,
-    ),
+    ) -> ReaderResult<EolReader<T>, (NameNode, ExpressionNode, ExpressionNode), QError>,
 > {
     map(
         seq7(
@@ -70,31 +71,26 @@ fn parse_for<T: BufRead + 'static>() -> Box<
     )
 }
 
-fn parse_step<T: BufRead + 'static>() -> Box<
-    dyn Fn(
-        EolReader<T>,
-        &(NameNode, ExpressionNode, ExpressionNode),
-    ) -> (EolReader<T>, Result<ExpressionNode, QError>),
-> {
-    Box::new(move |reader, first| {
-        let (_, _, upper) = first;
-        let parenthesis = upper.is_parenthesis();
-        if parenthesis {
-            drop_left(seq2(
-                crate::parser::pc::ws::zero_or_more_leading(try_read_keyword(Keyword::Step)),
-                expression::demand_guarded_expression_node(),
-            ))(reader)
-        } else {
-            drop_left(seq2(
-                crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Step)),
-                expression::demand_guarded_expression_node(),
-            ))(reader)
-        }
-    })
+fn parse_step<T: BufRead + 'static>(
+    for_expr: &(NameNode, ExpressionNode, ExpressionNode),
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    let (_, _, upper) = for_expr;
+    let parenthesis = upper.is_parenthesis();
+    if parenthesis {
+        drop_left(seq2(
+            crate::parser::pc::ws::zero_or_more_leading(try_read_keyword(Keyword::Step)),
+            expression::demand_guarded_expression_node(),
+        ))
+    } else {
+        drop_left(seq2(
+            crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Step)),
+            expression::demand_guarded_expression_node(),
+        ))
+    }
 }
 
 fn next_counter<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> (EolReader<T>, Result<Option<NameNode>, QError>)> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Option<NameNode>, QError>> {
     map(
         opt_seq2(
             try_read_keyword(Keyword::Next),

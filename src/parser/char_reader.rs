@@ -1,33 +1,13 @@
 use crate::common::{CaseInsensitiveString, HasLocation, Location, QError};
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
-use crate::parser::pc::map::{map, source_and_then_some};
+use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::collections::VecDeque;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
-use std::str::FromStr;
-
-fn is_letter(ch: char) -> bool {
-    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
-}
-
-fn is_non_leading_identifier(ch: char) -> bool {
-    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '.')
-}
-
-fn is_digit(ch: char) -> bool {
-    ch >= '0' && ch <= '9'
-}
-
-fn is_symbol(ch: char) -> bool {
-    (ch > ' ' && ch < '0')
-        || (ch > '9' && ch < 'A')
-        || (ch > 'Z' && ch < 'a')
-        || (ch > 'z' && ch <= '~')
-}
 
 /// Reads one character at a time out of a `BufRead`.
 ///
@@ -37,7 +17,7 @@ fn is_symbol(ch: char) -> bool {
 /// - `Ok(None)` means we hit EOF
 /// - `Err(err)` means we encountered some IO error
 #[derive(Debug)]
-pub struct CharReader<T: BufRead> {
+struct CharReader<T: BufRead> {
     reader: T,
     buffer: VecDeque<char>,
     read_eof: bool,
@@ -132,159 +112,13 @@ impl<T: BufRead> Reader for CharReader<T> {
 }
 
 impl<T: BufRead> CharReader<T> {
-    pub fn new(reader: T) -> Self {
+    fn new(reader: T) -> Self {
         Self {
             reader,
             buffer: VecDeque::new(),
             read_eof: false,
         }
     }
-}
-
-//
-// Parser combinators
-//
-
-pub fn read_any_symbol<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-{
-    read_if(is_symbol)
-}
-
-pub fn read_any_letter<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
-where
-R: Reader<Item = char, Err = E> + 'static,
-{
-    read_if(is_letter)
-}
-
-/// Reads any identifier. Note that the result might be a keyword.
-/// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn read_any_identifier<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
-where
-R: Reader<Item = char, Err = E> + 'static,
-E: 'static,
-{
-    map_default_to_not_found(super::pc::str::zero_or_more_if_leading_remaining(
-        is_letter,
-        is_non_leading_identifier,
-    ))
-}
-
-/// Reads any keyword.
-pub fn read_any_keyword<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
-where
-R: Reader<Item = char, Err = E> + 'static,
-E: 'static,
-{
-    crate::parser::pc::str::switch_from_str(read_any_identifier())
-}
-
-/// Reads any word, i.e. any identifier which is not a keyword.
-pub fn read_any_word<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R,  String, E>>
-where
-R: Reader<Item = char, Err = E> + 'static,
-E: 'static
-{
-    source_and_then_some(
-        read_any_identifier(),
-        |reader: R, s| match Keyword::from_str(&s) {
-            Ok(_) => Ok((reader.undo(s), None)),
-            Err(_) => Ok((reader, Some(s))),
-        },
-    )
-}
-
-pub fn read_keyword_if<R, E, F>(
-    predicate: F,
-) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    F: Fn(Keyword) -> bool + 'static,
-E: 'static
-{
-    super::pc::common::filter(read_any_keyword(), move |(k, _)| predicate(*k))
-}
-
-// TODO optimize
-pub fn try_read_keyword<R, E>(
-    needle: Keyword,
-) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
-where
-R: Reader<Item = char, Err = E> + 'static,
-E: 'static
-{
-    read_keyword_if(move |k| k == needle)
-}
-
-pub fn demand_keyword<T: BufRead + 'static>(
-    needle: Keyword,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Keyword, String), QError>> {
-    demand(
-        try_read_keyword(needle),
-        QError::syntax_error_fn(format!("Expected: {}", needle)),
-    )
-}
-
-pub fn demand_guarded_keyword<T: BufRead + 'static>(
-    needle: Keyword,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Keyword, String), QError>> {
-    drop_left(and(
-        demand(
-            crate::parser::pc::ws::one_or_more(),
-            QError::syntax_error_fn(format!("Expected: whitespace before {}", needle)),
-        ),
-        demand_keyword(needle),
-    ))
-}
-
-pub fn read_any_digits<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R,  String, E>>
-where
-R: Reader<Item = char, Err = E> + 'static,
-E: 'static
-{
-    super::pc::str::one_or_more_if(is_digit)
-}
-
-//
-// Modify the result of a parser
-//
-
-//
-// Take multiple items
-//
-
-pub fn csv_zero_or_more<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-    T: 'static,
-    E: 'static
-{
-    zero_or_more(opt_seq2(
-        source,
-        crate::parser::pc::ws::zero_or_more_around(try_read(',')),
-    ))
-}
-
-pub fn in_parenthesis<R, S, T>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, QError>>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-    S: Fn(R) -> ReaderResult<R, T, QError> + 'static,
-    T: 'static,
-{
-    map(
-        seq3(
-            try_read('('),
-            source,
-            demand(
-                try_read(')'),
-                QError::syntax_error_fn("Expected: closing parenthesis"),
-            ),
-        ),
-        |(_, r, _)| r,
-    )
 }
 
 //
@@ -299,7 +133,7 @@ pub struct EolReader<T: BufRead> {
 
 // Location tracking + treating CRLF as one char
 impl<T: BufRead> EolReader<T> {
-    pub fn new(char_reader: CharReader<T>) -> Self {
+    fn new(char_reader: CharReader<T>) -> Self {
         Self {
             char_reader,
             pos: Location::start(),

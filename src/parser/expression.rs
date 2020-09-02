@@ -6,6 +6,7 @@ use crate::parser::pc::common::*;
 use crate::parser::pc::copy::*;
 use crate::parser::pc::loc::*;
 use crate::parser::pc::map::{and_then, map};
+use crate::parser::pc::misc::*;
 use crate::parser::pc::*;
 use crate::parser::types::*;
 use crate::variant;

@@ -1,9 +1,8 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
+use crate::parser::char_reader::EolReader;
 use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::copy::{peek, try_read};
-use crate::parser::pc::map::source_and_then_some;
 use crate::parser::pc::str::{map_to_str, zero_or_more_if_leading_remaining};
 use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace, is_whitespace};
 use crate::parser::pc::*;
@@ -163,15 +162,23 @@ fn non_comment_separator<T: BufRead + 'static>(
         )),
         comment_separator(),
         map_to_str(peek('\'')),
-        crate::parser::pc::ws::zero_or_more_leading(source_and_then_some(
-            read(),
-            |reader: EolReader<T>, ch| {
-                // undo so that the error will be positioned at the offending character
-                Err((
-                    reader.undo(ch),
-                    QError::syntax_error("Expected: end-of-statement"),
-                ))
-            },
-        )),
+        Box::new(expected_end_of_statement),
     ])
+}
+
+fn expected_end_of_statement<R, T>(reader: R) -> ReaderResult<R, T, QError>
+where
+    R: Reader<Err = QError> + 'static,
+    T: 'static,
+{
+    reader.read().and_then(|(reader, opt_res)| match opt_res {
+        Some(ch) => {
+            // undo so that the error will be positioned at the offending character
+            Err((
+                reader.undo_item(ch),
+                QError::syntax_error("Expected: end-of-statement"),
+            ))
+        }
+        None => Ok((reader, None)),
+    })
 }

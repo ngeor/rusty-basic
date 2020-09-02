@@ -180,11 +180,6 @@ pub mod common {
     use super::map::*;
     use super::*;
 
-    /// Returns a function that gets the next item from a reader.
-    pub fn read<R: Reader + 'static>() -> impl Fn(R) -> ReaderResult<R, R::Item, R::Err> {
-        |reader| reader.read()
-    }
-
     // ========================================================
     // simple parsing combinators
     // ========================================================
@@ -570,7 +565,6 @@ pub mod common {
 // ========================================================
 
 pub mod copy {
-    use super::common;
     use super::map::source_and_then_some;
     use super::*;
 
@@ -599,7 +593,7 @@ pub mod copy {
         T: Copy,
         F: Fn(T) -> bool + 'static,
     {
-        filter(common::read(), predicate)
+        filter(R::read, predicate)
     }
 
     pub fn try_read<R, T>(needle: T) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>

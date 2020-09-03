@@ -15,10 +15,10 @@ pub fn while_wend<T: BufRead + 'static>(
         seq3(
             parse_while_expression(),
             statements(
-                try_read_keyword(Keyword::Wend),
+                keyword(Keyword::Wend),
                 QError::syntax_error_fn("Expected: end-of-statement"),
             ),
-            demand(try_read_keyword(Keyword::Wend), || QError::WhileWithoutWend),
+            demand(keyword(Keyword::Wend), || QError::WhileWithoutWend),
         ),
         |(l, r, _)| {
             Statement::While(ConditionalBlockNode {
@@ -32,7 +32,7 @@ pub fn while_wend<T: BufRead + 'static>(
 fn parse_while_expression<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     drop_left(seq2(
-        try_read_keyword(Keyword::While),
+        keyword(Keyword::While),
         expression::demand_guarded_expression_node(),
     ))
 }

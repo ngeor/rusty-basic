@@ -71,7 +71,7 @@ fn parse_select_case_expr<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
         seq3(
-            try_read_keyword(Keyword::Select),
+            keyword(Keyword::Select),
             demand_guarded_keyword(Keyword::Case),
             expression::demand_guarded_expression_node(),
         ),
@@ -95,27 +95,27 @@ fn parse_case_any<T: BufRead + 'static>() -> Box<
 > {
     map(
         seq2(
-            try_read_keyword(Keyword::Case),
+            keyword(Keyword::Case),
             demand(
                 or_vec(vec![
                     seq2(
                         parse_case_else(),
                         statements::statements(
-                            try_read_keyword(Keyword::End),
+                            keyword(Keyword::End),
                             QError::syntax_error_fn("Expected: end-of-statement"),
                         ),
                     ),
                     seq2(
                         parse_case_is(),
                         statements::statements(
-                            read_keyword_if(|k| k == Keyword::Case || k == Keyword::End),
+                            or(keyword(Keyword::Case), keyword(Keyword::End)),
                             QError::syntax_error_fn("Expected: end-of-statement"),
                         ),
                     ),
                     seq2(
                         parse_case_simple_or_range(),
                         statements::statements(
-                            read_keyword_if(|k| k == Keyword::Case || k == Keyword::End),
+                            or(keyword(Keyword::Case), keyword(Keyword::End)),
                             QError::syntax_error_fn("Expected: TO or end-of-statement"),
                         ),
                     ),
@@ -133,10 +133,7 @@ fn parse_case_any<T: BufRead + 'static>() -> Box<
 fn parse_case_else<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
     map(
-        and(
-            crate::parser::pc::ws::one_or_more(),
-            try_read_keyword(Keyword::Else),
-        ),
+        and(crate::parser::pc::ws::one_or_more(), keyword(Keyword::Else)),
         |_| ExprOrElse::Else,
     )
 }
@@ -145,10 +142,7 @@ fn parse_case_is<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
     map(
         seq5(
-            and(
-                crate::parser::pc::ws::one_or_more(),
-                try_read_keyword(Keyword::Is),
-            ),
+            and(crate::parser::pc::ws::one_or_more(), keyword(Keyword::Is)),
             crate::parser::pc::ws::zero_or_more(),
             demand(
                 expression::relational_operand(),
@@ -180,7 +174,7 @@ fn parse_range<T: BufRead + 'static>(
         drop_left(drop_left(and(
             crate::parser::pc::ws::zero_or_more(),
             seq2(
-                try_read_keyword(Keyword::To),
+                keyword(Keyword::To),
                 demand(
                     expression::guarded_expression_node(),
                     QError::syntax_error_fn("Expected: expression after TO"),
@@ -192,7 +186,7 @@ fn parse_range<T: BufRead + 'static>(
         drop_left(drop_left(and(
             crate::parser::pc::ws::one_or_more(),
             seq2(
-                try_read_keyword(Keyword::To),
+                keyword(Keyword::To),
                 demand(
                     expression::guarded_expression_node(),
                     QError::syntax_error_fn("Expected: expression after TO"),
@@ -206,7 +200,7 @@ fn parse_end_select<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (), QError>> {
     map(
         seq2(
-            try_read_keyword(Keyword::End),
+            keyword(Keyword::End),
             demand_guarded_keyword(Keyword::Select),
         ),
         |(_, _)| (),

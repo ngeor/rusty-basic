@@ -86,7 +86,7 @@ pub fn statement_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         crate::parser::pc::ws::seq2(
-            try_read_keyword(Keyword::GoTo),
+            keyword(Keyword::GoTo),
             demand(
                 name::bare_name(),
                 QError::syntax_error_fn("Expected: label"),
@@ -101,13 +101,13 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         crate::parser::pc::ws::seq4(
-            try_read_keyword(Keyword::On),
+            keyword(Keyword::On),
             demand(
-                try_read_keyword(Keyword::Error),
+                keyword(Keyword::Error),
                 QError::syntax_error_fn("Expected: ERROR"),
             ),
             demand(
-                try_read_keyword(Keyword::GoTo),
+                keyword(Keyword::GoTo),
                 QError::syntax_error_fn("Expected: GOTO"),
             ),
             demand(
@@ -123,12 +123,8 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
 pub fn statement_illegal_keywords<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or(
-        and_then(try_read_keyword(Keyword::Wend), |_| {
-            Err(QError::WendWithoutWhile)
-        }),
-        and_then(try_read_keyword(Keyword::Else), |_| {
-            Err(QError::ElseWithoutIf)
-        }),
+        and_then(keyword(Keyword::Wend), |_| Err(QError::WendWithoutWhile)),
+        and_then(keyword(Keyword::Else), |_| Err(QError::ElseWithoutIf)),
     )
 }
 

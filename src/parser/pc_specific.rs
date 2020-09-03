@@ -1,11 +1,13 @@
 use crate::common::QError;
 use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable};
 use crate::parser::pc::common::{
-    and, demand, drop_left, filter, map_default_to_not_found, opt_seq2, seq3, zero_or_more,
+    and, demand, drop_left, map_default_to_not_found, negate, opt_seq2, seq3, zero_or_more,
 };
 use crate::parser::pc::copy::{read_if, try_read};
 use crate::parser::pc::map::{map, source_and_then_some};
-use crate::parser::pc::str::{one_or_more_if, switch_from_str, zero_or_more_if_leading_remaining};
+use crate::parser::pc::str::{
+    one_or_more_if, read_case_insensitive, zero_or_more_if_leading_remaining,
+};
 /// Parser combinators specific to this parser (e.g. for keywords)
 use crate::parser::pc::{Reader, ReaderResult, Undo};
 use crate::parser::types::{Keyword, Name, TypeQualifier};
@@ -113,14 +115,14 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
-pub fn read_any_symbol<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
+pub fn any_symbol<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
 {
     read_if(is_symbol)
 }
 
-pub fn read_any_letter<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
+pub fn any_letter<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
 {
@@ -129,7 +131,7 @@ where
 
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn read_any_identifier<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
+pub fn any_identifier<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
     E: 'static,
@@ -140,50 +142,32 @@ where
     ))
 }
 
-/// Reads any keyword.
-pub fn read_any_keyword<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
-{
-    switch_from_str(read_any_identifier())
-}
-
 /// Reads any word, i.e. any identifier which is not a keyword.
-pub fn read_any_word<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
+pub fn any_word<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
     E: 'static,
 {
-    source_and_then_some(
-        read_any_identifier(),
-        |reader: R, s| match Keyword::from_str(&s) {
+    source_and_then_some(any_identifier(), |reader: R, s| {
+        match Keyword::from_str(&s) {
             Ok(_) => Ok((reader.undo(s), None)),
             Err(_) => Ok((reader, Some(s))),
-        },
+        }
+    })
+}
+
+pub fn keyword<R, E>(needle: Keyword) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
+where
+    R: Reader<Item = char, Err = E> + 'static,
+    E: 'static,
+{
+    map(
+        and(
+            read_case_insensitive(needle.as_str()),
+            negate(read_if(is_non_leading_identifier)),
+        ),
+        move |(s, _)| (needle, s),
     )
-}
-
-pub fn read_keyword_if<R, E, F>(
-    predicate: F,
-) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    F: Fn(Keyword) -> bool + 'static,
-    E: 'static,
-{
-    filter(read_any_keyword(), move |(k, _)| predicate(*k))
-}
-
-// TODO optimize
-pub fn try_read_keyword<R, E>(
-    needle: Keyword,
-) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
-{
-    read_keyword_if(move |k| k == needle)
 }
 
 pub fn demand_keyword<R>(
@@ -193,7 +177,7 @@ where
     R: Reader<Item = char, Err = QError> + 'static,
 {
     demand(
-        try_read_keyword(needle),
+        keyword(needle),
         QError::syntax_error_fn(format!("Expected: {}", needle)),
     )
 }
@@ -213,7 +197,7 @@ where
     ))
 }
 
-pub fn read_any_digits<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
+pub fn any_digits<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
     E: 'static,

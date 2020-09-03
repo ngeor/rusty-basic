@@ -13,7 +13,7 @@ pub fn constant<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         crate::parser::pc::ws::seq2(
-            try_read_keyword(Keyword::Const),
+            keyword(Keyword::Const),
             demand(
                 with_pos(assignment::assignment_tuple()),
                 QError::syntax_error_fn("Expected: name"),

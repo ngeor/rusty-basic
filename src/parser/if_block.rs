@@ -42,7 +42,7 @@ fn if_expr_then<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
         seq3(
-            try_read_keyword(Keyword::If),
+            keyword(Keyword::If),
             expression::demand_back_guarded_expression_node(),
             demand_keyword(Keyword::Then),
         ),
@@ -87,7 +87,7 @@ fn single_line_else<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>> {
     map(
         crate::parser::pc::ws::one_or_more_leading(and(
-            try_read_keyword(Keyword::Else),
+            keyword(Keyword::Else),
             statements::single_line_statements(),
         )),
         |(_, r)| r,
@@ -111,9 +111,11 @@ fn multi_line_if<T: BufRead + 'static>() -> Box<
         seq2(
             opt_seq3(
                 statements::statements(
-                    read_keyword_if(|k| {
-                        k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
-                    }),
+                    or_vec(vec![
+                        keyword(Keyword::End),
+                        keyword(Keyword::Else),
+                        keyword(Keyword::ElseIf),
+                    ]),
                     QError::syntax_error_fn("Expected: end-of-statement"),
                 ),
                 else_if_blocks(),
@@ -131,7 +133,7 @@ fn else_if_expr_then<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
         seq3(
-            try_read_keyword(Keyword::ElseIf),
+            keyword(Keyword::ElseIf),
             expression::demand_back_guarded_expression_node(),
             demand_keyword(Keyword::Then),
         ),
@@ -150,9 +152,11 @@ fn else_if_block<T: BufRead + 'static>(
         seq2(
             else_if_expr_then(),
             statements::statements(
-                read_keyword_if(|k| {
-                    k == Keyword::End || k == Keyword::Else || k == Keyword::ElseIf
-                }),
+                or_vec(vec![
+                    keyword(Keyword::End),
+                    keyword(Keyword::Else),
+                    keyword(Keyword::ElseIf),
+                ]),
                 QError::syntax_error_fn("Expected: end-of-statement"),
             ),
         ),
@@ -166,9 +170,9 @@ fn else_if_block<T: BufRead + 'static>(
 fn else_block<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>> {
     drop_left(seq2(
-        try_read_keyword(Keyword::Else),
+        keyword(Keyword::Else),
         statements::statements(
-            try_read_keyword(Keyword::End),
+            keyword(Keyword::End),
             QError::syntax_error_fn("Expected: end-of-statement"),
         ),
     ))
@@ -178,9 +182,9 @@ fn end_if<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (), QError>> {
     map(
         crate::parser::pc::ws::seq2(
-            try_read_keyword(Keyword::End),
+            keyword(Keyword::End),
             demand(
-                try_read_keyword(Keyword::If),
+                keyword(Keyword::If),
                 QError::syntax_error_fn("Expected: IF after END"),
             ),
             QError::syntax_error_fn("Expected: whitespace after END"),

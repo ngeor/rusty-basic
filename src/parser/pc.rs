@@ -457,25 +457,6 @@ pub mod common {
         map(source, |(l, _)| l)
     }
 
-    /// Returns a function that filters the given source with the given predicate.
-    /// If the predicate returns `true`, the value of the source is returned as-is.
-    /// Otherwise, a Not Found error will be returned.
-    pub fn filter<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
-    where
-        R: Reader<Err = E> + Undo<T> + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        E: 'static,
-        F: Fn(&T) -> bool + 'static,
-    {
-        source_and_then_some(source, move |reader, ch| {
-            if predicate(&ch) {
-                Ok((reader, Some(ch)))
-            } else {
-                Ok((reader.undo(ch), None))
-            }
-        })
-    }
-
     /// Reverses the result of the given source. If the source returns a successful
     /// result, it returns a Not Found result. If the source returns a Not Found
     /// result, it returns an Ok result.
@@ -621,9 +602,8 @@ pub mod copy {
 
 pub mod str {
     use super::common;
-    use super::map::{map, source_and_then_some};
+    use super::map::map;
     use super::*;
-    use std::str::FromStr;
 
     /// Reads characters into a string as long as they satisfy the predicates.
     ///
@@ -723,20 +703,6 @@ pub mod str {
         common::map_default_to_not_found(zero_or_more_if(predicate))
     }
 
-    pub fn switch_from_str<R, S, T, E>(
-        source: S,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, (T, String), E>>
-    where
-        R: Reader + Undo<String> + 'static,
-        S: Fn(R) -> ReaderResult<R, String, E> + 'static,
-        T: FromStr + 'static,
-    {
-        source_and_then_some(source, |reader, s| match T::from_str(&s) {
-            Ok(u) => Ok((reader, Some((u, s)))),
-            Err(_) => Ok((reader.undo(s), None)),
-        })
-    }
-
     pub fn map_to_str<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
     where
         R: Reader + 'static,
@@ -745,6 +711,39 @@ pub mod str {
         E: 'static,
     {
         map(source, |x| x.to_string())
+    }
+
+    pub fn read_case_insensitive<R>(
+        needle: &'static str,
+    ) -> Box<dyn Fn(R) -> ReaderResult<R, String, R::Err>>
+    where
+        R: Reader<Item = char> + 'static,
+    {
+        Box::new(move |mut reader| {
+            let mut result = String::new();
+            for n in needle.chars() {
+                let res = reader.read();
+                match res {
+                    Ok((r, Some(ch))) => {
+                        result.push(ch);
+                        if ch.to_ascii_uppercase() == n.to_ascii_uppercase() {
+                            reader = r;
+                        } else {
+                            return Ok((r.undo(result), None));
+                        }
+                    }
+                    Ok((r, None)) => {
+                        // EOF before matching all characters, undo collected and return None
+                        return Ok((r.undo(result), None));
+                    }
+                    Err((r, err)) => {
+                        // Error occurred, exit fast
+                        return Err((r, err));
+                    }
+                }
+            }
+            Ok((reader, Some(result)))
+        })
     }
 }
 

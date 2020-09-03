@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::pc::common::*;
-use crate::parser::pc::map::{map, opt_map};
+use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
@@ -34,7 +34,7 @@ mod input {
         ) -> ReaderResult<EolReader<T>, Vec<crate::parser::ExpressionNode>, QError>,
     > {
         drop_left(crate::parser::pc::ws::seq2(
-            try_read_keyword(Keyword::Input),
+            keyword(Keyword::Input),
             demand(
                 // TODO demand variable expression directly
                 map_default_to_not_found(csv_zero_or_more(expression::expression_node())),
@@ -51,7 +51,7 @@ mod line_input {
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(
             crate::parser::pc::ws::seq2(
-                try_read_keyword(Keyword::Line),
+                keyword(Keyword::Line),
                 demand(
                     super::input::parse_input_args(),
                     QError::syntax_error_fn("Expected: INPUT after LINE"),
@@ -69,7 +69,7 @@ mod name {
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(
             seq4(
-                try_read_keyword(Keyword::Name),
+                keyword(Keyword::Name),
                 expression::demand_back_guarded_expression_node(),
                 demand_keyword(Keyword::As),
                 expression::demand_guarded_expression_node(),
@@ -120,7 +120,7 @@ mod open {
         dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::ExpressionNode, QError>,
     > {
         drop_left(crate::parser::pc::ws::seq2(
-            try_read_keyword(Keyword::Open),
+            keyword(Keyword::Open),
             demand(
                 expression::expression_node(),
                 QError::syntax_error_fn("Expected: filename after OPEN"),
@@ -132,14 +132,13 @@ mod open {
     fn parse_open_mode<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileMode, QError>> {
         drop_left(crate::parser::pc::ws::seq2(
-            crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::For)),
+            crate::parser::pc::ws::one_or_more_leading(keyword(Keyword::For)),
             demand(
-                opt_map(read_any_keyword(), |(k, _)| match k {
-                    Keyword::Append => Some(FileMode::Append),
-                    Keyword::Input => Some(FileMode::Input),
-                    Keyword::Output => Some(FileMode::Output),
-                    _ => None,
-                }),
+                or_vec(vec![
+                    map(keyword(Keyword::Append), |_| FileMode::Append),
+                    map(keyword(Keyword::Input), |_| FileMode::Input),
+                    map(keyword(Keyword::Output), |_| FileMode::Output),
+                ]),
                 QError::syntax_error_fn("Invalid file mode"),
             ),
             QError::syntax_error_fn("Expected: whitespace after FOR"),
@@ -149,12 +148,9 @@ mod open {
     fn parse_open_access<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileAccess, QError>> {
         drop_left(crate::parser::pc::ws::seq2(
-            crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Access)),
+            crate::parser::pc::ws::one_or_more_leading(keyword(Keyword::Access)),
             demand(
-                opt_map(read_any_keyword(), |(k, _)| match k {
-                    Keyword::Read => Some(FileAccess::Read),
-                    _ => None,
-                }),
+                map(keyword(Keyword::Read), |_| FileAccess::Read),
                 QError::syntax_error_fn("Invalid file access"),
             ),
             QError::syntax_error_fn("Expected: whitespace after ACCESS"),
@@ -165,7 +161,7 @@ mod open {
         dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::ExpressionNode, QError>,
     > {
         drop_left(crate::parser::pc::ws::seq2(
-            try_read_keyword(Keyword::As),
+            keyword(Keyword::As),
             demand(
                 expression::expression_node(),
                 QError::syntax_error_fn("Expected: file number"),

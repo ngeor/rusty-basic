@@ -142,7 +142,7 @@ pub fn unary_not<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
         crate::parser::pc::ws::seq2(
-            with_pos(try_read_keyword(Keyword::Not)),
+            with_pos(keyword(Keyword::Not)),
             demand(
                 lazy(expression_node),
                 QError::syntax_error_fn("Expected: expression after NOT"),
@@ -159,7 +159,7 @@ pub fn file_handle<T: BufRead + 'static>(
         seq2(
             try_read('#'),
             demand(
-                read_any_digits(),
+                any_digits(),
                 QError::syntax_error_fn("Expected: digits after #"),
             ),
         ),
@@ -210,11 +210,11 @@ mod number_literal {
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
         and_then(
             opt_seq3(
-                with_pos(read_any_digits()),
+                with_pos(any_digits()),
                 seq2(
                     with_pos(try_read('.')),
                     demand(
-                        read_any_digits(),
+                        any_digits(),
                         QError::syntax_error_fn("Expected: digits after decimal point"),
                     ),
                 ),
@@ -242,7 +242,7 @@ mod number_literal {
             opt_seq3(
                 with_pos(try_read('.')),
                 demand(
-                    read_any_digits(),
+                    any_digits(),
                     QError::syntax_error_fn("Expected: digits after decimal point"),
                 ),
                 try_read('#'),
@@ -346,32 +346,26 @@ pub fn operand<T: BufRead + 'static>(
         if had_parenthesis_before {
             // skip whitespace + AND
             map(
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read_keyword(
-                    Keyword::And,
-                ))),
+                crate::parser::pc::ws::zero_or_more_leading(with_pos(keyword(Keyword::And))),
                 |x| x.map(|_| Operand::And),
             )
         } else {
             // demand whitespace + AND
             map(
-                crate::parser::pc::ws::one_or_more_leading(with_pos(try_read_keyword(
-                    Keyword::And,
-                ))),
+                crate::parser::pc::ws::one_or_more_leading(with_pos(keyword(Keyword::And))),
                 |locatable| locatable.map(|_| Operand::And),
             )
         },
         if had_parenthesis_before {
             // skip whitespace + OR
             map(
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read_keyword(
-                    Keyword::Or,
-                ))),
+                crate::parser::pc::ws::zero_or_more_leading(with_pos(keyword(Keyword::Or))),
                 |x| x.map(|_| Operand::Or),
             )
         } else {
             // demand whitespace + OR
             map(
-                crate::parser::pc::ws::one_or_more_leading(with_pos(try_read_keyword(Keyword::Or))),
+                crate::parser::pc::ws::one_or_more_leading(with_pos(keyword(Keyword::Or))),
                 |locatable| locatable.map(|_| Operand::Or),
             )
         },

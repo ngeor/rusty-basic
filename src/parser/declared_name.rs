@@ -41,7 +41,7 @@ fn type_definition_extended<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeDefinition, QError>> {
     // <ws+> AS <ws+> identifier
     drop_left(crate::parser::pc::ws::seq2(
-        crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::As)),
+        crate::parser::pc::ws::one_or_more_leading(keyword(Keyword::As)),
         demand(
             extended_type(),
             QError::syntax_error_fn("Expected: type after AS"),
@@ -53,7 +53,7 @@ fn type_definition_extended<T: BufRead + 'static>(
 fn extended_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeDefinition, QError>> {
     and_then(
-        with_pos(read_any_identifier()),
+        with_pos(any_identifier()),
         |Locatable { element: x, .. }| match Keyword::from_str(&x) {
             Ok(Keyword::Single) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle)),
             Ok(Keyword::Double) => Ok(TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)),

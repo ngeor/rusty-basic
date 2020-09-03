@@ -22,7 +22,7 @@ pub fn for_loop<T: BufRead + 'static>(
         seq3(
             combine_some(parse_for(), parse_step),
             statements::statements(
-                try_read_keyword(Keyword::Next),
+                keyword(Keyword::Next),
                 QError::syntax_error_fn("Expected: STEP or end-of-statement"),
             ),
             demand(next_counter(), || QError::ForWithoutNext),
@@ -47,7 +47,7 @@ fn parse_for<T: BufRead + 'static>() -> Box<
 > {
     map(
         seq7(
-            try_read_keyword(Keyword::For),
+            keyword(Keyword::For),
             demand(
                 crate::parser::pc::ws::one_or_more(),
                 QError::syntax_error_fn("Expected: whitespace after FOR"),
@@ -62,7 +62,7 @@ fn parse_for<T: BufRead + 'static>() -> Box<
             ),
             expression::demand_back_guarded_expression_node(),
             demand(
-                try_read_keyword(Keyword::To),
+                keyword(Keyword::To),
                 QError::syntax_error_fn("Expected: TO"),
             ),
             expression::demand_guarded_expression_node(),
@@ -78,12 +78,12 @@ fn parse_step<T: BufRead + 'static>(
     let parenthesis = upper.is_parenthesis();
     if parenthesis {
         drop_left(seq2(
-            crate::parser::pc::ws::zero_or_more_leading(try_read_keyword(Keyword::Step)),
+            crate::parser::pc::ws::zero_or_more_leading(keyword(Keyword::Step)),
             expression::demand_guarded_expression_node(),
         ))
     } else {
         drop_left(seq2(
-            crate::parser::pc::ws::one_or_more_leading(try_read_keyword(Keyword::Step)),
+            crate::parser::pc::ws::one_or_more_leading(keyword(Keyword::Step)),
             expression::demand_guarded_expression_node(),
         ))
     }
@@ -93,7 +93,7 @@ fn next_counter<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Option<NameNode>, QError>> {
     map(
         opt_seq2(
-            try_read_keyword(Keyword::Next),
+            keyword(Keyword::Next),
             crate::parser::pc::ws::one_or_more_leading(name::name_node()),
         ),
         |(_, opt_second)| opt_second,

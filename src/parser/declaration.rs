@@ -23,7 +23,7 @@ use std::io::BufRead;
 pub fn declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     drop_left(crate::parser::pc::ws::seq2(
-        try_read_keyword(Keyword::Declare),
+        keyword(Keyword::Declare),
         demand(
             or(function_declaration_token(), sub_declaration_token()),
             QError::syntax_error_fn("Expected: FUNCTION or SUB after DECLARE"),
@@ -44,7 +44,7 @@ pub fn function_declaration<T: BufRead + 'static>(
 {
     map(
         seq5(
-            try_read_keyword(Keyword::Function),
+            keyword(Keyword::Function),
             demand(
                 crate::parser::pc::ws::one_or_more(),
                 QError::syntax_error_fn("Expected: whitespace after FUNCTION"),
@@ -72,7 +72,7 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
 > {
     map(
         seq5(
-            try_read_keyword(Keyword::Sub),
+            keyword(Keyword::Sub),
             demand(
                 crate::parser::pc::ws::one_or_more(),
                 QError::syntax_error_fn("Expected: whitespace after SUB"),

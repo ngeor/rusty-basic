@@ -326,12 +326,7 @@ pub fn operand<T: BufRead + 'static>(
     had_parenthesis_before: bool,
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operand>, QError>> {
     or_vec(vec![
-        crate::parser::pc::ws::zero_or_more_leading(with_pos(lte())),
-        crate::parser::pc::ws::zero_or_more_leading(with_pos(gte())),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('='))),
-            |x| x.map(|_| Operand::Equal),
-        ),
+        crate::parser::pc::ws::zero_or_more_leading(relational_operand()),
         map(
             crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('+'))),
             |x| x.map(|_| Operand::Plus),
@@ -383,26 +378,23 @@ pub fn operand<T: BufRead + 'static>(
     ])
 }
 
-fn lte<T: BufRead + 'static>(
+pub fn lte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
     and_then(
-        opt_seq2(
-            try_read('<'),
-            with_pos(read_if(|ch| ch == '=' || ch == '>')),
-        ),
+        opt_seq2(try_read('<'), read_if(|ch| ch == '=' || ch == '>')),
         |(_, opt_r)| match opt_r {
-            Some(Locatable { element: '=', .. }) => Ok(Operand::LessOrEqual),
-            Some(Locatable { element: '>', .. }) => Ok(Operand::NotEqual),
+            Some('=') => Ok(Operand::LessOrEqual),
+            Some('>') => Ok(Operand::NotEqual),
             None => Ok(Operand::Less),
-            Some(Locatable { element, .. }) => Err(QError::SyntaxError(format!(
+            Some(ch) => Err(QError::SyntaxError(format!(
                 "Invalid character {} after <",
-                element
+                ch
             ))),
         },
     )
 }
 
-fn gte<T: BufRead + 'static>(
+pub fn gte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
     map(
         opt_seq2(try_read('>'), try_read('=')),
@@ -411,6 +403,16 @@ fn gte<T: BufRead + 'static>(
             _ => Operand::Greater,
         },
     )
+}
+
+pub fn eq<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
+    map(try_read('='), |_| Operand::Equal)
+}
+
+pub fn relational_operand<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operand>, QError>> {
+    with_pos(or_vec(vec![lte(), gte(), eq()]))
 }
 
 #[cfg(test)]

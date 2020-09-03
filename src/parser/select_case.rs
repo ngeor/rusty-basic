@@ -96,36 +96,32 @@ fn parse_case_any<T: BufRead + 'static>() -> Box<
     map(
         seq2(
             try_read_keyword(Keyword::Case),
-            or_vec(vec![
-                seq2(
-                    parse_case_else(),
-                    statements::statements(
-                        try_read_keyword(Keyword::End),
-                        QError::syntax_error_fn("Expected: end-of-statement"),
+            demand(
+                or_vec(vec![
+                    seq2(
+                        parse_case_else(),
+                        statements::statements(
+                            try_read_keyword(Keyword::End),
+                            QError::syntax_error_fn("Expected: end-of-statement"),
+                        ),
                     ),
-                ),
-                seq2(
-                    parse_case_is(),
-                    statements::statements(
-                        read_keyword_if(|k| k == Keyword::Case || k == Keyword::End),
-                        QError::syntax_error_fn("Expected: end-of-statement"),
+                    seq2(
+                        parse_case_is(),
+                        statements::statements(
+                            read_keyword_if(|k| k == Keyword::Case || k == Keyword::End),
+                            QError::syntax_error_fn("Expected: end-of-statement"),
+                        ),
                     ),
-                ),
-                seq2(
-                    parse_case_simple_or_range(),
-                    statements::statements(
-                        read_keyword_if(|k| k == Keyword::Case || k == Keyword::End),
-                        QError::syntax_error_fn("Expected: TO or end-of-statement"),
+                    seq2(
+                        parse_case_simple_or_range(),
+                        statements::statements(
+                            read_keyword_if(|k| k == Keyword::Case || k == Keyword::End),
+                            QError::syntax_error_fn("Expected: TO or end-of-statement"),
+                        ),
                     ),
-                ),
-                // TODO make pc for this
-                Box::new(|reader| {
-                    Err((
-                        reader,
-                        QError::syntax_error("Expected: ELSE, IS, expression"),
-                    ))
-                }),
-            ]),
+                ]),
+                QError::syntax_error_fn("Expected: ELSE, IS, expression"),
+            ),
         ),
         |(_, (expr_or_else, s))| match expr_or_else {
             ExprOrElse::Expr(e) => ((Some(e), s), Some(())),
@@ -155,8 +151,7 @@ fn parse_case_is<T: BufRead + 'static>(
             ),
             crate::parser::pc::ws::zero_or_more(),
             demand(
-                // TODO demand only relational operator
-                expression::operand(false),
+                expression::relational_operand(),
                 QError::syntax_error_fn("Expected: operand after IS"),
             ),
             crate::parser::pc::ws::zero_or_more(),

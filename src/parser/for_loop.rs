@@ -4,7 +4,6 @@ use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
-use crate::parser::pc::copy::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -57,7 +56,7 @@ fn parse_for<T: BufRead + 'static>() -> Box<
                 QError::syntax_error_fn("Expected: name after FOR"),
             ),
             demand(
-                crate::parser::pc::ws::zero_or_more_leading(try_read('=')),
+                crate::parser::pc::ws::zero_or_more_leading(read('=')),
                 QError::syntax_error_fn("Expected: = after name"),
             ),
             expression::demand_back_guarded_expression_node(),

@@ -2,7 +2,6 @@ use crate::common::*;
 use crate::parser::char_reader::EolReader;
 use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
-use crate::parser::pc::copy::{peek, try_read};
 use crate::parser::pc::str::{map_to_str, zero_or_more_if_leading_remaining};
 use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace, is_whitespace};
 use crate::parser::pc::*;
@@ -22,7 +21,7 @@ pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>> {
     crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(zero_or_more(opt_seq2(
         with_pos(statement::single_line_non_comment_statement()),
-        crate::parser::pc::ws::zero_or_more_around(try_read(':')),
+        crate::parser::pc::ws::zero_or_more_around(read(':')),
     ))))
 }
 
@@ -30,7 +29,7 @@ pub fn single_line_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>> {
     crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(zero_or_more(opt_seq2(
         with_pos(statement::single_line_statement()),
-        crate::parser::pc::ws::zero_or_more_around(try_read(':')),
+        crate::parser::pc::ws::zero_or_more_around(read(':')),
     ))))
 }
 

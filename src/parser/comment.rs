@@ -1,7 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
-use crate::parser::pc::copy::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::str::zero_or_more_if;
 use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace};
@@ -17,10 +16,9 @@ fn is_not_eol(ch: char) -> bool {
 /// Tries to read a comment.
 pub fn comment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
-        and(try_read('\''), zero_or_more_if(is_not_eol)),
-        |(_, r)| Statement::Comment(r),
-    )
+    map(and(read('\''), zero_or_more_if(is_not_eol)), |(_, r)| {
+        Statement::Comment(r)
+    })
 }
 
 /// Reads multiple comments
@@ -35,7 +33,7 @@ pub fn comments<T: BufRead + 'static>(
         zero_or_more_if(is_eol_or_whitespace),
         zero_or_more(map(
             with_pos(drop_right(and(
-                drop_left(and(try_read('\''), zero_or_more_if(is_not_eol))),
+                drop_left(and(read('\''), zero_or_more_if(is_not_eol))),
                 zero_or_more_if(is_eol_or_whitespace),
             ))),
             |Locatable { element, pos }| (element.at(pos), Some(())),

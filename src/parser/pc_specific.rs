@@ -3,13 +3,12 @@ use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocatio
 use crate::parser::pc::common::{
     and, demand, drop_left, map_default_to_not_found, negate, opt_seq2, seq3, zero_or_more,
 };
-use crate::parser::pc::copy::{read_if, try_read};
 use crate::parser::pc::map::{map, source_and_then_some};
 use crate::parser::pc::str::{
-    one_or_more_if, read_case_insensitive, zero_or_more_if_leading_remaining,
+    one_or_more_if, str_case_insensitive, zero_or_more_if_leading_remaining,
 };
 /// Parser combinators specific to this parser (e.g. for keywords)
-use crate::parser::pc::{Reader, ReaderResult, Undo};
+use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::convert::TryInto;
 use std::str::FromStr;
@@ -163,7 +162,7 @@ where
 {
     map(
         and(
-            read_case_insensitive(needle.as_str()),
+            str_case_insensitive(needle.as_str()),
             negate(read_if(is_non_leading_identifier)),
         ),
         move |(s, _)| (needle, s),
@@ -222,7 +221,7 @@ where
 {
     zero_or_more(opt_seq2(
         source,
-        crate::parser::pc::ws::zero_or_more_around(try_read(',')),
+        crate::parser::pc::ws::zero_or_more_around(read(',')),
     ))
 }
 
@@ -234,10 +233,10 @@ where
 {
     map(
         seq3(
-            try_read('('),
+            read('('),
             source,
             demand(
-                try_read(')'),
+                read(')'),
                 QError::syntax_error_fn("Expected: closing parenthesis"),
             ),
         ),

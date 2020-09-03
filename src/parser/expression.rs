@@ -3,7 +3,6 @@ use crate::parser::char_reader::*;
 use crate::parser::name;
 use crate::parser::pc::combine::combine_some;
 use crate::parser::pc::common::*;
-use crate::parser::pc::copy::*;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -24,11 +23,11 @@ fn guarded_parenthesis_expression_node<T: BufRead + 'static>(
     // ws* ( expr )
     map(
         seq3(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('('))),
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('('))),
             // caveat: once it reads the opening parenthesis, it goes into demand mode,
             // which is not consistent with the name of the function
             demand_expression_node(),
-            demand(try_read(')'), QError::syntax_error_fn("Expected: )")),
+            demand(read(')'), QError::syntax_error_fn("Expected: )")),
         ),
         |(Locatable { pos, .. }, e, _)| Expression::Parenthesis(Box::new(e)).at(pos),
     )
@@ -128,7 +127,7 @@ pub fn unary_minus<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
         seq2(
-            with_pos(try_read('-')),
+            with_pos(read('-')),
             demand(
                 lazy(expression_node),
                 QError::syntax_error_fn("Expected: expression after unary minus"),
@@ -157,7 +156,7 @@ pub fn file_handle<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
     and_then(
         seq2(
-            try_read('#'),
+            read('#'),
             demand(
                 any_digits(),
                 QError::syntax_error_fn("Expected: digits after #"),
@@ -191,12 +190,9 @@ mod string_literal {
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
         map(
             seq3(
-                try_read('"'),
+                read('"'),
                 crate::parser::pc::str::zero_or_more_if(is_not_quote),
-                demand(
-                    try_read('"'),
-                    QError::syntax_error_fn("Unterminated string"),
-                ),
+                demand(read('"'), QError::syntax_error_fn("Unterminated string")),
             ),
             |(_, s, _)| Expression::StringLiteral(s),
         )
@@ -212,13 +208,13 @@ mod number_literal {
             opt_seq3(
                 with_pos(any_digits()),
                 seq2(
-                    with_pos(try_read('.')),
+                    with_pos(read('.')),
                     demand(
                         any_digits(),
                         QError::syntax_error_fn("Expected: digits after decimal point"),
                     ),
                 ),
-                try_read('#'),
+                read('#'),
             ),
             |(
                 Locatable {
@@ -240,12 +236,12 @@ mod number_literal {
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
         and_then(
             opt_seq3(
-                with_pos(try_read('.')),
+                with_pos(read('.')),
                 demand(
                     any_digits(),
                     QError::syntax_error_fn("Expected: digits after decimal point"),
                 ),
-                try_read('#'),
+                read('#'),
             ),
             |(Locatable { pos, .. }, opt_frac_digits, opt_double)| {
                 parse_floating_point_literal(
@@ -328,19 +324,19 @@ pub fn operand<T: BufRead + 'static>(
     or_vec(vec![
         crate::parser::pc::ws::zero_or_more_leading(relational_operand()),
         map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('+'))),
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('+'))),
             |x| x.map(|_| Operand::Plus),
         ),
         map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('-'))),
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('-'))),
             |x| x.map(|_| Operand::Minus),
         ),
         map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('*'))),
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('*'))),
             |x| x.map(|_| Operand::Multiply),
         ),
         map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(try_read('/'))),
+            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('/'))),
             |x| x.map(|_| Operand::Divide),
         ),
         if had_parenthesis_before {
@@ -375,7 +371,7 @@ pub fn operand<T: BufRead + 'static>(
 pub fn lte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
     and_then(
-        opt_seq2(try_read('<'), read_if(|ch| ch == '=' || ch == '>')),
+        opt_seq2(read('<'), read_if(|ch| ch == '=' || ch == '>')),
         |(_, opt_r)| match opt_r {
             Some('=') => Ok(Operand::LessOrEqual),
             Some('>') => Ok(Operand::NotEqual),
@@ -390,18 +386,15 @@ pub fn lte<T: BufRead + 'static>(
 
 pub fn gte<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
-    map(
-        opt_seq2(try_read('>'), try_read('=')),
-        |(_, opt_r)| match opt_r {
-            Some(_) => Operand::GreaterOrEqual,
-            _ => Operand::Greater,
-        },
-    )
+    map(opt_seq2(read('>'), read('=')), |(_, opt_r)| match opt_r {
+        Some(_) => Operand::GreaterOrEqual,
+        _ => Operand::Greater,
+    })
 }
 
 pub fn eq<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
-    map(try_read('='), |_| Operand::Equal)
+    map(read('='), |_| Operand::Equal)
 }
 
 pub fn relational_operand<T: BufRead + 'static>(

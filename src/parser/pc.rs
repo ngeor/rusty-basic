@@ -46,6 +46,54 @@ pub mod undo {
 }
 
 // ========================================================
+// when Item : Copy
+// ========================================================
+
+/// Returns a function that filters the given source with the given predicate.
+/// If the predicate returns `true`, the value of the source is returned as-is.
+/// Otherwise, a Not Found error will be returned.
+pub fn filter<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
+where
+    R: Reader<Err = E> + Undo<T> + 'static,
+    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
+    T: Copy,
+    F: Fn(T) -> bool + 'static,
+{
+    map::source_and_then_some(source, move |reader, ch| {
+        if predicate(ch) {
+            Ok((reader, Some(ch)))
+        } else {
+            Ok((reader.undo(ch), None))
+        }
+    })
+}
+
+pub fn read_if<R, T, F>(predicate: F) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>
+where
+    R: Reader<Item = T> + Undo<T> + 'static,
+    T: Copy,
+    F: Fn(T) -> bool + 'static,
+{
+    filter(R::read, predicate)
+}
+
+pub fn read<R, T>(needle: T) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>
+where
+    R: Reader<Item = T> + Undo<T> + 'static,
+    T: Copy + PartialEq + 'static,
+{
+    read_if(move |ch| ch == needle)
+}
+
+pub fn peek<R, T>(needle: T) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>
+where
+    R: Reader<Item = T> + Undo<T> + 'static,
+    T: Copy + PartialEq + 'static,
+{
+    map::source_and_then_some(read(needle), |reader: R, c| Ok((reader.undo(c), Some(c))))
+}
+
+// ========================================================
 // Parsers that apply a function to a source
 // ========================================================
 
@@ -542,61 +590,6 @@ pub mod common {
 }
 
 // ========================================================
-// when Item : Copy
-// ========================================================
-
-pub mod copy {
-    use super::map::source_and_then_some;
-    use super::*;
-
-    /// Returns a function that filters the given source with the given predicate.
-    /// If the predicate returns `true`, the value of the source is returned as-is.
-    /// Otherwise, a Not Found error will be returned.
-    pub fn filter<R, S, T, E, F>(source: S, predicate: F) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
-    where
-        R: Reader<Err = E> + Undo<T> + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        T: Copy,
-        F: Fn(T) -> bool + 'static,
-    {
-        source_and_then_some(source, move |reader, ch| {
-            if predicate(ch) {
-                Ok((reader, Some(ch)))
-            } else {
-                Ok((reader.undo(ch), None))
-            }
-        })
-    }
-
-    pub fn read_if<R, T, F>(predicate: F) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>
-    where
-        R: Reader<Item = T> + Undo<T> + 'static,
-        T: Copy,
-        F: Fn(T) -> bool + 'static,
-    {
-        filter(R::read, predicate)
-    }
-
-    pub fn try_read<R, T>(needle: T) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>
-    where
-        R: Reader<Item = T> + Undo<T> + 'static,
-        T: Copy + PartialEq + 'static,
-    {
-        read_if(move |ch| ch == needle)
-    }
-
-    pub fn peek<R, T>(needle: T) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>
-    where
-        R: Reader<Item = T> + Undo<T> + 'static,
-        T: Copy + PartialEq + 'static,
-    {
-        source_and_then_some(try_read(needle), |reader: R, c| {
-            Ok((reader.undo(c), Some(c)))
-        })
-    }
-}
-
-// ========================================================
 // dealing with characters and strings
 // ========================================================
 
@@ -713,7 +706,7 @@ pub mod str {
         map(source, |x| x.to_string())
     }
 
-    pub fn read_case_insensitive<R>(
+    pub fn str_case_insensitive<R>(
         needle: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, String, R::Err>>
     where

@@ -1,7 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::EolReader;
 use crate::parser::pc::common::{and, demand, map_default_to_not_found, or, or_vec, seq2, seq3};
-use crate::parser::pc::copy::try_read;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{any_letter, csv_zero_or_more, keyword};
@@ -67,7 +66,7 @@ fn two_letter_range<T: BufRead + 'static>(
         and(
             any_letter(),
             seq2(
-                try_read('-'),
+                read('-'),
                 demand(
                     any_letter(),
                     QError::syntax_error_fn("Expected: letter after dash"),

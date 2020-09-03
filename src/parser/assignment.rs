@@ -3,10 +3,9 @@ use crate::parser::char_reader::EolReader;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::common::{and, drop_right, seq2};
-use crate::parser::pc::copy::try_read;
 use crate::parser::pc::map::map;
 use crate::parser::pc::ws::zero_or_more_around;
-use crate::parser::pc::ReaderResult;
+use crate::parser::pc::{read, ReaderResult};
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -30,7 +29,7 @@ pub fn assignment_tuple<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Name, ExpressionNode), QError>> {
     // not using seq3 in case it's not an assignment but a sub call
     seq2(
-        drop_right(and(name::name(), zero_or_more_around(try_read('=')))),
+        drop_right(and(name::name(), zero_or_more_around(read('=')))),
         expression::demand_expression_node(),
     )
 }

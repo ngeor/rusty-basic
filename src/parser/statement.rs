@@ -9,7 +9,6 @@ use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::pc::common::*;
-use crate::parser::pc::copy::*;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -77,7 +76,7 @@ pub fn single_line_statement<T: BufRead + 'static>(
 
 pub fn statement_label<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(and(name::bare_name(), try_read(':')), |(l, _)| {
+    map(and(name::bare_name(), read(':')), |(l, _)| {
         Statement::Label(l)
     })
 }

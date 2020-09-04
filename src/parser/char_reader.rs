@@ -18,6 +18,59 @@ struct CharReader<T: BufRead> {
     read_eof: bool,
 }
 
+impl<T: BufRead> CharReader<T> {
+    fn new(reader: T) -> Self {
+        Self {
+            reader,
+            buffer: VecDeque::new(),
+            read_eof: false,
+        }
+    }
+
+    fn ok_some(
+        reader: T,
+        buffer: VecDeque<char>,
+        read_eof: bool,
+        ch: char,
+    ) -> ReaderResult<Self, char, QError> {
+        Ok((
+            Self {
+                reader,
+                buffer,
+                read_eof,
+            },
+            Some(ch),
+        ))
+    }
+
+    fn ok_none(reader: T, buffer: VecDeque<char>) -> ReaderResult<Self, char, QError> {
+        Ok((
+            Self {
+                reader,
+                buffer,
+                read_eof: true,
+            },
+            None,
+        ))
+    }
+
+    fn err(
+        reader: T,
+        buffer: VecDeque<char>,
+        read_eof: bool,
+        err: std::io::Error,
+    ) -> ReaderResult<Self, char, QError> {
+        Err((
+            Self {
+                reader,
+                buffer,
+                read_eof,
+            },
+            err.into(),
+        ))
+    }
+}
+
 impl<T: BufRead> Reader for CharReader<T> {
     type Item = char;
     type Err = QError;
@@ -26,20 +79,14 @@ impl<T: BufRead> Reader for CharReader<T> {
         let Self {
             mut reader,
             mut buffer,
-            mut read_eof,
+            read_eof,
         } = self;
         if buffer.is_empty() {
             if read_eof {
-                Ok((
-                    // TODO throw IO error EOF here?
-                    Self {
-                        reader,
-                        buffer,
-                        read_eof,
-                    },
-                    None,
-                ))
+                // empty buffer and already seen EOF
+                Self::ok_none(reader, buffer)
             } else {
+                // fill buffer with data from reader
                 let mut line = String::new();
                 match reader.read_line(&mut line) {
                     Ok(bytes_read) => {
@@ -48,46 +95,18 @@ impl<T: BufRead> Reader for CharReader<T> {
                                 buffer.push_back(c);
                             }
                             let ch = buffer.pop_front().unwrap();
-                            Ok((
-                                Self {
-                                    reader,
-                                    buffer,
-                                    read_eof,
-                                },
-                                Some(ch),
-                            ))
+                            Self::ok_some(reader, buffer, read_eof, ch)
                         } else {
-                            read_eof = true;
-                            Ok((
-                                Self {
-                                    reader,
-                                    buffer,
-                                    read_eof,
-                                },
-                                None,
-                            ))
+                            Self::ok_none(reader, buffer)
                         }
                     }
-                    Err(err) => Err((
-                        Self {
-                            reader,
-                            buffer,
-                            read_eof,
-                        },
-                        err.into(),
-                    )),
+                    Err(err) => Self::err(reader, buffer, read_eof, err),
                 }
             }
         } else {
+            // return existing data from the buffer
             let ch = buffer.pop_front().unwrap();
-            Ok((
-                Self {
-                    reader,
-                    buffer,
-                    read_eof,
-                },
-                Some(ch),
-            ))
+            Self::ok_some(reader, buffer, read_eof, ch)
         }
     }
 
@@ -102,16 +121,6 @@ impl<T: BufRead> Reader for CharReader<T> {
             reader,
             buffer,
             read_eof,
-        }
-    }
-}
-
-impl<T: BufRead> CharReader<T> {
-    fn new(reader: T) -> Self {
-        Self {
-            reader,
-            buffer: VecDeque::new(),
-            read_eof: false,
         }
     }
 }

@@ -8,16 +8,14 @@ use std::fs::File;
 pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
     let reader = EolReader::from(f);
     let (_, result) = with_err_at(top_level_token::top_level_tokens())(reader)?;
-    // TODO verify reader does not have any more characters left, i.e. it was fully parsed
-    Ok(result.unwrap())
+    Ok(result.unwrap_or_default())
 }
 
 #[cfg(test)]
 pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
     let reader = EolReader::from(s);
     let (_, result) = with_err_at(top_level_token::top_level_tokens())(reader)?;
-    // TODO verify reader does not have any more characters left, i.e. it was fully parsed
-    Ok(result.unwrap())
+    Ok(result.unwrap_or_default())
 }
 
 #[cfg(test)]

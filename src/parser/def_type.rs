@@ -92,10 +92,10 @@ mod tests {
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {
         ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
-            match parse($input).demand_single().as_ref() {
-                TopLevelToken::DefType(x) => {
-                    assert_eq!(x.qualifier(), $expected_qualifier);
-                    assert_eq!(x.ranges(), &$expected_ranges);
+            match parse($input).demand_single().strip_location() {
+                TopLevelToken::DefType(def_type) => {
+                    assert_eq!(def_type.qualifier(), $expected_qualifier);
+                    assert_eq!(def_type.ranges(), &$expected_ranges);
                 }
                 _ => panic!(format!("{:?}", $input)),
             }

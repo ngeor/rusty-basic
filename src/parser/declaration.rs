@@ -106,13 +106,22 @@ mod tests {
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
-            match parse($input).demand_single().as_ref() {
+            match parse($input).demand_single().strip_location() {
                 TopLevelToken::FunctionDeclaration(name, parameters) => {
                     assert_eq!(name, $expected_function_name, "Function name mismatch");
-                    let x = $expected_params;
-                    assert_eq!(parameters.len(), x.len(), "Parameter count mismatch");
-                    for i in 0..x.len() {
-                        assert_eq!(parameters[i].as_ref(), &x[i], "Parameter {}", i);
+                    assert_eq!(
+                        parameters.len(),
+                        $expected_params.len(),
+                        "Parameter count mismatch"
+                    );
+                    let parameters_without_location: Vec<DeclaredName> =
+                        parameters.into_iter().map(|x| x.strip_location()).collect();
+                    for i in 0..parameters_without_location.len() {
+                        assert_eq!(
+                            parameters_without_location[i], $expected_params[i],
+                            "Parameter {}",
+                            i
+                        );
                     }
                 }
                 _ => panic!(format!("{:?}", $input)),
@@ -124,7 +133,7 @@ mod tests {
     fn test_fn() {
         assert_function_declaration!(
             "DECLARE FUNCTION Fib! (N!)",
-            &Name::from("Fib!"),
+            Name::from("Fib!"),
             vec![DeclaredName::compact("N", TypeQualifier::BangSingle)]
         );
     }
@@ -133,7 +142,7 @@ mod tests {
     fn test_lower_case() {
         assert_function_declaration!(
             "declare function echo$(msg$)",
-            &Name::from("echo$"),
+            Name::from("echo$"),
             vec![DeclaredName::compact("msg", TypeQualifier::DollarString)]
         );
     }

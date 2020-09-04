@@ -101,6 +101,33 @@ mod input {
                 .collect()
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_linter_err;
+
+        #[test]
+        fn test_parenthesis_variable_required() {
+            let input = "INPUT (A$)";
+            assert_linter_err!(input, QError::VariableRequired);
+        }
+
+        #[test]
+        fn test_binary_expression_variable_required() {
+            let input = "INPUT A$ + B$";
+            assert_linter_err!(input, QError::VariableRequired);
+        }
+
+        #[test]
+        fn test_const() {
+            let input = r#"
+            CONST A$ = "hello"
+            INPUT A$
+            "#;
+            assert_linter_err!(input, QError::VariableRequired);
+        }
+    }
 }
 
 mod kill {

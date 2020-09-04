@@ -19,14 +19,25 @@ where
 
 #[macro_export]
 macro_rules! assert_linter_err {
-    ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
-        let err = crate::linter::test_utils::linter_err($program);
-        let actual_msg: crate::common::QError = err.as_ref().clone();
-        assert_eq!(actual_msg, $expected_msg);
-        let actual_pos = err.pos().expect("Should have an error location");
-        assert_eq!(
-            actual_pos,
-            crate::common::Location::new($expected_row, $expected_col)
-        );
+    ($program:expr, $expected_err:expr) => {
+        match crate::linter::test_utils::linter_err($program) {
+            crate::common::QErrorNode::Pos(actual_err, _) => {
+                assert_eq!(actual_err, $expected_err);
+            }
+            _ => panic!("Should have an error location"),
+        }
+    };
+
+    ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
+        match crate::linter::test_utils::linter_err($program) {
+            crate::common::QErrorNode::Pos(actual_err, actual_pos) => {
+                assert_eq!(actual_err, $expected_err);
+                assert_eq!(
+                    actual_pos,
+                    crate::common::Location::new($expected_row, $expected_col)
+                );
+            }
+            _ => panic!("Should have an error location"),
+        }
     };
 }

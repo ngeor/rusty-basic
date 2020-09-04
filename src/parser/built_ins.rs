@@ -36,12 +36,60 @@ mod input {
         drop_left(crate::parser::pc::ws::seq2(
             keyword(Keyword::Input),
             demand(
-                // TODO demand variable expression directly
                 map_default_to_not_found(csv_zero_or_more(expression::expression_node())),
                 QError::syntax_error_fn("Expected: at least one variable"),
             ),
             QError::syntax_error_fn("Expected: whitespace after INPUT"),
         ))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_sub_call;
+        use crate::parser::parse_main_str;
+        use crate::parser::test_utils::*;
+
+        #[test]
+        fn test_parse_one_variable() {
+            let input = "INPUT A$";
+            let result = parse_main_str(input)
+                .expect("Should have parsed program")
+                .demand_single_statement();
+            assert_sub_call!(result, "INPUT", Expression::VariableName("A$".into()));
+        }
+
+        #[test]
+        fn test_parse_two_variables() {
+            let input = "INPUT A$, B";
+            let result = parse_main_str(input)
+                .expect("Should have parsed program")
+                .demand_single_statement();
+            assert_sub_call!(
+                result,
+                "INPUT",
+                Expression::VariableName("A$".into()),
+                Expression::VariableName("B".into())
+            );
+        }
+
+        #[test]
+        fn test_no_whitespace_after_input() {
+            let input = "INPUT";
+            assert_eq!(
+                parse_err(input),
+                QError::syntax_error("Expected: whitespace after INPUT")
+            );
+        }
+
+        #[test]
+        fn test_no_variable() {
+            let input = "INPUT ";
+            assert_eq!(
+                parse_err(input),
+                QError::syntax_error("Expected: at least one variable")
+            );
+        }
     }
 }
 

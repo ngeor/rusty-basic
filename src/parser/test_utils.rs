@@ -22,22 +22,22 @@ pub fn parse_err<T: AsRef<[u8]> + 'static>(input: T) -> QError {
     parse_main_str(input).unwrap_err().into_err()
 }
 
-pub trait ProgramNodeHelper {
-    /// Parses the given input and asserts that it is parsed successfully and that
-    /// it contains a single top level token node.
-    ///
-    /// Return the single top level token node of the parsed program.
-    fn demand_single(self) -> TopLevelTokenNode;
-
-    fn demand_single_statement(self) -> Statement;
+pub trait DemandSingle<T> {
+    fn demand_single(self) -> T;
 }
 
-impl ProgramNodeHelper for ProgramNode {
-    fn demand_single(mut self) -> TopLevelTokenNode {
+impl<T> DemandSingle<T> for Vec<T> {
+    fn demand_single(mut self) -> T {
         assert_eq!(1, self.len());
         self.pop().unwrap()
     }
+}
 
+pub trait DemandSingleStatement {
+    fn demand_single_statement(self) -> Statement;
+}
+
+impl DemandSingleStatement for ProgramNode {
     fn demand_single_statement(self) -> Statement {
         let t = self.demand_single();
         match t {
@@ -118,4 +118,61 @@ impl ExpressionNodeVariableFactory for str {
     fn as_var_expr(&self, row: u32, col: u32) -> ExpressionNode {
         Expression::VariableName(Name::from(self)).at_rc(row, col)
     }
+}
+
+// ========================================================
+// macros
+// ========================================================
+
+#[macro_export]
+macro_rules! assert_sub_call {
+    ($actual_statement: expr, $expected_name: expr) => {
+        match $actual_statement {
+            Statement::SubCall(actual_bare_name, actual_args) => {
+                let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
+                assert_eq!(actual_bare_name, expected_bare_name);
+                assert_eq!(actual_args.is_empty(), true);
+            }
+            _ => panic!("Expected sub call")
+        }
+    };
+
+    ($actual_statement: expr, $expected_name: expr, $($arg: expr),+) => {
+        match $actual_statement {
+            Statement::SubCall(actual_bare_name, actual_args) => {
+                let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
+                assert_eq!(actual_bare_name, expected_bare_name);
+                let actual_args_no_loc: Vec<crate::parser::types::Expression> = actual_args.into_iter().map(|x| x.strip_location()).collect();
+                assert_eq!(actual_args_no_loc, vec![$($arg),+]);
+            }
+            _ => panic!("Expected sub call")
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! assert_expression {
+    ($left:expr, $right:expr) => {
+        let program = parse(format!("PRINT {}", $left)).demand_single_statement();
+        crate::assert_sub_call!(program, "PRINT", $right);
+    };
+}
+
+#[macro_export]
+macro_rules! assert_literal_expression {
+    ($left:expr, $right:expr) => {
+        crate::assert_expression!($left, crate::parser::types::Expression::from($right));
+    };
+}
+
+#[macro_export]
+macro_rules! assert_variable_expression {
+    ($left:expr, $right:expr) => {
+        crate::assert_expression!(
+            $left,
+            crate::parser::types::Expression::VariableName(crate::parser::types::Name::from(
+                $right
+            ))
+        );
+    };
 }

@@ -74,6 +74,7 @@ fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
         DeclaredName, Expression, Name, Operand, Statement, TopLevelToken, TypeQualifier,
@@ -83,7 +84,7 @@ mod tests {
     fn test_parse_sub_call_no_args() {
         let input = "PRINT";
         let program = parse(input).demand_single_statement();
-        assert_eq!(program, Statement::SubCall("PRINT".into(), vec![]));
+        assert_sub_call!(program, "PRINT");
     }
 
     #[test]
@@ -254,14 +255,8 @@ mod tests {
     #[test]
     fn test_close_file_handle() {
         let input = "CLOSE #1";
-        let program = parse(input).strip_location();
-        assert_eq!(
-            program,
-            vec![TopLevelToken::Statement(Statement::SubCall(
-                "CLOSE".into(),
-                vec![Expression::FileHandle(1.into()).at_rc(1, 7)]
-            ))]
-        );
+        let program = parse(input).demand_single_statement();
+        assert_sub_call!(program, "CLOSE", Expression::FileHandle(1.into()));
     }
 
     #[test]

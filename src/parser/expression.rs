@@ -407,35 +407,7 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{Expression, Name, Operand, Statement, UnaryOperand};
-
-    macro_rules! assert_expression {
-        ($left:expr, $right:expr) => {
-            let program = parse(format!("PRINT {}", $left)).demand_single_statement();
-            match program {
-                Statement::SubCall(_, args) => {
-                    assert_eq!(1, args.len());
-                    let first_arg_node = &args[0];
-                    let Locatable {
-                        element: first_arg, ..
-                    } = first_arg_node;
-                    assert_eq!(first_arg, &$right);
-                }
-                _ => panic!("Expected: sub-call"),
-            }
-        };
-    }
-
-    macro_rules! assert_literal_expression {
-        ($left:expr, $right:expr) => {
-            assert_expression!($left, Expression::from($right));
-        };
-    }
-
-    macro_rules! assert_variable_expression {
-        ($left:expr, $right:expr) => {
-            assert_expression!($left, Expression::VariableName(Name::from($right)));
-        };
-    }
+    use crate::{assert_expression, assert_literal_expression, assert_variable_expression};
 
     #[test]
     fn test_parse_literals() {

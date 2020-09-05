@@ -34,7 +34,7 @@ pub fn constant<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Statement, TopLevelToken};
+    use crate::parser::{Expression, Statement, TopLevelToken};
 
     #[test]
     fn parse_const() {
@@ -56,6 +56,28 @@ mod tests {
                 ))
             ]
         );
+    }
+
+    #[test]
+    fn parse_numeric_const_dots_in_names() {
+        let names = ["A", "AB%", "A.B", "A.B.", "A.%"];
+        let values = [-1, 0, 1, 42];
+        for name in &names {
+            for value in &values {
+                let input = format!("CONST {} = {}", name, value);
+                let statement = parse(input).demand_single_statement();
+                match statement {
+                    Statement::Const(
+                        Locatable { element: left, .. },
+                        Locatable { element: right, .. },
+                    ) => {
+                        assert_eq!(left, name.into());
+                        assert_eq!(right, Expression::IntegerLiteral(*value));
+                    }
+                    _ => panic!("Expected constant"),
+                }
+            }
+        }
     }
 
     #[test]

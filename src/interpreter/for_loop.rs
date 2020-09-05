@@ -6,33 +6,19 @@ mod tests {
     use crate::common::*;
 
     #[test]
-    fn test_simple_for_loop_untyped() {
-        let input = "
-        FOR I = 1 TO 5
-            PRINT I
-        NEXT
-        ";
-        assert_prints!(input, "1", "2", "3", "4", "5");
-    }
-
-    #[test]
-    fn test_simple_for_loop_typed() {
-        let input = "
-        FOR i% = 1 TO 5
-            PRINT i%
-        NEXT
-        ";
-        assert_prints!(input, "1", "2", "3", "4", "5");
-    }
-
-    #[test]
-    fn test_simple_for_loop_lowercase() {
-        let input = "
-        FOR i% = 1 TO 5
-            PRINT I%
-        NEXT
-        ";
-        assert_prints!(input, "1", "2", "3", "4", "5");
+    fn test_simple_for_loop() {
+        let names = ["I", "ABC", "A.B.", "I%", "a", "a%", "step2"];
+        for name in &names {
+            let input = format!(
+                "
+                FOR {} = 1 TO 5
+                    PRINT {}
+                NEXT
+                ",
+                name, name
+            );
+            assert_prints!(input, "1", "2", "3", "4", "5");
+        }
     }
 
     #[test]

@@ -32,14 +32,14 @@ mod tests {
     use crate::parser::types::*;
 
     macro_rules! assert_parse_dim_extended_built_in {
-        ($keyword: literal, $qualifier: ident) => {
-            let input = format!("DIM X AS {}", $keyword);
+        ($name: literal, $keyword: literal, $qualifier: ident) => {
+            let input = format!("DIM {} AS {}", $name, $keyword);
             let p = parse(input);
             assert_eq!(
                 p,
                 vec![TopLevelToken::Statement(Statement::Dim(
                     DeclaredName::new(
-                        "X".into(),
+                        $name.into(),
                         TypeDefinition::ExtendedBuiltIn(TypeQualifier::$qualifier)
                     )
                     .at_rc(1, 5)
@@ -50,28 +50,14 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_dim_extended_single() {
-        assert_parse_dim_extended_built_in!("SINGLE", BangSingle);
-    }
-
-    #[test]
-    fn test_parse_dim_extended_double() {
-        assert_parse_dim_extended_built_in!("DOUBLE", HashDouble);
-    }
-
-    #[test]
-    fn test_parse_dim_extended_string() {
-        assert_parse_dim_extended_built_in!("STRING", DollarString);
-    }
-
-    #[test]
-    fn test_parse_dim_extended_integer() {
-        assert_parse_dim_extended_built_in!("INTEGER", PercentInteger);
-    }
-
-    #[test]
-    fn test_parse_dim_extended_long() {
-        assert_parse_dim_extended_built_in!("LONG", AmpersandLong);
+    fn test_parse_dim_extended_built_in() {
+        assert_parse_dim_extended_built_in!("A", "SINGLE", BangSingle);
+        assert_parse_dim_extended_built_in!("A.", "SINGLE", BangSingle);
+        assert_parse_dim_extended_built_in!("A.B", "SINGLE", BangSingle);
+        assert_parse_dim_extended_built_in!("AB", "DOUBLE", HashDouble);
+        assert_parse_dim_extended_built_in!("S", "STRING", DollarString);
+        assert_parse_dim_extended_built_in!("I", "INTEGER", PercentInteger);
+        assert_parse_dim_extended_built_in!("L1", "LONG", AmpersandLong);
     }
 
     #[test]
@@ -95,13 +81,25 @@ mod tests {
     }
 
     macro_rules! assert_parse_dim_compact {
-        ($keyword: literal, $qualifier: ident) => {
-            let input = format!("DIM X{}", $keyword);
+        ($name: literal) => {
+            let input = format!("DIM {}", $name);
             let p = parse(input);
             assert_eq!(
                 p,
                 vec![TopLevelToken::Statement(Statement::Dim(
-                    DeclaredName::compact("X", TypeQualifier::$qualifier).at_rc(1, 5)
+                    DeclaredName::bare($name).at_rc(1, 5)
+                ))
+                .at_rc(1, 1)]
+            );
+        };
+
+        ($name: literal, $keyword: literal, $qualifier: ident) => {
+            let input = format!("DIM {}{}", $name, $keyword);
+            let p = parse(input);
+            assert_eq!(
+                p,
+                vec![TopLevelToken::Statement(Statement::Dim(
+                    DeclaredName::compact($name, TypeQualifier::$qualifier).at_rc(1, 5)
                 ))
                 .at_rc(1, 1)]
             );
@@ -109,39 +107,16 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_dim_compact_single() {
-        assert_parse_dim_compact!("!", BangSingle);
-    }
-
-    #[test]
-    fn test_parse_dim_compact_double() {
-        assert_parse_dim_compact!("#", HashDouble);
-    }
-
-    #[test]
-    fn test_parse_dim_compact_string() {
-        assert_parse_dim_compact!("$", DollarString);
-    }
-
-    #[test]
-    fn test_parse_dim_compact_integer() {
-        assert_parse_dim_compact!("%", PercentInteger);
-    }
-
-    #[test]
-    fn test_parse_dim_compact_long() {
-        assert_parse_dim_compact!("&", AmpersandLong);
-    }
-
-    #[test]
-    fn test_parse_dim_compact_bare() {
-        let p = parse("DIM X");
-        assert_eq!(
-            p,
-            vec![
-                TopLevelToken::Statement(Statement::Dim(DeclaredName::bare("X").at_rc(1, 5)))
-                    .at_rc(1, 1)
-            ]
-        );
+    fn test_parse_dim_compact() {
+        assert_parse_dim_compact!("A");
+        assert_parse_dim_compact!("A.");
+        assert_parse_dim_compact!("A.B");
+        assert_parse_dim_compact!("A", "!", BangSingle);
+        assert_parse_dim_compact!("A.", "!", BangSingle);
+        assert_parse_dim_compact!("A.B", "!", BangSingle);
+        assert_parse_dim_compact!("BC", "#", HashDouble);
+        assert_parse_dim_compact!("X", "$", DollarString);
+        assert_parse_dim_compact!("Z", "%", PercentInteger);
+        assert_parse_dim_compact!("L1", "&", AmpersandLong);
     }
 }

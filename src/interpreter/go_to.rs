@@ -39,4 +39,15 @@ mod tests {
         "#;
         assert_prints!(input, "0", "1");
     }
+
+    #[test]
+    fn go_to_label_with_dots_in_name() {
+        let input = r#"
+        GOTO A.B.C.
+        PRINT "Hi"
+        A.B.C.:
+        PRINT "Bye"
+        "#;
+        assert_prints!(input, "Bye");
+    }
 }

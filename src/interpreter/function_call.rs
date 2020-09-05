@@ -120,8 +120,7 @@ mod tests {
             Hello = X + 1
         END FUNCTION
         "#;
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["1", "4"]);
+        assert_prints!(program, "1", "4");
     }
 
     #[test]
@@ -137,8 +136,7 @@ mod tests {
             Hello = X + 1
         END FUNCTION
         "#;
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["2", "3"]);
+        assert_prints!(program, "2", "3");
     }
 
     #[test]
@@ -153,8 +151,7 @@ mod tests {
             Hello = X + 1
         END FUNCTION
         "#;
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["3"]);
+        assert_prints!(program, "3");
     }
 
     #[test]
@@ -172,7 +169,18 @@ mod tests {
             END IF
         END FUNCTION
         "#;
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.output, vec!["6"]);
+        assert_prints!(program, "6");
+    }
+
+    #[test]
+    fn test_dot_in_function_name() {
+        let program = r#"
+        DECLARE FUNCTION Upper.Case$
+        PRINT Upper.Case
+        FUNCTION Upper.Case$
+            Upper.Case = "ABC"
+        END FUNCTION
+        "#;
+        assert_prints!(program, "ABC");
     }
 }

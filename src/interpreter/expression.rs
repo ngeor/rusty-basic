@@ -507,4 +507,27 @@ mod tests {
             assert_prints!("PRINT 2 - 12 / 4", "-1");
         }
     }
+
+    #[test]
+    fn test_dot_in_expression_variable_name() {
+        let program = r#"
+        my.msg$ = "hello"
+        IF LEN(my.msg$) > 0 THEN
+            PRINT my.msg$
+        ELSE
+            PRINT "bye"
+        END IF
+        "#;
+        assert_prints!(program, "hello");
+
+        let program = r#"
+        my.msg$ = ""
+        IF LEN(my.msg$) > 0 THEN
+            PRINT my.msg$
+        ELSE
+            PRINT "bye"
+        END IF
+        "#;
+        assert_prints!(program, "bye");
+    }
 }

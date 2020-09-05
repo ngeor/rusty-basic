@@ -5,69 +5,6 @@ mod tests {
     use crate::interpreter::test_utils::*;
     use crate::interpreter::Stdlib;
 
-    mod input {
-        mod unqualified_var {
-            use crate::interpreter::test_utils::*;
-
-            #[test]
-            fn test_input_empty() {
-                assert_input("", "N", "N!", 0.0_f32);
-            }
-
-            #[test]
-            fn test_input_zero() {
-                assert_input("0", "N", "N!", 0.0_f32);
-            }
-
-            #[test]
-            fn test_input_single() {
-                assert_input("1.1", "N", "N!", 1.1_f32);
-            }
-
-            #[test]
-            fn test_input_negative() {
-                assert_input("-1.2345", "N", "N!", -1.2345_f32);
-            }
-
-            #[test]
-            fn test_input_explicit_positive() {
-                assert_input("+3.14", "N", "N!", 3.14_f32);
-            }
-        }
-
-        mod string_var {
-            use crate::interpreter::test_utils::*;
-
-            #[test]
-            fn test_input_hello() {
-                assert_input("hello", "A$", "A$", "hello");
-            }
-
-            #[test]
-            fn test_input_does_not_trim_new_line() {
-                assert_input("hello\r\n", "A$", "A$", "hello\r\n");
-            }
-        }
-
-        mod int_var {
-            use crate::interpreter::test_utils::*;
-
-            #[test]
-            fn test_input_42() {
-                assert_input("42", "A%", "A%", 42);
-            }
-        }
-    }
-
-    #[test]
-    fn test_sub_call_environ() {
-        let program = r#"
-        ENVIRON "FOO=BAR"
-        "#;
-        let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
-    }
-
     #[test]
     fn test_interpret_sub_call_user_defined_no_args() {
         let program = r#"
@@ -258,5 +195,31 @@ mod tests {
         END SUB
         ";
         assert_prints!(program, "1");
+    }
+
+    #[test]
+    fn test_dot_in_sub_declaration_name() {
+        let program = r#"
+        DECLARE SUB Hello.World
+
+        Hello.World
+
+        SUB Hello.World
+            PRINT "Hello, world!"
+        END SUB
+        "#;
+        assert_prints!(program, "Hello, world!");
+    }
+
+    #[test]
+    fn test_dot_in_sub_param_name() {
+        let program = r#"
+        Hello.World "Hello there"
+
+        SUB Hello.World (greet.msg$)
+            PRINT greet.msg$
+        END SUB
+        "#;
+        assert_prints!(program, "Hello there");
     }
 }

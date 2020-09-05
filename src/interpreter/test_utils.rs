@@ -148,21 +148,6 @@ macro_rules! assert_has_variable {
     };
 }
 
-pub fn assert_input<T>(
-    raw_input: &str,
-    variable_literal: &str,
-    qualified_variable: &str,
-    expected_value: T,
-) where
-    Variant: From<T>,
-{
-    let mut stdlib = MockStdlib::new();
-    stdlib.add_next_input(raw_input);
-    let input = format!("INPUT {}", variable_literal);
-    let interpreter = interpret_with_stdlib(input, stdlib);
-    assert_has_variable!(interpreter, qualified_variable, expected_value);
-}
-
 #[macro_export]
 macro_rules! assert_err {
     ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {

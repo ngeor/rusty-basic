@@ -151,6 +151,21 @@ mod environ_sub {
             _ => panic!("Type mismatch"),
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::interpreter::stdlib::Stdlib;
+        use crate::interpreter::test_utils::interpret;
+
+        #[test]
+        fn test_sub_call_environ() {
+            let program = r#"
+            ENVIRON "FOO=BAR"
+            "#;
+            let interpreter = interpret(program);
+            assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
+        }
+    }
 }
 
 mod eof {
@@ -178,7 +193,6 @@ mod input {
     //
     // variable names can consist of up to 40 characters and must begin
     // with a letter. Valid characters are a-z, 0-9 and period (.).
-    // TODO support periods in variable names
     // TODO enforce 40 character limit (with error: Identifier too long)
     //
     // A semicolon immediately after INPUT keeps the cursor on the same line
@@ -247,6 +261,80 @@ mod input {
         } else {
             s.parse::<i32>()
                 .map_err(|e| format!("Could not parse {} as int: {}", s, e).into())
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_has_variable;
+        use crate::interpreter::test_utils::{interpret_with_stdlib, MockStdlib};
+
+        fn assert_input<T>(
+            raw_input: &str,
+            variable_literal: &str,
+            qualified_variable: &str,
+            expected_value: T,
+        ) where
+            Variant: From<T>,
+        {
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input(raw_input);
+            let input = format!("INPUT {}", variable_literal);
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_has_variable!(interpreter, qualified_variable, expected_value);
+        }
+
+        mod unqualified_var {
+            use super::*;
+
+            #[test]
+            fn test_input_empty() {
+                assert_input("", "N", "N!", 0.0_f32);
+            }
+
+            #[test]
+            fn test_input_zero() {
+                assert_input("0", "N", "N!", 0.0_f32);
+            }
+
+            #[test]
+            fn test_input_single() {
+                assert_input("1.1", "N", "N!", 1.1_f32);
+            }
+
+            #[test]
+            fn test_input_negative() {
+                assert_input("-1.2345", "N", "N!", -1.2345_f32);
+            }
+
+            #[test]
+            fn test_input_explicit_positive() {
+                assert_input("+3.14", "N", "N!", 3.14_f32);
+            }
+        }
+
+        mod string_var {
+            use super::*;
+
+            #[test]
+            fn test_input_hello() {
+                assert_input("hello", "A$", "A$", "hello");
+            }
+
+            #[test]
+            fn test_input_does_not_trim_new_line() {
+                assert_input("hello\r\n", "A$", "A$", "hello\r\n");
+            }
+        }
+
+        mod int_var {
+            use super::*;
+
+            #[test]
+            fn test_input_42() {
+                assert_input("42", "A%", "A%", 42);
+            }
         }
     }
 }

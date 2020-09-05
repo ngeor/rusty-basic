@@ -196,4 +196,30 @@ mod tests {
         ";
         assert_prints!(program, "1");
     }
+
+    #[test]
+    fn test_dot_in_sub_declaration_name() {
+        let program = r#"
+        DECLARE SUB Hello.World
+
+        Hello.World
+
+        SUB Hello.World
+            PRINT "Hello, world!"
+        END SUB
+        "#;
+        assert_prints!(program, "Hello, world!");
+    }
+
+    #[test]
+    fn test_dot_in_sub_param_name() {
+        let program = r#"
+        Hello.World "Hello there"
+
+        SUB Hello.World (greet.msg$)
+            PRINT greet.msg$
+        END SUB
+        "#;
+        assert_prints!(program, "Hello there");
+    }
 }

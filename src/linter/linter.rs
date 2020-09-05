@@ -204,6 +204,14 @@ mod tests {
             "#;
             assert_linter_err!(program, QError::DuplicateDefinition, 6, 23);
         }
+
+        #[test]
+        fn test_forward_const_not_allowed() {
+            let input = "
+            CONST A = B + 1
+            CONST B = 42";
+            assert_linter_err!(input, QError::InvalidConstant, 2, 23);
+        }
     }
 
     mod dim {
@@ -759,6 +767,67 @@ mod tests {
             PRINT X!
             ";
             assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
+        }
+    }
+
+    mod user_defined_type {
+        use super::*;
+
+        #[test]
+        fn duplicate_type_throws_duplicate_definition() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            TYPE Card
+                Value AS INTEGER
+            END TYPE";
+            assert_linter_err!(input, QError::DuplicateDefinition, 6, 13);
+        }
+
+        #[test]
+        fn element_using_container_type_throws_type_not_defined() {
+            let input = "
+            TYPE Card
+                Item AS Card
+            END TYPE";
+            // QBasic actually positions the error on the "AS" keyword
+            assert_linter_err!(input, QError::syntax_error("Type not defined"), 3, 25);
+        }
+
+        #[test]
+        fn using_type_before_defined_throws_type_not_defined() {
+            let input = "
+            TYPE Address
+                PostCode AS PostCode
+            END TYPE
+
+            TYPE PostCode
+                Prefix AS INTEGER
+                Suffix AS STRING * 2
+            END TYPE";
+            assert_linter_err!(input, QError::syntax_error("Type not defined"), 3, 29);
+        }
+
+        #[test]
+        fn string_length_must_be_constant() {
+            let input = "
+            TYPE Invalid
+                N AS STRING * A
+            END TYPE";
+            assert_linter_err!(input, QError::InvalidConstant, 3, 31);
+        }
+
+        #[test]
+        fn string_length_must_be_constant_const_cannot_follow_type() {
+            let input = "
+            TYPE Invalid
+                N AS STRING * A
+            END TYPE
+
+            CONST A = 10";
+            assert_linter_err!(input, QError::InvalidConstant, 3, 31);
         }
     }
 }

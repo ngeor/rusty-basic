@@ -7,9 +7,10 @@ use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, DeclaredName, DeclaredNameNodes, HasQualifier, Name, NameNode,
-    QualifiedName, TypeDefinition, TypeQualifier, WithTypeQualifier,
+    BareName, BareNameNode, DeclaredName, DeclaredNameNodes, ElementType, HasQualifier, Name,
+    NameNode, QualifiedName, TypeDefinition, TypeQualifier, UserDefinedType, WithTypeQualifier,
 };
+use std::collections::HashMap;
 use std::convert::TryInto;
 
 //
@@ -64,6 +65,7 @@ struct ConverterImpl {
     context: LinterContext,
     functions: FunctionMap,
     subs: SubMap,
+    user_defined_types: HashMap<BareName, UserDefinedType>,
 }
 
 impl ConverterImpl {
@@ -234,7 +236,46 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
             parser::TopLevelToken::Statement(s) => {
                 Ok(Some(TopLevelToken::Statement(self.convert(s)?)))
             }
-            parser::TopLevelToken::UserDefinedType(_) => unimplemented!(),
+            parser::TopLevelToken::UserDefinedType(u) => {
+                let type_name_ref: &BareName = u.name.as_ref();
+                if self.user_defined_types.contains_key(type_name_ref) {
+                    Err(QError::DuplicateDefinition).with_err_no_pos()
+                } else {
+                    for Locatable { element, .. } in u.elements.iter() {
+                        match &element.element_type {
+                            ElementType::String(Locatable { element: e, pos }) => {
+                                match e {
+                                    crate::parser::Expression::IntegerLiteral(_i) => {
+                                        // parser already covers this
+                                    }
+                                    crate::parser::Expression::VariableName(v) => {
+                                        // only constants allowed
+                                        match self.context.resolve_const_expression(v)? {
+                                            Some(_c) => {
+                                                // TODO evaluate constant value now
+                                            }
+                                            None => {
+                                                return Err(QError::InvalidConstant)
+                                                    .with_err_at(pos);
+                                            }
+                                        }
+                                    }
+                                    _ => panic!("Unexpected string length {:?}", e),
+                                }
+                            }
+                            ElementType::UserDefined(Locatable { element: n, pos }) => {
+                                if !self.user_defined_types.contains_key(n) {
+                                    return Err(QError::syntax_error("Type not defined"))
+                                        .with_err_at(pos);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    self.user_defined_types.insert(type_name_ref.clone(), u);
+                    Ok(None)
+                }
+            }
         }
     }
 }

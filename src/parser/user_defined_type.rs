@@ -14,6 +14,7 @@
 //                  * >= ~20000 -> out of memory (seems to be before runtime)
 //                  *           -> out of string space (seems to be at runtime)
 //                  * <= 0 -> Illegal number
+//                  * if CONST <= 0 -> throws Out of Memory (seems to be just before runtime)
 //   Value AS INTEGER
 // END TYPE
 // DIM Deck(1 TO 52) AS Card
@@ -47,12 +48,13 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::common::{demand, or_vec, seq3, seq5, zero_or_more};
-use crate::parser::pc::map::{map, source_and_then_some};
+use crate::parser::pc::map::{and_then, map, source_and_then_some};
 use crate::parser::pc::ws;
 use crate::parser::pc::{read, ReaderResult};
 use crate::parser::pc_specific::{demand_guarded_keyword, demand_keyword, keyword, with_pos};
 use crate::parser::types::{
-    BareName, Element, ElementNode, ElementType, Keyword, Name, UserDefinedType,
+    BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
+    UserDefinedType,
 };
 use std::io::BufRead;
 
@@ -69,7 +71,13 @@ pub fn user_defined_type<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected: whitespace after TYPE"),
             ),
             comment::comments(),
-            zero_or_more(element_node()),
+            and_then(zero_or_more(element_node()), |v| {
+                if v.is_empty() {
+                    Err(QError::syntax_error("Element not defined"))
+                } else {
+                    Ok(v)
+                }
+            }),
             demand_keyword(Keyword::End),
             demand_guarded_keyword(Keyword::Type),
         ),
@@ -144,7 +152,7 @@ fn element_type<T: BufRead + 'static>(
                     ws::zero_or_more_around(read('*')),
                     QError::syntax_error_fn("Expected: *"),
                 ),
-                expression::demand_expression_node(),
+                demand_string_length(),
             ),
             |(_, _, e)| ElementType::String(e),
         ),
@@ -152,6 +160,27 @@ fn element_type<T: BufRead + 'static>(
             ElementType::UserDefined(n)
         }),
     ])
+}
+
+fn demand_string_length<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    and_then(
+        expression::demand_expression_node(),
+        |Locatable { element, pos }| match element {
+            Expression::IntegerLiteral(i) => {
+                if i > 0 {
+                    Ok(Locatable::new(element, pos))
+                } else {
+                    Err(QError::syntax_error("Illegal number"))
+                }
+            }
+            Expression::VariableName(_) => {
+                // allow it, in case it is a CONST
+                Ok(Locatable::new(element, pos))
+            }
+            _ => Err(QError::syntax_error("Illegal number")),
+        },
+    )
 }
 
 #[cfg(test)]
@@ -192,4 +221,74 @@ mod tests {
             .at_rc(2, 9)
         );
     }
+
+    #[test]
+    fn parse_comments() {
+        let input = "
+        TYPE Card ' A card
+            Suit AS STRING * 9 ' The suit of the card
+            Value AS INTEGER   ' The value of the card
+        END TYPE
+        ";
+        assert_eq!(
+            parse(input).demand_single(),
+            TopLevelToken::UserDefinedType(UserDefinedType {
+                name: BareName::from("Card").at_rc(2, 14),
+                comments: vec![String::from(" A card").at_rc(2, 19)],
+                elements: vec![
+                    Element {
+                        name: "Suit".into(),
+                        element_type: ElementType::String(9.as_lit_expr(3, 30)),
+                        comments: vec![String::from(" The suit of the card").at_rc(3, 32)],
+                    }
+                    .at_rc(3, 13),
+                    Element {
+                        name: "Value".into(),
+                        element_type: ElementType::Integer,
+                        comments: vec![String::from(" The value of the card").at_rc(4, 32)]
+                    }
+                    .at_rc(4, 13)
+                ]
+            })
+            .at_rc(2, 9)
+        );
+    }
+
+    #[test]
+    fn no_elements() {
+        let input = "
+        TYPE Card
+        END TYPE
+        ";
+        assert_eq!(
+            parse_err(input),
+            QError::syntax_error("Element not defined")
+        );
+    }
+
+    #[test]
+    fn string_length_wrong_type() {
+        let illegal_expressions = [
+            "0",
+            "-1",
+            "3.14",
+            "6.28#",
+            "\"hello\"",
+            "(1+1)",
+            "Foo(1)",
+            "#1",
+        ];
+        for e in &illegal_expressions {
+            let input = format!(
+                "
+            TYPE Invalid
+                ZeroString AS STRING * {}
+            END TYPE",
+                e
+            );
+            assert_eq!(parse_err(input), QError::syntax_error("Illegal number"));
+        }
+    }
+
+    // TODO no duplicate element name
 }

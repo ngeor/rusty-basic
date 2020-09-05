@@ -453,7 +453,7 @@ impl LinterContext {
         }
     }
 
-    fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QErrorNode> {
+    pub fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QErrorNode> {
         match self.symbols.resolve_const_expression(n)? {
             Some(e) => Ok(Some(e)),
             None => self.resolve_parent_const_expression(n),

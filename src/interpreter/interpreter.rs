@@ -936,6 +936,21 @@ mod tests {
         }
 
         #[test]
+        fn test_string_const_length() {
+            let input = r#"
+            CONST L = 6
+            TYPE Address
+                PostCode AS STRING * L
+            END TYPE
+
+            DIM a AS Address
+            a.PostCode = "1234 AZ"
+            PRINT a.PostCode
+            "#;
+            assert_prints!(input, "1234 A");
+        }
+
+        #[test]
         fn test_assign() {
             let input = r#"
             TYPE Address

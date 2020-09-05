@@ -24,6 +24,7 @@ mod test_utils;
 mod top_level_token;
 mod type_qualifier;
 mod types;
+mod user_defined_type;
 mod while_wend;
 
 pub use self::parser::*;

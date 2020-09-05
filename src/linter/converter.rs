@@ -234,6 +234,7 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
             parser::TopLevelToken::Statement(s) => {
                 Ok(Some(TopLevelToken::Statement(self.convert(s)?)))
             }
+            parser::TopLevelToken::UserDefinedType(_) => unimplemented!(),
         }
     }
 }

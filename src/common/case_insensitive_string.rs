@@ -11,6 +11,26 @@ impl CaseInsensitiveString {
     pub fn new(value: String) -> CaseInsensitiveString {
         CaseInsensitiveString { inner: value }
     }
+
+    /// Checks if the string contains the given character, case insensitively.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rusty_basic::common::CaseInsensitiveString;
+    /// assert_eq!(CaseInsensitiveString::from("a#").contains('#'), true);
+    /// assert_eq!(CaseInsensitiveString::from("a#").contains('A'), true);
+    /// assert_eq!(CaseInsensitiveString::from("a#").contains('b'), false);
+    /// ```
+    pub fn contains(&self, needle: char) -> bool {
+        for c in self.inner.chars() {
+            if c.to_ascii_uppercase() == needle.to_ascii_uppercase() {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 impl From<CaseInsensitiveString> for String {

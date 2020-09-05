@@ -5,6 +5,7 @@
 //      statement |
 //      function implementation |
 //      sub implementation |
+//      user defined type definition |
 //      whitespace - empty line
 
 use crate::common::*;
@@ -18,6 +19,7 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::with_pos;
 use crate::parser::statement;
 use crate::parser::types::*;
+use crate::parser::user_defined_type;
 use std::io::BufRead;
 
 pub fn top_level_tokens<T: BufRead + 'static>(
@@ -92,25 +94,33 @@ pub fn top_level_token_one<T: BufRead + 'static>(
         top_level_token_declaration(),
         top_level_token_implementation(),
         top_level_token_statement(),
+        top_level_token_user_defined_type(),
     ]))
 }
 
-pub fn top_level_token_def_type<T: BufRead + 'static>(
+fn top_level_token_def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     map(def_type::def_type(), |d| TopLevelToken::DefType(d))
 }
 
-pub fn top_level_token_declaration<T: BufRead + 'static>(
+fn top_level_token_declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     declaration::declaration()
 }
 
-pub fn top_level_token_implementation<T: BufRead + 'static>(
+fn top_level_token_implementation<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     implementation::implementation()
 }
 
-pub fn top_level_token_statement<T: BufRead + 'static>(
+fn top_level_token_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
     map(statement::statement(), |s| TopLevelToken::Statement(s))
+}
+
+fn top_level_token_user_defined_type<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
+    map(user_defined_type::user_defined_type(), |u| {
+        TopLevelToken::UserDefinedType(u)
+    })
 }

@@ -8,7 +8,7 @@
             "name": "(Windows) Launch",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/target/debug/deps/basic_interpreter_rust-18ec1c7aaa9b42e3.exe",
+            "program": "${workspaceFolder}/target/debug/deps/rusty_basic-90a89e57a34b951a.exe",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",

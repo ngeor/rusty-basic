@@ -54,10 +54,16 @@ mod tests {
 
     #[test]
     fn test_numeric_assignment() {
-        assert_top_level_assignment!("A = 42", "A", 42);
-        assert_top_level_assignment!("B=1", "B", 1);
-        assert_top_level_assignment!("CD =100", "CD", 100);
-        assert_top_level_assignment!("E= 3", "E", 3);
+        let names = ["A", "BC", "A%", "A.B", "A..B", "A.B.", "C.%"];
+        let values = [1, -1, 0, 42];
+        for name in &names {
+            for value in &values {
+                assert_top_level_assignment!(format!("{} = {}", name, value), name, *value);
+                assert_top_level_assignment!(format!("{}={}", name, value), name, *value);
+                assert_top_level_assignment!(format!("{} ={}", name, value), name, *value);
+                assert_top_level_assignment!(format!("{}= {}", name, value), name, *value);
+            }
+        }
     }
 
     #[test]

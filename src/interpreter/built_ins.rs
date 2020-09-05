@@ -68,11 +68,10 @@ mod chr {
 
 mod close {
     // CLOSE
-    // TODO : support integer as argument e.g. CLOSE 1 instead of just CLOSE #1
     // TODO : close without arguments closes all files
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handle = interpreter.pop_file_handle();
+        let file_handle = interpreter.pop_file_handle().with_err_no_pos()?;
         interpreter.file_manager.close(file_handle);
         Ok(())
     }
@@ -158,14 +157,7 @@ mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v: Variant = interpreter.pop_unnamed_val().unwrap();
-        let file_handle: FileHandle = match v {
-            Variant::VFileHandle(f) => f,
-            Variant::VInteger(i) => (i as u32).into(),
-            _ => {
-                panic!("Invalid file handle in EOF, linter should have caught this");
-            }
-        };
+        let file_handle: FileHandle = interpreter.pop_file_handle().with_err_no_pos()?;
         let is_eof: bool = interpreter
             .file_manager
             .eof(file_handle)
@@ -491,26 +483,34 @@ mod line_input {
         let mut file_handle: FileHandle = FileHandle::default();
         let mut has_more = true;
         while has_more {
-            let arg = &interpreter.pop_unnamed_arg();
-            match arg {
-                Some(a) => match a {
-                    Argument::ByVal(v) => {
-                        if is_first && v.qualifier() == TypeQualifier::FileHandle {
-                            file_handle = v.clone().demand_file_handle();
-                        } else {
-                            panic!("LINE INPUT linter should have caught this");
+            match interpreter.pop_unnamed_arg() {
+                Some(a) => {
+                    let arg_ref = &a;
+                    match arg_ref {
+                        Argument::ByVal(v) => {
+                            if is_first {
+                                match v {
+                                    Variant::VFileHandle(f) => {
+                                        file_handle = *f;
+                                    }
+                                    _ => {
+                                        panic!("LINE INPUT linter should have caught this");
+                                    }
+                                }
+                            } else {
+                                panic!("LINE INPUT linter should have caught this");
+                            }
+                        }
+                        Argument::ByRef(n) => {
+                            line_input_one(interpreter, arg_ref, n, file_handle)?;
                         }
                     }
-                    Argument::ByRef(n) => {
-                        line_input_one(interpreter, a, n, file_handle)?;
-                    }
-                },
+                    is_first = false;
+                }
                 None => {
                     has_more = false;
                 }
             }
-
-            is_first = false;
         }
         Ok(())
     }
@@ -723,7 +723,7 @@ mod open {
         let file_name = interpreter.pop_string();
         let file_mode: FileMode = interpreter.pop_integer().into();
         let file_access: FileAccess = interpreter.pop_integer().into();
-        let file_handle = interpreter.pop_file_handle();
+        let file_handle = interpreter.pop_file_handle().with_err_no_pos()?;
         interpreter
             .file_manager
             .open(file_handle, file_name.as_ref(), file_mode, file_access)

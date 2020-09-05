@@ -786,6 +786,23 @@ pub mod ws {
         common::drop_left(common::and(one_or_more(), source))
     }
 
+    pub fn one_or_more_trailing<R, S, T, E, FE>(
+        source: S,
+        err_fn_expected_whitespace: FE,
+    ) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
+    where
+        R: Reader<Item = char, Err = E> + 'static,
+        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
+        T: 'static,
+        E: 'static,
+        FE: Fn() -> E + 'static,
+    {
+        common::drop_right(common::seq2(
+            source,
+            common::demand(one_or_more(), err_fn_expected_whitespace),
+        ))
+    }
+
     /// Reads any whitespace.
     ///
     /// If no whitespace is found, it results to an Ok empty string.

@@ -59,7 +59,7 @@ impl From<i32> for FileAccess {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct FileHandle(u32);
+pub struct FileHandle(u8);
 
 impl FileHandle {
     pub fn is_valid(&self) -> bool {
@@ -67,8 +67,8 @@ impl FileHandle {
     }
 }
 
-impl From<u32> for FileHandle {
-    fn from(x: u32) -> FileHandle {
+impl From<u8> for FileHandle {
+    fn from(x: u8) -> FileHandle {
         FileHandle(x)
     }
 }

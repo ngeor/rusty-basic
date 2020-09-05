@@ -400,8 +400,18 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         self.pop_unnamed_val().unwrap().demand_integer()
     }
 
-    pub fn pop_file_handle(&mut self) -> FileHandle {
-        self.pop_unnamed_val().unwrap().demand_file_handle()
+    pub fn pop_file_handle(&mut self) -> Result<FileHandle, QError> {
+        match self.pop_unnamed_val().unwrap() {
+            Variant::VFileHandle(f) => Ok(f),
+            Variant::VInteger(i) => {
+                if i >= 1 && i <= 255 {
+                    Ok((i as u8).into())
+                } else {
+                    Err(QError::BadFileNameOrNumber)
+                }
+            }
+            _ => Err(QError::TypeMismatch),
+        }
     }
 }
 

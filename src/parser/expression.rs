@@ -162,9 +162,15 @@ pub fn file_handle<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected: digits after #"),
             ),
         ),
-        |(_, digits)| match digits.parse::<u32>() {
-            Ok(d) => Ok(Expression::FileHandle(d.into())),
-            Err(err) => Err(err.into()),
+        |(_, digits)| match digits.parse::<u8>() {
+            Ok(d) => {
+                if d > 0 {
+                    Ok(Expression::FileHandle(d.into()))
+                } else {
+                    Err(QError::BadFileNameOrNumber)
+                }
+            }
+            Err(_) => Err(QError::BadFileNameOrNumber),
         },
     )
 }
@@ -407,7 +413,9 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{Expression, Name, Operand, Statement, UnaryOperand};
-    use crate::{assert_expression, assert_literal_expression, assert_variable_expression};
+    use crate::{
+        assert_expression, assert_literal_expression, assert_sub_call, assert_variable_expression,
+    };
 
     #[test]
     fn test_parse_literals() {
@@ -864,5 +872,51 @@ mod tests {
                 Box::new(3.as_lit_expr(1, 19))
             )
         );
+    }
+
+    mod file_handle {
+        use super::*;
+
+        #[test]
+        fn test_file_handle_one() {
+            let input = "CLOSE #1";
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(result, "CLOSE", Expression::FileHandle(1.into()));
+        }
+
+        #[test]
+        fn test_file_handle_two() {
+            let input = "CLOSE #2";
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(result, "CLOSE", Expression::FileHandle(2.into()));
+        }
+
+        #[test]
+        fn test_file_handle_max() {
+            let input = "CLOSE #255";
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(result, "CLOSE", Expression::FileHandle(255.into()));
+        }
+
+        #[test]
+        fn test_file_handle_zero() {
+            let input = "CLOSE #0";
+            assert_eq!(parse_err(input), QError::BadFileNameOrNumber);
+        }
+
+        #[test]
+        fn test_file_handle_overflow() {
+            let input = "CLOSE #256";
+            assert_eq!(parse_err(input), QError::BadFileNameOrNumber);
+        }
+
+        #[test]
+        fn test_file_handle_negative() {
+            let input = "CLOSE #-1";
+            assert_eq!(
+                parse_err(input),
+                QError::syntax_error("Expected: digits after #")
+            );
+        }
     }
 }

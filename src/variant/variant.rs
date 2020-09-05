@@ -367,13 +367,6 @@ impl Variant {
         }
     }
 
-    pub fn demand_file_handle(self) -> FileHandle {
-        match self {
-            Variant::VFileHandle(v) => v,
-            _ => panic!("not a file handle variant"),
-        }
-    }
-
     pub fn demand_string(self) -> String {
         match self {
             Variant::VString(s) => s,

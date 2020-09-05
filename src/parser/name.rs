@@ -1,12 +1,13 @@
-use super::{BareName, BareNameNode, Name, NameNode};
+use super::{BareName, BareNameNode, Keyword, Name, NameNode};
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
+use crate::parser::pc::map::{map, source_and_then_some};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::type_qualifier;
 use std::io::BufRead;
+use std::str::FromStr;
 
 // name node
 
@@ -36,4 +37,23 @@ pub fn bare_name<T: BufRead + 'static>(
         and(any_word(), negate(type_qualifier::type_qualifier())),
         |(l, _)| l.into(),
     )
+}
+
+pub const MAX_LENGTH: usize = 40;
+
+/// Reads any word, i.e. any identifier which is not a keyword.
+fn any_word<R>() -> Box<dyn Fn(R) -> ReaderResult<R, String, QError>>
+where
+    R: Reader<Item = char, Err = QError> + 'static,
+{
+    source_and_then_some(any_identifier(), |reader: R, s| {
+        if s.len() > MAX_LENGTH {
+            Err((reader, QError::syntax_error("Identifier too long")))
+        } else {
+            match Keyword::from_str(&s) {
+                Ok(_) => Ok((reader.undo(s), None)),
+                Err(_) => Ok((reader, Some(s))),
+            }
+        }
+    })
 }

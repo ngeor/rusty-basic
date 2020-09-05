@@ -34,17 +34,16 @@ mod tests {
     macro_rules! assert_parse_dim_extended_built_in {
         ($name: literal, $keyword: literal, $qualifier: ident) => {
             let input = format!("DIM {} AS {}", $name, $keyword);
-            let p = parse(input);
+            let p = parse(input).demand_single_statement();
             assert_eq!(
                 p,
-                vec![TopLevelToken::Statement(Statement::Dim(
+                Statement::Dim(
                     DeclaredName::new(
                         $name.into(),
                         TypeDefinition::ExtendedBuiltIn(TypeQualifier::$qualifier)
                     )
                     .at_rc(1, 5)
-                ))
-                .at_rc(1, 1)]
+                )
             );
         };
     }
@@ -58,6 +57,32 @@ mod tests {
         assert_parse_dim_extended_built_in!("S", "STRING", DollarString);
         assert_parse_dim_extended_built_in!("I", "INTEGER", PercentInteger);
         assert_parse_dim_extended_built_in!("L1", "LONG", AmpersandLong);
+    }
+
+    #[test]
+    fn test_parse_dim_extended_user_defined() {
+        let var_names = ["A", "ABC"];
+        let types = [
+            "FirstName",
+            "Address2",
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMN", // 40 characters max length
+        ];
+        for var_name in &var_names {
+            for var_type in &types {
+                let input = format!("DIM {} AS {}", var_name, var_type);
+                let p = parse(input).demand_single_statement();
+                assert_eq!(
+                    p,
+                    Statement::Dim(
+                        DeclaredName::new(
+                            (*var_name).into(),
+                            TypeDefinition::UserDefined((*var_type).into())
+                        )
+                        .at_rc(1, 5)
+                    )
+                );
+            }
+        }
     }
 
     #[test]
@@ -76,32 +101,32 @@ mod tests {
         let input = "DIM A$ AS STRING";
         assert_eq!(
             parse_err(input),
-            QError::SyntaxError("Identifier cannot end with %, &, !, #, or $".to_string())
+            QError::syntax_error("Identifier cannot end with %, &, !, #, or $")
+        );
+    }
+
+    #[test]
+    fn test_parse_dim_user_defined_too_long() {
+        let input = "DIM A AS ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO";
+        assert_eq!(
+            parse_err(input),
+            QError::syntax_error("Identifier too long")
         );
     }
 
     macro_rules! assert_parse_dim_compact {
         ($name: literal) => {
             let input = format!("DIM {}", $name);
-            let p = parse(input);
-            assert_eq!(
-                p,
-                vec![TopLevelToken::Statement(Statement::Dim(
-                    DeclaredName::bare($name).at_rc(1, 5)
-                ))
-                .at_rc(1, 1)]
-            );
+            let p = parse(input).demand_single_statement();
+            assert_eq!(p, Statement::Dim(DeclaredName::bare($name).at_rc(1, 5)));
         };
 
         ($name: literal, $keyword: literal, $qualifier: ident) => {
             let input = format!("DIM {}{}", $name, $keyword);
-            let p = parse(input);
+            let p = parse(input).demand_single_statement();
             assert_eq!(
                 p,
-                vec![TopLevelToken::Statement(Statement::Dim(
-                    DeclaredName::compact($name, TypeQualifier::$qualifier).at_rc(1, 5)
-                ))
-                .at_rc(1, 1)]
+                Statement::Dim(DeclaredName::compact($name, TypeQualifier::$qualifier).at_rc(1, 5))
             );
         };
     }

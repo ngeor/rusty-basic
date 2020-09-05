@@ -28,8 +28,8 @@ pub fn declared_name_node<T: BufRead + 'static>(
                 name: n,
                 qualifier: q,
             } => match opt_type_definition {
-                Some(_) => Err(QError::SyntaxError(
-                    "Identifier cannot end with %, &, !, #, or $".to_string(),
+                Some(_) => Err(QError::syntax_error(
+                    "Identifier cannot end with %, &, !, #, or $",
                 )),
                 None => Ok(DeclaredName::new(n, TypeDefinition::CompactBuiltIn(q)).at(pos)),
             },
@@ -66,10 +66,16 @@ fn extended_type<T: BufRead + 'static>(
             Ok(Keyword::Long) => Ok(TypeDefinition::ExtendedBuiltIn(
                 TypeQualifier::AmpersandLong,
             )),
-            Ok(_) => Err(QError::SyntaxError(
-                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string(),
+            Ok(_) => Err(QError::syntax_error(
+                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
             )),
-            Err(_) => Ok(TypeDefinition::UserDefined(x.into())),
+            Err(_) => {
+                if x.len() > name::MAX_LENGTH {
+                    Err(QError::syntax_error("Identifier too long"))
+                } else {
+                    Ok(TypeDefinition::UserDefined(x.into()))
+                }
+            }
         },
     )
 }

@@ -54,7 +54,17 @@ mod tests {
 
     #[test]
     fn test_numeric_assignment() {
-        let names = ["A", "BC", "A%", "A.B", "A..B", "A.B.", "C.%"];
+        let names = [
+            "A",
+            "BC",
+            "A%",
+            "A.B",
+            "A..B",
+            "A.B.",
+            "C.%",
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM", // longest identifier is 40 characters
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM%",
+        ];
         let values = [1, -1, 0, 42];
         for name in &names {
             for value in &values {
@@ -70,7 +80,19 @@ mod tests {
     fn test_numeric_assignment_to_keyword_not_allowed() {
         assert_eq!(
             parse_err("FOR = 42"),
-            QError::SyntaxError("Expected: name after FOR".to_string())
+            QError::syntax_error("Expected: name after FOR")
+        );
+    }
+
+    #[test]
+    fn test_identifier_too_long() {
+        assert_eq!(
+            parse_err("ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN = 42"),
+            QError::syntax_error("Identifier too long")
+        );
+        assert_eq!(
+            parse_err("ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN% = 42"),
+            QError::syntax_error("Identifier too long")
         );
     }
 

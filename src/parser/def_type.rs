@@ -77,7 +77,7 @@ fn two_letter_range<T: BufRead + 'static>(
             if l < r {
                 Ok(LetterRange::Range(l, r))
             } else {
-                Err(QError::SyntaxError("Invalid letter range".to_string()))
+                Err(QError::syntax_error("Invalid letter range"))
             }
         },
     )
@@ -150,15 +150,15 @@ mod tests {
     fn test_parse_def_int_word_instead_of_letter() {
         assert_eq!(
             parse_err("DEFINT HELLO"),
-            QError::SyntaxError("No separator: E".to_string(),)
+            QError::syntax_error("No separator: E")
         );
         assert_eq!(
             parse_err("DEFINT HELLO,Z"),
-            QError::SyntaxError("No separator: E".to_string(),)
+            QError::syntax_error("No separator: E")
         );
         assert_eq!(
             parse_err("DEFINT A,HELLO"),
-            QError::SyntaxError("No separator: E".to_string(),)
+            QError::syntax_error("No separator: E")
         );
     }
 
@@ -166,7 +166,7 @@ mod tests {
     fn test_parse_def_int_reverse_range() {
         assert_eq!(
             parse_err("DEFINT Z-A"),
-            QError::SyntaxError("Invalid letter range".to_string(),)
+            QError::syntax_error("Invalid letter range")
         );
     }
 

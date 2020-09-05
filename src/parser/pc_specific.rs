@@ -3,7 +3,7 @@ use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocatio
 use crate::parser::pc::common::{
     and, demand, drop_left, map_default_to_not_found, negate, opt_seq2, seq3, zero_or_more,
 };
-use crate::parser::pc::map::{map, source_and_then_some};
+use crate::parser::pc::map::map;
 use crate::parser::pc::str::{
     one_or_more_if, str_case_insensitive, zero_or_more_if_leading_remaining,
 };
@@ -11,7 +11,6 @@ use crate::parser::pc::str::{
 use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
 use crate::parser::types::{Keyword, Name, TypeQualifier};
 use std::convert::TryInto;
-use std::str::FromStr;
 
 // ========================================================
 // Undo support
@@ -139,20 +138,6 @@ where
         is_letter,
         is_non_leading_identifier,
     ))
-}
-
-/// Reads any word, i.e. any identifier which is not a keyword.
-pub fn any_word<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
-{
-    source_and_then_some(any_identifier(), |reader: R, s| {
-        match Keyword::from_str(&s) {
-            Ok(_) => Ok((reader.undo(s), None)),
-            Err(_) => Ok((reader, Some(s))),
-        }
-    })
 }
 
 pub fn keyword<R, E>(needle: Keyword) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>

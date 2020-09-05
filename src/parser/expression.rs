@@ -441,7 +441,7 @@ mod tests {
         fn test_function_call_expression_no_args() {
             assert_eq!(
                 parse_err("PRINT IsValid()"),
-                QError::SyntaxError("Cannot have function call without arguments".to_string())
+                QError::syntax_error("Cannot have function call without arguments")
             );
         }
 
@@ -449,7 +449,7 @@ mod tests {
         fn test_function_call_qualified_expression_no_args() {
             assert_eq!(
                 parse_err("PRINT IsValid%()"),
-                QError::SyntaxError("Cannot have function call without arguments".to_string())
+                QError::syntax_error("Cannot have function call without arguments")
             );
         }
 
@@ -822,7 +822,7 @@ mod tests {
         );
         assert_eq!(
             parse_err("PRINT 1AND 2"),
-            QError::SyntaxError("No separator: A".to_string())
+            QError::syntax_error("No separator: A")
         );
         assert_expression!(
             "(1 OR 2)AND 3",
@@ -852,7 +852,7 @@ mod tests {
         );
         assert_eq!(
             parse_err("PRINT 1OR 2"),
-            QError::SyntaxError("No separator: O".to_string())
+            QError::syntax_error("No separator: O")
         );
         assert_expression!(
             "(1 AND 2)OR 3",

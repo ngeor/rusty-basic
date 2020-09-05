@@ -193,7 +193,6 @@ mod input {
     //
     // variable names can consist of up to 40 characters and must begin
     // with a letter. Valid characters are a-z, 0-9 and period (.).
-    // TODO enforce 40 character limit (with error: Identifier too long)
     //
     // A semicolon immediately after INPUT keeps the cursor on the same line
     // after the user presses the Enter key.
@@ -551,7 +550,7 @@ mod len {
             let program = r#"PRINT LEN!("hello")"#;
             assert_linter_err!(
                 program,
-                QError::SyntaxError("Function Len must be unqualified".to_string()),
+                QError::syntax_error("Function Len must be unqualified"),
                 1,
                 7
             );

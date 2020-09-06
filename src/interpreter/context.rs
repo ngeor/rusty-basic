@@ -5,6 +5,8 @@ use crate::linter::*;
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
 
+// TODO unify with linter
+
 //
 // Argument
 //

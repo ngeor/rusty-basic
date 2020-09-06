@@ -1,5 +1,7 @@
 use super::{AtLocation, HasLocation, Locatable, Location};
 
+// TODO deprecate
+
 //
 // result.or_try_read(f)
 //

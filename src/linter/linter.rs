@@ -840,5 +840,75 @@ mod tests {
             CONST A = 10";
             assert_linter_err!(input, QError::InvalidConstant, 3, 31);
         }
+
+        #[test]
+        fn type_mismatch_when_used_in_print() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM c AS Card
+            PRINT c";
+            assert_linter_err!(input, QError::TypeMismatch, 8, 19);
+        }
+
+        #[test]
+        fn referencing_non_existing_member() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM c AS Card
+            PRINT c.Suite";
+            assert_linter_err!(input, QError::syntax_error("Element not defined"), 8, 20);
+        }
+
+        #[test]
+        fn cannot_use_in_binary_expression() {
+            let ops = [
+                "=", "<>", ">=", ">", "<", "<=", "+", "-", "*", "/", "AND", "OR",
+            ];
+            for op in &ops {
+                let input = format!(
+                    "
+                    TYPE Card
+                        Value AS INTEGER
+                    END TYPE
+
+                    DIM a AS CARD
+                    DIM b AS CARD
+
+                    IF a {} b THEN
+                    END IF",
+                    op
+                );
+                assert_linter_err!(input, QError::TypeMismatch, 9, 26);
+            }
+        }
+
+        #[test]
+        fn cannot_use_in_unary_expression() {
+            let ops = ["-", "NOT "];
+            for op in &ops {
+                let input = format!(
+                    "
+                    TYPE Card
+                        Value AS INTEGER
+                    END TYPE
+
+                    DIM a AS CARD
+                    DIM b AS CARD
+
+                    b = {}A",
+                    op
+                );
+                assert_linter_err!(input, QError::TypeMismatch, 9, 25);
+            }
+        }
     }
 }
+// TODO test file handle expression cannot be used anywhere except for `OPEN`, `CLOSE`, `LINE INPUT`, `INPUT`

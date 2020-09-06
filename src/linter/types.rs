@@ -10,7 +10,6 @@ pub enum Expression {
     DoubleLiteral(f64),
     StringLiteral(String),
     IntegerLiteral(i32),
-    #[allow(dead_code)]
     LongLiteral(i64),
     Constant(QualifiedName),
     Variable(QualifiedName),

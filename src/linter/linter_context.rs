@@ -17,9 +17,9 @@ struct TypeDefinitions {
 }
 
 impl TypeDefinitions {
-    pub fn push(&mut self, t: TypeDefinition) -> Result<(), QErrorNode> {
+    pub fn push(&mut self, t: TypeDefinition) -> Result<(), QError> {
         if self.clashes_with(&t) {
-            err_no_pos(QError::DuplicateDefinition)
+            Err(QError::DuplicateDefinition)
         } else {
             self.v.push(t);
             Ok(())
@@ -56,7 +56,7 @@ struct VariableMap {
 }
 
 impl VariableMap {
-    pub fn push(&mut self, declared_name: DeclaredName) -> Result<(), QErrorNode> {
+    pub fn push(&mut self, declared_name: DeclaredName) -> Result<(), QError> {
         let DeclaredName {
             name,
             type_definition,
@@ -90,7 +90,7 @@ impl VariableMap {
         &self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<DeclaredName>, QErrorNode> {
+    ) -> Result<Option<DeclaredName>, QError> {
         let bare_name: &BareName = name.as_ref();
         let q: TypeQualifier = name.resolve_into(resolver);
         match self.m.get(bare_name) {
@@ -104,7 +104,7 @@ impl VariableMap {
                                 type_definition.clone(),
                             )));
                         } else {
-                            return err_no_pos(QError::DuplicateDefinition);
+                            return Err(QError::DuplicateDefinition);
                         }
                     } else if type_definition.is_compact_of_type(q) {
                         return Ok(Some(DeclaredName::new(
@@ -119,7 +119,7 @@ impl VariableMap {
         Ok(None)
     }
 
-    pub fn resolve_const_expression(&self, name: &Name) -> Result<Option<Expression>, QErrorNode> {
+    pub fn resolve_const_expression(&self, name: &Name) -> Result<Option<Expression>, QError> {
         match name {
             Name::Bare(b) => match self.m.get(b) {
                 Some(type_definitions) => {
@@ -150,7 +150,7 @@ impl VariableMap {
                             if q == *qualifier {
                                 Ok(Some(Expression::Constant(name.with_type_ref(q))))
                             } else {
-                                err_no_pos(QError::DuplicateDefinition)
+                                Err(QError::DuplicateDefinition)
                             }
                         }
                         None => Ok(None),
@@ -165,7 +165,7 @@ impl VariableMap {
         &self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<Expression>, QErrorNode> {
+    ) -> Result<Option<Expression>, QError> {
         let bare_name: &BareName = name.as_ref();
         match self.m.get(bare_name) {
             Some(type_definitions) => {
@@ -192,7 +192,7 @@ impl VariableMap {
                     Name::Qualified { qualifier: q, .. } => {
                         // qualified names cannot match extended identifiers
                         match type_definitions.iter().find(|x| x.is_extended()) {
-                            Some(_) => err_no_pos(QError::DuplicateDefinition),
+                            Some(_) => Err(QError::DuplicateDefinition),
                             None => {
                                 if type_definitions.iter().any(|x| x.is_compact_of_type(*q)) {
                                     Ok(Some(Expression::Variable(bare_name.with_type_ref(*q))))
@@ -214,7 +214,7 @@ impl VariableMap {
 //
 
 #[derive(Debug, Default)]
-struct Symbols {
+pub struct Symbols {
     constants: VariableMap, // NOTE: constants can only be compact and the type resolution comes from the expression side if bare
     params: VariableMap,
     variables: VariableMap,
@@ -241,14 +241,14 @@ impl Symbols {
         &mut self,
         declared_name: DeclaredName,
         resolver: &T,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<(), QError> {
         self.params
             .push(Self::resolve_declared_name(declared_name, resolver))
     }
 
-    pub fn push_const(&mut self, q_name: QualifiedName) -> Result<(), QErrorNode> {
+    pub fn push_const(&mut self, q_name: QualifiedName) -> Result<(), QError> {
         if self.contains_any(&q_name) {
-            err_no_pos(QError::DuplicateDefinition)
+            Err(QError::DuplicateDefinition)
         } else {
             let QualifiedName { name, qualifier } = q_name;
             self.constants.push(DeclaredName::new(
@@ -262,13 +262,13 @@ impl Symbols {
         &mut self,
         declared_name: DeclaredName,
         resolver: &T,
-    ) -> Result<DeclaredName, QErrorNode> {
+    ) -> Result<DeclaredName, QError> {
         let r = Self::resolve_declared_name(declared_name, resolver);
         if self.constants.contains_any(&r)
             || self.params.clashes_with(&r)
             || self.variables.clashes_with(&r)
         {
-            err_no_pos(QError::DuplicateDefinition)
+            Err(QError::DuplicateDefinition)
         } else {
             self.variables.push(r.clone())?;
             Ok(r)
@@ -279,13 +279,13 @@ impl Symbols {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<DeclaredName>, QErrorNode> {
+    ) -> Result<Option<DeclaredName>, QError> {
         // first params
         // then constants
         // then variables
 
         if self.constants.contains_any(name) {
-            err_no_pos(QError::DuplicateDefinition)
+            Err(QError::DuplicateDefinition)
         } else {
             self.params
                 .resolve_assignment(name, resolver)
@@ -297,7 +297,7 @@ impl Symbols {
         &self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<Expression>, QErrorNode> {
+    ) -> Result<Option<Expression>, QError> {
         // is it param
         // is it constant
         // is it variable
@@ -310,7 +310,7 @@ impl Symbols {
             .or_try_read(|| self.variables.resolve_expression(name, resolver))
     }
 
-    pub fn resolve_const_expression(&self, name: &Name) -> Result<Option<Expression>, QErrorNode> {
+    pub fn resolve_const_expression(&self, name: &Name) -> Result<Option<Expression>, QError> {
         self.constants.resolve_const_expression(name)
     }
 
@@ -318,7 +318,7 @@ impl Symbols {
         &self,
         name: &Name,
         resolver: &T,
-    ) -> Result<bool, QErrorNode> {
+    ) -> Result<bool, QError> {
         self.params
             .resolve_assignment(name, resolver)
             .map(|x| x.is_some())
@@ -328,7 +328,7 @@ impl Symbols {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<DeclaredName, QErrorNode> {
+    ) -> Result<DeclaredName, QError> {
         let q: QualifiedName = name.resolve_into(resolver);
         let d = DeclaredName::from(q);
         self.variables.push(d.clone())?;
@@ -339,7 +339,7 @@ impl Symbols {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Expression, QErrorNode> {
+    ) -> Result<Expression, QError> {
         let q: QualifiedName = name.resolve_into(resolver);
         let d = DeclaredName::from(q.clone());
         self.variables.push(d)?;
@@ -369,6 +369,14 @@ pub struct LinterContext {
 }
 
 impl LinterContext {
+    pub fn symbols(&self) -> &Symbols {
+        &self.symbols
+    }
+
+    pub fn symbols_mut(&mut self) -> &mut Symbols {
+        &mut self.symbols
+    }
+
     pub fn push_function_context(self, name: &CaseInsensitiveString) -> Self {
         let mut result = LinterContext::default();
         result.parent = Some(Box::new(self));
@@ -385,14 +393,6 @@ impl LinterContext {
 
     pub fn pop_context(self) -> Self {
         *self.parent.expect("Stack underflow!")
-    }
-
-    pub fn push_param<T: TypeResolver>(
-        &mut self,
-        name: DeclaredName,
-        resolver: &T,
-    ) -> Result<(), QErrorNode> {
-        self.symbols.push_param(name, resolver)
     }
 
     pub fn push_const(
@@ -416,24 +416,15 @@ impl LinterContext {
             }
         };
         let q_name = name.with_type(q);
-        self.symbols.push_const(q_name.clone())?;
+        self.symbols.push_const(q_name.clone()).with_err_no_pos()?;
         Ok(q_name)
-    }
-
-    // e.g. DIM A, DIM A$, DIM AS STRING
-    pub fn push_dim<T: TypeResolver>(
-        &mut self,
-        name: DeclaredName,
-        resolver: &T,
-    ) -> Result<DeclaredName, QErrorNode> {
-        self.symbols.push_dim(name.clone(), resolver)
     }
 
     pub fn resolve_expression<T: TypeResolver>(
         &self,
         n: &Name,
         resolver: &T,
-    ) -> Result<Option<Expression>, QErrorNode> {
+    ) -> Result<Option<Expression>, QError> {
         // is it param
         // is it constant
         // is it variable
@@ -445,7 +436,7 @@ impl LinterContext {
             .or_try_read(|| self.resolve_parent_const_expression(n))
     }
 
-    fn resolve_parent_const_expression(&self, n: &Name) -> Result<Option<Expression>, QErrorNode> {
+    fn resolve_parent_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
         // try parent constants
         match &self.parent {
             Some(p) => p.resolve_const_expression(n),
@@ -453,7 +444,7 @@ impl LinterContext {
         }
     }
 
-    pub fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QErrorNode> {
+    pub fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
         match self.symbols.resolve_const_expression(n)? {
             Some(e) => Ok(Some(e)),
             None => self.resolve_parent_const_expression(n),
@@ -469,25 +460,17 @@ impl LinterContext {
         }
     }
 
-    pub fn resolve_param_assignment<T: TypeResolver>(
-        &self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<bool, QErrorNode> {
-        self.symbols.resolve_param_assignment(name, resolver)
-    }
-
     pub fn resolve_assignment<T: TypeResolver>(
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<DeclaredName, QErrorNode> {
+    ) -> Result<DeclaredName, QError> {
         match self.symbols.resolve_assignment(name, resolver)? {
             Some(x) => Ok(x),
             None => {
                 // maybe a parent constant?
                 match self.resolve_parent_const_expression(name)? {
-                    Some(_) => Err(QError::DuplicateDefinition).with_err_no_pos(),
+                    Some(_) => Err(QError::DuplicateDefinition),
                     None => {
                         // just insert it
                         self.symbols
@@ -496,14 +479,5 @@ impl LinterContext {
                 }
             }
         }
-    }
-
-    pub fn resolve_missing_name_in_expression<T: TypeResolver>(
-        &mut self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<Expression, QErrorNode> {
-        self.symbols
-            .resolve_missing_name_in_expression(name, resolver)
     }
 }

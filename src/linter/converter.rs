@@ -10,7 +10,7 @@ use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNodes, ElementType, HasQualifier, Name,
     NameNode, QualifiedName, TypeDefinition, TypeQualifier, UserDefinedType, WithTypeQualifier,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 
 //
@@ -87,46 +87,7 @@ impl ConverterImpl {
     pub fn consume(self) -> (FunctionMap, SubMap) {
         (self.functions, self.subs)
     }
-}
 
-pub fn convert(
-    program: parser::ProgramNode,
-) -> Result<(ProgramNode, FunctionMap, SubMap), QErrorNode> {
-    let mut linter = ConverterImpl::default();
-    let (f_c, s_c) = collect_subprograms(&program)?;
-    linter.functions = f_c;
-    linter.subs = s_c;
-    let result = linter.convert(program)?;
-    let (f, s) = linter.consume();
-    Ok((result, f, s))
-}
-
-impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
-    fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, QErrorNode> {
-        let mut result: Vec<TopLevelTokenNode> = vec![];
-        for top_level_token_node in a.into_iter() {
-            // will contain None where DefInt and declarations used to be
-            let Locatable { element, pos } = top_level_token_node;
-            let opt: Option<TopLevelToken> = self.convert(element).patch_err_pos(pos)?;
-            match opt {
-                Some(t) => {
-                    let r: TopLevelTokenNode = t.at(pos);
-                    result.push(r);
-                }
-                _ => (),
-            }
-        }
-        Ok(result)
-    }
-}
-
-impl Converter<Name, QualifiedName> for ConverterImpl {
-    fn convert(&mut self, a: Name) -> Result<QualifiedName, QErrorNode> {
-        Ok(a.resolve_into(&self.resolver))
-    }
-}
-
-impl ConverterImpl {
     fn convert_function_implementation(
         &mut self,
         function_name_node: NameNode,
@@ -215,9 +176,167 @@ impl ConverterImpl {
         self.pop_context();
         Ok(Some(mapped))
     }
+
+    pub fn resolve_name_in_assignment(&mut self, n: parser::Name) -> Result<LName, QErrorNode> {
+        if self.context.is_function_context(&n) {
+            // trying to assign to the function
+            let function_type: TypeQualifier = self.functions.get(n.as_ref()).unwrap().0;
+            if n.is_bare_or_of_type(function_type) {
+                Ok(LName::Function(n.with_type(function_type)))
+            } else {
+                // trying to assign to the function with an explicit wrong type
+                Err(QError::DuplicateDefinition).with_err_no_pos()
+            }
+        } else if self.subs.contains_key(n.as_ref()) {
+            // trying to assign to a sub
+            Err(QError::DuplicateDefinition).with_err_no_pos()
+        } else if !self.context.resolve_param_assignment(&n, &self.resolver)?
+            && self.functions.contains_key(n.as_ref())
+        {
+            // parameter might be hiding a function name so it takes precedence
+            Err(QError::DuplicateDefinition).with_err_no_pos()
+        } else {
+            let declared_name = self.context.resolve_assignment(&n, &self.resolver)?;
+            let q = self.resolve_declared_name(&declared_name);
+            let DeclaredName { name, .. } = declared_name;
+            Ok(LName::Variable(name.with_type(q)))
+        }
+    }
+
+    pub fn resolve_name_in_expression(
+        &mut self,
+        n: &parser::Name,
+    ) -> Result<Expression, QErrorNode> {
+        self.context
+            .resolve_expression(n, &self.resolver)
+            .or_try_read(|| self.resolve_name_as_subprogram(n).with_err_no_pos())
+            .or_read(|| {
+                self.context
+                    .resolve_missing_name_in_expression(n, &self.resolver)
+            })
+    }
+
+    fn resolve_name_as_subprogram(
+        &mut self,
+        n: &parser::Name,
+    ) -> Result<Option<Expression>, QError> {
+        if self.subs.contains_key(n.as_ref()) {
+            // using the name of a sub as a variable expression
+            Err(QError::DuplicateDefinition)
+        } else if self.functions.contains_key(n.as_ref()) {
+            // if the function expects arguments, argument count mismatch
+            let (f_type, f_args, _) = self.functions.get(n.as_ref()).unwrap();
+            if !f_args.is_empty() {
+                Err(QError::ArgumentCountMismatch)
+            } else if !n.is_bare_or_of_type(*f_type) {
+                // if the function is a different type and the name is qualified of a different type, duplication definition
+                Err(QError::DuplicateDefinition)
+            } else {
+                // else convert it to function call
+                Ok(Some(Expression::FunctionCall(
+                    n.with_type_ref(*f_type),
+                    vec![],
+                )))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn user_defined_type(&mut self, user_defined_type: UserDefinedType) -> Result<(), QErrorNode> {
+        let type_name: &BareName = user_defined_type.name.as_ref();
+        if self.user_defined_types.contains_key(type_name) {
+            // duplicate type definition
+            Err(QError::DuplicateDefinition).with_err_no_pos()
+        } else {
+            let mut seen_element_names: HashSet<BareName> = HashSet::new();
+            for Locatable { element, pos } in user_defined_type.elements.iter() {
+                let element_name: &BareName = &element.name;
+                if seen_element_names.contains(element_name) {
+                    // duplicate element name within type
+                    return Err(QError::DuplicateDefinition).with_err_at(pos);
+                } else {
+                    seen_element_names.insert(element_name.clone());
+                }
+                match &element.element_type {
+                    ElementType::String(Locatable {
+                        element: str_len_expression,
+                        pos,
+                    }) => {
+                        match str_len_expression {
+                            crate::parser::Expression::IntegerLiteral(_i) => {
+                                // parser already covers this
+                            }
+                            crate::parser::Expression::VariableName(v) => {
+                                // only constants allowed
+                                match self.context.resolve_const_expression(v)? {
+                                    Some(_c) => {
+                                        // TODO evaluate constant value now
+                                    }
+                                    None => {
+                                        return Err(QError::InvalidConstant).with_err_at(pos);
+                                    }
+                                }
+                            }
+                            _ => panic!("Unexpected string length {:?}", str_len_expression),
+                        }
+                    }
+                    ElementType::UserDefined(Locatable {
+                        element: referred_name,
+                        pos,
+                    }) => {
+                        if !self.user_defined_types.contains_key(referred_name) {
+                            return Err(QError::syntax_error("Type not defined")).with_err_at(pos);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            self.user_defined_types
+                .insert(type_name.clone(), user_defined_type);
+            Ok(())
+        }
+    }
 }
 
-// Option because we filter out DefType
+pub fn convert(
+    program: parser::ProgramNode,
+) -> Result<(ProgramNode, FunctionMap, SubMap), QErrorNode> {
+    let mut linter = ConverterImpl::default();
+    let (f_c, s_c) = collect_subprograms(&program)?;
+    linter.functions = f_c;
+    linter.subs = s_c;
+    let result = linter.convert(program)?;
+    let (f, s) = linter.consume();
+    Ok((result, f, s))
+}
+
+impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
+    fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, QErrorNode> {
+        let mut result: Vec<TopLevelTokenNode> = vec![];
+        for top_level_token_node in a.into_iter() {
+            // will contain None where DefInt and declarations used to be
+            let Locatable { element, pos } = top_level_token_node;
+            let opt: Option<TopLevelToken> = self.convert(element).patch_err_pos(pos)?;
+            match opt {
+                Some(t) => {
+                    let r: TopLevelTokenNode = t.at(pos);
+                    result.push(r);
+                }
+                _ => (),
+            }
+        }
+        Ok(result)
+    }
+}
+
+impl Converter<Name, QualifiedName> for ConverterImpl {
+    fn convert(&mut self, a: Name) -> Result<QualifiedName, QErrorNode> {
+        Ok(a.resolve_into(&self.resolver))
+    }
+}
+
+// Option because we filter out DefType and UserDefinedType
 impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
     fn convert(&mut self, a: parser::TopLevelToken) -> Result<Option<TopLevelToken>, QErrorNode> {
         match a {
@@ -236,45 +355,8 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
             parser::TopLevelToken::Statement(s) => {
                 Ok(Some(TopLevelToken::Statement(self.convert(s)?)))
             }
-            parser::TopLevelToken::UserDefinedType(u) => {
-                let type_name_ref: &BareName = u.name.as_ref();
-                if self.user_defined_types.contains_key(type_name_ref) {
-                    Err(QError::DuplicateDefinition).with_err_no_pos()
-                } else {
-                    for Locatable { element, .. } in u.elements.iter() {
-                        match &element.element_type {
-                            ElementType::String(Locatable { element: e, pos }) => {
-                                match e {
-                                    crate::parser::Expression::IntegerLiteral(_i) => {
-                                        // parser already covers this
-                                    }
-                                    crate::parser::Expression::VariableName(v) => {
-                                        // only constants allowed
-                                        match self.context.resolve_const_expression(v)? {
-                                            Some(_c) => {
-                                                // TODO evaluate constant value now
-                                            }
-                                            None => {
-                                                return Err(QError::InvalidConstant)
-                                                    .with_err_at(pos);
-                                            }
-                                        }
-                                    }
-                                    _ => panic!("Unexpected string length {:?}", e),
-                                }
-                            }
-                            ElementType::UserDefined(Locatable { element: n, pos }) => {
-                                if !self.user_defined_types.contains_key(n) {
-                                    return Err(QError::syntax_error("Type not defined"))
-                                        .with_err_at(pos);
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                    self.user_defined_types.insert(type_name_ref.clone(), u);
-                    Ok(None)
-                }
+            parser::TopLevelToken::UserDefinedType(user_defined_type) => {
+                self.user_defined_type(user_defined_type).map(|_| None)
             }
         }
     }
@@ -481,74 +563,6 @@ impl HasQualifier for LName {
     fn qualifier(&self) -> TypeQualifier {
         match self {
             Self::Variable(n) | Self::Function(n) => n.qualifier(),
-        }
-    }
-}
-
-impl ConverterImpl {
-    pub fn resolve_name_in_assignment(&mut self, n: parser::Name) -> Result<LName, QErrorNode> {
-        if self.context.is_function_context(&n) {
-            // trying to assign to the function
-            let function_type: TypeQualifier = self.functions.get(n.as_ref()).unwrap().0;
-            if n.is_bare_or_of_type(function_type) {
-                Ok(LName::Function(n.with_type(function_type)))
-            } else {
-                // trying to assign to the function with an explicit wrong type
-                Err(QError::DuplicateDefinition).with_err_no_pos()
-            }
-        } else if self.subs.contains_key(n.as_ref()) {
-            // trying to assign to a sub
-            Err(QError::DuplicateDefinition).with_err_no_pos()
-        } else if !self.context.resolve_param_assignment(&n, &self.resolver)?
-            && self.functions.contains_key(n.as_ref())
-        {
-            // parameter might be hiding a function name so it takes precedence
-            Err(QError::DuplicateDefinition).with_err_no_pos()
-        } else {
-            let declared_name = self.context.resolve_assignment(&n, &self.resolver)?;
-            let q = self.resolve_declared_name(&declared_name);
-            let DeclaredName { name, .. } = declared_name;
-            Ok(LName::Variable(name.with_type(q)))
-        }
-    }
-
-    pub fn resolve_name_in_expression(
-        &mut self,
-        n: &parser::Name,
-    ) -> Result<Expression, QErrorNode> {
-        self.context
-            .resolve_expression(n, &self.resolver)
-            .or_try_read(|| self.resolve_name_as_subprogram(n).with_err_no_pos())
-            .or_read(|| {
-                self.context
-                    .resolve_missing_name_in_expression(n, &self.resolver)
-            })
-    }
-
-    fn resolve_name_as_subprogram(
-        &mut self,
-        n: &parser::Name,
-    ) -> Result<Option<Expression>, QError> {
-        if self.subs.contains_key(n.as_ref()) {
-            // using the name of a sub as a variable expression
-            Err(QError::DuplicateDefinition)
-        } else if self.functions.contains_key(n.as_ref()) {
-            // if the function expects arguments, argument count mismatch
-            let (f_type, f_args, _) = self.functions.get(n.as_ref()).unwrap();
-            if !f_args.is_empty() {
-                Err(QError::ArgumentCountMismatch)
-            } else if !n.is_bare_or_of_type(*f_type) {
-                // if the function is a different type and the name is qualified of a different type, duplication definition
-                Err(QError::DuplicateDefinition)
-            } else {
-                // else convert it to function call
-                Ok(Some(Expression::FunctionCall(
-                    n.with_type_ref(*f_type),
-                    vec![],
-                )))
-            }
-        } else {
-            Ok(None)
         }
     }
 }

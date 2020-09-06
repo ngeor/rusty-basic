@@ -553,7 +553,40 @@ pub mod common {
         }
     }
 
-    pub fn zero_or_more<R, S, T1, T2, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T1>, E>>
+    pub fn many<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
+    where
+        R: Reader + 'static,
+        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
+        E: 'static,
+    {
+        Box::new(move |char_reader| {
+            let mut result: Vec<T> = vec![];
+            let mut cr: R = char_reader;
+            loop {
+                match source(cr) {
+                    Ok((next_cr, opt_res)) => {
+                        cr = next_cr;
+                        match opt_res {
+                            Some(t) => {
+                                result.push(t);
+                            }
+                            None => {
+                                break;
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            }
+            Ok((cr, Some(result)))
+        })
+    }
+
+    pub fn many_with_terminating_indicator<R, S, T1, T2, E>(
+        source: S,
+    ) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T1>, E>>
     where
         R: Reader + 'static,
         S: Fn(R) -> ReaderResult<R, (T1, Option<T2>), E> + 'static,

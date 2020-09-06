@@ -1,7 +1,8 @@
 use crate::common::QError;
 use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable};
 use crate::parser::pc::common::{
-    and, demand, drop_left, map_default_to_not_found, negate, opt_seq2, seq3, zero_or_more,
+    and, demand, drop_left, many_with_terminating_indicator, map_default_to_not_found, negate,
+    opt_seq2, seq3,
 };
 use crate::parser::pc::map::map;
 use crate::parser::pc::str::{
@@ -204,7 +205,7 @@ where
     T: 'static,
     E: 'static,
 {
-    zero_or_more(opt_seq2(
+    many_with_terminating_indicator(opt_seq2(
         source,
         crate::parser::pc::ws::zero_or_more_around(read(',')),
     ))

@@ -31,7 +31,7 @@ pub fn select_case<T: BufRead + 'static>(
                 parse_select_case_expr(),
                 // parse inline comments after SELECT
                 comment::comments(),
-                zero_or_more(parse_case_any()),
+                many_with_terminating_indicator(parse_case_any()),
             ),
             demand(
                 parse_end_select(),

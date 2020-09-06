@@ -47,7 +47,7 @@ use crate::parser::char_reader::EolReader;
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::common::{demand, or_vec, seq3, seq5, zero_or_more};
+use crate::parser::pc::common::{demand, many, or_vec, seq3, seq5};
 use crate::parser::pc::map::{and_then, map, source_and_then_some};
 use crate::parser::pc::ws;
 use crate::parser::pc::{read, ReaderResult};
@@ -71,13 +71,7 @@ pub fn user_defined_type<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected: whitespace after TYPE"),
             ),
             comment::comments(),
-            and_then(zero_or_more(element_node()), |v| {
-                if v.is_empty() {
-                    Err(QError::syntax_error("Element not defined"))
-                } else {
-                    Ok(v)
-                }
-            }),
+            element_nodes(),
             demand_keyword(Keyword::End),
             demand_guarded_keyword(Keyword::Type),
         ),
@@ -106,8 +100,20 @@ fn bare_name_without_dot<T: BufRead + 'static>(
     })
 }
 
+fn element_nodes<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<ElementNode>, QError>> {
+    and_then(many(element_node), |v| {
+        if v.is_empty() {
+            Err(QError::syntax_error("Element not defined"))
+        } else {
+            Ok(v)
+        }
+    })
+}
+
 fn element_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (ElementNode, Option<()>), QError>> {
+    reader: EolReader<T>,
+) -> ReaderResult<EolReader<T>, ElementNode, QError> {
     map(
         seq5(
             with_pos(bare_name_without_dot()),
@@ -123,19 +129,16 @@ fn element_node<T: BufRead + 'static>(
             comment::comments(),
         ),
         |(Locatable { element, pos }, _, _, element_type, comments)| {
-            (
-                Locatable::new(
-                    Element {
-                        name: element,
-                        element_type,
-                        comments,
-                    },
-                    pos,
-                ),
-                Some(()),
+            Locatable::new(
+                Element {
+                    name: element,
+                    element_type,
+                    comments,
+                },
+                pos,
             )
         },
-    )
+    )(reader)
 }
 
 fn element_type<T: BufRead + 'static>(
@@ -289,6 +292,4 @@ mod tests {
             assert_eq!(parse_err(input), QError::syntax_error("Illegal number"));
         }
     }
-
-    // TODO no duplicate element name
 }

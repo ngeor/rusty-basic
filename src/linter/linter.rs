@@ -787,6 +787,17 @@ mod tests {
         }
 
         #[test]
+        fn duplicate_element_name() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+                Value AS INTEGER
+            END TYPE
+        ";
+            assert_linter_err!(input, QError::DuplicateDefinition, 4, 17);
+        }
+
+        #[test]
         fn element_using_container_type_throws_type_not_defined() {
             let input = "
             TYPE Card

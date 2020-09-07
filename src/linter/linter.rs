@@ -23,9 +23,6 @@ fn apply_linters(
     functions: &FunctionMap,
     subs: &SubMap,
 ) -> Result<(), QErrorNode> {
-    let linter = super::no_dynamic_const::NoDynamicConst {};
-    linter.visit_program(&result)?;
-
     let linter = super::for_next_counter_match::ForNextCounterMatch {};
     linter.visit_program(&result)?;
 

@@ -8,7 +8,8 @@ use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNodes, ElementType, HasQualifier, Name,
-    NameNode, QualifiedName, TypeDefinition, TypeQualifier, UserDefinedType, WithTypeQualifier,
+    NameNode, QualifiedName, QualifiedNameNode, TypeDefinition, TypeQualifier, UserDefinedType,
+    WithTypeQualifier,
 };
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -121,8 +122,8 @@ impl ConverterImpl {
         &mut self,
         function_name: &QualifiedName,
         params: DeclaredNameNodes,
-    ) -> Result<Vec<QNameNode>, QErrorNode> {
-        let mut result: Vec<QNameNode> = vec![];
+    ) -> Result<Vec<QualifiedNameNode>, QErrorNode> {
+        let mut result: Vec<QualifiedNameNode> = vec![];
         for p in params.into_iter() {
             let Locatable { element, pos } = p;
             if self.subs.contains_key(element.as_ref()) {
@@ -154,7 +155,7 @@ impl ConverterImpl {
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
         self.push_sub_context(sub_name_node.as_ref());
 
-        let mut mapped_params: Vec<QNameNode> = vec![];
+        let mut mapped_params: Vec<QualifiedNameNode> = vec![];
         for declared_name_node in params.into_iter() {
             let Locatable { element, pos } = declared_name_node;
             if self.subs.contains_key(element.as_ref()) {

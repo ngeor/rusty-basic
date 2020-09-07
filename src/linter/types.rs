@@ -1,8 +1,11 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::*;
-use crate::parser::*;
-
-pub type QNameNode = Locatable<QualifiedName>;
+use crate::common::{
+    FileHandle, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
+};
+use crate::parser::{
+    BareName, BareNameNode, HasQualifier, Operand, QualifiedName, QualifiedNameNode,
+    TypeDefinition, TypeQualifier, UnaryOperand,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -62,12 +65,12 @@ impl ExpressionNode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
-    pub variable_name: QNameNode,
+    pub variable_name: QualifiedNameNode,
     pub lower_bound: ExpressionNode,
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<QNameNode>,
+    pub next_counter: Option<QualifiedNameNode>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -109,7 +112,7 @@ pub enum CaseExpression {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
     Assignment(QualifiedName, ExpressionNode),
-    Const(QNameNode, ExpressionNode),
+    Const(QualifiedNameNode, ExpressionNode),
     SubCall(BareName, Vec<ExpressionNode>),
     BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),
 
@@ -119,9 +122,9 @@ pub enum Statement {
     ForLoop(ForLoopNode),
     While(ConditionalBlockNode),
 
-    ErrorHandler(CaseInsensitiveString),
-    Label(CaseInsensitiveString),
-    GoTo(CaseInsensitiveString),
+    ErrorHandler(BareName),
+    Label(BareName),
+    GoTo(BareName),
 
     SetReturnValue(ExpressionNode),
     Comment(String),
@@ -133,15 +136,15 @@ pub type StatementNodes = Vec<StatementNode>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionImplementation {
-    pub name: QNameNode,
-    pub params: Vec<QNameNode>,
+    pub name: QualifiedNameNode,
+    pub params: Vec<QualifiedNameNode>, //ResolvedDeclaredNameNodes,
     pub body: StatementNodes,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubImplementation {
     pub name: BareNameNode,
-    pub params: Vec<QNameNode>,
+    pub params: Vec<QualifiedNameNode>, //ResolvedDeclaredNameNodes,
     pub body: StatementNodes,
 }
 
@@ -169,7 +172,7 @@ pub type ProgramNode = Vec<TopLevelTokenNode>;
 pub enum ResolvedTypeDefinition {
     CompactBuiltIn(TypeQualifier),
     ExtendedBuiltIn(TypeQualifier),
-    UserDefined(CaseInsensitiveString),
+    UserDefined(BareName),
 }
 
 impl ResolvedTypeDefinition {
@@ -237,14 +240,15 @@ impl From<TypeDefinition> for ResolvedTypeDefinition {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedDeclaredName {
-    pub name: CaseInsensitiveString,
+    pub name: BareName,
     pub type_definition: ResolvedTypeDefinition,
 }
 
-impl AsRef<CaseInsensitiveString> for ResolvedDeclaredName {
-    fn as_ref(&self) -> &CaseInsensitiveString {
+impl AsRef<BareName> for ResolvedDeclaredName {
+    fn as_ref(&self) -> &BareName {
         &self.name
     }
 }
 
 pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;
+pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;

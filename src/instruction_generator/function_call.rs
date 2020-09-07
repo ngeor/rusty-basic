@@ -6,7 +6,7 @@ use crate::linter::*;
 impl InstructionGenerator {
     pub fn generate_function_call_instructions(
         &mut self,
-        function_name: QNameNode,
+        function_name: QualifiedNameNode,
         args: Vec<ExpressionNode>,
     ) {
         let pos = function_name.pos();

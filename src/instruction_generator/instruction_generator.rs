@@ -211,7 +211,7 @@ impl InstructionGenerator {
         );
     }
 
-    pub fn generate_assignment_instructions(&mut self, l: QNameNode, r: ExpressionNode) {
+    pub fn generate_assignment_instructions(&mut self, l: QualifiedNameNode, r: ExpressionNode) {
         self.generate_expression_instructions(r);
         let Locatable { element, pos } = l;
         self.push(Instruction::Store(element), pos);

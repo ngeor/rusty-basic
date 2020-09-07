@@ -1,7 +1,7 @@
 use super::types::*;
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::QualifiedName;
+use crate::parser::{QualifiedName, QualifiedNameNode};
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.
@@ -158,7 +158,11 @@ pub trait PostConversionLinter {
         self.visit_statement_nodes(&c.statements)
     }
 
-    fn visit_const(&self, _left: &QNameNode, right: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn visit_const(
+        &self,
+        _left: &QualifiedNameNode,
+        right: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
         self.visit_expression(right)
     }
 

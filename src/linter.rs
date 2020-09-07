@@ -23,6 +23,6 @@ pub use self::linter::*;
 pub use self::types::*;
 
 pub use crate::parser::{
-    BareName, BareNameNode, DeclaredName, HasQualifier, Operand, QualifiedName, TypeDefinition,
-    TypeQualifier, UnaryOperand,
+    BareName, BareNameNode, HasQualifier, Operand, QualifiedName, QualifiedNameNode, TypeQualifier,
+    UnaryOperand,
 };

@@ -1,23 +1,22 @@
 use crate::common::*;
 use crate::linter::type_resolver::*;
-use crate::linter::Expression;
+use crate::linter::types::{Expression, ResolvedDeclaredName, ResolvedTypeDefinition};
 use crate::parser::{
-    BareName, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier, WithTypeQualifier,
+    BareName, DeclaredName, Name, QualifiedName, TypeQualifier, WithTypeQualifier,
 };
 use std::collections::HashMap;
-use std::convert::TryFrom;
 
-//
-// TypeDefinitions
-//
+// ========================================================
+// ResolvedTypeDefinitions
+// ========================================================
 
 #[derive(Debug, Default)]
-struct TypeDefinitions {
-    v: Vec<TypeDefinition>,
+struct ResolvedTypeDefinitions {
+    v: Vec<ResolvedTypeDefinition>,
 }
 
-impl TypeDefinitions {
-    pub fn push(&mut self, t: TypeDefinition) -> Result<(), QError> {
+impl ResolvedTypeDefinitions {
+    pub fn push(&mut self, t: ResolvedTypeDefinition) -> Result<(), QError> {
         if self.clashes_with(&t) {
             Err(QError::DuplicateDefinition)
         } else {
@@ -26,23 +25,39 @@ impl TypeDefinitions {
         }
     }
 
-    pub fn clashes_with(&self, t: &TypeDefinition) -> bool {
+    pub fn clashes_with(&self, t: &ResolvedTypeDefinition) -> bool {
         match &t {
-            TypeDefinition::Bare => {
-                panic!("Internal error: unresolved bare type definition");
-            }
-            TypeDefinition::CompactBuiltIn(q) => self
+            ResolvedTypeDefinition::CompactBuiltIn(q) => self
                 .v
                 .iter()
                 .any(|x| x.is_extended() || x.is_compact_of_type(*q)),
-            TypeDefinition::ExtendedBuiltIn(_) | TypeDefinition::UserDefined(_) => {
+            ResolvedTypeDefinition::ExtendedBuiltIn(_) | ResolvedTypeDefinition::UserDefined(_) => {
                 !self.v.is_empty()
             }
         }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<TypeDefinition> {
+    pub fn iter(&self) -> std::slice::Iter<ResolvedTypeDefinition> {
         self.v.iter()
+    }
+
+    pub fn opt_q<F>(&self, predicate: F) -> Option<TypeQualifier>
+    where
+        F: Fn(&ResolvedTypeDefinition) -> bool,
+    {
+        for resolved_type_definition in self.v.iter() {
+            if predicate(resolved_type_definition) {
+                match resolved_type_definition {
+                    ResolvedTypeDefinition::CompactBuiltIn(q)
+                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                        return Some(*q);
+                    }
+                    ResolvedTypeDefinition::UserDefined(_) => {}
+                }
+            }
+        }
+
+        None
     }
 }
 
@@ -52,19 +67,19 @@ impl TypeDefinitions {
 
 #[derive(Debug, Default)]
 struct VariableMap {
-    m: HashMap<BareName, TypeDefinitions>,
+    m: HashMap<BareName, ResolvedTypeDefinitions>,
 }
 
 impl VariableMap {
-    pub fn push(&mut self, declared_name: DeclaredName) -> Result<(), QError> {
-        let DeclaredName {
+    pub fn push(&mut self, declared_name: ResolvedDeclaredName) -> Result<(), QError> {
+        let ResolvedDeclaredName {
             name,
             type_definition,
         } = declared_name;
         match self.m.get_mut(&name) {
             Some(type_definitions) => type_definitions.push(type_definition),
             None => {
-                let mut type_definitions = TypeDefinitions::default();
+                let mut type_definitions = ResolvedTypeDefinitions::default();
                 type_definitions.push(type_definition)?;
                 self.m.insert(name, type_definitions);
                 Ok(())
@@ -76,12 +91,13 @@ impl VariableMap {
         self.m.contains_key(bare_name.as_ref())
     }
 
-    pub fn clashes_with(&self, declared_name: &DeclaredName) -> bool {
-        let bare_name: &BareName = declared_name.as_ref();
-        match self.m.get(bare_name) {
-            Some(type_definitions) => {
-                type_definitions.clashes_with(declared_name.type_definition())
-            }
+    pub fn clashes_with(&self, declared_name: &ResolvedDeclaredName) -> bool {
+        let ResolvedDeclaredName {
+            name,
+            type_definition,
+        } = declared_name;
+        match self.m.get(name) {
+            Some(type_definitions) => type_definitions.clashes_with(type_definition),
             None => false,
         }
     }
@@ -90,7 +106,7 @@ impl VariableMap {
         &self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<DeclaredName>, QError> {
+    ) -> Result<Option<ResolvedDeclaredName>, QError> {
         let bare_name: &BareName = name.as_ref();
         let q: TypeQualifier = name.resolve_into(resolver);
         match self.m.get(bare_name) {
@@ -99,18 +115,18 @@ impl VariableMap {
                     if type_definition.is_extended() {
                         // only bare name is allowed
                         if name.is_bare() {
-                            return Ok(Some(DeclaredName::new(
-                                bare_name.clone(),
-                                type_definition.clone(),
-                            )));
+                            return Ok(Some(ResolvedDeclaredName {
+                                name: bare_name.clone(),
+                                type_definition: type_definition.clone(),
+                            }));
                         } else {
                             return Err(QError::DuplicateDefinition);
                         }
                     } else if type_definition.is_compact_of_type(q) {
-                        return Ok(Some(DeclaredName::new(
-                            bare_name.clone(),
-                            type_definition.clone(),
-                        )));
+                        return Ok(Some(ResolvedDeclaredName {
+                            name: bare_name.clone(),
+                            type_definition: type_definition.clone(),
+                        }));
                     }
                 }
             }
@@ -123,12 +139,7 @@ impl VariableMap {
         match name {
             Name::Bare(b) => match self.m.get(b) {
                 Some(type_definitions) => {
-                    let opt_q = type_definitions
-                        .iter()
-                        .find(|x| x.is_compact_built_in())
-                        .map(|x| TypeQualifier::try_from(x).unwrap());
-
-                    match opt_q {
+                    match type_definitions.opt_q(ResolvedTypeDefinition::is_compact_built_in) {
                         Some(q) => Ok(Some(Expression::Constant(b.with_type_ref(q)))),
                         None => Ok(None),
                     }
@@ -140,12 +151,7 @@ impl VariableMap {
                 qualifier,
             } => match self.m.get(bare_name) {
                 Some(type_definitions) => {
-                    let opt_q = type_definitions
-                        .iter()
-                        .find(|x| x.is_compact_built_in())
-                        .map(|x| TypeQualifier::try_from(x).unwrap());
-
-                    match opt_q {
+                    match type_definitions.opt_q(ResolvedTypeDefinition::is_compact_built_in) {
                         Some(q) => {
                             if q == *qualifier {
                                 Ok(Some(Expression::Constant(name.with_type_ref(q))))
@@ -172,11 +178,7 @@ impl VariableMap {
                 match name {
                     Name::Bare(_) => {
                         // bare name can match extended identifiers
-                        match type_definitions
-                            .iter()
-                            .find(|x| x.is_extended())
-                            .map(|x| TypeQualifier::try_from(x).unwrap())
-                        {
+                        match type_definitions.opt_q(ResolvedTypeDefinition::is_extended) {
                             Some(q) => Ok(Some(Expression::Variable(bare_name.with_type_ref(q)))),
                             None => {
                                 // let's try the resolver then
@@ -221,13 +223,26 @@ pub struct Symbols {
 }
 
 impl Symbols {
-    fn resolve_declared_name<T: TypeResolver>(d: DeclaredName, resolver: &T) -> DeclaredName {
+    fn resolve_declared_name<T: TypeResolver>(
+        d: DeclaredName,
+        resolver: &T,
+    ) -> ResolvedDeclaredName {
         if d.is_bare() {
             let DeclaredName { name, .. } = d;
             let q: TypeQualifier = (&name).resolve_into(resolver);
-            DeclaredName::new(name, TypeDefinition::CompactBuiltIn(q))
+            ResolvedDeclaredName {
+                name,
+                type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+            }
         } else {
-            d
+            let DeclaredName {
+                name,
+                type_definition,
+            } = d;
+            ResolvedDeclaredName {
+                name,
+                type_definition: type_definition.into(),
+            }
         }
     }
 
@@ -251,10 +266,10 @@ impl Symbols {
             Err(QError::DuplicateDefinition)
         } else {
             let QualifiedName { name, qualifier } = q_name;
-            self.constants.push(DeclaredName::new(
+            self.constants.push(ResolvedDeclaredName {
                 name,
-                TypeDefinition::CompactBuiltIn(qualifier),
-            ))
+                type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+            })
         }
     }
 
@@ -262,7 +277,7 @@ impl Symbols {
         &mut self,
         declared_name: DeclaredName,
         resolver: &T,
-    ) -> Result<DeclaredName, QError> {
+    ) -> Result<ResolvedDeclaredName, QError> {
         let r = Self::resolve_declared_name(declared_name, resolver);
         if self.constants.contains_any(&r)
             || self.params.clashes_with(&r)
@@ -279,7 +294,7 @@ impl Symbols {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<DeclaredName>, QError> {
+    ) -> Result<Option<ResolvedDeclaredName>, QError> {
         // first params
         // then constants
         // then variables
@@ -328,9 +343,12 @@ impl Symbols {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<DeclaredName, QError> {
-        let q: QualifiedName = name.resolve_into(resolver);
-        let d = DeclaredName::from(q);
+    ) -> Result<ResolvedDeclaredName, QError> {
+        let QualifiedName { name, qualifier } = name.resolve_into(resolver);
+        let d = ResolvedDeclaredName {
+            name,
+            type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+        };
         self.variables.push(d.clone())?;
         Ok(d)
     }
@@ -340,10 +358,13 @@ impl Symbols {
         name: &Name,
         resolver: &T,
     ) -> Result<Expression, QError> {
-        let q: QualifiedName = name.resolve_into(resolver);
-        let d = DeclaredName::from(q.clone());
+        let QualifiedName { name, qualifier } = name.resolve_into(resolver);
+        let d = ResolvedDeclaredName {
+            name: name.clone(),
+            type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+        };
         self.variables.push(d)?;
-        Ok(Expression::Variable(q))
+        Ok(Expression::Variable(QualifiedName { name, qualifier }))
     }
 }
 
@@ -464,7 +485,7 @@ impl LinterContext {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<DeclaredName, QError> {
+    ) -> Result<ResolvedDeclaredName, QError> {
         match self.symbols.resolve_assignment(name, resolver)? {
             Some(x) => Ok(x),
             None => {

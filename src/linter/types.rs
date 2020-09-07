@@ -125,7 +125,7 @@ pub enum Statement {
 
     SetReturnValue(ExpressionNode),
     Comment(String),
-    Dim(DeclaredNameNode),
+    Dim(ResolvedDeclaredNameNode),
 }
 
 pub type StatementNode = Locatable<Statement>;
@@ -159,3 +159,92 @@ pub enum TopLevelToken {
 
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
 pub type ProgramNode = Vec<TopLevelTokenNode>;
+
+// ========================================================
+// ResolvedTypeDefinition
+// ========================================================
+
+/// Similar to `TypeDefinition` but without `Bare`
+#[derive(Clone, Debug, PartialEq)]
+pub enum ResolvedTypeDefinition {
+    CompactBuiltIn(TypeQualifier),
+    ExtendedBuiltIn(TypeQualifier),
+    UserDefined(CaseInsensitiveString),
+}
+
+impl ResolvedTypeDefinition {
+    pub fn is_compact_built_in(&self) -> bool {
+        match self {
+            Self::CompactBuiltIn(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_compact_of_type(&self, q: TypeQualifier) -> bool {
+        match self {
+            Self::CompactBuiltIn(q_self) => *q_self == q,
+            _ => false,
+        }
+    }
+
+    pub fn is_extended_built_in(&self) -> bool {
+        match self {
+            Self::ExtendedBuiltIn(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_user_defined(&self) -> bool {
+        match self {
+            Self::UserDefined(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_built_in(&self) -> bool {
+        self.is_compact_built_in() || self.is_extended_built_in()
+    }
+
+    pub fn is_extended(&self) -> bool {
+        self.is_extended_built_in() || self.is_user_defined()
+    }
+}
+
+impl From<ResolvedTypeDefinition> for TypeDefinition {
+    fn from(resolved_type_definition: ResolvedTypeDefinition) -> Self {
+        match resolved_type_definition {
+            ResolvedTypeDefinition::CompactBuiltIn(q) => Self::CompactBuiltIn(q),
+            ResolvedTypeDefinition::ExtendedBuiltIn(q) => Self::ExtendedBuiltIn(q),
+            ResolvedTypeDefinition::UserDefined(bare_name) => Self::UserDefined(bare_name),
+        }
+    }
+}
+
+impl From<TypeDefinition> for ResolvedTypeDefinition {
+    fn from(type_definition: TypeDefinition) -> Self {
+        match type_definition {
+            TypeDefinition::Bare => panic!("Unresolved bare type"), // as this is internal error, it is ok to panic
+            TypeDefinition::CompactBuiltIn(q) => Self::CompactBuiltIn(q),
+            TypeDefinition::ExtendedBuiltIn(q) => Self::ExtendedBuiltIn(q),
+            TypeDefinition::UserDefined(bare_name) => Self::UserDefined(bare_name),
+        }
+    }
+}
+
+// ========================================================
+// ResolvedDeclaredName
+// ========================================================
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedDeclaredName {
+    pub name: CaseInsensitiveString,
+    pub type_definition: ResolvedTypeDefinition,
+}
+
+impl AsRef<CaseInsensitiveString> for ResolvedDeclaredName {
+    fn as_ref(&self) -> &CaseInsensitiveString {
+        &self.name
+    }
+}
+
+pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;

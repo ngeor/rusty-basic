@@ -201,10 +201,17 @@ impl ConverterImpl {
             // parameter might be hiding a function name so it takes precedence
             Err(QError::DuplicateDefinition)
         } else {
-            let declared_name = self.context.resolve_assignment(&n, &self.resolver)?;
-            let q = self.resolve_declared_name(&declared_name);
-            let DeclaredName { name, .. } = declared_name;
-            Ok(LName::Variable(name.with_type(q)))
+            let ResolvedDeclaredName {
+                name,
+                type_definition,
+            } = self.context.resolve_assignment(&n, &self.resolver)?;
+            match type_definition {
+                ResolvedTypeDefinition::CompactBuiltIn(q)
+                | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                    Ok(LName::Variable(name.with_type(q)))
+                }
+                _ => unimplemented!(),
+            }
         }
     }
 

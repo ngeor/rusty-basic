@@ -6,6 +6,7 @@ mod letter_range;
 mod name;
 mod statement_node;
 mod top_level_token_node;
+mod type_definition;
 mod type_qualifier;
 mod user_defined_type;
 
@@ -17,5 +18,6 @@ pub use self::letter_range::*;
 pub use self::name::*;
 pub use self::statement_node::*;
 pub use self::top_level_token_node::*;
+pub use self::type_definition::*;
 pub use self::type_qualifier::*;
 pub use self::user_defined_type::*;

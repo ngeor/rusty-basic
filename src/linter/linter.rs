@@ -243,10 +243,12 @@ mod tests {
                 linter_ok(program),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        DeclaredName::new(
-                            "A".into(),
-                            TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
-                        )
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(
+                                TypeQualifier::DollarString
+                            )
+                        }
                         .at_rc(2, 17)
                     ))
                     .at_rc(2, 13),

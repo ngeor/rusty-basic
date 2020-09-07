@@ -25,7 +25,7 @@ impl InstructionGenerator {
 
     pub fn generate_push_named_args_instructions(
         &mut self,
-        param_names: Vec<QualifiedName>,
+        param_names: Vec<ResolvedDeclaredName>,
         expressions: Vec<ExpressionNode>,
         pos: Location,
     ) {

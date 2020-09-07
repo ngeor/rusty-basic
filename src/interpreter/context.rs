@@ -287,7 +287,7 @@ impl ArgsContext {
 
     pub fn set_named_val_parameter(
         &mut self,
-        param_name: &QualifiedName,
+        param_name: &ResolvedDeclaredName,
         value: Variant,
     ) -> Result<(), QError> {
         self.insert_next_argument(param_name, Argument::ByVal(value))
@@ -295,10 +295,20 @@ impl ArgsContext {
 
     fn insert_next_argument(
         &mut self,
-        param_name: &QualifiedName,
+        param_name: &ResolvedDeclaredName,
         arg: Argument,
     ) -> Result<(), QError> {
-        self.args.insert(param_name.clone(), arg)
+        let ResolvedDeclaredName {
+            name,
+            type_definition,
+        } = param_name;
+        match type_definition {
+            ResolvedTypeDefinition::CompactBuiltIn(q)
+            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                self.args.insert(QualifiedName::new(name.clone(), *q), arg)
+            }
+            _ => unimplemented!(),
+        }
     }
 }
 

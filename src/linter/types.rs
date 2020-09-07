@@ -15,7 +15,7 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Constant(QualifiedName),
-    Variable(QualifiedName),
+    Variable(QualifiedName), // TODO ResolvedDeclaredName
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
@@ -137,14 +137,14 @@ pub type StatementNodes = Vec<StatementNode>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionImplementation {
     pub name: QualifiedNameNode,
-    pub params: Vec<QualifiedNameNode>, //ResolvedDeclaredNameNodes,
+    pub params: ResolvedDeclaredNameNodes,
     pub body: StatementNodes,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubImplementation {
     pub name: BareNameNode,
-    pub params: Vec<QualifiedNameNode>, //ResolvedDeclaredNameNodes,
+    pub params: ResolvedDeclaredNameNodes,
     pub body: StatementNodes,
 }
 

@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::QualifiedName;
+use crate::linter::{QualifiedName, ResolvedDeclaredName};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
@@ -58,7 +58,7 @@ pub enum Instruction {
     /// Pushes the contents of register A at the end of the unnamed stack
     PushUnnamedValParam,
     SetNamedRefParam(NamedRefParam),
-    SetNamedValParam(QualifiedName),
+    SetNamedValParam(ResolvedDeclaredName),
 
     Throw(QError),
 
@@ -75,6 +75,6 @@ pub type InstructionNode = Locatable<Instruction>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedRefParam {
-    pub parameter_name: QualifiedName,
+    pub parameter_name: ResolvedDeclaredName,
     pub argument_name: QualifiedName,
 }

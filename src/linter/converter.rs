@@ -8,8 +8,7 @@ use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNodes, ElementType, HasQualifier, Name,
-    NameNode, QualifiedName, QualifiedNameNode, TypeDefinition, TypeQualifier, UserDefinedType,
-    WithTypeQualifier,
+    NameNode, QualifiedName, TypeDefinition, TypeQualifier, UserDefinedType, WithTypeQualifier,
 };
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -122,27 +121,35 @@ impl ConverterImpl {
         &mut self,
         function_name: &QualifiedName,
         params: DeclaredNameNodes,
-    ) -> Result<Vec<QualifiedNameNode>, QErrorNode> {
-        let mut result: Vec<QualifiedNameNode> = vec![];
+    ) -> Result<ResolvedDeclaredNameNodes, QErrorNode> {
+        let mut result: ResolvedDeclaredNameNodes = vec![];
         for p in params.into_iter() {
-            let Locatable { element, pos } = p;
-            if self.subs.contains_key(element.as_ref()) {
+            let Locatable {
+                element: declared_name,
+                pos,
+            } = p;
+            let bare_name: &BareName = declared_name.as_ref();
+            if self.subs.contains_key(bare_name) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let q: TypeQualifier = self.resolve_declared_name(&element);
-            if function_name.as_ref() == element.as_ref()
-                && (function_name.qualifier() != q || element.is_extended())
+            let q: TypeQualifier = self.resolve_declared_name(&declared_name);
+            if function_name.as_ref() == bare_name
+                && (function_name.qualifier() != q || declared_name.is_extended())
             {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let q_name = QualifiedName::new(element.as_ref().clone(), q);
+            // TODO it is not always CompactBuiltIn, support ExtendedBuiltIn, if it makes a difference
+            let resolved_declared_name = ResolvedDeclaredName {
+                name: bare_name.clone(),
+                type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+            };
             self.context
                 .symbols_mut()
-                .push_param(element, &self.resolver)
+                .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
-            result.push(q_name.at(pos));
+            result.push(resolved_declared_name.at(pos));
         }
         Ok(result)
     }
@@ -155,20 +162,28 @@ impl ConverterImpl {
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
         self.push_sub_context(sub_name_node.as_ref());
 
-        let mut mapped_params: Vec<QualifiedNameNode> = vec![];
+        let mut mapped_params: ResolvedDeclaredNameNodes = vec![];
         for declared_name_node in params.into_iter() {
-            let Locatable { element, pos } = declared_name_node;
-            if self.subs.contains_key(element.as_ref()) {
+            let Locatable {
+                element: declared_name,
+                pos,
+            } = declared_name_node;
+            let bare_name: &BareName = declared_name.as_ref();
+            if self.subs.contains_key(bare_name) {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let q: TypeQualifier = self.resolve_declared_name(&element);
-            let q_name = QualifiedName::new(element.as_ref().clone(), q);
+            let q: TypeQualifier = self.resolve_declared_name(&declared_name);
+            // TODO it is not always CompactBuiltIn, support ExtendedBuiltIn, if it makes a difference
+            let resolved_declared_name = ResolvedDeclaredName {
+                name: bare_name.clone(),
+                type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+            };
             self.context
                 .symbols_mut()
-                .push_param(element, &self.resolver)
+                .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
-            mapped_params.push(q_name.at(pos));
+            mapped_params.push(resolved_declared_name.at(pos));
         }
 
         let mapped = TopLevelToken::SubImplementation(SubImplementation {

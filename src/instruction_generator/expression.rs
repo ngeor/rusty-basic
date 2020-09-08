@@ -26,7 +26,12 @@ impl InstructionGenerator {
                 self.push(Instruction::CopyVarToA(name), pos);
             }
             Expression::Constant(name) => {
-                self.push(Instruction::CopyVarToA(name), pos);
+                let QualifiedName { name, qualifier } = name;
+                let x = ResolvedDeclaredName {
+                    name,
+                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                };
+                self.push(Instruction::CopyVarToA(x), pos);
             }
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);

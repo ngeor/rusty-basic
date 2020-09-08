@@ -8,7 +8,8 @@ use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNodes, ElementType, HasQualifier, Name,
-    NameNode, QualifiedName, TypeDefinition, TypeQualifier, UserDefinedType, WithTypeQualifier,
+    NameNode, QualifiedName, QualifiedNameNode, TypeDefinition, TypeQualifier, UserDefinedType,
+    WithTypeQualifier,
 };
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -486,7 +487,18 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                 let result_q: TypeQualifier = converted_expr.try_qualifier()?;
                 if result_q.can_cast_to(name_type) {
                     match resolved_l_name {
-                        LName::Variable(q) => Ok(Statement::Assignment(q, converted_expr)),
+                        LName::Variable(q_name) => {
+                            let QualifiedName { name, qualifier } = q_name;
+                            Ok(Statement::Assignment(
+                                ResolvedDeclaredName {
+                                    name,
+                                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                        qualifier,
+                                    ),
+                                },
+                                converted_expr,
+                            ))
+                        }
                         LName::Function(_) => Ok(Statement::SetReturnValue(converted_expr)),
                     }
                 } else {
@@ -590,14 +602,24 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
 impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
     fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
         Ok(ForLoopNode {
-            variable_name: self.convert(a.variable_name)?,
+            variable_name: temp_convert(self.convert(a.variable_name)?),
             lower_bound: self.convert(a.lower_bound)?,
             upper_bound: self.convert(a.upper_bound)?,
             step: self.convert(a.step)?,
             statements: self.convert(a.statements)?,
-            next_counter: self.convert(a.next_counter)?,
+            next_counter: self.convert(a.next_counter)?.map(temp_convert),
         })
     }
+}
+
+fn temp_convert(x: QualifiedNameNode) -> ResolvedDeclaredNameNode {
+    let Locatable { element, pos } = x;
+    let QualifiedName { name, qualifier } = element;
+    ResolvedDeclaredName {
+        name,
+        type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+    }
+    .at(pos)
 }
 
 impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for ConverterImpl {

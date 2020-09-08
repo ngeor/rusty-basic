@@ -54,7 +54,6 @@ mod tests {
     use crate::common::*;
     use crate::linter::test_utils::*;
     use crate::linter::*;
-    use std::convert::TryInto;
 
     mod assignment {
         use super::*;
@@ -253,13 +252,24 @@ mod tests {
                     ))
                     .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        "A$".try_into().unwrap(),
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(
+                                TypeQualifier::DollarString
+                            )
+                        },
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable("A$".try_into().unwrap()).at_rc(4, 19)]
+                        vec![Expression::Variable(ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(
+                                TypeQualifier::DollarString
+                            )
+                        })
+                        .at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
                 ]

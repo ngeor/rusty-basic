@@ -279,10 +279,25 @@ impl ArgsContext {
         &mut self,
         named_ref_param: &NamedRefParam,
     ) -> Result<(), QError> {
-        let arg = self
-            .parent
-            .create_parameter(named_ref_param.argument_name.clone());
-        self.insert_next_argument(&named_ref_param.parameter_name, arg)
+        let NamedRefParam {
+            argument_name,
+            parameter_name,
+        } = named_ref_param;
+        let ResolvedDeclaredName {
+            name,
+            type_definition,
+        } = argument_name;
+        match type_definition {
+            ResolvedTypeDefinition::CompactBuiltIn(q)
+            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                let arg = self.parent.create_parameter(QualifiedName {
+                    name: name.clone(),
+                    qualifier: *q,
+                });
+                self.insert_next_argument(parameter_name, arg)
+            }
+            _ => unimplemented!(),
+        }
     }
 
     pub fn set_named_val_parameter(

@@ -8,7 +8,7 @@ pub enum Instruction {
     /// Loads a value into register A
     Load(Variant),
     /// Stores a value from register A
-    Store(QualifiedName),
+    Store(ResolvedDeclaredName),
     /// Stores a value from register A into a constant
     StoreConst(QualifiedName),
     CopyAToB,
@@ -38,7 +38,7 @@ pub enum Instruction {
     Label(CaseInsensitiveString),
     UnresolvedJump(CaseInsensitiveString),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
-    CopyVarToA(QualifiedName),
+    CopyVarToA(ResolvedDeclaredName),
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
     Halt,
@@ -53,7 +53,7 @@ pub enum Instruction {
     PushStack,
     PopStack,
 
-    PushUnnamedRefParam(QualifiedName),
+    PushUnnamedRefParam(ResolvedDeclaredName),
 
     /// Pushes the contents of register A at the end of the unnamed stack
     PushUnnamedValParam,
@@ -76,5 +76,5 @@ pub type InstructionNode = Locatable<Instruction>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedRefParam {
     pub parameter_name: ResolvedDeclaredName,
-    pub argument_name: QualifiedName,
+    pub argument_name: ResolvedDeclaredName,
 }

@@ -6,9 +6,8 @@ use crate::interpreter::context::*;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
-use crate::parser::TypeQualifier;
+use crate::linter::{QualifiedName, ResolvedDeclaredName, ResolvedTypeDefinition, TypeQualifier};
 use crate::variant::Variant;
-
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
@@ -143,10 +142,20 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.set_a(v.clone());
             }
             Instruction::Store(n) => {
-                let v = self.get_a();
-                self.context_mut()
-                    .set_variable(n.clone(), v)
-                    .with_err_at(pos)?;
+                let ResolvedDeclaredName {
+                    name,
+                    type_definition,
+                } = n;
+                match type_definition {
+                    ResolvedTypeDefinition::CompactBuiltIn(q)
+                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                        let v = self.get_a();
+                        self.context_mut()
+                            .set_variable(QualifiedName::new(name.clone(), *q), v)
+                            .with_err_at(pos)?;
+                    }
+                    _ => unimplemented!(),
+                }
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
@@ -210,10 +219,21 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.set_a(c);
             }
             Instruction::CopyVarToA(n) => {
-                let name_node = n.clone().at(pos);
-                match self.context_ref().get_r_value(name_node.as_ref()) {
-                    Some(v) => self.set_a(v),
-                    None => panic!("Variable {:?} undefined at {:?}", n, pos),
+                let ResolvedDeclaredName {
+                    name,
+                    type_definition,
+                } = n;
+                match type_definition {
+                    ResolvedTypeDefinition::CompactBuiltIn(q)
+                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                        let q_name = QualifiedName::new(name.clone(), *q);
+
+                        match self.context_ref().get_r_value(&q_name) {
+                            Some(v) => self.set_a(v),
+                            None => panic!("Variable {:?} undefined at {:?}", n, pos),
+                        }
+                    }
+                    _ => unimplemented!(),
                 }
             }
             Instruction::Equal => {
@@ -290,10 +310,22 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.stacktrace.remove(0);
             }
             Instruction::PushUnnamedRefParam(name) => {
-                self.context_mut()
-                    .demand_args()
-                    .push_back_unnamed_ref_parameter(name.clone())
-                    .with_err_at(pos)?;
+                let ResolvedDeclaredName {
+                    name,
+                    type_definition,
+                } = name;
+                match type_definition {
+                    ResolvedTypeDefinition::CompactBuiltIn(q)
+                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                        let q_name = QualifiedName::new(name.clone(), *q);
+
+                        self.context_mut()
+                            .demand_args()
+                            .push_back_unnamed_ref_parameter(q_name)
+                            .with_err_at(pos)?;
+                    }
+                    _ => unimplemented!(),
+                }
             }
             Instruction::PushUnnamedValParam => {
                 let v = self.get_a();

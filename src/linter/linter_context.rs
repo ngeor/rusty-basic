@@ -179,12 +179,18 @@ impl VariableMap {
                     Name::Bare(_) => {
                         // bare name can match extended identifiers
                         match type_definitions.opt_q(ResolvedTypeDefinition::is_extended) {
-                            Some(q) => Ok(Some(Expression::Variable(bare_name.with_type_ref(q)))),
+                            Some(q) => Ok(Some(Expression::Variable(ResolvedDeclaredName {
+                                name: bare_name.clone(),
+                                type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(q),
+                            }))),
                             None => {
                                 // let's try the resolver then
                                 let q: TypeQualifier = bare_name.resolve_into(resolver);
                                 if type_definitions.iter().any(|x| x.is_compact_of_type(q)) {
-                                    Ok(Some(Expression::Variable(bare_name.with_type_ref(q))))
+                                    Ok(Some(Expression::Variable(ResolvedDeclaredName {
+                                        name: bare_name.clone(),
+                                        type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+                                    })))
                                 } else {
                                     Ok(None)
                                 }
@@ -197,7 +203,10 @@ impl VariableMap {
                             Some(_) => Err(QError::DuplicateDefinition),
                             None => {
                                 if type_definitions.iter().any(|x| x.is_compact_of_type(*q)) {
-                                    Ok(Some(Expression::Variable(bare_name.with_type_ref(*q))))
+                                    Ok(Some(Expression::Variable(ResolvedDeclaredName {
+                                        name: bare_name.clone(),
+                                        type_definition: ResolvedTypeDefinition::CompactBuiltIn(*q),
+                                    })))
                                 } else {
                                     Ok(None)
                                 }
@@ -363,8 +372,8 @@ impl Symbols {
             name: name.clone(),
             type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
         };
-        self.variables.push(d)?;
-        Ok(Expression::Variable(QualifiedName { name, qualifier }))
+        self.variables.push(d.clone())?;
+        Ok(Expression::Variable(d))
     }
 }
 

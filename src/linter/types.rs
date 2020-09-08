@@ -15,7 +15,7 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Constant(QualifiedName),
-    Variable(QualifiedName), // TODO ResolvedDeclaredName
+    Variable(ResolvedDeclaredName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
@@ -32,9 +32,17 @@ impl Expression {
             Self::StringLiteral(_) => Ok(TypeQualifier::DollarString),
             Self::IntegerLiteral(_) => Ok(TypeQualifier::PercentInteger),
             Self::LongLiteral(_) => Ok(TypeQualifier::AmpersandLong),
-            Self::Variable(name) | Self::Constant(name) | Self::FunctionCall(name, _) => {
-                Ok(name.qualifier())
+            Self::Variable(name) => {
+                let ResolvedDeclaredName {
+                    type_definition, ..
+                } = name;
+                match type_definition {
+                    ResolvedTypeDefinition::CompactBuiltIn(q)
+                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => Ok(*q),
+                    _ => Err(QError::TypeMismatch).with_err_at(pos),
+                }
             }
+            Self::Constant(name) | Self::FunctionCall(name, _) => Ok(name.qualifier()),
             Self::BuiltInFunctionCall(f, _) => Ok(f.qualifier()),
             Self::BinaryExpression(op, l, r) => {
                 let q_left = l.as_ref().try_qualifier()?;
@@ -65,12 +73,12 @@ impl ExpressionNode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
-    pub variable_name: QualifiedNameNode,
+    pub variable_name: ResolvedDeclaredNameNode,
     pub lower_bound: ExpressionNode,
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<QualifiedNameNode>,
+    pub next_counter: Option<ResolvedDeclaredNameNode>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -111,7 +119,7 @@ pub enum CaseExpression {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    Assignment(QualifiedName, ExpressionNode),
+    Assignment(ResolvedDeclaredName, ExpressionNode),
     Const(QualifiedNameNode, ExpressionNode),
     SubCall(BareName, Vec<ExpressionNode>),
     BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),

@@ -1,7 +1,7 @@
 use super::types::*;
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::{QualifiedName, QualifiedNameNode};
+use crate::parser::QualifiedNameNode;
 
 /// Visits the converted program and transforms it into a different program.
 ///
@@ -131,9 +131,9 @@ pub trait ExpressionReducer {
 
     fn visit_assignment(
         &self,
-        name: QualifiedName,
+        name: ResolvedDeclaredName,
         v: ExpressionNode,
-    ) -> Result<(QualifiedName, ExpressionNode), QErrorNode> {
+    ) -> Result<(ResolvedDeclaredName, ExpressionNode), QErrorNode> {
         Ok((name, self.visit_expression_node(v)?))
     }
 

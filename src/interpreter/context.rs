@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::instruction_generator::NamedRefParam;
-use crate::interpreter::casting;
+use crate::linter::casting;
 use crate::linter::*;
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};

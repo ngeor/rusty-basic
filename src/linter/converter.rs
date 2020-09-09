@@ -7,11 +7,9 @@ use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, CanCastTo, DeclaredName, DeclaredNameNodes, ElementType, HasQualifier,
-    Name, NameNode, QualifiedName, QualifiedNameNode, TypeDefinition, TypeQualifier,
-    UserDefinedType, WithTypeQualifier,
+    BareName, BareNameNode, CanCastTo, DeclaredName, DeclaredNameNodes, HasQualifier, Name,
+    NameNode, QualifiedName, QualifiedNameNode, TypeDefinition, TypeQualifier, WithTypeQualifier,
 };
-use std::collections::HashSet;
 use std::convert::TryInto;
 
 //
@@ -381,7 +379,7 @@ impl ConverterImpl {
                     Err(QError::TypeMismatch).with_err_at(&converted_expr)
                 }
             }
-            LName::Function(QualifiedName { name, qualifier }) => {
+            LName::Function(QualifiedName { qualifier, .. }) => {
                 if result_q.can_cast_to(qualifier) {
                     Ok(Statement::SetReturnValue(converted_expr))
                 } else {

@@ -3,6 +3,7 @@ use crate::common::{
     CaseInsensitiveString, Locatable, Location, PatchErrPos, QError, QErrorNode,
     ToErrorEnvelopeNoPos, ToLocatableError,
 };
+use crate::linter::casting::cast;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::ResolvedTypeDefinition;
@@ -171,7 +172,7 @@ impl FirstPassOuter {
                 self.global_constants.insert(b.clone(), v);
             }
             Name::Qualified { name, qualifier } => {
-                let casted = Self::cast_variant(v, *qualifier).with_err_at(pos)?;
+                let casted = cast(v, *qualifier).with_err_at(pos)?;
                 self.global_constants.insert(name.clone(), casted);
             }
         }
@@ -183,17 +184,6 @@ impl FirstPassOuter {
         match expression {
             Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
             Expression::FunctionCall(_, _) => Err(QError::InvalidConstant).with_err_no_pos(),
-            _ => unimplemented!(),
-        }
-    }
-
-    // TODO move to variant
-    fn cast_variant(v: Variant, target_type: TypeQualifier) -> Result<Variant, QError> {
-        match v {
-            Variant::VInteger(i) => match target_type {
-                TypeQualifier::PercentInteger => Ok(v),
-                _ => unimplemented!(),
-            },
             _ => unimplemented!(),
         }
     }

@@ -281,7 +281,7 @@ impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
             Self::CompactBuiltIn(q_left) | Self::ExtendedBuiltIn(q_left) => {
                 q_left.can_cast_to(other)
             }
-            Self::UserDefined(u_left) => false,
+            Self::UserDefined(_) => false,
         }
     }
 }

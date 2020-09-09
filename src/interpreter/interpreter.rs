@@ -1,11 +1,11 @@
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
 use crate::interpreter::built_ins;
-use crate::interpreter::casting::cast;
 use crate::interpreter::context::*;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
+use crate::linter::casting::cast;
 use crate::linter::{QualifiedName, ResolvedDeclaredName, ResolvedTypeDefinition, TypeQualifier};
 use crate::variant::Variant;
 use std::cmp::Ordering;

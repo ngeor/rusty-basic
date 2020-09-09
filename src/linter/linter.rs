@@ -902,7 +902,8 @@ mod tests {
                     END IF",
                     op
                 );
-                assert_linter_err!(input, QError::TypeMismatch, 9, 26);
+                // QBasic uses the right side expr for the location
+                assert_linter_err!(input, QError::TypeMismatch, 9, 26 + (op.len() as u32) + 1);
             }
         }
 

@@ -539,10 +539,12 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                                     Err(QError::TypeMismatch).with_err_at(&converted_right)
                                 }
                             }
+                            // user defined cannot be in binary expressions
                             _ => Err(QError::TypeMismatch).with_err_at(&converted_right),
                         }
                     }
-                    _ => Err(QError::TypeMismatch).with_err_at(&converted_left),
+                    // user defined cannot be in binary expressions
+                    _ => Err(QError::TypeMismatch).with_err_at(&converted_right),
                 }
             }
             parser::Expression::UnaryExpression(op, c) => {
@@ -557,7 +559,8 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                             Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
                         }
                     }
-                    _ => Err(QError::TypeMismatch).with_err_at(&converted_child),
+                    // user defined cannot be in unary expressions
+                    _ => Err(QError::TypeMismatch).with_err_no_pos(),
                 }
             }
             parser::Expression::Parenthesis(c) => {

@@ -1,6 +1,6 @@
 use super::{Name, Operator, UnaryOperator};
 use crate::common::{AtLocation, FileHandle, HasLocation, Locatable, Location};
-use crate::variant;
+use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -64,14 +64,14 @@ impl Expression {
             Self::SingleLiteral(n) => Self::SingleLiteral(-n),
             Self::DoubleLiteral(n) => Self::DoubleLiteral(-n),
             Self::IntegerLiteral(n) => {
-                if *n <= variant::MIN_INTEGER {
+                if *n <= MIN_INTEGER {
                     Self::LongLiteral(-n as i64)
                 } else {
                     Self::IntegerLiteral(-n)
                 }
             }
             Self::LongLiteral(n) => {
-                if *n <= variant::MIN_LONG {
+                if *n <= MIN_LONG {
                     Self::DoubleLiteral(-n as f64)
                 } else {
                     Self::LongLiteral(-n)

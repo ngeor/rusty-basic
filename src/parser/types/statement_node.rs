@@ -1,4 +1,6 @@
-use super::{ExpressionNodes, BareName, DeclaredNameNode, ExpressionNode, Name, NameNode, Operator};
+use super::{
+    BareName, DeclaredNameNode, ExpressionNode, ExpressionNodes, Name, NameNode, Operator,
+};
 use crate::common::*;
 
 pub type StatementNodes = Vec<StatementNode>;

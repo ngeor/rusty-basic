@@ -166,12 +166,12 @@ impl Variant {
         }
     }
 
-    pub fn negate(&self) -> Result<Self, QError> {
+    pub fn negate(self) -> Result<Self, QError> {
         match self {
             Variant::VSingle(n) => Ok(Variant::VSingle(-n)),
             Variant::VDouble(n) => Ok(Variant::VDouble(-n)),
             Variant::VInteger(n) => {
-                if *n <= MIN_INTEGER {
+                if n <= MIN_INTEGER {
                     // prevent converting -32768 to 32768
                     Err(QError::Overflow)
                 } else {
@@ -179,7 +179,7 @@ impl Variant {
                 }
             }
             Variant::VLong(n) => {
-                if *n <= MIN_LONG {
+                if n <= MIN_LONG {
                     Err(QError::Overflow)
                 } else {
                     Ok(Variant::VLong(-n))
@@ -189,7 +189,7 @@ impl Variant {
         }
     }
 
-    pub fn unary_not(&self) -> Result<Self, QError> {
+    pub fn unary_not(self) -> Result<Self, QError> {
         match self {
             Variant::VSingle(f) => Ok(Variant::VSingle(-f.round() - 1.0)),
             Variant::VDouble(d) => Ok(Variant::VDouble(-d.round() - 1.0)),

@@ -146,7 +146,6 @@ impl ConverterImpl {
                 type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
             };
             self.context
-                .symbols_mut()
                 .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
             result.push(resolved_declared_name.at(pos));
@@ -180,7 +179,6 @@ impl ConverterImpl {
                 type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
             };
             self.context
-                .symbols_mut()
                 .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
             mapped_params.push(resolved_declared_name.at(pos));
@@ -208,10 +206,7 @@ impl ConverterImpl {
         } else if self.subs.contains_key(n.as_ref()) {
             // trying to assign to a sub
             Err(QError::DuplicateDefinition)
-        } else if !self
-            .context
-            .symbols_mut()
-            .resolve_param_assignment(&n, &self.resolver)?
+        } else if !self.context.resolve_param_assignment(&n, &self.resolver)?
             && self.functions.contains_key(n.as_ref())
         {
             // parameter might be hiding a function name so it takes precedence
@@ -229,7 +224,6 @@ impl ConverterImpl {
             .or_try_read(|| self.resolve_name_as_subprogram(n))
             .or_read(|| {
                 self.context
-                    .symbols_mut()
                     .resolve_missing_name_in_expression(n, &self.resolver)
             })
     }
@@ -270,7 +264,7 @@ impl ConverterImpl {
         let bare_name: &BareName = name.as_ref();
         if self.functions.contains_key(bare_name)
             || self.subs.contains_key(bare_name)
-            || self.context.symbols().contains_any(&name)
+            || self.context.contains_any(&name)
         {
             // local variable/param or local constant or function or sub already present by that name
             Err(QError::DuplicateDefinition).with_err_at(pos)
@@ -401,7 +395,7 @@ pub fn convert(
     let mut converter = ConverterImpl::default();
     converter.functions = f_c;
     converter.subs = s_c;
-    converter.context.symbols_mut().user_defined_types = user_defined_types;
+    converter.context.user_defined_types = user_defined_types;
     let result = converter.convert(program)?;
     let (f, s) = converter.consume();
     Ok((result, f, s))
@@ -491,7 +485,6 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
                 }
                 let mapped_declared_name = self
                     .context
-                    .symbols_mut()
                     .push_dim(declared_name, &self.resolver)
                     .with_err_at(pos)?;
                 Ok(Statement::Dim(mapped_declared_name.at(pos)))

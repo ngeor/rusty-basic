@@ -1,239 +1,71 @@
-use crate::common::*;
-use crate::linter::type_resolver::*;
+use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{Expression, ResolvedDeclaredName, ResolvedTypeDefinition};
 use crate::parser::{
     BareName, CanCastTo, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier,
     UserDefinedType, WithTypeQualifier,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+/*
+
+Naming rules
+
+1. It is possible to have multiple compact variables
+
+e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
+
+2. A constant can be referenced either bare or by its correct qualifier
+
+2b. A constant cannot co-exist with other symbols of the same name
+
+3. A bare constant gets its qualifier from the expression and not from the type resolver
+
+4. A constant in a subprogram can override a global constant
+
+5. An extended variable can be referenced either bare or by its correct qualifier
+5b. An extended variable cannot co-exist with other symbols of the same name
+*/
 
 // ========================================================
 // ResolvedTypeDefinitions
 // ========================================================
 
-#[derive(Debug, Default)]
-struct ResolvedTypeDefinitions {
-    v: Vec<ResolvedTypeDefinition>,
-}
-
-impl ResolvedTypeDefinitions {
-    pub fn push(&mut self, t: ResolvedTypeDefinition) -> Result<(), QError> {
-        if self.clashes_with(&t) {
-            Err(QError::DuplicateDefinition)
-        } else {
-            self.v.push(t);
-            Ok(())
-        }
-    }
-
-    pub fn clashes_with(&self, t: &ResolvedTypeDefinition) -> bool {
-        match &t {
-            ResolvedTypeDefinition::CompactBuiltIn(q) => self
-                .v
-                .iter()
-                .any(|x| x.is_extended() || x.is_compact_of_type(*q)),
-            ResolvedTypeDefinition::ExtendedBuiltIn(_) | ResolvedTypeDefinition::UserDefined(_) => {
-                !self.v.is_empty()
-            }
-        }
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<ResolvedTypeDefinition> {
-        self.v.iter()
-    }
-
-    pub fn opt_q<F>(&self, predicate: F) -> Option<TypeQualifier>
-    where
-        F: Fn(&ResolvedTypeDefinition) -> bool,
-    {
-        for resolved_type_definition in self.v.iter() {
-            if predicate(resolved_type_definition) {
-                match resolved_type_definition {
-                    ResolvedTypeDefinition::CompactBuiltIn(q)
-                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                        return Some(*q);
-                    }
-                    ResolvedTypeDefinition::UserDefined(_) => {}
-                }
-            }
-        }
-
-        None
-    }
+#[derive(Debug, PartialEq)]
+enum ResolvedTypeDefinitions {
+    /// DIM X, DIM X$, X = 42, etc
+    Compact(HashSet<TypeQualifier>),
+    /// CONST X = 42
+    Constant(TypeQualifier),
+    /// DIM X AS INTEGER
+    ExtendedBuiltIn(TypeQualifier),
+    /// DIM X AS Card
+    UserDefined(BareName),
 }
 
 //
-// VariableMap
+// SubProgram Type
+//
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SubProgramType {
+    Function,
+    Sub,
+}
+
+//
+// LinterContext
 //
 
 #[derive(Debug, Default)]
-struct VariableMap {
-    m: HashMap<BareName, ResolvedTypeDefinitions>,
-}
-
-impl VariableMap {
-    pub fn push(&mut self, declared_name: ResolvedDeclaredName) -> Result<(), QError> {
-        let ResolvedDeclaredName {
-            name,
-            type_definition,
-        } = declared_name;
-        match self.m.get_mut(&name) {
-            Some(type_definitions) => type_definitions.push(type_definition),
-            None => {
-                let mut type_definitions = ResolvedTypeDefinitions::default();
-                type_definitions.push(type_definition)?;
-                self.m.insert(name, type_definitions);
-                Ok(())
-            }
-        }
-    }
-
-    pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: &T) -> bool {
-        self.m.contains_key(bare_name.as_ref())
-    }
-
-    pub fn clashes_with(&self, declared_name: &ResolvedDeclaredName) -> bool {
-        let ResolvedDeclaredName {
-            name,
-            type_definition,
-        } = declared_name;
-        match self.m.get(name) {
-            Some(type_definitions) => type_definitions.clashes_with(type_definition),
-            None => false,
-        }
-    }
-
-    pub fn resolve_assignment<T: TypeResolver>(
-        &self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<Option<ResolvedDeclaredName>, QError> {
-        let bare_name: &BareName = name.as_ref();
-        let q: TypeQualifier = name.resolve_into(resolver);
-        match self.m.get(bare_name) {
-            Some(type_definitions) => {
-                for type_definition in type_definitions.iter() {
-                    if type_definition.is_extended() {
-                        // only bare name is allowed
-                        if name.is_bare() {
-                            return Ok(Some(ResolvedDeclaredName {
-                                name: bare_name.clone(),
-                                type_definition: type_definition.clone(),
-                            }));
-                        } else {
-                            return Err(QError::DuplicateDefinition);
-                        }
-                    } else if type_definition.is_compact_of_type(q) {
-                        return Ok(Some(ResolvedDeclaredName {
-                            name: bare_name.clone(),
-                            type_definition: type_definition.clone(),
-                        }));
-                    }
-                }
-            }
-            None => {}
-        }
-        Ok(None)
-    }
-
-    pub fn resolve_const_expression(&self, name: &Name) -> Result<Option<Expression>, QError> {
-        match name {
-            Name::Bare(b) => match self.m.get(b) {
-                Some(type_definitions) => {
-                    match type_definitions.opt_q(ResolvedTypeDefinition::is_compact_built_in) {
-                        Some(q) => Ok(Some(Expression::Constant(b.with_type_ref(q)))),
-                        None => Ok(None),
-                    }
-                }
-                None => Ok(None),
-            },
-            Name::Qualified {
-                name: bare_name,
-                qualifier,
-            } => match self.m.get(bare_name) {
-                Some(type_definitions) => {
-                    match type_definitions.opt_q(ResolvedTypeDefinition::is_compact_built_in) {
-                        Some(q) => {
-                            if q == *qualifier {
-                                Ok(Some(Expression::Constant(name.with_type_ref(q))))
-                            } else {
-                                Err(QError::DuplicateDefinition)
-                            }
-                        }
-                        None => Ok(None),
-                    }
-                }
-                None => Ok(None),
-            },
-        }
-    }
-
-    pub fn resolve_expression<T: TypeResolver>(
-        &self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<Option<Expression>, QError> {
-        let bare_name: &BareName = name.as_ref();
-        match self.m.get(bare_name) {
-            Some(type_definitions) => {
-                match name {
-                    Name::Bare(_) => {
-                        // bare name can match extended identifiers
-                        match type_definitions.opt_q(ResolvedTypeDefinition::is_extended) {
-                            Some(q) => Ok(Some(Expression::Variable(ResolvedDeclaredName {
-                                name: bare_name.clone(),
-                                type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(q),
-                            }))),
-                            None => {
-                                // let's try the resolver then
-                                let q: TypeQualifier = bare_name.resolve_into(resolver);
-                                if type_definitions.iter().any(|x| x.is_compact_of_type(q)) {
-                                    Ok(Some(Expression::Variable(ResolvedDeclaredName {
-                                        name: bare_name.clone(),
-                                        type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
-                                    })))
-                                } else {
-                                    Ok(None)
-                                }
-                            }
-                        }
-                    }
-                    Name::Qualified { qualifier: q, .. } => {
-                        // qualified names cannot match extended identifiers
-                        match type_definitions.iter().find(|x| x.is_extended()) {
-                            Some(_) => Err(QError::DuplicateDefinition),
-                            None => {
-                                if type_definitions.iter().any(|x| x.is_compact_of_type(*q)) {
-                                    Ok(Some(Expression::Variable(ResolvedDeclaredName {
-                                        name: bare_name.clone(),
-                                        type_definition: ResolvedTypeDefinition::CompactBuiltIn(*q),
-                                    })))
-                                } else {
-                                    Ok(None)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-//
-// Symbols
-//
-
-#[derive(Debug, Default)]
-pub struct Symbols {
-    constants: VariableMap, // NOTE: constants can only be compact and the type resolution comes from the expression side if bare
-    params: VariableMap,
-    variables: VariableMap,
+pub struct LinterContext {
+    parent: Option<Box<LinterContext>>,
+    sub_program: Option<(BareName, SubProgramType)>,
+    names: HashMap<BareName, ResolvedTypeDefinitions>,
     pub user_defined_types: HashMap<BareName, UserDefinedType>,
 }
 
-impl Symbols {
+impl LinterContext {
     fn resolve_declared_name<T: TypeResolver>(
         &self,
         declared_name: DeclaredName,
@@ -273,9 +105,7 @@ impl Symbols {
     }
 
     pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: &T) -> bool {
-        self.constants.contains_any(bare_name)
-            || self.params.contains_any(bare_name)
-            || self.variables.contains_any(bare_name)
+        self.names.contains_key(bare_name.as_ref())
     }
 
     pub fn push_param<T: TypeResolver>(
@@ -283,19 +113,17 @@ impl Symbols {
         declared_name: DeclaredName,
         resolver: &T,
     ) -> Result<(), QError> {
-        self.params
-            .push(self.resolve_declared_name(declared_name, resolver)?)
+        self.push_dim(declared_name, resolver).map(|_| ())
     }
 
-    pub fn push_const(&mut self, q_name: QualifiedName) -> Result<(), QError> {
+    fn push_resolved_const(&mut self, q_name: QualifiedName) -> Result<(), QError> {
         if self.contains_any(&q_name) {
             Err(QError::DuplicateDefinition)
         } else {
             let QualifiedName { name, qualifier } = q_name;
-            self.constants.push(ResolvedDeclaredName {
-                name,
-                type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
-            })
+            self.names
+                .insert(name, ResolvedTypeDefinitions::Constant(qualifier));
+            Ok(())
         }
     }
 
@@ -304,55 +132,219 @@ impl Symbols {
         declared_name: DeclaredName,
         resolver: &T,
     ) -> Result<ResolvedDeclaredName, QError> {
-        let r = self.resolve_declared_name(declared_name, resolver)?;
-        if self.constants.contains_any(&r)
-            || self.params.clashes_with(&r)
-            || self.variables.clashes_with(&r)
-        {
-            Err(QError::DuplicateDefinition)
-        } else {
-            self.variables.push(r.clone())?;
-            Ok(r)
+        let ResolvedDeclaredName {
+            name,
+            type_definition,
+        } = self.resolve_declared_name(declared_name, resolver)?;
+        match self.names.get_mut(&name) {
+            Some(resolved_type_definitions) => {
+                match resolved_type_definitions {
+                    ResolvedTypeDefinitions::Compact(existing_set) => match &type_definition {
+                        ResolvedTypeDefinition::CompactBuiltIn(q) => {
+                            if existing_set.contains(q) {
+                                return Err(QError::DuplicateDefinition);
+                            } else {
+                                existing_set.insert(*q);
+                            }
+                        }
+                        _ => {
+                            return Err(QError::DuplicateDefinition);
+                        }
+                    },
+                    _ => {
+                        // anything else cannot be extended
+                        return Err(QError::DuplicateDefinition);
+                    }
+                }
+            }
+            None => match &type_definition {
+                ResolvedTypeDefinition::CompactBuiltIn(q) => {
+                    let mut s: HashSet<TypeQualifier> = HashSet::new();
+                    s.insert(*q);
+                    self.names
+                        .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
+                }
+                ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                    self.names
+                        .insert(name.clone(), ResolvedTypeDefinitions::ExtendedBuiltIn(*q));
+                }
+                ResolvedTypeDefinition::UserDefined(u) => {
+                    self.names.insert(
+                        name.clone(),
+                        ResolvedTypeDefinitions::UserDefined(u.clone()),
+                    );
+                }
+            },
         }
+        Ok(ResolvedDeclaredName {
+            name,
+            type_definition,
+        })
     }
 
-    pub fn resolve_assignment<T: TypeResolver>(
-        &mut self,
+    fn do_resolve_assignment<T: TypeResolver>(
+        &self,
         name: &Name,
         resolver: &T,
     ) -> Result<Option<ResolvedDeclaredName>, QError> {
-        // first params
-        // then constants
-        // then variables
-
-        if self.constants.contains_any(name) {
-            Err(QError::DuplicateDefinition)
-        } else {
-            self.params
-                .resolve_assignment(name, resolver)
-                .or_try_read(|| self.variables.resolve_assignment(name, resolver))
+        match self.names.get(name.as_ref()) {
+            Some(resolved_type_definitions) => {
+                match resolved_type_definitions {
+                    ResolvedTypeDefinitions::Constant(_) => {
+                        // cannot re-assign a constant
+                        Err(QError::DuplicateDefinition)
+                    }
+                    ResolvedTypeDefinitions::Compact(existing_set) => {
+                        // if it's not in the existing set, do not add it implicitly yet (might be a parent constant)
+                        match name {
+                            Name::Bare(b) => {
+                                let qualifier: TypeQualifier = resolver.resolve(b);
+                                if existing_set.contains(&qualifier) {
+                                    Ok(Some(ResolvedDeclaredName {
+                                        name: b.clone(),
+                                        type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                            qualifier,
+                                        ),
+                                    }))
+                                } else {
+                                    Ok(None)
+                                }
+                            }
+                            Name::Qualified { name, qualifier } => {
+                                if existing_set.contains(qualifier) {
+                                    Ok(Some(ResolvedDeclaredName {
+                                        name: name.clone(),
+                                        type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                            *qualifier,
+                                        ),
+                                    }))
+                                } else {
+                                    Ok(None)
+                                }
+                            }
+                        }
+                    }
+                    ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
+                        // only possible if the name is bare or using the same qualifier
+                        match name {
+                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName {
+                                name: b.clone(),
+                                type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(*q),
+                            })),
+                            Name::Qualified { name, qualifier } => {
+                                if q == qualifier {
+                                    Ok(Some(ResolvedDeclaredName {
+                                        name: name.clone(),
+                                        type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(
+                                            *q,
+                                        ),
+                                    }))
+                                } else {
+                                    Err(QError::DuplicateDefinition)
+                                }
+                            }
+                        }
+                    }
+                    ResolvedTypeDefinitions::UserDefined(u) => {
+                        // only possible if the name is bare
+                        match name {
+                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName {
+                                name: b.clone(),
+                                type_definition: ResolvedTypeDefinition::UserDefined(u.clone()),
+                            })),
+                            _ => Err(QError::TypeMismatch),
+                        }
+                    }
+                }
+            }
+            None => Ok(None),
         }
     }
 
-    pub fn resolve_expression<T: TypeResolver>(
+    fn do_resolve_expression<T: TypeResolver>(
         &self,
         name: &Name,
         resolver: &T,
     ) -> Result<Option<Expression>, QError> {
-        // is it param
-        // is it constant
-        // is it variable
-        // is it parent constant
-        // it's a new implicit variable
-
-        self.params
-            .resolve_expression(name, resolver)
-            .or_try_read(|| self.resolve_const_expression(name))
-            .or_try_read(|| self.variables.resolve_expression(name, resolver))
+        let bare_name: &BareName = name.as_ref();
+        match self.names.get(bare_name) {
+            Some(resolved_type_definitions) => match resolved_type_definitions {
+                ResolvedTypeDefinitions::Compact(existing_set) => match name {
+                    Name::Bare(b) => {
+                        let qualifier: TypeQualifier = resolver.resolve(b);
+                        if existing_set.contains(&qualifier) {
+                            Ok(Some(Expression::Variable(ResolvedDeclaredName {
+                                name: b.clone(),
+                                type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                            })))
+                        } else {
+                            Ok(None)
+                        }
+                    }
+                    Name::Qualified { name, qualifier } => {
+                        if existing_set.contains(qualifier) {
+                            Ok(Some(Expression::Variable(ResolvedDeclaredName {
+                                name: name.clone(),
+                                type_definition: ResolvedTypeDefinition::CompactBuiltIn(*qualifier),
+                            })))
+                        } else {
+                            Ok(None)
+                        }
+                    }
+                },
+                ResolvedTypeDefinitions::Constant(q) => {
+                    if name.is_bare_or_of_type(*q) {
+                        Ok(Some(Expression::Constant(QualifiedName::new(
+                            bare_name.clone(),
+                            *q,
+                        ))))
+                    } else {
+                        Err(QError::DuplicateDefinition)
+                    }
+                }
+                ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
+                    if name.is_bare_or_of_type(*q) {
+                        Ok(Some(Expression::Variable(ResolvedDeclaredName {
+                            name: bare_name.clone(),
+                            type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(*q),
+                        })))
+                    } else {
+                        Err(QError::DuplicateDefinition)
+                    }
+                }
+                ResolvedTypeDefinitions::UserDefined(u) => {
+                    if name.is_bare() {
+                        Ok(Some(Expression::Variable(ResolvedDeclaredName {
+                            name: bare_name.clone(),
+                            type_definition: ResolvedTypeDefinition::UserDefined(u.clone()),
+                        })))
+                    } else {
+                        Err(QError::DuplicateDefinition)
+                    }
+                }
+            },
+            None => Ok(None),
+        }
     }
 
-    pub fn resolve_const_expression(&self, name: &Name) -> Result<Option<Expression>, QError> {
-        self.constants.resolve_const_expression(name)
+    fn do_resolve_const_expression(&self, name: &Name) -> Result<Option<Expression>, QError> {
+        let bare_name: &BareName = name.as_ref();
+        match self.names.get(bare_name) {
+            Some(resolved_type_definitions) => match resolved_type_definitions {
+                ResolvedTypeDefinitions::Constant(q) => {
+                    if name.is_bare_or_of_type(*q) {
+                        Ok(Some(Expression::Constant(QualifiedName::new(
+                            bare_name.clone(),
+                            *q,
+                        ))))
+                    } else {
+                        Err(QError::DuplicateDefinition)
+                    }
+                }
+                _ => Err(QError::InvalidConstant),
+            },
+            None => Ok(None),
+        }
     }
 
     pub fn resolve_param_assignment<T: TypeResolver>(
@@ -360,23 +352,42 @@ impl Symbols {
         name: &Name,
         resolver: &T,
     ) -> Result<bool, QError> {
-        self.params
-            .resolve_assignment(name, resolver)
+        self.do_resolve_assignment(name, resolver)
             .map(|x| x.is_some())
     }
 
-    pub fn resolve_missing_name_in_assignment<T: TypeResolver>(
+    fn resolve_missing_name_in_assignment<T: TypeResolver>(
         &mut self,
         name: &Name,
         resolver: &T,
     ) -> Result<ResolvedDeclaredName, QError> {
         let QualifiedName { name, qualifier } = name.resolve_into(resolver);
-        let d = ResolvedDeclaredName {
-            name,
-            type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
-        };
-        self.variables.push(d.clone())?;
-        Ok(d)
+        match self.names.get_mut(name.as_ref()) {
+            Some(resolved_type_definitions) => match resolved_type_definitions {
+                ResolvedTypeDefinitions::Compact(existing_set) => {
+                    if existing_set.contains(&qualifier) {
+                        Err(QError::DuplicateDefinition)
+                    } else {
+                        existing_set.insert(qualifier);
+                        Ok(ResolvedDeclaredName {
+                            name,
+                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                        })
+                    }
+                }
+                _ => Err(QError::DuplicateDefinition),
+            },
+            None => {
+                let mut s: HashSet<TypeQualifier> = HashSet::new();
+                s.insert(qualifier);
+                self.names
+                    .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
+                Ok(ResolvedDeclaredName {
+                    name,
+                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                })
+            }
+        }
     }
 
     pub fn resolve_missing_name_in_expression<T: TypeResolver>(
@@ -384,54 +395,18 @@ impl Symbols {
         name: &Name,
         resolver: &T,
     ) -> Result<Expression, QError> {
-        let QualifiedName { name, qualifier } = name.resolve_into(resolver);
-        let d = ResolvedDeclaredName {
-            name: name.clone(),
-            type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
-        };
-        self.variables.push(d.clone())?;
-        Ok(Expression::Variable(d))
-    }
-}
-
-//
-// SubProgram Type
-//
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum SubProgramType {
-    Function,
-    Sub,
-}
-
-//
-// LinterContext
-//
-
-#[derive(Debug, Default)]
-pub struct LinterContext {
-    parent: Option<Box<LinterContext>>,
-    sub_program: Option<(CaseInsensitiveString, SubProgramType)>,
-    symbols: Symbols,
-}
-
-impl LinterContext {
-    pub fn symbols(&self) -> &Symbols {
-        &self.symbols
+        let resolved_declared_name = self.resolve_missing_name_in_assignment(name, resolver)?;
+        Ok(Expression::Variable(resolved_declared_name))
     }
 
-    pub fn symbols_mut(&mut self) -> &mut Symbols {
-        &mut self.symbols
-    }
-
-    pub fn push_function_context(self, name: &CaseInsensitiveString) -> Self {
+    pub fn push_function_context(self, name: &BareName) -> Self {
         let mut result = LinterContext::default();
         result.parent = Some(Box::new(self));
         result.sub_program = Some((name.clone(), SubProgramType::Function));
         result
     }
 
-    pub fn push_sub_context(self, name: &CaseInsensitiveString) -> Self {
+    pub fn push_sub_context(self, name: &BareName) -> Self {
         let mut result = LinterContext::default();
         result.parent = Some(Box::new(self));
         result.sub_program = Some((name.clone(), SubProgramType::Sub));
@@ -463,7 +438,7 @@ impl LinterContext {
             }
         };
         let q_name = name.with_type(q);
-        self.symbols.push_const(q_name.clone()).with_err_no_pos()?;
+        self.push_resolved_const(q_name.clone()).with_err_no_pos()?;
         Ok(q_name)
     }
 
@@ -478,9 +453,11 @@ impl LinterContext {
         // is it parent constant
         // is it a sub program?
         // it's a new implicit variable
-        self.symbols
-            .resolve_expression(n, resolver)
-            .or_try_read(|| self.resolve_parent_const_expression(n))
+        self.do_resolve_expression(n, resolver)
+            .and_then(|opt| match opt {
+                Some(x) => Ok(Some(x)),
+                None => self.resolve_parent_const_expression(n),
+            })
     }
 
     fn resolve_parent_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
@@ -492,7 +469,7 @@ impl LinterContext {
     }
 
     pub fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
-        match self.symbols.resolve_const_expression(n)? {
+        match self.do_resolve_const_expression(n)? {
             Some(e) => Ok(Some(e)),
             None => self.resolve_parent_const_expression(n),
         }
@@ -512,7 +489,7 @@ impl LinterContext {
         name: &Name,
         resolver: &T,
     ) -> Result<ResolvedDeclaredName, QError> {
-        match self.symbols.resolve_assignment(name, resolver)? {
+        match self.do_resolve_assignment(name, resolver)? {
             Some(x) => Ok(x),
             None => {
                 // maybe a parent constant?
@@ -520,8 +497,7 @@ impl LinterContext {
                     Some(_) => Err(QError::DuplicateDefinition),
                     None => {
                         // just insert it
-                        self.symbols
-                            .resolve_missing_name_in_assignment(name, resolver)
+                        self.resolve_missing_name_in_assignment(name, resolver)
                     }
                 }
             }

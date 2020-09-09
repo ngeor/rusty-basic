@@ -53,11 +53,11 @@ fn statement_terminator_after_whitespace(ch: char) -> bool {
 
 fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
     is_statement_terminator: fn(char) -> bool,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ArgumentNodes, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNodes, QError>> {
     Box::new(move |reader| {
         reader.read().and_then(|(reader, opt_res)| match opt_res {
             Some(ch) => {
-                let res: Option<ArgumentNodes> = if is_statement_terminator(ch) {
+                let res: Option<ExpressionNodes> = if is_statement_terminator(ch) {
                     // found statement terminator
                     Some(vec![])
                 } else {

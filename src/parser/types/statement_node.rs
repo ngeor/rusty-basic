@@ -1,4 +1,4 @@
-use super::{ArgumentNodes, BareName, DeclaredNameNode, ExpressionNode, Name, NameNode, Operator};
+use super::{ExpressionNodes, BareName, DeclaredNameNode, ExpressionNode, Name, NameNode, Operator};
 use crate::common::*;
 
 pub type StatementNodes = Vec<StatementNode>;
@@ -8,7 +8,7 @@ pub type StatementNode = Locatable<Statement>;
 pub enum Statement {
     Assignment(Name, ExpressionNode),
     Const(NameNode, ExpressionNode),
-    SubCall(BareName, ArgumentNodes),
+    SubCall(BareName, ExpressionNodes),
 
     IfBlock(IfBlockNode),
     SelectCase(SelectCaseNode),

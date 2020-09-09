@@ -2,8 +2,6 @@ use super::{Name, Operator, UnaryOperator};
 use crate::common::{AtLocation, FileHandle, HasLocation, Locatable, Location};
 use crate::variant;
 
-pub type ArgumentNodes = Vec<ExpressionNode>;
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     SingleLiteral(f32),
@@ -12,7 +10,7 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     VariableName(Name),
-    FunctionCall(Name, ArgumentNodes),
+    FunctionCall(Name, ExpressionNodes),
     BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
@@ -22,6 +20,7 @@ pub enum Expression {
 }
 
 pub type ExpressionNode = Locatable<Expression>;
+pub type ExpressionNodes = Vec<ExpressionNode>;
 
 impl From<f32> for Expression {
     fn from(f: f32) -> Expression {

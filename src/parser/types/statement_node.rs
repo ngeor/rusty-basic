@@ -1,4 +1,4 @@
-use super::{ArgumentNodes, BareName, DeclaredNameNode, ExpressionNode, Name, NameNode, Operand};
+use super::{ArgumentNodes, BareName, DeclaredNameNode, ExpressionNode, Name, NameNode, Operator};
 use crate::common::*;
 
 pub type StatementNodes = Vec<StatementNode>;
@@ -70,6 +70,6 @@ pub struct CaseBlockNode {
 #[derive(Clone, Debug, PartialEq)]
 pub enum CaseExpression {
     Simple(ExpressionNode),
-    Is(Operand, ExpressionNode),
+    Is(Operator, ExpressionNode),
     Range(ExpressionNode, ExpressionNode),
 }

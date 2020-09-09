@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{CaseExpression, Operand, SelectCaseNode};
+use crate::linter::{CaseExpression, Operator, SelectCaseNode};
 
 fn next_case_label(case_blocks_len: usize, has_else_block: bool, idx: usize) -> String {
     if idx + 1 < case_blocks_len {
@@ -36,12 +36,12 @@ impl InstructionGenerator {
                     // evaluate CASE IS y -> A
                     self.generate_expression_instructions(e);
                     match op {
-                        Operand::Less => self.push(Instruction::GreaterOrEqual, pos),
-                        Operand::LessOrEqual => self.push(Instruction::Greater, pos),
-                        Operand::Greater => self.push(Instruction::LessOrEqual, pos),
-                        Operand::GreaterOrEqual => self.push(Instruction::Less, pos),
-                        Operand::Equal => self.push(Instruction::Equal, pos),
-                        Operand::NotEqual => self.push(Instruction::NotEqual, pos),
+                        Operator::Less => self.push(Instruction::GreaterOrEqual, pos),
+                        Operator::LessOrEqual => self.push(Instruction::Greater, pos),
+                        Operator::Greater => self.push(Instruction::LessOrEqual, pos),
+                        Operator::GreaterOrEqual => self.push(Instruction::Less, pos),
+                        Operator::Equal => self.push(Instruction::Equal, pos),
+                        Operator::NotEqual => self.push(Instruction::NotEqual, pos),
                         _ => panic!("Unexpected CASE IS operator {:?}", op),
                     }
                     self.jump_if_false(next_case_label(case_blocks_len, has_else, idx), pos);

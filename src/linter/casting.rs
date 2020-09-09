@@ -1,7 +1,7 @@
-use crate::parser::{Operand, TypeQualifier, UnaryOperand};
+use crate::parser::{CanCastTo, Operator, TypeQualifier, UnaryOperator};
 
 pub fn cast_binary_op(
-    op: Operand,
+    op: Operator,
     left: TypeQualifier,
     right: TypeQualifier,
 ) -> Option<TypeQualifier> {
@@ -13,7 +13,7 @@ pub fn cast_binary_op(
     match op {
         // 1. arithmetic operators
         // 1a. plus -> if we can cast left to right, that's the result
-        Operand::Plus => {
+        Operator::Plus => {
             if left.can_cast_to(right) {
                 Some(left)
             } else {
@@ -21,7 +21,7 @@ pub fn cast_binary_op(
             }
         }
         // 1b. minus, multiply, divide -> if we can cast left to right, and we're not a string, that's the result
-        Operand::Minus | Operand::Multiply | Operand::Divide => {
+        Operator::Minus | Operator::Multiply | Operator::Divide => {
             if left.can_cast_to(right) && left != TypeQualifier::DollarString {
                 Some(left)
             } else {
@@ -30,12 +30,12 @@ pub fn cast_binary_op(
         }
         // 2. relational operators
         //    if we an cast left to right, the result is -1 or 0, therefore integer
-        Operand::Less
-        | Operand::LessOrEqual
-        | Operand::Equal
-        | Operand::GreaterOrEqual
-        | Operand::Greater
-        | Operand::NotEqual => {
+        Operator::Less
+        | Operator::LessOrEqual
+        | Operator::Equal
+        | Operator::GreaterOrEqual
+        | Operator::Greater
+        | Operator::NotEqual => {
             if left.can_cast_to(right) {
                 Some(TypeQualifier::PercentInteger)
             } else {
@@ -44,7 +44,7 @@ pub fn cast_binary_op(
         }
         // 3. binary operators
         //    they only work if both sides are cast-able to integer, which is also the result type
-        Operand::And | Operand::Or => {
+        Operator::And | Operator::Or => {
             if left.can_cast_to(TypeQualifier::PercentInteger)
                 && right.can_cast_to(TypeQualifier::PercentInteger)
             {
@@ -56,7 +56,7 @@ pub fn cast_binary_op(
     }
 }
 
-pub fn cast_unary_op(_op: UnaryOperand, child: TypeQualifier) -> Option<TypeQualifier> {
+pub fn cast_unary_op(_op: UnaryOperator, child: TypeQualifier) -> Option<TypeQualifier> {
     if child == TypeQualifier::FileHandle || child == TypeQualifier::DollarString {
         // file handles are a special case they're not supposed to mix with others,
         // strings don't have any unary operator that can be applied to them

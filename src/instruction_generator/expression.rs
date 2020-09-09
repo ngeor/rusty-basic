@@ -47,27 +47,27 @@ impl InstructionGenerator {
                 self.generate_expression_instructions(*right);
                 self.push(Instruction::SwapAWithB, pos);
                 match op {
-                    Operand::Plus => self.push(Instruction::Plus, pos),
-                    Operand::Minus => self.push(Instruction::Minus, pos),
-                    Operand::Multiply => self.push(Instruction::Multiply, pos),
-                    Operand::Divide => self.push(Instruction::Divide, pos),
-                    Operand::Less => self.push(Instruction::Less, pos),
-                    Operand::LessOrEqual => self.push(Instruction::LessOrEqual, pos),
-                    Operand::Equal => self.push(Instruction::Equal, pos),
-                    Operand::GreaterOrEqual => self.push(Instruction::GreaterOrEqual, pos),
-                    Operand::Greater => self.push(Instruction::Greater, pos),
-                    Operand::NotEqual => self.push(Instruction::NotEqual, pos),
-                    Operand::And => self.push(Instruction::And, pos),
-                    Operand::Or => self.push(Instruction::Or, pos),
+                    Operator::Plus => self.push(Instruction::Plus, pos),
+                    Operator::Minus => self.push(Instruction::Minus, pos),
+                    Operator::Multiply => self.push(Instruction::Multiply, pos),
+                    Operator::Divide => self.push(Instruction::Divide, pos),
+                    Operator::Less => self.push(Instruction::Less, pos),
+                    Operator::LessOrEqual => self.push(Instruction::LessOrEqual, pos),
+                    Operator::Equal => self.push(Instruction::Equal, pos),
+                    Operator::GreaterOrEqual => self.push(Instruction::GreaterOrEqual, pos),
+                    Operator::Greater => self.push(Instruction::Greater, pos),
+                    Operator::NotEqual => self.push(Instruction::NotEqual, pos),
+                    Operator::And => self.push(Instruction::And, pos),
+                    Operator::Or => self.push(Instruction::Or, pos),
                 }
                 self.push(Instruction::PopRegisters, pos);
             }
             Expression::UnaryExpression(op, child) => match op {
-                UnaryOperand::Not => {
+                UnaryOperator::Not => {
                     self.generate_expression_instructions(*child);
                     self.push(Instruction::NotA, pos);
                 }
-                UnaryOperand::Minus => {
+                UnaryOperator::Minus => {
                     self.generate_expression_instructions(*child);
                     self.push(Instruction::NegateA, pos);
                 }

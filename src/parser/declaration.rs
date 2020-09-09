@@ -101,7 +101,7 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{
-        DeclaredName, Expression, Name, Operand, Statement, TopLevelToken, TypeQualifier,
+        DeclaredName, Expression, Name, Operator, Statement, TopLevelToken, TypeQualifier,
     };
 
     macro_rules! assert_function_declaration {
@@ -196,7 +196,7 @@ mod tests {
                 vec![Statement::Assignment(
                     "Add".into(),
                     Expression::BinaryExpression(
-                        Operand::Plus,
+                        Operator::Plus,
                         Box::new("A".as_var_expr(3, 19)),
                         Box::new("B".as_var_expr(3, 23))
                     )
@@ -227,7 +227,7 @@ mod tests {
                 vec![Statement::Assignment(
                     "add".into(),
                     Expression::BinaryExpression(
-                        Operand::Plus,
+                        Operator::Plus,
                         Box::new("a".as_var_expr(3, 19)),
                         Box::new("b".as_var_expr(3, 23))
                     )

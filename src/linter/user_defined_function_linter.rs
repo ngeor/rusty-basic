@@ -2,18 +2,15 @@ use super::post_conversion_linter::PostConversionLinter;
 use super::subprogram_context::FunctionMap;
 use super::types::*;
 use crate::common::*;
-use crate::parser::{BareName, HasQualifier, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, CanCastTo, HasQualifier, QualifiedName, TypeQualifier};
 
 pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,
 }
 
-type ExpressionNodes = Vec<ExpressionNode>;
-type TypeQualifiers = Vec<TypeQualifier>;
-
 pub fn lint_call_args(
-    args: &ExpressionNodes,
-    param_types: &TypeQualifiers,
+    args: &Vec<ExpressionNode>,
+    param_types: &Vec<ResolvedTypeDefinition>,
 ) -> Result<(), QErrorNode> {
     if args.len() != param_types.len() {
         return err_no_pos(QError::ArgumentCountMismatch);
@@ -21,7 +18,7 @@ pub fn lint_call_args(
 
     for (arg_node, param_type) in args.iter().zip(param_types.iter()) {
         let arg = arg_node.as_ref();
-        let arg_q = arg_node.try_qualifier()?;
+        let arg_q = arg_node.try_type_definition()?;
         match arg {
             Expression::Variable(_) => {
                 // it's by ref, it needs to match exactly
@@ -31,7 +28,7 @@ pub fn lint_call_args(
             }
             _ => {
                 // it's by val, casting is allowed
-                if !arg_q.can_cast_to(*param_type) {
+                if !arg_q.can_cast_to(param_type) {
                     return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
                 }
             }
@@ -62,9 +59,16 @@ impl<'a> UserDefinedFunctionLinter<'a> {
     fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
-            let arg_q = arg_node.try_qualifier()?;
-            if arg_q == TypeQualifier::DollarString {
-                return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
+            match arg_node.try_type_definition()? {
+                ResolvedTypeDefinition::CompactBuiltIn(q)
+                | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                    if q == TypeQualifier::DollarString {
+                        return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
+                    }
+                }
+                _ => {
+                    return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
+                }
             }
         }
 

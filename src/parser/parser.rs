@@ -80,7 +80,7 @@ mod tests {
                             if_block: ConditionalBlockNode {
                                 // N <= 1
                                 condition: Expression::BinaryExpression(
-                                    Operand::LessOrEqual,
+                                    Operator::LessOrEqual,
                                     Box::new("N".as_var_expr(9, 8)),
                                     Box::new(1.as_lit_expr(9, 13))
                                 )
@@ -100,12 +100,12 @@ mod tests {
                                 Statement::Assignment(
                                     Name::from("Fib"),
                                     Expression::BinaryExpression(
-                                        Operand::Plus,
+                                        Operator::Plus,
                                         Box::new(
                                             Expression::FunctionCall(
                                                 Name::from("Fib"),
                                                 vec![Expression::BinaryExpression(
-                                                    Operand::Minus,
+                                                    Operator::Minus,
                                                     Box::new("N".as_var_expr(12, 19)),
                                                     Box::new(1.as_lit_expr(12, 23)),
                                                 )
@@ -117,7 +117,7 @@ mod tests {
                                             Expression::FunctionCall(
                                                 Name::from("Fib"),
                                                 vec![Expression::BinaryExpression(
-                                                    Operand::Minus,
+                                                    Operator::Minus,
                                                     Box::new("N".as_var_expr(12, 32)),
                                                     Box::new(2.as_lit_expr(12, 36)),
                                                 )

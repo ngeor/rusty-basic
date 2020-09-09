@@ -812,8 +812,15 @@ mod tests {
             TYPE Card
                 Item AS Card
             END TYPE";
-            // QBasic actually positions the error on the "AS" keyword
+            // TODO QBasic actually positions the error on the "AS" keyword
             assert_linter_err!(input, QError::syntax_error("Type not defined"), 3, 25);
+        }
+
+        #[test]
+        fn dim_using_undefined_type() {
+            let input = "DIM X AS Card";
+            // TODO QBasic actually positions the error on the "AS" keyword
+            assert_linter_err!(input, QError::syntax_error("Type not defined"), 1, 5);
         }
 
         #[test]

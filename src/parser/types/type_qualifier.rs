@@ -25,15 +25,21 @@ pub enum TypeQualifier {
     FileHandle,
 }
 
-impl TypeQualifier {
-    pub fn can_cast_to(&self, other: Self) -> bool {
+pub trait CanCastTo<T> {
+    fn can_cast_to(&self, other: T) -> bool;
+}
+
+impl CanCastTo<TypeQualifier> for TypeQualifier {
+    fn can_cast_to(&self, other: Self) -> bool {
         match self {
             Self::DollarString => other == Self::DollarString,
             Self::FileHandle => other == Self::FileHandle,
             _ => other != Self::DollarString && other != Self::FileHandle,
         }
     }
+}
 
+impl TypeQualifier {
     /// Maps the given character into a `TypeQualifier`.
     /// If the character does not represent a type qualifier, `None` is returned.
     ///

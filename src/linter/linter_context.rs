@@ -2,7 +2,8 @@ use crate::common::*;
 use crate::linter::type_resolver::*;
 use crate::linter::types::{Expression, ResolvedDeclaredName, ResolvedTypeDefinition};
 use crate::parser::{
-    BareName, DeclaredName, Name, QualifiedName, TypeQualifier, WithTypeQualifier,
+    BareName, CanCastTo, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier,
+    UserDefinedType, WithTypeQualifier,
 };
 use std::collections::HashMap;
 
@@ -229,28 +230,44 @@ pub struct Symbols {
     constants: VariableMap, // NOTE: constants can only be compact and the type resolution comes from the expression side if bare
     params: VariableMap,
     variables: VariableMap,
+    pub user_defined_types: HashMap<BareName, UserDefinedType>,
 }
 
 impl Symbols {
     fn resolve_declared_name<T: TypeResolver>(
-        d: DeclaredName,
+        &self,
+        declared_name: DeclaredName,
         resolver: &T,
-    ) -> ResolvedDeclaredName {
-        if d.is_bare() {
-            let DeclaredName { name, .. } = d;
-            let q: TypeQualifier = (&name).resolve_into(resolver);
-            ResolvedDeclaredName {
+    ) -> Result<ResolvedDeclaredName, QError> {
+        let DeclaredName {
+            name,
+            type_definition,
+        } = declared_name;
+        match type_definition {
+            TypeDefinition::Bare => {
+                let q: TypeQualifier = (&name).resolve_into(resolver);
+                Ok(ResolvedDeclaredName {
+                    name,
+                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+                })
+            }
+            TypeDefinition::CompactBuiltIn(q) => Ok(ResolvedDeclaredName {
                 name,
                 type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
-            }
-        } else {
-            let DeclaredName {
+            }),
+            TypeDefinition::ExtendedBuiltIn(q) => Ok(ResolvedDeclaredName {
                 name,
-                type_definition,
-            } = d;
-            ResolvedDeclaredName {
-                name,
-                type_definition: type_definition.into(),
+                type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(q),
+            }),
+            TypeDefinition::UserDefined(user_defined_type) => {
+                if self.user_defined_types.contains_key(&user_defined_type) {
+                    Ok(ResolvedDeclaredName {
+                        name,
+                        type_definition: ResolvedTypeDefinition::UserDefined(user_defined_type),
+                    })
+                } else {
+                    Err(QError::syntax_error("Type not defined"))
+                }
             }
         }
     }
@@ -267,7 +284,7 @@ impl Symbols {
         resolver: &T,
     ) -> Result<(), QError> {
         self.params
-            .push(Self::resolve_declared_name(declared_name, resolver))
+            .push(self.resolve_declared_name(declared_name, resolver)?)
     }
 
     pub fn push_const(&mut self, q_name: QualifiedName) -> Result<(), QError> {
@@ -287,7 +304,7 @@ impl Symbols {
         declared_name: DeclaredName,
         resolver: &T,
     ) -> Result<ResolvedDeclaredName, QError> {
-        let r = Self::resolve_declared_name(declared_name, resolver);
+        let r = self.resolve_declared_name(declared_name, resolver)?;
         if self.constants.contains_any(&r)
             || self.params.clashes_with(&r)
             || self.variables.clashes_with(&r)

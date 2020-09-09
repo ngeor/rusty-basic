@@ -1,4 +1,4 @@
-use super::subprogram_context::{collect_subprograms, FunctionMap, SubMap};
+use super::subprogram_context::{FirstPassOuter, FunctionMap, SubMap};
 use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
@@ -7,11 +7,11 @@ use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, DeclaredName, DeclaredNameNodes, ElementType, HasQualifier, Name,
-    NameNode, QualifiedName, QualifiedNameNode, TypeDefinition, TypeQualifier, UserDefinedType,
-    WithTypeQualifier,
+    BareName, BareNameNode, CanCastTo, DeclaredName, DeclaredNameNodes, ElementType, HasQualifier,
+    Name, NameNode, QualifiedName, QualifiedNameNode, TypeDefinition, TypeQualifier,
+    UserDefinedType, WithTypeQualifier,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::convert::TryInto;
 
 //
@@ -66,7 +66,8 @@ struct ConverterImpl {
     context: LinterContext,
     functions: FunctionMap,
     subs: SubMap,
-    user_defined_types: HashMap<BareName, UserDefinedType>,
+    function_declarations: FunctionMap,
+    sub_declarations: SubMap,
 }
 
 impl ConverterImpl {
@@ -218,17 +219,9 @@ impl ConverterImpl {
             // parameter might be hiding a function name so it takes precedence
             Err(QError::DuplicateDefinition)
         } else {
-            let ResolvedDeclaredName {
-                name,
-                type_definition,
-            } = self.context.resolve_assignment(&n, &self.resolver)?;
-            match type_definition {
-                ResolvedTypeDefinition::CompactBuiltIn(q)
-                | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                    Ok(LName::Variable(name.with_type(q)))
-                }
-                _ => unimplemented!(),
-            }
+            let resolved_declared_name: ResolvedDeclaredName =
+                self.context.resolve_assignment(&n, &self.resolver)?;
+            Ok(LName::Variable(resolved_declared_name))
         }
     }
 
@@ -270,61 +263,6 @@ impl ConverterImpl {
         }
     }
 
-    fn user_defined_type(&mut self, user_defined_type: UserDefinedType) -> Result<(), QErrorNode> {
-        let type_name: &BareName = user_defined_type.name.as_ref();
-        if self.user_defined_types.contains_key(type_name) {
-            // duplicate type definition
-            Err(QError::DuplicateDefinition).with_err_no_pos()
-        } else {
-            let mut seen_element_names: HashSet<BareName> = HashSet::new();
-            for Locatable { element, pos } in user_defined_type.elements.iter() {
-                let element_name: &BareName = &element.name;
-                if seen_element_names.contains(element_name) {
-                    // duplicate element name within type
-                    return Err(QError::DuplicateDefinition).with_err_at(pos);
-                } else {
-                    seen_element_names.insert(element_name.clone());
-                }
-                match &element.element_type {
-                    ElementType::String(Locatable {
-                        element: str_len_expression,
-                        pos,
-                    }) => {
-                        match str_len_expression {
-                            crate::parser::Expression::IntegerLiteral(_i) => {
-                                // parser already covers this
-                            }
-                            crate::parser::Expression::VariableName(v) => {
-                                // only constants allowed
-                                match self.context.resolve_const_expression(v).with_err_at(pos)? {
-                                    Some(_c) => {
-                                        // TODO evaluate constant value now
-                                    }
-                                    None => {
-                                        return Err(QError::InvalidConstant).with_err_at(pos);
-                                    }
-                                }
-                            }
-                            _ => panic!("Unexpected string length {:?}", str_len_expression),
-                        }
-                    }
-                    ElementType::UserDefined(Locatable {
-                        element: referred_name,
-                        pos,
-                    }) => {
-                        if !self.user_defined_types.contains_key(referred_name) {
-                            return Err(QError::syntax_error("Type not defined")).with_err_at(pos);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            self.user_defined_types
-                .insert(type_name.clone(), user_defined_type);
-            Ok(())
-        }
-    }
-
     fn constant(
         &mut self,
         left: NameNode,
@@ -339,14 +277,20 @@ impl ConverterImpl {
             // local variable/param or local constant or function or sub already present by that name
             Err(QError::DuplicateDefinition).with_err_at(pos)
         } else {
+            // TODO simplify
             let checked_right = self.resolve_const_value(right)?;
             let converted_expression_node = self.convert(checked_right)?;
-            let e_type = converted_expression_node.try_qualifier()?;
-            let q_name = self
-                .context
-                .push_const(name, e_type.at(converted_expression_node.pos()))
-                .patch_err_pos(pos)?;
-            Ok(Statement::Const(q_name.at(pos), converted_expression_node))
+            match converted_expression_node.try_type_definition()? {
+                ResolvedTypeDefinition::CompactBuiltIn(q)
+                | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                    let q_name = self
+                        .context
+                        .push_const(name, q.at(converted_expression_node.pos()))
+                        .patch_err_pos(pos)?;
+                    Ok(Statement::Const(q_name.at(pos), converted_expression_node))
+                }
+                _ => Err(QError::InvalidConstant).with_err_at(pos),
+            }
         }
     }
 
@@ -411,17 +355,57 @@ impl ConverterImpl {
             }
         }
     }
+
+    fn assignment(
+        &mut self,
+        name: Name,
+        expression_node: crate::parser::ExpressionNode,
+    ) -> Result<Statement, QErrorNode> {
+        let resolved_l_name = self.resolve_name_in_assignment(name).with_err_no_pos()?;
+        let converted_expr: ExpressionNode = self.convert(expression_node)?;
+        let result_q: ResolvedTypeDefinition = converted_expr.try_type_definition()?;
+        match resolved_l_name {
+            LName::Variable(ResolvedDeclaredName {
+                name,
+                type_definition,
+            }) => {
+                if result_q.can_cast_to(&type_definition) {
+                    Ok(Statement::Assignment(
+                        ResolvedDeclaredName {
+                            name,
+                            type_definition,
+                        },
+                        converted_expr,
+                    ))
+                } else {
+                    Err(QError::TypeMismatch).with_err_at(&converted_expr)
+                }
+            }
+            LName::Function(QualifiedName { name, qualifier }) => {
+                if result_q.can_cast_to(qualifier) {
+                    Ok(Statement::SetReturnValue(converted_expr))
+                } else {
+                    Err(QError::TypeMismatch).with_err_at(&converted_expr)
+                }
+            }
+        }
+    }
 }
 
 pub fn convert(
     program: parser::ProgramNode,
 ) -> Result<(ProgramNode, FunctionMap, SubMap), QErrorNode> {
-    let mut linter = ConverterImpl::default();
-    let (f_c, s_c) = collect_subprograms(&program)?;
-    linter.functions = f_c;
-    linter.subs = s_c;
-    let result = linter.convert(program)?;
-    let (f, s) = linter.consume();
+    // first pass
+    let mut first_pass = FirstPassOuter::new();
+    first_pass.parse(&program)?;
+    let (f_c, s_c, user_defined_types) = first_pass.into_inner();
+    // second pass
+    let mut converter = ConverterImpl::default();
+    converter.functions = f_c;
+    converter.subs = s_c;
+    converter.context.symbols_mut().user_defined_types = user_defined_types;
+    let result = converter.convert(program)?;
+    let (f, s) = converter.consume();
     Ok((result, f, s))
 }
 
@@ -469,8 +453,9 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
             parser::TopLevelToken::Statement(s) => {
                 Ok(Some(TopLevelToken::Statement(self.convert(s)?)))
             }
-            parser::TopLevelToken::UserDefinedType(user_defined_type) => {
-                self.user_defined_type(user_defined_type).map(|_| None)
+            parser::TopLevelToken::UserDefinedType(_) => {
+                // already handled by first pass
+                Ok(None)
             }
         }
     }
@@ -480,31 +465,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
     fn convert(&mut self, a: parser::Statement) -> Result<Statement, QErrorNode> {
         match a {
             parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
-            parser::Statement::Assignment(n, e) => {
-                let resolved_l_name = self.resolve_name_in_assignment(n).with_err_no_pos()?;
-                let name_type = resolved_l_name.qualifier();
-                let converted_expr: ExpressionNode = self.convert(e)?;
-                let result_q: TypeQualifier = converted_expr.try_qualifier()?;
-                if result_q.can_cast_to(name_type) {
-                    match resolved_l_name {
-                        LName::Variable(q_name) => {
-                            let QualifiedName { name, qualifier } = q_name;
-                            Ok(Statement::Assignment(
-                                ResolvedDeclaredName {
-                                    name,
-                                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(
-                                        qualifier,
-                                    ),
-                                },
-                                converted_expr,
-                            ))
-                        }
-                        LName::Function(_) => Ok(Statement::SetReturnValue(converted_expr)),
-                    }
-                } else {
-                    Err(QError::TypeMismatch).with_err_at(&converted_expr)
-                }
-            }
+            parser::Statement::Assignment(n, e) => self.assignment(n, e),
             parser::Statement::Const(n, e) => self.constant(n, e),
             parser::Statement::SubCall(n, args) => {
                 let converted_args = self.convert(args)?;
@@ -522,14 +483,18 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
             parser::Statement::Label(l) => Ok(Statement::Label(l)),
             parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
             parser::Statement::Dim(declared_name_node) => {
-                let Locatable { element: d, pos } = declared_name_node;
-                if self.subs.contains_key(d.as_ref()) || self.functions.contains_key(d.as_ref()) {
+                let Locatable {
+                    element: declared_name,
+                    pos,
+                } = declared_name_node;
+                let bare_name: &BareName = declared_name.as_ref();
+                if self.subs.contains_key(bare_name) || self.functions.contains_key(bare_name) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
                 let mapped_declared_name = self
                     .context
                     .symbols_mut()
-                    .push_dim(d, &self.resolver)
+                    .push_dim(declared_name, &self.resolver)
                     .with_err_at(pos)?;
                 Ok(Statement::Dim(mapped_declared_name.at(pos)))
             }
@@ -564,29 +529,44 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let converted_left = self.convert(unboxed_left)?;
                 let converted_right = self.convert(unboxed_right)?;
                 // get the types
-                let q_left = converted_left.try_qualifier()?;
-                let q_right = converted_right.try_qualifier()?;
-                // get the cast type
-                let result_type = super::operand_type::cast_binary_op(op, q_left, q_right);
-                if result_type.is_some() {
-                    Ok(Expression::BinaryExpression(
-                        op,
-                        Box::new(converted_left),
-                        Box::new(converted_right),
-                    ))
-                } else {
-                    Err(QError::TypeMismatch).with_err_at(&converted_right)
+                match converted_left.try_type_definition()? {
+                    ResolvedTypeDefinition::CompactBuiltIn(q_left)
+                    | ResolvedTypeDefinition::ExtendedBuiltIn(q_left) => {
+                        match converted_right.try_type_definition()? {
+                            ResolvedTypeDefinition::CompactBuiltIn(q_right)
+                            | ResolvedTypeDefinition::ExtendedBuiltIn(q_right) => {
+                                // get the cast type
+                                let result_type =
+                                    super::casting::cast_binary_op(op, q_left, q_right);
+                                if result_type.is_some() {
+                                    Ok(Expression::BinaryExpression(
+                                        op,
+                                        Box::new(converted_left),
+                                        Box::new(converted_right),
+                                    ))
+                                } else {
+                                    Err(QError::TypeMismatch).with_err_at(&converted_right)
+                                }
+                            }
+                            _ => Err(QError::TypeMismatch).with_err_at(&converted_right),
+                        }
+                    }
+                    _ => Err(QError::TypeMismatch).with_err_at(&converted_left),
                 }
             }
             parser::Expression::UnaryExpression(op, c) => {
                 let unboxed_child = *c;
                 let converted_child = self.convert(unboxed_child)?;
-                let converted_q = converted_child.try_qualifier()?;
-                if super::operand_type::cast_unary_op(op, converted_q).is_none() {
-                    // no unary operation works for strings
-                    Err(QError::TypeMismatch).with_err_at(&converted_child)
-                } else {
-                    Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
+                match converted_child.try_type_definition()? {
+                    ResolvedTypeDefinition::CompactBuiltIn(q)
+                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                        if super::casting::cast_unary_op(op, q).is_none() {
+                            Err(QError::TypeMismatch).with_err_at(&converted_child)
+                        } else {
+                            Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
+                        }
+                    }
+                    _ => Err(QError::TypeMismatch).with_err_at(&converted_child),
                 }
             }
             parser::Expression::Parenthesis(c) => {
@@ -677,14 +657,6 @@ impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
 
 #[derive(Debug)]
 enum LName {
-    Variable(QualifiedName),
+    Variable(ResolvedDeclaredName),
     Function(QualifiedName),
-}
-
-impl HasQualifier for LName {
-    fn qualifier(&self) -> TypeQualifier {
-        match self {
-            Self::Variable(n) | Self::Function(n) => n.qualifier(),
-        }
-    }
 }

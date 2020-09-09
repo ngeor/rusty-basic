@@ -3,8 +3,8 @@ use crate::common::{
     FileHandle, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
 };
 use crate::parser::{
-    BareName, BareNameNode, HasQualifier, Operand, QualifiedName, QualifiedNameNode,
-    TypeDefinition, TypeQualifier, UnaryOperand,
+    BareName, BareNameNode, CanCastTo, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
+    TypeDefinition, TypeQualifier, UnaryOperator,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -18,46 +18,83 @@ pub enum Expression {
     Variable(ResolvedDeclaredName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
-    BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
-    UnaryExpression(UnaryOperand, Box<ExpressionNode>),
+    BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
+    UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
     FileHandle(FileHandle),
 }
 
 impl Expression {
-    pub fn try_qualifier(&self, pos: Location) -> Result<TypeQualifier, QErrorNode> {
+    pub fn try_type_definition(&self, pos: Location) -> Result<ResolvedTypeDefinition, QErrorNode> {
         match self {
-            Self::SingleLiteral(_) => Ok(TypeQualifier::BangSingle),
-            Self::DoubleLiteral(_) => Ok(TypeQualifier::HashDouble),
-            Self::StringLiteral(_) => Ok(TypeQualifier::DollarString),
-            Self::IntegerLiteral(_) => Ok(TypeQualifier::PercentInteger),
-            Self::LongLiteral(_) => Ok(TypeQualifier::AmpersandLong),
+            Self::SingleLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
+                TypeQualifier::BangSingle,
+            )),
+            Self::DoubleLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
+                TypeQualifier::HashDouble,
+            )),
+            Self::StringLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
+                TypeQualifier::DollarString,
+            )),
+            Self::IntegerLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
+                TypeQualifier::PercentInteger,
+            )),
+            Self::LongLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
+                TypeQualifier::AmpersandLong,
+            )),
             Self::Variable(name) => {
                 let ResolvedDeclaredName {
                     type_definition, ..
                 } = name;
-                match type_definition {
+                Ok(type_definition.clone())
+            }
+            Self::Constant(name) | Self::FunctionCall(name, _) => {
+                Ok(ResolvedTypeDefinition::CompactBuiltIn(name.qualifier()))
+            }
+            Self::BuiltInFunctionCall(f, _) => {
+                Ok(ResolvedTypeDefinition::CompactBuiltIn(f.qualifier()))
+            }
+            Self::BinaryExpression(op, l, r) => match l.as_ref().try_type_definition()? {
+                ResolvedTypeDefinition::CompactBuiltIn(q_left)
+                | ResolvedTypeDefinition::ExtendedBuiltIn(q_left) => {
+                    match r.as_ref().try_type_definition()? {
+                        ResolvedTypeDefinition::CompactBuiltIn(q_right)
+                        | ResolvedTypeDefinition::ExtendedBuiltIn(q_right) => {
+                            match super::casting::cast_binary_op(*op, q_left, q_right) {
+                                Some(q_result) => {
+                                    // TODO does it matter that it collapses Extended into Compact
+                                    Ok(ResolvedTypeDefinition::CompactBuiltIn(q_result))
+                                }
+                                None => Err(QError::TypeMismatch).with_err_at(r.pos()),
+                            }
+                        }
+                        ResolvedTypeDefinition::UserDefined(_) => {
+                            Err(QError::TypeMismatch).with_err_at(pos)
+                        }
+                    }
+                }
+                ResolvedTypeDefinition::UserDefined(_) => {
+                    Err(QError::TypeMismatch).with_err_at(pos)
+                }
+            },
+            Self::UnaryExpression(op, c) => {
+                match c.as_ref().try_type_definition()? {
                     ResolvedTypeDefinition::CompactBuiltIn(q)
-                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => Ok(*q),
-                    _ => Err(QError::TypeMismatch).with_err_at(pos),
+                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                        match super::casting::cast_unary_op(*op, q) {
+                            Some(q) => {
+                                // TODO does it matter that it collapses Extended into Compact
+                                Ok(ResolvedTypeDefinition::CompactBuiltIn(q))
+                            }
+                            None => Err(QError::TypeMismatch).with_err_at(pos),
+                        }
+                    }
+                    ResolvedTypeDefinition::UserDefined(_) => {
+                        Err(QError::TypeMismatch).with_err_at(pos)
+                    }
                 }
             }
-            Self::Constant(name) | Self::FunctionCall(name, _) => Ok(name.qualifier()),
-            Self::BuiltInFunctionCall(f, _) => Ok(f.qualifier()),
-            Self::BinaryExpression(op, l, r) => {
-                let q_left = l.as_ref().try_qualifier()?;
-                let q_right = r.as_ref().try_qualifier()?;
-                super::operand_type::cast_binary_op(*op, q_left, q_right)
-                    .ok_or_else(|| QError::TypeMismatch)
-                    .with_err_at(r.pos())
-            }
-            Self::UnaryExpression(op, c) => {
-                let q_child = c.as_ref().try_qualifier()?;
-                super::operand_type::cast_unary_op(*op, q_child)
-                    .ok_or_else(|| QError::TypeMismatch)
-                    .with_err_at(c.as_ref())
-            }
-            Self::Parenthesis(c) => c.as_ref().try_qualifier(),
+            Self::Parenthesis(c) => c.as_ref().try_type_definition(),
             Self::FileHandle(_) => Err(QError::TypeMismatch).with_err_at(pos),
         }
     }
@@ -66,8 +103,8 @@ impl Expression {
 pub type ExpressionNode = Locatable<Expression>;
 
 impl ExpressionNode {
-    pub fn try_qualifier(&self) -> Result<TypeQualifier, QErrorNode> {
-        self.as_ref().try_qualifier(self.pos())
+    pub fn try_type_definition(&self) -> Result<ResolvedTypeDefinition, QErrorNode> {
+        self.as_ref().try_type_definition(self.pos())
     }
 }
 
@@ -113,7 +150,7 @@ pub struct CaseBlockNode {
 #[derive(Clone, Debug, PartialEq)]
 pub enum CaseExpression {
     Simple(ExpressionNode),
-    Is(Operand, ExpressionNode),
+    Is(Operator, ExpressionNode),
     Range(ExpressionNode, ExpressionNode),
 }
 
@@ -218,6 +255,34 @@ impl ResolvedTypeDefinition {
 
     pub fn is_extended(&self) -> bool {
         self.is_extended_built_in() || self.is_user_defined()
+    }
+}
+
+impl CanCastTo<&ResolvedTypeDefinition> for ResolvedTypeDefinition {
+    fn can_cast_to(&self, other: &Self) -> bool {
+        match self {
+            Self::CompactBuiltIn(q_left) | Self::ExtendedBuiltIn(q_left) => match other {
+                Self::CompactBuiltIn(q_right) | Self::ExtendedBuiltIn(q_right) => {
+                    q_left.can_cast_to(*q_right)
+                }
+                _ => false,
+            },
+            Self::UserDefined(u_left) => match other {
+                Self::UserDefined(u_right) => u_left == u_right,
+                _ => false,
+            },
+        }
+    }
+}
+
+impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
+    fn can_cast_to(&self, other: TypeQualifier) -> bool {
+        match self {
+            Self::CompactBuiltIn(q_left) | Self::ExtendedBuiltIn(q_left) => {
+                q_left.can_cast_to(other)
+            }
+            Self::UserDefined(u_left) => false,
+        }
     }
 }
 

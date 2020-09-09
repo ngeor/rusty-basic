@@ -20,7 +20,7 @@ use std::io::BufRead;
 
 // CASE <ws+> ELSE (priority)
 // CASE <expr> TO <expr>
-// CASE <ws+> IS <operand> <expr>
+// CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
 pub fn select_case<T: BufRead + 'static>(
@@ -145,8 +145,8 @@ fn parse_case_is<T: BufRead + 'static>(
             and(crate::parser::pc::ws::one_or_more(), keyword(Keyword::Is)),
             crate::parser::pc::ws::zero_or_more(),
             demand(
-                expression::relational_operand(),
-                QError::syntax_error_fn("Expected: operand after IS"),
+                expression::relational_operator(),
+                QError::syntax_error_fn("Expected: Operator after IS"),
             ),
             crate::parser::pc::ws::zero_or_more(),
             expression::demand_expression_node(),

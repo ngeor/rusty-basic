@@ -80,7 +80,7 @@ mod tests {
     use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
-        DeclaredName, Expression, Name, Operand, Statement, TopLevelToken, TypeQualifier,
+        DeclaredName, Expression, Name, Operator, Statement, TopLevelToken, TypeQualifier,
     };
 
     #[test]
@@ -236,11 +236,11 @@ mod tests {
                     vec![Statement::SubCall(
                         "ENVIRON".into(),
                         vec![Expression::BinaryExpression(
-                            Operand::Plus,
+                            Operator::Plus,
                             Box::new("N$".as_var_expr(5, 21)),
                             Box::new(
                                 Expression::BinaryExpression(
-                                    Operand::Plus,
+                                    Operator::Plus,
                                     Box::new("=".as_lit_expr(5, 26)),
                                     Box::new("V$".as_var_expr(5, 32))
                                 )

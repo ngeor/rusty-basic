@@ -1,81 +1,419 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::*;
-use crate::linter::type_resolver::*;
-use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::parser;
-use crate::parser::{
-    BareName, DeclaredName, DeclaredNameNode, DeclaredNameNodes, NameNode, TypeDefinition,
-    TypeQualifier,
+use crate::common::{
+    CaseInsensitiveString, Locatable, Location, PatchErrPos, QError, QErrorNode,
+    ToErrorEnvelopeNoPos, ToLocatableError,
 };
-use std::collections::HashMap;
+use crate::linter::type_resolver::{ResolveInto, TypeResolver};
+use crate::linter::type_resolver_impl::TypeResolverImpl;
+use crate::linter::types::ResolvedTypeDefinition;
+use crate::parser::{
+    BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, DefType,
+    ElementType, Expression, ExpressionNode, Name, NameNode, ProgramNode, Statement, TopLevelToken,
+    TypeDefinition, TypeQualifier, UserDefinedType,
+};
+use crate::variant::Variant;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
+use std::rc::{Rc, Weak};
 
-/// Collects subprograms of the given program.
-/// Ensures that:
-/// - All declared subprograms are implemented
-/// - No duplicate implementations
-/// - No conflicts between declarations and implementations
-/// - Resolves types of parameters and functions
-pub fn collect_subprograms(p: &parser::ProgramNode) -> Result<(FunctionMap, SubMap), QErrorNode> {
-    let mut f_c = FunctionContext::new();
-    let mut s_c = SubContext::new();
-    for t in p {
-        f_c.visit(t)?;
-        s_c.visit(t)?;
-    }
-    f_c.post_visit()?;
-    s_c.post_visit()?;
-    Ok((f_c.implementations, s_c.implementations))
+#[derive(Debug)]
+pub struct FirstPassOuter {
+    inner: Rc<RefCell<FirstPassInner>>,
+    function_context: FunctionContext,
+    sub_context: SubContext,
+    global_constants: HashMap<BareName, Variant>,
 }
 
-pub type ParamTypes = Vec<TypeQualifier>;
+impl FirstPassOuter {
+    pub fn new() -> Self {
+        let inner = FirstPassInner::new();
+        let rc = Rc::new(RefCell::new(inner));
+        let fc = FunctionContext::new(Rc::downgrade(&rc));
+        let sc = SubContext::new(Rc::downgrade(&rc));
+        Self {
+            inner: rc,
+            function_context: fc,
+            sub_context: sc,
+            global_constants: HashMap::new(),
+        }
+    }
+
+    pub fn into_inner(self) -> (FunctionMap, SubMap, HashMap<BareName, UserDefinedType>) {
+        let Self {
+            function_context,
+            sub_context,
+            inner,
+            ..
+        } = self;
+        let i = Rc::try_unwrap(inner).unwrap().into_inner();
+        (
+            function_context.implementations,
+            sub_context.implementations,
+            i.user_defined_types,
+        )
+    }
+
+    /// Collects subprograms of the given program.
+    /// Ensures that:
+    /// - All declared subprograms are implemented
+    /// - No duplicate implementations
+    /// - No conflicts between declarations and implementations
+    /// - Resolves types of parameters and functions
+    pub fn parse(&mut self, program: &ProgramNode) -> Result<(), QErrorNode> {
+        for Locatable {
+            element: top_level_token,
+            pos,
+        } in program
+        {
+            self.top_level_token(top_level_token).patch_err_pos(pos)?;
+        }
+        self.function_context.post_visit()?;
+        self.sub_context.post_visit()
+    }
+
+    fn top_level_token(&mut self, top_level_token: &TopLevelToken) -> Result<(), QErrorNode> {
+        match top_level_token {
+            TopLevelToken::DefType(def_type) => self.def_type(def_type),
+            TopLevelToken::FunctionDeclaration(name_node, params) => {
+                self.function_declaration(name_node, params)
+            }
+            TopLevelToken::SubDeclaration(bare_name_node, params) => {
+                self.sub_declaration(bare_name_node, params)
+            }
+            TopLevelToken::FunctionImplementation(name_node, params, _) => {
+                self.function_implementation(name_node, params)
+            }
+            TopLevelToken::SubImplementation(bare_name_node, params, _) => {
+                self.sub_implementation(bare_name_node, params)
+            }
+            TopLevelToken::Statement(s) => match s {
+                Statement::Const(name_node, expression_node) => {
+                    self.global_const(name_node, expression_node)
+                }
+                _ => Ok(()),
+            },
+            TopLevelToken::UserDefinedType(user_defined_type) => {
+                self.user_defined_type(user_defined_type)
+            }
+        }
+    }
+
+    // ========================================================
+    // def type
+    // ========================================================
+
+    fn def_type(&mut self, def_type: &DefType) -> Result<(), QErrorNode> {
+        self.inner.borrow_mut().resolver.set(def_type);
+        Ok(())
+    }
+
+    // ========================================================
+    // functions
+    // ========================================================
+
+    fn function_declaration(
+        &mut self,
+        name_node: &NameNode,
+        params: &DeclaredNameNodes,
+    ) -> Result<(), QErrorNode> {
+        self.function_context.add_declaration(name_node, params)
+    }
+
+    fn function_implementation(
+        &mut self,
+        name_node: &NameNode,
+        params: &DeclaredNameNodes,
+    ) -> Result<(), QErrorNode> {
+        self.function_context.add_implementation(name_node, params)
+    }
+
+    // ========================================================
+    // subs
+    // ========================================================
+
+    fn sub_declaration(
+        &mut self,
+        bare_name_node: &BareNameNode,
+        params: &DeclaredNameNodes,
+    ) -> Result<(), QErrorNode> {
+        self.sub_context.add_declaration(bare_name_node, params)
+    }
+
+    fn sub_implementation(
+        &mut self,
+        bare_name_node: &BareNameNode,
+        params: &DeclaredNameNodes,
+    ) -> Result<(), QErrorNode> {
+        self.sub_context.add_implementation(bare_name_node, params)
+    }
+
+    // ========================================================
+    // global constants
+    // ========================================================
+
+    fn global_const(
+        &mut self,
+        name_node: &NameNode,
+        expression_node: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
+        let Locatable { element: name, pos } = name_node;
+        let bare_name: &BareName = name.as_ref();
+        if self.global_constants.contains_key(bare_name) {
+            return Err(QError::DuplicateDefinition).with_err_at(pos);
+        }
+        let Locatable {
+            element: expression,
+            pos,
+        } = expression_node;
+        let v: Variant = self.resolve_const_value(expression).patch_err_pos(pos)?;
+        match name {
+            Name::Bare(b) => {
+                self.global_constants.insert(b.clone(), v);
+            }
+            Name::Qualified { name, qualifier } => {
+                let casted = Self::cast_variant(v, *qualifier).with_err_at(pos)?;
+                self.global_constants.insert(name.clone(), casted);
+            }
+        }
+        Ok(())
+    }
+
+    // TODO move to Expression
+    fn resolve_const_value(&self, expression: &Expression) -> Result<Variant, QErrorNode> {
+        match expression {
+            Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
+            Expression::FunctionCall(_, _) => Err(QError::InvalidConstant).with_err_no_pos(),
+            _ => unimplemented!(),
+        }
+    }
+
+    // TODO move to variant
+    fn cast_variant(v: Variant, target_type: TypeQualifier) -> Result<Variant, QError> {
+        match v {
+            Variant::VInteger(i) => match target_type {
+                TypeQualifier::PercentInteger => Ok(v),
+                _ => unimplemented!(),
+            },
+            _ => unimplemented!(),
+        }
+    }
+
+    // ========================================================
+    // user defined types
+    // ========================================================
+
+    fn user_defined_type(&mut self, user_defined_type: &UserDefinedType) -> Result<(), QErrorNode> {
+        let type_name: &BareName = user_defined_type.name.as_ref();
+        if self
+            .inner
+            .borrow()
+            .user_defined_types
+            .contains_key(type_name)
+        {
+            // duplicate type definition
+            Err(QError::DuplicateDefinition).with_err_no_pos()
+        } else {
+            let mut seen_element_names: HashSet<BareName> = HashSet::new();
+            for Locatable { element, pos } in user_defined_type.elements.iter() {
+                let element_name: &BareName = &element.name;
+                if seen_element_names.contains(element_name) {
+                    // duplicate element name within type
+                    return Err(QError::DuplicateDefinition).with_err_at(pos);
+                } else {
+                    seen_element_names.insert(element_name.clone());
+                }
+                match &element.element_type {
+                    ElementType::String(str_len_expression_node) => {
+                        self.validate_element_type_str_len(str_len_expression_node)?;
+                    }
+                    ElementType::UserDefined(Locatable {
+                        element: referred_name,
+                        pos,
+                    }) => {
+                        if !self
+                            .inner
+                            .borrow()
+                            .user_defined_types
+                            .contains_key(referred_name)
+                        {
+                            return Err(QError::syntax_error("Type not defined")).with_err_at(pos);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            self.inner
+                .borrow_mut()
+                .user_defined_types
+                .insert(type_name.clone(), user_defined_type.clone());
+            Ok(())
+        }
+    }
+
+    fn validate_element_type_str_len(
+        &self,
+        str_len_expression_node: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
+        let Locatable {
+            element: str_len_expression,
+            pos,
+        } = str_len_expression_node;
+        match str_len_expression {
+            Expression::IntegerLiteral(_i) => {
+                // parser already covers this
+                Ok(())
+            }
+            Expression::VariableName(v) => {
+                // only constants allowed
+                match v {
+                    Name::Bare(b) => {
+                        // bare name constant
+                        match self.global_constants.get(b) {
+                            // constant exists
+                            Some(const_value) => {
+                                match const_value {
+                                    Variant::VInteger(i) => {
+                                        if *i >= 1 {
+                                            Ok(())
+                                        } else {
+                                            // illegal string length
+                                            Err(QError::InvalidConstant).with_err_at(pos)
+                                        }
+                                    }
+                                    _ => {
+                                        // only integer constants allowed
+                                        Err(QError::InvalidConstant).with_err_at(pos)
+                                    }
+                                }
+                            }
+                            // constant does not exist
+                            None => Err(QError::InvalidConstant).with_err_at(pos),
+                        }
+                    }
+                    Name::Qualified { name, qualifier } => {
+                        match self.global_constants.get(name) {
+                            // constant exists
+                            Some(const_value) => {
+                                match const_value {
+                                    Variant::VInteger(i) => {
+                                        if *qualifier == TypeQualifier::PercentInteger && *i >= 1 {
+                                            Ok(())
+                                        } else {
+                                            // illegal string length or using wrong qualifier to reference the int constant
+                                            Err(QError::InvalidConstant).with_err_at(pos)
+                                        }
+                                    }
+                                    _ => {
+                                        // only integer constants allowed
+                                        Err(QError::InvalidConstant).with_err_at(pos)
+                                    }
+                                }
+                            }
+                            // constant does not exist
+                            None => Err(QError::InvalidConstant).with_err_at(pos),
+                        }
+                    }
+                }
+            }
+            _ => panic!("Unexpected string length {:?}", str_len_expression),
+        }
+    }
+}
+
+/// Inner mutable members
+/// - resolver is needed to resolve function names and bare name parameters
+/// - user_defined_types is needed to validate the existence of extended user defined declared parameters
+#[derive(Debug)]
+struct FirstPassInner {
+    resolver: TypeResolverImpl,
+    user_defined_types: HashMap<BareName, UserDefinedType>,
+}
+
+impl FirstPassInner {
+    pub fn new() -> Self {
+        Self {
+            resolver: TypeResolverImpl::default(),
+            user_defined_types: HashMap::new(),
+        }
+    }
+
+    // ========================================================
+    // resolving function/sub parameters
+    // ========================================================
+
+    pub fn parameters(
+        &self,
+        params: &DeclaredNameNodes,
+    ) -> Result<Vec<ResolvedTypeDefinition>, QErrorNode> {
+        params.iter().map(|p| self.parameter(p)).collect()
+    }
+
+    fn parameter(&self, param: &DeclaredNameNode) -> Result<ResolvedTypeDefinition, QErrorNode> {
+        let Locatable {
+            element: declared_name,
+            pos,
+        } = param;
+        let DeclaredName {
+            name,
+            type_definition,
+        } = declared_name;
+        match type_definition {
+            TypeDefinition::Bare => {
+                let q: TypeQualifier = self.resolver.resolve(name);
+                Ok(ResolvedTypeDefinition::CompactBuiltIn(q))
+            }
+            TypeDefinition::CompactBuiltIn(q) => Ok(ResolvedTypeDefinition::CompactBuiltIn(*q)),
+            TypeDefinition::ExtendedBuiltIn(q) => Ok(ResolvedTypeDefinition::ExtendedBuiltIn(*q)),
+            TypeDefinition::UserDefined(u) => {
+                if self.user_defined_types.contains_key(u) {
+                    Ok(ResolvedTypeDefinition::UserDefined(u.clone()))
+                } else {
+                    Err(QError::syntax_error("Type not defined")).with_err_at(pos)
+                }
+            }
+        }
+    }
+}
+
+pub type ParamTypes = Vec<ResolvedTypeDefinition>;
 pub type FunctionMap = HashMap<CaseInsensitiveString, (TypeQualifier, ParamTypes, Location)>;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct FunctionContext {
-    resolver: TypeResolverImpl,
     declarations: FunctionMap,
     implementations: FunctionMap,
-}
-
-fn resolve_declared_name_node<T: TypeResolver>(
-    resolver: &T,
-    p: &DeclaredNameNode,
-) -> TypeQualifier {
-    let d: &DeclaredName = p.as_ref();
-    match d.type_definition() {
-        TypeDefinition::Bare => {
-            let bare_name: &BareName = d.as_ref();
-            bare_name.resolve_into(resolver)
-        }
-        TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => *q,
-        _ => unimplemented!(),
-    }
+    first_pass: Weak<RefCell<FirstPassInner>>,
 }
 
 impl FunctionContext {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(first_pass: Weak<RefCell<FirstPassInner>>) -> Self {
+        Self {
+            declarations: FunctionMap::new(),
+            implementations: FunctionMap::new(),
+            first_pass,
+        }
     }
 
     pub fn add_declaration(
         &mut self,
-        name: &NameNode,
+        name_node: &NameNode,
         params: &DeclaredNameNodes,
-        pos: Location,
     ) -> Result<(), QErrorNode> {
+        let Locatable { element: name, pos } = name_node;
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
-        let q_params: Vec<TypeQualifier> = params
-            .iter()
-            .map(|p| resolve_declared_name_node(&self.resolver, p))
-            .collect();
-        let q_name: TypeQualifier = name.resolve_into(&self.resolver);
-        let bare_name = BareName::from(name);
-        self.check_implementation_type(&bare_name, &q_name, &q_params, pos)?;
-        match self.declarations.get(&bare_name) {
-            Some(_) => self.check_declaration_type(&bare_name, &q_name, &q_params, pos),
+        let first_pass = self.first_pass.upgrade().unwrap();
+        let q_params: ParamTypes = first_pass.borrow().parameters(params)?;
+        let q_name: TypeQualifier = name.resolve_into(&first_pass.borrow().resolver);
+        let bare_name: &BareName = name.as_ref();
+        self.check_implementation_type(bare_name, &q_name, &q_params)?;
+        match self.declarations.get(bare_name) {
+            Some(_) => self
+                .check_declaration_type(bare_name, &q_name, &q_params)
+                .with_err_no_pos(),
             None => {
-                self.declarations.insert(bare_name, (q_name, q_params, pos));
+                self.declarations
+                    .insert(bare_name.clone(), (q_name, q_params, *pos));
                 Ok(())
             }
         }
@@ -83,26 +421,26 @@ impl FunctionContext {
 
     pub fn add_implementation(
         &mut self,
-        name: &NameNode,
+        name_node: &NameNode,
         params: &DeclaredNameNodes,
-        pos: Location,
     ) -> Result<(), QErrorNode> {
+        let Locatable { element: name, pos } = name_node;
+
         // type must match declaration
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
-        let q_params: Vec<TypeQualifier> = params
-            .iter()
-            .map(|p| resolve_declared_name_node(&self.resolver, p))
-            .collect();
-        let q_name: TypeQualifier = name.resolve_into(&self.resolver);
-        let bare_name = BareName::from(name);
-        match self.implementations.get(&bare_name) {
-            Some(_) => Err(QError::DuplicateDefinition).with_err_at(pos),
+        let first_pass = self.first_pass.upgrade().unwrap();
+        let q_params: ParamTypes = first_pass.borrow().parameters(params)?;
+        let q_name: TypeQualifier = name.resolve_into(&first_pass.borrow().resolver);
+        let bare_name: &BareName = name.as_ref();
+        match self.implementations.get(bare_name) {
+            Some(_) => Err(QError::DuplicateDefinition).with_err_no_pos(),
             None => {
-                self.check_declaration_type(&bare_name, &q_name, &q_params, pos)?;
+                self.check_declaration_type(bare_name, &q_name, &q_params)
+                    .with_err_no_pos()?;
                 self.implementations
-                    .insert(bare_name, (q_name, q_params, pos));
+                    .insert(bare_name.clone(), (q_name, q_params, *pos));
                 Ok(())
             }
         }
@@ -112,13 +450,12 @@ impl FunctionContext {
         &mut self,
         name: &CaseInsensitiveString,
         q_name: &TypeQualifier,
-        q_params: &Vec<TypeQualifier>,
-        pos: Location,
-    ) -> Result<(), QErrorNode> {
+        q_params: &ParamTypes,
+    ) -> Result<(), QError> {
         match self.declarations.get(name) {
             Some((e_name, e_params, _)) => {
                 if e_name != q_name || e_params != q_params {
-                    return Err(QError::TypeMismatch).with_err_at(pos);
+                    return Err(QError::TypeMismatch);
                 }
             }
             None => (),
@@ -130,13 +467,12 @@ impl FunctionContext {
         &mut self,
         name: &CaseInsensitiveString,
         q_name: &TypeQualifier,
-        q_params: &Vec<TypeQualifier>,
-        pos: Location,
+        q_params: &ParamTypes,
     ) -> Result<(), QErrorNode> {
         match self.implementations.get(name) {
             Some((e_name, e_params, _)) => {
                 if e_name != q_name || e_params != q_params {
-                    return Err(QError::TypeMismatch).with_err_at(pos);
+                    return Err(QError::TypeMismatch).with_err_no_pos();
                 }
             }
             None => (),
@@ -144,24 +480,7 @@ impl FunctionContext {
         Ok(())
     }
 
-    pub fn visit(&mut self, a: &parser::TopLevelTokenNode) -> Result<(), QErrorNode> {
-        let pos = a.pos();
-        match a.as_ref() {
-            parser::TopLevelToken::DefType(d) => {
-                self.resolver.set(d);
-                Ok(())
-            }
-            parser::TopLevelToken::FunctionDeclaration(n, params) => {
-                self.add_declaration(n, params, pos)
-            }
-            parser::TopLevelToken::FunctionImplementation(n, params, _) => {
-                self.add_implementation(n, params, pos)
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub fn post_visit(&mut self) -> Result<(), QErrorNode> {
+    pub fn post_visit(&self) -> Result<(), QErrorNode> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return Err(QError::SubprogramNotDefined).with_err_at(v.2);
@@ -181,36 +500,40 @@ impl FunctionContext {
 
 pub type SubMap = HashMap<CaseInsensitiveString, (ParamTypes, Location)>;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct SubContext {
-    resolver: TypeResolverImpl,
     declarations: SubMap,
     implementations: SubMap,
-    errors: Vec<Locatable<String>>,
+    first_pass: Weak<RefCell<FirstPassInner>>,
 }
 
 impl SubContext {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(first_pass: Weak<RefCell<FirstPassInner>>) -> Self {
+        Self {
+            declarations: SubMap::new(),
+            implementations: SubMap::new(),
+            first_pass,
+        }
     }
 
     pub fn add_declaration(
         &mut self,
-        name: &CaseInsensitiveString,
+        bare_name_node: &BareNameNode,
         params: &DeclaredNameNodes,
-        pos: Location,
     ) -> Result<(), QErrorNode> {
+        let Locatable { element: name, pos } = bare_name_node;
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
-        let q_params: Vec<TypeQualifier> = params
-            .iter()
-            .map(|p| resolve_declared_name_node(&self.resolver, p))
-            .collect();
-        self.check_implementation_type(name, &q_params, pos)?;
+        let first_pass = self.first_pass.upgrade().unwrap();
+        let q_params: ParamTypes = first_pass.borrow().parameters(params)?;
+        self.check_implementation_type(name, &q_params)
+            .with_err_no_pos()?;
         match self.declarations.get(name) {
-            Some(_) => self.check_declaration_type(name, &q_params, pos),
+            Some(_) => self
+                .check_declaration_type(name, &q_params)
+                .with_err_no_pos(),
             None => {
-                self.declarations.insert(name.clone(), (q_params, pos));
+                self.declarations.insert(name.clone(), (q_params, *pos));
                 Ok(())
             }
         }
@@ -218,22 +541,21 @@ impl SubContext {
 
     pub fn add_implementation(
         &mut self,
-        name: &CaseInsensitiveString,
+        bare_name_node: &BareNameNode,
         params: &DeclaredNameNodes,
-        pos: Location,
     ) -> Result<(), QErrorNode> {
+        let Locatable { element: name, pos } = bare_name_node;
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
-        let q_params: Vec<TypeQualifier> = params
-            .iter()
-            .map(|p| resolve_declared_name_node(&self.resolver, p))
-            .collect();
+        let first_pass = self.first_pass.upgrade().unwrap();
+        let q_params: ParamTypes = first_pass.borrow().parameters(params)?;
         match self.implementations.get(name) {
-            Some(_) => Err(QError::DuplicateDefinition).with_err_at(pos),
+            Some(_) => Err(QError::DuplicateDefinition).with_err_no_pos(),
             None => {
-                self.check_declaration_type(name, &q_params, pos)?;
-                self.implementations.insert(name.clone(), (q_params, pos));
+                self.check_declaration_type(name, &q_params)
+                    .with_err_no_pos()?;
+                self.implementations.insert(name.clone(), (q_params, *pos));
                 Ok(())
             }
         }
@@ -242,13 +564,12 @@ impl SubContext {
     fn check_declaration_type(
         &mut self,
         name: &CaseInsensitiveString,
-        q_params: &Vec<TypeQualifier>,
-        pos: Location,
-    ) -> Result<(), QErrorNode> {
+        q_params: &ParamTypes,
+    ) -> Result<(), QError> {
         match self.declarations.get(name) {
             Some((e_params, _)) => {
                 if e_params != q_params {
-                    return Err(QError::TypeMismatch).with_err_at(pos);
+                    return Err(QError::TypeMismatch);
                 }
             }
             None => (),
@@ -259,13 +580,12 @@ impl SubContext {
     fn check_implementation_type(
         &mut self,
         name: &CaseInsensitiveString,
-        q_params: &Vec<TypeQualifier>,
-        pos: Location,
-    ) -> Result<(), QErrorNode> {
+        q_params: &ParamTypes,
+    ) -> Result<(), QError> {
         match self.implementations.get(name) {
             Some((e_params, _)) => {
                 if e_params != q_params {
-                    return Err(QError::TypeMismatch).with_err_at(pos);
+                    return Err(QError::TypeMismatch);
                 }
             }
             None => (),
@@ -273,30 +593,7 @@ impl SubContext {
         Ok(())
     }
 
-    pub fn visit(
-        &mut self,
-        top_level_token_node: &parser::TopLevelTokenNode,
-    ) -> Result<(), QErrorNode> {
-        let Locatable {
-            element: top_level_token,
-            pos,
-        } = top_level_token_node;
-        match top_level_token {
-            parser::TopLevelToken::DefType(d) => {
-                self.resolver.set(d);
-                Ok(())
-            }
-            parser::TopLevelToken::SubDeclaration(n, params) => {
-                self.add_declaration(n.as_ref(), params, *pos)
-            }
-            parser::TopLevelToken::SubImplementation(n, params, _) => {
-                self.add_implementation(n.as_ref(), params, *pos)
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub fn post_visit(&mut self) -> Result<(), QErrorNode> {
+    pub fn post_visit(&self) -> Result<(), QErrorNode> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return Err(QError::SubprogramNotDefined).with_err_at(v.1);

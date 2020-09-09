@@ -1,60 +1,6 @@
-use super::Name;
+use super::{Name, Operator, UnaryOperator};
 use crate::common::{AtLocation, FileHandle, HasLocation, Locatable, Location};
 use crate::variant;
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum Operand {
-    // relational
-    Less,
-    LessOrEqual,
-    Equal,
-    GreaterOrEqual,
-    Greater,
-    NotEqual,
-    // arithmetic
-    Plus,
-    Minus,
-    Multiply,
-    Divide,
-    // binary
-    And,
-    Or,
-}
-
-impl Operand {
-    pub fn is_relational(&self) -> bool {
-        match self {
-            Self::Less
-            | Self::LessOrEqual
-            | Self::Equal
-            | Self::GreaterOrEqual
-            | Self::Greater
-            | Self::NotEqual => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_arithmetic(&self) -> bool {
-        match self {
-            Self::Plus | Self::Minus | Self::Multiply | Self::Divide => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_binary(&self) -> bool {
-        match self {
-            Self::And | Self::Or => true,
-            _ => false,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum UnaryOperand {
-    // Plus,
-    Minus,
-    Not,
-}
 
 pub type ArgumentNodes = Vec<ExpressionNode>;
 
@@ -67,8 +13,8 @@ pub enum Expression {
     LongLiteral(i64),
     VariableName(Name),
     FunctionCall(Name, ArgumentNodes),
-    BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
-    UnaryExpression(UnaryOperand, Box<ExpressionNode>),
+    BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
+    UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
 
     /// A file handle is used in built-in subs such as CLOSE #1
@@ -133,7 +79,7 @@ impl Expression {
                 }
             }
             _ => Self::UnaryExpression(
-                UnaryOperand::Minus,
+                UnaryOperator::Minus,
                 Box::new(child.simplify_unary_minus_literals()),
             ),
         }
@@ -144,7 +90,7 @@ impl Expression {
             Self::UnaryExpression(op, child) => {
                 let x: ExpressionNode = *child;
                 match op {
-                    UnaryOperand::Minus => Self::unary_minus(x),
+                    UnaryOperator::Minus => Self::unary_minus(x),
                     _ => Self::UnaryExpression(op, Box::new(x.simplify_unary_minus_literals())),
                 }
             }
@@ -191,16 +137,16 @@ impl ExpressionNode {
     pub fn apply_priority_order(
         self,
         right_side: ExpressionNode,
-        op: Operand,
+        op: Operator,
         pos: Location,
     ) -> ExpressionNode {
         match right_side.as_ref() {
             Expression::BinaryExpression(r_op, r_left, r_right) => {
                 let should_flip = op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
                     || op.is_relational() && r_op.is_binary()
-                    || op == Operand::And && *r_op == Operand::Or
-                    || (op == Operand::Multiply || op == Operand::Divide)
-                        && (*r_op == Operand::Plus || *r_op == Operand::Minus);
+                    || op == Operator::And && *r_op == Operator::Or
+                    || (op == Operator::Multiply || op == Operator::Divide)
+                        && (*r_op == Operator::Plus || *r_op == Operator::Minus);
                 if should_flip {
                     Expression::BinaryExpression(
                         *r_op,
@@ -219,10 +165,10 @@ impl ExpressionNode {
         }
     }
 
-    pub fn apply_unary_priority_order(self, op: UnaryOperand, pos: Location) -> ExpressionNode {
+    pub fn apply_unary_priority_order(self, op: UnaryOperator, pos: Location) -> ExpressionNode {
         match self.as_ref() {
             Expression::BinaryExpression(r_op, r_left, r_right) => {
-                let should_flip = op == UnaryOperand::Minus || r_op.is_binary();
+                let should_flip = op == UnaryOperator::Minus || r_op.is_binary();
                 if should_flip {
                     Expression::BinaryExpression(
                         *r_op,

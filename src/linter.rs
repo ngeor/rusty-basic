@@ -1,11 +1,11 @@
 mod built_in_linter;
+mod casting;
 mod converter;
 mod expression_reducer;
 mod for_next_counter_match;
 mod label_linter;
 mod linter;
 mod linter_context;
-mod operand_type;
 mod post_conversion_linter;
 mod select_case_linter;
 mod subprogram_context;
@@ -23,6 +23,6 @@ pub use self::linter::*;
 pub use self::types::*;
 
 pub use crate::parser::{
-    BareName, BareNameNode, HasQualifier, Operand, QualifiedName, QualifiedNameNode, TypeQualifier,
-    UnaryOperand,
+    BareName, BareNameNode, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
+    TypeQualifier, UnaryOperator,
 };

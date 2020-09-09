@@ -179,8 +179,36 @@ mod open {
 
 mod print {
     use super::*;
-    pub fn lint(_args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        for arg in args.iter() {
+            let type_definition = arg.try_type_definition()?;
+            match type_definition {
+                ResolvedTypeDefinition::UserDefined(_) => {
+                    return Err(QError::TypeMismatch).with_err_at(arg);
+                }
+                _ => {}
+            }
+        }
         Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_linter_err;
+
+        #[test]
+        fn cannot_print_user_defined_type() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM c AS Card
+            PRINT c";
+            assert_linter_err!(input, QError::TypeMismatch, 8, 19);
+        }
     }
 }
 
@@ -250,6 +278,44 @@ mod len {
                     }
                 }
             }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_linter_err;
+
+        #[test]
+        fn test_len_integer_expression_error() {
+            let program = "PRINT LEN(42)";
+            assert_linter_err!(program, QError::VariableRequired, 1, 11);
+        }
+
+        #[test]
+        fn test_len_integer_const_error() {
+            let program = "
+            CONST X = 42
+            PRINT LEN(X)
+            ";
+            assert_linter_err!(program, QError::VariableRequired, 3, 23);
+        }
+
+        #[test]
+        fn test_len_two_arguments_error() {
+            let program = r#"PRINT LEN("a", "b")"#;
+            assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
+        }
+
+        #[test]
+        fn test_len_must_be_unqualified() {
+            let program = r#"PRINT LEN!("hello")"#;
+            assert_linter_err!(
+                program,
+                QError::syntax_error("Function Len must be unqualified"),
+                1,
+                7
+            );
         }
     }
 }

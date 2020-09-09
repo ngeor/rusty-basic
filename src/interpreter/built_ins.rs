@@ -478,9 +478,7 @@ mod len {
 
     #[cfg(test)]
     mod tests {
-        use crate::assert_linter_err;
         use crate::assert_prints;
-        use crate::common::QError;
 
         #[test]
         fn test_len_string() {
@@ -525,35 +523,16 @@ mod len {
         }
 
         #[test]
-        fn test_len_integer_expression_error() {
-            let program = "PRINT LEN(42)";
-            assert_linter_err!(program, QError::VariableRequired, 1, 11);
-        }
-
-        #[test]
-        fn test_len_integer_const_error() {
+        fn test_len_user_defined_type() {
             let program = "
-            CONST X = 42
-            PRINT LEN(X)
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+            DIM A AS Card
+            PRINT LEN(A)
             ";
-            assert_linter_err!(program, QError::VariableRequired, 3, 23);
-        }
-
-        #[test]
-        fn test_len_two_arguments_error() {
-            let program = r#"PRINT LEN("a", "b")"#;
-            assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
-        }
-
-        #[test]
-        fn test_len_must_be_unqualified() {
-            let program = r#"PRINT LEN!("hello")"#;
-            assert_linter_err!(
-                program,
-                QError::syntax_error("Function Len must be unqualified"),
-                1,
-                7
-            );
+            assert_prints!(program, "11");
         }
     }
 }

@@ -7,6 +7,9 @@ use crate::parser::{
     TypeDefinition, TypeQualifier, UnaryOperator,
 };
 
+// TODO store the resolved type definition inside the expression at the time of the conversion from parser,
+// in order to avoid `try_type_definition` all the time. A linter expression should have a resolved type definition.
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     SingleLiteral(f32),
@@ -95,7 +98,9 @@ impl Expression {
                 }
             }
             Self::Parenthesis(c) => c.as_ref().try_type_definition(),
-            Self::FileHandle(_) => Err(QError::TypeMismatch).with_err_at(pos),
+            Self::FileHandle(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
+                TypeQualifier::FileHandle,
+            )),
         }
     }
 }

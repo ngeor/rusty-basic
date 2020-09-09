@@ -749,8 +749,8 @@ mod tests {
             assert_linter_err!(r#"PRINT "hello" AND "bye""#, QError::TypeMismatch, 1, 19);
 
             assert_linter_err!(r#"PRINT 1 AND #1"#, QError::TypeMismatch, 1, 13);
-            assert_linter_err!(r#"PRINT #1 AND 1"#, QError::TypeMismatch, 1, 7);
-            assert_linter_err!(r#"PRINT #1 AND #1"#, QError::TypeMismatch, 1, 7);
+            assert_linter_err!(r#"PRINT #1 AND 1"#, QError::TypeMismatch, 1, 14);
+            assert_linter_err!(r#"PRINT #1 AND #1"#, QError::TypeMismatch, 1, 14);
         }
 
         #[test]
@@ -855,19 +855,6 @@ mod tests {
 
             CONST A = 10";
             assert_linter_err!(input, QError::InvalidConstant, 3, 31);
-        }
-
-        #[test]
-        fn type_mismatch_when_used_in_print() {
-            let input = "
-            TYPE Card
-                Suit AS STRING * 9
-                Value AS INTEGER
-            END TYPE
-
-            DIM c AS Card
-            PRINT c";
-            assert_linter_err!(input, QError::TypeMismatch, 8, 19);
         }
 
         #[test]

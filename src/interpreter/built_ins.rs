@@ -811,12 +811,12 @@ mod open {
         #[test]
         fn test_can_create_file() {
             let input = r#"
-        OPEN "TEST1.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        CLOSE #1
-        "#;
-            let instructions = generate_instructions(input);
-            let mut interpreter = Interpreter::new(DefaultStdlib {});
+            OPEN "TEST1.TXT" FOR APPEND AS #1
+            PRINT #1, "Hello, world"
+            CLOSE #1
+            "#;
+            let (instructions, user_defined_types) = generate_instructions(input);
+            let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             let contents = std::fs::read_to_string("TEST1.TXT").unwrap_or("".to_string());
             std::fs::remove_file("TEST1.TXT").unwrap_or(());
@@ -826,18 +826,18 @@ mod open {
         #[test]
         fn test_can_read_file() {
             let input = r#"
-        OPEN "TEST2A.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        CLOSE #1
-        OPEN "TEST2A.TXT" FOR INPUT AS #1
-        LINE INPUT #1, T$
-        CLOSE #1
-        OPEN "TEST2B.TXT" FOR APPEND AS #1
-        PRINT #1, T$
-        CLOSE #1
-        "#;
-            let instructions = generate_instructions(input);
-            let mut interpreter = Interpreter::new(DefaultStdlib {});
+            OPEN "TEST2A.TXT" FOR APPEND AS #1
+            PRINT #1, "Hello, world"
+            CLOSE #1
+            OPEN "TEST2A.TXT" FOR INPUT AS #1
+            LINE INPUT #1, T$
+            CLOSE #1
+            OPEN "TEST2B.TXT" FOR APPEND AS #1
+            PRINT #1, T$
+            CLOSE #1
+            "#;
+            let (instructions, user_defined_types) = generate_instructions(input);
+            let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             let contents = std::fs::read_to_string("TEST2B.TXT").unwrap_or("".to_string());
             std::fs::remove_file("TEST2A.TXT").unwrap_or(());
@@ -848,20 +848,20 @@ mod open {
         #[test]
         fn test_can_read_file_until_eof() {
             let input = r#"
-        OPEN "TEST3.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        PRINT #1, "Hello, again"
-        CLOSE #1
-        OPEN "TEST3.TXT" FOR INPUT AS #1
-        WHILE NOT EOF(1)
-        LINE INPUT #1, T$
-        PRINT T$
-        WEND
-        CLOSE #1
-        "#;
-            let instructions = generate_instructions(input);
+            OPEN "TEST3.TXT" FOR APPEND AS #1
+            PRINT #1, "Hello, world"
+            PRINT #1, "Hello, again"
+            CLOSE #1
+            OPEN "TEST3.TXT" FOR INPUT AS #1
+            WHILE NOT EOF(1)
+            LINE INPUT #1, T$
+            PRINT T$
+            WEND
+            CLOSE #1
+            "#;
+            let (instructions, user_defined_types) = generate_instructions(input);
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
+            let mut interpreter = Interpreter::new(stdlib, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             std::fs::remove_file("TEST3.TXT").unwrap_or(());
             assert_eq!(

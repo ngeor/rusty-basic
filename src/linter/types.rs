@@ -330,3 +330,31 @@ impl AsRef<BareName> for ResolvedDeclaredName {
 
 pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;
 pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;
+
+// ========================================================
+// ResolvedUserDefinedType
+// ========================================================
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedUserDefinedType {
+    /// The name of the type
+    pub name: BareName,
+    /// The elements
+    pub elements: Vec<ResolvedElement>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedElement {
+    pub name: BareName,
+    pub element_type: ResolvedElementType,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ResolvedElementType {
+    Integer,
+    Long,
+    Single,
+    Double,
+    String(u32),
+    UserDefined(BareName),
+}

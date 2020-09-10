@@ -5,17 +5,28 @@ use super::types::*;
 use crate::common::*;
 use crate::linter::converter;
 use crate::parser;
+use std::collections::HashMap;
 
-pub fn lint(program: parser::ProgramNode) -> Result<ProgramNode, QErrorNode> {
+pub fn lint(
+    program: parser::ProgramNode,
+) -> Result<
+    (
+        ProgramNode,
+        HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ),
+    QErrorNode,
+> {
     // convert to fully typed
-    let (result, functions, subs) = converter::convert(program)?;
+    let (result, functions, subs, user_defined_types) = converter::convert(program)?;
     // lint
     apply_linters(&result, &functions, &subs)?;
     // reduce
     let reducer = super::undefined_function_reducer::UndefinedFunctionReducer {
         functions: &functions,
     };
-    reducer.visit_program(result)
+    reducer
+        .visit_program(result)
+        .map(|p| (p, user_defined_types))
 }
 
 fn apply_linters(

@@ -6,7 +6,9 @@ use crate::common::{
 use crate::linter::casting::cast;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::types::ResolvedTypeDefinition;
+use crate::linter::types::{
+    ResolvedElement, ResolvedElementType, ResolvedTypeDefinition, ResolvedUserDefinedType,
+};
 use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, DefType,
     ElementType, Expression, ExpressionNode, Name, NameNode, Operator, ProgramNode, Statement,
@@ -40,7 +42,13 @@ impl FirstPassOuter {
         }
     }
 
-    pub fn into_inner(self) -> (FunctionMap, SubMap, HashMap<BareName, UserDefinedType>) {
+    pub fn into_inner(
+        self,
+    ) -> (
+        FunctionMap,
+        SubMap,
+        HashMap<BareName, ResolvedUserDefinedType>,
+    ) {
         let Self {
             function_context,
             sub_context,
@@ -289,6 +297,7 @@ impl FirstPassOuter {
             // duplicate type definition
             Err(QError::DuplicateDefinition).with_err_no_pos()
         } else {
+            let mut resolved_elements: Vec<ResolvedElement> = vec![];
             let mut seen_element_names: HashSet<BareName> = HashSet::new();
             for Locatable { element, pos } in user_defined_type.elements.iter() {
                 let element_name: &BareName = &element.name;
@@ -298,9 +307,14 @@ impl FirstPassOuter {
                 } else {
                     seen_element_names.insert(element_name.clone());
                 }
-                match &element.element_type {
+                let resolved_element_type = match &element.element_type {
+                    ElementType::Integer => ResolvedElementType::Integer,
+                    ElementType::Long => ResolvedElementType::Long,
+                    ElementType::Single => ResolvedElementType::Single,
+                    ElementType::Double => ResolvedElementType::Double,
                     ElementType::String(str_len_expression_node) => {
-                        self.validate_element_type_str_len(str_len_expression_node)?;
+                        let l: u32 = self.validate_element_type_str_len(str_len_expression_node)?;
+                        ResolvedElementType::String(l)
                     }
                     ElementType::UserDefined(Locatable {
                         element: referred_name,
@@ -314,14 +328,21 @@ impl FirstPassOuter {
                         {
                             return Err(QError::syntax_error("Type not defined")).with_err_at(pos);
                         }
+                        ResolvedElementType::UserDefined(referred_name.clone())
                     }
-                    _ => {}
-                }
+                };
+                resolved_elements.push(ResolvedElement {
+                    name: element_name.clone(),
+                    element_type: resolved_element_type,
+                });
             }
-            self.inner
-                .borrow_mut()
-                .user_defined_types
-                .insert(type_name.clone(), user_defined_type.clone());
+            self.inner.borrow_mut().user_defined_types.insert(
+                type_name.clone(),
+                ResolvedUserDefinedType {
+                    name: type_name.clone(),
+                    elements: resolved_elements,
+                },
+            );
             Ok(())
         }
     }
@@ -329,15 +350,15 @@ impl FirstPassOuter {
     fn validate_element_type_str_len(
         &self,
         str_len_expression_node: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<u32, QErrorNode> {
         let Locatable {
             element: str_len_expression,
             pos,
         } = str_len_expression_node;
         match str_len_expression {
-            Expression::IntegerLiteral(_i) => {
+            Expression::IntegerLiteral(i) => {
                 // parser already covers this
-                Ok(())
+                Ok(*i as u32)
             }
             Expression::VariableName(v) => {
                 // only constants allowed
@@ -350,7 +371,7 @@ impl FirstPassOuter {
                                 match const_value {
                                     Variant::VInteger(i) => {
                                         if *i >= 1 {
-                                            Ok(())
+                                            Ok(*i as u32)
                                         } else {
                                             // illegal string length
                                             Err(QError::InvalidConstant).with_err_at(pos)
@@ -373,7 +394,7 @@ impl FirstPassOuter {
                                 match const_value {
                                     Variant::VInteger(i) => {
                                         if *qualifier == TypeQualifier::PercentInteger && *i >= 1 {
-                                            Ok(())
+                                            Ok(*i as u32)
                                         } else {
                                             // illegal string length or using wrong qualifier to reference the int constant
                                             Err(QError::InvalidConstant).with_err_at(pos)
@@ -402,7 +423,7 @@ impl FirstPassOuter {
 #[derive(Debug)]
 struct FirstPassInner {
     resolver: TypeResolverImpl,
-    user_defined_types: HashMap<BareName, UserDefinedType>,
+    user_defined_types: HashMap<BareName, ResolvedUserDefinedType>,
 }
 
 impl FirstPassInner {

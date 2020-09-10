@@ -1,9 +1,11 @@
 use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
-use crate::linter::types::{Expression, ResolvedDeclaredName, ResolvedTypeDefinition};
+use crate::linter::types::{
+    Expression, ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedType,
+};
 use crate::parser::{
     BareName, CanCastTo, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier,
-    UserDefinedType, WithTypeQualifier,
+    WithTypeQualifier,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -62,7 +64,7 @@ pub struct LinterContext {
     parent: Option<Box<LinterContext>>,
     sub_program: Option<(BareName, SubProgramType)>,
     names: HashMap<BareName, ResolvedTypeDefinitions>,
-    pub user_defined_types: HashMap<BareName, UserDefinedType>,
+    pub user_defined_types: HashMap<BareName, ResolvedUserDefinedType>,
 }
 
 impl LinterContext {

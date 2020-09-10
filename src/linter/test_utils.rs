@@ -6,7 +6,7 @@ where
     T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).unwrap();
-    linter::lint(program).unwrap()
+    linter::lint(program).unwrap().0
 }
 
 pub fn linter_err<T>(input: T) -> crate::common::QErrorNode

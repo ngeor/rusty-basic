@@ -16,7 +16,7 @@ where
     T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).unwrap();
-    let linted_program = linter::lint(program).unwrap();
+    let (linted_program, _user_defined_types) = linter::lint(program).unwrap();
     instruction_generator::generate_instructions(linted_program)
 }
 
@@ -68,7 +68,7 @@ where
     let file_path = format!("fixtures/{}", filename.as_ref());
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
-    let linted_program = linter::lint(program).unwrap();
+    let (linted_program, _user_defined_types) = linter::lint(program).unwrap();
     let instructions = instruction_generator::generate_instructions(linted_program);
     let mut interpreter = Interpreter::new(stdlib);
     interpreter.interpret(instructions).map(|_| interpreter)

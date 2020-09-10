@@ -10,6 +10,7 @@ use crate::parser::{
     BareName, BareNameNode, CanCastTo, DeclaredName, DeclaredNameNodes, HasQualifier, Name,
     NameNode, QualifiedName, QualifiedNameNode, TypeDefinition, TypeQualifier, WithTypeQualifier,
 };
+use std::collections::HashMap;
 use std::convert::TryInto;
 
 //
@@ -84,8 +85,14 @@ impl ConverterImpl {
         self.context = old.pop_context();
     }
 
-    pub fn consume(self) -> (FunctionMap, SubMap) {
-        (self.functions, self.subs)
+    pub fn consume(
+        self,
+    ) -> (
+        FunctionMap,
+        SubMap,
+        HashMap<BareName, ResolvedUserDefinedType>,
+    ) {
+        (self.functions, self.subs, self.context.user_defined_types)
     }
 
     fn convert_function_implementation(
@@ -386,7 +393,15 @@ impl ConverterImpl {
 
 pub fn convert(
     program: parser::ProgramNode,
-) -> Result<(ProgramNode, FunctionMap, SubMap), QErrorNode> {
+) -> Result<
+    (
+        ProgramNode,
+        FunctionMap,
+        SubMap,
+        HashMap<BareName, ResolvedUserDefinedType>,
+    ),
+    QErrorNode,
+> {
     // first pass
     let mut first_pass = FirstPassOuter::new();
     first_pass.parse(&program)?;
@@ -397,8 +412,8 @@ pub fn convert(
     converter.subs = s_c;
     converter.context.user_defined_types = user_defined_types;
     let result = converter.convert(program)?;
-    let (f, s) = converter.consume();
-    Ok((result, f, s))
+    let (f, s, u) = converter.consume();
+    Ok((result, f, s, u))
 }
 
 impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {

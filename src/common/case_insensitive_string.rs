@@ -31,6 +31,19 @@ impl CaseInsensitiveString {
 
         false
     }
+
+    pub fn starts_with(&self, needle: &Self) -> bool {
+        let n: Vec<char> = needle.inner.chars().collect();
+        let mut i = 0;
+        for c in self.inner.chars() {
+            if i < n.len() && c.to_ascii_uppercase() == n[i].to_ascii_uppercase() {
+                i += 1;
+            } else {
+                break;
+            }
+        }
+        i >= n.len()
+    }
 }
 
 impl From<CaseInsensitiveString> for String {
@@ -145,6 +158,15 @@ impl CmpIgnoreAsciiCase for &CaseInsensitiveString {
         let l_inner: &String = &left.inner;
         let r_inner: &String = &right.inner;
         CmpIgnoreAsciiCase::compare_ignore_ascii_case(l_inner, r_inner)
+    }
+}
+
+impl std::ops::Add<char> for CaseInsensitiveString {
+    type Output = Self;
+    fn add(self, other: char) -> Self {
+        let mut s: String = self.into();
+        s.push(other);
+        s.into()
     }
 }
 

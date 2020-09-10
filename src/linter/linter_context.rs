@@ -68,6 +68,42 @@ pub struct LinterContext {
 }
 
 impl LinterContext {
+    fn ensure_not_clashing_with_user_defined_var(&self, name: &BareName) -> Result<(), QError> {
+        if name.contains('.') {
+            let s: String = name.clone().into();
+            let v: Vec<&str> = s.split('.').collect();
+            let first: BareName = v[0].into();
+            match self.names.get(&first) {
+                Some(resolved_type_definitions) => match resolved_type_definitions {
+                    ResolvedTypeDefinitions::UserDefined(_) => {
+                        Err(QError::syntax_error("Expected: , or end-of-statement"))
+                    }
+                    _ => Ok(()),
+                },
+                None => Ok(()),
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn ensure_user_defined_var_not_clashing_with_dotted_vars(
+        &self,
+        name: &BareName,
+    ) -> Result<(), QError> {
+        if self.names.is_empty() {
+            Ok(())
+        } else {
+            let prefix: BareName = name.clone() + '.';
+            for k in self.names.keys() {
+                if k.starts_with(&prefix) {
+                    return Err(QError::syntax_error("Expected: , or end-of-statement"));
+                }
+            }
+            Ok(())
+        }
+    }
+
     fn resolve_declared_name<T: TypeResolver>(
         &self,
         declared_name: DeclaredName,
@@ -79,22 +115,32 @@ impl LinterContext {
         } = declared_name;
         match type_definition {
             TypeDefinition::Bare => {
+                self.ensure_not_clashing_with_user_defined_var(&name)?;
                 let q: TypeQualifier = (&name).resolve_into(resolver);
                 Ok(ResolvedDeclaredName {
                     name,
                     type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
                 })
             }
-            TypeDefinition::CompactBuiltIn(q) => Ok(ResolvedDeclaredName {
-                name,
-                type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
-            }),
-            TypeDefinition::ExtendedBuiltIn(q) => Ok(ResolvedDeclaredName {
-                name,
-                type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(q),
-            }),
+            TypeDefinition::CompactBuiltIn(q) => {
+                self.ensure_not_clashing_with_user_defined_var(&name)?;
+                Ok(ResolvedDeclaredName {
+                    name,
+                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+                })
+            }
+            TypeDefinition::ExtendedBuiltIn(q) => {
+                self.ensure_not_clashing_with_user_defined_var(&name)?;
+                Ok(ResolvedDeclaredName {
+                    name,
+                    type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(q),
+                })
+            }
             TypeDefinition::UserDefined(user_defined_type) => {
-                if self.user_defined_types.contains_key(&user_defined_type) {
+                if name.contains('.') {
+                    Err(QError::syntax_error("Identifier cannot include period"))
+                } else if self.user_defined_types.contains_key(&user_defined_type) {
+                    self.ensure_user_defined_var_not_clashing_with_dotted_vars(&name)?;
                     Ok(ResolvedDeclaredName {
                         name,
                         type_definition: ResolvedTypeDefinition::UserDefined(user_defined_type),

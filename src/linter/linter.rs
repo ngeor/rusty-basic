@@ -813,7 +813,7 @@ mod tests {
                 Value AS INTEGER
                 Value AS INTEGER
             END TYPE
-        ";
+            ";
             assert_linter_err!(input, QError::DuplicateDefinition, 4, 17);
         }
 
@@ -879,6 +879,64 @@ mod tests {
             DIM c AS Card
             PRINT c.Suite";
             assert_linter_err!(input, QError::syntax_error("Element not defined"), 8, 20);
+        }
+
+        #[test]
+        fn user_defined_variable_name_cannot_include_period() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM A.B AS Card
+            ";
+            assert_linter_err!(
+                input,
+                QError::syntax_error("Identifier cannot include period"),
+                7,
+                17
+            );
+        }
+
+        #[test]
+        fn cannot_define_variable_with_dot_if_clashes_with_user_defined_type() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM C AS Card
+            DIM C.Oops AS STRING
+            ";
+            // QBasic actually throws "Expected: , or end-of-statement" at the period position
+            assert_linter_err!(
+                input,
+                QError::syntax_error("Expected: , or end-of-statement"),
+                8,
+                17
+            );
+        }
+
+        #[test]
+        fn cannot_define_variable_with_dot_if_clashes_with_user_defined_type_reverse() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM C.Oops AS STRING
+            DIM C AS Card
+            ";
+            // QBasic actually throws "Expected: , or end-of-statement" at the period position
+            assert_linter_err!(
+                input,
+                QError::syntax_error("Expected: , or end-of-statement"),
+                8,
+                17
+            );
         }
 
         #[test]

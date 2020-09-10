@@ -292,4 +292,32 @@ mod tests {
             assert_eq!(parse_err(input), QError::syntax_error("Illegal number"));
         }
     }
+
+    #[test]
+    fn type_name_cannot_include_period() {
+        let input = "
+        TYPE Card.Test
+            Suit AS STRING * 9
+            Value AS INTEGER
+        END TYPE
+        ";
+        assert_eq!(
+            parse_err(input),
+            QError::syntax_error("Identifier cannot include period")
+        );
+    }
+
+    #[test]
+    fn element_name_cannot_include_period() {
+        let input = "
+        TYPE Card
+            Strong.Suit AS STRING * 9
+            Value AS INTEGER
+        END TYPE
+        ";
+        assert_eq!(
+            parse_err(input),
+            QError::syntax_error("Identifier cannot include period")
+        );
+    }
 }

@@ -5,8 +5,6 @@ use crate::linter::*;
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
 
-// TODO unify with linter
-
 //
 // Argument
 //
@@ -14,14 +12,14 @@ use std::collections::{HashMap, VecDeque};
 #[derive(Clone, Debug, PartialEq)]
 pub enum Argument {
     ByVal(Variant),
-    ByRef(QualifiedName),
+    ByRef(ResolvedDeclaredName),
 }
 
-impl HasQualifier for Argument {
-    fn qualifier(&self) -> TypeQualifier {
+impl Argument {
+    pub fn type_definition(&self) -> ResolvedTypeDefinition {
         match self {
-            Self::ByVal(v) => v.qualifier(),
-            Self::ByRef(r) => r.qualifier(),
+            Self::ByVal(v) => v.type_definition(),
+            Self::ByRef(r) => r.type_definition.clone(),
         }
     }
 }
@@ -30,76 +28,21 @@ impl HasQualifier for Argument {
 // Cast
 //
 
-trait Cast {
-    fn cast(self, qualifier: TypeQualifier) -> Result<Self, QError>
+trait Cast<T> {
+    fn cast(self, qualifier: T) -> Result<Self, QError>
     where
         Self: Sized;
 }
 
-impl Cast for Variant {
+impl Cast<TypeQualifier> for Variant {
     fn cast(self, qualifier: TypeQualifier) -> Result<Self, QError> {
         casting::cast(self, qualifier)
     }
 }
 
-impl Cast for Argument {
-    fn cast(self, qualifier: TypeQualifier) -> Result<Self, QError> {
-        match self {
-            Self::ByRef(n) => Ok(Self::ByRef(n)),
-            Self::ByVal(v) => casting::cast(v, qualifier).map(|x| Self::ByVal(x)),
-        }
-    }
-}
-
-//
-// NameMap
-//
-
-#[derive(Debug)]
-struct NameMap<T: Cast>(HashMap<CaseInsensitiveString, HashMap<TypeQualifier, T>>);
-
-impl<T: Cast> NameMap<T> {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    pub fn insert(&mut self, name: QualifiedName, value: T) -> Result<(), QError> {
-        let QualifiedName {
-            name: bare_name,
-            qualifier,
-        } = name;
-        match self.0.get_mut(&bare_name) {
-            Some(inner_map) => {
-                inner_map.insert(qualifier, value.cast(qualifier)?);
-            }
-            None => {
-                let mut inner_map: HashMap<TypeQualifier, T> = HashMap::new();
-                inner_map.insert(qualifier, value.cast(qualifier)?);
-                self.0.insert(bare_name, inner_map);
-            }
-        }
-        Ok(())
-    }
-
-    pub fn get(&self, name: &QualifiedName) -> Option<&T> {
-        match self.0.get(name.as_ref()) {
-            Some(inner_map) => inner_map.get(&name.qualifier()),
-            None => None,
-        }
-    }
-
-    pub fn get_mut(&mut self, name: &QualifiedName) -> Option<&mut T> {
-        match self.0.get_mut(name.as_ref()) {
-            Some(inner_map) => inner_map.get_mut(&name.qualifier()),
-            None => None,
-        }
-    }
-
-    pub fn remove(&mut self, name: &QualifiedName) -> Option<T> {
-        match self.0.get_mut(name.as_ref()) {
-            Some(inner_map) => inner_map.remove(&name.qualifier()),
-            None => None,
-        }
+impl Cast<ResolvedTypeDefinition> for Variant {
+    fn cast(self, resolved_type_definition: ResolvedTypeDefinition) -> Result<Self, QError> {
+        self.cast_for_type_definition(resolved_type_definition)
     }
 }
 
@@ -115,10 +58,10 @@ impl ConstantMap {
         Self(HashMap::new())
     }
 
-    pub fn get(&self, name: &QualifiedName) -> Option<&Variant> {
+    pub fn get(&self, name: &ResolvedDeclaredName) -> Option<&Variant> {
         match self.0.get(name.as_ref()) {
             Some(v) => {
-                if name.qualifier() == v.qualifier() {
+                if name.type_definition == v.type_definition() {
                     Some(v)
                 } else {
                     // trying to reference a constant with wrong type
@@ -144,18 +87,16 @@ impl ConstantMap {
     }
 }
 
-type VariableMap = NameMap<Variant>;
-
 #[derive(Debug)]
 struct ArgumentMap {
-    named: NameMap<Argument>,
-    name_order: VecDeque<QualifiedName>,
+    named: HashMap<ResolvedDeclaredName, Argument>,
+    name_order: VecDeque<ResolvedDeclaredName>,
 }
 
 impl ArgumentMap {
     pub fn new() -> Self {
         Self {
-            named: NameMap::new(),
+            named: HashMap::new(),
             name_order: VecDeque::new(),
         }
     }
@@ -163,21 +104,35 @@ impl ArgumentMap {
     pub fn push_unnamed(&mut self, arg: Argument) -> Result<(), QError> {
         let dummy_name = format!("{}", self.name_order.len());
         self.insert(
-            QualifiedName::new(CaseInsensitiveString::new(dummy_name), arg.qualifier()),
+            ResolvedDeclaredName {
+                name: dummy_name.into(),
+                type_definition: arg.type_definition(),
+            },
             arg,
         )
     }
 
-    pub fn insert(&mut self, name: QualifiedName, arg: Argument) -> Result<(), QError> {
+    pub fn insert(&mut self, name: ResolvedDeclaredName, arg: Argument) -> Result<(), QError> {
         self.name_order.push_back(name.clone());
-        self.named.insert(name, arg)
+        match &arg {
+            Argument::ByVal(v) => {
+                let c = v
+                    .clone()
+                    .cast_for_type_definition(name.type_definition.clone())?;
+                self.named.insert(name, Argument::ByVal(c));
+            }
+            Argument::ByRef(_) => {
+                self.named.insert(name, arg);
+            }
+        }
+        Ok(())
     }
 
-    pub fn get_mut(&mut self, name: &QualifiedName) -> Option<&mut Argument> {
+    pub fn get_mut(&mut self, name: &ResolvedDeclaredName) -> Option<&mut Argument> {
         self.named.get_mut(name)
     }
 
-    pub fn get(&self, name: &QualifiedName) -> Option<&Argument> {
+    pub fn get(&self, name: &ResolvedDeclaredName) -> Option<&Argument> {
         self.named.get(name)
     }
 
@@ -195,23 +150,23 @@ impl ArgumentMap {
 
 #[derive(Debug)]
 pub struct RootContext {
-    variables: VariableMap,
+    variables: HashMap<ResolvedDeclaredName, Variant>,
     constants: ConstantMap,
 }
 
 impl RootContext {
     pub fn new() -> Self {
         Self {
-            variables: NameMap::new(),
+            variables: HashMap::new(),
             constants: ConstantMap::new(),
         }
     }
 
-    pub fn get_constant(&self, name: &QualifiedName) -> Option<Variant> {
+    pub fn get_constant(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
         self.constants.get(name).map(|x| x.clone())
     }
 
-    pub fn get_r_value(&self, name: &QualifiedName) -> Option<Variant> {
+    pub fn get_r_value(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
         // local constant?
         match self.constants.get(name) {
             Some(v) => Some(v.clone()),
@@ -229,7 +184,7 @@ impl RootContext {
         self.constants.insert(name, value)
     }
 
-    pub fn create_parameter(&mut self, name: QualifiedName) -> Argument {
+    pub fn create_parameter(&mut self, name: ResolvedDeclaredName) -> Argument {
         match self.get_constant(&name) {
             Some(v) => Argument::ByVal(v),
             None => {
@@ -239,9 +194,12 @@ impl RootContext {
                     None => {
                         // create the variable in this scope
                         // e.g. INPUT N
-                        self.variables
-                            .insert(name.clone(), Variant::default_variant(name.qualifier()))
-                            .expect("Should not overflow for default variant");
+                        self.variables.insert(
+                            name.clone(),
+                            Variant::default_variant_for_type_definition(
+                                name.type_definition.clone(),
+                            ),
+                        );
                         Argument::ByRef(name)
                     }
                 }
@@ -249,9 +207,15 @@ impl RootContext {
         }
     }
 
-    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    pub fn set_variable(
+        &mut self,
+        name: ResolvedDeclaredName,
+        value: Variant,
+    ) -> Result<(), QError> {
         // Arguments do not exist at root level. Create/Update a variable.
-        self.variables.insert(name, value)
+        let x = value.cast_for_type_definition(name.type_definition.clone())?;
+        self.variables.insert(name, x);
+        Ok(())
     }
 }
 
@@ -266,8 +230,11 @@ pub struct ArgsContext {
 }
 
 impl ArgsContext {
-    pub fn push_back_unnamed_ref_parameter(&mut self, name: QualifiedName) -> Result<(), QError> {
-        let arg = self.parent.create_parameter(name);
+    pub fn push_back_unnamed_ref_parameter(
+        &mut self,
+        name: ResolvedDeclaredName,
+    ) -> Result<(), QError> {
+        let arg = self.parent.create_parameter(name)?;
         self.args.push_unnamed(arg)
     }
 
@@ -283,21 +250,8 @@ impl ArgsContext {
             argument_name,
             parameter_name,
         } = named_ref_param;
-        let ResolvedDeclaredName {
-            name,
-            type_definition,
-        } = argument_name;
-        match type_definition {
-            ResolvedTypeDefinition::CompactBuiltIn(q)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                let arg = self.parent.create_parameter(QualifiedName {
-                    name: name.clone(),
-                    qualifier: *q,
-                });
-                self.insert_next_argument(parameter_name, arg)
-            }
-            _ => unimplemented!(),
-        }
+        let arg = self.parent.create_parameter(argument_name.clone())?;
+        self.insert_next_argument(parameter_name, arg)
     }
 
     pub fn set_named_val_parameter(
@@ -313,17 +267,7 @@ impl ArgsContext {
         param_name: &ResolvedDeclaredName,
         arg: Argument,
     ) -> Result<(), QError> {
-        let ResolvedDeclaredName {
-            name,
-            type_definition,
-        } = param_name;
-        match type_definition {
-            ResolvedTypeDefinition::CompactBuiltIn(q)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                self.args.insert(QualifiedName::new(name.clone(), *q), arg)
-            }
-            _ => unimplemented!(),
-        }
+        self.args.insert(param_name.clone(), arg)
     }
 }
 
@@ -339,15 +283,23 @@ pub struct SubContext {
 }
 
 impl SubContext {
-    fn set_variable_parent(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    fn set_variable_parent(
+        &mut self,
+        name: ResolvedDeclaredName,
+        value: Variant,
+    ) -> Result<(), QError> {
         self.parent.set_variable(name, value)
     }
 
-    fn do_insert_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    fn do_insert_variable(
+        &mut self,
+        name: ResolvedDeclaredName,
+        value: Variant,
+    ) -> Result<(), QError> {
         self.variables.insert(name, Argument::ByVal(value))
     }
 
-    fn get_argument_mut(&mut self, name: &QualifiedName) -> Option<&mut Argument> {
+    fn get_argument_mut(&mut self, name: &ResolvedDeclaredName) -> Option<&mut Argument> {
         self.variables.get_mut(name)
     }
 
@@ -358,7 +310,7 @@ impl SubContext {
         }
     }
 
-    fn get_variable(&self, name: &QualifiedName) -> Option<&Argument> {
+    fn get_variable(&self, name: &ResolvedDeclaredName) -> Option<&Argument> {
         self.variables.get(name)
     }
 
@@ -393,27 +345,28 @@ impl SubContext {
         }
     }
 
-    pub fn create_parameter(&mut self, name: QualifiedName) -> Argument {
+    pub fn create_parameter(&mut self, name: ResolvedDeclaredName) -> Result<Argument, QError> {
         match self.get_constant(&name) {
-            Some(v) => Argument::ByVal(v),
+            Some(v) => Ok(Argument::ByVal(v)),
             None => {
                 // variable?
                 match self.get_variable(&name) {
                     // ref pointing to var
-                    Some(_) => Argument::ByRef(name),
+                    Some(_) => Ok(Argument::ByRef(name)),
                     None => {
                         // parent constant?
                         match self.parent.get_root().get_constant(&name) {
-                            Some(v) => Argument::ByVal(v),
+                            Some(v) => Ok(Argument::ByVal(v)),
                             None => {
                                 // create the variable in this scope
                                 // e.g. INPUT N
                                 self.do_insert_variable(
                                     name.clone(),
-                                    Variant::default_variant(name.qualifier()),
-                                )
-                                .expect("Should not overflow for default variant");
-                                Argument::ByRef(name)
+                                    Variant::default_variant_for_type_definition(
+                                        name.type_definition.clone(),
+                                    ),
+                                )?;
+                                Ok(Argument::ByRef(name))
                             }
                         }
                     }
@@ -422,13 +375,17 @@ impl SubContext {
         }
     }
 
-    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    pub fn set_variable(
+        &mut self,
+        name: ResolvedDeclaredName,
+        value: Variant,
+    ) -> Result<(), QError> {
         // if a parameter exists, set it (might be a ref)
         match self.get_argument_mut(&name) {
             Some(a) => {
                 match a {
                     Argument::ByVal(_old_value) => {
-                        *a = Argument::ByVal(value.cast(name.qualifier())?);
+                        *a = Argument::ByVal(value.cast_for_type_definition(name.type_definition)?);
                         Ok(())
                     }
                     Argument::ByRef(n) => {
@@ -444,11 +401,11 @@ impl SubContext {
         }
     }
 
-    pub fn get_constant(&self, name: &QualifiedName) -> Option<Variant> {
+    pub fn get_constant(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
         self.constants.get(name).map(|x| x.clone())
     }
 
-    pub fn get_r_value(&self, name: &QualifiedName) -> Option<Variant> {
+    pub fn get_r_value(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
         // local constant?
         match self.get_constant(name) {
             Some(v) => Some(v),
@@ -538,15 +495,19 @@ impl Context {
         }
     }
 
-    pub fn create_parameter(&mut self, name: QualifiedName) -> Argument {
+    pub fn create_parameter(&mut self, name: ResolvedDeclaredName) -> Result<Argument, QError> {
         match self {
-            Self::Root(r) => r.create_parameter(name),
+            Self::Root(r) => Ok(r.create_parameter(name)),
             Self::Sub(s) => s.create_parameter(name),
             Self::Args(a) => a.parent.create_parameter(name),
         }
     }
 
-    pub fn set_variable(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    pub fn set_variable(
+        &mut self,
+        name: ResolvedDeclaredName,
+        value: Variant,
+    ) -> Result<(), QError> {
         match self {
             Self::Root(r) => r.set_variable(name, value),
             Self::Sub(s) => s.set_variable(name, value),
@@ -554,7 +515,7 @@ impl Context {
         }
     }
 
-    pub fn get_r_value(&self, name: &QualifiedName) -> Option<Variant> {
+    pub fn get_r_value(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
         match self {
             Self::Root(r) => r.get_r_value(name),
             Self::Args(a) => a.parent.get_r_value(name),

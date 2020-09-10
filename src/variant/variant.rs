@@ -1,7 +1,9 @@
 use super::fit::FitToType;
-use crate::common::{FileHandle, QError};
-use crate::parser::{HasQualifier, TypeQualifier};
+use crate::common::{CaseInsensitiveString, FileHandle, QError};
+use crate::linter::ResolvedTypeDefinition;
+use crate::parser::TypeQualifier;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt::Display;
 
@@ -13,6 +15,13 @@ pub enum Variant {
     VInteger(i32),
     VLong(i64),
     VFileHandle(FileHandle),
+    VUserDefined(UserDefinedValue),
+}
+
+#[derive(Clone, Debug)]
+pub struct UserDefinedValue {
+    pub type_name: CaseInsensitiveString,
+    pub map: HashMap<CaseInsensitiveString, Box<Variant>>,
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
@@ -134,6 +143,7 @@ impl Variant {
                 Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(QError::TypeMismatch),
             },
+            Variant::VUserDefined(_) => Err(QError::TypeMismatch),
         }
     }
 
@@ -163,6 +173,7 @@ impl Variant {
                 Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(QError::TypeMismatch),
             },
+            Variant::VUserDefined(_) => Err(QError::TypeMismatch),
         }
     }
 
@@ -358,6 +369,28 @@ impl Variant {
         }
     }
 
+    pub fn default_variant_for_type_definition(type_definition: ResolvedTypeDefinition) -> Variant {
+        match type_definition {
+            ResolvedTypeDefinition::CompactBuiltIn(q)
+            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => Self::default_variant(q),
+            ResolvedTypeDefinition::UserDefined(u) => Variant::VUserDefined(UserDefinedValue {
+                type_name: u,
+                map: HashMap::new(),
+            }),
+        }
+    }
+
+    pub fn cast_for_type_definition(
+        self,
+        type_definition: ResolvedTypeDefinition,
+    ) -> Result<Variant, QError> {
+        match type_definition {
+            ResolvedTypeDefinition::CompactBuiltIn(q)
+            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => crate::linter::casting::cast(self, q),
+            _ => unimplemented!(),
+        }
+    }
+
     /// Demands that the variant holds an integer and returns the integer value.
     /// Panics if the variant is not an integer.
     pub fn demand_integer(self) -> i32 {
@@ -373,17 +406,30 @@ impl Variant {
             _ => panic!("not a string variant"),
         }
     }
-}
 
-impl HasQualifier for Variant {
-    fn qualifier(&self) -> TypeQualifier {
+    pub fn type_definition(&self) -> ResolvedTypeDefinition {
         match self {
-            Variant::VSingle(_) => TypeQualifier::BangSingle,
-            Variant::VDouble(_) => TypeQualifier::HashDouble,
-            Variant::VString(_) => TypeQualifier::DollarString,
-            Variant::VInteger(_) => TypeQualifier::PercentInteger,
-            Variant::VLong(_) => TypeQualifier::AmpersandLong,
-            Variant::VFileHandle(_) => TypeQualifier::FileHandle,
+            Variant::VSingle(_) => {
+                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
+            }
+            Variant::VDouble(_) => {
+                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::HashDouble)
+            }
+            Variant::VString(_) => {
+                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
+            }
+            Variant::VInteger(_) => {
+                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::PercentInteger)
+            }
+            Variant::VLong(_) => {
+                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::AmpersandLong)
+            }
+            Variant::VFileHandle(_) => {
+                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::FileHandle)
+            }
+            Variant::VUserDefined(UserDefinedValue { type_name, .. }) => {
+                ResolvedTypeDefinition::UserDefined(type_name.clone())
+            }
         }
     }
 }

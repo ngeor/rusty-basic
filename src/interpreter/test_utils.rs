@@ -4,6 +4,7 @@ use crate::instruction_generator::InstructionNode;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
+use crate::linter::{ResolvedDeclaredName, ResolvedTypeDefinition};
 use crate::parser::{parse_main_file, parse_main_str, QualifiedName};
 use crate::variant::Variant;
 use std::collections::HashMap;
@@ -133,8 +134,14 @@ impl Stdlib for MockStdlib {
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn get_variable_str(&self, name: &str) -> Variant {
-        let q_name = QualifiedName::try_from(name).unwrap();
-        self.context_ref().get_r_value(&q_name).unwrap()
+        let QualifiedName { name, qualifier } = QualifiedName::try_from(name).unwrap();
+        let resolved_declared_name = ResolvedDeclaredName {
+            name,
+            type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+        };
+        self.context_ref()
+            .get_r_value(&resolved_declared_name)
+            .unwrap()
     }
 }
 

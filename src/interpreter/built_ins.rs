@@ -3,7 +3,8 @@ use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErro
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::parser::{HasQualifier, QualifiedName, TypeQualifier};
+use crate::linter::{ResolvedDeclaredName, ResolvedTypeDefinition};
+use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
 use std::convert::TryInto;
 
@@ -220,20 +221,24 @@ mod input {
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         a: &Argument,
-        n: &QualifiedName,
+        n: &ResolvedDeclaredName,
     ) -> Result<(), QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        let q: TypeQualifier = n.qualifier();
-        let variable_value = match q {
-            TypeQualifier::BangSingle => {
+        let variable_value = match &n.type_definition {
+            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
+            | ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle) => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
-            TypeQualifier::DollarString => Variant::from(raw_input),
-            TypeQualifier::PercentInteger => {
+            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
+            | ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString) => {
+                Variant::from(raw_input)
+            }
+            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::PercentInteger)
+            | ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::PercentInteger) => {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
             _ => unimplemented!(),
@@ -584,7 +589,7 @@ mod line_input {
     fn line_input_one<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &QualifiedName,
+        n: &ResolvedDeclaredName,
         file_handle: FileHandle,
     ) -> Result<(), QErrorNode> {
         if file_handle.is_valid() {
@@ -597,7 +602,7 @@ mod line_input {
     fn line_input_one_file<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &QualifiedName,
+        n: &ResolvedDeclaredName,
         file_handle: FileHandle,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
@@ -605,9 +610,9 @@ mod line_input {
             .read_line(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        let q: TypeQualifier = n.qualifier();
-        match q {
-            TypeQualifier::DollarString => interpreter
+        match &n.type_definition {
+            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
+            | ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString) => interpreter
                 .context_mut()
                 .demand_sub()
                 .set_value_to_popped_arg(arg, Variant::VString(s))
@@ -619,7 +624,7 @@ mod line_input {
     fn line_input_one_stdin<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        _n: &QualifiedName,
+        _n: &ResolvedDeclaredName,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .stdlib

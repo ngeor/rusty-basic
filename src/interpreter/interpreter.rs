@@ -6,7 +6,7 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
-use crate::linter::{QualifiedName, ResolvedDeclaredName, ResolvedTypeDefinition, TypeQualifier};
+use crate::linter::TypeQualifier;
 use crate::variant::Variant;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -142,20 +142,10 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.set_a(v.clone());
             }
             Instruction::Store(n) => {
-                let ResolvedDeclaredName {
-                    name,
-                    type_definition,
-                } = n;
-                match type_definition {
-                    ResolvedTypeDefinition::CompactBuiltIn(q)
-                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                        let v = self.get_a();
-                        self.context_mut()
-                            .set_variable(QualifiedName::new(name.clone(), *q), v)
-                            .with_err_at(pos)?;
-                    }
-                    _ => unimplemented!(),
-                }
+                let v = self.get_a();
+                self.context_mut()
+                    .set_variable(n.clone(), v)
+                    .with_err_at(pos)?;
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
@@ -218,24 +208,10 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let c = a.unary_not().with_err_at(pos)?;
                 self.set_a(c);
             }
-            Instruction::CopyVarToA(n) => {
-                let ResolvedDeclaredName {
-                    name,
-                    type_definition,
-                } = n;
-                match type_definition {
-                    ResolvedTypeDefinition::CompactBuiltIn(q)
-                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                        let q_name = QualifiedName::new(name.clone(), *q);
-
-                        match self.context_ref().get_r_value(&q_name) {
-                            Some(v) => self.set_a(v),
-                            None => panic!("Variable {:?} undefined at {:?}", n, pos),
-                        }
-                    }
-                    _ => unimplemented!(),
-                }
-            }
+            Instruction::CopyVarToA(n) => match self.context_ref().get_r_value(n) {
+                Some(v) => self.set_a(v),
+                None => panic!("Variable {:?} undefined at {:?}", n, pos),
+            },
             Instruction::Equal => {
                 let a = self.get_a();
                 let b = self.get_b();
@@ -310,22 +286,10 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.stacktrace.remove(0);
             }
             Instruction::PushUnnamedRefParam(name) => {
-                let ResolvedDeclaredName {
-                    name,
-                    type_definition,
-                } = name;
-                match type_definition {
-                    ResolvedTypeDefinition::CompactBuiltIn(q)
-                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                        let q_name = QualifiedName::new(name.clone(), *q);
-
-                        self.context_mut()
-                            .demand_args()
-                            .push_back_unnamed_ref_parameter(q_name)
-                            .with_err_at(pos)?;
-                    }
-                    _ => unimplemented!(),
-                }
+                self.context_mut()
+                    .demand_args()
+                    .push_back_unnamed_ref_parameter(name.clone())
+                    .with_err_at(pos)?;
             }
             Instruction::PushUnnamedValParam => {
                 let v = self.get_a();
@@ -343,7 +307,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
             Instruction::SetNamedValParam(param_q_name) => {
                 let v = self.get_a();
-
                 self.context_mut()
                     .demand_args()
                     .set_named_val_parameter(param_q_name, v)
@@ -533,9 +496,17 @@ mod tests {
         macro_rules! assert_assign_ok {
             ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
                 let interpreter = interpret($program);
-                let q_name = QualifiedName::try_from($expected_variable_name).unwrap();
+                let QualifiedName { name, qualifier } =
+                    QualifiedName::try_from($expected_variable_name).unwrap();
+                let resolved_declared_name = ResolvedDeclaredName {
+                    name,
+                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                };
                 assert_eq!(
-                    interpreter.context_ref().get_r_value(&q_name).unwrap(),
+                    interpreter
+                        .context_ref()
+                        .get_r_value(&resolved_declared_name)
+                        .unwrap(),
                     Variant::from($expected_value)
                 );
             };

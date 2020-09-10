@@ -9,8 +9,8 @@ use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::ResolvedTypeDefinition;
 use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, DefType,
-    ElementType, Expression, ExpressionNode, HasQualifier, Name, NameNode, Operator, ProgramNode,
-    Statement, TopLevelToken, TypeDefinition, TypeQualifier, UnaryOperator, UserDefinedType,
+    ElementType, Expression, ExpressionNode, Name, NameNode, Operator, ProgramNode, Statement,
+    TopLevelToken, TypeDefinition, TypeQualifier, UnaryOperator, UserDefinedType,
 };
 use crate::variant::Variant;
 use std::cell::RefCell;
@@ -206,13 +206,16 @@ impl FirstPassOuter {
                     None => Err(QError::InvalidConstant).with_err_no_pos(),
                 },
                 Name::Qualified { name, qualifier } => match self.global_constants.get(name) {
-                    Some(v) => {
-                        if v.qualifier() == *qualifier {
-                            Ok(v.clone())
-                        } else {
-                            Err(QError::TypeMismatch).with_err_no_pos()
+                    Some(v) => match v.type_definition() {
+                        ResolvedTypeDefinition::CompactBuiltIn(v_q) => {
+                            if v_q == *qualifier {
+                                Ok(v.clone())
+                            } else {
+                                Err(QError::TypeMismatch).with_err_no_pos()
+                            }
                         }
-                    }
+                        _ => panic!("should not have been possible to store an extended constant"),
+                    },
                     None => Err(QError::InvalidConstant).with_err_no_pos(),
                 },
             },

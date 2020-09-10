@@ -242,6 +242,7 @@ pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, QErro
             TypeQualifier::FileHandle => Ok(value),
             _ => Err(QError::TypeMismatch),
         },
+        Variant::VUserDefined(_) => unimplemented!(),
     }
 }
 

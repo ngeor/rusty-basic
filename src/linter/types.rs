@@ -218,7 +218,7 @@ pub type ProgramNode = Vec<TopLevelTokenNode>;
 // ========================================================
 
 /// Similar to `TypeDefinition` but without `Bare`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ResolvedTypeDefinition {
     CompactBuiltIn(TypeQualifier),
     ExtendedBuiltIn(TypeQualifier),
@@ -316,7 +316,7 @@ impl From<TypeDefinition> for ResolvedTypeDefinition {
 // ResolvedDeclaredName
 // ========================================================
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ResolvedDeclaredName {
     pub name: BareName,
     pub type_definition: ResolvedTypeDefinition,

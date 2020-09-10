@@ -141,6 +141,16 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Load(v) => {
                 self.set_a(v.clone());
             }
+            Instruction::Dim(resolved_declared_name) => {
+                self.context_mut()
+                    .set_variable(
+                        resolved_declared_name.clone(),
+                        Variant::default_variant_for_type_definition(
+                            resolved_declared_name.type_definition.clone(),
+                        ),
+                    )
+                    .with_err_at(pos)?;
+            }
             Instruction::Store(n) => {
                 let v = self.get_a();
                 self.context_mut()

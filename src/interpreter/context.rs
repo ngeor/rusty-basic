@@ -1,7 +1,7 @@
-use crate::common::*;
+use crate::common::{CaseInsensitiveString, QError};
 use crate::instruction_generator::NamedRefParam;
 use crate::linter::casting;
-use crate::linter::*;
+use crate::linter::{QualifiedName, ResolvedDeclaredName, ResolvedTypeDefinition, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
 

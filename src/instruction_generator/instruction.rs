@@ -5,6 +5,7 @@ use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
 pub enum Instruction {
+    Dim(ResolvedDeclaredName),
     /// Loads a value into register A
     Load(Variant),
     /// Stores a value from register A

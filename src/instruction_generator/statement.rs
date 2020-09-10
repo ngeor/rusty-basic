@@ -41,7 +41,9 @@ impl InstructionGenerator {
                 self.push(Instruction::StoreAToResult, pos);
             }
             Statement::Comment(_) => {}
-            Statement::Dim(_) => {}
+            Statement::Dim(Locatable { element, pos }) => {
+                self.push(Instruction::Dim(element), pos);
+            }
         }
     }
 }

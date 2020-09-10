@@ -1,9 +1,13 @@
 use crate::common::{CaseInsensitiveString, QError};
 use crate::instruction_generator::NamedRefParam;
 use crate::linter::casting;
-use crate::linter::{QualifiedName, ResolvedDeclaredName, ResolvedTypeDefinition, TypeQualifier};
+use crate::linter::{
+    QualifiedName, ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedType,
+    TypeQualifier,
+};
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
+use std::rc::Rc;
 
 //
 // Argument
@@ -152,13 +156,17 @@ impl ArgumentMap {
 pub struct RootContext {
     variables: HashMap<ResolvedDeclaredName, Variant>,
     constants: ConstantMap,
+    user_defined_types: Rc<HashMap<CaseInsensitiveString, ResolvedUserDefinedType>>,
 }
 
 impl RootContext {
-    pub fn new() -> Self {
+    pub fn new(
+        user_defined_types: Rc<HashMap<CaseInsensitiveString, ResolvedUserDefinedType>>,
+    ) -> Self {
         Self {
             variables: HashMap::new(),
             constants: ConstantMap::new(),
+            user_defined_types,
         }
     }
 
@@ -212,6 +220,7 @@ impl RootContext {
         name: ResolvedDeclaredName,
         value: Variant,
     ) -> Result<(), QError> {
+        // TODO if variable contains dots, check for user defined types
         // Arguments do not exist at root level. Create/Update a variable.
         let x = value.cast_for_type_definition(name.type_definition.clone())?;
         self.variables.insert(name, x);
@@ -435,8 +444,10 @@ pub enum Context {
 }
 
 impl Context {
-    pub fn new() -> Self {
-        Self::Root(RootContext::new())
+    pub fn new(
+        user_defined_types: Rc<HashMap<CaseInsensitiveString, ResolvedUserDefinedType>>,
+    ) -> Self {
+        Self::Root(RootContext::new(user_defined_types))
     }
 
     pub fn push_args_context(self) -> Self {

@@ -11,13 +11,21 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
 
-pub fn generate_instructions<T>(input: T) -> ( Vec<InstructionNode>, HashMap<CaseInsensitiveString, ResolvedUserDefinedType> )
+pub fn generate_instructions<T>(
+    input: T,
+) -> (
+    Vec<InstructionNode>,
+    HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+)
 where
     T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).unwrap();
     let (linted_program, user_defined_types) = linter::lint(program).unwrap();
-    ( instruction_generator::generate_instructions(linted_program), user_defined_types )
+    (
+        instruction_generator::generate_instructions(linted_program),
+        user_defined_types,
+    )
 }
 
 pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>

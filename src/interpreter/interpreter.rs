@@ -6,12 +6,13 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
-use crate::linter::{TypeQualifier, ResolvedUserDefinedType};
+use crate::linter::{ResolvedUserDefinedType, TypeQualifier};
 use crate::variant::Variant;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
-use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Registers {
@@ -86,10 +87,13 @@ pub struct Interpreter<S: Stdlib> {
 }
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
-    pub fn new(stdlib: TStdlib, _user_defined_types: HashMap<CaseInsensitiveString, ResolvedUserDefinedType>) -> Self {
+    pub fn new(
+        stdlib: TStdlib,
+        user_defined_types: HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ) -> Self {
         let mut result = Interpreter {
             stdlib,
-            context: Some(Context::new()),
+            context: Some(Context::new(Rc::new(user_defined_types))),
             return_stack: vec![],
             register_stack: VecDeque::new(),
             stacktrace: vec![],

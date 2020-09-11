@@ -152,10 +152,10 @@ macro_rules! assert_sub_call {
         match $actual_statement {
             Statement::SubCall(actual_bare_name, actual_args) => {
                 let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
-                assert_eq!(actual_bare_name, expected_bare_name);
-                assert_eq!(actual_args.is_empty(), true);
+                assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
+                assert!(actual_args.is_empty(), "Expected no args in SubCall");
             }
-            _ => panic!("Expected sub call")
+            _ => panic!("Expected SubCall")
         }
     };
 
@@ -163,11 +163,11 @@ macro_rules! assert_sub_call {
         match $actual_statement {
             Statement::SubCall(actual_bare_name, actual_args) => {
                 let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
-                assert_eq!(actual_bare_name, expected_bare_name);
+                assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
                 let actual_args_no_loc: Vec<crate::parser::types::Expression> = actual_args.into_iter().map(|x| x.strip_location()).collect();
                 assert_eq!(actual_args_no_loc, vec![$($arg),+]);
             }
-            _ => panic!("Expected sub call")
+            _ => panic!("Expected SubCall")
         }
     };
 }

@@ -362,6 +362,78 @@ mod tests {
                 ]
             );
         }
+
+        #[test]
+        fn user_defined_type() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+            DIM A AS Card
+            DIM B AS Card
+            A = B
+            "#;
+            let (program, user_defined_types) = linter_ok_with_types(input);
+            assert_eq!(
+                program,
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
+                        }
+                        .at_rc(6, 17)
+                    ))
+                    .at_rc(6, 13),
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName {
+                            name: "B".into(),
+                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
+                        }
+                        .at_rc(7, 17)
+                    ))
+                    .at_rc(7, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
+                        },
+                        Expression::Variable(ResolvedDeclaredName {
+                            name: "B".into(),
+                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
+                        })
+                        .at_rc(8, 17)
+                    ))
+                    .at_rc(8, 13)
+                ]
+            );
+            assert_eq!(
+                user_defined_types.len(),
+                1,
+                "Expected one user defined type"
+            );
+            assert!(
+                user_defined_types.contains_key(&"Card".into()),
+                "Expected to contain the `Card` type"
+            );
+            assert_eq!(
+                *user_defined_types.get(&"Card".into()).unwrap(),
+                ResolvedUserDefinedType {
+                    name: "Card".into(),
+                    elements: vec![
+                        ResolvedElement {
+                            name: "Value".into(),
+                            element_type: ResolvedElementType::Integer
+                        },
+                        ResolvedElement {
+                            name: "Suit".into(),
+                            element_type: ResolvedElementType::String(9)
+                        },
+                    ]
+                }
+            );
+        }
     }
 
     mod dim {

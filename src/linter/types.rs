@@ -18,7 +18,7 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Constant(QualifiedName),
-    Variable(ResolvedDeclaredName),
+    Variable(ResolvedDeclaredNames),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
@@ -45,10 +45,10 @@ impl Expression {
             Self::LongLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
                 TypeQualifier::AmpersandLong,
             )),
-            Self::Variable(name) => {
+            Self::Variable(names) => {
                 let ResolvedDeclaredName {
                     type_definition, ..
-                } = name;
+                } = names.last().unwrap();
                 Ok(type_definition.clone())
             }
             Self::Constant(name) | Self::FunctionCall(name, _) => {
@@ -161,7 +161,7 @@ pub enum CaseExpression {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    Assignment(ResolvedDeclaredName, ExpressionNode),
+    Assignment(ResolvedDeclaredNames, ExpressionNode),
     Const(QualifiedNameNode, ExpressionNode),
     SubCall(BareName, Vec<ExpressionNode>),
     BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),
@@ -322,12 +322,29 @@ pub struct ResolvedDeclaredName {
     pub type_definition: ResolvedTypeDefinition,
 }
 
+impl ResolvedDeclaredName {
+    pub fn new<S: AsRef<str>>(name: S, type_definition: ResolvedTypeDefinition) -> Self {
+        Self {
+            name: BareName::new(name.as_ref().to_owned()),
+            type_definition,
+        }
+    }
+
+    pub fn single<S: AsRef<str>>(
+        name: S,
+        type_definition: ResolvedTypeDefinition,
+    ) -> ResolvedDeclaredNames {
+        vec![ResolvedDeclaredName::new(name, type_definition)]
+    }
+}
+
 impl AsRef<BareName> for ResolvedDeclaredName {
     fn as_ref(&self) -> &BareName {
         &self.name
     }
 }
 
+pub type ResolvedDeclaredNames = Vec<ResolvedDeclaredName>;
 pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;
 pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;
 

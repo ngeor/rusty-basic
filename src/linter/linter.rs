@@ -239,33 +239,27 @@ mod tests {
                 linter_ok(program),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
-                                TypeQualifier::BangSingle
-                            )
-                        }
+                        ResolvedDeclaredName::new(
+                            "A",
+                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
+                        )
                         .at_rc(2, 17)
                     ))
                     .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
-                                TypeQualifier::BangSingle
-                            )
-                        },
+                        ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
+                        ),
                         Expression::IntegerLiteral(42).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
-                                TypeQualifier::BangSingle
-                            )
-                        })
+                        vec![Expression::Variable(ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
+                        ))
                         .at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
@@ -294,23 +288,19 @@ mod tests {
                     ))
                     .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
-                                TypeQualifier::DollarString
-                            )
-                        },
+                        ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
+                        ),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
-                                TypeQualifier::DollarString
-                            )
-                        })
+                        vec![Expression::Variable(ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
+                        ))
                         .at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
@@ -339,23 +329,19 @@ mod tests {
                     ))
                     .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(
-                                TypeQualifier::DollarString
-                            )
-                        },
+                        ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                        ),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(
-                                TypeQualifier::DollarString
-                            )
-                        })
+                        vec![Expression::Variable(ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                        ))
                         .at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
@@ -395,14 +381,14 @@ mod tests {
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
-                        },
-                        Expression::Variable(ResolvedDeclaredName {
-                            name: "B".into(),
-                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
-                        })
+                        ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::UserDefined("Card".into())
+                        ),
+                        Expression::Variable(ResolvedDeclaredName::single(
+                            "B",
+                            ResolvedTypeDefinition::UserDefined("Card".into())
+                        ))
                         .at_rc(8, 17)
                     ))
                     .at_rc(8, 13)
@@ -432,6 +418,92 @@ mod tests {
                         },
                     ]
                 }
+            );
+        }
+
+        #[test]
+        fn user_defined_type_integer_element() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+            DIM A AS Card
+            A.Value = 42
+            PRINT A.Value
+            "#;
+            assert_eq!(
+                linter_ok(input),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
+                        }
+                        .at_rc(6, 17)
+                    ))
+                    .at_rc(6, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::UserDefined("Card".into())
+                        ),
+                        Expression::IntegerLiteral(42).at_rc(7, 23)
+                    ))
+                    .at_rc(7, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                        ))
+                        .at_rc(8, 19)]
+                    ))
+                    .at_rc(8, 13)
+                ]
+            );
+        }
+
+        #[test]
+        fn user_defined_type_string_element() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+            DIM A AS Card
+            A.Suit = "diamonds"
+            PRINT A.Suit
+            "#;
+            assert_eq!(
+                linter_ok(input),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
+                        }
+                        .at_rc(6, 17)
+                    ))
+                    .at_rc(6, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::UserDefined("Card".into())
+                        ),
+                        Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
+                    ))
+                    .at_rc(7, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName::single(
+                            "A",
+                            ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                        ))
+                        .at_rc(8, 19)]
+                    ))
+                    .at_rc(8, 13)
+                ]
             );
         }
     }

@@ -321,20 +321,22 @@ impl LinterContext {
                     Name::Bare(b) => {
                         let qualifier: TypeQualifier = resolver.resolve(b);
                         if existing_set.contains(&qualifier) {
-                            Ok(Some(Expression::Variable(ResolvedDeclaredName {
-                                name: b.clone(),
-                                type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
-                            })))
+                            // TODO fix me
+                            Ok(Some(Expression::Variable(ResolvedDeclaredName::single(
+                                b.clone(),
+                                ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                            ))))
                         } else {
                             Ok(None)
                         }
                     }
                     Name::Qualified { name, qualifier } => {
                         if existing_set.contains(qualifier) {
-                            Ok(Some(Expression::Variable(ResolvedDeclaredName {
-                                name: name.clone(),
-                                type_definition: ResolvedTypeDefinition::CompactBuiltIn(*qualifier),
-                            })))
+                            // TODO fix me
+                            Ok(Some(Expression::Variable(ResolvedDeclaredName::single(
+                                name.clone(),
+                                ResolvedTypeDefinition::CompactBuiltIn(*qualifier),
+                            ))))
                         } else {
                             Ok(None)
                         }
@@ -352,20 +354,22 @@ impl LinterContext {
                 }
                 ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
                     if name.is_bare_or_of_type(*q) {
-                        Ok(Some(Expression::Variable(ResolvedDeclaredName {
-                            name: bare_name.clone(),
-                            type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(*q),
-                        })))
+                        // TODO fix me
+                        Ok(Some(Expression::Variable(ResolvedDeclaredName::single(
+                            bare_name.clone(),
+                            ResolvedTypeDefinition::ExtendedBuiltIn(*q),
+                        ))))
                     } else {
                         Err(QError::DuplicateDefinition)
                     }
                 }
                 ResolvedTypeDefinitions::UserDefined(u) => {
                     if name.is_bare() {
-                        Ok(Some(Expression::Variable(ResolvedDeclaredName {
-                            name: bare_name.clone(),
-                            type_definition: ResolvedTypeDefinition::UserDefined(u.clone()),
-                        })))
+                        // TODO fix me
+                        Ok(Some(Expression::Variable(ResolvedDeclaredName::single(
+                            bare_name.clone(),
+                            ResolvedTypeDefinition::UserDefined(u.clone()),
+                        ))))
                     } else {
                         Err(QError::DuplicateDefinition)
                     }
@@ -444,7 +448,7 @@ impl LinterContext {
         resolver: &T,
     ) -> Result<Expression, QError> {
         let resolved_declared_name = self.resolve_missing_name_in_assignment(name, resolver)?;
-        Ok(Expression::Variable(resolved_declared_name))
+        Ok(Expression::Variable(vec![resolved_declared_name]))
     }
 
     pub fn push_function_context(self, name: &BareName) -> Self {

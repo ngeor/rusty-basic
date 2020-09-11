@@ -23,7 +23,8 @@ impl InstructionGenerator {
                 self.push(Instruction::Load(Variant::from(s)), pos);
             }
             Expression::Variable(name) => {
-                self.push(Instruction::CopyVarToA(name), pos);
+                // TODO fix me
+                self.push(Instruction::CopyVarToA(name.last().unwrap().clone()), pos);
             }
             Expression::Constant(name) => {
                 let QualifiedName { name, qualifier } = name;

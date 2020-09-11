@@ -370,10 +370,8 @@ impl ConverterImpl {
             }) => {
                 if result_q.can_cast_to(&type_definition) {
                     Ok(Statement::Assignment(
-                        ResolvedDeclaredName {
-                            name,
-                            type_definition,
-                        },
+                        // TODO fix me
+                        ResolvedDeclaredName::single(name, type_definition),
                         converted_expr,
                     ))
                 } else {

@@ -37,7 +37,8 @@ impl InstructionGenerator {
                     self.push(
                         Instruction::SetNamedRefParam(NamedRefParam {
                             parameter_name: n,
-                            argument_name: v_name,
+                            // TODO fix me
+                            argument_name: v_name.last().unwrap().clone(),
                         }),
                         pos,
                     );
@@ -60,7 +61,11 @@ impl InstructionGenerator {
             let Locatable { element: e, pos } = e_node;
             match e {
                 Expression::Variable(v_name) => {
-                    self.push(Instruction::PushUnnamedRefParam(v_name), pos);
+                    // TODO fix me
+                    self.push(
+                        Instruction::PushUnnamedRefParam(v_name.last().unwrap().clone()),
+                        pos,
+                    );
                 }
                 _ => {
                     self.generate_expression_instructions(e.at(pos));

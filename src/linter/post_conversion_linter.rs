@@ -103,7 +103,7 @@ pub trait PostConversionLinter {
 
     fn visit_assignment(
         &self,
-        _name: &ResolvedDeclaredName,
+        _names: &ResolvedDeclaredNames,
         v: &ExpressionNode,
     ) -> Result<(), QErrorNode> {
         self.visit_expression(v)

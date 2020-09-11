@@ -131,10 +131,10 @@ pub trait ExpressionReducer {
 
     fn visit_assignment(
         &self,
-        name: ResolvedDeclaredName,
+        names: ResolvedDeclaredNames,
         v: ExpressionNode,
-    ) -> Result<(ResolvedDeclaredName, ExpressionNode), QErrorNode> {
-        Ok((name, self.visit_expression_node(v)?))
+    ) -> Result<(ResolvedDeclaredNames, ExpressionNode), QErrorNode> {
+        Ok((names, self.visit_expression_node(v)?))
     }
 
     fn visit_for_loop(&self, f: ForLoopNode) -> Result<ForLoopNode, QErrorNode> {

@@ -147,10 +147,9 @@ impl ConverterImpl {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            // TODO it is not always CompactBuiltIn, support ExtendedBuiltIn, if it makes a difference
             let resolved_declared_name = ResolvedDeclaredName {
                 name: bare_name.clone(),
-                type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+                type_definition: ResolvedTypeDefinition::BuiltIn(q),
             };
             self.context
                 .push_param(declared_name, &self.resolver)
@@ -180,10 +179,9 @@ impl ConverterImpl {
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
             let q: TypeQualifier = self.resolve_declared_name(&declared_name);
-            // TODO it is not always CompactBuiltIn, support ExtendedBuiltIn, if it makes a difference
             let resolved_declared_name = ResolvedDeclaredName {
                 name: bare_name.clone(),
-                type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+                type_definition: ResolvedTypeDefinition::BuiltIn(q),
             };
             self.context
                 .push_param(declared_name, &self.resolver)
@@ -280,8 +278,7 @@ impl ConverterImpl {
             let checked_right = self.resolve_const_value(right)?;
             let converted_expression_node = self.convert(checked_right)?;
             match converted_expression_node.try_type_definition()? {
-                ResolvedTypeDefinition::CompactBuiltIn(q)
-                | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                ResolvedTypeDefinition::BuiltIn(q) => {
                     let q_name = self
                         .context
                         .push_const(name, q.at(converted_expression_node.pos()))
@@ -534,11 +531,9 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let converted_right = self.convert(unboxed_right)?;
                 // get the types
                 match converted_left.try_type_definition()? {
-                    ResolvedTypeDefinition::CompactBuiltIn(q_left)
-                    | ResolvedTypeDefinition::ExtendedBuiltIn(q_left) => {
+                    ResolvedTypeDefinition::BuiltIn(q_left) => {
                         match converted_right.try_type_definition()? {
-                            ResolvedTypeDefinition::CompactBuiltIn(q_right)
-                            | ResolvedTypeDefinition::ExtendedBuiltIn(q_right) => {
+                            ResolvedTypeDefinition::BuiltIn(q_right) => {
                                 // get the cast type
                                 let result_type =
                                     super::casting::cast_binary_op(op, q_left, q_right);
@@ -564,8 +559,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let unboxed_child = *c;
                 let converted_child = self.convert(unboxed_child)?;
                 match converted_child.try_type_definition()? {
-                    ResolvedTypeDefinition::CompactBuiltIn(q)
-                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                    ResolvedTypeDefinition::BuiltIn(q) => {
                         if super::casting::cast_unary_op(op, q).is_none() {
                             Err(QError::TypeMismatch).with_err_at(&converted_child)
                         } else {
@@ -599,12 +593,13 @@ impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
     }
 }
 
+// TODO fix me
 fn temp_convert(x: QualifiedNameNode) -> ResolvedDeclaredNameNode {
     let Locatable { element, pos } = x;
     let QualifiedName { name, qualifier } = element;
     ResolvedDeclaredName {
         name,
-        type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+        type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
     }
     .at(pos)
 }

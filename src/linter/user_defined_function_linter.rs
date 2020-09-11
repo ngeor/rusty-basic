@@ -60,8 +60,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
             match arg_node.try_type_definition()? {
-                ResolvedTypeDefinition::CompactBuiltIn(q)
-                | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                ResolvedTypeDefinition::BuiltIn(q) => {
                     if q == TypeQualifier::DollarString {
                         return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
                     }

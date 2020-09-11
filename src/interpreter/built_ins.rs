@@ -229,16 +229,13 @@ mod input {
             .map_err(|e| e.into())
             .with_err_no_pos()?;
         let variable_value = match &n.type_definition {
-            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle) => {
+            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle) => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
-            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString) => {
+            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
                 Variant::from(raw_input)
             }
-            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::PercentInteger)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::PercentInteger) => {
+            ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger) => {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
             _ => unimplemented!(),
@@ -611,8 +608,7 @@ mod line_input {
             .map_err(|e| e.into())
             .with_err_no_pos()?;
         match &n.type_definition {
-            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString) => interpreter
+            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString) => interpreter
                 .context_mut()
                 .demand_sub()
                 .set_value_to_popped_arg(arg, Variant::VString(s))

@@ -30,7 +30,7 @@ impl InstructionGenerator {
                 let QualifiedName { name, qualifier } = name;
                 let x = ResolvedDeclaredName {
                     name,
-                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                    type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
                 };
                 self.push(Instruction::CopyVarToA(x), pos);
             }

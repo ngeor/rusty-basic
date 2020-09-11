@@ -30,19 +30,19 @@ pub enum Expression {
 impl Expression {
     pub fn try_type_definition(&self, pos: Location) -> Result<ResolvedTypeDefinition, QErrorNode> {
         match self {
-            Self::SingleLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
-                TypeQualifier::BangSingle,
-            )),
-            Self::DoubleLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
-                TypeQualifier::HashDouble,
-            )),
-            Self::StringLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
-                TypeQualifier::DollarString,
-            )),
-            Self::IntegerLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
+            Self::SingleLiteral(_) => {
+                Ok(ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle))
+            }
+            Self::DoubleLiteral(_) => {
+                Ok(ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble))
+            }
+            Self::StringLiteral(_) => {
+                Ok(ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString))
+            }
+            Self::IntegerLiteral(_) => Ok(ResolvedTypeDefinition::BuiltIn(
                 TypeQualifier::PercentInteger,
             )),
-            Self::LongLiteral(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
+            Self::LongLiteral(_) => Ok(ResolvedTypeDefinition::BuiltIn(
                 TypeQualifier::AmpersandLong,
             )),
             Self::Variable(names) => {
@@ -52,22 +52,15 @@ impl Expression {
                 Ok(type_definition.clone())
             }
             Self::Constant(name) | Self::FunctionCall(name, _) => {
-                Ok(ResolvedTypeDefinition::CompactBuiltIn(name.qualifier()))
+                Ok(ResolvedTypeDefinition::BuiltIn(name.qualifier()))
             }
-            Self::BuiltInFunctionCall(f, _) => {
-                Ok(ResolvedTypeDefinition::CompactBuiltIn(f.qualifier()))
-            }
+            Self::BuiltInFunctionCall(f, _) => Ok(ResolvedTypeDefinition::BuiltIn(f.qualifier())),
             Self::BinaryExpression(op, l, r) => match l.as_ref().try_type_definition()? {
-                ResolvedTypeDefinition::CompactBuiltIn(q_left)
-                | ResolvedTypeDefinition::ExtendedBuiltIn(q_left) => {
+                ResolvedTypeDefinition::BuiltIn(q_left) => {
                     match r.as_ref().try_type_definition()? {
-                        ResolvedTypeDefinition::CompactBuiltIn(q_right)
-                        | ResolvedTypeDefinition::ExtendedBuiltIn(q_right) => {
+                        ResolvedTypeDefinition::BuiltIn(q_right) => {
                             match super::casting::cast_binary_op(*op, q_left, q_right) {
-                                Some(q_result) => {
-                                    // TODO does it matter that it collapses Extended into Compact
-                                    Ok(ResolvedTypeDefinition::CompactBuiltIn(q_result))
-                                }
+                                Some(q_result) => Ok(ResolvedTypeDefinition::BuiltIn(q_result)),
                                 None => Err(QError::TypeMismatch).with_err_at(r.pos()),
                             }
                         }
@@ -80,27 +73,17 @@ impl Expression {
                     Err(QError::TypeMismatch).with_err_at(pos)
                 }
             },
-            Self::UnaryExpression(op, c) => {
-                match c.as_ref().try_type_definition()? {
-                    ResolvedTypeDefinition::CompactBuiltIn(q)
-                    | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                        match super::casting::cast_unary_op(*op, q) {
-                            Some(q) => {
-                                // TODO does it matter that it collapses Extended into Compact
-                                Ok(ResolvedTypeDefinition::CompactBuiltIn(q))
-                            }
-                            None => Err(QError::TypeMismatch).with_err_at(pos),
-                        }
-                    }
-                    ResolvedTypeDefinition::UserDefined(_) => {
-                        Err(QError::TypeMismatch).with_err_at(pos)
-                    }
+            Self::UnaryExpression(op, c) => match c.as_ref().try_type_definition()? {
+                ResolvedTypeDefinition::BuiltIn(q) => match super::casting::cast_unary_op(*op, q) {
+                    Some(q) => Ok(ResolvedTypeDefinition::BuiltIn(q)),
+                    None => Err(QError::TypeMismatch).with_err_at(pos),
+                },
+                ResolvedTypeDefinition::UserDefined(_) => {
+                    Err(QError::TypeMismatch).with_err_at(pos)
                 }
-            }
+            },
             Self::Parenthesis(c) => c.as_ref().try_type_definition(),
-            Self::FileHandle(_) => Ok(ResolvedTypeDefinition::CompactBuiltIn(
-                TypeQualifier::FileHandle,
-            )),
+            Self::FileHandle(_) => Ok(ResolvedTypeDefinition::BuiltIn(TypeQualifier::FileHandle)),
         }
     }
 }
@@ -220,56 +203,53 @@ pub type ProgramNode = Vec<TopLevelTokenNode>;
 /// Similar to `TypeDefinition` but without `Bare`
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ResolvedTypeDefinition {
-    CompactBuiltIn(TypeQualifier),
-    ExtendedBuiltIn(TypeQualifier),
+    BuiltIn(TypeQualifier),
     UserDefined(BareName),
 }
 
 impl ResolvedTypeDefinition {
-    pub fn is_compact_built_in(&self) -> bool {
-        match self {
-            Self::CompactBuiltIn(_) => true,
-            _ => false,
-        }
-    }
+    // pub fn is_compact_built_in(&self) -> bool {
+    //     match self {
+    //         Self::CompactBuiltIn(_) => true,
+    //         _ => false,
+    //     }
+    // }
 
-    pub fn is_compact_of_type(&self, q: TypeQualifier) -> bool {
-        match self {
-            Self::CompactBuiltIn(q_self) => *q_self == q,
-            _ => false,
-        }
-    }
+    // pub fn is_compact_of_type(&self, q: TypeQualifier) -> bool {
+    //     match self {
+    //         Self::CompactBuiltIn(q_self) => *q_self == q,
+    //         _ => false,
+    //     }
+    // }
 
-    pub fn is_extended_built_in(&self) -> bool {
-        match self {
-            Self::ExtendedBuiltIn(_) => true,
-            _ => false,
-        }
-    }
+    // pub fn is_extended_built_in(&self) -> bool {
+    //     match self {
+    //         Self::ExtendedBuiltIn(_) => true,
+    //         _ => false,
+    //     }
+    // }
 
-    pub fn is_user_defined(&self) -> bool {
-        match self {
-            Self::UserDefined(_) => true,
-            _ => false,
-        }
-    }
+    // pub fn is_user_defined(&self) -> bool {
+    //     match self {
+    //         Self::UserDefined(_) => true,
+    //         _ => false,
+    //     }
+    // }
 
-    pub fn is_built_in(&self) -> bool {
-        self.is_compact_built_in() || self.is_extended_built_in()
-    }
+    // pub fn is_built_in(&self) -> bool {
+    //     self.is_compact_built_in() || self.is_extended_built_in()
+    // }
 
-    pub fn is_extended(&self) -> bool {
-        self.is_extended_built_in() || self.is_user_defined()
-    }
+    // pub fn is_extended(&self) -> bool {
+    //     self.is_extended_built_in() || self.is_user_defined()
+    // }
 }
 
 impl CanCastTo<&ResolvedTypeDefinition> for ResolvedTypeDefinition {
     fn can_cast_to(&self, other: &Self) -> bool {
         match self {
-            Self::CompactBuiltIn(q_left) | Self::ExtendedBuiltIn(q_left) => match other {
-                Self::CompactBuiltIn(q_right) | Self::ExtendedBuiltIn(q_right) => {
-                    q_left.can_cast_to(*q_right)
-                }
+            Self::BuiltIn(q_left) => match other {
+                Self::BuiltIn(q_right) => q_left.can_cast_to(*q_right),
                 _ => false,
             },
             Self::UserDefined(u_left) => match other {
@@ -283,20 +263,8 @@ impl CanCastTo<&ResolvedTypeDefinition> for ResolvedTypeDefinition {
 impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
     fn can_cast_to(&self, other: TypeQualifier) -> bool {
         match self {
-            Self::CompactBuiltIn(q_left) | Self::ExtendedBuiltIn(q_left) => {
-                q_left.can_cast_to(other)
-            }
+            Self::BuiltIn(q_left) => q_left.can_cast_to(other),
             Self::UserDefined(_) => false,
-        }
-    }
-}
-
-impl From<ResolvedTypeDefinition> for TypeDefinition {
-    fn from(resolved_type_definition: ResolvedTypeDefinition) -> Self {
-        match resolved_type_definition {
-            ResolvedTypeDefinition::CompactBuiltIn(q) => Self::CompactBuiltIn(q),
-            ResolvedTypeDefinition::ExtendedBuiltIn(q) => Self::ExtendedBuiltIn(q),
-            ResolvedTypeDefinition::UserDefined(bare_name) => Self::UserDefined(bare_name),
         }
     }
 }
@@ -305,8 +273,9 @@ impl From<TypeDefinition> for ResolvedTypeDefinition {
     fn from(type_definition: TypeDefinition) -> Self {
         match type_definition {
             TypeDefinition::Bare => panic!("Unresolved bare type"), // as this is internal error, it is ok to panic
-            TypeDefinition::CompactBuiltIn(q) => Self::CompactBuiltIn(q),
-            TypeDefinition::ExtendedBuiltIn(q) => Self::ExtendedBuiltIn(q),
+            TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => {
+                Self::BuiltIn(q)
+            }
             TypeDefinition::UserDefined(bare_name) => Self::UserDefined(bare_name),
         }
     }

@@ -371,8 +371,7 @@ impl Variant {
 
     pub fn default_variant_for_type_definition(type_definition: ResolvedTypeDefinition) -> Variant {
         match type_definition {
-            ResolvedTypeDefinition::CompactBuiltIn(q)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => Self::default_variant(q),
+            ResolvedTypeDefinition::BuiltIn(q) => Self::default_variant(q),
             ResolvedTypeDefinition::UserDefined(u) => Variant::VUserDefined(UserDefinedValue {
                 type_name: u,
                 map: HashMap::new(),
@@ -385,8 +384,7 @@ impl Variant {
         type_definition: ResolvedTypeDefinition,
     ) -> Result<Variant, QError> {
         match type_definition {
-            ResolvedTypeDefinition::CompactBuiltIn(q)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => crate::linter::casting::cast(self, q),
+            ResolvedTypeDefinition::BuiltIn(q) => crate::linter::casting::cast(self, q),
             _ => unimplemented!(),
         }
     }
@@ -409,24 +407,12 @@ impl Variant {
 
     pub fn type_definition(&self) -> ResolvedTypeDefinition {
         match self {
-            Variant::VSingle(_) => {
-                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
-            }
-            Variant::VDouble(_) => {
-                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::HashDouble)
-            }
-            Variant::VString(_) => {
-                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
-            }
-            Variant::VInteger(_) => {
-                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::PercentInteger)
-            }
-            Variant::VLong(_) => {
-                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::AmpersandLong)
-            }
-            Variant::VFileHandle(_) => {
-                ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::FileHandle)
-            }
+            Variant::VSingle(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
+            Variant::VDouble(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
+            Variant::VString(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
+            Variant::VInteger(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
+            Variant::VLong(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
+            Variant::VFileHandle(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::FileHandle),
             Variant::VUserDefined(UserDefinedValue { type_name, .. }) => {
                 ResolvedTypeDefinition::UserDefined(type_name.clone())
             }

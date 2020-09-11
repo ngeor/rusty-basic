@@ -119,21 +119,21 @@ impl LinterContext {
                 let q: TypeQualifier = (&name).resolve_into(resolver);
                 Ok(ResolvedDeclaredName {
                     name,
-                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+                    type_definition: ResolvedTypeDefinition::BuiltIn(q),
                 })
             }
             TypeDefinition::CompactBuiltIn(q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 Ok(ResolvedDeclaredName {
                     name,
-                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(q),
+                    type_definition: ResolvedTypeDefinition::BuiltIn(q),
                 })
             }
             TypeDefinition::ExtendedBuiltIn(q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 Ok(ResolvedDeclaredName {
                     name,
-                    type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(q),
+                    type_definition: ResolvedTypeDefinition::BuiltIn(q),
                 })
             }
             TypeDefinition::UserDefined(user_defined_type) => {
@@ -188,7 +188,8 @@ impl LinterContext {
             Some(resolved_type_definitions) => {
                 match resolved_type_definitions {
                     ResolvedTypeDefinitions::Compact(existing_set) => match &type_definition {
-                        ResolvedTypeDefinition::CompactBuiltIn(q) => {
+                        // TODO fix me support extended look before resolving
+                        ResolvedTypeDefinition::BuiltIn(q) => {
                             if existing_set.contains(q) {
                                 return Err(QError::DuplicateDefinition);
                             } else {
@@ -206,16 +207,16 @@ impl LinterContext {
                 }
             }
             None => match &type_definition {
-                ResolvedTypeDefinition::CompactBuiltIn(q) => {
+                ResolvedTypeDefinition::BuiltIn(q) => {
                     let mut s: HashSet<TypeQualifier> = HashSet::new();
                     s.insert(*q);
                     self.names
                         .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
                 }
-                ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                    self.names
-                        .insert(name.clone(), ResolvedTypeDefinitions::ExtendedBuiltIn(*q));
-                }
+                // ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+                //     self.names
+                //         .insert(name.clone(), ResolvedTypeDefinitions::ExtendedBuiltIn(*q));
+                // }
                 ResolvedTypeDefinition::UserDefined(u) => {
                     self.names.insert(
                         name.clone(),
@@ -250,9 +251,7 @@ impl LinterContext {
                                 if existing_set.contains(&qualifier) {
                                     Ok(Some(ResolvedDeclaredName {
                                         name: b.clone(),
-                                        type_definition: ResolvedTypeDefinition::CompactBuiltIn(
-                                            qualifier,
-                                        ),
+                                        type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
                                     }))
                                 } else {
                                     Ok(None)
@@ -262,7 +261,7 @@ impl LinterContext {
                                 if existing_set.contains(qualifier) {
                                     Ok(Some(ResolvedDeclaredName {
                                         name: name.clone(),
-                                        type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                        type_definition: ResolvedTypeDefinition::BuiltIn(
                                             *qualifier,
                                         ),
                                     }))
@@ -277,15 +276,13 @@ impl LinterContext {
                         match name {
                             Name::Bare(b) => Ok(Some(ResolvedDeclaredName {
                                 name: b.clone(),
-                                type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(*q),
+                                type_definition: ResolvedTypeDefinition::BuiltIn(*q),
                             })),
                             Name::Qualified { name, qualifier } => {
                                 if q == qualifier {
                                     Ok(Some(ResolvedDeclaredName {
                                         name: name.clone(),
-                                        type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(
-                                            *q,
-                                        ),
+                                        type_definition: ResolvedTypeDefinition::BuiltIn(*q),
                                     }))
                                 } else {
                                     Err(QError::DuplicateDefinition)
@@ -324,7 +321,7 @@ impl LinterContext {
                             // TODO fix me
                             Ok(Some(Expression::Variable(ResolvedDeclaredName::single(
                                 b.clone(),
-                                ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                                ResolvedTypeDefinition::BuiltIn(qualifier),
                             ))))
                         } else {
                             Ok(None)
@@ -335,7 +332,7 @@ impl LinterContext {
                             // TODO fix me
                             Ok(Some(Expression::Variable(ResolvedDeclaredName::single(
                                 name.clone(),
-                                ResolvedTypeDefinition::CompactBuiltIn(*qualifier),
+                                ResolvedTypeDefinition::BuiltIn(*qualifier),
                             ))))
                         } else {
                             Ok(None)
@@ -357,7 +354,7 @@ impl LinterContext {
                         // TODO fix me
                         Ok(Some(Expression::Variable(ResolvedDeclaredName::single(
                             bare_name.clone(),
-                            ResolvedTypeDefinition::ExtendedBuiltIn(*q),
+                            ResolvedTypeDefinition::BuiltIn(*q),
                         ))))
                     } else {
                         Err(QError::DuplicateDefinition)
@@ -423,7 +420,7 @@ impl LinterContext {
                         existing_set.insert(qualifier);
                         Ok(ResolvedDeclaredName {
                             name,
-                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                            type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
                         })
                     }
                 }
@@ -436,7 +433,7 @@ impl LinterContext {
                     .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
                 Ok(ResolvedDeclaredName {
                     name,
-                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                    type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
                 })
             }
         }

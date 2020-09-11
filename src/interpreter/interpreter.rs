@@ -515,7 +515,7 @@ mod tests {
                     QualifiedName::try_from($expected_variable_name).unwrap();
                 let resolved_declared_name = ResolvedDeclaredName {
                     name,
-                    type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+                    type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
                 };
                 assert_eq!(
                     interpreter

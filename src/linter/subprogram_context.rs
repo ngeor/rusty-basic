@@ -215,7 +215,7 @@ impl FirstPassOuter {
                 },
                 Name::Qualified { name, qualifier } => match self.global_constants.get(name) {
                     Some(v) => match v.type_definition() {
-                        ResolvedTypeDefinition::CompactBuiltIn(v_q) => {
+                        ResolvedTypeDefinition::BuiltIn(v_q) => {
                             if v_q == *qualifier {
                                 Ok(v.clone())
                             } else {
@@ -454,13 +454,15 @@ impl FirstPassInner {
             name,
             type_definition,
         } = declared_name;
+        // TODO use resolve declared name from linter context
         match type_definition {
             TypeDefinition::Bare => {
                 let q: TypeQualifier = self.resolver.resolve(name);
-                Ok(ResolvedTypeDefinition::CompactBuiltIn(q))
+                Ok(ResolvedTypeDefinition::BuiltIn(q))
             }
-            TypeDefinition::CompactBuiltIn(q) => Ok(ResolvedTypeDefinition::CompactBuiltIn(*q)),
-            TypeDefinition::ExtendedBuiltIn(q) => Ok(ResolvedTypeDefinition::ExtendedBuiltIn(*q)),
+            TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => {
+                Ok(ResolvedTypeDefinition::BuiltIn(*q))
+            }
             TypeDefinition::UserDefined(u) => {
                 if self.user_defined_types.contains_key(u) {
                     Ok(ResolvedTypeDefinition::UserDefined(u.clone()))

@@ -241,7 +241,7 @@ mod tests {
                     TopLevelToken::Statement(Statement::Dim(
                         ResolvedDeclaredName::new(
                             "A",
-                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
                         )
                         .at_rc(2, 17)
                     ))
@@ -249,7 +249,7 @@ mod tests {
                     TopLevelToken::Statement(Statement::Assignment(
                         ResolvedDeclaredName::single(
                             "A",
-                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
                         ),
                         Expression::IntegerLiteral(42).at_rc(3, 17)
                     ))
@@ -258,7 +258,7 @@ mod tests {
                         BuiltInSub::Print,
                         vec![Expression::Variable(ResolvedDeclaredName::single(
                             "A",
-                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::BangSingle)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
                         ))
                         .at_rc(4, 19)]
                     ))
@@ -280,7 +280,7 @@ mod tests {
                     TopLevelToken::Statement(Statement::Dim(
                         ResolvedDeclaredName {
                             name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                            type_definition: ResolvedTypeDefinition::BuiltIn(
                                 TypeQualifier::DollarString
                             )
                         }
@@ -290,7 +290,7 @@ mod tests {
                     TopLevelToken::Statement(Statement::Assignment(
                         ResolvedDeclaredName::single(
                             "A",
-                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
                         ),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
                     ))
@@ -299,7 +299,7 @@ mod tests {
                         BuiltInSub::Print,
                         vec![Expression::Variable(ResolvedDeclaredName::single(
                             "A",
-                            ResolvedTypeDefinition::CompactBuiltIn(TypeQualifier::DollarString)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
                         ))
                         .at_rc(4, 19)]
                     ))
@@ -321,7 +321,7 @@ mod tests {
                     TopLevelToken::Statement(Statement::Dim(
                         ResolvedDeclaredName {
                             name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::ExtendedBuiltIn(
+                            type_definition: ResolvedTypeDefinition::BuiltIn(
                                 TypeQualifier::DollarString
                             )
                         }
@@ -331,7 +331,7 @@ mod tests {
                     TopLevelToken::Statement(Statement::Assignment(
                         ResolvedDeclaredName::single(
                             "A",
-                            ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
                         ),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
                     ))
@@ -340,7 +340,7 @@ mod tests {
                         BuiltInSub::Print,
                         vec![Expression::Variable(ResolvedDeclaredName::single(
                             "A",
-                            ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
                         ))
                         .at_rc(4, 19)]
                     ))
@@ -455,7 +455,7 @@ mod tests {
                         BuiltInSub::Print,
                         vec![Expression::Variable(ResolvedDeclaredName::single(
                             "A",
-                            ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
                         ))
                         .at_rc(8, 19)]
                     ))
@@ -498,7 +498,7 @@ mod tests {
                         BuiltInSub::Print,
                         vec![Expression::Variable(ResolvedDeclaredName::single(
                             "A",
-                            ResolvedTypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
                         ))
                         .at_rc(8, 19)]
                     ))

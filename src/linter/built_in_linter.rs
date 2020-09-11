@@ -355,8 +355,7 @@ fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), QEr
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         match args[0].try_type_definition()? {
-            ResolvedTypeDefinition::CompactBuiltIn(q)
-            | ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
+            ResolvedTypeDefinition::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString || q == TypeQualifier::FileHandle {
                     Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
                 } else {

@@ -145,7 +145,7 @@ impl<S: Stdlib> Interpreter<S> {
         let QualifiedName { name, qualifier } = QualifiedName::try_from(name).unwrap();
         let resolved_declared_name = ResolvedDeclaredName {
             name,
-            type_definition: ResolvedTypeDefinition::CompactBuiltIn(qualifier),
+            type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
         };
         self.context_ref()
             .get_r_value(&resolved_declared_name)

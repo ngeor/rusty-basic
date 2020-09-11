@@ -1,15 +1,40 @@
 use crate::linter;
+use crate::linter::ResolvedUserDefinedType;
 use crate::parser::parse_main_str;
+use std::collections::HashMap;
+use crate::common::{CaseInsensitiveString, QErrorNode};
 
-pub fn linter_ok<T>(input: T) -> linter::ProgramNode
+/// Lints the given string and returns the results.
+///
+/// # Panics
+///
+/// Panics if the parser or the linter have an error.
+pub fn linter_ok_with_types<T>(input: T) -> (linter::ProgramNode, HashMap<CaseInsensitiveString, ResolvedUserDefinedType>)
 where
     T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).unwrap();
-    linter::lint(program).unwrap().0
+    linter::lint(program).unwrap()
 }
 
-pub fn linter_err<T>(input: T) -> crate::common::QErrorNode
+/// Lints the given string and returns the linted program node.
+///
+/// # Panics
+///
+/// Panics if the parser or the linter have an error.
+pub fn linter_ok<T>(input: T) -> linter::ProgramNode
+where
+    T: AsRef<[u8]> + 'static,
+{
+    linter_ok_with_types(input).0
+}
+
+/// Lints the given string and returns the error of the linter.
+///
+/// # Panics
+///
+/// If the parser has an error or if the linter did not have an error.
+pub fn linter_err<T>(input: T) -> QErrorNode
 where
     T: AsRef<[u8]> + 'static,
 {

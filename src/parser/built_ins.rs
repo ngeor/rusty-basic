@@ -244,7 +244,6 @@ mod open {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use crate::parser::parse_main_str;
         use crate::parser::test_utils::*;
 
         #[test]
@@ -383,7 +382,7 @@ mod open {
         fn test_open_access_read_for_input_as_file_handle_with_spaces() {
             let input = r#"OPEN "FILE.TXT" ACCESS READ FOR INPUT AS #1"#;
             assert_eq!(
-                parse_main_str(input).unwrap_err(),
+                parse_err_node(input),
                 QErrorNode::Pos(
                     QError::syntax_error("Expected: AS file-number"),
                     Location::new(1, 29)

@@ -1,15 +1,20 @@
+use crate::common::{CaseInsensitiveString, QErrorNode};
 use crate::linter;
 use crate::linter::ResolvedUserDefinedType;
 use crate::parser::parse_main_str;
 use std::collections::HashMap;
-use crate::common::{CaseInsensitiveString, QErrorNode};
 
 /// Lints the given string and returns the results.
 ///
 /// # Panics
 ///
 /// Panics if the parser or the linter have an error.
-pub fn linter_ok_with_types<T>(input: T) -> (linter::ProgramNode, HashMap<CaseInsensitiveString, ResolvedUserDefinedType>)
+pub fn linter_ok_with_types<T>(
+    input: T,
+) -> (
+    linter::ProgramNode,
+    HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+)
 where
     T: AsRef<[u8]> + 'static,
 {

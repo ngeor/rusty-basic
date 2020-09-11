@@ -42,8 +42,7 @@ mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
-        parse_main_str, BareName, ConditionalBlockNode, Expression, Operator, Statement,
-        TopLevelToken,
+        BareName, ConditionalBlockNode, Expression, Operator, Statement, TopLevelToken,
     };
 
     #[test]
@@ -172,7 +171,7 @@ mod tests {
             PRINT X WEND
         "#;
         assert_eq!(
-            parse_main_str(input).unwrap_err(),
+            parse_err_node(input),
             QErrorNode::Pos(
                 QError::syntax_error("Expected: end-of-statement"),
                 Location::new(3, 21)

@@ -211,7 +211,7 @@ fn parse_end_select<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::*;
+    use crate::parser::types::*;
 
     #[test]
     fn test_select_case_inline_comment() {
@@ -314,7 +314,7 @@ mod tests {
         let input = "
         SELECT CASE1
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(QError::syntax_error("Expected: CASE"), Location::new(2, 16))
@@ -327,7 +327,7 @@ mod tests {
         SELECT CASE X
         CASE1
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -343,7 +343,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -359,7 +359,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -375,7 +375,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO2
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -391,7 +391,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO2
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -407,7 +407,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO 2
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(

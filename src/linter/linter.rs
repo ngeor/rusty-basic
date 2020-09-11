@@ -221,29 +221,105 @@ mod tests {
         }
     }
 
-    mod dim {
+    /// Three step tests:
+    /// 1. DIM a new variable
+    /// 2. Assign to the variable
+    /// 3. Use it in an expression
+    mod dim_assign_use_in_expr {
         use super::*;
 
         #[test]
-        fn test_dim_duplicate_definition_same_builtin_type() {
+        fn bare() {
             let program = r#"
-            DIM A AS STRING
-            DIM A AS STRING
+            DIM A
+            A = 42
+            PRINT A
             "#;
-            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+            assert_eq!(
+                linter_ok(program),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                TypeQualifier::BangSingle
+                            )
+                        }
+                        .at_rc(2, 17)
+                    ))
+                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                TypeQualifier::BangSingle
+                            )
+                        },
+                        Expression::IntegerLiteral(42).at_rc(3, 17)
+                    ))
+                    .at_rc(3, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                TypeQualifier::BangSingle
+                            )
+                        })
+                        .at_rc(4, 19)]
+                    ))
+                    .at_rc(4, 13)
+                ]
+            );
         }
 
         #[test]
-        fn test_dim_duplicate_definition_different_builtin_type() {
+        fn compact_string() {
             let program = r#"
-            DIM A AS STRING
-            DIM A AS INTEGER
+            DIM A$
+            A$ = "hello"
+            PRINT A$
             "#;
-            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+            assert_eq!(
+                linter_ok(program),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                TypeQualifier::DollarString
+                            )
+                        }
+                        .at_rc(2, 17)
+                    ))
+                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                TypeQualifier::DollarString
+                            )
+                        },
+                        Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
+                    ))
+                    .at_rc(3, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName {
+                            name: "A".into(),
+                            type_definition: ResolvedTypeDefinition::CompactBuiltIn(
+                                TypeQualifier::DollarString
+                            )
+                        })
+                        .at_rc(4, 19)]
+                    ))
+                    .at_rc(4, 13)
+                ]
+            );
         }
 
         #[test]
-        fn test_dim_string() {
+        fn extended_string() {
             let program = r#"
             DIM A AS STRING
             A = "hello"
@@ -285,6 +361,28 @@ mod tests {
                     .at_rc(4, 13)
                 ]
             );
+        }
+    }
+
+    mod dim {
+        use super::*;
+
+        #[test]
+        fn test_dim_duplicate_definition_same_builtin_type() {
+            let program = r#"
+            DIM A AS STRING
+            DIM A AS STRING
+            "#;
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+        }
+
+        #[test]
+        fn test_dim_duplicate_definition_different_builtin_type() {
+            let program = r#"
+            DIM A AS STRING
+            DIM A AS INTEGER
+            "#;
+            assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
         }
 
         #[test]

@@ -221,6 +221,7 @@ impl RootContext {
         value: Variant,
     ) -> Result<(), QError> {
         // TODO if variable contains dots, check for user defined types
+        // TODO ResolvedDeclaredName should now it's a property of a type e.g. ResolvedDeclaredName('c.name', 'Card.Suit') or something better
         // Arguments do not exist at root level. Create/Update a variable.
         let x = value.cast_for_type_definition(name.type_definition.clone())?;
         self.variables.insert(name, x);

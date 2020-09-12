@@ -7,7 +7,7 @@ use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
 use crate::linter::{ResolvedUserDefinedType, TypeQualifier};
-use crate::variant::Variant;
+use crate::variant::{DefaultForType, DefaultForTypes, Variant};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -149,14 +149,18 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Load(v) => {
                 self.set_a(v.clone());
             }
+            Instruction::Cast(q) => {
+                let v = self.get_a();
+                let casted = crate::linter::casting::cast(v, *q).with_err_at(pos)?;
+                self.set_a(casted);
+            }
             Instruction::Dim(resolved_declared_name) => {
+                let v = Variant::default_variant_types(
+                    &resolved_declared_name.type_definition,
+                    self.user_defined_types.as_ref(),
+                );
                 self.context_mut()
-                    .set_variable(
-                        resolved_declared_name.clone(),
-                        Variant::default_variant_for_type_definition(
-                            resolved_declared_name.type_definition.clone(),
-                        ),
-                    )
+                    .set_variable(vec![resolved_declared_name.clone()], v)
                     .with_err_at(pos)?;
             }
             Instruction::Store(n) => {
@@ -516,10 +520,8 @@ mod tests {
                 let interpreter = interpret($program);
                 let QualifiedName { name, qualifier } =
                     QualifiedName::try_from($expected_variable_name).unwrap();
-                let resolved_declared_name = ResolvedDeclaredName {
-                    name,
-                    type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
-                };
+                let resolved_declared_name =
+                    ResolvedDeclaredName::single(name, ResolvedTypeDefinition::BuiltIn(qualifier));
                 assert_eq!(
                     interpreter
                         .context_ref()
@@ -1036,5 +1038,7 @@ mod tests {
             "#;
             assert_prints!(input, "2", "1");
         }
+
+        // TODO concat two string * 9 together, what happens to the result if assigned to regular string
     }
 }

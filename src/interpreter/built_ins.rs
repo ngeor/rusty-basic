@@ -1,12 +1,21 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
+use crate::common::{
+    CaseInsensitiveString, FileAccess, FileHandle, FileMode, QError, QErrorNode,
+    ToErrorEnvelopeNoPos,
+};
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::{ResolvedDeclaredName, ResolvedTypeDefinition};
+use crate::linter::{
+    ResolvedDeclaredName, ResolvedDeclaredNames, ResolvedElement, ResolvedElementType,
+    ResolvedTypeDefinition, ResolvedUserDefinedType,
+};
 use crate::parser::TypeQualifier;
 use crate::variant::{UserDefinedValue, Variant, MAX_INTEGER, MAX_LONG};
+use std::collections::HashMap;
 use std::convert::TryInto;
+
+// TODO create type or struct for HashMap<BareName, ResolvedUserDefinedType>
 
 pub fn run_function<S: Stdlib>(
     f: &BuiltInFunction,
@@ -221,14 +230,14 @@ mod input {
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         a: &Argument,
-        n: &ResolvedDeclaredName,
+        n: &ResolvedDeclaredNames,
     ) -> Result<(), QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        let variable_value = match &n.type_definition {
+        let variable_value = match n.last().unwrap().type_definition {
             ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle) => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
@@ -462,7 +471,7 @@ mod len {
     // LEN(str_expr$) -> number of characters in string
     // LEN(variable) -> number of bytes required to store a variable
     use super::*;
-    use crate::linter::{ResolvedElement, ResolvedElementType};
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
@@ -474,27 +483,40 @@ mod len {
             Variant::VFileHandle(_) => {
                 return Err("File handle not supported".into()).with_err_no_pos();
             }
-            Variant::VUserDefined(UserDefinedValue { type_name, .. }) => {
+            Variant::VUserDefined(user_defined_value) => {
                 let user_defined_type = interpreter
                     .user_defined_types
                     .as_ref()
-                    .get(&type_name)
+                    .get(user_defined_value.type_name())
                     .unwrap();
-                let mut sum: u32 = 0;
-                for ResolvedElement { element_type, .. } in user_defined_type.elements.iter() {
-                    sum += match element_type {
-                        ResolvedElementType::Single => 4,
-                        ResolvedElementType::Double => 8,
-                        ResolvedElementType::Integer => 2,
-                        ResolvedElementType::Long => 4,
-                        ResolvedElementType::String(l) => *l,
-                        ResolvedElementType::UserDefined(_) => unimplemented!(),
-                    };
-                }
+                let sum: u32 = len_of_user_defined_type(
+                    user_defined_type,
+                    interpreter.user_defined_types.as_ref(),
+                );
                 Variant::VInteger(sum as i32)
             }
         };
         Ok(())
+    }
+
+    fn len_of_user_defined_type(
+        user_defined_type: &ResolvedUserDefinedType,
+        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ) -> u32 {
+        let mut sum: u32 = 0;
+        for ResolvedElement { element_type, .. } in user_defined_type.elements.iter() {
+            sum += match element_type {
+                ResolvedElementType::Single => 4,
+                ResolvedElementType::Double => 8,
+                ResolvedElementType::Integer => 2,
+                ResolvedElementType::Long => 4,
+                ResolvedElementType::String(l) => *l,
+                ResolvedElementType::UserDefined(type_name) => {
+                    len_of_user_defined_type(types.get(type_name).expect("type not found"), types)
+                }
+            };
+        }
+        sum
     }
 
     #[cfg(test)]
@@ -664,7 +686,7 @@ mod line_input {
     fn line_input_one<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &ResolvedDeclaredName,
+        n: &ResolvedDeclaredNames,
         file_handle: FileHandle,
     ) -> Result<(), QErrorNode> {
         if file_handle.is_valid() {
@@ -677,7 +699,7 @@ mod line_input {
     fn line_input_one_file<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &ResolvedDeclaredName,
+        n: &ResolvedDeclaredNames,
         file_handle: FileHandle,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
@@ -685,7 +707,7 @@ mod line_input {
             .read_line(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        match &n.type_definition {
+        match n.last().unwrap().type_definition {
             ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString) => interpreter
                 .context_mut()
                 .demand_sub()
@@ -698,7 +720,7 @@ mod line_input {
     fn line_input_one_stdin<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        _n: &ResolvedDeclaredName,
+        _n: &ResolvedDeclaredNames,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .stdlib

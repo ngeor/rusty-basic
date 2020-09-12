@@ -23,15 +23,12 @@ impl InstructionGenerator {
                 self.push(Instruction::Load(Variant::from(s)), pos);
             }
             Expression::Variable(name) => {
-                // TODO fix me
-                self.push(Instruction::CopyVarToA(name.last().unwrap().clone()), pos);
+                self.push(Instruction::CopyVarToA(name), pos);
             }
             Expression::Constant(name) => {
                 let QualifiedName { name, qualifier } = name;
-                let x = ResolvedDeclaredName {
-                    name,
-                    type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
-                };
+                let x =
+                    ResolvedDeclaredName::single(name, ResolvedTypeDefinition::BuiltIn(qualifier));
                 self.push(Instruction::CopyVarToA(x), pos);
             }
             Expression::FunctionCall(n, args) => {

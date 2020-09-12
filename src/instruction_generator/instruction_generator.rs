@@ -1,7 +1,7 @@
 use super::instruction::*;
 use crate::common::*;
 use crate::linter::*;
-use crate::variant::Variant;
+use crate::variant::{DefaultForType, Variant};
 
 use std::collections::HashMap;
 
@@ -213,11 +213,26 @@ impl InstructionGenerator {
 
     pub fn generate_assignment_instructions(
         &mut self,
-        l: ResolvedDeclaredNameNode,
+        l: ResolvedDeclaredNames,
         r: ExpressionNode,
+        pos: Location,
     ) {
+        let left_type = l.last().unwrap().type_definition.clone();
+        let right_type = r.try_type_definition().unwrap();
+
         self.generate_expression_instructions(r);
-        let Locatable { element, pos } = l;
-        self.push(Instruction::Store(element), pos);
+
+        if left_type != right_type {
+            match left_type {
+                ResolvedTypeDefinition::BuiltIn(q) => {
+                    self.push(Instruction::Cast(q), pos);
+                }
+                _ => {
+                    panic!("Last part cannot be non-built-in type");
+                }
+            }
+        }
+
+        self.push(Instruction::Store(l), pos);
     }
 }

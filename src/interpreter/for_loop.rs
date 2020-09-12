@@ -148,4 +148,17 @@ mod tests {
         ";
         assert_prints!(input, "3", "4", "5");
     }
+
+    #[test]
+    fn test_for_loop_assigning_to_function_name() {
+        let input = "
+        PRINT ForVar
+
+        FUNCTION ForVar
+            FOR ForVar = 1 TO 5
+            NEXT
+        END FUNCTION
+        ";
+        assert_prints!(input, "6");
+    }
 }

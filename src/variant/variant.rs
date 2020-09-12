@@ -1,6 +1,8 @@
 use super::fit::FitToType;
 use crate::common::{CaseInsensitiveString, FileHandle, QError};
-use crate::linter::ResolvedTypeDefinition;
+use crate::linter::{
+    ResolvedElement, ResolvedElementType, ResolvedTypeDefinition, ResolvedUserDefinedType,
+};
 use crate::parser::TypeQualifier;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -15,13 +17,95 @@ pub enum Variant {
     VInteger(i32),
     VLong(i64),
     VFileHandle(FileHandle),
-    VUserDefined(UserDefinedValue),
+    VUserDefined(Box<UserDefinedValue>),
 }
 
 #[derive(Clone, Debug)]
 pub struct UserDefinedValue {
-    pub type_name: CaseInsensitiveString,
-    pub map: HashMap<CaseInsensitiveString, Box<Variant>>,
+    type_name: CaseInsensitiveString,
+    map: VariantMap,
+}
+
+impl UserDefinedValue {
+    pub fn new(
+        type_name: &CaseInsensitiveString,
+        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ) -> Self {
+        Self {
+            type_name: type_name.clone(),
+            map: VariantMap::new_for_user_defined_type(type_name, types),
+        }
+    }
+
+    pub fn type_name(&self) -> &CaseInsensitiveString {
+        &self.type_name
+    }
+
+    pub fn map(&self) -> &VariantMap {
+        &self.map
+    }
+
+    pub fn map_mut(&mut self) -> &mut VariantMap {
+        &mut self.map
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct VariantMap {
+    map: HashMap<CaseInsensitiveString, Variant>,
+}
+
+impl VariantMap {
+    pub fn new_for_user_defined_type(
+        type_name: &CaseInsensitiveString,
+        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ) -> Self {
+        let user_defined_type = types.get(type_name).expect("could not find type");
+        let mut map: HashMap<CaseInsensitiveString, Variant> = HashMap::new();
+        for ResolvedElement { name, element_type } in user_defined_type.elements.iter() {
+            let def_value: Variant = Variant::default_variant_types(element_type, types);
+            map.insert(name.clone(), def_value);
+        }
+        Self { map }
+    }
+
+    pub fn get(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
+        self.map.get(name)
+    }
+
+    pub fn get_mut(&mut self, name: &CaseInsensitiveString) -> Option<&mut Variant> {
+        self.map.get_mut(name)
+    }
+
+    pub fn get_path(&self, names: &[CaseInsensitiveString]) -> Option<&Variant> {
+        let (first, rest) = names.split_first().expect("empty names!");
+        if rest.is_empty() {
+            self.get(first)
+        } else {
+            let first_variant = self.get(first).expect("member missing!");
+            match first_variant {
+                Variant::VUserDefined(user_defined_value) => {
+                    user_defined_value.map().get_path(rest)
+                }
+                _ => panic!("cannot navigate simple variant"),
+            }
+        }
+    }
+
+    pub fn insert_path(&mut self, names: &[CaseInsensitiveString], value: Variant) {
+        let (first, rest) = names.split_first().expect("empty names!");
+        if rest.is_empty() {
+            self.map.insert(first.clone(), value);
+        } else {
+            let first_variant = self.get_mut(first).expect("member missing!");
+            match first_variant {
+                Variant::VUserDefined(user_defined_value) => {
+                    user_defined_value.map_mut().insert_path(rest, value);
+                }
+                _ => panic!("cannot navigate simple variant"),
+            }
+        }
+    }
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
@@ -358,27 +442,7 @@ impl Variant {
         }
     }
 
-    pub fn default_variant(type_qualifier: TypeQualifier) -> Variant {
-        match type_qualifier {
-            TypeQualifier::BangSingle => Variant::VSingle(0.0),
-            TypeQualifier::HashDouble => Variant::VDouble(0.0),
-            TypeQualifier::DollarString => Variant::VString(String::new()),
-            TypeQualifier::PercentInteger => Variant::VInteger(0),
-            TypeQualifier::AmpersandLong => Variant::VLong(0),
-            TypeQualifier::FileHandle => Variant::VFileHandle(FileHandle::default()),
-        }
-    }
-
-    pub fn default_variant_for_type_definition(type_definition: ResolvedTypeDefinition) -> Variant {
-        match type_definition {
-            ResolvedTypeDefinition::BuiltIn(q) => Self::default_variant(q),
-            ResolvedTypeDefinition::UserDefined(u) => Variant::VUserDefined(UserDefinedValue {
-                type_name: u,
-                map: HashMap::new(),
-            }),
-        }
-    }
-
+    // TODO make casting trait
     pub fn cast_for_type_definition(
         self,
         type_definition: ResolvedTypeDefinition,
@@ -386,8 +450,8 @@ impl Variant {
         match type_definition {
             ResolvedTypeDefinition::BuiltIn(q) => crate::linter::casting::cast(self, q),
             ResolvedTypeDefinition::UserDefined(n) => match &self {
-                Self::VUserDefined(UserDefinedValue { type_name, .. }) => {
-                    if *type_name == n {
+                Self::VUserDefined(user_defined_value) => {
+                    if user_defined_value.type_name() == &n {
                         Ok(self)
                     } else {
                         Err(QError::TypeMismatch)
@@ -422,8 +486,64 @@ impl Variant {
             Variant::VInteger(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
             Variant::VLong(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
             Variant::VFileHandle(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::FileHandle),
-            Variant::VUserDefined(UserDefinedValue { type_name, .. }) => {
-                ResolvedTypeDefinition::UserDefined(type_name.clone())
+            Variant::VUserDefined(user_defined_value) => {
+                ResolvedTypeDefinition::UserDefined(user_defined_value.type_name().clone())
+            }
+        }
+    }
+}
+
+pub trait DefaultForType<T> {
+    fn default_variant(t: T) -> Self;
+}
+
+impl DefaultForType<TypeQualifier> for Variant {
+    fn default_variant(type_qualifier: TypeQualifier) -> Variant {
+        match type_qualifier {
+            TypeQualifier::BangSingle => Variant::VSingle(0.0),
+            TypeQualifier::HashDouble => Variant::VDouble(0.0),
+            TypeQualifier::DollarString => Variant::VString(String::new()),
+            TypeQualifier::PercentInteger => Variant::VInteger(0),
+            TypeQualifier::AmpersandLong => Variant::VLong(0),
+            TypeQualifier::FileHandle => Variant::VFileHandle(FileHandle::default()),
+        }
+    }
+}
+
+pub trait DefaultForTypes<T> {
+    fn default_variant_types(
+        t: T,
+        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ) -> Self;
+}
+
+impl DefaultForTypes<&ResolvedElementType> for Variant {
+    fn default_variant_types(
+        t: &ResolvedElementType,
+        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ) -> Self {
+        match t {
+            ResolvedElementType::Single => Variant::default_variant(TypeQualifier::BangSingle),
+            ResolvedElementType::Double => Variant::default_variant(TypeQualifier::HashDouble),
+            ResolvedElementType::String(_) => Variant::default_variant(TypeQualifier::DollarString),
+            ResolvedElementType::Integer => Variant::default_variant(TypeQualifier::PercentInteger),
+            ResolvedElementType::Long => Variant::default_variant(TypeQualifier::AmpersandLong),
+            ResolvedElementType::UserDefined(type_name) => {
+                Variant::VUserDefined(Box::new(UserDefinedValue::new(type_name, types)))
+            }
+        }
+    }
+}
+
+impl DefaultForTypes<&ResolvedTypeDefinition> for Variant {
+    fn default_variant_types(
+        type_definition: &ResolvedTypeDefinition,
+        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ) -> Self {
+        match type_definition {
+            ResolvedTypeDefinition::BuiltIn(q) => Self::default_variant(*q),
+            ResolvedTypeDefinition::UserDefined(type_name) => {
+                Variant::VUserDefined(Box::new(UserDefinedValue::new(type_name, types)))
             }
         }
     }

@@ -1,16 +1,12 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{ForLoopNode, ResolvedDeclaredName, StatementNodes};
+use crate::linter::{ForLoopNode, ResolvedDeclaredNames, StatementNodes};
 use crate::variant::Variant;
 
 impl InstructionGenerator {
     pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) {
         let ForLoopNode {
-            variable_name:
-                Locatable {
-                    element: counter_var_name,
-                    ..
-                },
+            variable_name: counter_var_name,
             lower_bound,
             upper_bound,
             step,
@@ -86,7 +82,7 @@ impl InstructionGenerator {
 
     fn generate_for_loop_instructions_positive_or_negative_step(
         &mut self,
-        counter_var_name: ResolvedDeclaredName,
+        counter_var_name: ResolvedDeclaredNames,
         statements: StatementNodes,
         is_positive: bool,
         pos: Location,

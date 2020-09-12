@@ -12,14 +12,11 @@ impl PostConversionLinter for ForNextCounterMatch {
         // TODO verify FOR variable is numeric and not string
         match &f.next_counter {
             Some(n) => {
-                let Locatable {
-                    element: next_var_name,
-                    pos,
-                } = n;
-                if next_var_name == f.variable_name.as_ref() {
+                if *n == f.variable_name {
                     Ok(())
                 } else {
-                    Err(QError::NextWithoutFor).with_err_at(pos)
+                    // TODO fix pos
+                    Err(QError::NextWithoutFor).with_err_no_pos()
                 }
             }
             None => Ok(()),

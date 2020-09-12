@@ -143,10 +143,8 @@ impl Stdlib for MockStdlib {
 impl<S: Stdlib> Interpreter<S> {
     pub fn get_variable_str(&self, name: &str) -> Variant {
         let QualifiedName { name, qualifier } = QualifiedName::try_from(name).unwrap();
-        let resolved_declared_name = ResolvedDeclaredName {
-            name,
-            type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
-        };
+        let resolved_declared_name =
+            ResolvedDeclaredName::single(name, ResolvedTypeDefinition::BuiltIn(qualifier));
         self.context_ref()
             .get_r_value(&resolved_declared_name)
             .unwrap()

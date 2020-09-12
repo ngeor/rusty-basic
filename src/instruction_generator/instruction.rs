@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{QualifiedName, ResolvedDeclaredName};
+use crate::linter::{QualifiedName, ResolvedDeclaredName, ResolvedDeclaredNames, TypeQualifier};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
@@ -9,7 +9,7 @@ pub enum Instruction {
     /// Loads a value into register A
     Load(Variant),
     /// Stores a value from register A
-    Store(ResolvedDeclaredName),
+    Store(ResolvedDeclaredNames),
     /// Stores a value from register A into a constant
     StoreConst(QualifiedName),
     CopyAToB,
@@ -39,7 +39,7 @@ pub enum Instruction {
     Label(CaseInsensitiveString),
     UnresolvedJump(CaseInsensitiveString),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
-    CopyVarToA(ResolvedDeclaredName),
+    CopyVarToA(ResolvedDeclaredNames),
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
     Halt,
@@ -54,12 +54,12 @@ pub enum Instruction {
     PushStack,
     PopStack,
 
-    PushUnnamedRefParam(ResolvedDeclaredName),
+    PushUnnamedRefParam(ResolvedDeclaredNames),
 
     /// Pushes the contents of register A at the end of the unnamed stack
     PushUnnamedValParam,
     SetNamedRefParam(NamedRefParam),
-    SetNamedValParam(ResolvedDeclaredName),
+    SetNamedValParam(ResolvedDeclaredNames),
 
     Throw(QError),
 
@@ -70,12 +70,18 @@ pub enum Instruction {
 
     SetUnresolvedErrorHandler(CaseInsensitiveString),
     SetErrorHandler(usize),
+
+    /// Cast the contents of A into the given type
+    Cast(TypeQualifier),
 }
 
 pub type InstructionNode = Locatable<Instruction>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedRefParam {
+    /// The name of the parameter as expected in the function or sub
     pub parameter_name: ResolvedDeclaredName,
-    pub argument_name: ResolvedDeclaredName,
+
+    /// The name of the argument as passed at the call location
+    pub argument_name: ResolvedDeclaredNames,
 }

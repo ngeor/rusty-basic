@@ -16,11 +16,7 @@ impl InstructionGenerator {
         } = statement_node;
         match statement {
             Statement::Assignment(left_side, right_side) => {
-                // TODO fix me
-                self.generate_assignment_instructions(
-                    left_side.last().unwrap().clone().at(pos),
-                    right_side,
-                )
+                self.generate_assignment_instructions(left_side, right_side, pos)
             }
             Statement::Const(n, e) => self.generate_const_instructions(n, e),
             Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at(pos), args),

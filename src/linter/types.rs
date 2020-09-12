@@ -98,12 +98,12 @@ impl ExpressionNode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
-    pub variable_name: ResolvedDeclaredNameNode,
+    pub variable_name: ResolvedDeclaredNames,
     pub lower_bound: ExpressionNode,
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<ResolvedDeclaredNameNode>,
+    pub next_counter: Option<ResolvedDeclaredNames>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

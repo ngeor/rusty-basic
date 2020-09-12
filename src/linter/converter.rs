@@ -141,16 +141,15 @@ impl ConverterImpl {
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
             let q: TypeQualifier = self.resolve_declared_name(&declared_name);
-            if function_name.as_ref() == bare_name
+            let bare_function_name: &BareName = function_name.as_ref();
+            if bare_function_name == bare_name
                 && (function_name.qualifier() != q || declared_name.is_extended())
             {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let resolved_declared_name = ResolvedDeclaredName {
-                name: bare_name.clone(),
-                type_definition: ResolvedTypeDefinition::BuiltIn(q),
-            };
+            let resolved_declared_name =
+                ResolvedDeclaredName::BuiltIn(QualifiedName::new(bare_name.clone(), q));
             self.context
                 .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
@@ -179,10 +178,8 @@ impl ConverterImpl {
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
             let q: TypeQualifier = self.resolve_declared_name(&declared_name);
-            let resolved_declared_name = ResolvedDeclaredName {
-                name: bare_name.clone(),
-                type_definition: ResolvedTypeDefinition::BuiltIn(q),
-            };
+            let resolved_declared_name =
+                ResolvedDeclaredName::BuiltIn(QualifiedName::new(bare_name.clone(), q));
             self.context
                 .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
@@ -217,7 +214,7 @@ impl ConverterImpl {
             // parameter might be hiding a function name so it takes precedence
             Err(QError::DuplicateDefinition)
         } else {
-            let resolved_declared_names: ResolvedDeclaredNames =
+            let resolved_declared_names: ResolvedDeclaredName =
                 self.context.resolve_assignment(&n, &self.resolver)?;
             Ok(LName::Variable(resolved_declared_names))
         }
@@ -382,14 +379,11 @@ impl ConverterImpl {
     }
 
     // TODO fix me
-    fn temp_convert(&mut self, x: NameNode) -> Result<ResolvedDeclaredNames, QErrorNode> {
+    fn temp_convert(&mut self, x: NameNode) -> Result<ResolvedDeclaredName, QErrorNode> {
         let Locatable { element, pos } = x;
         match self.resolve_name_in_assignment(element).with_err_at(pos)? {
             LName::Variable(names) => Ok(names),
-            LName::Function(QualifiedName { name, qualifier }) => Ok(ResolvedDeclaredName::single(
-                name,
-                ResolvedTypeDefinition::BuiltIn(qualifier),
-            )),
+            LName::Function(q_name) => Ok(ResolvedDeclaredName::BuiltIn(q_name)),
         }
     }
 }
@@ -659,6 +653,6 @@ impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
 
 #[derive(Debug)]
 enum LName {
-    Variable(ResolvedDeclaredNames),
+    Variable(ResolvedDeclaredName),
     Function(QualifiedName),
 }

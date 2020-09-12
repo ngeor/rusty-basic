@@ -442,26 +442,6 @@ impl Variant {
         }
     }
 
-    // TODO make casting trait
-    pub fn cast_for_type_definition(
-        self,
-        type_definition: ResolvedTypeDefinition,
-    ) -> Result<Variant, QError> {
-        match type_definition {
-            ResolvedTypeDefinition::BuiltIn(q) => crate::linter::casting::cast(self, q),
-            ResolvedTypeDefinition::UserDefined(n) => match &self {
-                Self::VUserDefined(user_defined_value) => {
-                    if user_defined_value.type_name() == &n {
-                        Ok(self)
-                    } else {
-                        Err(QError::TypeMismatch)
-                    }
-                }
-                _ => Err(QError::TypeMismatch),
-            },
-        }
-    }
-
     /// Demands that the variant holds an integer and returns the integer value.
     /// Panics if the variant is not an integer.
     pub fn demand_integer(self) -> i32 {

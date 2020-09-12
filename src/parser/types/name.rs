@@ -141,13 +141,6 @@ impl WithTypeQualifier for QualifiedName {
     }
 }
 
-impl From<QualifiedNameNode> for QualifiedName {
-    fn from(node: QualifiedNameNode) -> Self {
-        let Locatable { element, .. } = node;
-        element
-    }
-}
-
 //
 // QualifiedNameNode
 //
@@ -165,7 +158,7 @@ impl AsRef<BareName> for QualifiedNameNode {
 // Name
 //
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Name {
     Bare(CaseInsensitiveString),
     Qualified {
@@ -247,6 +240,13 @@ impl<S: AsRef<str>> From<S> for Name {
                 Name::Bare(CaseInsensitiveString::new(buf))
             }
         }
+    }
+}
+
+impl From<QualifiedName> for Name {
+    fn from(qualified_name: QualifiedName) -> Self {
+        let QualifiedName { name, qualifier } = qualified_name;
+        Self::Qualified { name, qualifier }
     }
 }
 

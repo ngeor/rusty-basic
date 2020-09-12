@@ -1,9 +1,10 @@
-use crate::common::{CaseInsensitiveString, QError};
+use crate::common::CaseInsensitiveString;
 use crate::instruction_generator::NamedRefParam;
 use crate::linter::{
-    QualifiedName, ResolvedDeclaredName, ResolvedDeclaredNames, ResolvedTypeDefinition,
-    ResolvedUserDefinedType,
+    QualifiedName, ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedType,
+    UserDefinedName,
 };
+use crate::parser::Name;
 use crate::variant::{DefaultForType, Variant};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -15,14 +16,14 @@ use std::rc::Rc;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Argument {
     ByVal(Variant),
-    ByRef(ResolvedDeclaredNames),
+    ByRef(ResolvedDeclaredName),
 }
 
 impl Argument {
     pub fn type_definition(&self) -> ResolvedTypeDefinition {
         match self {
             Self::ByVal(v) => v.type_definition(),
-            Self::ByRef(r) => r.last().unwrap().type_definition.clone(),
+            Self::ByRef(r) => r.type_definition(),
         }
     }
 }
@@ -64,30 +65,12 @@ impl ConstantMapTrait<ResolvedDeclaredName> for ConstantMap {
     }
 
     fn insert(&mut self, name: ResolvedDeclaredName, value: Variant) {
-        let ResolvedDeclaredName {
-            name,
-            type_definition,
-        } = name;
-        match type_definition {
-            ResolvedTypeDefinition::BuiltIn(_) => {
+        match name {
+            ResolvedDeclaredName::BuiltIn(QualifiedName { name, .. }) => {
                 self.0.insert(name, value);
             }
-            ResolvedTypeDefinition::UserDefined(_) => panic!("user defined type constant"),
+            _ => panic!("user defined type constant"),
         }
-    }
-}
-
-impl ConstantMapTrait<ResolvedDeclaredNames> for ConstantMap {
-    fn get(&self, name: &ResolvedDeclaredNames) -> Option<&Variant> {
-        if name.len() == 1 {
-            self.get(&name[0])
-        } else {
-            None
-        }
-    }
-
-    fn insert(&mut self, _name: ResolvedDeclaredNames, _value: Variant) {
-        panic!("user defined name constant")
     }
 }
 
@@ -95,50 +78,61 @@ impl ConstantMapTrait<ResolvedDeclaredNames> for ConstantMap {
 // VariableMap
 // ========================================================
 
+// BUG: misses info on A% A! A$ etc
 #[derive(Debug)]
-struct VariableMap(HashMap<CaseInsensitiveString, Variant>);
+struct VariableMap(HashMap<Name, Variant>);
 
 impl VariableMap {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn get(&self, names: &ResolvedDeclaredNames) -> Option<&Variant> {
-        let bare_names: Vec<CaseInsensitiveString> = names
-            .iter()
-            .map(|ResolvedDeclaredName { name, .. }| name.clone())
-            .collect();
-        let bare_names_slice = &bare_names[..];
-        let (first, rest) = bare_names_slice.split_first().expect("empty names!");
-        if rest.is_empty() {
-            self.0.get(first)
-        } else {
-            match self.0.get(first).expect("missing root variable") {
-                Variant::VUserDefined(user_defined_value) => {
-                    user_defined_value.map().get_path(rest)
+    pub fn get(&self, resolved_declared_name: &ResolvedDeclaredName) -> Option<&Variant> {
+        match resolved_declared_name {
+            ResolvedDeclaredName::BuiltIn(qualified_name) => {
+                let key: Name = Name::from(qualified_name.clone());
+                self.0.get(&key)
+            }
+            _ => {
+                let bare_names: Vec<CaseInsensitiveString> = resolved_declared_name.name_path();
+                let bare_names_slice = &bare_names[..];
+                let (first, rest) = bare_names_slice.split_first().expect("empty names!");
+                let key: Name = Name::Bare(first.clone());
+                if rest.is_empty() {
+                    self.0.get(&key)
+                } else {
+                    match self.0.get(&key).expect("missing root variable") {
+                        Variant::VUserDefined(user_defined_value) => {
+                            user_defined_value.map().get_path(rest)
+                        }
+                        _ => panic!("cannot navigate simple variant"),
+                    }
                 }
-                _ => panic!("cannot navigate simple variant"),
             }
         }
     }
 
-    pub fn insert(&mut self, names: ResolvedDeclaredNames, value: Variant) -> Result<(), QError> {
-        let bare_names: Vec<CaseInsensitiveString> = names
-            .into_iter()
-            .map(|ResolvedDeclaredName { name, .. }| name)
-            .collect();
-        let bare_names_slice = &bare_names[..];
-        let (first, rest) = bare_names_slice.split_first().expect("empty names!");
-        if rest.is_empty() {
-            self.0.insert(first.clone(), value);
-            Ok(())
-        } else {
-            match self.0.get_mut(first).expect("missing root variable") {
-                Variant::VUserDefined(user_defined_value) => {
-                    user_defined_value.map_mut().insert_path(rest, value);
-                    Ok(())
+    pub fn insert(&mut self, resolved_declared_name: ResolvedDeclaredName, value: Variant) {
+        match &resolved_declared_name {
+            ResolvedDeclaredName::BuiltIn(qualified_name) => {
+                let key: Name = Name::from(qualified_name.clone());
+                self.0.insert(key, value);
+            }
+            _ => {
+                let bare_names: Vec<CaseInsensitiveString> = resolved_declared_name.name_path();
+                let bare_names_slice = &bare_names[..];
+                let (first, rest) = bare_names_slice.split_first().expect("empty names!");
+                let key: Name = Name::Bare(first.clone());
+                if rest.is_empty() {
+                    self.0.insert(key, value);
+                } else {
+                    match self.0.get_mut(&key).expect("missing root variable") {
+                        Variant::VUserDefined(user_defined_value) => {
+                            user_defined_value.map_mut().insert_path(rest, value);
+                        }
+                        _ => panic!("cannot navigate simple variant"),
+                    }
                 }
-                _ => panic!("cannot navigate simple variant"),
             }
         }
     }
@@ -150,8 +144,8 @@ impl VariableMap {
 
 #[derive(Debug)]
 struct ArgumentMap {
-    named: HashMap<ResolvedDeclaredNames, Argument>,
-    name_order: VecDeque<ResolvedDeclaredNames>,
+    named: HashMap<ResolvedDeclaredName, Argument>,
+    name_order: VecDeque<ResolvedDeclaredName>,
 }
 
 impl ArgumentMap {
@@ -162,35 +156,39 @@ impl ArgumentMap {
         }
     }
 
-    pub fn push_unnamed(&mut self, arg: Argument) -> Result<(), QError> {
+    pub fn push_unnamed(&mut self, arg: Argument) {
         let dummy_name = format!("{}", self.name_order.len());
-        self.insert(
-            ResolvedDeclaredName::single(dummy_name, arg.type_definition()),
-            arg,
-        )
+        let dummy_resolved_name = match arg.type_definition() {
+            ResolvedTypeDefinition::BuiltIn(q) => {
+                ResolvedDeclaredName::BuiltIn(QualifiedName::new(dummy_name.into(), q))
+            }
+            ResolvedTypeDefinition::UserDefined(u) => {
+                ResolvedDeclaredName::UserDefined(UserDefinedName {
+                    name: dummy_name.into(),
+                    type_name: u,
+                })
+            }
+        };
+        self.insert(dummy_resolved_name, arg)
     }
 
-    pub fn insert(&mut self, name: ResolvedDeclaredNames, arg: Argument) -> Result<(), QError> {
+    pub fn insert(&mut self, name: ResolvedDeclaredName, arg: Argument) {
         self.name_order.push_back(name.clone());
         match &arg {
             Argument::ByVal(v) => {
-                let c = v
-                    .clone()
-                    .cast_for_type_definition(name.last().unwrap().type_definition.clone())?;
-                self.named.insert(name, Argument::ByVal(c));
+                self.named.insert(name, Argument::ByVal(v.clone()));
             }
             Argument::ByRef(_) => {
                 self.named.insert(name, arg);
             }
         }
-        Ok(())
     }
 
-    pub fn get_mut(&mut self, name: &ResolvedDeclaredNames) -> Option<&mut Argument> {
+    pub fn get_mut(&mut self, name: &ResolvedDeclaredName) -> Option<&mut Argument> {
         self.named.get_mut(name)
     }
 
-    pub fn get(&self, name: &ResolvedDeclaredNames) -> Option<&Argument> {
+    pub fn get(&self, name: &ResolvedDeclaredName) -> Option<&Argument> {
         self.named.get(name)
     }
 
@@ -224,7 +222,7 @@ impl RootContext {
         }
     }
 
-    pub fn get_r_value(&self, name: &ResolvedDeclaredNames) -> Option<Variant> {
+    pub fn get_r_value(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
         // local constant?
         match self.constants.get(name) {
             Some(v) => Some(v.clone()),
@@ -242,7 +240,7 @@ impl RootContext {
         self.constants.insert(name, value)
     }
 
-    pub fn create_parameter(&mut self, name: ResolvedDeclaredNames) -> Argument {
+    pub fn create_parameter(&mut self, name: ResolvedDeclaredName) -> Argument {
         match self.constants.get(&name) {
             Some(v) => Argument::ByVal(v.clone()),
             None => {
@@ -252,15 +250,12 @@ impl RootContext {
                     None => {
                         // create the variable in this scope
                         // e.g. INPUT N
-                        let last = name.last().unwrap();
-                        let type_definition = &last.type_definition;
-                        let q = match type_definition {
-                            ResolvedTypeDefinition::BuiltIn(q) => *q,
+                        let q = match name.type_definition() {
+                            ResolvedTypeDefinition::BuiltIn(q) => q,
                             _ => panic!("cannot implicitly create user defined variable"),
                         };
                         self.variables
-                            .insert(name.clone(), Variant::default_variant(q))
-                            .expect("should work");
+                            .insert(name.clone(), Variant::default_variant(q));
                         Argument::ByRef(name)
                     }
                 }
@@ -268,14 +263,9 @@ impl RootContext {
         }
     }
 
-    pub fn set_variable(
-        &mut self,
-        name: ResolvedDeclaredNames,
-        value: Variant,
-    ) -> Result<(), QError> {
+    pub fn set_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
         // Arguments do not exist at root level. Create/Update a variable.
-        let x = value.cast_for_type_definition(name.last().unwrap().type_definition.clone())?;
-        self.variables.insert(name, x)
+        self.variables.insert(name, value)
     }
 }
 
@@ -290,44 +280,29 @@ pub struct ArgsContext {
 }
 
 impl ArgsContext {
-    pub fn push_back_unnamed_ref_parameter(
-        &mut self,
-        name: ResolvedDeclaredNames,
-    ) -> Result<(), QError> {
-        let arg = self.parent.create_parameter(name)?;
+    pub fn push_back_unnamed_ref_parameter(&mut self, name: ResolvedDeclaredName) {
+        let arg = self.parent.create_parameter(name);
         self.args.push_unnamed(arg)
     }
 
-    pub fn push_back_unnamed_val_parameter(&mut self, value: Variant) -> Result<(), QError> {
+    pub fn push_back_unnamed_val_parameter(&mut self, value: Variant) {
         self.args.push_unnamed(Argument::ByVal(value))
     }
 
-    pub fn set_named_ref_parameter(
-        &mut self,
-        named_ref_param: &NamedRefParam,
-    ) -> Result<(), QError> {
+    pub fn set_named_ref_parameter(&mut self, named_ref_param: &NamedRefParam) {
         let NamedRefParam {
             argument_name,
             parameter_name,
         } = named_ref_param;
-        let arg = self.parent.create_parameter(argument_name.clone())?;
-        let param_names = vec![parameter_name.clone()];
-        self.insert_next_argument(&param_names, arg)
+        let arg = self.parent.create_parameter(argument_name.clone());
+        self.insert_next_argument(parameter_name, arg)
     }
 
-    pub fn set_named_val_parameter(
-        &mut self,
-        param_name: &ResolvedDeclaredNames,
-        value: Variant,
-    ) -> Result<(), QError> {
+    pub fn set_named_val_parameter(&mut self, param_name: &ResolvedDeclaredName, value: Variant) {
         self.insert_next_argument(param_name, Argument::ByVal(value))
     }
 
-    fn insert_next_argument(
-        &mut self,
-        param_name: &ResolvedDeclaredNames,
-        arg: Argument,
-    ) -> Result<(), QError> {
+    fn insert_next_argument(&mut self, param_name: &ResolvedDeclaredName, arg: Argument) {
         self.args.insert(param_name.clone(), arg)
     }
 }
@@ -344,23 +319,15 @@ pub struct SubContext {
 }
 
 impl SubContext {
-    fn set_variable_parent(
-        &mut self,
-        name: ResolvedDeclaredNames,
-        value: Variant,
-    ) -> Result<(), QError> {
+    fn set_variable_parent(&mut self, name: ResolvedDeclaredName, value: Variant) {
         self.parent.set_variable(name, value)
     }
 
-    fn do_insert_variable(
-        &mut self,
-        name: ResolvedDeclaredNames,
-        value: Variant,
-    ) -> Result<(), QError> {
+    fn do_insert_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
         self.variables.insert(name, Argument::ByVal(value))
     }
 
-    fn get_argument_mut(&mut self, name: &ResolvedDeclaredNames) -> Option<&mut Argument> {
+    fn get_argument_mut(&mut self, name: &ResolvedDeclaredName) -> Option<&mut Argument> {
         self.variables.get_mut(name)
     }
 
@@ -371,7 +338,7 @@ impl SubContext {
         }
     }
 
-    fn get_variable(&self, name: &ResolvedDeclaredNames) -> Option<&Argument> {
+    fn get_variable(&self, name: &ResolvedDeclaredName) -> Option<&Argument> {
         self.variables.get(name)
     }
 
@@ -392,11 +359,7 @@ impl SubContext {
         }
     }
 
-    pub fn set_value_to_popped_arg(
-        &mut self,
-        arg: &Argument,
-        value: Variant,
-    ) -> Result<(), QError> {
+    pub fn set_value_to_popped_arg(&mut self, arg: &Argument, value: Variant) {
         match arg {
             Argument::ByVal(_) => panic!("Expected: variable"),
             Argument::ByRef(n) => {
@@ -406,14 +369,14 @@ impl SubContext {
         }
     }
 
-    pub fn create_parameter(&mut self, name: ResolvedDeclaredNames) -> Result<Argument, QError> {
+    pub fn create_parameter(&mut self, name: ResolvedDeclaredName) -> Argument {
         match self.constants.get(&name) {
-            Some(v) => Ok(Argument::ByVal(v.clone())),
+            Some(v) => Argument::ByVal(v.clone()),
             None => {
                 // variable?
                 match self.get_variable(&name) {
                     // ref pointing to var
-                    Some(_) => Ok(Argument::ByRef(name)),
+                    Some(_) => Argument::ByRef(name),
                     None => {
                         // parent constant?
                         match self
@@ -423,18 +386,16 @@ impl SubContext {
                             .get(&name)
                             .map(|x| x.clone())
                         {
-                            Some(v) => Ok(Argument::ByVal(v)),
+                            Some(v) => Argument::ByVal(v),
                             None => {
                                 // create the variable in this scope
                                 // e.g. INPUT N
-                                let last = name.last().unwrap();
-                                let type_definition = &last.type_definition;
-                                let q = match type_definition {
-                                    ResolvedTypeDefinition::BuiltIn(q) => *q,
+                                let q = match name.type_definition() {
+                                    ResolvedTypeDefinition::BuiltIn(q) => q,
                                     _ => panic!("cannot implicitly create user defined variable"),
                                 };
-                                self.do_insert_variable(name.clone(), Variant::default_variant(q))?;
-                                Ok(Argument::ByRef(name))
+                                self.do_insert_variable(name.clone(), Variant::default_variant(q));
+                                Argument::ByRef(name)
                             }
                         }
                     }
@@ -443,20 +404,13 @@ impl SubContext {
         }
     }
 
-    pub fn set_variable(
-        &mut self,
-        name: ResolvedDeclaredNames,
-        value: Variant,
-    ) -> Result<(), QError> {
+    pub fn set_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
         // if a parameter exists, set it (might be a ref)
         match self.get_argument_mut(&name) {
             Some(a) => {
                 match a {
                     Argument::ByVal(_old_value) => {
-                        *a = Argument::ByVal(value.cast_for_type_definition(
-                            name.last().unwrap().type_definition.clone(),
-                        )?);
-                        Ok(())
+                        *a = Argument::ByVal(value);
                     }
                     Argument::ByRef(n) => {
                         let q = n.clone(); // clone needed to break duplicate borrow
@@ -471,7 +425,7 @@ impl SubContext {
         }
     }
 
-    pub fn get_r_value(&self, name: &ResolvedDeclaredNames) -> Option<Variant> {
+    pub fn get_r_value(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
         // local constant?
         match self.constants.get(name) {
             Some(v) => Some(v.clone()),
@@ -567,19 +521,15 @@ impl Context {
         }
     }
 
-    pub fn create_parameter(&mut self, name: ResolvedDeclaredNames) -> Result<Argument, QError> {
+    pub fn create_parameter(&mut self, name: ResolvedDeclaredName) -> Argument {
         match self {
-            Self::Root(r) => Ok(r.create_parameter(name)),
+            Self::Root(r) => r.create_parameter(name),
             Self::Sub(s) => s.create_parameter(name),
             Self::Args(a) => a.parent.create_parameter(name),
         }
     }
 
-    pub fn set_variable(
-        &mut self,
-        name: ResolvedDeclaredNames,
-        value: Variant,
-    ) -> Result<(), QError> {
+    pub fn set_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
         match self {
             Self::Root(r) => r.set_variable(name, value),
             Self::Sub(s) => s.set_variable(name, value),
@@ -587,7 +537,7 @@ impl Context {
         }
     }
 
-    pub fn get_r_value(&self, name: &ResolvedDeclaredNames) -> Option<Variant> {
+    pub fn get_r_value(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
         match self {
             Self::Root(r) => r.get_r_value(name),
             Self::Args(a) => a.parent.get_r_value(name),

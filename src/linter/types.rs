@@ -7,6 +7,9 @@ use crate::parser::{
     TypeDefinition, TypeQualifier, UnaryOperator,
 };
 
+#[cfg(test)]
+use std::convert::TryFrom;
+
 // TODO store the resolved type definition inside the expression at the time of the conversion from parser,
 // in order to avoid `try_type_definition` all the time. A linter expression should have a resolved type definition.
 
@@ -18,7 +21,7 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Constant(QualifiedName),
-    Variable(ResolvedDeclaredNames),
+    Variable(ResolvedDeclaredName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
@@ -45,12 +48,7 @@ impl Expression {
             Self::LongLiteral(_) => Ok(ResolvedTypeDefinition::BuiltIn(
                 TypeQualifier::AmpersandLong,
             )),
-            Self::Variable(names) => {
-                let ResolvedDeclaredName {
-                    type_definition, ..
-                } = names.last().unwrap();
-                Ok(type_definition.clone())
-            }
+            Self::Variable(names) => Ok(names.type_definition()),
             Self::Constant(name) | Self::FunctionCall(name, _) => {
                 Ok(ResolvedTypeDefinition::BuiltIn(name.qualifier()))
             }
@@ -98,12 +96,12 @@ impl ExpressionNode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
-    pub variable_name: ResolvedDeclaredNames,
+    pub variable_name: ResolvedDeclaredName,
     pub lower_bound: ExpressionNode,
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<Locatable<ResolvedDeclaredNames>>,
+    pub next_counter: Option<Locatable<ResolvedDeclaredName>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -144,7 +142,7 @@ pub enum CaseExpression {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    Assignment(ResolvedDeclaredNames, ExpressionNode),
+    Assignment(ResolvedDeclaredName, ExpressionNode),
     Const(QualifiedNameNode, ExpressionNode),
     SubCall(BareName, Vec<ExpressionNode>),
     BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),
@@ -231,12 +229,9 @@ impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
     }
 }
 
-impl CanCastTo<&ResolvedDeclaredNames> for ResolvedTypeDefinition {
-    fn can_cast_to(&self, other: &ResolvedDeclaredNames) -> bool {
-        let ResolvedDeclaredName {
-            type_definition, ..
-        } = other.last().expect("Should have at least one element");
-        self.can_cast_to(type_definition)
+impl CanCastTo<&ResolvedDeclaredName> for ResolvedTypeDefinition {
+    fn can_cast_to(&self, other: &ResolvedDeclaredName) -> bool {
+        self.can_cast_to(&other.type_definition())
     }
 }
 
@@ -257,34 +252,103 @@ impl From<TypeDefinition> for ResolvedTypeDefinition {
 // ========================================================
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ResolvedDeclaredName {
+pub struct UserDefinedName {
     pub name: BareName,
-    pub type_definition: ResolvedTypeDefinition,
+    pub type_name: BareName,
 }
 
-impl ResolvedDeclaredName {
-    pub fn new<S: AsRef<str>>(name: S, type_definition: ResolvedTypeDefinition) -> Self {
-        Self {
-            name: BareName::new(name.as_ref().to_owned()),
-            type_definition,
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum Members {
+    Leaf {
+        name: BareName,
+        element_type: ResolvedElementType,
+    },
+    Node(UserDefinedName, Box<Members>),
+}
+
+impl Members {
+    pub fn type_definition(&self) -> ResolvedTypeDefinition {
+        match self {
+            Self::Leaf { element_type, .. } => element_type.type_definition(),
+            Self::Node(_, boxed_members) => boxed_members.type_definition(),
         }
     }
 
-    pub fn single<S: AsRef<str>>(
-        name: S,
-        type_definition: ResolvedTypeDefinition,
-    ) -> ResolvedDeclaredNames {
-        vec![ResolvedDeclaredName::new(name, type_definition)]
+    pub fn name_path(&self) -> Vec<BareName> {
+        match self {
+            Self::Leaf { name, .. } => vec![name.clone()],
+            Self::Node(UserDefinedName { name, .. }, boxed_members) => {
+                let mut result = vec![name.clone()];
+                result.extend(boxed_members.name_path());
+                result
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum ResolvedDeclaredName {
+    // A -> A!
+    // A AS STRING
+    // A$, A% etc
+    BuiltIn(QualifiedName),
+
+    // DIM C AS Card
+    UserDefined(UserDefinedName),
+
+    // C.Suit, Name.Address, Name.Address.PostCode
+    Many(UserDefinedName, Members),
+}
+
+impl ResolvedDeclaredName {
+    #[cfg(test)]
+    pub fn parse(s: &str) -> Self {
+        Self::BuiltIn(QualifiedName::try_from(s).unwrap())
+    }
+
+    #[cfg(test)]
+    pub fn user_defined(name: &str, type_name: &str) -> Self {
+        Self::UserDefined(UserDefinedName {
+            name: name.into(),
+            type_name: type_name.into(),
+        })
+    }
+
+    pub fn type_definition(&self) -> ResolvedTypeDefinition {
+        match self {
+            Self::BuiltIn(QualifiedName { qualifier, .. }) => {
+                ResolvedTypeDefinition::BuiltIn(*qualifier)
+            }
+            Self::UserDefined(UserDefinedName { type_name, .. }) => {
+                ResolvedTypeDefinition::UserDefined(type_name.clone())
+            }
+            Self::Many(_, members) => members.type_definition(),
+        }
+    }
+
+    pub fn name_path(&self) -> Vec<BareName> {
+        match self {
+            Self::BuiltIn(QualifiedName { name, .. }) => vec![name.clone()],
+            Self::UserDefined(UserDefinedName { name, .. }) => vec![name.clone()],
+            Self::Many(UserDefinedName { name, .. }, members) => {
+                let mut result = vec![name.clone()];
+                result.extend(members.name_path());
+                result
+            }
+        }
     }
 }
 
 impl AsRef<BareName> for ResolvedDeclaredName {
     fn as_ref(&self) -> &BareName {
-        &self.name
+        match self {
+            Self::BuiltIn(QualifiedName { name, .. }) => name,
+            Self::UserDefined(UserDefinedName { name, .. }) => name,
+            Self::Many(UserDefinedName { name, .. }, _) => name,
+        }
     }
 }
 
-pub type ResolvedDeclaredNames = Vec<ResolvedDeclaredName>;
 pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;
 pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;
 
@@ -312,7 +376,7 @@ pub struct ResolvedElement {
     pub element_type: ResolvedElementType,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ResolvedElementType {
     Integer,
     Long,
@@ -320,4 +384,17 @@ pub enum ResolvedElementType {
     Double,
     String(u32),
     UserDefined(BareName),
+}
+
+impl ResolvedElementType {
+    pub fn type_definition(&self) -> ResolvedTypeDefinition {
+        match self {
+            Self::Integer => ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
+            Self::Long => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
+            Self::Single => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
+            Self::Double => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
+            Self::String(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
+            Self::UserDefined(type_name) => ResolvedTypeDefinition::UserDefined(type_name.clone()),
+        }
+    }
 }

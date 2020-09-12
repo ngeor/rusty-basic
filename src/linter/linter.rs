@@ -239,28 +239,17 @@ mod tests {
                 linter_ok(program),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName::new(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
-                        )
-                        .at_rc(2, 17)
+                        ResolvedDeclaredName::parse("A!").at_rc(2, 17)
                     ))
                     .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
-                        ),
+                        ResolvedDeclaredName::parse("A!"),
                         Expression::IntegerLiteral(42).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
-                        ))
-                        .at_rc(4, 19)]
+                        vec![Expression::Variable(ResolvedDeclaredName::parse("A!")).at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
                 ]
@@ -278,30 +267,17 @@ mod tests {
                 linter_ok(program),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::BuiltIn(
-                                TypeQualifier::DollarString
-                            )
-                        }
-                        .at_rc(2, 17)
+                        ResolvedDeclaredName::parse("A$").at_rc(2, 17)
                     ))
                     .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                        ),
+                        ResolvedDeclaredName::parse("A$"),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                        ))
-                        .at_rc(4, 19)]
+                        vec![Expression::Variable(ResolvedDeclaredName::parse("A$")).at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
                 ]
@@ -319,30 +295,17 @@ mod tests {
                 linter_ok(program),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::BuiltIn(
-                                TypeQualifier::DollarString
-                            )
-                        }
-                        .at_rc(2, 17)
+                        ResolvedDeclaredName::parse("A$").at_rc(2, 17)
                     ))
                     .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                        ),
+                        ResolvedDeclaredName::parse("A$"),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                        ))
-                        .at_rc(4, 19)]
+                        vec![Expression::Variable(ResolvedDeclaredName::parse("A$")).at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
                 ]
@@ -365,31 +328,17 @@ mod tests {
                 program,
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
-                        }
-                        .at_rc(6, 17)
+                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName {
-                            name: "B".into(),
-                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
-                        }
-                        .at_rc(7, 17)
+                        ResolvedDeclaredName::user_defined("B", "Card").at_rc(7, 17)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::UserDefined("Card".into())
-                        ),
-                        Expression::Variable(ResolvedDeclaredName::single(
-                            "B",
-                            ResolvedTypeDefinition::UserDefined("Card".into())
-                        ))
-                        .at_rc(8, 17)
+                        ResolvedDeclaredName::user_defined("A", "Card"),
+                        Expression::Variable(ResolvedDeclaredName::user_defined("B", "Card"))
+                            .at_rc(8, 17)
                     ))
                     .at_rc(8, 13)
                 ]
@@ -436,39 +385,35 @@ mod tests {
                 linter_ok(input),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
-                        }
-                        .at_rc(6, 17)
+                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        vec![
-                            ResolvedDeclaredName::new(
-                                "A",
-                                ResolvedTypeDefinition::UserDefined("Card".into())
-                            ),
-                            ResolvedDeclaredName::new(
-                                "Value",
-                                ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
-                            )
-                        ],
+                        ResolvedDeclaredName::Many(
+                            UserDefinedName {
+                                name: "A".into(),
+                                type_name: "Card".into()
+                            },
+                            Members::Leaf {
+                                name: "Value".into(),
+                                element_type: ResolvedElementType::Integer
+                            }
+                        ),
                         Expression::IntegerLiteral(42).at_rc(7, 23)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(vec![
-                            ResolvedDeclaredName::new(
-                                "A",
-                                ResolvedTypeDefinition::UserDefined("Card".into())
-                            ),
-                            ResolvedDeclaredName::new(
-                                "Value",
-                                ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
-                            )
-                        ])
+                        vec![Expression::Variable(ResolvedDeclaredName::Many(
+                            UserDefinedName {
+                                name: "A".into(),
+                                type_name: "Card".into()
+                            },
+                            Members::Leaf {
+                                name: "Value".into(),
+                                element_type: ResolvedElementType::Integer
+                            }
+                        ))
                         .at_rc(8, 19)]
                     ))
                     .at_rc(8, 13)
@@ -491,39 +436,35 @@ mod tests {
                 linter_ok(input),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName {
-                            name: "A".into(),
-                            type_definition: ResolvedTypeDefinition::UserDefined("Card".into())
-                        }
-                        .at_rc(6, 17)
+                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        vec![
-                            ResolvedDeclaredName::new(
-                                "A",
-                                ResolvedTypeDefinition::UserDefined("Card".into())
-                            ),
-                            ResolvedDeclaredName::new(
-                                "Suit",
-                                ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                            )
-                        ],
+                        ResolvedDeclaredName::Many(
+                            UserDefinedName {
+                                name: "A".into(),
+                                type_name: "Card".into()
+                            },
+                            Members::Leaf {
+                                name: "Suit".into(),
+                                element_type: ResolvedElementType::String(9)
+                            }
+                        ),
                         Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(vec![
-                            ResolvedDeclaredName::new(
-                                "A",
-                                ResolvedTypeDefinition::UserDefined("Card".into())
-                            ),
-                            ResolvedDeclaredName::new(
-                                "Suit",
-                                ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                            )
-                        ])
+                        vec![Expression::Variable(ResolvedDeclaredName::Many(
+                            UserDefinedName {
+                                name: "A".into(),
+                                type_name: "Card".into()
+                            },
+                            Members::Leaf {
+                                name: "Suit".into(),
+                                element_type: ResolvedElementType::String(9)
+                            }
+                        ))
                         .at_rc(8, 19)]
                     ))
                     .at_rc(8, 13)

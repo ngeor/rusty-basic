@@ -156,18 +156,15 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
             Instruction::Dim(resolved_declared_name) => {
                 let v = Variant::default_variant_types(
-                    &resolved_declared_name.type_definition,
+                    &resolved_declared_name.type_definition(),
                     self.user_defined_types.as_ref(),
                 );
                 self.context_mut()
-                    .set_variable(vec![resolved_declared_name.clone()], v)
-                    .with_err_at(pos)?;
+                    .set_variable(resolved_declared_name.clone(), v);
             }
             Instruction::Store(n) => {
                 let v = self.get_a();
-                self.context_mut()
-                    .set_variable(n.clone(), v)
-                    .with_err_at(pos)?;
+                self.context_mut().set_variable(n.clone(), v);
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
@@ -308,29 +305,24 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::PushUnnamedRefParam(name) => {
                 self.context_mut()
                     .demand_args()
-                    .push_back_unnamed_ref_parameter(name.clone())
-                    .with_err_at(pos)?;
+                    .push_back_unnamed_ref_parameter(name.clone());
             }
             Instruction::PushUnnamedValParam => {
                 let v = self.get_a();
-
                 self.context_mut()
                     .demand_args()
-                    .push_back_unnamed_val_parameter(v)
-                    .with_err_at(pos)?;
+                    .push_back_unnamed_val_parameter(v);
             }
             Instruction::SetNamedRefParam(named_ref_param) => {
                 self.context_mut()
                     .demand_args()
-                    .set_named_ref_parameter(named_ref_param)
-                    .with_err_at(pos)?;
+                    .set_named_ref_parameter(named_ref_param);
             }
             Instruction::SetNamedValParam(param_q_name) => {
                 let v = self.get_a();
                 self.context_mut()
                     .demand_args()
-                    .set_named_val_parameter(param_q_name, v)
-                    .with_err_at(pos)?;
+                    .set_named_val_parameter(param_q_name, v);
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
@@ -439,7 +431,6 @@ mod tests {
     use crate::interpreter::test_utils::*;
     use crate::linter::*;
     use crate::variant::Variant;
-    use std::convert::TryFrom;
 
     #[test]
     fn test_interpreter_fixture_hello1() {
@@ -516,10 +507,7 @@ mod tests {
         macro_rules! assert_assign_ok {
             ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
                 let interpreter = interpret($program);
-                let QualifiedName { name, qualifier } =
-                    QualifiedName::try_from($expected_variable_name).unwrap();
-                let resolved_declared_name =
-                    ResolvedDeclaredName::single(name, ResolvedTypeDefinition::BuiltIn(qualifier));
+                let resolved_declared_name = ResolvedDeclaredName::parse($expected_variable_name);
                 assert_eq!(
                     interpreter
                         .context_ref()

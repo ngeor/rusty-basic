@@ -43,8 +43,8 @@ impl InstructionGenerator {
                     );
                 }
                 _ => {
-                    self.generate_expression_instructions(e.at(pos));
-                    self.push(Instruction::SetNamedValParam(vec![n]), pos);
+                    self.generate_expression_instructions_casting(e.at(pos), n.type_definition());
+                    self.push(Instruction::SetNamedValParam(n), pos);
                 }
             }
         }

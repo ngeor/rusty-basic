@@ -4,6 +4,24 @@ use crate::linter::*;
 use crate::variant::Variant;
 
 impl InstructionGenerator {
+    pub fn generate_expression_instructions_casting(
+        &mut self,
+        expr_node: ExpressionNode,
+        target_type: ResolvedTypeDefinition,
+    ) {
+        let t = expr_node.try_type_definition().unwrap();
+        let pos = expr_node.pos();
+        self.generate_expression_instructions(expr_node);
+        if t != target_type {
+            match target_type {
+                ResolvedTypeDefinition::BuiltIn(q) => {
+                    self.push(Instruction::Cast(q), pos);
+                }
+                _ => panic!("Cannot cast user defined type"),
+            }
+        }
+    }
+
     pub fn generate_expression_instructions(&mut self, expr_node: ExpressionNode) {
         let Locatable { element: e, pos } = expr_node;
         match e {
@@ -26,10 +44,10 @@ impl InstructionGenerator {
                 self.push(Instruction::CopyVarToA(name), pos);
             }
             Expression::Constant(name) => {
-                let QualifiedName { name, qualifier } = name;
-                let x =
-                    ResolvedDeclaredName::single(name, ResolvedTypeDefinition::BuiltIn(qualifier));
-                self.push(Instruction::CopyVarToA(x), pos);
+                self.push(
+                    Instruction::CopyVarToA(ResolvedDeclaredName::BuiltIn(name)),
+                    pos,
+                );
             }
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);

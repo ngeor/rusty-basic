@@ -213,26 +213,12 @@ impl InstructionGenerator {
 
     pub fn generate_assignment_instructions(
         &mut self,
-        l: ResolvedDeclaredNames,
+        l: ResolvedDeclaredName,
         r: ExpressionNode,
         pos: Location,
     ) {
-        let left_type = l.last().unwrap().type_definition.clone();
-        let right_type = r.try_type_definition().unwrap();
-
-        self.generate_expression_instructions(r);
-
-        if left_type != right_type {
-            match left_type {
-                ResolvedTypeDefinition::BuiltIn(q) => {
-                    self.push(Instruction::Cast(q), pos);
-                }
-                _ => {
-                    panic!("Last part cannot be non-built-in type");
-                }
-            }
-        }
-
+        let left_type = l.type_definition();
+        self.generate_expression_instructions_casting(r, left_type);
         self.push(Instruction::Store(l), pos);
     }
 }

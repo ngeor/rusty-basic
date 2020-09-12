@@ -4,11 +4,10 @@ use crate::instruction_generator::InstructionNode;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
-use crate::linter::{ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedType};
-use crate::parser::{parse_main_file, parse_main_str, QualifiedName};
+use crate::linter::{ResolvedDeclaredName, ResolvedUserDefinedType};
+use crate::parser::{parse_main_file, parse_main_str};
 use crate::variant::Variant;
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::fs::File;
 
 pub fn generate_instructions<T>(
@@ -143,9 +142,7 @@ impl Stdlib for MockStdlib {
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn get_variable_str(&self, name: &str) -> Variant {
-        let QualifiedName { name, qualifier } = QualifiedName::try_from(name).unwrap();
-        let resolved_declared_name =
-            ResolvedDeclaredName::single(name, ResolvedTypeDefinition::BuiltIn(qualifier));
+        let resolved_declared_name = ResolvedDeclaredName::parse(name);
         self.context_ref()
             .get_r_value(&resolved_declared_name)
             .unwrap()

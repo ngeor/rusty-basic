@@ -7,7 +7,7 @@ use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::{
-    ResolvedDeclaredNames, ResolvedElement, ResolvedElementType, ResolvedTypeDefinition,
+    ResolvedDeclaredName, ResolvedElement, ResolvedElementType, ResolvedTypeDefinition,
     ResolvedUserDefinedType,
 };
 use crate::parser::TypeQualifier;
@@ -230,14 +230,14 @@ mod input {
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         a: &Argument,
-        n: &ResolvedDeclaredNames,
+        n: &ResolvedDeclaredName,
     ) -> Result<(), QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        let variable_value = match n.last().unwrap().type_definition {
+        let variable_value = match n.type_definition() {
             ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle) => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
@@ -249,11 +249,12 @@ mod input {
             }
             _ => unimplemented!(),
         };
+        // TODO casting
         interpreter
             .context_mut()
             .demand_sub()
-            .set_value_to_popped_arg(a, variable_value)
-            .with_err_no_pos()
+            .set_value_to_popped_arg(a, variable_value);
+        Ok(())
     }
 
     fn parse_single_input(s: String) -> Result<f32, QError> {
@@ -686,7 +687,7 @@ mod line_input {
     fn line_input_one<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &ResolvedDeclaredNames,
+        n: &ResolvedDeclaredName,
         file_handle: FileHandle,
     ) -> Result<(), QErrorNode> {
         if file_handle.is_valid() {
@@ -699,7 +700,7 @@ mod line_input {
     fn line_input_one_file<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &ResolvedDeclaredNames,
+        n: &ResolvedDeclaredName,
         file_handle: FileHandle,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
@@ -707,12 +708,15 @@ mod line_input {
             .read_line(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        match n.last().unwrap().type_definition {
-            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString) => interpreter
-                .context_mut()
-                .demand_sub()
-                .set_value_to_popped_arg(arg, Variant::VString(s))
-                .with_err_no_pos(),
+        match n.type_definition() {
+            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
+                // TODO casting
+                interpreter
+                    .context_mut()
+                    .demand_sub()
+                    .set_value_to_popped_arg(arg, Variant::VString(s));
+                Ok(())
+            }
             _ => unimplemented!(),
         }
     }
@@ -720,18 +724,19 @@ mod line_input {
     fn line_input_one_stdin<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        _n: &ResolvedDeclaredNames,
+        _n: &ResolvedDeclaredName,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
+        // TODO casting
         interpreter
             .context_mut()
             .demand_sub()
-            .set_value_to_popped_arg(arg, Variant::VString(s))
-            .with_err_no_pos()
+            .set_value_to_popped_arg(arg, Variant::VString(s));
+        Ok(())
     }
 }
 

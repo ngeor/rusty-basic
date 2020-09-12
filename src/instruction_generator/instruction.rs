@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{QualifiedName, ResolvedDeclaredName, ResolvedDeclaredNames, TypeQualifier};
+use crate::linter::{QualifiedName, ResolvedDeclaredName, TypeQualifier};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
@@ -9,7 +9,7 @@ pub enum Instruction {
     /// Loads a value into register A
     Load(Variant),
     /// Stores a value from register A
-    Store(ResolvedDeclaredNames),
+    Store(ResolvedDeclaredName),
     /// Stores a value from register A into a constant
     StoreConst(QualifiedName),
     CopyAToB,
@@ -39,7 +39,7 @@ pub enum Instruction {
     Label(CaseInsensitiveString),
     UnresolvedJump(CaseInsensitiveString),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
-    CopyVarToA(ResolvedDeclaredNames),
+    CopyVarToA(ResolvedDeclaredName),
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
     Halt,
@@ -54,12 +54,12 @@ pub enum Instruction {
     PushStack,
     PopStack,
 
-    PushUnnamedRefParam(ResolvedDeclaredNames),
+    PushUnnamedRefParam(ResolvedDeclaredName),
 
     /// Pushes the contents of register A at the end of the unnamed stack
     PushUnnamedValParam,
     SetNamedRefParam(NamedRefParam),
-    SetNamedValParam(ResolvedDeclaredNames),
+    SetNamedValParam(ResolvedDeclaredName),
 
     Throw(QError),
 
@@ -83,5 +83,5 @@ pub struct NamedRefParam {
     pub parameter_name: ResolvedDeclaredName,
 
     /// The name of the argument as passed at the call location
-    pub argument_name: ResolvedDeclaredNames,
+    pub argument_name: ResolvedDeclaredName,
 }

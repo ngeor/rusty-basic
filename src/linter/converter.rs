@@ -217,9 +217,9 @@ impl ConverterImpl {
             // parameter might be hiding a function name so it takes precedence
             Err(QError::DuplicateDefinition)
         } else {
-            let resolved_declared_name: ResolvedDeclaredName =
+            let resolved_declared_names: ResolvedDeclaredNames =
                 self.context.resolve_assignment(&n, &self.resolver)?;
-            Ok(LName::Variable(resolved_declared_name))
+            Ok(LName::Variable(resolved_declared_names))
         }
     }
 
@@ -361,14 +361,10 @@ impl ConverterImpl {
         let converted_expr: ExpressionNode = self.convert(expression_node)?;
         let result_q: ResolvedTypeDefinition = converted_expr.try_type_definition()?;
         match resolved_l_name {
-            LName::Variable(ResolvedDeclaredName {
-                name,
-                type_definition,
-            }) => {
-                if result_q.can_cast_to(&type_definition) {
+            LName::Variable(resolved_declared_names) => {
+                if result_q.can_cast_to(&resolved_declared_names) {
                     Ok(Statement::Assignment(
-                        // TODO fix me
-                        ResolvedDeclaredName::single(name, type_definition),
+                        resolved_declared_names,
                         converted_expr,
                     ))
                 } else {
@@ -659,6 +655,6 @@ impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
 
 #[derive(Debug)]
 enum LName {
-    Variable(ResolvedDeclaredName),
+    Variable(ResolvedDeclaredNames),
     Function(QualifiedName),
 }

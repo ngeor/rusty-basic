@@ -231,6 +231,13 @@ impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
     }
 }
 
+impl CanCastTo<&ResolvedDeclaredNames> for ResolvedTypeDefinition {
+    fn can_cast_to(&self, other: &ResolvedDeclaredNames) -> bool {
+        let ResolvedDeclaredName { type_definition, .. } = other.last().expect("Should have at least one element");
+        self.can_cast_to(type_definition)
+    }
+}
+
 impl From<TypeDefinition> for ResolvedTypeDefinition {
     fn from(type_definition: TypeDefinition) -> Self {
         match type_definition {
@@ -289,6 +296,12 @@ pub struct ResolvedUserDefinedType {
     pub name: BareName,
     /// The elements
     pub elements: Vec<ResolvedElement>,
+}
+
+impl ResolvedUserDefinedType {
+    pub fn find_element(&self, element_name: &BareName) -> Option<&ResolvedElement> {
+        self.elements.iter().find(|e| &e.name == element_name)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

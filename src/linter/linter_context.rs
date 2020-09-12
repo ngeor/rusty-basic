@@ -1,7 +1,7 @@
 use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
-    Expression, ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedType,
+    Expression, ResolvedDeclaredName, ResolvedDeclaredNames, ResolvedTypeDefinition, ResolvedUserDefinedType, ResolvedElement, ResolvedElementType
 };
 use crate::parser::{
     BareName, CanCastTo, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier,
@@ -68,18 +68,67 @@ pub struct LinterContext {
 }
 
 impl LinterContext {
+    fn get_user_defined_type_name(&self, name: &BareName) -> Option<&BareName> {
+        match self.names.get(name) {
+            Some(resolved_type_definitions) => {
+                match resolved_type_definitions {
+                    ResolvedTypeDefinitions::UserDefined(type_name) => Some(type_name),
+                    _ => None
+                }
+            }
+            None => None
+        }
+    }
+
+    fn resolve_member(&self, name: &BareName) -> Result<Vec<ResolvedDeclaredName>, QError>  {
+        let s : String = name.clone().into();
+        let v : Vec<&str> = s.split('.').collect();
+        let first: BareName = v[0].into();
+        match self.get_user_defined_type_name(&first) {
+            Some(type_name) => {
+                let mut result: Vec<ResolvedDeclaredName> = vec![];
+                result.push(ResolvedDeclaredName::new(first, ResolvedTypeDefinition::UserDefined(type_name.clone())));
+                if v.len() > 1 {
+                    // the first part matched, the rest must match too
+                    let second: BareName = v[1].into();
+                    let user_defined_type: &ResolvedUserDefinedType =  self.user_defined_types.get(type_name).expect("should have found user defined type");
+                    match user_defined_type.find_element(&second) {
+                        Some(ResolvedElement { name, element_type })  => {
+                            let second_type_definition = match element_type {
+                                ResolvedElementType::Integer => ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
+                                ResolvedElementType::Long => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
+                                ResolvedElementType::Single => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
+                                ResolvedElementType::Double => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
+                                ResolvedElementType::String(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
+                                ResolvedElementType::UserDefined(_) => unimplemented!()
+                            };
+                            result.push(ResolvedDeclaredName::new(
+                                second,
+                                second_type_definition
+                            ));
+                        }
+                        None => {
+                            // trying to reference A.Something where Something is not a member of the type of A
+                            return Err(QError::syntax_error("Element not defined"));
+                        }
+                    }
+                }
+                Ok(result)
+            }
+            None => {
+                // No user defined variable starts with the first dotted name
+                Ok(vec![])
+            }
+        }
+    }
+
     fn ensure_not_clashing_with_user_defined_var(&self, name: &BareName) -> Result<(), QError> {
         if name.contains('.') {
             let s: String = name.clone().into();
             let v: Vec<&str> = s.split('.').collect();
             let first: BareName = v[0].into();
-            match self.names.get(&first) {
-                Some(resolved_type_definitions) => match resolved_type_definitions {
-                    ResolvedTypeDefinitions::UserDefined(_) => {
-                        Err(QError::syntax_error("Expected: , or end-of-statement"))
-                    }
-                    _ => Ok(()),
-                },
+            match self.get_user_defined_type_name(&first) {
+                Some(_) => Err(QError::syntax_error("Expected: , or end-of-statement")),
                 None => Ok(()),
             }
         } else {
@@ -250,8 +299,9 @@ impl LinterContext {
         &self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<ResolvedDeclaredName>, QError> {
-        match self.names.get(name.as_ref()) {
+    ) -> Result<Option<ResolvedDeclaredNames>, QError> {
+        let bare_name: &BareName = name.as_ref();
+        match self.names.get(bare_name) {
             Some(resolved_type_definitions) => {
                 match resolved_type_definitions {
                     ResolvedTypeDefinitions::Constant(_) => {
@@ -264,22 +314,20 @@ impl LinterContext {
                             Name::Bare(b) => {
                                 let qualifier: TypeQualifier = resolver.resolve(b);
                                 if existing_set.contains(&qualifier) {
-                                    Ok(Some(ResolvedDeclaredName {
-                                        name: b.clone(),
-                                        type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
-                                    }))
+                                    Ok(Some(ResolvedDeclaredName::single(  b.clone(),
+                                        ResolvedTypeDefinition::BuiltIn(qualifier),
+                                    )))
                                 } else {
                                     Ok(None)
                                 }
                             }
                             Name::Qualified { name, qualifier } => {
                                 if existing_set.contains(qualifier) {
-                                    Ok(Some(ResolvedDeclaredName {
-                                        name: name.clone(),
-                                        type_definition: ResolvedTypeDefinition::BuiltIn(
+                                    Ok(Some(ResolvedDeclaredName::single(  name.clone(),
+                                          ResolvedTypeDefinition::BuiltIn(
                                             *qualifier,
-                                        ),
-                                    }))
+                                        ))
+                                    ))
                                 } else {
                                     Ok(None)
                                 }
@@ -289,16 +337,15 @@ impl LinterContext {
                     ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
-                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName {
-                                name: b.clone(),
-                                type_definition: ResolvedTypeDefinition::BuiltIn(*q),
-                            })),
+                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName::single( b.clone(),
+                                  ResolvedTypeDefinition::BuiltIn(*q)
+                            ))),
                             Name::Qualified { name, qualifier } => {
                                 if q == qualifier {
-                                    Ok(Some(ResolvedDeclaredName {
-                                        name: name.clone(),
-                                        type_definition: ResolvedTypeDefinition::BuiltIn(*q),
-                                    }))
+                                    Ok(Some(ResolvedDeclaredName::single(
+                                         name.clone(),
+                                         ResolvedTypeDefinition::BuiltIn(*q))
+                                    ))
                                 } else {
                                     Err(QError::DuplicateDefinition)
                                 }
@@ -308,16 +355,23 @@ impl LinterContext {
                     ResolvedTypeDefinitions::UserDefined(u) => {
                         // only possible if the name is bare
                         match name {
-                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName {
-                                name: b.clone(),
-                                type_definition: ResolvedTypeDefinition::UserDefined(u.clone()),
-                            })),
+                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName::single(
+                                  b.clone(),
+                                  ResolvedTypeDefinition::UserDefined(u.clone())
+                            ))),
                             _ => Err(QError::TypeMismatch),
                         }
                     }
                 }
             }
-            None => Ok(None),
+            None => {
+                let names = if name.is_bare() { self.resolve_member(bare_name)? } else { vec![] };
+                if names.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(names))
+                }
+            }
         }
     }
 
@@ -387,7 +441,14 @@ impl LinterContext {
                     }
                 }
             },
-            None => Ok(None),
+            None => {
+                let names = if name.is_bare() { self.resolve_member(bare_name)? } else { vec![] };
+                if names.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(Expression::Variable(names)))
+                }
+            }
         }
     }
 
@@ -424,7 +485,7 @@ impl LinterContext {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<ResolvedDeclaredName, QError> {
+    ) -> Result<ResolvedDeclaredNames, QError> {
         let QualifiedName { name, qualifier } = name.resolve_into(resolver);
         match self.names.get_mut(name.as_ref()) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
@@ -433,10 +494,10 @@ impl LinterContext {
                         Err(QError::DuplicateDefinition)
                     } else {
                         existing_set.insert(qualifier);
-                        Ok(ResolvedDeclaredName {
+                        Ok(ResolvedDeclaredName::single(
                             name,
-                            type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
-                        })
+                            ResolvedTypeDefinition::BuiltIn(qualifier),
+                        ))
                     }
                 }
                 _ => Err(QError::DuplicateDefinition),
@@ -446,10 +507,10 @@ impl LinterContext {
                 s.insert(qualifier);
                 self.names
                     .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
-                Ok(ResolvedDeclaredName {
+                Ok(ResolvedDeclaredName::single(
                     name,
-                    type_definition: ResolvedTypeDefinition::BuiltIn(qualifier),
-                })
+                    ResolvedTypeDefinition::BuiltIn(qualifier),
+                ))
             }
         }
     }
@@ -459,8 +520,8 @@ impl LinterContext {
         name: &Name,
         resolver: &T,
     ) -> Result<Expression, QError> {
-        let resolved_declared_name = self.resolve_missing_name_in_assignment(name, resolver)?;
-        Ok(Expression::Variable(vec![resolved_declared_name]))
+        let resolved_declared_names = self.resolve_missing_name_in_assignment(name, resolver)?;
+        Ok(Expression::Variable(resolved_declared_names))
     }
 
     pub fn push_function_context(self, name: &BareName) -> Self {
@@ -552,7 +613,7 @@ impl LinterContext {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<ResolvedDeclaredName, QError> {
+    ) -> Result<ResolvedDeclaredNames, QError> {
         match self.do_resolve_assignment(name, resolver)? {
             Some(x) => Ok(x),
             None => {

@@ -444,19 +444,31 @@ mod tests {
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::single(
+                        vec![
+                        ResolvedDeclaredName::new(
                             "A",
                             ResolvedTypeDefinition::UserDefined("Card".into())
                         ),
+                        ResolvedDeclaredName::new(
+                            "Value",
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
+                        )
+                        ],
                         Expression::IntegerLiteral(42).at_rc(7, 23)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                        ))
+                        vec![Expression::Variable(vec![
+                            ResolvedDeclaredName::new(
+                                "A",
+                                ResolvedTypeDefinition::UserDefined("Card".into())
+                            ),
+                            ResolvedDeclaredName::new(
+                                "Value",
+                                ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
+                            )
+                            ])
                         .at_rc(8, 19)]
                     ))
                     .at_rc(8, 13)
@@ -487,19 +499,31 @@ mod tests {
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::single(
+                        vec![
+                        ResolvedDeclaredName::new(
                             "A",
                             ResolvedTypeDefinition::UserDefined("Card".into())
                         ),
+                        ResolvedDeclaredName::new(
+                            "Suit",
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
+                        )
+                        ],
                         Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::single(
-                            "A",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                        ))
+                        vec![Expression::Variable(vec![
+                            ResolvedDeclaredName::new(
+                                "A",
+                                ResolvedTypeDefinition::UserDefined("Card".into())
+                            ),
+                            ResolvedDeclaredName::new(
+                                "Suit",
+                                ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
+                            )
+                            ])
                         .at_rc(8, 19)]
                     ))
                     .at_rc(8, 13)
@@ -1120,7 +1144,8 @@ mod tests {
 
             DIM c AS Card
             PRINT c.Suite";
-            assert_linter_err!(input, QError::syntax_error("Element not defined"), 8, 20);
+            // TODO QBasic reports the error at the dot
+            assert_linter_err!(input, QError::syntax_error("Element not defined"), 8, 19);
         }
 
         #[test]

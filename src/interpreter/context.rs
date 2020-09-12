@@ -1,9 +1,8 @@
 use crate::common::{CaseInsensitiveString, QError};
 use crate::instruction_generator::NamedRefParam;
-use crate::linter::casting;
 use crate::linter::{
-    QualifiedName, ResolvedDeclaredName, ResolvedDeclaredNames,
-    ResolvedTypeDefinition, ResolvedUserDefinedType, TypeQualifier,
+    QualifiedName, ResolvedDeclaredName, ResolvedDeclaredNames, ResolvedTypeDefinition,
+    ResolvedUserDefinedType,
 };
 use crate::variant::{DefaultForType, Variant};
 use std::collections::{HashMap, VecDeque};
@@ -28,28 +27,6 @@ impl Argument {
     }
 }
 
-//
-// Cast
-//
-
-trait Cast<T> {
-    fn cast(self, qualifier: T) -> Result<Self, QError>
-    where
-        Self: Sized;
-}
-
-impl Cast<TypeQualifier> for Variant {
-    fn cast(self, qualifier: TypeQualifier) -> Result<Self, QError> {
-        casting::cast(self, qualifier)
-    }
-}
-
-impl Cast<ResolvedTypeDefinition> for Variant {
-    fn cast(self, resolved_type_definition: ResolvedTypeDefinition) -> Result<Self, QError> {
-        self.cast_for_type_definition(resolved_type_definition)
-    }
-}
-
 // ========================================================
 // ConstantMap
 // ========================================================
@@ -65,7 +42,7 @@ impl ConstantMap {
 
 trait ConstantMapTrait<K> {
     fn get(&self, name: &K) -> Option<&Variant>;
-    fn insert(&mut self, name: K, value: Variant) -> Result<(), QError>;
+    fn insert(&mut self, name: K, value: Variant);
 }
 
 impl ConstantMapTrait<QualifiedName> for ConstantMap {
@@ -73,13 +50,11 @@ impl ConstantMapTrait<QualifiedName> for ConstantMap {
         self.0.get(name.as_ref())
     }
 
-    fn insert(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    fn insert(&mut self, name: QualifiedName, value: Variant) {
         let QualifiedName {
-            name: bare_name,
-            qualifier,
+            name: bare_name, ..
         } = name;
-        self.0.insert(bare_name, value.cast(qualifier)?);
-        Ok(())
+        self.0.insert(bare_name, value);
     }
 }
 
@@ -88,15 +63,14 @@ impl ConstantMapTrait<ResolvedDeclaredName> for ConstantMap {
         self.0.get(name.as_ref())
     }
 
-    fn insert(&mut self, name: ResolvedDeclaredName, value: Variant) -> Result<(), QError> {
+    fn insert(&mut self, name: ResolvedDeclaredName, value: Variant) {
         let ResolvedDeclaredName {
             name,
             type_definition,
         } = name;
         match type_definition {
-            ResolvedTypeDefinition::BuiltIn(q) => {
-                self.0.insert(name, value.cast(q)?);
-                Ok(())
+            ResolvedTypeDefinition::BuiltIn(_) => {
+                self.0.insert(name, value);
             }
             ResolvedTypeDefinition::UserDefined(_) => panic!("user defined type constant"),
         }
@@ -112,7 +86,7 @@ impl ConstantMapTrait<ResolvedDeclaredNames> for ConstantMap {
         }
     }
 
-    fn insert(&mut self, _name: ResolvedDeclaredNames, _value: Variant) -> Result<(), QError> {
+    fn insert(&mut self, _name: ResolvedDeclaredNames, _value: Variant) {
         panic!("user defined name constant")
     }
 }
@@ -264,7 +238,7 @@ impl RootContext {
         }
     }
 
-    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) {
         self.constants.insert(name, value)
     }
 
@@ -401,7 +375,7 @@ impl SubContext {
         self.variables.get(name)
     }
 
-    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) {
         self.constants.insert(name, value)
     }
 
@@ -563,7 +537,7 @@ impl Context {
         }
     }
 
-    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) -> Result<(), QError> {
+    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) {
         match self {
             Self::Root(r) => r.set_constant(name, value),
             Self::Sub(s) => s.set_constant(name, value),

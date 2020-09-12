@@ -7,8 +7,8 @@ use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::{
-    ResolvedDeclaredNames, ResolvedElement, ResolvedElementType,
-    ResolvedTypeDefinition, ResolvedUserDefinedType,
+    ResolvedDeclaredNames, ResolvedElement, ResolvedElementType, ResolvedTypeDefinition,
+    ResolvedUserDefinedType,
 };
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};

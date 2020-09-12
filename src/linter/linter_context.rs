@@ -1,7 +1,8 @@
 use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
-    Expression, ResolvedDeclaredName, ResolvedDeclaredNames, ResolvedTypeDefinition, ResolvedUserDefinedType, ResolvedElement, ResolvedElementType
+    Expression, ResolvedDeclaredName, ResolvedDeclaredNames, ResolvedElement, ResolvedElementType,
+    ResolvedTypeDefinition, ResolvedUserDefinedType,
 };
 use crate::parser::{
     BareName, CanCastTo, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier,
@@ -70,42 +71,53 @@ pub struct LinterContext {
 impl LinterContext {
     fn get_user_defined_type_name(&self, name: &BareName) -> Option<&BareName> {
         match self.names.get(name) {
-            Some(resolved_type_definitions) => {
-                match resolved_type_definitions {
-                    ResolvedTypeDefinitions::UserDefined(type_name) => Some(type_name),
-                    _ => None
-                }
-            }
-            None => None
+            Some(resolved_type_definitions) => match resolved_type_definitions {
+                ResolvedTypeDefinitions::UserDefined(type_name) => Some(type_name),
+                _ => None,
+            },
+            None => None,
         }
     }
 
-    fn resolve_member(&self, name: &BareName) -> Result<Vec<ResolvedDeclaredName>, QError>  {
-        let s : String = name.clone().into();
-        let v : Vec<&str> = s.split('.').collect();
+    fn resolve_member(&self, name: &BareName) -> Result<Vec<ResolvedDeclaredName>, QError> {
+        let s: String = name.clone().into();
+        let v: Vec<&str> = s.split('.').collect();
         let first: BareName = v[0].into();
         match self.get_user_defined_type_name(&first) {
             Some(type_name) => {
                 let mut result: Vec<ResolvedDeclaredName> = vec![];
-                result.push(ResolvedDeclaredName::new(first, ResolvedTypeDefinition::UserDefined(type_name.clone())));
+                result.push(ResolvedDeclaredName::new(
+                    first,
+                    ResolvedTypeDefinition::UserDefined(type_name.clone()),
+                ));
                 if v.len() > 1 {
                     // the first part matched, the rest must match too
                     let second: BareName = v[1].into();
-                    let user_defined_type: &ResolvedUserDefinedType =  self.user_defined_types.get(type_name).expect("should have found user defined type");
+                    let user_defined_type: &ResolvedUserDefinedType = self
+                        .user_defined_types
+                        .get(type_name)
+                        .expect("should have found user defined type");
                     match user_defined_type.find_element(&second) {
-                        Some(ResolvedElement { name, element_type })  => {
+                        Some(ResolvedElement { element_type, .. }) => {
                             let second_type_definition = match element_type {
-                                ResolvedElementType::Integer => ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
-                                ResolvedElementType::Long => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
-                                ResolvedElementType::Single => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
-                                ResolvedElementType::Double => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-                                ResolvedElementType::String(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
-                                ResolvedElementType::UserDefined(_) => unimplemented!()
+                                ResolvedElementType::Integer => {
+                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
+                                }
+                                ResolvedElementType::Long => {
+                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong)
+                                }
+                                ResolvedElementType::Single => {
+                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
+                                }
+                                ResolvedElementType::Double => {
+                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble)
+                                }
+                                ResolvedElementType::String(_) => {
+                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
+                                }
+                                ResolvedElementType::UserDefined(_) => unimplemented!(),
                             };
-                            result.push(ResolvedDeclaredName::new(
-                                second,
-                                second_type_definition
-                            ));
+                            result.push(ResolvedDeclaredName::new(second, second_type_definition));
                         }
                         None => {
                             // trying to reference A.Something where Something is not a member of the type of A
@@ -314,7 +326,8 @@ impl LinterContext {
                             Name::Bare(b) => {
                                 let qualifier: TypeQualifier = resolver.resolve(b);
                                 if existing_set.contains(&qualifier) {
-                                    Ok(Some(ResolvedDeclaredName::single(  b.clone(),
+                                    Ok(Some(ResolvedDeclaredName::single(
+                                        b.clone(),
                                         ResolvedTypeDefinition::BuiltIn(qualifier),
                                     )))
                                 } else {
@@ -323,11 +336,10 @@ impl LinterContext {
                             }
                             Name::Qualified { name, qualifier } => {
                                 if existing_set.contains(qualifier) {
-                                    Ok(Some(ResolvedDeclaredName::single(  name.clone(),
-                                          ResolvedTypeDefinition::BuiltIn(
-                                            *qualifier,
-                                        ))
-                                    ))
+                                    Ok(Some(ResolvedDeclaredName::single(
+                                        name.clone(),
+                                        ResolvedTypeDefinition::BuiltIn(*qualifier),
+                                    )))
                                 } else {
                                     Ok(None)
                                 }
@@ -337,15 +349,16 @@ impl LinterContext {
                     ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
-                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName::single( b.clone(),
-                                  ResolvedTypeDefinition::BuiltIn(*q)
+                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName::single(
+                                b.clone(),
+                                ResolvedTypeDefinition::BuiltIn(*q),
                             ))),
                             Name::Qualified { name, qualifier } => {
                                 if q == qualifier {
                                     Ok(Some(ResolvedDeclaredName::single(
-                                         name.clone(),
-                                         ResolvedTypeDefinition::BuiltIn(*q))
-                                    ))
+                                        name.clone(),
+                                        ResolvedTypeDefinition::BuiltIn(*q),
+                                    )))
                                 } else {
                                     Err(QError::DuplicateDefinition)
                                 }
@@ -356,8 +369,8 @@ impl LinterContext {
                         // only possible if the name is bare
                         match name {
                             Name::Bare(b) => Ok(Some(ResolvedDeclaredName::single(
-                                  b.clone(),
-                                  ResolvedTypeDefinition::UserDefined(u.clone())
+                                b.clone(),
+                                ResolvedTypeDefinition::UserDefined(u.clone()),
                             ))),
                             _ => Err(QError::TypeMismatch),
                         }
@@ -365,7 +378,11 @@ impl LinterContext {
                 }
             }
             None => {
-                let names = if name.is_bare() { self.resolve_member(bare_name)? } else { vec![] };
+                let names = if name.is_bare() {
+                    self.resolve_member(bare_name)?
+                } else {
+                    vec![]
+                };
                 if names.is_empty() {
                     Ok(None)
                 } else {
@@ -442,7 +459,11 @@ impl LinterContext {
                 }
             },
             None => {
-                let names = if name.is_bare() { self.resolve_member(bare_name)? } else { vec![] };
+                let names = if name.is_bare() {
+                    self.resolve_member(bare_name)?
+                } else {
+                    vec![]
+                };
                 if names.is_empty() {
                     Ok(None)
                 } else {

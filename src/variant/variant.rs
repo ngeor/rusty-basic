@@ -385,7 +385,16 @@ impl Variant {
     ) -> Result<Variant, QError> {
         match type_definition {
             ResolvedTypeDefinition::BuiltIn(q) => crate::linter::casting::cast(self, q),
-            _ => unimplemented!(),
+            ResolvedTypeDefinition::UserDefined(n) => match &self {
+                Self::VUserDefined(UserDefinedValue { type_name, .. }) => {
+                    if *type_name == n {
+                        Ok(self)
+                    } else {
+                        Err(QError::TypeMismatch)
+                    }
+                }
+                _ => Err(QError::TypeMismatch),
+            },
         }
     }
 

@@ -445,14 +445,14 @@ mod tests {
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
                         vec![
-                        ResolvedDeclaredName::new(
-                            "A",
-                            ResolvedTypeDefinition::UserDefined("Card".into())
-                        ),
-                        ResolvedDeclaredName::new(
-                            "Value",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
-                        )
+                            ResolvedDeclaredName::new(
+                                "A",
+                                ResolvedTypeDefinition::UserDefined("Card".into())
+                            ),
+                            ResolvedDeclaredName::new(
+                                "Value",
+                                ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
+                            )
                         ],
                         Expression::IntegerLiteral(42).at_rc(7, 23)
                     ))
@@ -468,7 +468,7 @@ mod tests {
                                 "Value",
                                 ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
                             )
-                            ])
+                        ])
                         .at_rc(8, 19)]
                     ))
                     .at_rc(8, 13)
@@ -500,14 +500,14 @@ mod tests {
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
                         vec![
-                        ResolvedDeclaredName::new(
-                            "A",
-                            ResolvedTypeDefinition::UserDefined("Card".into())
-                        ),
-                        ResolvedDeclaredName::new(
-                            "Suit",
-                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                        )
+                            ResolvedDeclaredName::new(
+                                "A",
+                                ResolvedTypeDefinition::UserDefined("Card".into())
+                            ),
+                            ResolvedDeclaredName::new(
+                                "Suit",
+                                ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
+                            )
                         ],
                         Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
                     ))
@@ -523,7 +523,7 @@ mod tests {
                                 "Suit",
                                 ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
                             )
-                            ])
+                        ])
                         .at_rc(8, 19)]
                     ))
                     .at_rc(8, 13)

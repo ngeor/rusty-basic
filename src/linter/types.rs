@@ -233,7 +233,9 @@ impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
 
 impl CanCastTo<&ResolvedDeclaredNames> for ResolvedTypeDefinition {
     fn can_cast_to(&self, other: &ResolvedDeclaredNames) -> bool {
-        let ResolvedDeclaredName { type_definition, .. } = other.last().expect("Should have at least one element");
+        let ResolvedDeclaredName {
+            type_definition, ..
+        } = other.last().expect("Should have at least one element");
         self.can_cast_to(type_definition)
     }
 }

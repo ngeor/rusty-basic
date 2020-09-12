@@ -84,6 +84,7 @@ pub struct Interpreter<S: Stdlib> {
     stacktrace: Vec<Location>,
     pub function_result: Variant,
     pub file_manager: FileManager,
+    pub user_defined_types: Rc<HashMap<CaseInsensitiveString, ResolvedUserDefinedType>>,
 }
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
@@ -91,14 +92,16 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         stdlib: TStdlib,
         user_defined_types: HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
     ) -> Self {
+        let rc_user_defined_types = Rc::new(user_defined_types);
         let mut result = Interpreter {
             stdlib,
-            context: Some(Context::new(Rc::new(user_defined_types))),
+            context: Some(Context::new(Rc::clone(&rc_user_defined_types))),
             return_stack: vec![],
             register_stack: VecDeque::new(),
             stacktrace: vec![],
             function_result: Variant::VInteger(0),
             file_manager: FileManager::new(),
+            user_defined_types: Rc::clone(&rc_user_defined_types),
         };
         result.register_stack.push_back(Registers::new());
         result
@@ -984,6 +987,28 @@ mod tests {
             PRINT b.HouseNumber
             "#;
             assert_prints!(input, "Hello", "42");
+        }
+
+        #[test]
+        fn test_assign_is_by_val() {
+            let input = r#"
+            TYPE Address
+                Street AS STRING * 50
+                HouseNumber AS INTEGER
+            END TYPE
+            DIM a AS Address
+            DIM b AS Address
+
+            a.Street = "original value"
+            a.HouseNumber = 42
+
+            b = a
+            b.Street = "modified value"
+
+            PRINT a.Street
+            PRINT b.Street
+            "#;
+            assert_prints!(input, "original value", "modified value");
         }
 
         #[test]

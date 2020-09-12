@@ -5,7 +5,7 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::{ResolvedDeclaredName, ResolvedTypeDefinition};
 use crate::parser::TypeQualifier;
-use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
+use crate::variant::{UserDefinedValue, Variant, MAX_INTEGER, MAX_LONG};
 use std::convert::TryInto;
 
 pub fn run_function<S: Stdlib>(
@@ -462,6 +462,7 @@ mod len {
     // LEN(str_expr$) -> number of characters in string
     // LEN(variable) -> number of bytes required to store a variable
     use super::*;
+    use crate::linter::{ResolvedElement, ResolvedElementType};
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.function_result = match v {
@@ -470,9 +471,27 @@ mod len {
             Variant::VString(v) => Variant::VInteger(v.len().try_into().unwrap()),
             Variant::VInteger(_) => Variant::VInteger(2),
             Variant::VLong(_) => Variant::VInteger(4),
-            _ => {
-                return Err(format!("Variant {:?} not supported in LEN", v).into())
-                    .with_err_no_pos();
+            Variant::VFileHandle(_) => {
+                return Err("File handle not supported".into()).with_err_no_pos();
+            }
+            Variant::VUserDefined(UserDefinedValue { type_name, .. }) => {
+                let user_defined_type = interpreter
+                    .user_defined_types
+                    .as_ref()
+                    .get(&type_name)
+                    .unwrap();
+                let mut sum: u32 = 0;
+                for ResolvedElement { element_type, .. } in user_defined_type.elements.iter() {
+                    sum += match element_type {
+                        ResolvedElementType::Single => 4,
+                        ResolvedElementType::Double => 8,
+                        ResolvedElementType::Integer => 2,
+                        ResolvedElementType::Long => 4,
+                        ResolvedElementType::String(l) => *l,
+                        ResolvedElementType::UserDefined(_) => unimplemented!(),
+                    };
+                }
+                Variant::VInteger(sum as i32)
             }
         };
         Ok(())
@@ -535,6 +554,65 @@ mod len {
             PRINT LEN(A)
             ";
             assert_prints!(program, "11");
+        }
+
+        #[test]
+        fn test_len_user_defined_type_nested_one_level() {
+            let program = "
+            TYPE PostCode
+                Prefix AS STRING * 4
+                Suffix AS STRING * 2
+            END TYPE
+            TYPE Address
+                Street AS STRING * 50
+                PostCode AS PostCode
+            END TYPE
+            DIM A AS Address
+            PRINT LEN(A)
+            ";
+            assert_prints!(program, "56");
+        }
+
+        #[test]
+        fn test_len_user_defined_type_nested_two_levels() {
+            let program = "
+            TYPE PostCode
+                Prefix AS STRING * 4
+                Suffix AS STRING * 2
+            END TYPE
+            TYPE Address
+                Street AS STRING * 50
+                PostCode AS PostCode
+            END TYPE
+            TYPE Person
+                FullName AS STRING * 100
+                Address AS Address
+            END TYPE
+            DIM A AS Person
+            PRINT LEN(A)
+            ";
+            assert_prints!(program, "156");
+        }
+
+        #[test]
+        fn test_len_user_defined_type_member() {
+            let program = "
+            TYPE PostCode
+                Prefix AS STRING * 4
+                Suffix AS STRING * 2
+            END TYPE
+            TYPE Address
+                Street AS STRING * 50
+                PostCode AS PostCode
+            END TYPE
+            TYPE Person
+                FullName AS STRING * 100
+                Address AS Address
+            END TYPE
+            DIM A AS Person
+            PRINT LEN(A.Address)
+            ";
+            assert_prints!(program, "56");
         }
     }
 }

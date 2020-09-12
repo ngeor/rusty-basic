@@ -79,10 +79,88 @@ impl LinterContext {
         }
     }
 
+    fn resolve_members(
+        &self,
+        type_name: &BareName,
+        names: &[BareName],
+    ) -> Result<Vec<ResolvedDeclaredName>, QError> {
+        let (first, rest) = names.split_first().expect("Empty names!");
+        let user_defined_type = self
+            .user_defined_types
+            .get(type_name)
+            .expect("Type not found!");
+        match user_defined_type.find_element(first) {
+            Some(ResolvedElement { element_type, .. }) => match element_type {
+                ResolvedElementType::Integer => {
+                    if rest.is_empty() {
+                        Ok(ResolvedDeclaredName::single(
+                            first.clone(),
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
+                        ))
+                    } else {
+                        Err(QError::syntax_error("Cannot navigate after built-in type"))
+                    }
+                }
+                ResolvedElementType::Long => {
+                    if rest.is_empty() {
+                        Ok(ResolvedDeclaredName::single(
+                            first.clone(),
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
+                        ))
+                    } else {
+                        Err(QError::syntax_error("Cannot navigate after built-in type"))
+                    }
+                }
+                ResolvedElementType::Single => {
+                    if rest.is_empty() {
+                        Ok(ResolvedDeclaredName::single(
+                            first.clone(),
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
+                        ))
+                    } else {
+                        Err(QError::syntax_error("Cannot navigate after built-in type"))
+                    }
+                }
+                ResolvedElementType::Double => {
+                    if rest.is_empty() {
+                        Ok(ResolvedDeclaredName::single(
+                            first.clone(),
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
+                        ))
+                    } else {
+                        Err(QError::syntax_error("Cannot navigate after built-in type"))
+                    }
+                }
+                ResolvedElementType::String(_) => {
+                    if rest.is_empty() {
+                        Ok(ResolvedDeclaredName::single(
+                            first.clone(),
+                            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
+                        ))
+                    } else {
+                        Err(QError::syntax_error("Cannot navigate after built-in type"))
+                    }
+                }
+                ResolvedElementType::UserDefined(u) => {
+                    let mut mine = ResolvedDeclaredName::single(
+                        first.clone(),
+                        ResolvedTypeDefinition::UserDefined(u.clone()),
+                    );
+                    if !rest.is_empty() {
+                        let remaining = self.resolve_members(u, rest)?;
+                        mine.extend(remaining);
+                    }
+                    Ok(mine)
+                }
+            },
+            None => Err(QError::syntax_error("Element not defined")),
+        }
+    }
+
     fn resolve_member(&self, name: &BareName) -> Result<Vec<ResolvedDeclaredName>, QError> {
         let s: String = name.clone().into();
-        let v: Vec<&str> = s.split('.').collect();
-        let first: BareName = v[0].into();
+        let mut v: Vec<BareName> = s.split('.').map(|s| s.into()).collect();
+        let first: BareName = v.remove(0);
         match self.get_user_defined_type_name(&first) {
             Some(type_name) => {
                 let mut result: Vec<ResolvedDeclaredName> = vec![];
@@ -90,40 +168,9 @@ impl LinterContext {
                     first,
                     ResolvedTypeDefinition::UserDefined(type_name.clone()),
                 ));
-                if v.len() > 1 {
-                    // the first part matched, the rest must match too
-                    let second: BareName = v[1].into();
-                    let user_defined_type: &ResolvedUserDefinedType = self
-                        .user_defined_types
-                        .get(type_name)
-                        .expect("should have found user defined type");
-                    match user_defined_type.find_element(&second) {
-                        Some(ResolvedElement { element_type, .. }) => {
-                            let second_type_definition = match element_type {
-                                ResolvedElementType::Integer => {
-                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
-                                }
-                                ResolvedElementType::Long => {
-                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong)
-                                }
-                                ResolvedElementType::Single => {
-                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
-                                }
-                                ResolvedElementType::Double => {
-                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble)
-                                }
-                                ResolvedElementType::String(_) => {
-                                    ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                                }
-                                ResolvedElementType::UserDefined(_) => unimplemented!(),
-                            };
-                            result.push(ResolvedDeclaredName::new(second, second_type_definition));
-                        }
-                        None => {
-                            // trying to reference A.Something where Something is not a member of the type of A
-                            return Err(QError::syntax_error("Element not defined"));
-                        }
-                    }
+                if !v.is_empty() {
+                    let remaining = self.resolve_members(type_name, &v[..])?;
+                    result.extend(remaining);
                 }
                 Ok(result)
             }

@@ -2,10 +2,10 @@ use crate::common::{CaseInsensitiveString, QError};
 use crate::instruction_generator::NamedRefParam;
 use crate::linter::casting;
 use crate::linter::{
-    HasQualifier, QualifiedName, ResolvedDeclaredName, ResolvedDeclaredNames,
+    QualifiedName, ResolvedDeclaredName, ResolvedDeclaredNames,
     ResolvedTypeDefinition, ResolvedUserDefinedType, TypeQualifier,
 };
-use crate::variant::{DefaultForType, DefaultForTypes, UserDefinedValue, Variant, VariantMap};
+use crate::variant::{DefaultForType, Variant};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
@@ -112,7 +112,7 @@ impl ConstantMapTrait<ResolvedDeclaredNames> for ConstantMap {
         }
     }
 
-    fn insert(&mut self, name: ResolvedDeclaredNames, value: Variant) -> Result<(), QError> {
+    fn insert(&mut self, _name: ResolvedDeclaredNames, _value: Variant) -> Result<(), QError> {
         panic!("user defined name constant")
     }
 }

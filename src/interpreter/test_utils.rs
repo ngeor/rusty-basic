@@ -20,8 +20,9 @@ pub fn generate_instructions<T>(
 where
     T: AsRef<[u8]> + 'static,
 {
-    let program = parse_main_str(input).unwrap();
-    let (linted_program, user_defined_types) = linter::lint(program).unwrap();
+    let program = parse_main_str(input).expect("Parser should succeed");
+    let (linted_program, user_defined_types) =
+        linter::lint(program).expect("Linter should succeed");
     (
         instruction_generator::generate_instructions(linted_program),
         user_defined_types,

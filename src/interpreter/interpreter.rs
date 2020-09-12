@@ -7,7 +7,7 @@ use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
 use crate::linter::{ResolvedUserDefinedType, TypeQualifier};
-use crate::variant::{DefaultForType, DefaultForTypes, Variant};
+use crate::variant::{DefaultForTypes, Variant};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::VecDeque;

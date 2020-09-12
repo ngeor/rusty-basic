@@ -594,7 +594,10 @@ impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
             step: self.convert(a.step)?,
             statements: self.convert(a.statements)?,
             next_counter: match a.next_counter {
-                Some(x) => Some(self.temp_convert(x)?),
+                Some(x) => {
+                    let pos = x.pos();
+                    Some(self.temp_convert(x)?.at(pos))
+                }
                 None => None,
             },
         })

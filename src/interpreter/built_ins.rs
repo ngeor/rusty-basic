@@ -7,11 +7,11 @@ use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::{
-    ResolvedDeclaredName, ResolvedDeclaredNames, ResolvedElement, ResolvedElementType,
+    ResolvedDeclaredNames, ResolvedElement, ResolvedElementType,
     ResolvedTypeDefinition, ResolvedUserDefinedType,
 };
 use crate::parser::TypeQualifier;
-use crate::variant::{UserDefinedValue, Variant, MAX_INTEGER, MAX_LONG};
+use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
 use std::collections::HashMap;
 use std::convert::TryInto;
 

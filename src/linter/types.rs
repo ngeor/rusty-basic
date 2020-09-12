@@ -103,7 +103,7 @@ pub struct ForLoopNode {
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<ResolvedDeclaredNames>,
+    pub next_counter: Option<Locatable<ResolvedDeclaredNames>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

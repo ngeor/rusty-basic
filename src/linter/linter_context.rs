@@ -108,7 +108,7 @@ impl LinterContext {
         &self,
         declared_name: DeclaredName,
         resolver: &T,
-    ) -> Result<ResolvedDeclaredName, QError> {
+    ) -> Result<(ResolvedDeclaredName, bool), QError> {
         let DeclaredName {
             name,
             type_definition,
@@ -117,34 +117,46 @@ impl LinterContext {
             TypeDefinition::Bare => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 let q: TypeQualifier = (&name).resolve_into(resolver);
-                Ok(ResolvedDeclaredName {
-                    name,
-                    type_definition: ResolvedTypeDefinition::BuiltIn(q),
-                })
+                Ok((
+                    ResolvedDeclaredName {
+                        name,
+                        type_definition: ResolvedTypeDefinition::BuiltIn(q),
+                    },
+                    false,
+                ))
             }
             TypeDefinition::CompactBuiltIn(q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
-                Ok(ResolvedDeclaredName {
-                    name,
-                    type_definition: ResolvedTypeDefinition::BuiltIn(q),
-                })
+                Ok((
+                    ResolvedDeclaredName {
+                        name,
+                        type_definition: ResolvedTypeDefinition::BuiltIn(q),
+                    },
+                    false,
+                ))
             }
             TypeDefinition::ExtendedBuiltIn(q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
-                Ok(ResolvedDeclaredName {
-                    name,
-                    type_definition: ResolvedTypeDefinition::BuiltIn(q),
-                })
+                Ok((
+                    ResolvedDeclaredName {
+                        name,
+                        type_definition: ResolvedTypeDefinition::BuiltIn(q),
+                    },
+                    true,
+                ))
             }
             TypeDefinition::UserDefined(user_defined_type) => {
                 if name.contains('.') {
                     Err(QError::syntax_error("Identifier cannot include period"))
                 } else if self.user_defined_types.contains_key(&user_defined_type) {
                     self.ensure_user_defined_var_not_clashing_with_dotted_vars(&name)?;
-                    Ok(ResolvedDeclaredName {
-                        name,
-                        type_definition: ResolvedTypeDefinition::UserDefined(user_defined_type),
-                    })
+                    Ok((
+                        ResolvedDeclaredName {
+                            name,
+                            type_definition: ResolvedTypeDefinition::UserDefined(user_defined_type),
+                        },
+                        true,
+                    ))
                 } else {
                     Err(QError::syntax_error("Type not defined"))
                 }
@@ -180,17 +192,19 @@ impl LinterContext {
         declared_name: DeclaredName,
         resolver: &T,
     ) -> Result<ResolvedDeclaredName, QError> {
-        let ResolvedDeclaredName {
-            name,
-            type_definition,
-        } = self.resolve_declared_name(declared_name, resolver)?;
+        let (
+            ResolvedDeclaredName {
+                name,
+                type_definition,
+            },
+            is_extended,
+        ) = self.resolve_declared_name(declared_name, resolver)?;
         match self.names.get_mut(&name) {
             Some(resolved_type_definitions) => {
                 match resolved_type_definitions {
                     ResolvedTypeDefinitions::Compact(existing_set) => match &type_definition {
-                        // TODO fix me support extended look before resolving
                         ResolvedTypeDefinition::BuiltIn(q) => {
-                            if existing_set.contains(q) {
+                            if existing_set.contains(q) || is_extended {
                                 return Err(QError::DuplicateDefinition);
                             } else {
                                 existing_set.insert(*q);
@@ -208,15 +222,16 @@ impl LinterContext {
             }
             None => match &type_definition {
                 ResolvedTypeDefinition::BuiltIn(q) => {
-                    let mut s: HashSet<TypeQualifier> = HashSet::new();
-                    s.insert(*q);
-                    self.names
-                        .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
+                    if is_extended {
+                        self.names
+                            .insert(name.clone(), ResolvedTypeDefinitions::ExtendedBuiltIn(*q));
+                    } else {
+                        let mut s: HashSet<TypeQualifier> = HashSet::new();
+                        s.insert(*q);
+                        self.names
+                            .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
+                    }
                 }
-                // ResolvedTypeDefinition::ExtendedBuiltIn(q) => {
-                //     self.names
-                //         .insert(name.clone(), ResolvedTypeDefinitions::ExtendedBuiltIn(*q));
-                // }
                 ResolvedTypeDefinition::UserDefined(u) => {
                     self.names.insert(
                         name.clone(),

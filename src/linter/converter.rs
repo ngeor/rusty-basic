@@ -269,13 +269,15 @@ impl ConverterImpl {
     }
 
     pub fn resolve_name_in_expression(&mut self, n: &parser::Name) -> Result<Expression, QError> {
-        self.context
-            .resolve_expression(n, &self.resolver)
-            .or_try_read(|| self.resolve_name_as_subprogram(n))
-            .or_read(|| {
-                self.context
-                    .resolve_missing_name_in_expression(n, &self.resolver)
-            })
+        match self.context.resolve_expression(n, &self.resolver)? {
+            Some(x) => Ok(x),
+            None => match self.resolve_name_as_subprogram(n)? {
+                Some(x) => Ok(x),
+                None => self
+                    .context
+                    .resolve_missing_name_in_expression(n, &self.resolver),
+            },
+        }
     }
 
     fn resolve_name_as_subprogram(

@@ -281,6 +281,11 @@ pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, QErro
     }
 }
 
+// TODO fix all unimplemented
+// TODO fix all panic
+// TODO fix all unwrap
+// TODO fix all try_unwrap
+
 #[cfg(test)]
 mod tests {
     use super::*;

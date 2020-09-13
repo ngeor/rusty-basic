@@ -222,3 +222,65 @@ impl InstructionGenerator {
         self.push(Instruction::Store(l), pos);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::common::{AtRowCol, StripLocation};
+    use crate::instruction_generator::{generate_instructions, Instruction, InstructionNode};
+    use crate::linter::{lint, ResolvedDeclaredName, TypeQualifier};
+    use crate::parser::parse_main_str;
+    use crate::variant::Variant;
+
+    pub fn generate_instructions_str<T>(input: T) -> Vec<InstructionNode>
+    where
+        T: AsRef<[u8]> + 'static,
+    {
+        let program = parse_main_str(input).expect("Parser should succeed");
+        let (linted_program, _) = lint(program).expect("Linter should succeed");
+        generate_instructions(linted_program)
+    }
+
+    #[test]
+    fn test_assignment() {
+        assert_eq!(
+            generate_instructions_str("X = 1"),
+            [
+                Instruction::Load(Variant::VInteger(1)).at_rc(1, 5),
+                Instruction::Cast(TypeQualifier::BangSingle).at_rc(1, 5),
+                Instruction::Store(ResolvedDeclaredName::parse("X!")).at_rc(1, 1),
+                Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            ]
+        );
+    }
+
+    #[test]
+    fn test_assignment_no_cast() {
+        assert_eq!(
+            generate_instructions_str("X% = 1").strip_location(),
+            [
+                Instruction::Load(Variant::VInteger(1)),
+                Instruction::Store(ResolvedDeclaredName::parse("X%")),
+                Instruction::Halt
+            ]
+        );
+    }
+
+    #[test]
+    fn test_assignment_binary_plus() {
+        assert_eq!(
+            generate_instructions_str("X% = 1 + 2.1").strip_location(),
+            [
+                Instruction::PushRegisters,
+                Instruction::Load(Variant::VInteger(1)),
+                Instruction::CopyAToB,
+                Instruction::Load(Variant::VSingle(2.1)),
+                Instruction::SwapAWithB,
+                Instruction::Plus,
+                Instruction::PopRegisters,
+                Instruction::Cast(TypeQualifier::PercentInteger),
+                Instruction::Store(ResolvedDeclaredName::parse("X%")),
+                Instruction::Halt
+            ]
+        );
+    }
+}

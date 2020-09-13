@@ -122,6 +122,23 @@ mod tests {
             "#;
             assert_linter_err!(program, QError::TypeMismatch, 4, 17);
         }
+
+        #[test]
+        fn test_assign_binary_plus() {
+            assert_eq!(
+                linter_ok("X% = 1 + 2.1"),
+                vec![TopLevelToken::Statement(Statement::Assignment(
+                    ResolvedDeclaredName::parse("X%"),
+                    Expression::BinaryExpression(
+                        Operator::Plus,
+                        Box::new(Expression::IntegerLiteral(1).at_rc(1, 6),),
+                        Box::new(Expression::SingleLiteral(2.1).at_rc(1, 10))
+                    )
+                    .at_rc(1, 8)
+                ))
+                .at_rc(1, 1)]
+            );
+        }
     }
 
     mod constant {

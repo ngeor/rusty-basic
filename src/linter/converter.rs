@@ -2,6 +2,7 @@ use super::subprogram_context::{FirstPassOuter, FunctionMap, SubMap};
 use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
+use crate::linter::casting::CastBinaryOperator;
 use crate::linter::linter_context::LinterContext;
 use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
@@ -529,29 +530,16 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let converted_left = self.convert(unboxed_left)?;
                 let converted_right = self.convert(unboxed_right)?;
                 // get the types
-                match converted_left.try_type_definition()? {
-                    ResolvedTypeDefinition::BuiltIn(q_left) => {
-                        match converted_right.try_type_definition()? {
-                            ResolvedTypeDefinition::BuiltIn(q_right) => {
-                                // get the cast type
-                                let result_type =
-                                    super::casting::cast_binary_op(op, q_left, q_right);
-                                if result_type.is_some() {
-                                    Ok(Expression::BinaryExpression(
-                                        op,
-                                        Box::new(converted_left),
-                                        Box::new(converted_right),
-                                    ))
-                                } else {
-                                    Err(QError::TypeMismatch).with_err_at(&converted_right)
-                                }
-                            }
-                            // user defined cannot be in binary expressions
-                            _ => Err(QError::TypeMismatch).with_err_at(&converted_right),
-                        }
-                    }
-                    // user defined cannot be in binary expressions
-                    _ => Err(QError::TypeMismatch).with_err_at(&converted_right),
+                let t_left = converted_left.try_type_definition()?;
+                let t_right = converted_right.try_type_definition()?;
+                // get the cast type
+                match op.cast_binary_op(t_left, t_right) {
+                    Some(_) => Ok(Expression::BinaryExpression(
+                        op,
+                        Box::new(converted_left),
+                        Box::new(converted_right),
+                    )),
+                    None => Err(QError::TypeMismatch).with_err_at(&converted_right),
                 }
             }
             parser::Expression::UnaryExpression(op, c) => {

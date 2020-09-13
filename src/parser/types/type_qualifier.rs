@@ -65,6 +65,39 @@ impl TypeQualifier {
             None
         }
     }
+
+    pub fn bigger_numeric_type(&self, other: &Self) -> Option<Self> {
+        match self {
+            Self::BangSingle => match other {
+                Self::BangSingle | Self::PercentInteger | Self::AmpersandLong => {
+                    Some(Self::BangSingle)
+                }
+                Self::HashDouble => Some(Self::HashDouble),
+                _ => None,
+            },
+            Self::HashDouble => match other {
+                Self::BangSingle
+                | Self::PercentInteger
+                | Self::AmpersandLong
+                | Self::HashDouble => Some(Self::HashDouble),
+                _ => None,
+            },
+            Self::PercentInteger => match other {
+                Self::BangSingle => Some(Self::BangSingle),
+                Self::HashDouble => Some(Self::HashDouble),
+                Self::PercentInteger => Some(Self::PercentInteger),
+                Self::AmpersandLong => Some(Self::AmpersandLong),
+                _ => None,
+            },
+            Self::AmpersandLong => match other {
+                Self::BangSingle => Some(Self::BangSingle),
+                Self::HashDouble => Some(Self::HashDouble),
+                Self::PercentInteger | Self::AmpersandLong => Some(Self::AmpersandLong),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
 }
 
 impl Display for TypeQualifier {

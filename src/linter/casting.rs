@@ -1,4 +1,5 @@
 use crate::common::QError;
+use crate::linter::ResolvedTypeDefinition;
 use crate::parser::{CanCastTo, Operator, TypeQualifier, UnaryOperator};
 use crate::variant;
 use crate::variant::Variant;
@@ -7,57 +8,82 @@ use crate::variant::Variant;
 // binary operator
 // ========================================================
 
-pub fn cast_binary_op(
-    op: Operator,
-    left: TypeQualifier,
-    right: TypeQualifier,
-) -> Option<TypeQualifier> {
-    if left == TypeQualifier::FileHandle || right == TypeQualifier::FileHandle {
-        // file handles are a special case they're not supposed to mix with others, exit fast
-        return None;
-    }
+pub trait CastBinaryOperator<T> {
+    fn cast_binary_op(&self, left: T, right: T) -> Option<T>;
+}
 
-    match op {
-        // 1. arithmetic operators
-        // 1a. plus -> if we can cast left to right, that's the result
-        Operator::Plus => {
-            if left.can_cast_to(right) {
-                Some(left)
-            } else {
-                None
-            }
+// TODO use TypeDefinition or ResolvedTypeDefinition or whatever and return the resulting type (important)
+// TODO can some of this be caught by the parser e.g. 1 + "x"
+
+impl CastBinaryOperator<ResolvedTypeDefinition> for Operator {
+    fn cast_binary_op(
+        &self,
+        left: ResolvedTypeDefinition,
+        right: ResolvedTypeDefinition,
+    ) -> Option<ResolvedTypeDefinition> {
+        match left {
+            ResolvedTypeDefinition::BuiltIn(q_left) => match right {
+                ResolvedTypeDefinition::BuiltIn(q_right) => self
+                    .cast_binary_op(q_left, q_right)
+                    .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
+                ResolvedTypeDefinition::UserDefined(_) => None,
+            },
+            ResolvedTypeDefinition::UserDefined(_) => None,
         }
-        // 1b. minus, multiply, divide -> if we can cast left to right, and we're not a string, that's the result
-        Operator::Minus | Operator::Multiply | Operator::Divide => {
-            if left.can_cast_to(right) && left != TypeQualifier::DollarString {
-                Some(left)
-            } else {
-                None
-            }
+    }
+}
+
+impl CastBinaryOperator<TypeQualifier> for Operator {
+    fn cast_binary_op(&self, left: TypeQualifier, right: TypeQualifier) -> Option<TypeQualifier> {
+        if left == TypeQualifier::FileHandle || right == TypeQualifier::FileHandle {
+            // file handles are a special case they're not supposed to mix with others, exit fast
+            return None;
         }
-        // 2. relational operators
-        //    if we an cast left to right, the result is -1 or 0, therefore integer
-        Operator::Less
-        | Operator::LessOrEqual
-        | Operator::Equal
-        | Operator::GreaterOrEqual
-        | Operator::Greater
-        | Operator::NotEqual => {
-            if left.can_cast_to(right) {
-                Some(TypeQualifier::PercentInteger)
-            } else {
-                None
+
+        match self {
+            // 1. arithmetic operators
+            // 1a. plus -> if we can cast left to right, that's the result
+            Self::Plus => {
+                match left.bigger_numeric_type(&right) {
+                    Some(result) => Some(result),
+                    None => {
+                        if left == TypeQualifier::DollarString
+                            && right == TypeQualifier::DollarString
+                        {
+                            // string concatenation
+                            Some(left)
+                        } else {
+                            None
+                        }
+                    }
+                }
             }
-        }
-        // 3. binary operators
-        //    they only work if both sides are cast-able to integer, which is also the result type
-        Operator::And | Operator::Or => {
-            if left.can_cast_to(TypeQualifier::PercentInteger)
-                && right.can_cast_to(TypeQualifier::PercentInteger)
-            {
-                Some(TypeQualifier::PercentInteger)
-            } else {
-                None
+            // 1b. minus, multiply, divide -> if we can cast left to right, and we're not a string, that's the result
+            Self::Minus | Self::Multiply | Self::Divide => left.bigger_numeric_type(&right),
+            // 2. relational operators
+            //    if we an cast left to right, the result is -1 or 0, therefore integer
+            Self::Less
+            | Self::LessOrEqual
+            | Self::Equal
+            | Self::GreaterOrEqual
+            | Self::Greater
+            | Self::NotEqual => {
+                if left.can_cast_to(right) {
+                    Some(TypeQualifier::PercentInteger)
+                } else {
+                    None
+                }
+            }
+            // 3. binary operators
+            //    they only work if both sides are cast-able to integer, which is also the result type
+            Self::And | Self::Or => {
+                if left.can_cast_to(TypeQualifier::PercentInteger)
+                    && right.can_cast_to(TypeQualifier::PercentInteger)
+                {
+                    Some(TypeQualifier::PercentInteger)
+                } else {
+                    None
+                }
             }
         }
     }

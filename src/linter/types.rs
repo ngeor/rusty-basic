@@ -2,6 +2,7 @@ use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{
     FileHandle, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
 };
+use crate::linter::casting::CastBinaryOperator;
 use crate::parser::{
     BareName, BareNameNode, CanCastTo, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
     TypeDefinition, TypeQualifier, UnaryOperator,
@@ -53,24 +54,14 @@ impl Expression {
                 Ok(ResolvedTypeDefinition::BuiltIn(name.qualifier()))
             }
             Self::BuiltInFunctionCall(f, _) => Ok(ResolvedTypeDefinition::BuiltIn(f.qualifier())),
-            Self::BinaryExpression(op, l, r) => match l.as_ref().try_type_definition()? {
-                ResolvedTypeDefinition::BuiltIn(q_left) => {
-                    match r.as_ref().try_type_definition()? {
-                        ResolvedTypeDefinition::BuiltIn(q_right) => {
-                            match super::casting::cast_binary_op(*op, q_left, q_right) {
-                                Some(q_result) => Ok(ResolvedTypeDefinition::BuiltIn(q_result)),
-                                None => Err(QError::TypeMismatch).with_err_at(r.pos()),
-                            }
-                        }
-                        ResolvedTypeDefinition::UserDefined(_) => {
-                            Err(QError::TypeMismatch).with_err_at(pos)
-                        }
-                    }
+            Self::BinaryExpression(op, l, r) => {
+                let l_type_definition = l.as_ref().try_type_definition()?;
+                let r_type_definition = r.as_ref().try_type_definition()?;
+                match op.cast_binary_op(l_type_definition, r_type_definition) {
+                    Some(result) => Ok(result),
+                    None => Err(QError::TypeMismatch).with_err_at(pos),
                 }
-                ResolvedTypeDefinition::UserDefined(_) => {
-                    Err(QError::TypeMismatch).with_err_at(pos)
-                }
-            },
+            }
             Self::UnaryExpression(op, c) => match c.as_ref().try_type_definition()? {
                 ResolvedTypeDefinition::BuiltIn(q) => match super::casting::cast_unary_op(*op, q) {
                     Some(q) => Ok(ResolvedTypeDefinition::BuiltIn(q)),

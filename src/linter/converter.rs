@@ -427,12 +427,9 @@ impl ConverterImpl {
     }
 
     // TODO fix me
-    fn temp_convert(&mut self, x: NameNode) -> Result<ResolvedDeclaredName, QErrorNode> {
+    fn temp_convert(&mut self, x: NameNode) -> Result<LName, QErrorNode> {
         let Locatable { element, pos } = x;
-        match self.resolve_name_in_assignment(element).with_err_at(pos)? {
-            LName::Variable(names) => Ok(names),
-            LName::Function(q_name) => Ok(ResolvedDeclaredName::BuiltIn(q_name)),
-        }
+        self.resolve_name_in_assignment(element).with_err_at(pos)
     }
 }
 
@@ -676,10 +673,4 @@ impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
                 .and_then(|x| self.convert(to).map(|y| CaseExpression::Range(x, y))),
         }
     }
-}
-
-#[derive(Debug)]
-enum LName {
-    Variable(ResolvedDeclaredName),
-    Function(QualifiedName),
 }

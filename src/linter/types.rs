@@ -282,6 +282,20 @@ impl Members {
             }
         }
     }
+
+    pub fn append(self, other: Self) -> Self {
+        match self {
+            Self::Leaf { name, element_type } => match element_type {
+                ResolvedElementType::UserDefined(type_name) => {
+                    Self::Node(UserDefinedName { name, type_name }, Box::new(other))
+                }
+                _ => panic!("Cannot extend leaf element which is not user defined type"),
+            },
+            Self::Node(user_defined_name, boxed_members) => {
+                Self::Node(user_defined_name, Box::new(boxed_members.append(other)))
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -332,6 +346,16 @@ impl ResolvedDeclaredName {
                 let mut result = vec![name.clone()];
                 result.extend(members.name_path());
                 result
+            }
+        }
+    }
+
+    pub fn append(self, members: Members) -> Self {
+        match self {
+            Self::BuiltIn(_) => panic!("Cannot append members to built-in resolved name"),
+            Self::UserDefined(user_defined_name) => Self::Many(user_defined_name, members),
+            Self::Many(user_defined_name, existing_members) => {
+                Self::Many(user_defined_name, existing_members.append(members))
             }
         }
     }

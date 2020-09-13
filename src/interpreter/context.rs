@@ -154,24 +154,15 @@ impl ArgumentMap {
         }
     }
 
-    pub fn push_unnamed(&mut self, arg: Argument) {
-        let dummy_name = format!("{}", self.name_order.len());
-        let dummy_resolved_name = match arg.type_definition() {
-            ResolvedTypeDefinition::BuiltIn(q) => {
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(dummy_name.into(), q))
-            }
-            ResolvedTypeDefinition::String(_) => ResolvedDeclaredName::BuiltIn(QualifiedName::new(
-                dummy_name.into(),
-                TypeQualifier::DollarString,
-            )),
-            ResolvedTypeDefinition::UserDefined(u) => {
-                ResolvedDeclaredName::UserDefined(UserDefinedName {
-                    name: dummy_name.into(),
-                    type_name: u,
-                })
-            }
-        };
-        self.insert(dummy_resolved_name, arg)
+    pub fn len(&self) -> usize {
+        self.name_order.len()
+    }
+
+    pub fn pop_front(&mut self) -> Option<Argument> {
+        match self.name_order.pop_front() {
+            Some(name) => self.named.remove(&name),
+            None => None,
+        }
     }
 
     pub fn insert(&mut self, name: ResolvedDeclaredName, arg: Argument) {
@@ -186,19 +177,8 @@ impl ArgumentMap {
         }
     }
 
-    pub fn get_mut(&mut self, name: &ResolvedDeclaredName) -> Option<&mut Argument> {
-        self.named.get_mut(name)
-    }
-
     pub fn get(&self, name: &ResolvedDeclaredName) -> Option<&Argument> {
         self.named.get(name)
-    }
-
-    pub fn pop_front(&mut self) -> Option<Argument> {
-        match self.name_order.pop_front() {
-            Some(name) => self.named.remove(&name),
-            None => None,
-        }
     }
 }
 
@@ -282,11 +262,11 @@ pub struct ArgsContext {
 impl ArgsContext {
     pub fn push_back_unnamed_ref_parameter(&mut self, name: ResolvedDeclaredName) {
         let arg = self.parent.create_parameter(name);
-        self.args.push_unnamed(arg)
+        self.push_unnamed(arg)
     }
 
     pub fn push_back_unnamed_val_parameter(&mut self, value: Variant) {
-        self.args.push_unnamed(Argument::ByVal(value))
+        self.push_unnamed(Argument::ByVal(value))
     }
 
     pub fn set_named_ref_parameter(&mut self, named_ref_param: &NamedRefParam) {
@@ -304,6 +284,26 @@ impl ArgsContext {
 
     fn insert_next_argument(&mut self, param_name: &ResolvedDeclaredName, arg: Argument) {
         self.args.insert(param_name.clone(), arg)
+    }
+
+    fn push_unnamed(&mut self, arg: Argument) {
+        let dummy_name = format!("{}", self.args.len());
+        let dummy_resolved_name = match arg.type_definition() {
+            ResolvedTypeDefinition::BuiltIn(q) => {
+                ResolvedDeclaredName::BuiltIn(QualifiedName::new(dummy_name.into(), q))
+            }
+            ResolvedTypeDefinition::String(_) => ResolvedDeclaredName::BuiltIn(QualifiedName::new(
+                dummy_name.into(),
+                TypeQualifier::DollarString,
+            )),
+            ResolvedTypeDefinition::UserDefined(u) => {
+                ResolvedDeclaredName::UserDefined(UserDefinedName {
+                    name: dummy_name.into(),
+                    type_name: u,
+                })
+            }
+        };
+        self.args.insert(dummy_resolved_name, arg)
     }
 }
 
@@ -327,19 +327,36 @@ impl SubContext {
         self.variables.insert(name, Argument::ByVal(value))
     }
 
-    fn get_argument_mut(&mut self, name: &ResolvedDeclaredName) -> Option<&mut Argument> {
-        self.variables.get_mut(name)
-    }
-
-    fn evaluate_argument(&self, arg: &Argument) -> Option<Variant> {
+    fn evaluate_argument(&self, arg: Argument) -> Option<Variant> {
         match arg {
-            Argument::ByVal(v) => Some(v.clone()),
-            Argument::ByRef(n) => self.parent.get_r_value(n),
+            Argument::ByVal(v) => Some(v),
+            Argument::ByRef(n) => self.parent.get_r_value(&n),
         }
     }
 
-    fn get_variable(&self, name: &ResolvedDeclaredName) -> Option<&Argument> {
-        self.variables.get(name)
+    fn get_variable(&self, name: &ResolvedDeclaredName) -> Option<Argument> {
+        match self.variables.get(name) {
+            Some(x) => Some(x.clone()),
+            None => match name {
+                ResolvedDeclaredName::Many(UserDefinedName { name, type_name }, members) => {
+                    match self
+                        .variables
+                        .get(&ResolvedDeclaredName::UserDefined(UserDefinedName {
+                            name: name.clone(),
+                            type_name: type_name.clone(),
+                        })) {
+                        Some(Argument::ByRef(ref_name)) => {
+                            Some(Argument::ByRef(ref_name.clone().append(members.clone())))
+                        }
+                        Some(Argument::ByVal(_)) => {
+                            panic!("should not be possible to pass user defined type by val")
+                        }
+                        None => None,
+                    }
+                }
+                _ => None,
+            },
+        }
     }
 
     pub fn set_constant(&mut self, name: QualifiedName, value: Variant) {
@@ -354,7 +371,7 @@ impl SubContext {
     /// Pops the value of the next unnamed argument, starting from the beginning.
     pub fn pop_unnamed_val(&mut self) -> Option<Variant> {
         match self.pop_unnamed_arg() {
-            Some(arg) => self.evaluate_argument(&arg),
+            Some(arg) => self.evaluate_argument(arg),
             None => None,
         }
     }
@@ -406,18 +423,13 @@ impl SubContext {
 
     pub fn set_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
         // if a parameter exists, set it (might be a ref)
-        match self.get_argument_mut(&name) {
-            Some(a) => {
-                match a {
-                    Argument::ByVal(_old_value) => {
-                        *a = Argument::ByVal(value);
-                    }
-                    Argument::ByRef(n) => {
-                        let q = n.clone(); // clone needed to break duplicate borrow
-                        self.set_variable_parent(q, value)
-                    }
+        match self.get_variable(&name) {
+            Some(a) => match a {
+                Argument::ByVal(_old_value) => {
+                    self.do_insert_variable(name, value);
                 }
-            }
+                Argument::ByRef(n) => self.set_variable_parent(n, value),
+            },
             None => {
                 // A parameter does not exist. Create/Update a variable.
                 self.do_insert_variable(name, value)
@@ -432,7 +444,7 @@ impl SubContext {
             None => {
                 // variable?
                 match self.get_variable(name) {
-                    Some(v) => self.evaluate_argument(v),
+                    Some(a) => self.evaluate_argument(a),
                     None => {
                         // top-level constant?
                         self.parent

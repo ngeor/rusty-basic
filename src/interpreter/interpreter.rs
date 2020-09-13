@@ -735,9 +735,9 @@ mod tests {
         #[test]
         fn test_assign_integer_overflow() {
             assert_assign_ok!("A% = 32767", "A%", 32767_i32);
-            assert_err!("A% = 32768", "Overflow", 1, 1);
+            assert_err!("A% = 32768", "Overflow", 1, 6);
             assert_assign_ok!("A% = -32768", "A%", -32768_i32);
-            assert_err!("A% = -32769", "Overflow", 1, 1);
+            assert_err!("A% = -32769", "Overflow", 1, 6);
         }
 
         #[test]
@@ -748,8 +748,8 @@ mod tests {
 
         #[test]
         fn test_assign_long_overflow_err() {
-            assert_err!("A& = 2147483648", "Overflow", 1, 1);
-            assert_err!("A& = -2147483649", "Overflow", 1, 1);
+            assert_err!("A& = 2147483648", "Overflow", 1, 6);
+            assert_err!("A& = -2147483649", "Overflow", 1, 6);
         }
 
         #[test]

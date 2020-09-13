@@ -12,7 +12,6 @@ pub trait CastBinaryOperator<T> {
     fn cast_binary_op(&self, left: T, right: T) -> Option<T>;
 }
 
-// TODO use TypeDefinition or ResolvedTypeDefinition or whatever and return the resulting type (important)
 // TODO can some of this be caught by the parser e.g. 1 + "x"
 
 impl CastBinaryOperator<ResolvedTypeDefinition> for Operator {
@@ -26,7 +25,17 @@ impl CastBinaryOperator<ResolvedTypeDefinition> for Operator {
                 ResolvedTypeDefinition::BuiltIn(q_right) => self
                     .cast_binary_op(q_left, q_right)
                     .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
+                ResolvedTypeDefinition::String(_) => self
+                    .cast_binary_op(q_left, TypeQualifier::DollarString)
+                    .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
                 ResolvedTypeDefinition::UserDefined(_) => None,
+            },
+            ResolvedTypeDefinition::String(_) => match right {
+                ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
+                | ResolvedTypeDefinition::String(_) => self
+                    .cast_binary_op(TypeQualifier::DollarString, TypeQualifier::DollarString)
+                    .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
+                _ => None,
             },
             ResolvedTypeDefinition::UserDefined(_) => None,
         }

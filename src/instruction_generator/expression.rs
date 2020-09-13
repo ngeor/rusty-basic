@@ -1,6 +1,7 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
 use crate::linter::*;
+use crate::parser::{Operator, UnaryOperator};
 use crate::variant::Variant;
 
 impl InstructionGenerator {

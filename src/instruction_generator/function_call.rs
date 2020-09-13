@@ -2,6 +2,7 @@ use super::instruction::*;
 use super::InstructionGenerator;
 use crate::common::*;
 use crate::linter::*;
+use crate::parser::QualifiedNameNode;
 
 impl InstructionGenerator {
     pub fn generate_function_call_instructions(

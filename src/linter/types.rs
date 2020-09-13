@@ -67,7 +67,7 @@ impl Expression {
                     Some(q) => Ok(ResolvedTypeDefinition::BuiltIn(q)),
                     None => Err(QError::TypeMismatch).with_err_at(pos),
                 },
-                ResolvedTypeDefinition::UserDefined(_) => {
+                ResolvedTypeDefinition::String(_) | ResolvedTypeDefinition::UserDefined(_) => {
                     Err(QError::TypeMismatch).with_err_at(pos)
                 }
             },
@@ -193,6 +193,7 @@ pub type ProgramNode = Vec<TopLevelTokenNode>;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ResolvedTypeDefinition {
     BuiltIn(TypeQualifier),
+    String(u32),
     UserDefined(BareName),
 }
 
@@ -201,6 +202,11 @@ impl CanCastTo<&ResolvedTypeDefinition> for ResolvedTypeDefinition {
         match self {
             Self::BuiltIn(q_left) => match other {
                 Self::BuiltIn(q_right) => q_left.can_cast_to(*q_right),
+                Self::String(_) => *q_left == TypeQualifier::DollarString,
+                _ => false,
+            },
+            Self::String(_) => match other {
+                Self::BuiltIn(TypeQualifier::DollarString) | Self::String(_) => true,
                 _ => false,
             },
             Self::UserDefined(u_left) => match other {
@@ -215,6 +221,7 @@ impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
     fn can_cast_to(&self, other: TypeQualifier) -> bool {
         match self {
             Self::BuiltIn(q_left) => q_left.can_cast_to(other),
+            Self::String(_) => other == TypeQualifier::DollarString,
             Self::UserDefined(_) => false,
         }
     }

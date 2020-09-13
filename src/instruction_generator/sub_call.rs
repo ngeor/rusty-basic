@@ -1,6 +1,7 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::Locatable;
-use crate::linter::{BareNameNode, ExpressionNode};
+use crate::linter::ExpressionNode;
+use crate::parser::BareNameNode;
 
 impl InstructionGenerator {
     pub fn generate_sub_call_instructions(

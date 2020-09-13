@@ -21,8 +21,3 @@ pub mod test_utils;
 
 pub use self::linter::*;
 pub use self::types::*;
-
-pub use crate::parser::{
-    BareName, BareNameNode, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
-    TypeQualifier, UnaryOperator,
-};

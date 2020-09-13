@@ -65,6 +65,7 @@ mod tests {
     use crate::common::*;
     use crate::linter::test_utils::*;
     use crate::linter::*;
+    use crate::parser::Operator;
 
     mod assignment {
         use super::*;

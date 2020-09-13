@@ -1,10 +1,9 @@
 use crate::common::CaseInsensitiveString;
 use crate::instruction_generator::NamedRefParam;
 use crate::linter::{
-    QualifiedName, ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedType,
-    UserDefinedName,
+    ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedType, UserDefinedName,
 };
-use crate::parser::Name;
+use crate::parser::{Name, QualifiedName, TypeQualifier};
 use crate::variant::{DefaultForType, Variant};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -162,6 +161,10 @@ impl ArgumentMap {
             ResolvedTypeDefinition::BuiltIn(q) => {
                 ResolvedDeclaredName::BuiltIn(QualifiedName::new(dummy_name.into(), q))
             }
+            ResolvedTypeDefinition::String(_) => ResolvedDeclaredName::BuiltIn(QualifiedName::new(
+                dummy_name.into(),
+                TypeQualifier::DollarString,
+            )),
             ResolvedTypeDefinition::UserDefined(u) => {
                 ResolvedDeclaredName::UserDefined(UserDefinedName {
                     name: dummy_name.into(),

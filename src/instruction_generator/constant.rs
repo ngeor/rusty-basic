@@ -1,6 +1,7 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::Locatable;
-use crate::linter::{ExpressionNode, HasQualifier, QualifiedNameNode, ResolvedTypeDefinition};
+use crate::linter::{ExpressionNode, ResolvedTypeDefinition};
+use crate::parser::{HasQualifier, QualifiedNameNode};
 
 impl InstructionGenerator {
     pub fn generate_const_instructions(&mut self, left: QualifiedNameNode, right: ExpressionNode) {

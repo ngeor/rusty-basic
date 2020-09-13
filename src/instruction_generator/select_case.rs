@@ -1,6 +1,7 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{CaseExpression, Operator, SelectCaseNode};
+use crate::linter::{CaseExpression, SelectCaseNode};
+use crate::parser::Operator;
 
 fn next_case_label(case_blocks_len: usize, has_else_block: bool, idx: usize) -> String {
     if idx + 1 < case_blocks_len {

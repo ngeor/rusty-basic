@@ -1,8 +1,8 @@
 use super::instruction::*;
 use crate::common::*;
 use crate::linter::*;
+use crate::parser::{BareName, HasQualifier};
 use crate::variant::{DefaultForType, Variant};
-
 use std::collections::HashMap;
 
 // pass 1: collect function names -> parameter names, in order to use them in function/sub calls
@@ -227,8 +227,8 @@ impl InstructionGenerator {
 mod tests {
     use crate::common::{AtRowCol, StripLocation};
     use crate::instruction_generator::{generate_instructions, Instruction, InstructionNode};
-    use crate::linter::{lint, ResolvedDeclaredName, TypeQualifier};
-    use crate::parser::parse_main_str;
+    use crate::linter::{lint, ResolvedDeclaredName};
+    use crate::parser::{parse_main_str, TypeQualifier};
     use crate::variant::Variant;
 
     pub fn generate_instructions_str<T>(input: T) -> Vec<InstructionNode>

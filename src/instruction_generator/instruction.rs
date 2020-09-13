@@ -1,6 +1,7 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{QualifiedName, ResolvedDeclaredName, TypeQualifier};
+use crate::linter::ResolvedDeclaredName;
+use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]

@@ -300,6 +300,13 @@ impl LinterContext {
                             .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
                     }
                 }
+                // TODO support top level DIM x AS STRING * 6
+                ResolvedTypeDefinition::String(_) => {
+                    self.names.insert(
+                        name.clone(),
+                        ResolvedTypeDefinitions::ExtendedBuiltIn(TypeQualifier::DollarString),
+                    );
+                }
                 ResolvedTypeDefinition::UserDefined(u) => {
                     self.names.insert(
                         name.clone(),

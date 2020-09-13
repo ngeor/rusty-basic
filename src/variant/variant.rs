@@ -522,6 +522,15 @@ impl DefaultForTypes<&ResolvedTypeDefinition> for Variant {
     ) -> Self {
         match type_definition {
             ResolvedTypeDefinition::BuiltIn(q) => Self::default_variant(*q),
+            ResolvedTypeDefinition::String(len) => {
+                let mut s: String = String::new();
+                let mut i: u32 = *len;
+                while i > 0 {
+                    s.push(' ');
+                    i -= 1;
+                }
+                Self::VString(s)
+            }
             ResolvedTypeDefinition::UserDefined(type_name) => {
                 Variant::VUserDefined(Box::new(UserDefinedValue::new(type_name, types)))
             }

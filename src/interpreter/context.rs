@@ -77,7 +77,6 @@ impl ConstantMapTrait<ResolvedDeclaredName> for ConstantMap {
 // VariableMap
 // ========================================================
 
-// BUG: misses info on A% A! A$ etc
 #[derive(Debug)]
 struct VariableMap(HashMap<Name, Variant>);
 
@@ -215,9 +214,7 @@ pub struct RootContext {
 }
 
 impl RootContext {
-    pub fn new(
-        user_defined_types: Rc<ResolvedUserDefinedTypes>,
-    ) -> Self {
+    pub fn new(user_defined_types: Rc<ResolvedUserDefinedTypes>) -> Self {
         Self {
             variables: VariableMap::new(),
             constants: ConstantMap::new(),
@@ -462,9 +459,7 @@ pub enum Context {
 }
 
 impl Context {
-    pub fn new(
-        user_defined_types: Rc<ResolvedUserDefinedTypes>,
-    ) -> Self {
+    pub fn new(user_defined_types: Rc<ResolvedUserDefinedTypes>) -> Self {
         Self::Root(RootContext::new(user_defined_types))
     }
 

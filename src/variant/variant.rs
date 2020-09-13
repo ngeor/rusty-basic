@@ -27,10 +27,7 @@ pub struct UserDefinedValue {
 }
 
 impl UserDefinedValue {
-    pub fn new(
-        type_name: &CaseInsensitiveString,
-        types: &ResolvedUserDefinedTypes,
-    ) -> Self {
+    pub fn new(type_name: &CaseInsensitiveString, types: &ResolvedUserDefinedTypes) -> Self {
         Self {
             type_name: type_name.clone(),
             map: VariantMap::new_for_user_defined_type(type_name, types),
@@ -491,17 +488,11 @@ impl DefaultForType<TypeQualifier> for Variant {
 }
 
 pub trait DefaultForTypes<T> {
-    fn default_variant_types(
-        t: T,
-        types: &ResolvedUserDefinedTypes,
-    ) -> Self;
+    fn default_variant_types(t: T, types: &ResolvedUserDefinedTypes) -> Self;
 }
 
 impl DefaultForTypes<&ResolvedElementType> for Variant {
-    fn default_variant_types(
-        t: &ResolvedElementType,
-        types: &ResolvedUserDefinedTypes,
-    ) -> Self {
+    fn default_variant_types(t: &ResolvedElementType, types: &ResolvedUserDefinedTypes) -> Self {
         match t {
             ResolvedElementType::Single => Variant::default_variant(TypeQualifier::BangSingle),
             ResolvedElementType::Double => Variant::default_variant(TypeQualifier::HashDouble),

@@ -1,4 +1,4 @@
-use crate::common::{ QErrorNode};
+use crate::common::QErrorNode;
 use crate::linter;
 use crate::linter::ResolvedUserDefinedTypes;
 use crate::parser::parse_main_str;
@@ -8,12 +8,7 @@ use crate::parser::parse_main_str;
 /// # Panics
 ///
 /// Panics if the parser or the linter have an error.
-pub fn linter_ok_with_types<T>(
-    input: T,
-) -> (
-    linter::ProgramNode,
-    ResolvedUserDefinedTypes,
-)
+pub fn linter_ok_with_types<T>(input: T) -> (linter::ProgramNode, ResolvedUserDefinedTypes)
 where
     T: AsRef<[u8]> + 'static,
 {

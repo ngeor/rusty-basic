@@ -10,12 +10,7 @@ use crate::variant::Variant;
 use std::collections::HashMap;
 use std::fs::File;
 
-pub fn generate_instructions<T>(
-    input: T,
-) -> (
-    Vec<InstructionNode>,
-    ResolvedUserDefinedTypes,
-)
+pub fn generate_instructions<T>(input: T) -> (Vec<InstructionNode>, ResolvedUserDefinedTypes)
 where
     T: AsRef<[u8]> + 'static,
 {

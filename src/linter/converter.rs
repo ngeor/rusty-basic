@@ -66,11 +66,11 @@ struct ConverterImpl {
     context: LinterContext,
     functions: FunctionMap,
     subs: SubMap,
-    user_defined_types: Rc<ResolvedUserDefinedTypes>
+    user_defined_types: Rc<ResolvedUserDefinedTypes>,
 }
 
 impl ConverterImpl {
-    pub fn new(user_defined_types:  Rc<ResolvedUserDefinedTypes>) -> Self {
+    pub fn new(user_defined_types: Rc<ResolvedUserDefinedTypes>) -> Self {
         Self {
             user_defined_types: Rc::clone(&user_defined_types),
             resolver: TypeResolverImpl::new(),
@@ -100,12 +100,7 @@ impl ConverterImpl {
         self.context = old.pop_context();
     }
 
-    pub fn consume(
-        self,
-    ) -> (
-        FunctionMap,
-        SubMap,
-    ) {
+    pub fn consume(self) -> (FunctionMap, SubMap) {
         (self.functions, self.subs)
     }
 
@@ -443,15 +438,7 @@ impl ConverterImpl {
 
 pub fn convert(
     program: parser::ProgramNode,
-) -> Result<
-    (
-        ProgramNode,
-        FunctionMap,
-        SubMap,
-        ResolvedUserDefinedTypes,
-    ),
-    QErrorNode,
-> {
+) -> Result<(ProgramNode, FunctionMap, SubMap, ResolvedUserDefinedTypes), QErrorNode> {
     // first pass
     let mut first_pass = FirstPassOuter::new();
     first_pass.parse(&program)?;

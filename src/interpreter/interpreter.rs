@@ -88,10 +88,7 @@ pub struct Interpreter<S: Stdlib> {
 }
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
-    pub fn new(
-        stdlib: TStdlib,
-        user_defined_types: ResolvedUserDefinedTypes,
-    ) -> Self {
+    pub fn new(stdlib: TStdlib, user_defined_types: ResolvedUserDefinedTypes) -> Self {
         let rc_user_defined_types = Rc::new(user_defined_types);
         let mut result = Interpreter {
             stdlib,

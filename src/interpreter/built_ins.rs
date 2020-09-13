@@ -1,14 +1,11 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::{
-    FileAccess, FileHandle, FileMode, QError, QErrorNode,
-    ToErrorEnvelopeNoPos,
-};
+use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::{
     ResolvedDeclaredName, ResolvedElement, ResolvedElementType, ResolvedTypeDefinition,
-    ResolvedUserDefinedType, ResolvedUserDefinedTypes
+    ResolvedUserDefinedType, ResolvedUserDefinedTypes,
 };
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};

@@ -75,7 +75,7 @@ impl LinterContext {
             parent: None,
             sub_program: None,
             names: HashMap::new(),
-            user_defined_types
+            user_defined_types,
         }
     }
 
@@ -573,7 +573,7 @@ impl LinterContext {
             parent: None,
             sub_program: Some((name.clone(), SubProgramType::Function)),
             names: HashMap::new(),
-            user_defined_types: Rc::clone(&self.user_defined_types)
+            user_defined_types: Rc::clone(&self.user_defined_types),
         };
         result.parent = Some(Box::new(self));
         result
@@ -584,7 +584,7 @@ impl LinterContext {
             parent: None,
             sub_program: Some((name.clone(), SubProgramType::Sub)),
             names: HashMap::new(),
-            user_defined_types: Rc::clone(&self.user_defined_types)
+            user_defined_types: Rc::clone(&self.user_defined_types),
         };
         result.parent = Some(Box::new(self));
         result

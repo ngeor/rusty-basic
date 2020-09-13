@@ -8,13 +8,7 @@ use crate::parser;
 
 pub fn lint(
     program: parser::ProgramNode,
-) -> Result<
-    (
-        ProgramNode,
-        ResolvedUserDefinedTypes,
-    ),
-    QErrorNode,
-> {
+) -> Result<(ProgramNode, ResolvedUserDefinedTypes), QErrorNode> {
     // convert to fully typed
     let (result, functions, subs, user_defined_types) = converter::convert(program)?;
     // lint

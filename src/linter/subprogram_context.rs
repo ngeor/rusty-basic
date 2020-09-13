@@ -7,7 +7,8 @@ use crate::linter::casting::cast;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::{
-    ResolvedElement, ResolvedElementType, ResolvedTypeDefinition, ResolvedUserDefinedType, ResolvedUserDefinedTypes
+    ResolvedElement, ResolvedElementType, ResolvedTypeDefinition, ResolvedUserDefinedType,
+    ResolvedUserDefinedTypes,
 };
 use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, DefType,
@@ -42,13 +43,7 @@ impl FirstPassOuter {
         }
     }
 
-    pub fn into_inner(
-        self,
-    ) -> (
-        FunctionMap,
-        SubMap,
-        ResolvedUserDefinedTypes,
-    ) {
+    pub fn into_inner(self) -> (FunctionMap, SubMap, ResolvedUserDefinedTypes) {
         let Self {
             function_context,
             sub_context,

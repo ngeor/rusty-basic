@@ -391,7 +391,7 @@ impl ResolvedElementType {
             Self::Long => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
             Self::Single => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
             Self::Double => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Self::String(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
+            Self::String(l) => ResolvedTypeDefinition::String(*l),
             Self::UserDefined(type_name) => ResolvedTypeDefinition::UserDefined(type_name.clone()),
         }
     }

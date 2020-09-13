@@ -155,6 +155,25 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let casted = crate::linter::casting::cast(v, *q).with_err_at(pos)?;
                 self.set_a(casted);
             }
+            Instruction::Truncate(l) => {
+                let v = self.get_a();
+                let casted = crate::linter::casting::cast(v, TypeQualifier::DollarString)
+                    .with_err_at(pos)?;
+                self.set_a(match casted {
+                    Variant::VString(s) => {
+                        let len: usize = *l as usize;
+                        if len < s.len() {
+                            let chars: Vec<char> = s.chars().collect();
+                            let c = &chars[0..len];
+                            let s2: String = c.iter().collect();
+                            Variant::VString(s2)
+                        } else {
+                            Variant::VString(s)
+                        }
+                    }
+                    _ => casted,
+                });
+            }
             Instruction::Dim(resolved_declared_name) => {
                 let v = Variant::default_variant_types(
                     &resolved_declared_name.type_definition(),

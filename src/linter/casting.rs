@@ -285,6 +285,7 @@ pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, QErro
 // TODO fix all panic
 // TODO fix all unwrap
 // TODO fix all try_unwrap
+// TODO remove all std::rc and std::cell
 
 #[cfg(test)]
 mod tests {

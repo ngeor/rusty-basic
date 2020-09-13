@@ -21,6 +21,7 @@ pub enum TypeQualifier {
     PercentInteger,
     /// `&` Long-integer
     AmpersandLong,
+    // TODO remove FileHandle keep only valid symbols
     /// Not an actual type, but to be able to call PRINT #1, "hello", we define the file handle type
     FileHandle,
 }

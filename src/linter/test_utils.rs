@@ -1,8 +1,7 @@
-use crate::common::{CaseInsensitiveString, QErrorNode};
+use crate::common::{ QErrorNode};
 use crate::linter;
-use crate::linter::ResolvedUserDefinedType;
+use crate::linter::ResolvedUserDefinedTypes;
 use crate::parser::parse_main_str;
-use std::collections::HashMap;
 
 /// Lints the given string and returns the results.
 ///
@@ -13,7 +12,7 @@ pub fn linter_ok_with_types<T>(
     input: T,
 ) -> (
     linter::ProgramNode,
-    HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ResolvedUserDefinedTypes,
 )
 where
     T: AsRef<[u8]> + 'static,

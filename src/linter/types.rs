@@ -7,7 +7,7 @@ use crate::parser::{
     BareName, BareNameNode, CanCastTo, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
     TypeDefinition, TypeQualifier, UnaryOperator,
 };
-
+use std::collections::HashMap;
 #[cfg(test)]
 use std::convert::TryFrom;
 
@@ -361,6 +361,8 @@ pub struct ResolvedUserDefinedType {
     /// The elements
     pub elements: Vec<ResolvedElement>,
 }
+
+pub type ResolvedUserDefinedTypes = HashMap<BareName, ResolvedUserDefinedType>;
 
 impl ResolvedUserDefinedType {
     pub fn find_element(&self, element_name: &BareName) -> Option<&ResolvedElement> {

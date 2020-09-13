@@ -5,14 +5,13 @@ use super::types::*;
 use crate::common::*;
 use crate::linter::converter;
 use crate::parser;
-use std::collections::HashMap;
 
 pub fn lint(
     program: parser::ProgramNode,
 ) -> Result<
     (
         ProgramNode,
-        HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+        ResolvedUserDefinedTypes,
     ),
     QErrorNode,
 > {

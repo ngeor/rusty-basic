@@ -4,7 +4,7 @@ use crate::instruction_generator::InstructionNode;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
-use crate::linter::{ResolvedDeclaredName, ResolvedUserDefinedType};
+use crate::linter::{ResolvedDeclaredName, ResolvedUserDefinedTypes};
 use crate::parser::{parse_main_file, parse_main_str};
 use crate::variant::Variant;
 use std::collections::HashMap;
@@ -14,7 +14,7 @@ pub fn generate_instructions<T>(
     input: T,
 ) -> (
     Vec<InstructionNode>,
-    HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+    ResolvedUserDefinedTypes,
 )
 where
     T: AsRef<[u8]> + 'static,

@@ -1,7 +1,7 @@
 use super::fit::FitToType;
 use crate::common::{CaseInsensitiveString, FileHandle, QError};
 use crate::linter::{
-    ResolvedElement, ResolvedElementType, ResolvedTypeDefinition, ResolvedUserDefinedType,
+    ResolvedElement, ResolvedElementType, ResolvedTypeDefinition, ResolvedUserDefinedTypes,
 };
 use crate::parser::TypeQualifier;
 use std::cmp::Ordering;
@@ -29,7 +29,7 @@ pub struct UserDefinedValue {
 impl UserDefinedValue {
     pub fn new(
         type_name: &CaseInsensitiveString,
-        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+        types: &ResolvedUserDefinedTypes,
     ) -> Self {
         Self {
             type_name: type_name.clone(),
@@ -58,7 +58,7 @@ pub struct VariantMap {
 impl VariantMap {
     pub fn new_for_user_defined_type(
         type_name: &CaseInsensitiveString,
-        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+        types: &ResolvedUserDefinedTypes,
     ) -> Self {
         let user_defined_type = types.get(type_name).expect("could not find type");
         let mut map: HashMap<CaseInsensitiveString, Variant> = HashMap::new();
@@ -493,14 +493,14 @@ impl DefaultForType<TypeQualifier> for Variant {
 pub trait DefaultForTypes<T> {
     fn default_variant_types(
         t: T,
-        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+        types: &ResolvedUserDefinedTypes,
     ) -> Self;
 }
 
 impl DefaultForTypes<&ResolvedElementType> for Variant {
     fn default_variant_types(
         t: &ResolvedElementType,
-        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+        types: &ResolvedUserDefinedTypes,
     ) -> Self {
         match t {
             ResolvedElementType::Single => Variant::default_variant(TypeQualifier::BangSingle),
@@ -518,7 +518,7 @@ impl DefaultForTypes<&ResolvedElementType> for Variant {
 impl DefaultForTypes<&ResolvedTypeDefinition> for Variant {
     fn default_variant_types(
         type_definition: &ResolvedTypeDefinition,
-        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+        types: &ResolvedUserDefinedTypes,
     ) -> Self {
         match type_definition {
             ResolvedTypeDefinition::BuiltIn(q) => Self::default_variant(*q),

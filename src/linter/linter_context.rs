@@ -2,13 +2,14 @@ use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocat
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
     Expression, Members, ResolvedDeclaredName, ResolvedElement, ResolvedElementType,
-    ResolvedTypeDefinition, ResolvedUserDefinedType, UserDefinedName,
+    ResolvedTypeDefinition, ResolvedUserDefinedTypes, UserDefinedName,
 };
 use crate::parser::{
     BareName, CanCastTo, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier,
     WithTypeQualifier,
 };
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 /*
 
@@ -60,15 +61,24 @@ enum SubProgramType {
 // LinterContext
 //
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct LinterContext {
     parent: Option<Box<LinterContext>>,
     sub_program: Option<(BareName, SubProgramType)>,
     names: HashMap<BareName, ResolvedTypeDefinitions>,
-    pub user_defined_types: HashMap<BareName, ResolvedUserDefinedType>,
+    user_defined_types: Rc<ResolvedUserDefinedTypes>,
 }
 
 impl LinterContext {
+    pub fn new(user_defined_types: Rc<ResolvedUserDefinedTypes>) -> Self {
+        Self {
+            parent: None,
+            sub_program: None,
+            names: HashMap::new(),
+            user_defined_types
+        }
+    }
+
     fn get_user_defined_type_name(&self, name: &BareName) -> Option<&BareName> {
         match self.names.get(name) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
@@ -559,16 +569,24 @@ impl LinterContext {
     }
 
     pub fn push_function_context(self, name: &BareName) -> Self {
-        let mut result = LinterContext::default();
+        let mut result = Self {
+            parent: None,
+            sub_program: Some((name.clone(), SubProgramType::Function)),
+            names: HashMap::new(),
+            user_defined_types: Rc::clone(&self.user_defined_types)
+        };
         result.parent = Some(Box::new(self));
-        result.sub_program = Some((name.clone(), SubProgramType::Function));
         result
     }
 
     pub fn push_sub_context(self, name: &BareName) -> Self {
-        let mut result = LinterContext::default();
+        let mut result = Self {
+            parent: None,
+            sub_program: Some((name.clone(), SubProgramType::Sub)),
+            names: HashMap::new(),
+            user_defined_types: Rc::clone(&self.user_defined_types)
+        };
         result.parent = Some(Box::new(self));
-        result.sub_program = Some((name.clone(), SubProgramType::Sub));
         result
     }
 

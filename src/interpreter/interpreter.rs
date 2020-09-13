@@ -6,11 +6,10 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
-use crate::linter::ResolvedUserDefinedType;
+use crate::linter::ResolvedUserDefinedTypes;
 use crate::parser::TypeQualifier;
 use crate::variant::{DefaultForTypes, Variant};
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::rc::Rc;
@@ -85,13 +84,13 @@ pub struct Interpreter<S: Stdlib> {
     stacktrace: Vec<Location>,
     pub function_result: Variant,
     pub file_manager: FileManager,
-    pub user_defined_types: Rc<HashMap<CaseInsensitiveString, ResolvedUserDefinedType>>,
+    pub user_defined_types: Rc<ResolvedUserDefinedTypes>,
 }
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     pub fn new(
         stdlib: TStdlib,
-        user_defined_types: HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+        user_defined_types: ResolvedUserDefinedTypes,
     ) -> Self {
         let rc_user_defined_types = Rc::new(user_defined_types);
         let mut result = Interpreter {
@@ -247,7 +246,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
             Instruction::CopyVarToA(n) => match self.context_ref().get_r_value(n) {
                 Some(v) => self.set_a(v),
-                None => panic!("Variable {:?} undefined at {:?}", n, pos),
+                None => panic!("CopyVarToA variable {:?} undefined at {:?}", n, pos),
             },
             Instruction::Equal => {
                 let a = self.get_a();

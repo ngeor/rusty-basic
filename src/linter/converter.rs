@@ -11,8 +11,8 @@ use crate::parser::{
     BareName, BareNameNode, CanCastTo, DeclaredName, DeclaredNameNodes, HasQualifier, Name,
     NameNode, QualifiedName, TypeDefinition, TypeQualifier, WithTypeQualifier,
 };
-use std::collections::HashMap;
 use std::convert::TryInto;
+use std::rc::Rc;
 
 //
 // Converter trait
@@ -60,29 +60,43 @@ where
 // Converter
 //
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct ConverterImpl {
     resolver: TypeResolverImpl,
     context: LinterContext,
     functions: FunctionMap,
     subs: SubMap,
-    function_declarations: FunctionMap,
-    sub_declarations: SubMap,
+    user_defined_types: Rc<ResolvedUserDefinedTypes>
 }
 
 impl ConverterImpl {
+    pub fn new(user_defined_types:  Rc<ResolvedUserDefinedTypes>) -> Self {
+        Self {
+            user_defined_types: Rc::clone(&user_defined_types),
+            resolver: TypeResolverImpl::new(),
+            context: LinterContext::new(user_defined_types),
+            functions: FunctionMap::new(),
+            subs: SubMap::new(),
+        }
+    }
+
+    fn take_context(&mut self) -> LinterContext {
+        let tmp = LinterContext::new(Rc::clone(&self.user_defined_types));
+        std::mem::replace(&mut self.context, tmp)
+    }
+
     pub fn push_function_context(&mut self, name: &CaseInsensitiveString) {
-        let old = std::mem::take(&mut self.context);
+        let old = self.take_context();
         self.context = old.push_function_context(name);
     }
 
     pub fn push_sub_context(&mut self, name: &CaseInsensitiveString) {
-        let old = std::mem::take(&mut self.context);
+        let old = self.take_context();
         self.context = old.push_sub_context(name);
     }
 
     pub fn pop_context(&mut self) {
-        let old = std::mem::take(&mut self.context);
+        let old = self.take_context();
         self.context = old.pop_context();
     }
 
@@ -91,9 +105,8 @@ impl ConverterImpl {
     ) -> (
         FunctionMap,
         SubMap,
-        HashMap<BareName, ResolvedUserDefinedType>,
     ) {
-        (self.functions, self.subs, self.context.user_defined_types)
+        (self.functions, self.subs)
     }
 
     fn convert_function_implementation(
@@ -114,14 +127,47 @@ impl ConverterImpl {
         Ok(Some(mapped))
     }
 
-    fn resolve_declared_name(&self, d: &DeclaredName) -> TypeQualifier {
-        match d.type_definition() {
+    // TODO trait FromWithContext fn from(other, &ctx) -> Self
+    // TODO more types e.g. ParamName
+    // TODO the bool represents extended type, improve this
+    fn resolve_declared_parameter_name(
+        &self,
+        d: &DeclaredName,
+    ) -> Result<(ResolvedDeclaredName, bool), QError> {
+        let DeclaredName {
+            name,
+            type_definition,
+        } = d;
+        match type_definition {
             TypeDefinition::Bare => {
-                let bare_name: &BareName = d.as_ref();
-                bare_name.resolve_into(&self.resolver)
+                let q: TypeQualifier = name.resolve_into(&self.resolver);
+                Ok((
+                    ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), q)),
+                    false,
+                ))
             }
-            TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => *q,
-            _ => unimplemented!(),
+            TypeDefinition::CompactBuiltIn(q) => Ok((
+                ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), *q)),
+                false,
+            )),
+            TypeDefinition::ExtendedBuiltIn(q) => Ok((
+                ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), *q)),
+                true,
+            )),
+            TypeDefinition::UserDefined(u) => {
+                if self.user_defined_types.contains_key(u) {
+                    Ok((
+                        ResolvedDeclaredName::UserDefined(UserDefinedName {
+                            name: name.clone(),
+                            type_name: u.clone(),
+                        }),
+                        true,
+                    ))
+                } else {
+                    // TODO collect common syntax error messages into new enum values
+                    Err(QError::syntax_error(format!("Type {} not defined", u)))
+                }
+            }
         }
     }
 
@@ -141,16 +187,22 @@ impl ConverterImpl {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let q: TypeQualifier = self.resolve_declared_name(&declared_name);
+            let (resolved_declared_name, is_extended) = self
+                .resolve_declared_parameter_name(&declared_name)
+                .with_err_at(pos)?;
             let bare_function_name: &BareName = function_name.as_ref();
-            if bare_function_name == bare_name
-                && (function_name.qualifier() != q || declared_name.is_extended())
-            {
+            if bare_function_name == bare_name {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
-                return Err(QError::DuplicateDefinition).with_err_at(pos);
+                let clashes = match &resolved_declared_name {
+                    ResolvedDeclaredName::BuiltIn(QualifiedName { qualifier, .. }) => {
+                        *qualifier != function_name.qualifier() || is_extended
+                    }
+                    _ => true,
+                };
+                if clashes {
+                    return Err(QError::DuplicateDefinition).with_err_at(pos);
+                }
             }
-            let resolved_declared_name =
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(bare_name.clone(), q));
             self.context
                 .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
@@ -178,9 +230,9 @@ impl ConverterImpl {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let q: TypeQualifier = self.resolve_declared_name(&declared_name);
-            let resolved_declared_name =
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(bare_name.clone(), q));
+            let (resolved_declared_name, _) = self
+                .resolve_declared_parameter_name(&declared_name)
+                .with_err_at(pos)?;
             self.context
                 .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
@@ -396,7 +448,7 @@ pub fn convert(
         ProgramNode,
         FunctionMap,
         SubMap,
-        HashMap<BareName, ResolvedUserDefinedType>,
+        ResolvedUserDefinedTypes,
     ),
     QErrorNode,
 > {
@@ -405,13 +457,13 @@ pub fn convert(
     first_pass.parse(&program)?;
     let (f_c, s_c, user_defined_types) = first_pass.into_inner();
     // second pass
-    let mut converter = ConverterImpl::default();
+    let r = Rc::new(user_defined_types);
+    let mut converter = ConverterImpl::new(Rc::clone(&r));
     converter.functions = f_c;
     converter.subs = s_c;
-    converter.context.user_defined_types = user_defined_types;
     let result = converter.convert(program)?;
-    let (f, s, u) = converter.consume();
-    Ok((result, f, s, u))
+    let (f, s) = converter.consume();
+    Ok((result, f, s, Rc::try_unwrap(r).unwrap()))
 }
 
 impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {

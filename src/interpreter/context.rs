@@ -1,7 +1,7 @@
 use crate::common::CaseInsensitiveString;
 use crate::instruction_generator::NamedRefParam;
 use crate::linter::{
-    ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedType, UserDefinedName,
+    ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedTypes, UserDefinedName,
 };
 use crate::parser::{Name, QualifiedName, TypeQualifier};
 use crate::variant::{DefaultForType, Variant};
@@ -211,12 +211,12 @@ impl ArgumentMap {
 pub struct RootContext {
     variables: VariableMap,
     constants: ConstantMap,
-    user_defined_types: Rc<HashMap<CaseInsensitiveString, ResolvedUserDefinedType>>,
+    user_defined_types: Rc<ResolvedUserDefinedTypes>,
 }
 
 impl RootContext {
     pub fn new(
-        user_defined_types: Rc<HashMap<CaseInsensitiveString, ResolvedUserDefinedType>>,
+        user_defined_types: Rc<ResolvedUserDefinedTypes>,
     ) -> Self {
         Self {
             variables: VariableMap::new(),
@@ -463,7 +463,7 @@ pub enum Context {
 
 impl Context {
     pub fn new(
-        user_defined_types: Rc<HashMap<CaseInsensitiveString, ResolvedUserDefinedType>>,
+        user_defined_types: Rc<ResolvedUserDefinedTypes>,
     ) -> Self {
         Self::Root(RootContext::new(user_defined_types))
     }

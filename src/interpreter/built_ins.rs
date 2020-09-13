@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{
-    CaseInsensitiveString, FileAccess, FileHandle, FileMode, QError, QErrorNode,
+    FileAccess, FileHandle, FileMode, QError, QErrorNode,
     ToErrorEnvelopeNoPos,
 };
 use crate::interpreter::context::Argument;
@@ -8,14 +8,11 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::{
     ResolvedDeclaredName, ResolvedElement, ResolvedElementType, ResolvedTypeDefinition,
-    ResolvedUserDefinedType,
+    ResolvedUserDefinedType, ResolvedUserDefinedTypes
 };
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
-use std::collections::HashMap;
 use std::convert::TryInto;
-
-// TODO create type or struct for HashMap<BareName, ResolvedUserDefinedType>
 
 pub fn run_function<S: Stdlib>(
     f: &BuiltInFunction,
@@ -502,7 +499,7 @@ mod len {
 
     fn len_of_user_defined_type(
         user_defined_type: &ResolvedUserDefinedType,
-        types: &HashMap<CaseInsensitiveString, ResolvedUserDefinedType>,
+        types: &ResolvedUserDefinedTypes,
     ) -> u32 {
         let mut sum: u32 = 0;
         for ResolvedElement { element_type, .. } in user_defined_type.elements.iter() {

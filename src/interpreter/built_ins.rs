@@ -1,5 +1,7 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
+use crate::common::{
+    FileAccess, FileHandle, FileMode, QError, QErrorNode, StringUtils, ToErrorEnvelopeNoPos,
+};
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
@@ -241,9 +243,9 @@ mod input {
             ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger) => {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
+            ResolvedTypeDefinition::String(l) => Variant::from(raw_input.sub_str(l as usize)),
             _ => unimplemented!(),
         };
-        // TODO casting
         interpreter
             .context_mut()
             .demand_sub()
@@ -340,6 +342,61 @@ mod input {
             fn test_input_42() {
                 assert_input("42", "A%", "A%", 42);
             }
+        }
+
+        #[test]
+        fn test_input_dim_extended_builtin() {
+            let input = "
+            DIM X AS INTEGER
+            INPUT X
+            PRINT X
+            ";
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input("42");
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+        }
+
+        #[test]
+        fn test_input_dim_user_defined() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+
+            DIM X AS Card
+            INPUT X.Value
+            INPUT X.Suit
+            PRINT X.Value
+            PRINT X.Suit
+            ";
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input("2");
+            stdlib.add_next_input("diamonds are forever");
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_eq!(interpreter.stdlib.output, vec!["2", "diamonds "]);
+        }
+
+        #[test]
+        fn test_input_inside_sub() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            DIM X AS Card
+            Test X.Value
+            PRINT X.Value
+
+            SUB Test(X%)
+                INPUT X%
+            END SUB
+            ";
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input("42");
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_eq!(interpreter.stdlib.output, vec!["42"]);
         }
     }
 }

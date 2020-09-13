@@ -158,14 +158,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.set_a(match casted {
                     Variant::VString(s) => {
                         let len: usize = *l as usize;
-                        if len < s.len() {
-                            let chars: Vec<char> = s.chars().collect();
-                            let c = &chars[0..len];
-                            let s2: String = c.iter().collect();
-                            Variant::VString(s2)
-                        } else {
-                            Variant::VString(s)
-                        }
+                        Variant::VString(s.sub_str(len))
                     }
                     _ => casted,
                 });

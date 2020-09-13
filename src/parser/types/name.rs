@@ -2,6 +2,8 @@ use super::{HasQualifier, TypeQualifier};
 use crate::common::{CaseInsensitiveString, Locatable};
 use std::convert::TryFrom;
 
+// TODO deprecate name in favor of types specific to their usage e.g. LName, ParamName, etc
+
 //
 // BareName
 //

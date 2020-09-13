@@ -827,6 +827,22 @@ mod tests {
             ";
             assert_linter_err!(program, QError::ArgumentTypeMismatch, 4, 19);
         }
+
+        #[test]
+        fn test_by_ref_parameter_type_mismatch_user_defined_type() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            DIM c AS Card
+            Test c.Value
+
+            SUB Test(N)
+            END SUB
+            ";
+            assert_linter_err!(input, QError::ArgumentTypeMismatch, 7, 18);
+        }
     }
 
     mod select_case {

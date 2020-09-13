@@ -484,6 +484,23 @@ impl LinterContext {
         }
     }
 
+    fn is_constant(&self, name: &Name) -> Result<bool, QError> {
+        let bare_name: &BareName = name.as_ref();
+        match self.names.get(bare_name) {
+            Some(resolved_type_definitions) => match resolved_type_definitions {
+                ResolvedTypeDefinitions::Constant(q) => {
+                    if name.is_bare_or_of_type(*q) {
+                        Ok(true)
+                    } else {
+                        Err(QError::DuplicateDefinition)
+                    }
+                }
+                _ => Ok(false),
+            },
+            None => Ok(false),
+        }
+    }
+
     pub fn resolve_param_assignment<T: TypeResolver>(
         &self,
         name: &Name,
@@ -603,6 +620,13 @@ impl LinterContext {
         }
     }
 
+    fn is_parent_constant(&self, n: &Name) -> Result<bool, QError> {
+        match &self.parent {
+            Some(p) => p.is_constant(n),
+            None => Ok(false),
+        }
+    }
+
     pub fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
         match self.do_resolve_const_expression(n)? {
             Some(e) => Ok(Some(e)),
@@ -628,12 +652,11 @@ impl LinterContext {
             Some(x) => Ok(x),
             None => {
                 // maybe a parent constant?
-                match self.resolve_parent_const_expression(name)? {
-                    Some(_) => Err(QError::DuplicateDefinition),
-                    None => {
-                        // just insert it
-                        self.resolve_missing_name_in_assignment(name, resolver)
-                    }
+                if self.is_parent_constant(name)? {
+                    Err(QError::DuplicateDefinition)
+                } else {
+                    // just insert it
+                    self.resolve_missing_name_in_assignment(name, resolver)
                 }
             }
         }

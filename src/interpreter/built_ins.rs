@@ -398,6 +398,22 @@ mod input {
             let interpreter = interpret_with_stdlib(input, stdlib);
             assert_eq!(interpreter.stdlib.output, vec!["42"]);
         }
+
+        #[test]
+        fn test_input_assign_to_function_directly() {
+            let input = "
+            X = Test
+            PRINT X
+
+            FUNCTION Test
+                INPUT Test
+            END FUNCTION
+            ";
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input("3.14");
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+        }
     }
 }
 

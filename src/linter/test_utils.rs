@@ -37,8 +37,8 @@ pub fn linter_err<T>(input: T) -> QErrorNode
 where
     T: AsRef<[u8]> + 'static,
 {
-    let program = parse_main_str(input).unwrap();
-    linter::lint(program).unwrap_err()
+    let program = parse_main_str(input).expect("Parser should succeed");
+    linter::lint(program).expect_err("Linter should fail")
 }
 
 #[macro_export]

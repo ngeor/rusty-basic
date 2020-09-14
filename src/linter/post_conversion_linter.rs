@@ -101,6 +101,7 @@ pub trait PostConversionLinter {
         self.visit_expressions(args)
     }
 
+    // TODO rename names to name everywhere
     fn visit_assignment(
         &self,
         _names: &ResolvedDeclaredName,
@@ -110,6 +111,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
+        // TODO visit variable name
         self.visit_expression(&f.lower_bound)?;
         self.visit_expression(&f.upper_bound)?;
         match &f.step {

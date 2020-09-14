@@ -11,6 +11,7 @@ use crate::parser::{
     BareName, BareNameNode, CanCastTo, DeclaredName, DeclaredNameNodes, HasQualifier, Name,
     NameNode, QualifiedName, TypeDefinition, TypeQualifier, WithTypeQualifier,
 };
+use std::collections::HashSet;
 use std::convert::TryInto;
 use std::rc::Rc;
 
@@ -100,8 +101,12 @@ impl ConverterImpl {
         self.context = old.pop_context();
     }
 
-    pub fn consume(self) -> (FunctionMap, SubMap) {
-        (self.functions, self.subs)
+    pub fn consume(self) -> (FunctionMap, SubMap, HashSet<BareName>) {
+        (
+            self.functions,
+            self.subs,
+            self.context.names_without_dot.unwrap(),
+        )
     }
 
     fn convert_function_implementation(
@@ -125,8 +130,9 @@ impl ConverterImpl {
     // TODO trait FromWithContext fn from(other, &ctx) -> Self
     // TODO more types e.g. ParamName
     // TODO the bool represents extended type, improve this
+    // TODO use linter context there are a lot of similarities
     fn resolve_declared_parameter_name(
-        &self,
+        &mut self,
         d: &DeclaredName,
     ) -> Result<(ResolvedDeclaredName, bool), QError> {
         let DeclaredName {
@@ -437,7 +443,16 @@ impl ConverterImpl {
 
 pub fn convert(
     program: parser::ProgramNode,
-) -> Result<(ProgramNode, FunctionMap, SubMap, ResolvedUserDefinedTypes), QErrorNode> {
+) -> Result<
+    (
+        ProgramNode,
+        FunctionMap,
+        SubMap,
+        ResolvedUserDefinedTypes,
+        HashSet<BareName>,
+    ),
+    QErrorNode,
+> {
     // first pass
     let mut first_pass = FirstPassOuter::new();
     first_pass.parse(&program)?;
@@ -448,8 +463,9 @@ pub fn convert(
     converter.functions = f_c;
     converter.subs = s_c;
     let result = converter.convert(program)?;
-    let (f, s) = converter.consume();
-    Ok((result, f, s, Rc::try_unwrap(r).unwrap()))
+    // consume
+    let (f, s, names_without_dot) = converter.consume();
+    Ok((result, f, s, Rc::try_unwrap(r).unwrap(), names_without_dot))
 }
 
 impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {

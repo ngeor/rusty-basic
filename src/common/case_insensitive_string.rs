@@ -44,6 +44,17 @@ impl CaseInsensitiveString {
         }
         i >= n.len()
     }
+
+    pub fn prefix(&self, delimiter: char) -> Option<Self> {
+        if self.contains(delimiter) {
+            let s: String = self.inner.clone();
+            let v: Vec<&str> = s.split('.').collect();
+            let first: Self = v[0].into();
+            Some(first)
+        } else {
+            None
+        }
+    }
 }
 
 impl From<CaseInsensitiveString> for String {

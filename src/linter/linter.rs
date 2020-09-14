@@ -5,14 +5,17 @@ use super::types::*;
 use crate::common::*;
 use crate::linter::converter;
 use crate::parser;
+use crate::parser::{BareName, BareNameNode, QualifiedName, QualifiedNameNode};
+use std::collections::HashSet;
 
 pub fn lint(
     program: parser::ProgramNode,
 ) -> Result<(ProgramNode, ResolvedUserDefinedTypes), QErrorNode> {
     // convert to fully typed
-    let (result, functions, subs, user_defined_types) = converter::convert(program)?;
+    let (result, functions, subs, user_defined_types, names_without_dot) =
+        converter::convert(program)?;
     // lint
-    apply_linters(&result, &functions, &subs)?;
+    apply_linters(&result, &functions, &subs, &names_without_dot)?;
     // reduce
     let reducer = super::undefined_function_reducer::UndefinedFunctionReducer {
         functions: &functions,
@@ -26,19 +29,21 @@ fn apply_linters(
     result: &ProgramNode,
     functions: &FunctionMap,
     subs: &SubMap,
+    names_without_dot: &HashSet<CaseInsensitiveString>,
 ) -> Result<(), QErrorNode> {
     let linter = super::for_next_counter_match::ForNextCounterMatch {};
+    linter.visit_program(&result)?;
+
+    let linter = NoDotNames { names_without_dot };
     linter.visit_program(&result)?;
 
     let linter = super::built_in_linter::BuiltInLinter {};
     linter.visit_program(&result)?;
 
-    let linter = super::user_defined_function_linter::UserDefinedFunctionLinter {
-        functions: &functions,
-    };
+    let linter = super::user_defined_function_linter::UserDefinedFunctionLinter { functions };
     linter.visit_program(&result)?;
 
-    let linter = super::user_defined_sub_linter::UserDefinedSubLinter { subs: &subs };
+    let linter = super::user_defined_sub_linter::UserDefinedSubLinter { subs };
     linter.visit_program(&result)?;
 
     let linter = super::select_case_linter::SelectCaseLinter {};
@@ -49,6 +54,177 @@ fn apply_linters(
     linter.switch_to_validating_mode();
     linter.visit_program(&result)?;
     Ok(())
+}
+
+// ========================================================
+// NoDotNames
+// ========================================================
+
+pub struct NoDotNames<'a> {
+    pub names_without_dot: &'a HashSet<CaseInsensitiveString>,
+}
+
+trait NoDotNamesCheck<T, E> {
+    fn ensure_no_dots(&self, x: &T) -> Result<(), E>;
+}
+
+impl<'a> NoDotNamesCheck<FunctionImplementation, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &FunctionImplementation) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(&x.name)?;
+        self.ensure_no_dots(&x.params)
+    }
+}
+
+impl<'a> NoDotNamesCheck<SubImplementation, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &SubImplementation) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(&x.name)?;
+        self.ensure_no_dots(&x.params)
+    }
+}
+
+impl<'a> NoDotNamesCheck<ResolvedDeclaredNameNodes, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &ResolvedDeclaredNameNodes) -> Result<(), QErrorNode> {
+        x.into_iter().map(|x| self.ensure_no_dots(x)).collect()
+    }
+}
+
+impl<'a> NoDotNamesCheck<ResolvedDeclaredNameNode, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
+        let Locatable { element, pos } = x;
+        self.ensure_no_dots(element).with_err_at(pos)
+    }
+}
+
+impl<'a> NoDotNamesCheck<ResolvedDeclaredName, QError> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &ResolvedDeclaredName) -> Result<(), QError> {
+        let bare_name: &BareName = x.as_ref();
+        self.ensure_no_dots(bare_name)
+    }
+}
+
+impl<'a> NoDotNamesCheck<QualifiedNameNode, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &QualifiedNameNode) -> Result<(), QErrorNode> {
+        let Locatable { element, pos } = x;
+        self.ensure_no_dots(element).with_err_at(pos)
+    }
+}
+
+impl<'a> NoDotNamesCheck<BareNameNode, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &BareNameNode) -> Result<(), QErrorNode> {
+        let Locatable { element, pos } = x;
+        self.ensure_no_dots(element).with_err_at(pos)
+    }
+}
+
+impl<'a> NoDotNamesCheck<QualifiedName, QError> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &QualifiedName) -> Result<(), QError> {
+        let QualifiedName { name, .. } = x;
+        self.ensure_no_dots(name)
+    }
+}
+
+impl<'a> NoDotNamesCheck<BareName, QError> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &BareName) -> Result<(), QError> {
+        match x.prefix('.') {
+            Some(first) => {
+                if self.names_without_dot.contains(&first) {
+                    Err(QError::DotClash)
+                } else {
+                    Ok(())
+                }
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+impl<'a> NoDotNamesCheck<Vec<ExpressionNode>, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        x.into_iter().map(|x| self.ensure_no_dots(x)).collect()
+    }
+}
+
+impl<'a> NoDotNamesCheck<ExpressionNode, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &ExpressionNode) -> Result<(), QErrorNode> {
+        let Locatable { element, pos } = x;
+        self.ensure_no_dots(element).patch_err_pos(pos)
+    }
+}
+
+impl<'a> NoDotNamesCheck<Expression, QErrorNode> for NoDotNames<'a> {
+    fn ensure_no_dots(&self, x: &Expression) -> Result<(), QErrorNode> {
+        match x {
+            Expression::Constant(qualified_name) => {
+                self.ensure_no_dots(qualified_name).with_err_no_pos()
+            }
+            Expression::Variable(resolved_declared_name) => self
+                .ensure_no_dots(resolved_declared_name)
+                .with_err_no_pos(),
+            Expression::FunctionCall(name, args) => {
+                self.ensure_no_dots(name).with_err_no_pos()?;
+                self.ensure_no_dots(args)
+            }
+            Expression::BuiltInFunctionCall(_, args) => self.ensure_no_dots(args),
+            Expression::BinaryExpression(_, left, right) => {
+                self.ensure_no_dots(left.as_ref())?;
+                self.ensure_no_dots(right.as_ref())
+            }
+            Expression::UnaryExpression(_, child) | Expression::Parenthesis(child) => {
+                self.ensure_no_dots(child.as_ref())
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+impl<'a> PostConversionLinter for NoDotNames<'a> {
+    fn visit_function_implementation(&self, f: &FunctionImplementation) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(f)?;
+        self.visit_statement_nodes(&f.body)
+    }
+
+    fn visit_sub_implementation(&self, s: &SubImplementation) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(s)?;
+        self.visit_statement_nodes(&s.body)
+    }
+
+    fn visit_dim(&self, d: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(d)
+    }
+
+    fn visit_assignment(
+        &self,
+        name: &ResolvedDeclaredName,
+        v: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(name).with_err_no_pos()?;
+        self.visit_expression(v)
+    }
+
+    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
+        // TODO verify variable name
+
+        self.visit_expression(&f.lower_bound)?;
+        self.visit_expression(&f.upper_bound)?;
+        match &f.step {
+            Some(s) => self.visit_expression(s)?,
+            None => (),
+        }
+        self.visit_statement_nodes(&f.statements)
+    }
+
+    fn visit_const(
+        &self,
+        left: &QualifiedNameNode,
+        right: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(left)?;
+        self.visit_expression(right)
+    }
+
+    fn visit_expression(&self, e: &ExpressionNode) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(e)
+    }
 }
 
 #[cfg(test)]
@@ -740,6 +916,56 @@ mod tests {
             ";
             assert_linter_err!(program, QError::ArgumentTypeMismatch, 2, 21);
         }
+
+        #[test]
+        fn test_function_dotted_name_clashes_variable_of_user_defined_type() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            DIM A AS Card
+
+            FUNCTION A.B
+            END FUNCTION
+            ";
+            assert_linter_err!(input, QError::DotClash, 8, 22);
+        }
+
+        #[test]
+        fn test_function_dotted_name_clashes_variable_of_user_defined_type_in_other_function() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            FUNCTION A.B
+            END FUNCTION
+
+            FUNCTION C.D
+                DIM A AS Card
+            END FUNCTION
+            ";
+            assert_linter_err!(input, QError::DotClash, 6, 22);
+        }
+
+        #[test]
+        fn test_function_dotted_name_clashes_variable_of_user_defined_type_in_other_function_following(
+        ) {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            FUNCTION A.B
+                DIM C AS Card
+            END FUNCTION
+
+            FUNCTION C.D
+            END FUNCTION
+            ";
+            assert_linter_err!(input, QError::DotClash, 10, 22);
+        }
     }
 
     mod sub_implementation {
@@ -842,6 +1068,127 @@ mod tests {
             END SUB
             ";
             assert_linter_err!(input, QError::ArgumentTypeMismatch, 7, 18);
+        }
+
+        #[test]
+        fn test_sub_user_defined_param_cannot_contain_dot() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB Test(A.B AS Card)
+            END SUB
+            ";
+            // QBasic actually reports the error on the dot
+            assert_linter_err!(
+                input,
+                QError::syntax_error("Identifier cannot include period"),
+                6,
+                22
+            );
+        }
+
+        #[test]
+        fn test_sub_dotted_name_clashes_variable_of_user_defined_type() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            DIM A AS Card
+
+            SUB A.B
+            END SUB
+            ";
+            // QBasic actually reports the error on the dot
+            assert_linter_err!(input, QError::DotClash, 8, 17);
+        }
+
+        #[test]
+        fn test_sub_dotted_name_clashes_variable_of_user_defined_type_in_other_sub() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B
+            END SUB
+
+            SUB C.D
+                DIM A AS Card
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 6, 17);
+        }
+
+        #[test]
+        fn test_sub_dotted_name_clashes_variable_of_user_defined_type_in_other_sub_following() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B
+                DIM C AS Card
+            END SUB
+
+            SUB C.D
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 10, 17);
+        }
+
+        #[test]
+        fn test_sub_param_dotted_name_clashes_variable_of_user_defined_type_in_other_sub_following()
+        {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B
+                DIM C AS Card
+            END SUB
+
+            SUB Oops(C.D AS INTEGER)
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 10, 22);
+        }
+
+        #[test]
+        fn test_sub_param_dotted_name_clashes_param_of_user_defined_type_in_other_sub_following() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B(C AS Card)
+            END SUB
+
+            SUB Oops(C.D AS INTEGER)
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 9, 22);
+        }
+
+        #[test]
+        fn test_sub_variable_dotted_name_clashes_variable_of_user_defined_type_in_other_sub() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B
+                DIM X AS Card
+            END SUB
+
+            SUB Oops
+                DIM X.Y AS INTEGER
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 11, 21);
         }
     }
 

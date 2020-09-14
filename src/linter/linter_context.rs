@@ -67,6 +67,13 @@ pub struct LinterContext {
     sub_program: Option<(BareName, SubProgramType)>,
     names: HashMap<BareName, ResolvedTypeDefinitions>,
     user_defined_types: Rc<ResolvedUserDefinedTypes>,
+
+    /// Collects names of variables and parameters whose type is a user defined type.
+    /// These names cannot exist elsewhere as a prefix of a dotted variable, constant, parameter, function or sub name,
+    /// regardless of the scope.
+    ///
+    /// This hash set exists only on the parent level.
+    pub names_without_dot: Option<HashSet<BareName>>,
 }
 
 impl LinterContext {
@@ -76,6 +83,19 @@ impl LinterContext {
             sub_program: None,
             names: HashMap::new(),
             user_defined_types,
+            names_without_dot: Some(HashSet::new()),
+        }
+    }
+
+    fn collect_name_without_dot(&mut self, name: &BareName) {
+        match &mut self.parent {
+            Some(x) => x.collect_name_without_dot(name),
+            None => {
+                self.names_without_dot
+                    .as_mut()
+                    .unwrap()
+                    .insert(name.clone());
+            }
         }
     }
 
@@ -161,16 +181,12 @@ impl LinterContext {
     }
 
     fn ensure_not_clashing_with_user_defined_var(&self, name: &BareName) -> Result<(), QError> {
-        if name.contains('.') {
-            let s: String = name.clone().into();
-            let v: Vec<&str> = s.split('.').collect();
-            let first: BareName = v[0].into();
-            match self.get_user_defined_type_name(&first) {
+        match name.prefix('.') {
+            Some(first) => match self.get_user_defined_type_name(&first) {
                 Some(_) => Err(QError::syntax_error("Expected: , or end-of-statement")),
                 None => Ok(()),
-            }
-        } else {
-            Ok(())
+            },
+            _ => Ok(()),
         }
     }
 
@@ -318,6 +334,7 @@ impl LinterContext {
                     );
                 }
                 ResolvedTypeDefinition::UserDefined(u) => {
+                    self.collect_name_without_dot(name);
                     self.names.insert(
                         name.clone(),
                         ResolvedTypeDefinitions::UserDefined(u.clone()),
@@ -574,6 +591,7 @@ impl LinterContext {
             sub_program: Some((name.clone(), SubProgramType::Function)),
             names: HashMap::new(),
             user_defined_types: Rc::clone(&self.user_defined_types),
+            names_without_dot: None,
         };
         result.parent = Some(Box::new(self));
         result
@@ -585,6 +603,7 @@ impl LinterContext {
             sub_program: Some((name.clone(), SubProgramType::Sub)),
             names: HashMap::new(),
             user_defined_types: Rc::clone(&self.user_defined_types),
+            names_without_dot: None,
         };
         result.parent = Some(Box::new(self));
         result

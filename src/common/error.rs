@@ -176,6 +176,8 @@ pub enum QError {
     UnterminatedElse,
     ElseWithoutIf,
 
+    DotClash,
+
     // Lexer errors
     UnsupportedCharacter(char),
 

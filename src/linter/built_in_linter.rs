@@ -66,10 +66,7 @@ mod close {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
-            match args[0].as_ref() {
-                Expression::FileHandle(_) => Ok(()),
-                _ => Err(QError::ArgumentTypeMismatch).with_err_at(&args[0]),
-            }
+            require_file_handle(&args[0])
         }
     }
 }
@@ -142,9 +139,32 @@ mod kill {
 
 mod line_input {
     use super::*;
-    pub fn lint(_args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        // TODO lint
-        Ok(())
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // two possible ways:
+        // 1. #file-number%, variable$
+        // 2. variable$
+        if args.len() == 1 {
+            require_string_variable(&args[0])
+        } else if args.len() == 2 {
+            require_file_handle(&args[0])?;
+            require_string_variable(&args[1])
+        } else {
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        }
+    }
+
+    fn require_string_variable(arg: &ExpressionNode) -> Result<(), QErrorNode> {
+        let Locatable { element, pos } = arg;
+        match element {
+            Expression::Variable(n) => {
+                if n.can_cast_to(TypeQualifier::DollarString) {
+                    Ok(())
+                } else {
+                    Err(QError::ArgumentTypeMismatch).with_err_at(pos)
+                }
+            }
+            _ => Err(QError::VariableRequired).with_err_at(pos),
+        }
     }
 }
 
@@ -390,5 +410,12 @@ fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<()
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
+    }
+}
+
+fn require_file_handle(arg: &ExpressionNode) -> Result<(), QErrorNode> {
+    match arg.as_ref() {
+        Expression::FileHandle(_) => Ok(()),
+        _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg),
     }
 }

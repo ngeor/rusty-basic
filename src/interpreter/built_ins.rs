@@ -790,7 +790,6 @@ mod line_input {
             .with_err_no_pos()?;
         match n.type_definition() {
             ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
-                // TODO casting
                 interpreter
                     .context_mut()
                     .demand_sub()
@@ -811,7 +810,6 @@ mod line_input {
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        // TODO casting
         interpreter
             .context_mut()
             .demand_sub()

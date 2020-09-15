@@ -69,7 +69,7 @@ pub enum Instruction {
 
     /// Cast the contents of A into the given type
     Cast(TypeQualifier),
-    Truncate(u32),
+    FixLength(u32),
 }
 
 pub type InstructionNode = Locatable<Instruction>;

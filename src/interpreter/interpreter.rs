@@ -149,14 +149,14 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let casted = crate::linter::casting::cast(v, *q).with_err_at(pos)?;
                 self.set_a(casted);
             }
-            Instruction::Truncate(l) => {
+            Instruction::FixLength(l) => {
                 let v = self.get_a();
                 let casted = crate::linter::casting::cast(v, TypeQualifier::DollarString)
                     .with_err_at(pos)?;
                 self.set_a(match casted {
                     Variant::VString(s) => {
                         let len: usize = *l as usize;
-                        Variant::VString(s.sub_str(len))
+                        Variant::VString(s.fix_length(len))
                     }
                     _ => casted,
                 });
@@ -922,7 +922,7 @@ mod tests {
             PRINT C.Value
             "#;
 
-            assert_prints!(input, "Hearts", "1");
+            assert_prints!(input, "Hearts   ", "1");
         }
 
         #[test]
@@ -984,7 +984,7 @@ mod tests {
         fn test_assign() {
             let input = r#"
             TYPE Address
-                Street AS STRING * 50
+                Street AS STRING * 5
                 HouseNumber AS INTEGER
             END TYPE
             DIM a AS Address
@@ -1002,7 +1002,7 @@ mod tests {
         fn test_assign_is_by_val() {
             let input = r#"
             TYPE Address
-                Street AS STRING * 50
+                Street AS STRING * 15
                 HouseNumber AS INTEGER
             END TYPE
             DIM a AS Address
@@ -1017,7 +1017,7 @@ mod tests {
             PRINT a.Street
             PRINT b.Street
             "#;
-            assert_prints!(input, "original value", "modified value");
+            assert_prints!(input, "original value ", "modified value ");
         }
 
         #[test]
@@ -1046,6 +1046,21 @@ mod tests {
             assert_prints!(input, "2", "1");
         }
 
-        // TODO concat two string * 9 together, what happens to the result if assigned to regular string
+        #[test]
+        fn test_concatenate_two_strings_of_fixed_length() {
+            let input = r#"
+            TYPE PostCode
+                Prefix AS STRING * 4
+            END TYPE
+
+            DIM A AS PostCode
+            DIM B AS PostCode
+            A.Prefix = "ab"
+            B.Prefix = "cd"
+            C$ = A.Prefix + B.Prefix
+            PRINT C$
+            "#;
+            assert_prints!(input, "ab  cd  ");
+        }
     }
 }

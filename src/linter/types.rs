@@ -231,6 +231,12 @@ impl CanCastTo<&ResolvedDeclaredName> for ResolvedTypeDefinition {
     }
 }
 
+impl CanCastTo<TypeQualifier> for ResolvedDeclaredName {
+    fn can_cast_to(&self, other: TypeQualifier) -> bool {
+        self.type_definition().can_cast_to(other)
+    }
+}
+
 impl From<TypeDefinition> for ResolvedTypeDefinition {
     fn from(type_definition: TypeDefinition) -> Self {
         match type_definition {

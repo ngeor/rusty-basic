@@ -19,7 +19,7 @@ impl InstructionGenerator {
                     self.push(Instruction::Cast(q), pos);
                 }
                 ResolvedTypeDefinition::String(l) => {
-                    self.push(Instruction::Truncate(l), pos);
+                    self.push(Instruction::FixLength(l), pos);
                 }
                 _ => panic!("Cannot cast user defined type"),
             }

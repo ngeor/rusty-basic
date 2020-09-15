@@ -36,10 +36,6 @@ impl InstructionGenerator {
             Statement::GoTo(name) => {
                 self.push(Instruction::UnresolvedJump(name.clone()), pos);
             }
-            Statement::SetReturnValue(e) => {
-                self.generate_expression_instructions(e);
-                self.push(Instruction::StoreAToResult, pos);
-            }
             Statement::Comment(_) => {}
             Statement::Dim(Locatable { element, pos }) => {
                 self.push(Instruction::Dim(element), pos);

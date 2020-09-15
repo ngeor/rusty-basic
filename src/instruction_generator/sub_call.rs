@@ -16,6 +16,6 @@ impl InstructionGenerator {
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_sub(name, pos);
-        self.push(Instruction::PopStack, pos);
+        self.push(Instruction::PopStack(None), pos);
     }
 }

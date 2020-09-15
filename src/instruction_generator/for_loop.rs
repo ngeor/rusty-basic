@@ -1,29 +1,15 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{ForLoopNode, LName, StatementNodes};
+use crate::linter::{ForLoopNode, ResolvedDeclaredName, StatementNodes};
 use crate::variant::Variant;
 
 impl InstructionGenerator {
-    fn store_counter(&mut self, counter_var: &LName, pos: Location) {
-        match counter_var {
-            LName::Variable(resolved_declared_name) => {
-                self.push(Instruction::Store(resolved_declared_name.clone()), pos);
-            }
-            LName::Function(_) => {
-                self.push(Instruction::StoreAToResult, pos);
-            }
-        }
+    fn store_counter(&mut self, counter_var: &ResolvedDeclaredName, pos: Location) {
+        self.push(Instruction::Store(counter_var.clone()), pos);
     }
 
-    fn load_counter(&mut self, counter_var: &LName, pos: Location) {
-        match counter_var {
-            LName::Variable(resolved_declared_name) => {
-                self.push(Instruction::CopyVarToA(resolved_declared_name.clone()), pos);
-            }
-            LName::Function(_) => {
-                self.push(Instruction::CopyResultToA, pos);
-            }
-        }
+    fn load_counter(&mut self, counter_var: &ResolvedDeclaredName, pos: Location) {
+        self.push(Instruction::CopyVarToA(counter_var.clone()), pos);
     }
 
     pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) {
@@ -104,7 +90,7 @@ impl InstructionGenerator {
 
     fn generate_for_loop_instructions_positive_or_negative_step(
         &mut self,
-        counter_var_name: &LName,
+        counter_var_name: &ResolvedDeclaredName,
         statements: StatementNodes,
         is_positive: bool,
         pos: Location,

@@ -35,6 +35,27 @@ pub enum BuiltInSub {
     Name,
 }
 
+impl AsRef<str> for BuiltInFunction {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Chr => "Chr",
+            Self::Eof => "Eof",
+            Self::Environ => "Environ",
+            Self::InStr => "InStr",
+            Self::Len => "Len",
+            Self::Mid => "Mid",
+            Self::Str => "Str",
+            Self::Val => "Val",
+        }
+    }
+}
+
+impl From<BuiltInFunction> for CaseInsensitiveString {
+    fn from(x: BuiltInFunction) -> Self {
+        Self::from(x.as_ref())
+    }
+}
+
 impl HasQualifier for BuiltInFunction {
     fn qualifier(&self) -> TypeQualifier {
         match self {

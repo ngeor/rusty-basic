@@ -6,9 +6,9 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
-use crate::linter::ResolvedUserDefinedTypes;
-use crate::parser::TypeQualifier;
-use crate::variant::{DefaultForTypes, Variant};
+use crate::linter::{ResolvedDeclaredName, ResolvedUserDefinedTypes};
+use crate::parser::{HasQualifier, TypeQualifier};
+use crate::variant::{DefaultForType, DefaultForTypes, Variant};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
@@ -82,7 +82,6 @@ pub struct Interpreter<S: Stdlib> {
     register_stack: RegisterStack,
     return_stack: Vec<usize>,
     stacktrace: Vec<Location>,
-    pub function_result: Variant,
     pub file_manager: FileManager,
     pub user_defined_types: Rc<ResolvedUserDefinedTypes>,
 }
@@ -96,7 +95,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             return_stack: vec![],
             register_stack: VecDeque::new(),
             stacktrace: vec![],
-            function_result: Variant::VInteger(0),
             file_manager: FileManager::new(),
             user_defined_types: Rc::clone(&rc_user_defined_types),
         };
@@ -307,9 +305,31 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.swap_args_with_sub_context();
                 self.stacktrace.insert(0, pos);
             }
-            Instruction::PopStack => {
+            Instruction::PopStack(opt_function_name) => {
+                // get the function result
+                let function_result: Option<Variant> = match opt_function_name {
+                    Some(function_name) => {
+                        // TODO try to avoid cloning on this case
+                        let r = ResolvedDeclaredName::BuiltIn(function_name.clone());
+                        match self.context_ref().get_r_value(&r) {
+                            Some(v) => Some(v),
+                            None => {
+                                // it was a function, but the implementation did not set a result
+                                Some(Variant::default_variant(function_name.qualifier()))
+                            }
+                        }
+                    }
+                    None => None,
+                };
                 self.pop();
                 self.stacktrace.remove(0);
+                // store function result into A now that we're in the parent context
+                match function_result {
+                    Some(v) => {
+                        self.set_a(v);
+                    }
+                    None => {}
+                }
             }
             Instruction::PushUnnamedRefParam(name) => {
                 self.context_mut()
@@ -356,14 +376,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::PopRet => {
                 let addr = self.return_stack.pop().unwrap();
                 *i = addr - 1;
-            }
-            Instruction::StoreAToResult => {
-                let v = self.get_a();
-                self.function_result = v;
-            }
-            Instruction::CopyResultToA => {
-                let v = self.function_result.clone();
-                self.set_a(v);
             }
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);

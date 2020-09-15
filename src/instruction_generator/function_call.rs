@@ -10,18 +10,18 @@ impl InstructionGenerator {
         function_name: QualifiedNameNode,
         args: Vec<ExpressionNode>,
     ) {
-        let pos = function_name.pos();
-
-        let bare_name: &CaseInsensitiveString = function_name.as_ref();
+        let Locatable {
+            element: qualified_name,
+            pos,
+        } = function_name;
+        let bare_name: &CaseInsensitiveString = qualified_name.as_ref();
         let function_parameters = self.function_context.get(bare_name).unwrap().clone();
         self.generate_push_named_args_instructions(function_parameters, args, pos);
         self.push(Instruction::PushStack, pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_function(bare_name, pos);
-
-        self.push(Instruction::PopStack, pos);
-        self.push(Instruction::CopyResultToA, pos);
+        self.push(Instruction::PopStack(Some(qualified_name)), pos);
     }
 
     pub fn generate_push_named_args_instructions(

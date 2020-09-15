@@ -102,7 +102,6 @@ impl InstructionGenerator {
                 Instruction::Load(Variant::default_variant(name.qualifier())),
                 pos,
             );
-            self.push(Instruction::StoreAToResult, pos);
             self.generate_block_instructions(block);
             self.push(Instruction::PopRet, pos);
         }

@@ -8,7 +8,6 @@ use crate::parser::{
     TypeDefinition, TypeQualifier, UnaryOperator,
 };
 use std::collections::HashMap;
-#[cfg(test)]
 use std::convert::TryFrom;
 
 // TODO store the resolved type definition inside the expression at the time of the conversion from parser,
@@ -86,19 +85,13 @@ impl ExpressionNode {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum LName {
-    Variable(ResolvedDeclaredName),
-    Function(QualifiedName),
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
-    pub variable_name: LName,
+    pub variable_name: ResolvedDeclaredName,
     pub lower_bound: ExpressionNode,
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<Locatable<LName>>,
+    pub next_counter: Option<Locatable<ResolvedDeclaredName>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -154,7 +147,6 @@ pub enum Statement {
     Label(BareName),
     GoTo(BareName),
 
-    SetReturnValue(ExpressionNode),
     Comment(String),
     Dim(ResolvedDeclaredNameNode),
 }
@@ -319,7 +311,6 @@ pub enum ResolvedDeclaredName {
 }
 
 impl ResolvedDeclaredName {
-    #[cfg(test)]
     pub fn parse(s: &str) -> Self {
         Self::BuiltIn(QualifiedName::try_from(s).unwrap())
     }

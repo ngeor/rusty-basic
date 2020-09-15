@@ -105,9 +105,6 @@ pub trait ExpressionReducer {
             Statement::ErrorHandler(label) => Ok(Statement::ErrorHandler(label)),
             Statement::Label(label) => Ok(Statement::Label(label)),
             Statement::GoTo(label) => Ok(Statement::GoTo(label)),
-            Statement::SetReturnValue(expr) => self
-                .visit_expression_node(expr)
-                .map(|x| Statement::SetReturnValue(x)),
             Statement::Comment(c) => Ok(Statement::Comment(c)),
             Statement::Dim(d) => Ok(Statement::Dim(d)),
         }

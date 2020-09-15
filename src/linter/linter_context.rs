@@ -581,8 +581,8 @@ impl LinterContext {
         name: &Name,
         resolver: &T,
     ) -> Result<Expression, QError> {
-        let resolved_declared_names = self.resolve_missing_name_in_assignment(name, resolver)?;
-        Ok(Expression::Variable(resolved_declared_names))
+        let resolved_declared_name = self.resolve_missing_name_in_assignment(name, resolver)?;
+        Ok(Expression::Variable(resolved_declared_name))
     }
 
     pub fn push_function_context(self, name: &BareName) -> Self {

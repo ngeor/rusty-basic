@@ -53,7 +53,7 @@ pub enum Instruction {
 
     PreparePush,
     PushStack,
-    PopStack,
+    PopStack(Option<QualifiedName>),
 
     PushUnnamedRefParam(ResolvedDeclaredName),
 
@@ -63,11 +63,6 @@ pub enum Instruction {
     SetNamedValParam(ResolvedDeclaredName),
 
     Throw(QError),
-
-    /// Stores A as the result of a function
-    StoreAToResult,
-    /// Copies the result of a function to A
-    CopyResultToA,
 
     SetUnresolvedErrorHandler(CaseInsensitiveString),
     SetErrorHandler(usize),

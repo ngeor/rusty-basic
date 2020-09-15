@@ -249,12 +249,16 @@ impl ConverterImpl {
         Ok(Some(mapped))
     }
 
-    pub fn resolve_name_in_assignment(&mut self, n: parser::Name) -> Result<LName, QError> {
+    pub fn resolve_name_in_assignment(&mut self, n: Name) -> Result<ResolvedDeclaredName, QError> {
+        let bare_name: &BareName = n.as_ref();
         if self.context.is_function_context(&n) {
             // trying to assign to the function
-            let function_type: TypeQualifier = self.functions.get(n.as_ref()).unwrap().0;
+            let function_type: TypeQualifier = self.functions.get(bare_name).unwrap().0;
             if n.is_bare_or_of_type(function_type) {
-                Ok(LName::Function(n.with_type(function_type)))
+                Ok(ResolvedDeclaredName::BuiltIn(QualifiedName::new(
+                    bare_name.clone(),
+                    function_type,
+                )))
             } else {
                 // trying to assign to the function with an explicit wrong type
                 Err(QError::DuplicateDefinition)
@@ -268,13 +272,13 @@ impl ConverterImpl {
             // parameter might be hiding a function name so it takes precedence
             Err(QError::DuplicateDefinition)
         } else {
-            let resolved_declared_names: ResolvedDeclaredName =
+            let resolved_declared_name: ResolvedDeclaredName =
                 self.context.resolve_assignment(&n, &self.resolver)?;
-            Ok(LName::Variable(resolved_declared_names))
+            Ok(resolved_declared_name)
         }
     }
 
-    pub fn resolve_name_in_expression(&mut self, n: &parser::Name) -> Result<Expression, QError> {
+    pub fn resolve_name_in_expression(&mut self, n: &Name) -> Result<Expression, QError> {
         match self.context.resolve_expression(n, &self.resolver)? {
             Some(x) => Ok(x),
             None => match self.resolve_name_as_subprogram(n)? {
@@ -286,10 +290,7 @@ impl ConverterImpl {
         }
     }
 
-    fn resolve_name_as_subprogram(
-        &mut self,
-        n: &parser::Name,
-    ) -> Result<Option<Expression>, QError> {
+    fn resolve_name_as_subprogram(&mut self, n: &Name) -> Result<Option<Expression>, QError> {
         if self.subs.contains_key(n.as_ref()) {
             // using the name of a sub as a variable expression
             Err(QError::DuplicateDefinition)
@@ -413,29 +414,15 @@ impl ConverterImpl {
         let resolved_l_name = self.resolve_name_in_assignment(name).with_err_no_pos()?;
         let converted_expr: ExpressionNode = self.convert(expression_node)?;
         let result_q: ResolvedTypeDefinition = converted_expr.try_type_definition()?;
-        match resolved_l_name {
-            LName::Variable(resolved_declared_names) => {
-                if result_q.can_cast_to(&resolved_declared_names) {
-                    Ok(Statement::Assignment(
-                        resolved_declared_names,
-                        converted_expr,
-                    ))
-                } else {
-                    Err(QError::TypeMismatch).with_err_at(&converted_expr)
-                }
-            }
-            LName::Function(QualifiedName { qualifier, .. }) => {
-                if result_q.can_cast_to(qualifier) {
-                    Ok(Statement::SetReturnValue(converted_expr))
-                } else {
-                    Err(QError::TypeMismatch).with_err_at(&converted_expr)
-                }
-            }
+        if result_q.can_cast_to(&resolved_l_name) {
+            Ok(Statement::Assignment(resolved_l_name, converted_expr))
+        } else {
+            Err(QError::TypeMismatch).with_err_at(&converted_expr)
         }
     }
 
     // TODO fix me
-    fn temp_convert(&mut self, x: NameNode) -> Result<LName, QErrorNode> {
+    fn temp_convert(&mut self, x: NameNode) -> Result<ResolvedDeclaredName, QErrorNode> {
         let Locatable { element, pos } = x;
         self.resolve_name_in_assignment(element).with_err_at(pos)
     }

@@ -53,7 +53,9 @@ mod chr {
         let i: i32 = interpreter.pop_integer();
         let mut s: String = String::new();
         s.push((i as u8) as char);
-        interpreter.function_result = s.into();
+        interpreter
+            .context_mut()
+            .set_variable(ResolvedDeclaredName::parse("CHR$"), s.into());
         Ok(())
     }
 
@@ -92,7 +94,10 @@ mod environ_fn {
         match v {
             Variant::VString(env_var_name) => {
                 let result = interpreter.stdlib.get_env_var(&env_var_name);
-                interpreter.function_result = Variant::VString(result);
+                interpreter.context_mut().set_variable(
+                    ResolvedDeclaredName::parse("ENVIRON$"),
+                    Variant::VString(result),
+                );
                 Ok(())
             }
             _ => panic!("Type mismatch at ENVIRON$",),
@@ -184,7 +189,9 @@ mod eof {
             .eof(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        interpreter.function_result = is_eof.into();
+        interpreter
+            .context_mut()
+            .set_variable(ResolvedDeclaredName::parse("EOF%"), is_eof.into());
         Ok(())
     }
 }
@@ -430,7 +437,10 @@ mod instr {
             Some(c) => do_instr(a.demand_integer(), b.demand_string(), c.demand_string())?,
             None => do_instr(1, a.demand_string(), b.demand_string())?,
         };
-        interpreter.function_result = result.into();
+        interpreter
+            .context_mut()
+            .set_variable(ResolvedDeclaredName::parse("INSTR%"), result.into());
+
         Ok(())
     }
 
@@ -542,12 +552,12 @@ mod len {
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
-        interpreter.function_result = match v {
-            Variant::VSingle(_) => Variant::VInteger(4),
-            Variant::VDouble(_) => Variant::VInteger(8),
-            Variant::VString(v) => Variant::VInteger(v.len().try_into().unwrap()),
-            Variant::VInteger(_) => Variant::VInteger(2),
-            Variant::VLong(_) => Variant::VInteger(4),
+        let len: i32 = match v {
+            Variant::VSingle(_) => 4,
+            Variant::VDouble(_) => 8,
+            Variant::VString(v) => v.len().try_into().unwrap(),
+            Variant::VInteger(_) => 2,
+            Variant::VLong(_) => 4,
             Variant::VFileHandle(_) => {
                 return Err("File handle not supported".into()).with_err_no_pos();
             }
@@ -561,9 +571,12 @@ mod len {
                     user_defined_type,
                     interpreter.user_defined_types.as_ref(),
                 );
-                Variant::VInteger(sum as i32)
+                sum as i32
             }
         };
+        interpreter
+            .context_mut()
+            .set_variable(ResolvedDeclaredName::parse("LEN%"), len.into());
         Ok(())
     }
 
@@ -820,7 +833,9 @@ mod mid {
         let start: i32 = interpreter.pop_integer();
         let length: Option<i32> = interpreter.pop_unnamed_val().map(|v| v.demand_integer());
         let result: String = do_mid(s, start, length)?;
-        interpreter.function_result = result.into();
+        interpreter
+            .context_mut()
+            .set_variable(ResolvedDeclaredName::parse("MID$"), result.into());
         Ok(())
     }
 
@@ -1123,13 +1138,16 @@ mod str_fn {
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
-        interpreter.function_result = match v {
+        let result = match v {
             Variant::VSingle(f) => Variant::VString(format!("{}", f)),
             Variant::VDouble(f) => Variant::VString(format!("{}", f)),
             Variant::VInteger(f) => Variant::VString(format!("{}", f)),
             Variant::VLong(f) => Variant::VString(format!("{}", f)),
             _ => panic!("unexpected arg to STR$"),
         };
+        interpreter
+            .context_mut()
+            .set_variable(ResolvedDeclaredName::parse("STR$"), result);
         Ok(())
     }
 
@@ -1171,10 +1189,13 @@ mod val {
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
-        interpreter.function_result = match v {
-            Variant::VString(s) => val(s).with_err_no_pos()?,
-            _ => panic!("unexpected arg to VAL"),
-        };
+        interpreter.context_mut().set_variable(
+            ResolvedDeclaredName::parse("VAL!"),
+            match v {
+                Variant::VString(s) => val(s).with_err_no_pos()?,
+                _ => panic!("unexpected arg to VAL"),
+            },
+        );
         Ok(())
     }
 

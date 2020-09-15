@@ -279,6 +279,8 @@ impl ConverterImpl {
     }
 
     pub fn resolve_name_in_expression(&mut self, n: &Name) -> Result<Expression, QError> {
+        // TODO function context should upfront have an implicit variable equal to the function name which can be referenced
+        // as bare or as the correct type and cannot be shadowed by a variable of different type
         match self.context.resolve_expression(n, &self.resolver)? {
             Some(x) => Ok(x),
             None => match self.resolve_name_as_subprogram(n)? {
@@ -302,6 +304,18 @@ impl ConverterImpl {
             } else if !n.is_bare_or_of_type(*f_type) {
                 // if the function is a different type and the name is qualified of a different type, duplication definition
                 Err(QError::DuplicateDefinition)
+            } else if self.context.is_function_context(n) {
+                // We are inside a function that takes no args, and we're using again
+                // the name of that function as an expression.
+                // This can only work as a variable, otherwise we'll get infinite recursive call.
+                //
+                // Example:
+                // Function Test
+                //     INPUT Test
+                // End Function
+                //
+                // Return None and let the next handler add it as a new variable
+                Ok(None)
             } else {
                 // else convert it to function call
                 Ok(Some(Expression::FunctionCall(

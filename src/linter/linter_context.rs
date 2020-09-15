@@ -148,7 +148,7 @@ impl LinterContext {
                     }
                 }
             },
-            None => Err(QError::syntax_error("Element not defined")),
+            None => Err(QError::ElementNotDefined),
         }
     }
 
@@ -243,7 +243,7 @@ impl LinterContext {
             }
             TypeDefinition::UserDefined(user_defined_type) => {
                 if name.contains('.') {
-                    Err(QError::syntax_error("Identifier cannot include period"))
+                    Err(QError::IdentifierCannotIncludePeriod)
                 } else if self.user_defined_types.contains_key(&user_defined_type) {
                     self.ensure_user_defined_var_not_clashing_with_dotted_vars(&name)?;
                     Ok((
@@ -254,7 +254,7 @@ impl LinterContext {
                         true,
                     ))
                 } else {
-                    Err(QError::syntax_error("Type not defined"))
+                    Err(QError::TypeNotDefined)
                 }
             }
         }

@@ -309,7 +309,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 // get the function result
                 let function_result: Option<Variant> = match opt_function_name {
                     Some(function_name) => {
-                        // TODO try to avoid cloning on this case
                         let r = ResolvedDeclaredName::BuiltIn(function_name.clone());
                         match self.context_ref().get_r_value(&r) {
                             Some(v) => Some(v),

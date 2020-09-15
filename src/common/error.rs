@@ -176,7 +176,22 @@ pub enum QError {
     UnterminatedElse,
     ElseWithoutIf,
 
+    /// Not a standard error, thrown by the linter to indicate that an identifier
+    /// that contains a period is clashing with a variable of a user defined type.
+    ///
+    /// e.g. DIM A.B AS STRING would clash with A if A were a variable of user defined type.
+    ///
+    /// QBasic throws various syntax errors on this edge case, depending on the identifier type,
+    /// the order of declaration, etc.
     DotClash,
+
+    IdentifierCannotIncludePeriod,
+
+    IdentifierTooLong,
+
+    TypeNotDefined,
+
+    ElementNotDefined,
 
     // Lexer errors
     UnsupportedCharacter(char),

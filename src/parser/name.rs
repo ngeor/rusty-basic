@@ -48,7 +48,7 @@ where
 {
     source_and_then_some(any_identifier(), |reader: R, s| {
         if s.len() > MAX_LENGTH {
-            Err((reader, QError::syntax_error("Identifier too long")))
+            Err((reader, QError::IdentifierTooLong))
         } else {
             match Keyword::from_str(&s) {
                 Ok(_) => Ok((reader.undo(s), None)),

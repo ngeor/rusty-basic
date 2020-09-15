@@ -165,8 +165,7 @@ impl ConverterImpl {
                         true,
                     ))
                 } else {
-                    // TODO collect common syntax error messages into new enum values
-                    Err(QError::syntax_error(format!("Type {} not defined", u)))
+                    Err(QError::TypeNotDefined)
                 }
             }
         }

@@ -1081,12 +1081,7 @@ mod tests {
             END SUB
             ";
             // QBasic actually reports the error on the dot
-            assert_linter_err!(
-                input,
-                QError::syntax_error("Identifier cannot include period"),
-                6,
-                22
-            );
+            assert_linter_err!(input, QError::IdentifierCannotIncludePeriod, 6, 22);
         }
 
         #[test]
@@ -1405,14 +1400,14 @@ mod tests {
                 Item AS Card
             END TYPE";
             // TODO QBasic actually positions the error on the "AS" keyword
-            assert_linter_err!(input, QError::syntax_error("Type not defined"), 3, 25);
+            assert_linter_err!(input, QError::TypeNotDefined, 3, 25);
         }
 
         #[test]
         fn dim_using_undefined_type() {
             let input = "DIM X AS Card";
             // TODO QBasic actually positions the error on the "AS" keyword
-            assert_linter_err!(input, QError::syntax_error("Type not defined"), 1, 5);
+            assert_linter_err!(input, QError::TypeNotDefined, 1, 5);
         }
 
         #[test]
@@ -1426,7 +1421,7 @@ mod tests {
                 Prefix AS INTEGER
                 Suffix AS STRING * 2
             END TYPE";
-            assert_linter_err!(input, QError::syntax_error("Type not defined"), 3, 29);
+            assert_linter_err!(input, QError::TypeNotDefined, 3, 29);
         }
 
         #[test]
@@ -1460,7 +1455,7 @@ mod tests {
             DIM c AS Card
             PRINT c.Suite";
             // TODO QBasic reports the error at the dot
-            assert_linter_err!(input, QError::syntax_error("Element not defined"), 8, 19);
+            assert_linter_err!(input, QError::ElementNotDefined, 8, 19);
         }
 
         #[test]
@@ -1473,12 +1468,7 @@ mod tests {
 
             DIM A.B AS Card
             ";
-            assert_linter_err!(
-                input,
-                QError::syntax_error("Identifier cannot include period"),
-                7,
-                17
-            );
+            assert_linter_err!(input, QError::IdentifierCannotIncludePeriod, 7, 17);
         }
 
         #[test]

@@ -88,7 +88,7 @@ fn bare_name_without_dot<T: BufRead + 'static>(
     source_and_then_some(name::name(), |r, n| match n {
         Name::Bare(b) => {
             if b.contains('.') {
-                Err((r, QError::syntax_error("Identifier cannot include period")))
+                Err((r, QError::IdentifierCannotIncludePeriod))
             } else {
                 Ok((r, Some(b)))
             }
@@ -104,7 +104,7 @@ fn element_nodes<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<ElementNode>, QError>> {
     and_then(many(element_node), |v| {
         if v.is_empty() {
-            Err(QError::syntax_error("Element not defined"))
+            Err(QError::ElementNotDefined)
         } else {
             Ok(v)
         }
@@ -263,10 +263,7 @@ mod tests {
         TYPE Card
         END TYPE
         ";
-        assert_eq!(
-            parse_err(input),
-            QError::syntax_error("Element not defined")
-        );
+        assert_eq!(parse_err(input), QError::ElementNotDefined);
     }
 
     #[test]
@@ -301,10 +298,7 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_eq!(
-            parse_err(input),
-            QError::syntax_error("Identifier cannot include period")
-        );
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -315,9 +309,6 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_eq!(
-            parse_err(input),
-            QError::syntax_error("Identifier cannot include period")
-        );
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
     }
 }

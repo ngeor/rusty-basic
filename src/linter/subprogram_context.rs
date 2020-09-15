@@ -321,7 +321,7 @@ impl FirstPassOuter {
                             .user_defined_types
                             .contains_key(referred_name)
                         {
-                            return Err(QError::syntax_error("Type not defined")).with_err_at(pos);
+                            return Err(QError::TypeNotDefined).with_err_at(pos);
                         }
                         ResolvedElementType::UserDefined(referred_name.clone())
                     }
@@ -449,7 +449,7 @@ impl FirstPassInner {
             name,
             type_definition,
         } = declared_name;
-        // TODO use resolve declared name from linter context
+        // TODO use resolve declared name function from linter context
         match type_definition {
             TypeDefinition::Bare => {
                 let q: TypeQualifier = self.resolver.resolve(name);
@@ -462,7 +462,7 @@ impl FirstPassInner {
                 if self.user_defined_types.contains_key(u) {
                     Ok(ResolvedTypeDefinition::UserDefined(u.clone()))
                 } else {
-                    Err(QError::syntax_error("Type not defined")).with_err_at(pos)
+                    Err(QError::TypeNotDefined).with_err_at(pos)
                 }
             }
         }

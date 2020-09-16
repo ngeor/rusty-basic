@@ -6,15 +6,6 @@ use crate::common::*;
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
 
-pub type DotlessName = CaseInsensitiveString;
-pub enum Param {
-    Bare(CaseInsensitiveString),
-    // Compact(QualifiedName),
-    // parameters do not allow for STRING * 5
-    // Extended(QualifiedName)
-    // UserDefined(DotlessName, DotlessName)
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum TopLevelToken {
     /// A default type definition, e.g. `DEFINT A-Z.`

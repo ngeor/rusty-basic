@@ -32,6 +32,18 @@ impl CaseInsensitiveString {
         false
     }
 
+    /// Checks if the string starts with the given prefix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rusty_basic::common::CaseInsensitiveString;
+    /// assert!(CaseInsensitiveString::from("a").starts_with(&CaseInsensitiveString::from("a")));
+    /// assert!(CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("a")));
+    /// assert!(CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("ab")));
+    /// assert!(!CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("abd")));
+    /// assert!(!CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("abcd")));
+    /// ```
     pub fn starts_with(&self, needle: &Self) -> bool {
         let n: Vec<char> = needle.inner.chars().collect();
         let mut i = 0;
@@ -45,6 +57,16 @@ impl CaseInsensitiveString {
         i >= n.len()
     }
 
+    /// If the string contains the given delimiter, splits the string and returns the part
+    /// before the delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rusty_basic::common::CaseInsensitiveString;
+    /// assert_eq!(CaseInsensitiveString::from("a.b").prefix('.'), Some(CaseInsensitiveString::from("a")));
+    /// assert_eq!(CaseInsensitiveString::from("ab").prefix('.'), None);
+    /// ```
     pub fn prefix(&self, delimiter: char) -> Option<Self> {
         if self.contains(delimiter) {
             let s: String = self.inner.clone();

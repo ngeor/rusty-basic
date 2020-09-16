@@ -143,6 +143,8 @@ impl VariableMap {
 // ArgumentMap
 // ========================================================
 
+// TODO ArgumentMap should store Name instead of ResolvedDeclaredName
+
 #[derive(Debug)]
 struct ArgumentMap {
     /// The pushed arguments in order

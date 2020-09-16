@@ -290,4 +290,11 @@ mod tests {
             Ordering::Greater
         );
     }
+
+    #[test]
+    fn test_add_char() {
+        let x: CaseInsensitiveString = "abc".into();
+        let y: CaseInsensitiveString = x + '.';
+        assert_eq!(y, CaseInsensitiveString::from("abc."));
+    }
 }

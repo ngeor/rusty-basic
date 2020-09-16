@@ -8,6 +8,7 @@ use crate::parser::{
     TypeDefinition, TypeQualifier, UnaryOperator,
 };
 use std::collections::HashMap;
+#[cfg(test)]
 use std::convert::TryFrom;
 
 // TODO store the resolved type definition inside the expression at the time of the conversion from parser,
@@ -317,6 +318,7 @@ pub enum ResolvedDeclaredName {
 }
 
 impl ResolvedDeclaredName {
+    #[cfg(test)]
     pub fn parse(s: &str) -> Self {
         Self::BuiltIn(QualifiedName::try_from(s).unwrap())
     }

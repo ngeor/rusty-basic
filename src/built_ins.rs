@@ -1,15 +1,20 @@
 use crate::common::*;
-use crate::parser::{HasQualifier, Name, TypeQualifier};
+use crate::linter::ResolvedDeclaredName;
+use crate::parser::{HasQualifier, Name, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+// ========================================================
+// BuiltInFunction
+// ========================================================
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum BuiltInFunction {
     /// CHR$
     Chr,
-    /// EOF
-    Eof,
     /// ENVIRON$
     Environ,
+    /// EOF
+    Eof,
     /// INSTR
     InStr,
     /// LEN
@@ -22,39 +27,40 @@ pub enum BuiltInFunction {
     Val,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum BuiltInSub {
-    Environ,
-    Input,
-    Print,
-    System,
-    Close,
-    Open,
-    Kill,
-    LineInput,
-    Name,
-}
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 8] = [
+    BuiltInFunction::Chr,
+    BuiltInFunction::Environ,
+    BuiltInFunction::Eof,
+    BuiltInFunction::InStr,
+    BuiltInFunction::Len,
+    BuiltInFunction::Mid,
+    BuiltInFunction::Str,
+    BuiltInFunction::Val,
+];
+
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 8] =
+    ["Chr", "Environ", "Eof", "InStr", "Len", "Mid", "Str", "Val"];
+
+// BuiltInFunction -> &str
 
 impl AsRef<str> for BuiltInFunction {
     fn as_ref(&self) -> &str {
-        match self {
-            Self::Chr => "Chr",
-            Self::Eof => "Eof",
-            Self::Environ => "Environ",
-            Self::InStr => "InStr",
-            Self::Len => "Len",
-            Self::Mid => "Mid",
-            Self::Str => "Str",
-            Self::Val => "Val",
-        }
+        let idx = SORTED_BUILT_IN_FUNCTIONS
+            .binary_search(self)
+            .expect("Missing built-in function!");
+        SORTED_BUILT_IN_FUNCTION_NAMES[idx]
     }
 }
+
+// BuiltInFunction -> CaseInsensitiveString
 
 impl From<BuiltInFunction> for CaseInsensitiveString {
     fn from(x: BuiltInFunction) -> Self {
         Self::from(x.as_ref())
     }
 }
+
+// BuiltInFunction -> TypeQualifier
 
 impl HasQualifier for BuiltInFunction {
     fn qualifier(&self) -> TypeQualifier {
@@ -71,42 +77,36 @@ impl HasQualifier for BuiltInFunction {
     }
 }
 
+// BuiltInFunction -> QualifiedName
+
+impl From<BuiltInFunction> for QualifiedName {
+    fn from(x: BuiltInFunction) -> Self {
+        Self::new(x.into(), x.qualifier())
+    }
+}
+
+// BuiltInFunction -> ResolvedDeclaredName
+
+impl From<BuiltInFunction> for ResolvedDeclaredName {
+    fn from(x: BuiltInFunction) -> Self {
+        Self::BuiltIn(x.into())
+    }
+}
+
+// CaseInsensitiveString -> BuiltInFunction
+
 impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
     fn from(s: &CaseInsensitiveString) -> Option<BuiltInFunction> {
-        if s == "EOF" {
-            Some(BuiltInFunction::Eof)
-        } else if s == "ENVIRON" {
-            Some(BuiltInFunction::Environ)
-        } else if s == "LEN" {
-            Some(BuiltInFunction::Len)
-        } else if s == "STR" {
-            Some(BuiltInFunction::Str)
-        } else if s == "VAL" {
-            Some(BuiltInFunction::Val)
-        } else if s == "CHR" {
-            Some(BuiltInFunction::Chr)
-        } else if s == "INSTR" {
-            Some(BuiltInFunction::InStr)
-        } else if s == "MID" {
-            Some(BuiltInFunction::Mid)
-        } else {
-            None
+        match SORTED_BUILT_IN_FUNCTION_NAMES
+            .binary_search_by(|p| CmpIgnoreAsciiCase::compare_ignore_ascii_case(*p, s.as_ref()))
+        {
+            Ok(idx) => Some(SORTED_BUILT_IN_FUNCTIONS[idx]),
+            Err(_) => None,
         }
     }
 }
 
-fn demand_unqualified(
-    built_in: BuiltInFunction,
-    n: &Name,
-) -> Result<Option<BuiltInFunction>, QError> {
-    match n {
-        Name::Bare(_) => Ok(Some(built_in)),
-        _ => Err(QError::SyntaxError(format!(
-            "Function {:?} must be unqualified",
-            built_in
-        ))),
-    }
-}
+// Name -> BuiltInFunction
 
 impl TryFrom<&Name> for Option<BuiltInFunction> {
     type Error = QError;
@@ -152,6 +152,36 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
             None => Ok(None),
         }
     }
+}
+
+fn demand_unqualified(
+    built_in: BuiltInFunction,
+    n: &Name,
+) -> Result<Option<BuiltInFunction>, QError> {
+    match n {
+        Name::Bare(_) => Ok(Some(built_in)),
+        _ => Err(QError::SyntaxError(format!(
+            "Function {:?} must be unqualified",
+            built_in
+        ))),
+    }
+}
+
+// ========================================================
+// BuiltInSub
+// ========================================================
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BuiltInSub {
+    Environ,
+    Input,
+    Print,
+    System,
+    Close,
+    Open,
+    Kill,
+    LineInput,
+    Name,
 }
 
 impl From<&CaseInsensitiveString> for Option<BuiltInSub> {

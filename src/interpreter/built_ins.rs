@@ -55,7 +55,7 @@ mod chr {
         s.push((i as u8) as char);
         interpreter
             .context_mut()
-            .set_variable(ResolvedDeclaredName::parse("CHR$"), s.into());
+            .set_variable(BuiltInFunction::Chr.into(), s.into());
         Ok(())
     }
 
@@ -94,10 +94,9 @@ mod environ_fn {
         match v {
             Variant::VString(env_var_name) => {
                 let result = interpreter.stdlib.get_env_var(&env_var_name);
-                interpreter.context_mut().set_variable(
-                    ResolvedDeclaredName::parse("ENVIRON$"),
-                    Variant::VString(result),
-                );
+                interpreter
+                    .context_mut()
+                    .set_variable(BuiltInFunction::Environ.into(), Variant::VString(result));
                 Ok(())
             }
             _ => panic!("Type mismatch at ENVIRON$",),
@@ -191,7 +190,7 @@ mod eof {
             .with_err_no_pos()?;
         interpreter
             .context_mut()
-            .set_variable(ResolvedDeclaredName::parse("EOF%"), is_eof.into());
+            .set_variable(BuiltInFunction::Eof.into(), is_eof.into());
         Ok(())
     }
 }
@@ -439,7 +438,7 @@ mod instr {
         };
         interpreter
             .context_mut()
-            .set_variable(ResolvedDeclaredName::parse("INSTR%"), result.into());
+            .set_variable(BuiltInFunction::InStr.into(), result.into());
 
         Ok(())
     }
@@ -576,7 +575,7 @@ mod len {
         };
         interpreter
             .context_mut()
-            .set_variable(ResolvedDeclaredName::parse("LEN%"), len.into());
+            .set_variable(BuiltInFunction::Len.into(), len.into());
         Ok(())
     }
 
@@ -833,7 +832,7 @@ mod mid {
         let result: String = do_mid(s, start, length)?;
         interpreter
             .context_mut()
-            .set_variable(ResolvedDeclaredName::parse("MID$"), result.into());
+            .set_variable(BuiltInFunction::Mid.into(), result.into());
         Ok(())
     }
 
@@ -1145,7 +1144,7 @@ mod str_fn {
         };
         interpreter
             .context_mut()
-            .set_variable(ResolvedDeclaredName::parse("STR$"), result);
+            .set_variable(BuiltInFunction::Str.into(), result);
         Ok(())
     }
 
@@ -1188,7 +1187,7 @@ mod val {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         interpreter.context_mut().set_variable(
-            ResolvedDeclaredName::parse("VAL!"),
+            BuiltInFunction::Val.into(),
             match v {
                 Variant::VString(s) => val(s).with_err_no_pos()?,
                 _ => panic!("unexpected arg to VAL"),

@@ -10,10 +10,10 @@ impl InstructionGenerator {
         expr_node: ExpressionNode,
         target_type: ResolvedTypeDefinition,
     ) {
-        let t = expr_node.try_type_definition().unwrap();
+        let expression_type = expr_node.try_type_definition().unwrap();
         let pos = expr_node.pos();
         self.generate_expression_instructions(expr_node);
-        if t != target_type {
+        if expression_type != target_type {
             match target_type {
                 ResolvedTypeDefinition::BuiltIn(q) => {
                     self.push(Instruction::Cast(q), pos);

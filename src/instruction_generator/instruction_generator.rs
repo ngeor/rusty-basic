@@ -225,19 +225,11 @@ impl InstructionGenerator {
 #[cfg(test)]
 mod tests {
     use crate::common::{AtRowCol, StripLocation};
-    use crate::instruction_generator::{generate_instructions, Instruction, InstructionNode};
-    use crate::linter::{lint, ResolvedDeclaredName};
-    use crate::parser::{parse_main_str, TypeQualifier};
+    use crate::instruction_generator::test_utils::*;
+    use crate::instruction_generator::Instruction;
+    use crate::linter::ResolvedDeclaredName;
+    use crate::parser::TypeQualifier;
     use crate::variant::Variant;
-
-    pub fn generate_instructions_str<T>(input: T) -> Vec<InstructionNode>
-    where
-        T: AsRef<[u8]> + 'static,
-    {
-        let program = parse_main_str(input).expect("Parser should succeed");
-        let (linted_program, _) = lint(program).expect("Linter should succeed");
-        generate_instructions(linted_program)
-    }
 
     #[test]
     fn test_assignment() {

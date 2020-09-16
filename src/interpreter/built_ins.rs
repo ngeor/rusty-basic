@@ -984,6 +984,7 @@ mod open {
 
     #[cfg(test)]
     mod tests {
+        use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
         use crate::interpreter::test_utils::*;
         use crate::interpreter::DefaultStdlib;
         use crate::interpreter::Interpreter;
@@ -995,7 +996,7 @@ mod open {
             PRINT #1, "Hello, world"
             CLOSE #1
             "#;
-            let (instructions, user_defined_types) = generate_instructions(input);
+            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
             let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             let contents = std::fs::read_to_string("TEST1.TXT").unwrap_or("".to_string());
@@ -1016,7 +1017,7 @@ mod open {
             PRINT #1, T$
             CLOSE #1
             "#;
-            let (instructions, user_defined_types) = generate_instructions(input);
+            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
             let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             let contents = std::fs::read_to_string("TEST2B.TXT").unwrap_or("".to_string());
@@ -1039,7 +1040,7 @@ mod open {
             WEND
             CLOSE #1
             "#;
-            let (instructions, user_defined_types) = generate_instructions(input);
+            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
             let stdlib = MockStdlib::new();
             let mut interpreter = Interpreter::new(stdlib, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();

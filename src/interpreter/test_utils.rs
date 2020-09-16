@@ -1,33 +1,20 @@
 use crate::common::*;
-use crate::instruction_generator;
-use crate::instruction_generator::InstructionNode;
+use crate::instruction_generator::generate_instructions;
+use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
-use crate::linter::{ResolvedDeclaredName, ResolvedUserDefinedTypes};
-use crate::parser::{parse_main_file, parse_main_str};
+use crate::linter::ResolvedDeclaredName;
+use crate::parser::parse_main_file;
 use crate::variant::Variant;
 use std::collections::HashMap;
 use std::fs::File;
-
-pub fn generate_instructions<T>(input: T) -> (Vec<InstructionNode>, ResolvedUserDefinedTypes)
-where
-    T: AsRef<[u8]> + 'static,
-{
-    let program = parse_main_str(input).expect("Parser should succeed");
-    let (linted_program, user_defined_types) =
-        linter::lint(program).expect("Linter should succeed");
-    (
-        instruction_generator::generate_instructions(linted_program),
-        user_defined_types,
-    )
-}
 
 pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instructions, user_defined_types) = generate_instructions(input);
+    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
     // for i in instructions.iter() {
     //     println!("{:?}", i.as_ref());
     // }
@@ -43,7 +30,7 @@ where
     T: AsRef<[u8]> + 'static,
     TStdlib: Stdlib,
 {
-    let (instructions, user_defined_types) = generate_instructions(input);
+    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
     let mut interpreter = Interpreter::new(stdlib, user_defined_types);
     interpreter
         .interpret(instructions)
@@ -55,7 +42,7 @@ pub fn interpret_err<T>(input: T) -> QErrorNode
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instructions, user_defined_types) = generate_instructions(input);
+    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
     let mut interpreter = Interpreter::new(MockStdlib::new(), user_defined_types);
     interpreter.interpret(instructions).unwrap_err()
 }
@@ -72,7 +59,7 @@ where
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program);
+    let instructions = generate_instructions(linted_program);
     let mut interpreter = Interpreter::new(stdlib, user_defined_types);
     interpreter.interpret(instructions).map(|_| interpreter)
 }

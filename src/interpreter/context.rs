@@ -3,7 +3,7 @@ use crate::instruction_generator::NamedRefParam;
 use crate::linter::{
     ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedTypes, UserDefinedName,
 };
-use crate::parser::{Name, QualifiedName, TypeQualifier};
+use crate::parser::{Name, QualifiedName};
 use crate::variant::{DefaultForType, Variant};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -54,6 +54,9 @@ impl ConstantMapTrait<QualifiedName> for ConstantMap {
         let QualifiedName {
             name: bare_name, ..
         } = name;
+        if self.0.contains_key(&bare_name) {
+            panic!("Duplicate constant {}", bare_name);
+        }
         self.0.insert(bare_name, value);
     }
 }
@@ -142,43 +145,77 @@ impl VariableMap {
 
 #[derive(Debug)]
 struct ArgumentMap {
-    named: HashMap<ResolvedDeclaredName, Argument>,
-    name_order: VecDeque<ResolvedDeclaredName>,
+    /// The pushed arguments in order
+    arguments: VecDeque<Argument>,
+
+    /// For named arguments only, maps names to indices inside `arguments`
+    name_to_index: HashMap<ResolvedDeclaredName, usize>,
+
+    index_to_name: HashMap<usize, ResolvedDeclaredName>,
 }
 
 impl ArgumentMap {
     pub fn new() -> Self {
         Self {
-            named: HashMap::new(),
-            name_order: VecDeque::new(),
+            arguments: VecDeque::new(),
+            name_to_index: HashMap::new(),
+            index_to_name: HashMap::new(),
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.name_order.len()
-    }
-
     pub fn pop_front(&mut self) -> Option<Argument> {
-        match self.name_order.pop_front() {
-            Some(name) => self.named.remove(&name),
+        match self.arguments.pop_front() {
+            Some(arg) => {
+                // remove name at index 0, if any
+                let idx: usize = 0;
+                match self.index_to_name.remove(&idx) {
+                    Some(name) => self.name_to_index.remove(&name),
+                    _ => None,
+                };
+                // update all indices -= 1
+                for v in self.name_to_index.values_mut() {
+                    *v = *v - 1;
+                }
+                // same for index_to_map
+                let entries: Vec<(usize, ResolvedDeclaredName)> =
+                    self.index_to_name.drain().collect();
+                for (k, v) in entries.into_iter() {
+                    self.index_to_name.insert(k - 1, v);
+                }
+                Some(arg)
+            }
             None => None,
         }
     }
 
+    /// Add an unnamed argument at the end of the argument collection.
+    pub fn push_back(&mut self, arg: Argument) {
+        self.arguments.push_back(arg);
+    }
+
     pub fn insert(&mut self, name: ResolvedDeclaredName, arg: Argument) {
-        self.name_order.push_back(name.clone());
-        match &arg {
-            Argument::ByVal(v) => {
-                self.named.insert(name, Argument::ByVal(v.clone()));
-            }
-            Argument::ByRef(_) => {
-                self.named.insert(name, arg);
-            }
+        if self.name_to_index.contains_key(&name) {
+            panic!("Duplicate argument {:?}", name);
+        } else {
+            self.index_to_name
+                .insert(self.arguments.len(), name.clone());
+            self.name_to_index.insert(name, self.arguments.len());
+            self.push_back(arg);
         }
     }
 
     pub fn get(&self, name: &ResolvedDeclaredName) -> Option<&Argument> {
-        self.named.get(name)
+        match self.name_to_index.get(name) {
+            Some(idx) => Some(&self.arguments[*idx]),
+            None => None,
+        }
+    }
+
+    pub fn get_mut(&mut self, name: &ResolvedDeclaredName) -> Option<&mut Argument> {
+        match self.name_to_index.get(name) {
+            Some(idx) => self.arguments.get_mut(*idx),
+            None => None,
+        }
     }
 }
 
@@ -287,23 +324,7 @@ impl ArgsContext {
     }
 
     fn push_unnamed(&mut self, arg: Argument) {
-        let dummy_name = format!("{}", self.args.len());
-        let dummy_resolved_name = match arg.type_definition() {
-            ResolvedTypeDefinition::BuiltIn(q) => {
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(dummy_name.into(), q))
-            }
-            ResolvedTypeDefinition::String(_) => ResolvedDeclaredName::BuiltIn(QualifiedName::new(
-                dummy_name.into(),
-                TypeQualifier::DollarString,
-            )),
-            ResolvedTypeDefinition::UserDefined(u) => {
-                ResolvedDeclaredName::UserDefined(UserDefinedName {
-                    name: dummy_name.into(),
-                    type_name: u,
-                })
-            }
-        };
-        self.args.insert(dummy_resolved_name, arg)
+        self.args.push_back(arg);
     }
 }
 
@@ -314,7 +335,8 @@ impl ArgsContext {
 #[derive(Debug)]
 pub struct SubContext {
     parent: Box<Context>,
-    variables: ArgumentMap,
+    args: ArgumentMap,
+    vars: VariableMap,
     constants: ConstantMap,
 }
 
@@ -324,7 +346,7 @@ impl SubContext {
     }
 
     fn do_insert_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
-        self.variables.insert(name, Argument::ByVal(value))
+        self.vars.insert(name, value)
     }
 
     fn evaluate_argument(&self, arg: Argument) -> Option<Variant> {
@@ -334,13 +356,14 @@ impl SubContext {
         }
     }
 
-    fn get_variable(&self, name: &ResolvedDeclaredName) -> Option<Argument> {
-        match self.variables.get(name) {
+    fn get_arg(&self, name: &ResolvedDeclaredName) -> Option<Argument> {
+        match self.args.get(name) {
             Some(x) => Some(x.clone()),
             None => match name {
                 ResolvedDeclaredName::Many(UserDefinedName { name, type_name }, members) => {
+                    // for an argument X, try to match X.Member
                     match self
-                        .variables
+                        .args
                         .get(&ResolvedDeclaredName::UserDefined(UserDefinedName {
                             name: name.clone(),
                             type_name: type_name.clone(),
@@ -365,7 +388,7 @@ impl SubContext {
 
     /// Pops the next unnamed argument, starting from the beginning.
     pub fn pop_unnamed_arg(&mut self) -> Option<Argument> {
-        self.variables.pop_front()
+        self.args.pop_front()
     }
 
     /// Pops the value of the next unnamed argument, starting from the beginning.
@@ -379,10 +402,7 @@ impl SubContext {
     pub fn set_value_to_popped_arg(&mut self, arg: &Argument, value: Variant) {
         match arg {
             Argument::ByVal(_) => panic!("Expected: variable"),
-            Argument::ByRef(n) => {
-                let q = n.clone(); // clone to break duplicate borrow
-                self.set_variable_parent(q, value)
-            }
+            Argument::ByRef(n) => self.set_variable_parent(n.clone(), value),
         }
     }
 
@@ -390,29 +410,40 @@ impl SubContext {
         match self.constants.get(&name) {
             Some(v) => Argument::ByVal(v.clone()),
             None => {
-                // variable?
-                match self.get_variable(&name) {
+                // argument?
+                match self.get_arg(&name) {
                     // ref pointing to var
                     Some(_) => Argument::ByRef(name),
                     None => {
-                        // parent constant?
-                        match self
-                            .parent
-                            .get_root()
-                            .constants
-                            .get(&name)
-                            .map(|x| x.clone())
-                        {
-                            Some(v) => Argument::ByVal(v),
+                        // local variable?
+                        match self.vars.get(&name) {
+                            Some(_) => Argument::ByRef(name),
                             None => {
-                                // create the variable in this scope
-                                // e.g. INPUT N
-                                let q = match name.type_definition() {
-                                    ResolvedTypeDefinition::BuiltIn(q) => q,
-                                    _ => panic!("cannot implicitly create user defined variable"),
-                                };
-                                self.do_insert_variable(name.clone(), Variant::default_variant(q));
-                                Argument::ByRef(name)
+                                // parent constant?
+                                match self
+                                    .parent
+                                    .get_root()
+                                    .constants
+                                    .get(&name)
+                                    .map(|x| x.clone())
+                                {
+                                    Some(v) => Argument::ByVal(v),
+                                    None => {
+                                        // create the variable in this scope
+                                        // e.g. INPUT N
+                                        let q = match name.type_definition() {
+                                            ResolvedTypeDefinition::BuiltIn(q) => q,
+                                            _ => panic!(
+                                                "cannot implicitly create user defined variable"
+                                            ),
+                                        };
+                                        self.do_insert_variable(
+                                            name.clone(),
+                                            Variant::default_variant(q),
+                                        );
+                                        Argument::ByRef(name)
+                                    }
+                                }
                             }
                         }
                     }
@@ -423,11 +454,16 @@ impl SubContext {
 
     pub fn set_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
         // if a parameter exists, set it (might be a ref)
-        match self.get_variable(&name) {
+        match self.get_arg(&name) {
             Some(a) => match a {
-                Argument::ByVal(_old_value) => {
-                    self.do_insert_variable(name, value);
-                }
+                Argument::ByVal(_old_value) => match self.args.get_mut(&name) {
+                    Some(Argument::ByVal(v)) => {
+                        *v = value;
+                    }
+                    _ => {
+                        panic!("should not happen");
+                    }
+                },
                 Argument::ByRef(n) => self.set_variable_parent(n, value),
             },
             None => {
@@ -442,16 +478,22 @@ impl SubContext {
         match self.constants.get(name) {
             Some(v) => Some(v.clone()),
             None => {
-                // variable?
-                match self.get_variable(name) {
+                // argument?
+                match self.get_arg(name) {
                     Some(a) => self.evaluate_argument(a),
                     None => {
-                        // top-level constant?
-                        self.parent
-                            .get_root()
-                            .constants
-                            .get(name)
-                            .map(|x| x.clone())
+                        // local variable?
+                        match self.vars.get(name) {
+                            Some(v) => Some(v.clone()),
+                            None => {
+                                // top-level constant?
+                                self.parent
+                                    .get_root()
+                                    .constants
+                                    .get(name)
+                                    .map(|x| x.clone())
+                            }
+                        }
                     }
                 }
             }
@@ -486,8 +528,9 @@ impl Context {
         match self {
             Self::Args(a) => Self::Sub(SubContext {
                 parent: a.parent,
-                variables: a.args,
+                args: a.args,
                 constants: ConstantMap::new(),
+                vars: VariableMap::new(),
             }),
             _ => panic!("Not in an args context"),
         }

@@ -340,6 +340,9 @@ impl LinterContext {
                         ResolvedTypeDefinitions::UserDefined(u.clone()),
                     );
                 }
+                ResolvedTypeDefinition::FileHandle => {
+                    panic!("not possible to declare a DIM of filehandle")
+                }
             },
         }
         Ok(resolved_declared_name)

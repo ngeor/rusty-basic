@@ -21,9 +21,6 @@ pub enum TypeQualifier {
     PercentInteger,
     /// `&` Long-integer
     AmpersandLong,
-    // TODO remove FileHandle keep only valid symbols
-    /// Not an actual type, but to be able to call PRINT #1, "hello", we define the file handle type
-    FileHandle,
 }
 
 pub trait CanCastTo<T> {
@@ -34,8 +31,7 @@ impl CanCastTo<TypeQualifier> for TypeQualifier {
     fn can_cast_to(&self, other: Self) -> bool {
         match self {
             Self::DollarString => other == Self::DollarString,
-            Self::FileHandle => other == Self::FileHandle,
-            _ => other != Self::DollarString && other != Self::FileHandle,
+            _ => other != Self::DollarString,
         }
     }
 }
@@ -109,7 +105,6 @@ impl Display for TypeQualifier {
             TypeQualifier::DollarString => write!(f, "$"),
             TypeQualifier::PercentInteger => write!(f, "%"),
             TypeQualifier::AmpersandLong => write!(f, "&"),
-            TypeQualifier::FileHandle => write!(f, "<file handle>"),
         }
     }
 }
@@ -140,27 +135,21 @@ impl TryFrom<char> for TypeQualifier {
     }
 }
 
-impl TryFrom<TypeQualifier> for char {
-    type Error = String;
-
-    fn try_from(q: TypeQualifier) -> Result<char, String> {
+impl From<TypeQualifier> for char {
+    fn from(q: TypeQualifier) -> char {
         match q {
-            TypeQualifier::BangSingle => Ok('!'),
-            TypeQualifier::HashDouble => Ok('#'),
-            TypeQualifier::DollarString => Ok('$'),
-            TypeQualifier::PercentInteger => Ok('%'),
-            TypeQualifier::AmpersandLong => Ok('&'),
-            _ => Err(format!("Cannot convert {:?} to char", q)),
+            TypeQualifier::BangSingle => '!',
+            TypeQualifier::HashDouble => '#',
+            TypeQualifier::DollarString => '$',
+            TypeQualifier::PercentInteger => '%',
+            TypeQualifier::AmpersandLong => '&',
         }
     }
 }
 
 impl PartialEq<char> for TypeQualifier {
     fn eq(&self, that: &char) -> bool {
-        match char::try_from(*self) {
-            Ok(ch) => ch == *that,
-            Err(_) => false,
-        }
+        char::from(*self) == *that
     }
 }
 
@@ -195,7 +184,6 @@ mod tests {
         assert_eq!("$", format!("{}", TypeQualifier::DollarString));
         assert_eq!("%", format!("{}", TypeQualifier::PercentInteger));
         assert_eq!("&", format!("{}", TypeQualifier::AmpersandLong));
-        assert_eq!("<file handle>", format!("{}", TypeQualifier::FileHandle));
     }
 
     #[test]
@@ -255,10 +243,6 @@ mod tests {
         assert_eq!(char::try_from(TypeQualifier::DollarString).unwrap(), '$');
         assert_eq!(char::try_from(TypeQualifier::PercentInteger).unwrap(), '%');
         assert_eq!(char::try_from(TypeQualifier::AmpersandLong).unwrap(), '&');
-        assert_eq!(
-            char::try_from(TypeQualifier::FileHandle).unwrap_err(),
-            "Cannot convert FileHandle to char"
-        );
     }
 
     #[test]
@@ -276,8 +260,5 @@ mod tests {
         // invalid characters
         assert_ne!(TypeQualifier::BangSingle, '.');
         assert_ne!('.', TypeQualifier::BangSingle);
-        // file handle
-        assert_ne!('!', TypeQualifier::FileHandle);
-        assert_ne!(TypeQualifier::FileHandle, '$');
     }
 }

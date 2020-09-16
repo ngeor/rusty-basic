@@ -8,6 +8,8 @@ use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+// TODO support file handle only for OPEN, PRINT, INPUT, LINE INPUT, CLOSE
+
 /// Parses built-in subs which have a special syntax.
 pub fn parse_built_in<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::Statement, QError>> {

@@ -28,7 +28,7 @@ impl CastBinaryOperator<ResolvedTypeDefinition> for Operator {
                 ResolvedTypeDefinition::String(_) => self
                     .cast_binary_op(q_left, TypeQualifier::DollarString)
                     .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
-                ResolvedTypeDefinition::UserDefined(_) => None,
+                _ => None,
             },
             ResolvedTypeDefinition::String(_) => match right {
                 ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
@@ -37,18 +37,13 @@ impl CastBinaryOperator<ResolvedTypeDefinition> for Operator {
                     .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
                 _ => None,
             },
-            ResolvedTypeDefinition::UserDefined(_) => None,
+            _ => None,
         }
     }
 }
 
 impl CastBinaryOperator<TypeQualifier> for Operator {
     fn cast_binary_op(&self, left: TypeQualifier, right: TypeQualifier) -> Option<TypeQualifier> {
-        if left == TypeQualifier::FileHandle || right == TypeQualifier::FileHandle {
-            // file handles are a special case they're not supposed to mix with others, exit fast
-            return None;
-        }
-
         match self {
             // 1. arithmetic operators
             // 1a. plus -> if we can cast left to right, that's the result
@@ -103,7 +98,7 @@ impl CastBinaryOperator<TypeQualifier> for Operator {
 // ========================================================
 
 pub fn cast_unary_op(_op: UnaryOperator, child: TypeQualifier) -> Option<TypeQualifier> {
-    if child == TypeQualifier::FileHandle || child == TypeQualifier::DollarString {
+    if child == TypeQualifier::DollarString {
         // file handles are a special case they're not supposed to mix with others,
         // strings don't have any unary operator that can be applied to them
         None
@@ -273,11 +268,7 @@ pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, QErro
             TypeQualifier::AmpersandLong => Ok(value),
             _ => Err(QError::TypeMismatch),
         },
-        Variant::VFileHandle(_) => match target_type {
-            TypeQualifier::FileHandle => Ok(value),
-            _ => Err(QError::TypeMismatch),
-        },
-        Variant::VUserDefined(_) => unimplemented!(),
+        Variant::VFileHandle(_) | Variant::VUserDefined(_) => Err(QError::TypeMismatch),
     }
 }
 

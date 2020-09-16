@@ -462,7 +462,7 @@ impl Variant {
             Variant::VString(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
             Variant::VInteger(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
             Variant::VLong(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
-            Variant::VFileHandle(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::FileHandle),
+            Variant::VFileHandle(_) => ResolvedTypeDefinition::FileHandle,
             Variant::VUserDefined(user_defined_value) => {
                 ResolvedTypeDefinition::UserDefined(user_defined_value.type_name().clone())
             }
@@ -482,7 +482,6 @@ impl DefaultForType<TypeQualifier> for Variant {
             TypeQualifier::DollarString => Variant::VString(String::new()),
             TypeQualifier::PercentInteger => Variant::VInteger(0),
             TypeQualifier::AmpersandLong => Variant::VLong(0),
-            TypeQualifier::FileHandle => Variant::VFileHandle(FileHandle::default()),
         }
     }
 }
@@ -524,6 +523,9 @@ impl DefaultForTypes<&ResolvedTypeDefinition> for Variant {
             }
             ResolvedTypeDefinition::UserDefined(type_name) => {
                 Variant::VUserDefined(Box::new(UserDefinedValue::new(type_name, types)))
+            }
+            ResolvedTypeDefinition::FileHandle => {
+                panic!("not possible to get a default file handle")
             }
         }
     }

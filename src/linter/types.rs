@@ -66,12 +66,10 @@ impl Expression {
                     Some(q) => Ok(ResolvedTypeDefinition::BuiltIn(q)),
                     None => Err(QError::TypeMismatch).with_err_at(pos),
                 },
-                ResolvedTypeDefinition::String(_) | ResolvedTypeDefinition::UserDefined(_) => {
-                    Err(QError::TypeMismatch).with_err_at(pos)
-                }
+                _ => Err(QError::TypeMismatch).with_err_at(pos),
             },
             Self::Parenthesis(c) => c.as_ref().try_type_definition(),
-            Self::FileHandle(_) => Ok(ResolvedTypeDefinition::BuiltIn(TypeQualifier::FileHandle)),
+            Self::FileHandle(_) => Ok(ResolvedTypeDefinition::FileHandle),
         }
     }
 }
@@ -193,6 +191,7 @@ pub enum ResolvedTypeDefinition {
     BuiltIn(TypeQualifier),
     String(u32),
     UserDefined(BareName),
+    FileHandle,
 }
 
 impl CanCastTo<&ResolvedTypeDefinition> for ResolvedTypeDefinition {
@@ -211,6 +210,7 @@ impl CanCastTo<&ResolvedTypeDefinition> for ResolvedTypeDefinition {
                 Self::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
+            Self::FileHandle => false,
         }
     }
 }
@@ -220,7 +220,7 @@ impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
         match self {
             Self::BuiltIn(q_left) => q_left.can_cast_to(other),
             Self::String(_) => other == TypeQualifier::DollarString,
-            Self::UserDefined(_) => false,
+            _ => false,
         }
     }
 }

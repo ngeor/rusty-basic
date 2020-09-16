@@ -11,13 +11,14 @@ pub struct UndefinedFunctionReducer<'a> {
 impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
     fn visit_expression(&self, expression: Expression) -> Result<Expression, QErrorNode> {
         match expression {
-            Expression::BinaryExpression(op, left, right) => {
+            Expression::BinaryExpression(op, left, right, old_type_definition) => {
                 let mapped_left = self.visit_expression_node(*left)?;
                 let mapped_right = self.visit_expression_node(*right)?;
                 Ok(Expression::BinaryExpression(
                     op,
                     Box::new(mapped_left),
                     Box::new(mapped_right),
+                    old_type_definition, // TODO is old_type_definition still good enough after the mapping
                 ))
             }
             Expression::UnaryExpression(op, child) => {

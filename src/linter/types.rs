@@ -1,8 +1,5 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::{
-    FileHandle, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
-};
-use crate::linter::casting::CastBinaryOperator;
+use crate::common::{FileHandle, Locatable};
 use crate::parser::{
     BareName, BareNameNode, CanCastTo, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
     TypeDefinition, TypeQualifier, UnaryOperator,
@@ -10,9 +7,6 @@ use crate::parser::{
 use std::collections::HashMap;
 #[cfg(test)]
 use std::convert::TryFrom;
-
-// TODO store the resolved type definition inside the expression at the time of the conversion from parser,
-// in order to avoid `try_type_definition` all the time. A linter expression should have a resolved type definition.
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -25,52 +19,35 @@ pub enum Expression {
     Variable(ResolvedDeclaredName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
-    BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
+    BinaryExpression(
+        Operator,
+        Box<ExpressionNode>,
+        Box<ExpressionNode>,
+        ResolvedTypeDefinition,
+    ),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
     FileHandle(FileHandle),
 }
 
 impl Expression {
-    pub fn try_type_definition(&self, pos: Location) -> Result<ResolvedTypeDefinition, QErrorNode> {
+    pub fn type_definition(&self) -> ResolvedTypeDefinition {
         match self {
-            Self::SingleLiteral(_) => {
-                Ok(ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle))
+            Self::SingleLiteral(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
+            Self::DoubleLiteral(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
+            Self::StringLiteral(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
+            Self::IntegerLiteral(_) => {
+                ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
             }
-            Self::DoubleLiteral(_) => {
-                Ok(ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble))
-            }
-            Self::StringLiteral(_) => {
-                Ok(ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString))
-            }
-            Self::IntegerLiteral(_) => Ok(ResolvedTypeDefinition::BuiltIn(
-                TypeQualifier::PercentInteger,
-            )),
-            Self::LongLiteral(_) => Ok(ResolvedTypeDefinition::BuiltIn(
-                TypeQualifier::AmpersandLong,
-            )),
-            Self::Variable(names) => Ok(names.type_definition()),
+            Self::LongLiteral(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
+            Self::Variable(name) => name.type_definition(),
             Self::Constant(name) | Self::FunctionCall(name, _) => {
-                Ok(ResolvedTypeDefinition::BuiltIn(name.qualifier()))
+                ResolvedTypeDefinition::BuiltIn(name.qualifier())
             }
-            Self::BuiltInFunctionCall(f, _) => Ok(ResolvedTypeDefinition::BuiltIn(f.qualifier())),
-            Self::BinaryExpression(op, l, r) => {
-                let l_type_definition = l.as_ref().try_type_definition()?;
-                let r_type_definition = r.as_ref().try_type_definition()?;
-                match op.cast_binary_op(l_type_definition, r_type_definition) {
-                    Some(result) => Ok(result),
-                    None => Err(QError::TypeMismatch).with_err_at(pos),
-                }
-            }
-            Self::UnaryExpression(op, c) => match c.as_ref().try_type_definition()? {
-                ResolvedTypeDefinition::BuiltIn(q) => match super::casting::cast_unary_op(*op, q) {
-                    Some(q) => Ok(ResolvedTypeDefinition::BuiltIn(q)),
-                    None => Err(QError::TypeMismatch).with_err_at(pos),
-                },
-                _ => Err(QError::TypeMismatch).with_err_at(pos),
-            },
-            Self::Parenthesis(c) => c.as_ref().try_type_definition(),
-            Self::FileHandle(_) => Ok(ResolvedTypeDefinition::FileHandle),
+            Self::BuiltInFunctionCall(f, _) => ResolvedTypeDefinition::BuiltIn(f.qualifier()),
+            Self::BinaryExpression(_, _, _, type_definition) => type_definition.clone(),
+            Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().type_definition(),
+            Self::FileHandle(_) => ResolvedTypeDefinition::FileHandle,
         }
     }
 }
@@ -78,8 +55,8 @@ impl Expression {
 pub type ExpressionNode = Locatable<Expression>;
 
 impl ExpressionNode {
-    pub fn try_type_definition(&self) -> Result<ResolvedTypeDefinition, QErrorNode> {
-        self.as_ref().try_type_definition(self.pos())
+    pub fn type_definition(&self) -> ResolvedTypeDefinition {
+        self.as_ref().type_definition()
     }
 }
 

@@ -10,7 +10,7 @@ impl InstructionGenerator {
         expr_node: ExpressionNode,
         target_type: ResolvedTypeDefinition,
     ) {
-        let expression_type = expr_node.try_type_definition().unwrap();
+        let expression_type = expr_node.type_definition();
         let pos = expr_node.pos();
         self.generate_expression_instructions(expr_node);
         if expression_type != target_type {
@@ -60,7 +60,7 @@ impl InstructionGenerator {
             Expression::BuiltInFunctionCall(n, args) => {
                 self.generate_built_in_function_call_instructions(n, args, pos);
             }
-            Expression::BinaryExpression(op, left, right) => {
+            Expression::BinaryExpression(op, left, right, _) => {
                 self.push(Instruction::PushRegisters, pos);
                 self.generate_expression_instructions(*left);
                 self.push(Instruction::CopyAToB, pos);

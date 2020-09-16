@@ -165,7 +165,7 @@ impl<'a> NoDotNamesCheck<Expression, QErrorNode> for NoDotNames<'a> {
                 self.ensure_no_dots(args)
             }
             Expression::BuiltInFunctionCall(_, args) => self.ensure_no_dots(args),
-            Expression::BinaryExpression(_, left, right) => {
+            Expression::BinaryExpression(_, left, right, _) => {
                 self.ensure_no_dots(left.as_ref())?;
                 self.ensure_no_dots(right.as_ref())
             }
@@ -234,7 +234,7 @@ mod tests {
     use crate::common::*;
     use crate::linter::test_utils::*;
     use crate::linter::*;
-    use crate::parser::Operator;
+    use crate::parser::{Operator, TypeQualifier};
 
     mod assignment {
         use super::*;
@@ -302,7 +302,9 @@ mod tests {
                     Expression::BinaryExpression(
                         Operator::Plus,
                         Box::new(Expression::IntegerLiteral(1).at_rc(1, 6),),
-                        Box::new(Expression::SingleLiteral(2.1).at_rc(1, 10))
+                        Box::new(Expression::SingleLiteral(2.1).at_rc(1, 10)),
+                        // TODO replace with '!'.into()
+                        ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
                     )
                     .at_rc(1, 8)
                 ))

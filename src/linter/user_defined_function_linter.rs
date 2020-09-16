@@ -18,7 +18,7 @@ pub fn lint_call_args(
 
     for (arg_node, param_type) in args.iter().zip(param_types.iter()) {
         let arg = arg_node.as_ref();
-        let arg_q = arg_node.try_type_definition()?;
+        let arg_q = arg_node.type_definition();
         match arg {
             Expression::Variable(_) => {
                 // it's by ref, it needs to match exactly
@@ -59,7 +59,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
     fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
-            match arg_node.try_type_definition()? {
+            match arg_node.type_definition() {
                 ResolvedTypeDefinition::BuiltIn(q) => {
                     if q == TypeQualifier::DollarString {
                         return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
@@ -86,7 +86,7 @@ impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
                 }
                 self.visit_function(n, args).patch_err_pos(pos)
             }
-            Expression::BinaryExpression(_, left, right) => {
+            Expression::BinaryExpression(_, left, right, _) => {
                 self.visit_expression(left)?;
                 self.visit_expression(right)
             }

@@ -344,7 +344,7 @@ impl ConverterImpl {
             // TODO simplify
             let checked_right = self.resolve_const_value(right)?;
             let converted_expression_node = self.convert(checked_right)?;
-            match converted_expression_node.try_type_definition()? {
+            match converted_expression_node.type_definition() {
                 ResolvedTypeDefinition::BuiltIn(q) => {
                     let q_name = self
                         .context
@@ -426,7 +426,7 @@ impl ConverterImpl {
     ) -> Result<Statement, QErrorNode> {
         let resolved_l_name = self.resolve_name_in_assignment(name).with_err_no_pos()?;
         let converted_expr: ExpressionNode = self.convert(expression_node)?;
-        let result_q: ResolvedTypeDefinition = converted_expr.try_type_definition()?;
+        let result_q: ResolvedTypeDefinition = converted_expr.type_definition();
         if result_q.can_cast_to(&resolved_l_name) {
             Ok(Statement::Assignment(resolved_l_name, converted_expr))
         } else {
@@ -584,14 +584,15 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let converted_left = self.convert(unboxed_left)?;
                 let converted_right = self.convert(unboxed_right)?;
                 // get the types
-                let t_left = converted_left.try_type_definition()?;
-                let t_right = converted_right.try_type_definition()?;
+                let t_left = converted_left.type_definition();
+                let t_right = converted_right.type_definition();
                 // get the cast type
                 match op.cast_binary_op(t_left, t_right) {
-                    Some(_) => Ok(Expression::BinaryExpression(
+                    Some(type_definition) => Ok(Expression::BinaryExpression(
                         op,
                         Box::new(converted_left),
                         Box::new(converted_right),
+                        type_definition,
                     )),
                     None => Err(QError::TypeMismatch).with_err_at(&converted_right),
                 }
@@ -599,7 +600,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
             parser::Expression::UnaryExpression(op, c) => {
                 let unboxed_child = *c;
                 let converted_child = self.convert(unboxed_child)?;
-                match converted_child.try_type_definition()? {
+                match converted_child.type_definition() {
                     ResolvedTypeDefinition::BuiltIn(q) => {
                         if super::casting::cast_unary_op(op, q).is_none() {
                             Err(QError::TypeMismatch).with_err_at(&converted_child)

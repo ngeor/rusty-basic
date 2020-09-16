@@ -37,7 +37,7 @@ impl PostConversionLinter for BuiltInLinter {
                 }
                 lint(built_in_function, args).patch_err_pos(pos)
             }
-            Expression::BinaryExpression(_, left, right) => {
+            Expression::BinaryExpression(_, left, right, _) => {
                 self.visit_expression(left)?;
                 self.visit_expression(right)
             }
@@ -77,7 +77,7 @@ mod environ_sub {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else if !args[0]
-            .try_type_definition()?
+            .type_definition()
             .can_cast_to(TypeQualifier::DollarString)
         {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
@@ -174,12 +174,12 @@ mod name {
         if args.len() != 2 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else if !args[0]
-            .try_type_definition()?
+            .type_definition()
             .can_cast_to(TypeQualifier::DollarString)
         {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
         } else if !args[1]
-            .try_type_definition()?
+            .type_definition()
             .can_cast_to(TypeQualifier::DollarString)
         {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])
@@ -201,7 +201,7 @@ mod print {
     use super::*;
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         for arg in args.iter() {
-            let type_definition = arg.try_type_definition()?;
+            let type_definition = arg.type_definition();
             match type_definition {
                 ResolvedTypeDefinition::UserDefined(_) => {
                     return Err(QError::TypeMismatch).with_err_at(arg);
@@ -290,7 +290,7 @@ mod len {
             match arg {
                 Expression::Variable(_) => Ok(()),
                 _ => {
-                    let q = args[0].try_type_definition()?;
+                    let q = args[0].type_definition();
                     if !q.can_cast_to(TypeQualifier::DollarString) {
                         Err(QError::VariableRequired).with_err_at(&args[0])
                     } else {
@@ -374,7 +374,7 @@ fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), QEr
     if args.len() != 1 {
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
-        match args[0].try_type_definition()? {
+        match args[0].type_definition() {
             ResolvedTypeDefinition::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString {
                     Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
@@ -396,7 +396,7 @@ fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), QErr
 }
 
 fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    let q = args[idx].try_type_definition()?;
+    let q = args[idx].type_definition();
     if !q.can_cast_to(TypeQualifier::DollarString) {
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
@@ -405,7 +405,7 @@ fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(),
 }
 
 fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    let q = args[idx].try_type_definition()?;
+    let q = args[idx].type_definition();
     if !q.can_cast_to(TypeQualifier::PercentInteger) {
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {

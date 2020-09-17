@@ -1,8 +1,14 @@
+mod has_type_definition;
+mod type_definition;
+
+pub use self::has_type_definition::*;
+pub use self::type_definition::*;
+
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::{FileHandle, Locatable};
+use crate::common::{CanCastTo, FileHandle, Locatable};
 use crate::parser::{
-    BareName, BareNameNode, CanCastTo, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
-    TypeDefinition, TypeQualifier, UnaryOperator,
+    BareName, BareNameNode, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
+    TypeQualifier, UnaryOperator,
 };
 use std::collections::HashMap;
 #[cfg(test)]
@@ -23,42 +29,35 @@ pub enum Expression {
         Operator,
         Box<ExpressionNode>,
         Box<ExpressionNode>,
-        ResolvedTypeDefinition,
+        // the resolved type definition (e.g. 1 + 2.1 -> single)
+        TypeDefinition,
     ),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
     FileHandle(FileHandle),
 }
 
-impl Expression {
-    pub fn type_definition(&self) -> ResolvedTypeDefinition {
+impl HasTypeDefinition for Expression {
+    fn type_definition(&self) -> TypeDefinition {
         match self {
-            Self::SingleLiteral(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
-            Self::DoubleLiteral(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Self::StringLiteral(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
-            Self::IntegerLiteral(_) => {
-                ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger)
-            }
-            Self::LongLiteral(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
+            Self::SingleLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::BangSingle),
+            Self::DoubleLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::HashDouble),
+            Self::StringLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::DollarString),
+            Self::IntegerLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
+            Self::LongLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
             Self::Variable(name) => name.type_definition(),
             Self::Constant(name) | Self::FunctionCall(name, _) => {
-                ResolvedTypeDefinition::BuiltIn(name.qualifier())
+                TypeDefinition::BuiltIn(name.qualifier())
             }
-            Self::BuiltInFunctionCall(f, _) => ResolvedTypeDefinition::BuiltIn(f.qualifier()),
+            Self::BuiltInFunctionCall(f, _) => TypeDefinition::BuiltIn(f.qualifier()),
             Self::BinaryExpression(_, _, _, type_definition) => type_definition.clone(),
             Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().type_definition(),
-            Self::FileHandle(_) => ResolvedTypeDefinition::FileHandle,
+            Self::FileHandle(_) => TypeDefinition::FileHandle,
         }
     }
 }
 
 pub type ExpressionNode = Locatable<Expression>;
-
-impl ExpressionNode {
-    pub fn type_definition(&self) -> ResolvedTypeDefinition {
-        self.as_ref().type_definition()
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
@@ -159,20 +158,7 @@ pub enum TopLevelToken {
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 
-// ========================================================
-// ResolvedTypeDefinition
-// ========================================================
-
-/// Similar to `TypeDefinition` but without `Bare`
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum ResolvedTypeDefinition {
-    BuiltIn(TypeQualifier),
-    String(u32),
-    UserDefined(BareName),
-    FileHandle,
-}
-
-impl CanCastTo<&ResolvedTypeDefinition> for ResolvedTypeDefinition {
+impl CanCastTo<&TypeDefinition> for TypeDefinition {
     fn can_cast_to(&self, other: &Self) -> bool {
         match self {
             Self::BuiltIn(q_left) => match other {
@@ -193,7 +179,7 @@ impl CanCastTo<&ResolvedTypeDefinition> for ResolvedTypeDefinition {
     }
 }
 
-impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
+impl CanCastTo<TypeQualifier> for TypeDefinition {
     fn can_cast_to(&self, other: TypeQualifier) -> bool {
         match self {
             Self::BuiltIn(q_left) => q_left.can_cast_to(other),
@@ -203,7 +189,7 @@ impl CanCastTo<TypeQualifier> for ResolvedTypeDefinition {
     }
 }
 
-impl CanCastTo<&ResolvedDeclaredName> for ResolvedTypeDefinition {
+impl CanCastTo<&ResolvedDeclaredName> for TypeDefinition {
     fn can_cast_to(&self, other: &ResolvedDeclaredName) -> bool {
         self.can_cast_to(&other.type_definition())
     }
@@ -212,18 +198,6 @@ impl CanCastTo<&ResolvedDeclaredName> for ResolvedTypeDefinition {
 impl CanCastTo<TypeQualifier> for ResolvedDeclaredName {
     fn can_cast_to(&self, other: TypeQualifier) -> bool {
         self.type_definition().can_cast_to(other)
-    }
-}
-
-impl From<TypeDefinition> for ResolvedTypeDefinition {
-    fn from(type_definition: TypeDefinition) -> Self {
-        match type_definition {
-            TypeDefinition::Bare => panic!("Unresolved bare type"), // as this is internal error, it is ok to panic
-            TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => {
-                Self::BuiltIn(q)
-            }
-            TypeDefinition::UserDefined(bare_name) => Self::UserDefined(bare_name),
-        }
     }
 }
 
@@ -247,13 +221,6 @@ pub enum Members {
 }
 
 impl Members {
-    pub fn type_definition(&self) -> ResolvedTypeDefinition {
-        match self {
-            Self::Leaf { element_type, .. } => element_type.type_definition(),
-            Self::Node(_, boxed_members) => boxed_members.type_definition(),
-        }
-    }
-
     pub fn name_path(&self) -> Vec<BareName> {
         match self {
             Self::Leaf { name, .. } => vec![name.clone()],
@@ -276,6 +243,15 @@ impl Members {
             Self::Node(user_defined_name, boxed_members) => {
                 Self::Node(user_defined_name, Box::new(boxed_members.append(other)))
             }
+        }
+    }
+}
+
+impl HasTypeDefinition for Members {
+    fn type_definition(&self) -> TypeDefinition {
+        match self {
+            Self::Leaf { element_type, .. } => element_type.type_definition(),
+            Self::Node(_, boxed_members) => boxed_members.type_definition(),
         }
     }
 }
@@ -308,18 +284,6 @@ impl ResolvedDeclaredName {
         })
     }
 
-    pub fn type_definition(&self) -> ResolvedTypeDefinition {
-        match self {
-            Self::BuiltIn(QualifiedName { qualifier, .. }) => {
-                ResolvedTypeDefinition::BuiltIn(*qualifier)
-            }
-            Self::UserDefined(UserDefinedName { type_name, .. }) => {
-                ResolvedTypeDefinition::UserDefined(type_name.clone())
-            }
-            Self::Many(_, members) => members.type_definition(),
-        }
-    }
-
     pub fn name_path(&self) -> Vec<BareName> {
         match self {
             Self::BuiltIn(QualifiedName { name, .. }) => vec![name.clone()],
@@ -349,6 +313,18 @@ impl AsRef<BareName> for ResolvedDeclaredName {
             Self::BuiltIn(QualifiedName { name, .. }) => name,
             Self::UserDefined(UserDefinedName { name, .. }) => name,
             Self::Many(UserDefinedName { name, .. }, _) => name,
+        }
+    }
+}
+
+impl HasTypeDefinition for ResolvedDeclaredName {
+    fn type_definition(&self) -> TypeDefinition {
+        match self {
+            Self::BuiltIn(QualifiedName { qualifier, .. }) => TypeDefinition::BuiltIn(*qualifier),
+            Self::UserDefined(UserDefinedName { type_name, .. }) => {
+                TypeDefinition::UserDefined(type_name.clone())
+            }
+            Self::Many(_, members) => members.type_definition(),
         }
     }
 }
@@ -392,15 +368,15 @@ pub enum ResolvedElementType {
     UserDefined(BareName),
 }
 
-impl ResolvedElementType {
-    pub fn type_definition(&self) -> ResolvedTypeDefinition {
+impl HasTypeDefinition for ResolvedElementType {
+    fn type_definition(&self) -> TypeDefinition {
         match self {
-            Self::Integer => ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
-            Self::Long => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
-            Self::Single => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
-            Self::Double => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Self::String(l) => ResolvedTypeDefinition::String(*l),
-            Self::UserDefined(type_name) => ResolvedTypeDefinition::UserDefined(type_name.clone()),
+            Self::Integer => TypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
+            Self::Long => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
+            Self::Single => TypeDefinition::BuiltIn(TypeQualifier::BangSingle),
+            Self::Double => TypeDefinition::BuiltIn(TypeQualifier::HashDouble),
+            Self::String(l) => TypeDefinition::String(*l),
+            Self::UserDefined(type_name) => TypeDefinition::UserDefined(type_name.clone()),
         }
     }
 }

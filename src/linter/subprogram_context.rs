@@ -7,13 +7,14 @@ use crate::linter::casting::cast;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::{
-    ResolvedElement, ResolvedElementType, ResolvedTypeDefinition, ResolvedUserDefinedType,
-    ResolvedUserDefinedTypes,
+    HasTypeDefinition, ResolvedElement, ResolvedElementType, ResolvedUserDefinedType,
+    ResolvedUserDefinedTypes, TypeDefinition,
 };
+use crate::parser;
 use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, DefType,
     ElementType, Expression, ExpressionNode, Name, NameNode, Operator, ProgramNode, Statement,
-    TopLevelToken, TypeDefinition, TypeQualifier, UnaryOperator, UserDefinedType,
+    TopLevelToken, TypeQualifier, UnaryOperator, UserDefinedType,
 };
 use crate::variant::Variant;
 use std::cell::RefCell;
@@ -210,7 +211,7 @@ impl FirstPassOuter {
                 },
                 Name::Qualified { name, qualifier } => match self.global_constants.get(name) {
                     Some(v) => match v.type_definition() {
-                        ResolvedTypeDefinition::BuiltIn(v_q) => {
+                        TypeDefinition::BuiltIn(v_q) => {
                             if v_q == *qualifier {
                                 Ok(v.clone())
                             } else {
@@ -436,11 +437,11 @@ impl FirstPassInner {
     pub fn parameters(
         &self,
         params: &DeclaredNameNodes,
-    ) -> Result<Vec<ResolvedTypeDefinition>, QErrorNode> {
+    ) -> Result<Vec<TypeDefinition>, QErrorNode> {
         params.iter().map(|p| self.parameter(p)).collect()
     }
 
-    fn parameter(&self, param: &DeclaredNameNode) -> Result<ResolvedTypeDefinition, QErrorNode> {
+    fn parameter(&self, param: &DeclaredNameNode) -> Result<TypeDefinition, QErrorNode> {
         let Locatable {
             element: declared_name,
             pos,
@@ -451,16 +452,15 @@ impl FirstPassInner {
         } = declared_name;
         // TODO use resolve declared name function from linter context
         match type_definition {
-            TypeDefinition::Bare => {
+            parser::TypeDefinition::Bare => {
                 let q: TypeQualifier = self.resolver.resolve(name);
-                Ok(ResolvedTypeDefinition::BuiltIn(q))
+                Ok(TypeDefinition::BuiltIn(q))
             }
-            TypeDefinition::CompactBuiltIn(q) | TypeDefinition::ExtendedBuiltIn(q) => {
-                Ok(ResolvedTypeDefinition::BuiltIn(*q))
-            }
-            TypeDefinition::UserDefined(u) => {
+            parser::TypeDefinition::CompactBuiltIn(q)
+            | parser::TypeDefinition::ExtendedBuiltIn(q) => Ok(TypeDefinition::BuiltIn(*q)),
+            parser::TypeDefinition::UserDefined(u) => {
                 if self.user_defined_types.contains_key(u) {
-                    Ok(ResolvedTypeDefinition::UserDefined(u.clone()))
+                    Ok(TypeDefinition::UserDefined(u.clone()))
                 } else {
                     Err(QError::TypeNotDefined).with_err_at(pos)
                 }
@@ -469,7 +469,7 @@ impl FirstPassInner {
     }
 }
 
-pub type ParamTypes = Vec<ResolvedTypeDefinition>;
+pub type ParamTypes = Vec<TypeDefinition>;
 pub type FunctionMap = HashMap<CaseInsensitiveString, (TypeQualifier, ParamTypes, Location)>;
 
 #[derive(Debug)]

@@ -1,7 +1,8 @@
 use super::fit::FitToType;
 use crate::common::{CaseInsensitiveString, FileHandle, QError};
 use crate::linter::{
-    ResolvedElement, ResolvedElementType, ResolvedTypeDefinition, ResolvedUserDefinedTypes,
+    HasTypeDefinition, ResolvedElement, ResolvedElementType, ResolvedUserDefinedTypes,
+    TypeDefinition,
 };
 use crate::parser::TypeQualifier;
 use std::cmp::Ordering;
@@ -454,17 +455,19 @@ impl Variant {
             _ => panic!("not a string variant"),
         }
     }
+}
 
-    pub fn type_definition(&self) -> ResolvedTypeDefinition {
+impl HasTypeDefinition for Variant {
+    fn type_definition(&self) -> TypeDefinition {
         match self {
-            Variant::VSingle(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle),
-            Variant::VDouble(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Variant::VString(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString),
-            Variant::VInteger(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
-            Variant::VLong(_) => ResolvedTypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
-            Variant::VFileHandle(_) => ResolvedTypeDefinition::FileHandle,
+            Variant::VSingle(_) => TypeDefinition::BuiltIn(TypeQualifier::BangSingle),
+            Variant::VDouble(_) => TypeDefinition::BuiltIn(TypeQualifier::HashDouble),
+            Variant::VString(_) => TypeDefinition::BuiltIn(TypeQualifier::DollarString),
+            Variant::VInteger(_) => TypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
+            Variant::VLong(_) => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
+            Variant::VFileHandle(_) => TypeDefinition::FileHandle,
             Variant::VUserDefined(user_defined_value) => {
-                ResolvedTypeDefinition::UserDefined(user_defined_value.type_name().clone())
+                TypeDefinition::UserDefined(user_defined_value.type_name().clone())
             }
         }
     }
@@ -505,14 +508,14 @@ impl DefaultForTypes<&ResolvedElementType> for Variant {
     }
 }
 
-impl DefaultForTypes<&ResolvedTypeDefinition> for Variant {
+impl DefaultForTypes<&TypeDefinition> for Variant {
     fn default_variant_types(
-        type_definition: &ResolvedTypeDefinition,
+        type_definition: &TypeDefinition,
         types: &ResolvedUserDefinedTypes,
     ) -> Self {
         match type_definition {
-            ResolvedTypeDefinition::BuiltIn(q) => Self::default_variant(*q),
-            ResolvedTypeDefinition::String(len) => {
+            TypeDefinition::BuiltIn(q) => Self::default_variant(*q),
+            TypeDefinition::String(len) => {
                 let mut s: String = String::new();
                 let mut i: u32 = *len;
                 while i > 0 {
@@ -521,12 +524,10 @@ impl DefaultForTypes<&ResolvedTypeDefinition> for Variant {
                 }
                 Self::VString(s)
             }
-            ResolvedTypeDefinition::UserDefined(type_name) => {
+            TypeDefinition::UserDefined(type_name) => {
                 Variant::VUserDefined(Box::new(UserDefinedValue::new(type_name, types)))
             }
-            ResolvedTypeDefinition::FileHandle => {
-                panic!("not possible to get a default file handle")
-            }
+            TypeDefinition::FileHandle => panic!("not possible to get a default file handle"),
         }
     }
 }

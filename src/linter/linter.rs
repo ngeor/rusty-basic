@@ -304,7 +304,7 @@ mod tests {
                         Box::new(Expression::IntegerLiteral(1).at_rc(1, 6),),
                         Box::new(Expression::SingleLiteral(2.1).at_rc(1, 10)),
                         // TODO replace with '!'.into()
-                        ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle)
+                        TypeDefinition::BuiltIn(TypeQualifier::BangSingle)
                     )
                     .at_rc(1, 8)
                 ))

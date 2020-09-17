@@ -1,6 +1,6 @@
-use crate::common::QError;
-use crate::linter::ResolvedTypeDefinition;
-use crate::parser::{CanCastTo, Operator, TypeQualifier, UnaryOperator};
+use crate::common::{CanCastTo, QError};
+use crate::linter::types::TypeDefinition;
+use crate::parser::{Operator, TypeQualifier, UnaryOperator};
 use crate::variant;
 use crate::variant::Variant;
 
@@ -14,27 +14,27 @@ pub trait CastBinaryOperator<T> {
 
 // TODO can some of this be caught by the parser e.g. 1 + "x"
 
-impl CastBinaryOperator<ResolvedTypeDefinition> for Operator {
+impl CastBinaryOperator<TypeDefinition> for Operator {
     fn cast_binary_op(
         &self,
-        left: ResolvedTypeDefinition,
-        right: ResolvedTypeDefinition,
-    ) -> Option<ResolvedTypeDefinition> {
+        left: TypeDefinition,
+        right: TypeDefinition,
+    ) -> Option<TypeDefinition> {
         match left {
-            ResolvedTypeDefinition::BuiltIn(q_left) => match right {
-                ResolvedTypeDefinition::BuiltIn(q_right) => self
+            TypeDefinition::BuiltIn(q_left) => match right {
+                TypeDefinition::BuiltIn(q_right) => self
                     .cast_binary_op(q_left, q_right)
-                    .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
-                ResolvedTypeDefinition::String(_) => self
+                    .map(|q_result| TypeDefinition::BuiltIn(q_result)),
+                TypeDefinition::String(_) => self
                     .cast_binary_op(q_left, TypeQualifier::DollarString)
-                    .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
+                    .map(|q_result| TypeDefinition::BuiltIn(q_result)),
                 _ => None,
             },
-            ResolvedTypeDefinition::String(_) => match right {
-                ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString)
-                | ResolvedTypeDefinition::String(_) => self
+            TypeDefinition::String(_) => match right {
+                TypeDefinition::BuiltIn(TypeQualifier::DollarString)
+                | TypeDefinition::String(_) => self
                     .cast_binary_op(TypeQualifier::DollarString, TypeQualifier::DollarString)
-                    .map(|q_result| ResolvedTypeDefinition::BuiltIn(q_result)),
+                    .map(|q_result| TypeDefinition::BuiltIn(q_result)),
                 _ => None,
             },
             _ => None,

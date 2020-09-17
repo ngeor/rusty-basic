@@ -2,7 +2,7 @@ use super::post_conversion_linter::PostConversionLinter;
 use super::subprogram_context::FunctionMap;
 use super::types::*;
 use crate::common::*;
-use crate::parser::{BareName, CanCastTo, HasQualifier, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, HasQualifier, QualifiedName, TypeQualifier};
 
 pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,
@@ -10,7 +10,7 @@ pub struct UserDefinedFunctionLinter<'a> {
 
 pub fn lint_call_args(
     args: &Vec<ExpressionNode>,
-    param_types: &Vec<ResolvedTypeDefinition>,
+    param_types: &Vec<TypeDefinition>,
 ) -> Result<(), QErrorNode> {
     if args.len() != param_types.len() {
         return err_no_pos(QError::ArgumentCountMismatch);
@@ -60,7 +60,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
             match arg_node.type_definition() {
-                ResolvedTypeDefinition::BuiltIn(q) => {
+                TypeDefinition::BuiltIn(q) => {
                     if q == TypeQualifier::DollarString {
                         return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
                     }

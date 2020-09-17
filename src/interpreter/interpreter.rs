@@ -6,7 +6,7 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
-use crate::linter::{ResolvedDeclaredName, ResolvedUserDefinedTypes};
+use crate::linter::{HasTypeDefinition, ResolvedDeclaredName, ResolvedUserDefinedTypes};
 use crate::parser::{HasQualifier, TypeQualifier};
 use crate::variant::{DefaultForType, DefaultForTypes, Variant};
 use std::cmp::Ordering;

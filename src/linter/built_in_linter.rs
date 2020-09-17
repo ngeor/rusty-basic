@@ -1,8 +1,8 @@
-use super::post_conversion_linter::PostConversionLinter;
-use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::parser::{CanCastTo, TypeQualifier};
+use crate::linter::post_conversion_linter::PostConversionLinter;
+use crate::linter::types::{Expression, ExpressionNode, HasTypeDefinition, TypeDefinition};
+use crate::parser::TypeQualifier;
 
 /// Lints built-in functions and subs.
 pub struct BuiltInLinter;
@@ -203,7 +203,7 @@ mod print {
         for arg in args.iter() {
             let type_definition = arg.type_definition();
             match type_definition {
-                ResolvedTypeDefinition::UserDefined(_) => {
+                TypeDefinition::UserDefined(_) => {
                     return Err(QError::TypeMismatch).with_err_at(arg);
                 }
                 _ => {}
@@ -375,7 +375,7 @@ fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), QEr
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         match args[0].type_definition() {
-            ResolvedTypeDefinition::BuiltIn(q) => {
+            TypeDefinition::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString {
                     Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
                 } else {

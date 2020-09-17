@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::Locatable;
-use crate::linter::{ExpressionNode, ResolvedTypeDefinition};
+use crate::linter::{ExpressionNode, TypeDefinition};
 use crate::parser::{HasQualifier, QualifiedNameNode};
 
 impl InstructionGenerator {
@@ -10,10 +10,7 @@ impl InstructionGenerator {
             pos,
         } = left;
         let left_type = qualified_name.qualifier();
-        self.generate_expression_instructions_casting(
-            right,
-            ResolvedTypeDefinition::BuiltIn(left_type),
-        );
+        self.generate_expression_instructions_casting(right, TypeDefinition::BuiltIn(left_type));
         self.push(Instruction::StoreConst(qualified_name), pos);
     }
 }

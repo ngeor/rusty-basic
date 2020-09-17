@@ -8,8 +8,8 @@ use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, CanCastTo, DeclaredName, DeclaredNameNodes, HasQualifier, Name,
-    NameNode, QualifiedName, TypeDefinition, TypeQualifier, WithTypeQualifier,
+    BareName, BareNameNode, DeclaredName, DeclaredNameNodes, HasQualifier, Name, NameNode,
+    QualifiedName, TypeQualifier, WithTypeQualifier,
 };
 use std::collections::HashSet;
 use std::convert::TryInto;
@@ -140,22 +140,22 @@ impl ConverterImpl {
             type_definition,
         } = d;
         match type_definition {
-            TypeDefinition::Bare => {
+            parser::TypeDefinition::Bare => {
                 let q: TypeQualifier = name.resolve_into(&self.resolver);
                 Ok((
                     ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), q)),
                     false,
                 ))
             }
-            TypeDefinition::CompactBuiltIn(q) => Ok((
+            parser::TypeDefinition::CompactBuiltIn(q) => Ok((
                 ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), *q)),
                 false,
             )),
-            TypeDefinition::ExtendedBuiltIn(q) => Ok((
+            parser::TypeDefinition::ExtendedBuiltIn(q) => Ok((
                 ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), *q)),
                 true,
             )),
-            TypeDefinition::UserDefined(u) => {
+            parser::TypeDefinition::UserDefined(u) => {
                 if self.user_defined_types.contains_key(u) {
                     Ok((
                         ResolvedDeclaredName::UserDefined(UserDefinedName {
@@ -345,7 +345,7 @@ impl ConverterImpl {
             let checked_right = self.resolve_const_value(right)?;
             let converted_expression_node = self.convert(checked_right)?;
             match converted_expression_node.type_definition() {
-                ResolvedTypeDefinition::BuiltIn(q) => {
+                TypeDefinition::BuiltIn(q) => {
                     let q_name = self
                         .context
                         .push_const(name, q.at(converted_expression_node.pos()))
@@ -426,7 +426,7 @@ impl ConverterImpl {
     ) -> Result<Statement, QErrorNode> {
         let resolved_l_name = self.resolve_name_in_assignment(name).with_err_no_pos()?;
         let converted_expr: ExpressionNode = self.convert(expression_node)?;
-        let result_q: ResolvedTypeDefinition = converted_expr.type_definition();
+        let result_q: TypeDefinition = converted_expr.type_definition();
         if result_q.can_cast_to(&resolved_l_name) {
             Ok(Statement::Assignment(resolved_l_name, converted_expr))
         } else {
@@ -601,7 +601,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let unboxed_child = *c;
                 let converted_child = self.convert(unboxed_child)?;
                 match converted_child.type_definition() {
-                    ResolvedTypeDefinition::BuiltIn(q) => {
+                    TypeDefinition::BuiltIn(q) => {
                         if super::casting::cast_unary_op(op, q).is_none() {
                             Err(QError::TypeMismatch).with_err_at(&converted_child)
                         } else {

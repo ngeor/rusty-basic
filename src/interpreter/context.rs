@@ -1,7 +1,8 @@
 use crate::common::CaseInsensitiveString;
 use crate::instruction_generator::NamedRefParam;
 use crate::linter::{
-    ResolvedDeclaredName, ResolvedTypeDefinition, ResolvedUserDefinedTypes, UserDefinedName,
+    HasTypeDefinition, ResolvedDeclaredName, ResolvedUserDefinedTypes, TypeDefinition,
+    UserDefinedName,
 };
 use crate::parser::{Name, QualifiedName};
 use crate::variant::{DefaultForType, Variant};
@@ -18,8 +19,8 @@ pub enum Argument {
     ByRef(ResolvedDeclaredName),
 }
 
-impl Argument {
-    pub fn type_definition(&self) -> ResolvedTypeDefinition {
+impl HasTypeDefinition for Argument {
+    fn type_definition(&self) -> TypeDefinition {
         match self {
             Self::ByVal(v) => v.type_definition(),
             Self::ByRef(r) => r.type_definition(),
@@ -270,7 +271,7 @@ impl RootContext {
                         // create the variable in this scope
                         // e.g. INPUT N
                         let q = match name.type_definition() {
-                            ResolvedTypeDefinition::BuiltIn(q) => q,
+                            TypeDefinition::BuiltIn(q) => q,
                             _ => panic!("cannot implicitly create user defined variable"),
                         };
                         self.variables
@@ -434,7 +435,7 @@ impl SubContext {
                                         // create the variable in this scope
                                         // e.g. INPUT N
                                         let q = match name.type_definition() {
-                                            ResolvedTypeDefinition::BuiltIn(q) => q,
+                                            TypeDefinition::BuiltIn(q) => q,
                                             _ => panic!(
                                                 "cannot implicitly create user defined variable"
                                             ),

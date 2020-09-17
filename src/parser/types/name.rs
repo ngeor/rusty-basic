@@ -1,5 +1,5 @@
 use super::{HasQualifier, TypeQualifier};
-use crate::common::{CaseInsensitiveString, Locatable};
+use crate::common::{CaseInsensitiveString, Locatable, QError};
 use std::convert::TryFrom;
 
 // TODO deprecate name in favor of types specific to their usage e.g. LName, ParamName, etc
@@ -124,8 +124,8 @@ impl AsRef<BareName> for QualifiedName {
 }
 
 impl TryFrom<&str> for QualifiedName {
-    type Error = String;
-    fn try_from(s: &str) -> Result<QualifiedName, String> {
+    type Error = QError;
+    fn try_from(s: &str) -> Result<QualifiedName, QError> {
         let mut buf = s.to_owned();
         let last_ch: char = buf.pop().unwrap();
         TypeQualifier::try_from(last_ch)

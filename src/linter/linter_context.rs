@@ -1,12 +1,14 @@
-use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use crate::common::{
+    CanCastTo, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
+};
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
-    Expression, Members, ResolvedDeclaredName, ResolvedElement, ResolvedElementType,
-    ResolvedTypeDefinition, ResolvedUserDefinedTypes, UserDefinedName,
+    Expression, HasTypeDefinition, Members, ResolvedDeclaredName, ResolvedElement,
+    ResolvedElementType, ResolvedUserDefinedTypes, TypeDefinition, UserDefinedName,
 };
+use crate::parser;
 use crate::parser::{
-    BareName, CanCastTo, DeclaredName, Name, QualifiedName, TypeDefinition, TypeQualifier,
-    WithTypeQualifier,
+    BareName, DeclaredName, Name, QualifiedName, TypeQualifier, WithTypeQualifier,
 };
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -219,7 +221,7 @@ impl LinterContext {
             type_definition,
         } = declared_name;
         match type_definition {
-            TypeDefinition::Bare => {
+            parser::TypeDefinition::Bare => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 let q: TypeQualifier = (&name).resolve_into(resolver);
                 Ok((
@@ -227,21 +229,21 @@ impl LinterContext {
                     false,
                 ))
             }
-            TypeDefinition::CompactBuiltIn(q) => {
+            parser::TypeDefinition::CompactBuiltIn(q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 Ok((
                     ResolvedDeclaredName::BuiltIn(QualifiedName::new(name, q)),
                     false,
                 ))
             }
-            TypeDefinition::ExtendedBuiltIn(q) => {
+            parser::TypeDefinition::ExtendedBuiltIn(q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 Ok((
                     ResolvedDeclaredName::BuiltIn(QualifiedName::new(name, q)),
                     true,
                 ))
             }
-            TypeDefinition::UserDefined(user_defined_type) => {
+            parser::TypeDefinition::UserDefined(user_defined_type) => {
                 if name.contains('.') {
                     Err(QError::IdentifierCannotIncludePeriod)
                 } else if self.user_defined_types.contains_key(&user_defined_type) {
@@ -296,7 +298,7 @@ impl LinterContext {
                 match resolved_type_definitions {
                     ResolvedTypeDefinitions::Compact(existing_set) => {
                         match resolved_declared_name.type_definition() {
-                            ResolvedTypeDefinition::BuiltIn(q) => {
+                            TypeDefinition::BuiltIn(q) => {
                                 if existing_set.contains(&q) || is_extended {
                                     return Err(QError::DuplicateDefinition);
                                 } else {
@@ -315,7 +317,7 @@ impl LinterContext {
                 }
             }
             None => match resolved_declared_name.type_definition() {
-                ResolvedTypeDefinition::BuiltIn(q) => {
+                TypeDefinition::BuiltIn(q) => {
                     if is_extended {
                         self.names
                             .insert(name.clone(), ResolvedTypeDefinitions::ExtendedBuiltIn(q));
@@ -327,22 +329,20 @@ impl LinterContext {
                     }
                 }
                 // TODO support top level DIM x AS STRING * 6
-                ResolvedTypeDefinition::String(_) => {
+                TypeDefinition::String(_) => {
                     self.names.insert(
                         name.clone(),
                         ResolvedTypeDefinitions::ExtendedBuiltIn(TypeQualifier::DollarString),
                     );
                 }
-                ResolvedTypeDefinition::UserDefined(u) => {
+                TypeDefinition::UserDefined(u) => {
                     self.collect_name_without_dot(name);
                     self.names.insert(
                         name.clone(),
                         ResolvedTypeDefinitions::UserDefined(u.clone()),
                     );
                 }
-                ResolvedTypeDefinition::FileHandle => {
-                    panic!("not possible to declare a DIM of filehandle")
-                }
+                TypeDefinition::FileHandle => panic!("not possible to declare a DIM of filehandle"),
             },
         }
         Ok(resolved_declared_name)

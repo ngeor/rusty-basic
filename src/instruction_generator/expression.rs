@@ -8,17 +8,17 @@ impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(
         &mut self,
         expr_node: ExpressionNode,
-        target_type: ResolvedTypeDefinition,
+        target_type: TypeDefinition,
     ) {
         let expression_type = expr_node.type_definition();
         let pos = expr_node.pos();
         self.generate_expression_instructions(expr_node);
         if expression_type != target_type {
             match target_type {
-                ResolvedTypeDefinition::BuiltIn(q) => {
+                TypeDefinition::BuiltIn(q) => {
                     self.push(Instruction::Cast(q), pos);
                 }
-                ResolvedTypeDefinition::String(l) => {
+                TypeDefinition::String(l) => {
                     self.push(Instruction::FixLength(l), pos);
                 }
                 _ => panic!("Cannot cast user defined type"),

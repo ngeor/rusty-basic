@@ -6,8 +6,8 @@ use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter::{
-    ResolvedDeclaredName, ResolvedElement, ResolvedElementType, ResolvedTypeDefinition,
-    ResolvedUserDefinedType, ResolvedUserDefinedTypes,
+    HasTypeDefinition, ResolvedDeclaredName, ResolvedElement, ResolvedElementType,
+    ResolvedUserDefinedType, ResolvedUserDefinedTypes, TypeDefinition,
 };
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
@@ -240,16 +240,14 @@ mod input {
             .map_err(|e| e.into())
             .with_err_no_pos()?;
         let variable_value = match n.type_definition() {
-            ResolvedTypeDefinition::BuiltIn(TypeQualifier::BangSingle) => {
+            TypeDefinition::BuiltIn(TypeQualifier::BangSingle) => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
-            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
-                Variant::from(raw_input)
-            }
-            ResolvedTypeDefinition::BuiltIn(TypeQualifier::PercentInteger) => {
+            TypeDefinition::BuiltIn(TypeQualifier::DollarString) => Variant::from(raw_input),
+            TypeDefinition::BuiltIn(TypeQualifier::PercentInteger) => {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
-            ResolvedTypeDefinition::String(l) => Variant::from(raw_input.sub_str(l as usize)),
+            TypeDefinition::String(l) => Variant::from(raw_input.sub_str(l as usize)),
             _ => unimplemented!(),
         };
         interpreter
@@ -788,7 +786,7 @@ mod line_input {
             .map_err(|e| e.into())
             .with_err_no_pos()?;
         match n.type_definition() {
-            ResolvedTypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
+            TypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
                 interpreter
                     .context_mut()
                     .demand_sub()

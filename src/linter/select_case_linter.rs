@@ -1,13 +1,12 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::types::*;
 use crate::common::*;
-use crate::parser::CanCastTo;
 
 pub struct SelectCaseLinter;
 
 impl PostConversionLinter for SelectCaseLinter {
     fn visit_select_case(&self, s: &SelectCaseNode) -> Result<(), QErrorNode> {
-        let top_qualifier: ResolvedTypeDefinition = s.expr.type_definition();
+        let top_qualifier: TypeDefinition = s.expr.type_definition();
         for c in s.case_blocks.iter() {
             match &c.expr {
                 CaseExpression::Simple(expr) => {

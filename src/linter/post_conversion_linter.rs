@@ -100,10 +100,9 @@ pub trait PostConversionLinter {
         self.visit_expressions(args)
     }
 
-    // TODO rename names to name everywhere
     fn visit_assignment(
         &self,
-        _names: &ResolvedDeclaredName,
+        _name: &ResolvedDeclaredName,
         v: &ExpressionNode,
     ) -> Result<(), QErrorNode> {
         self.visit_expression(v)

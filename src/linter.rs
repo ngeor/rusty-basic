@@ -1,6 +1,7 @@
 mod built_in_linter;
 pub mod casting;
 mod converter;
+mod dots_linter;
 mod expression_reducer;
 mod for_next_counter_match;
 mod label_linter;

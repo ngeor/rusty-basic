@@ -426,8 +426,7 @@ impl ConverterImpl {
     ) -> Result<Statement, QErrorNode> {
         let resolved_l_name = self.resolve_name_in_assignment(name).with_err_no_pos()?;
         let converted_expr: ExpressionNode = self.convert(expression_node)?;
-        let result_q: TypeDefinition = converted_expr.type_definition();
-        if result_q.can_cast_to(&resolved_l_name) {
+        if converted_expr.can_cast_to(&resolved_l_name) {
             Ok(Statement::Assignment(resolved_l_name, converted_expr))
         } else {
             Err(QError::TypeMismatch).with_err_at(&converted_expr)

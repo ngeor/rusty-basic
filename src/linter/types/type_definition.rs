@@ -1,4 +1,4 @@
-use crate::parser;
+use crate::common::CanCastTo;
 use crate::parser::{BareName, TypeQualifier};
 
 /// A linted (resolved) `TypeDefinition`.
@@ -12,14 +12,33 @@ pub enum TypeDefinition {
     FileHandle,
 }
 
-impl From<parser::TypeDefinition> for TypeDefinition {
-    // TODO is this used
-    fn from(type_definition: parser::TypeDefinition) -> Self {
-        match type_definition {
-            parser::TypeDefinition::Bare => panic!("Unresolved bare type"), // as this is internal error, it is ok to panic
-            parser::TypeDefinition::CompactBuiltIn(q)
-            | parser::TypeDefinition::ExtendedBuiltIn(q) => Self::BuiltIn(q),
-            parser::TypeDefinition::UserDefined(bare_name) => Self::UserDefined(bare_name),
+impl CanCastTo<&TypeDefinition> for TypeDefinition {
+    fn can_cast_to(&self, other: &Self) -> bool {
+        match self {
+            Self::BuiltIn(q_left) => match other {
+                Self::BuiltIn(q_right) => q_left.can_cast_to(*q_right),
+                Self::String(_) => *q_left == TypeQualifier::DollarString,
+                _ => false,
+            },
+            Self::String(_) => match other {
+                Self::BuiltIn(TypeQualifier::DollarString) | Self::String(_) => true,
+                _ => false,
+            },
+            Self::UserDefined(u_left) => match other {
+                Self::UserDefined(u_right) => u_left == u_right,
+                _ => false,
+            },
+            Self::FileHandle => false,
+        }
+    }
+}
+
+impl CanCastTo<TypeQualifier> for TypeDefinition {
+    fn can_cast_to(&self, other: TypeQualifier) -> bool {
+        match self {
+            Self::BuiltIn(q_left) => q_left.can_cast_to(other),
+            Self::String(_) => other == TypeQualifier::DollarString,
+            _ => false,
         }
     }
 }

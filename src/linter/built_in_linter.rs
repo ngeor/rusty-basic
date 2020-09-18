@@ -76,10 +76,7 @@ mod environ_sub {
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else if !args[0]
-            .type_definition()
-            .can_cast_to(TypeQualifier::DollarString)
-        {
+        } else if !args[0].can_cast_to(TypeQualifier::DollarString) {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
         } else {
             Ok(())
@@ -173,15 +170,9 @@ mod name {
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 2 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else if !args[0]
-            .type_definition()
-            .can_cast_to(TypeQualifier::DollarString)
-        {
+        } else if !args[0].can_cast_to(TypeQualifier::DollarString) {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
-        } else if !args[1]
-            .type_definition()
-            .can_cast_to(TypeQualifier::DollarString)
-        {
+        } else if !args[1].can_cast_to(TypeQualifier::DollarString) {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])
         } else {
             Ok(())
@@ -290,8 +281,7 @@ mod len {
             match arg {
                 Expression::Variable(_) => Ok(()),
                 _ => {
-                    let q = args[0].type_definition();
-                    if !q.can_cast_to(TypeQualifier::DollarString) {
+                    if !args[0].can_cast_to(TypeQualifier::DollarString) {
                         Err(QError::VariableRequired).with_err_at(&args[0])
                     } else {
                         Ok(())
@@ -396,8 +386,7 @@ fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), QErr
 }
 
 fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    let q = args[idx].type_definition();
-    if !q.can_cast_to(TypeQualifier::DollarString) {
+    if !args[idx].can_cast_to(TypeQualifier::DollarString) {
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
@@ -405,8 +394,7 @@ fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(),
 }
 
 fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    let q = args[idx].type_definition();
-    if !q.can_cast_to(TypeQualifier::PercentInteger) {
+    if !args[idx].can_cast_to(TypeQualifier::PercentInteger) {
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())

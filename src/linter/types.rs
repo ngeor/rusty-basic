@@ -1,63 +1,19 @@
+mod expression;
 mod has_type_definition;
 mod type_definition;
 
+pub use self::expression::*;
 pub use self::has_type_definition::*;
 pub use self::type_definition::*;
 
-use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::{CanCastTo, FileHandle, Locatable};
+use crate::built_ins::BuiltInSub;
+use crate::common::{CanCastTo, Locatable};
 use crate::parser::{
-    BareName, BareNameNode, HasQualifier, Operator, QualifiedName, QualifiedNameNode,
-    TypeQualifier, UnaryOperator,
+    BareName, BareNameNode, Operator, QualifiedName, QualifiedNameNode, TypeQualifier,
 };
 use std::collections::HashMap;
 #[cfg(test)]
 use std::convert::TryFrom;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Expression {
-    SingleLiteral(f32),
-    DoubleLiteral(f64),
-    StringLiteral(String),
-    IntegerLiteral(i32),
-    LongLiteral(i64),
-    Constant(QualifiedName),
-    Variable(ResolvedDeclaredName),
-    FunctionCall(QualifiedName, Vec<ExpressionNode>),
-    BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
-    BinaryExpression(
-        Operator,
-        Box<ExpressionNode>,
-        Box<ExpressionNode>,
-        // the resolved type definition (e.g. 1 + 2.1 -> single)
-        TypeDefinition,
-    ),
-    UnaryExpression(UnaryOperator, Box<ExpressionNode>),
-    Parenthesis(Box<ExpressionNode>),
-    FileHandle(FileHandle),
-}
-
-impl HasTypeDefinition for Expression {
-    fn type_definition(&self) -> TypeDefinition {
-        match self {
-            Self::SingleLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::BangSingle),
-            Self::DoubleLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Self::StringLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::DollarString),
-            Self::IntegerLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
-            Self::LongLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
-            Self::Variable(name) => name.type_definition(),
-            Self::Constant(name) | Self::FunctionCall(name, _) => {
-                TypeDefinition::BuiltIn(name.qualifier())
-            }
-            Self::BuiltInFunctionCall(f, _) => TypeDefinition::BuiltIn(f.qualifier()),
-            Self::BinaryExpression(_, _, _, type_definition) => type_definition.clone(),
-            Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().type_definition(),
-            Self::FileHandle(_) => TypeDefinition::FileHandle,
-        }
-    }
-}
-
-pub type ExpressionNode = Locatable<Expression>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
@@ -157,43 +113,6 @@ pub enum TopLevelToken {
 
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
 pub type ProgramNode = Vec<TopLevelTokenNode>;
-
-impl CanCastTo<&TypeDefinition> for TypeDefinition {
-    fn can_cast_to(&self, other: &Self) -> bool {
-        match self {
-            Self::BuiltIn(q_left) => match other {
-                Self::BuiltIn(q_right) => q_left.can_cast_to(*q_right),
-                Self::String(_) => *q_left == TypeQualifier::DollarString,
-                _ => false,
-            },
-            Self::String(_) => match other {
-                Self::BuiltIn(TypeQualifier::DollarString) | Self::String(_) => true,
-                _ => false,
-            },
-            Self::UserDefined(u_left) => match other {
-                Self::UserDefined(u_right) => u_left == u_right,
-                _ => false,
-            },
-            Self::FileHandle => false,
-        }
-    }
-}
-
-impl CanCastTo<TypeQualifier> for TypeDefinition {
-    fn can_cast_to(&self, other: TypeQualifier) -> bool {
-        match self {
-            Self::BuiltIn(q_left) => q_left.can_cast_to(other),
-            Self::String(_) => other == TypeQualifier::DollarString,
-            _ => false,
-        }
-    }
-}
-
-impl CanCastTo<&ResolvedDeclaredName> for TypeDefinition {
-    fn can_cast_to(&self, other: &ResolvedDeclaredName) -> bool {
-        self.can_cast_to(&other.type_definition())
-    }
-}
 
 impl CanCastTo<TypeQualifier> for ResolvedDeclaredName {
     fn can_cast_to(&self, other: TypeQualifier) -> bool {

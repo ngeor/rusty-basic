@@ -7,8 +7,8 @@ use crate::linter::casting::cast;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::{
-    HasTypeDefinition, ResolvedElement, ResolvedElementType, ResolvedUserDefinedType,
-    ResolvedUserDefinedTypes, TypeDefinition,
+    ResolvedElement, ResolvedElementType, ResolvedUserDefinedType, ResolvedUserDefinedTypes,
+    TypeDefinition,
 };
 use crate::parser;
 use crate::parser::{
@@ -204,25 +204,32 @@ impl FirstPassOuter {
             Expression::StringLiteral(s) => Ok(Variant::VString(s.clone())),
             Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
             Expression::LongLiteral(l) => Ok(Variant::VLong(*l)),
-            Expression::VariableName(name) => match name {
-                Name::Bare(name) => match self.global_constants.get(name) {
-                    Some(v) => Ok(v.clone()),
-                    None => Err(QError::InvalidConstant).with_err_no_pos(),
-                },
-                Name::Qualified { name, qualifier } => match self.global_constants.get(name) {
-                    Some(v) => match v.type_definition() {
-                        TypeDefinition::BuiltIn(v_q) => {
+            Expression::VariableName(name) => {
+                match name {
+                    Name::Bare(name) => match self.global_constants.get(name) {
+                        Some(v) => Ok(v.clone()),
+                        None => Err(QError::InvalidConstant).with_err_no_pos(),
+                    },
+                    Name::Qualified { name, qualifier } => match self.global_constants.get(name) {
+                        Some(v) => {
+                            let v_q = match v {
+                            Variant::VDouble(_) => TypeQualifier::HashDouble,
+                            Variant::VSingle(_) => TypeQualifier::BangSingle,
+                            Variant::VInteger(_) => TypeQualifier::PercentInteger,
+                            Variant::VLong(_) => TypeQualifier::AmpersandLong,
+                            Variant::VString(_) => TypeQualifier::DollarString,
+                            _ => panic!("should not have been possible to store a constant of this type")
+                        };
                             if v_q == *qualifier {
                                 Ok(v.clone())
                             } else {
                                 Err(QError::TypeMismatch).with_err_no_pos()
                             }
                         }
-                        _ => panic!("should not have been possible to store an extended constant"),
+                        None => Err(QError::InvalidConstant).with_err_no_pos(),
                     },
-                    None => Err(QError::InvalidConstant).with_err_no_pos(),
-                },
-            },
+                }
+            }
             Expression::FunctionCall(_, _) => Err(QError::InvalidConstant).with_err_no_pos(),
             Expression::BinaryExpression(op, left, right) => {
                 let Locatable { element, pos } = left.as_ref();

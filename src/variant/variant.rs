@@ -1,12 +1,9 @@
 use super::fit::FitToType;
-use crate::common::{CaseInsensitiveString, FileHandle, QError};
-use crate::linter::{
-    HasTypeDefinition, ResolvedElement, ResolvedElementType, ResolvedUserDefinedTypes,
-    TypeDefinition,
-};
+use super::UserDefinedTypeValue;
+use crate::common::{FileHandle, QError};
+use crate::linter::{ResolvedElementType, ResolvedUserDefinedTypes, TypeDefinition};
 use crate::parser::TypeQualifier;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt::Display;
 
@@ -18,92 +15,7 @@ pub enum Variant {
     VInteger(i32),
     VLong(i64),
     VFileHandle(FileHandle),
-    VUserDefined(Box<UserDefinedValue>),
-}
-
-#[derive(Clone, Debug)]
-pub struct UserDefinedValue {
-    type_name: CaseInsensitiveString,
-    map: VariantMap,
-}
-
-impl UserDefinedValue {
-    pub fn new(type_name: &CaseInsensitiveString, types: &ResolvedUserDefinedTypes) -> Self {
-        Self {
-            type_name: type_name.clone(),
-            map: VariantMap::new_for_user_defined_type(type_name, types),
-        }
-    }
-
-    pub fn type_name(&self) -> &CaseInsensitiveString {
-        &self.type_name
-    }
-
-    pub fn map(&self) -> &VariantMap {
-        &self.map
-    }
-
-    pub fn map_mut(&mut self) -> &mut VariantMap {
-        &mut self.map
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct VariantMap {
-    map: HashMap<CaseInsensitiveString, Variant>,
-}
-
-impl VariantMap {
-    pub fn new_for_user_defined_type(
-        type_name: &CaseInsensitiveString,
-        types: &ResolvedUserDefinedTypes,
-    ) -> Self {
-        let user_defined_type = types.get(type_name).expect("could not find type");
-        let mut map: HashMap<CaseInsensitiveString, Variant> = HashMap::new();
-        for ResolvedElement { name, element_type } in user_defined_type.elements.iter() {
-            let def_value: Variant = Variant::default_variant_types(element_type, types);
-            map.insert(name.clone(), def_value);
-        }
-        Self { map }
-    }
-
-    pub fn get(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
-        self.map.get(name)
-    }
-
-    pub fn get_mut(&mut self, name: &CaseInsensitiveString) -> Option<&mut Variant> {
-        self.map.get_mut(name)
-    }
-
-    pub fn get_path(&self, names: &[CaseInsensitiveString]) -> Option<&Variant> {
-        let (first, rest) = names.split_first().expect("empty names!");
-        if rest.is_empty() {
-            self.get(first)
-        } else {
-            let first_variant = self.get(first).expect("member missing!");
-            match first_variant {
-                Variant::VUserDefined(user_defined_value) => {
-                    user_defined_value.map().get_path(rest)
-                }
-                _ => panic!("cannot navigate simple variant"),
-            }
-        }
-    }
-
-    pub fn insert_path(&mut self, names: &[CaseInsensitiveString], value: Variant) {
-        let (first, rest) = names.split_first().expect("empty names!");
-        if rest.is_empty() {
-            self.map.insert(first.clone(), value);
-        } else {
-            let first_variant = self.get_mut(first).expect("member missing!");
-            match first_variant {
-                Variant::VUserDefined(user_defined_value) => {
-                    user_defined_value.map_mut().insert_path(rest, value);
-                }
-                _ => panic!("cannot navigate simple variant"),
-            }
-        }
-    }
+    VUserDefined(Box<UserDefinedTypeValue>),
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
@@ -457,22 +369,6 @@ impl Variant {
     }
 }
 
-impl HasTypeDefinition for Variant {
-    fn type_definition(&self) -> TypeDefinition {
-        match self {
-            Variant::VSingle(_) => TypeDefinition::BuiltIn(TypeQualifier::BangSingle),
-            Variant::VDouble(_) => TypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Variant::VString(_) => TypeDefinition::BuiltIn(TypeQualifier::DollarString),
-            Variant::VInteger(_) => TypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
-            Variant::VLong(_) => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
-            Variant::VFileHandle(_) => TypeDefinition::FileHandle,
-            Variant::VUserDefined(user_defined_value) => {
-                TypeDefinition::UserDefined(user_defined_value.type_name().clone())
-            }
-        }
-    }
-}
-
 pub trait DefaultForType<T> {
     fn default_variant(t: T) -> Self;
 }
@@ -502,7 +398,7 @@ impl DefaultForTypes<&ResolvedElementType> for Variant {
             ResolvedElementType::Integer => Variant::default_variant(TypeQualifier::PercentInteger),
             ResolvedElementType::Long => Variant::default_variant(TypeQualifier::AmpersandLong),
             ResolvedElementType::UserDefined(type_name) => {
-                Variant::VUserDefined(Box::new(UserDefinedValue::new(type_name, types)))
+                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
             }
         }
     }
@@ -525,7 +421,7 @@ impl DefaultForTypes<&TypeDefinition> for Variant {
                 Self::VString(s)
             }
             TypeDefinition::UserDefined(type_name) => {
-                Variant::VUserDefined(Box::new(UserDefinedValue::new(type_name, types)))
+                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
             }
             TypeDefinition::FileHandle => panic!("not possible to get a default file handle"),
         }

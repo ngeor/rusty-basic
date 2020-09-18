@@ -19,15 +19,6 @@ pub enum Argument {
     ByRef(ResolvedDeclaredName),
 }
 
-impl HasTypeDefinition for Argument {
-    fn type_definition(&self) -> TypeDefinition {
-        match self {
-            Self::ByVal(v) => v.type_definition(),
-            Self::ByRef(r) => r.type_definition(),
-        }
-    }
-}
-
 // ========================================================
 // ConstantMap
 // ========================================================
@@ -105,7 +96,7 @@ impl VariableMap {
                 } else {
                     match self.0.get(&key).expect("missing root variable") {
                         Variant::VUserDefined(user_defined_value) => {
-                            user_defined_value.map().get_path(rest)
+                            user_defined_value.get_path(rest)
                         }
                         _ => panic!("cannot navigate simple variant"),
                     }
@@ -130,7 +121,7 @@ impl VariableMap {
                 } else {
                     match self.0.get_mut(&key).expect("missing root variable") {
                         Variant::VUserDefined(user_defined_value) => {
-                            user_defined_value.map_mut().insert_path(rest, value);
+                            user_defined_value.insert_path(rest, value);
                         }
                         _ => panic!("cannot navigate simple variant"),
                     }

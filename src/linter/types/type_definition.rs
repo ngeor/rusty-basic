@@ -1,4 +1,4 @@
-use super::ResolvedUserDefinedTypes;
+use super::UserDefinedTypes;
 use crate::common::{CanCastTo, StringUtils};
 use crate::parser::{BareName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
@@ -15,7 +15,7 @@ pub enum TypeDefinition {
 }
 
 impl TypeDefinition {
-    pub fn default_variant(&self, types: &ResolvedUserDefinedTypes) -> Variant {
+    pub fn default_variant(&self, types: &UserDefinedTypes) -> Variant {
         match self {
             Self::BuiltIn(q) => Variant::from(*q),
             Self::String(len) => String::new().fix_length(*len as usize).into(),

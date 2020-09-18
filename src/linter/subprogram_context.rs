@@ -6,20 +6,17 @@ use crate::common::{
 use crate::linter::casting::cast;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::types::{
-    ResolvedElement, ResolvedElementType, ResolvedUserDefinedType, ResolvedUserDefinedTypes,
-    TypeDefinition,
-};
+use crate::linter::types::{ElementType, TypeDefinition, UserDefinedType, UserDefinedTypes};
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, DefType,
-    ElementType, Expression, ExpressionNode, Name, NameNode, Operator, ProgramNode, Statement,
-    TopLevelToken, TypeQualifier, UnaryOperator, UserDefinedType,
+    BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, DefType, Expression,
+    ExpressionNode, Name, NameNode, Operator, ProgramNode, Statement, TopLevelToken, TypeQualifier,
+    UnaryOperator,
 };
 use crate::variant::Variant;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
 #[derive(Debug)]
@@ -44,7 +41,7 @@ impl FirstPassOuter {
         }
     }
 
-    pub fn into_inner(self) -> (FunctionMap, SubMap, ResolvedUserDefinedTypes) {
+    pub fn into_inner(self) -> (FunctionMap, SubMap, UserDefinedTypes) {
         let Self {
             function_context,
             sub_context,
@@ -289,7 +286,10 @@ impl FirstPassOuter {
     // user defined types
     // ========================================================
 
-    fn user_defined_type(&mut self, user_defined_type: &UserDefinedType) -> Result<(), QErrorNode> {
+    fn user_defined_type(
+        &mut self,
+        user_defined_type: &parser::UserDefinedType,
+    ) -> Result<(), QErrorNode> {
         let type_name: &BareName = user_defined_type.name.as_ref();
         if self
             .inner
@@ -300,26 +300,23 @@ impl FirstPassOuter {
             // duplicate type definition
             Err(QError::DuplicateDefinition).with_err_no_pos()
         } else {
-            let mut resolved_elements: Vec<ResolvedElement> = vec![];
-            let mut seen_element_names: HashSet<BareName> = HashSet::new();
+            let mut resolved_elements: HashMap<BareName, ElementType> = HashMap::new();
             for Locatable { element, pos } in user_defined_type.elements.iter() {
                 let element_name: &BareName = &element.name;
-                if seen_element_names.contains(element_name) {
+                if resolved_elements.contains_key(element_name) {
                     // duplicate element name within type
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
-                } else {
-                    seen_element_names.insert(element_name.clone());
                 }
                 let resolved_element_type = match &element.element_type {
-                    ElementType::Integer => ResolvedElementType::Integer,
-                    ElementType::Long => ResolvedElementType::Long,
-                    ElementType::Single => ResolvedElementType::Single,
-                    ElementType::Double => ResolvedElementType::Double,
-                    ElementType::String(str_len_expression_node) => {
+                    parser::ElementType::Integer => ElementType::Integer,
+                    parser::ElementType::Long => ElementType::Long,
+                    parser::ElementType::Single => ElementType::Single,
+                    parser::ElementType::Double => ElementType::Double,
+                    parser::ElementType::String(str_len_expression_node) => {
                         let l: u16 = self.validate_element_type_str_len(str_len_expression_node)?;
-                        ResolvedElementType::String(l)
+                        ElementType::String(l)
                     }
-                    ElementType::UserDefined(Locatable {
+                    parser::ElementType::UserDefined(Locatable {
                         element: referred_name,
                         pos,
                     }) => {
@@ -331,21 +328,15 @@ impl FirstPassOuter {
                         {
                             return Err(QError::TypeNotDefined).with_err_at(pos);
                         }
-                        ResolvedElementType::UserDefined(referred_name.clone())
+                        ElementType::UserDefined(referred_name.clone())
                     }
                 };
-                resolved_elements.push(ResolvedElement {
-                    name: element_name.clone(),
-                    element_type: resolved_element_type,
-                });
+                resolved_elements.insert(element_name.clone(), resolved_element_type);
             }
-            self.inner.borrow_mut().user_defined_types.insert(
-                type_name.clone(),
-                ResolvedUserDefinedType {
-                    name: type_name.clone(),
-                    elements: resolved_elements,
-                },
-            );
+            self.inner
+                .borrow_mut()
+                .user_defined_types
+                .insert(type_name.clone(), UserDefinedType::new(resolved_elements));
             Ok(())
         }
     }
@@ -429,7 +420,7 @@ impl FirstPassOuter {
 #[derive(Debug)]
 struct FirstPassInner {
     resolver: TypeResolverImpl,
-    user_defined_types: ResolvedUserDefinedTypes,
+    user_defined_types: UserDefinedTypes,
 }
 
 impl FirstPassInner {

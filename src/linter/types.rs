@@ -1,18 +1,18 @@
 mod expression;
 mod has_type_definition;
 mod type_definition;
+mod user_defined_type;
 
 pub use self::expression::*;
 pub use self::has_type_definition::*;
 pub use self::type_definition::*;
+pub use self::user_defined_type::*;
 
 use crate::built_ins::BuiltInSub;
-use crate::common::{CanCastTo, Locatable, StringUtils};
+use crate::common::{CanCastTo, Locatable};
 use crate::parser::{
     BareName, BareNameNode, Operator, QualifiedName, QualifiedNameNode, TypeQualifier,
 };
-use crate::variant::{UserDefinedTypeValue, Variant};
-use std::collections::HashMap;
 
 #[cfg(test)]
 use std::convert::TryFrom;
@@ -136,7 +136,7 @@ pub struct UserDefinedName {
 pub enum Members {
     Leaf {
         name: BareName,
-        element_type: ResolvedElementType,
+        element_type: ElementType,
     },
     Node(UserDefinedName, Box<Members>),
 }
@@ -156,7 +156,7 @@ impl Members {
     pub fn append(self, other: Self) -> Self {
         match self {
             Self::Leaf { name, element_type } => match element_type {
-                ResolvedElementType::UserDefined(type_name) => {
+                ElementType::UserDefined(type_name) => {
                     Self::Node(UserDefinedName { name, type_name }, Box::new(other))
                 }
                 _ => panic!("Cannot extend leaf element which is not user defined type"),
@@ -252,67 +252,3 @@ impl HasTypeDefinition for ResolvedDeclaredName {
 
 pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;
 pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;
-
-// ========================================================
-// ResolvedUserDefinedType
-// ========================================================
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ResolvedUserDefinedType {
-    /// The name of the type
-    pub name: BareName,
-    /// The elements
-    pub elements: Vec<ResolvedElement>,
-}
-
-pub type ResolvedUserDefinedTypes = HashMap<BareName, ResolvedUserDefinedType>;
-
-impl ResolvedUserDefinedType {
-    pub fn find_element(&self, element_name: &BareName) -> Option<&ResolvedElement> {
-        self.elements.iter().find(|e| &e.name == element_name)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ResolvedElement {
-    pub name: BareName,
-    pub element_type: ResolvedElementType,
-}
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum ResolvedElementType {
-    Integer,
-    Long,
-    Single,
-    Double,
-    String(u16),
-    UserDefined(BareName),
-}
-
-impl ResolvedElementType {
-    pub fn default_variant(&self, types: &ResolvedUserDefinedTypes) -> Variant {
-        match self {
-            Self::Single => Variant::from(TypeQualifier::BangSingle),
-            Self::Double => Variant::from(TypeQualifier::HashDouble),
-            Self::String(len) => String::new().fix_length(*len as usize).into(),
-            Self::Integer => Variant::from(TypeQualifier::PercentInteger),
-            Self::Long => Variant::from(TypeQualifier::AmpersandLong),
-            Self::UserDefined(type_name) => {
-                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
-            }
-        }
-    }
-}
-
-impl HasTypeDefinition for ResolvedElementType {
-    fn type_definition(&self) -> TypeDefinition {
-        match self {
-            Self::Integer => TypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
-            Self::Long => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
-            Self::Single => TypeDefinition::BuiltIn(TypeQualifier::BangSingle),
-            Self::Double => TypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Self::String(l) => TypeDefinition::String(*l),
-            Self::UserDefined(type_name) => TypeDefinition::UserDefined(type_name.clone()),
-        }
-    }
-}

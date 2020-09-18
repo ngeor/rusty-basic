@@ -6,8 +6,8 @@ use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, SetVariable, Stdlib};
 use crate::linter::{
-    HasTypeDefinition, ResolvedDeclaredName, ResolvedElement, ResolvedElementType,
-    ResolvedUserDefinedType, ResolvedUserDefinedTypes, TypeDefinition,
+    ElementType, HasTypeDefinition, ResolvedDeclaredName, TypeDefinition, UserDefinedType,
+    UserDefinedTypes,
 };
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
@@ -567,18 +567,18 @@ mod len {
     }
 
     fn len_of_user_defined_type(
-        user_defined_type: &ResolvedUserDefinedType,
-        types: &ResolvedUserDefinedTypes,
+        user_defined_type: &UserDefinedType,
+        types: &UserDefinedTypes,
     ) -> u32 {
         let mut sum: u32 = 0;
-        for ResolvedElement { element_type, .. } in user_defined_type.elements.iter() {
+        for (_, element_type) in user_defined_type.elements() {
             sum += match element_type {
-                ResolvedElementType::Single => 4,
-                ResolvedElementType::Double => 8,
-                ResolvedElementType::Integer => 2,
-                ResolvedElementType::Long => 4,
-                ResolvedElementType::String(l) => *l as u32,
-                ResolvedElementType::UserDefined(type_name) => {
+                ElementType::Single => 4,
+                ElementType::Double => 8,
+                ElementType::Integer => 2,
+                ElementType::Long => 4,
+                ElementType::String(l) => *l as u32,
+                ElementType::UserDefined(type_name) => {
                     len_of_user_defined_type(types.get(type_name).expect("type not found"), types)
                 }
             };

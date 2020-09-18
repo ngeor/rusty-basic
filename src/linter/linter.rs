@@ -8,9 +8,7 @@ use crate::parser;
 use crate::parser::{BareName, BareNameNode, QualifiedName, QualifiedNameNode};
 use std::collections::HashSet;
 
-pub fn lint(
-    program: parser::ProgramNode,
-) -> Result<(ProgramNode, ResolvedUserDefinedTypes), QErrorNode> {
+pub fn lint(program: parser::ProgramNode) -> Result<(ProgramNode, UserDefinedTypes), QErrorNode> {
     // convert to fully typed
     let (result, functions, subs, user_defined_types, names_without_dot) =
         converter::convert(program)?;
@@ -235,6 +233,7 @@ mod tests {
     use crate::linter::test_utils::*;
     use crate::linter::*;
     use crate::parser::{Operator, TypeQualifier};
+    use std::collections::HashMap;
 
     mod assignment {
         use super::*;
@@ -541,21 +540,12 @@ mod tests {
                 user_defined_types.contains_key(&"Card".into()),
                 "Expected to contain the `Card` type"
             );
+            let mut m: HashMap<CaseInsensitiveString, ElementType> = HashMap::new();
+            m.insert("Value".into(), ElementType::Integer);
+            m.insert("Suit".into(), ElementType::String(9));
             assert_eq!(
                 *user_defined_types.get(&"Card".into()).unwrap(),
-                ResolvedUserDefinedType {
-                    name: "Card".into(),
-                    elements: vec![
-                        ResolvedElement {
-                            name: "Value".into(),
-                            element_type: ResolvedElementType::Integer
-                        },
-                        ResolvedElement {
-                            name: "Suit".into(),
-                            element_type: ResolvedElementType::String(9)
-                        },
-                    ]
-                }
+                UserDefinedType::new(m)
             );
         }
 
@@ -585,7 +575,7 @@ mod tests {
                             },
                             Members::Leaf {
                                 name: "Value".into(),
-                                element_type: ResolvedElementType::Integer
+                                element_type: ElementType::Integer
                             }
                         ),
                         Expression::IntegerLiteral(42).at_rc(7, 23)
@@ -600,7 +590,7 @@ mod tests {
                             },
                             Members::Leaf {
                                 name: "Value".into(),
-                                element_type: ResolvedElementType::Integer
+                                element_type: ElementType::Integer
                             }
                         ))
                         .at_rc(8, 19)]
@@ -636,7 +626,7 @@ mod tests {
                             },
                             Members::Leaf {
                                 name: "Suit".into(),
-                                element_type: ResolvedElementType::String(9)
+                                element_type: ElementType::String(9)
                             }
                         ),
                         Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
@@ -651,7 +641,7 @@ mod tests {
                             },
                             Members::Leaf {
                                 name: "Suit".into(),
-                                element_type: ResolvedElementType::String(9)
+                                element_type: ElementType::String(9)
                             }
                         ))
                         .at_rc(8, 19)]

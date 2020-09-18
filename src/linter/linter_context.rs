@@ -3,8 +3,8 @@ use crate::common::{
 };
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
-    Expression, HasTypeDefinition, Members, ResolvedDeclaredName, ResolvedElement,
-    ResolvedElementType, ResolvedUserDefinedTypes, TypeDefinition, UserDefinedName,
+    ElementType, Expression, HasTypeDefinition, Members, ResolvedDeclaredName, TypeDefinition,
+    UserDefinedName, UserDefinedTypes,
 };
 use crate::parser;
 use crate::parser::{
@@ -68,7 +68,7 @@ pub struct LinterContext {
     parent: Option<Box<LinterContext>>,
     sub_program: Option<(BareName, SubProgramType)>,
     names: HashMap<BareName, ResolvedTypeDefinitions>,
-    user_defined_types: Rc<ResolvedUserDefinedTypes>,
+    user_defined_types: Rc<UserDefinedTypes>,
 
     /// Collects names of variables and parameters whose type is a user defined type.
     /// These names cannot exist elsewhere as a prefix of a dotted variable, constant, parameter, function or sub name,
@@ -79,7 +79,7 @@ pub struct LinterContext {
 }
 
 impl LinterContext {
-    pub fn new(user_defined_types: Rc<ResolvedUserDefinedTypes>) -> Self {
+    pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
         Self {
             parent: None,
             sub_program: None,
@@ -118,12 +118,12 @@ impl LinterContext {
             .get(type_name)
             .expect("Type not found!");
         match user_defined_type.find_element(first) {
-            Some(ResolvedElement { element_type, .. }) => match element_type {
-                ResolvedElementType::Integer
-                | ResolvedElementType::Long
-                | ResolvedElementType::Single
-                | ResolvedElementType::Double
-                | ResolvedElementType::String(_) => {
+            Some(element_type) => match element_type {
+                ElementType::Integer
+                | ElementType::Long
+                | ElementType::Single
+                | ElementType::Double
+                | ElementType::String(_) => {
                     if rest.is_empty() {
                         Ok(Members::Leaf {
                             name: first.clone(),
@@ -133,7 +133,7 @@ impl LinterContext {
                         Err(QError::syntax_error("Cannot navigate after built-in type"))
                     }
                 }
-                ResolvedElementType::UserDefined(u) => {
+                ElementType::UserDefined(u) => {
                     if rest.is_empty() {
                         Ok(Members::Leaf {
                             name: first.clone(),

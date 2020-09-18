@@ -7,7 +7,7 @@ use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
-use crate::linter::{HasTypeDefinition, ResolvedDeclaredName, ResolvedUserDefinedTypes};
+use crate::linter::{HasTypeDefinition, ResolvedDeclaredName, UserDefinedTypes};
 use crate::parser::{HasQualifier, TypeQualifier};
 use crate::variant::Variant;
 use std::cmp::Ordering;
@@ -84,11 +84,11 @@ pub struct Interpreter<S: Stdlib> {
     return_stack: Vec<usize>,
     stacktrace: Vec<Location>,
     pub file_manager: FileManager,
-    pub user_defined_types: Rc<ResolvedUserDefinedTypes>,
+    pub user_defined_types: Rc<UserDefinedTypes>,
 }
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
-    pub fn new(stdlib: TStdlib, user_defined_types: ResolvedUserDefinedTypes) -> Self {
+    pub fn new(stdlib: TStdlib, user_defined_types: UserDefinedTypes) -> Self {
         let rc_user_defined_types = Rc::new(user_defined_types);
         let mut result = Interpreter {
             stdlib,

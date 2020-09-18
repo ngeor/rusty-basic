@@ -67,11 +67,11 @@ struct ConverterImpl {
     context: LinterContext,
     functions: FunctionMap,
     subs: SubMap,
-    user_defined_types: Rc<ResolvedUserDefinedTypes>,
+    user_defined_types: Rc<UserDefinedTypes>,
 }
 
 impl ConverterImpl {
-    pub fn new(user_defined_types: Rc<ResolvedUserDefinedTypes>) -> Self {
+    pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
         Self {
             user_defined_types: Rc::clone(&user_defined_types),
             resolver: TypeResolverImpl::new(),
@@ -447,7 +447,7 @@ pub fn convert(
         ProgramNode,
         FunctionMap,
         SubMap,
-        ResolvedUserDefinedTypes,
+        UserDefinedTypes,
         HashSet<BareName>,
     ),
     QErrorNode,

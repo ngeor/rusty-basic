@@ -1,10 +1,8 @@
 use crate::instruction_generator::{generate_instructions, InstructionNode};
-use crate::linter::{lint, ResolvedUserDefinedTypes};
+use crate::linter::{lint, UserDefinedTypes};
 use crate::parser::parse_main_str;
 
-pub fn generate_instructions_str_with_types<T>(
-    input: T,
-) -> (Vec<InstructionNode>, ResolvedUserDefinedTypes)
+pub fn generate_instructions_str_with_types<T>(input: T) -> (Vec<InstructionNode>, UserDefinedTypes)
 where
     T: AsRef<[u8]> + 'static,
 {

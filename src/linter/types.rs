@@ -7,11 +7,13 @@ pub use self::has_type_definition::*;
 pub use self::type_definition::*;
 
 use crate::built_ins::BuiltInSub;
-use crate::common::{CanCastTo, Locatable};
+use crate::common::{CanCastTo, Locatable, StringUtils};
 use crate::parser::{
     BareName, BareNameNode, Operator, QualifiedName, QualifiedNameNode, TypeQualifier,
 };
+use crate::variant::{UserDefinedTypeValue, Variant};
 use std::collections::HashMap;
+
 #[cfg(test)]
 use std::convert::TryFrom;
 
@@ -283,8 +285,23 @@ pub enum ResolvedElementType {
     Long,
     Single,
     Double,
-    String(u32),
+    String(u16),
     UserDefined(BareName),
+}
+
+impl ResolvedElementType {
+    pub fn default_variant(&self, types: &ResolvedUserDefinedTypes) -> Variant {
+        match self {
+            Self::Single => Variant::from(TypeQualifier::BangSingle),
+            Self::Double => Variant::from(TypeQualifier::HashDouble),
+            Self::String(len) => String::new().fix_length(*len as usize).into(),
+            Self::Integer => Variant::from(TypeQualifier::PercentInteger),
+            Self::Long => Variant::from(TypeQualifier::AmpersandLong),
+            Self::UserDefined(type_name) => {
+                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
+            }
+        }
+    }
 }
 
 impl HasTypeDefinition for ResolvedElementType {

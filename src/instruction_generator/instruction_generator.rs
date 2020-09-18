@@ -2,7 +2,7 @@ use super::instruction::*;
 use crate::common::*;
 use crate::linter::*;
 use crate::parser::{BareName, HasQualifier};
-use crate::variant::{DefaultForType, Variant};
+use crate::variant::Variant;
 use std::collections::HashMap;
 
 // pass 1: collect function names -> parameter names, in order to use them in function/sub calls
@@ -98,10 +98,7 @@ impl InstructionGenerator {
             let block = f.body;
             self.function_label(bare_name, pos);
             // set default value
-            self.push(
-                Instruction::Load(Variant::default_variant(name.qualifier())),
-                pos,
-            );
+            self.push(Instruction::Load(Variant::from(name.qualifier())), pos);
             self.generate_block_instructions(block);
             self.push(Instruction::PopRet, pos);
         }

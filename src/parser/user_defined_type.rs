@@ -171,7 +171,7 @@ fn demand_string_length<T: BufRead + 'static>(
         expression::demand_expression_node(),
         |Locatable { element, pos }| match element {
             Expression::IntegerLiteral(i) => {
-                if i > 0 {
+                if i > 0 && i < crate::variant::MAX_INTEGER {
                     Ok(Locatable::new(element, pos))
                 } else {
                     Err(QError::syntax_error("Illegal number"))
@@ -277,6 +277,7 @@ mod tests {
             "(1+1)",
             "Foo(1)",
             "#1",
+            "32768", // MAX_INT (32767) + 1
         ];
         for e in &illegal_expressions {
             let input = format!(

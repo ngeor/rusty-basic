@@ -9,7 +9,7 @@ use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
 use crate::linter::{HasTypeDefinition, ResolvedDeclaredName, ResolvedUserDefinedTypes};
 use crate::parser::{HasQualifier, TypeQualifier};
-use crate::variant::{DefaultForType, DefaultForTypes, Variant};
+use crate::variant::Variant;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
@@ -163,10 +163,9 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 });
             }
             Instruction::Dim(resolved_declared_name) => {
-                let v = Variant::default_variant_types(
-                    &resolved_declared_name.type_definition(),
-                    self.user_defined_types.as_ref(),
-                );
+                let v = resolved_declared_name
+                    .type_definition()
+                    .default_variant(self.user_defined_types.as_ref());
                 self.context_mut()
                     .set_variable(resolved_declared_name.clone(), v);
             }
@@ -315,7 +314,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                             Some(v) => Some(v),
                             None => {
                                 // it was a function, but the implementation did not set a result
-                                Some(Variant::default_variant(function_name.qualifier()))
+                                Some(Variant::from(function_name.qualifier()))
                             }
                         }
                     }

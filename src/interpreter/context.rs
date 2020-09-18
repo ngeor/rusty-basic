@@ -5,7 +5,7 @@ use crate::linter::{
     UserDefinedName,
 };
 use crate::parser::{Name, QualifiedName};
-use crate::variant::{DefaultForType, Variant};
+use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
@@ -265,8 +265,7 @@ impl RootContext {
                             TypeDefinition::BuiltIn(q) => q,
                             _ => panic!("cannot implicitly create user defined variable"),
                         };
-                        self.variables
-                            .insert(name.clone(), Variant::default_variant(q));
+                        self.variables.insert(name.clone(), Variant::from(q));
                         Argument::ByRef(name)
                     }
                 }
@@ -431,10 +430,7 @@ impl SubContext {
                                                 "cannot implicitly create user defined variable"
                                             ),
                                         };
-                                        self.do_insert_variable(
-                                            name.clone(),
-                                            Variant::default_variant(q),
-                                        );
+                                        self.do_insert_variable(name.clone(), Variant::from(q));
                                         Argument::ByRef(name)
                                     }
                                 }

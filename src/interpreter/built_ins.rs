@@ -577,7 +577,7 @@ mod len {
                 ResolvedElementType::Double => 8,
                 ResolvedElementType::Integer => 2,
                 ResolvedElementType::Long => 4,
-                ResolvedElementType::String(l) => *l,
+                ResolvedElementType::String(l) => *l as u32,
                 ResolvedElementType::UserDefined(type_name) => {
                     len_of_user_defined_type(types.get(type_name).expect("type not found"), types)
                 }

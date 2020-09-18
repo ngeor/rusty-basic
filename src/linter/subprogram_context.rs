@@ -316,7 +316,7 @@ impl FirstPassOuter {
                     ElementType::Single => ResolvedElementType::Single,
                     ElementType::Double => ResolvedElementType::Double,
                     ElementType::String(str_len_expression_node) => {
-                        let l: u32 = self.validate_element_type_str_len(str_len_expression_node)?;
+                        let l: u16 = self.validate_element_type_str_len(str_len_expression_node)?;
                         ResolvedElementType::String(l)
                     }
                     ElementType::UserDefined(Locatable {
@@ -353,15 +353,15 @@ impl FirstPassOuter {
     fn validate_element_type_str_len(
         &self,
         str_len_expression_node: &ExpressionNode,
-    ) -> Result<u32, QErrorNode> {
+    ) -> Result<u16, QErrorNode> {
         let Locatable {
             element: str_len_expression,
             pos,
         } = str_len_expression_node;
         match str_len_expression {
             Expression::IntegerLiteral(i) => {
-                // parser already covers this
-                Ok(*i as u32)
+                // parser already covers that i is between 1..MAX_INT
+                Ok(*i as u16)
             }
             Expression::VariableName(v) => {
                 // only constants allowed
@@ -373,8 +373,8 @@ impl FirstPassOuter {
                             Some(const_value) => {
                                 match const_value {
                                     Variant::VInteger(i) => {
-                                        if *i >= 1 {
-                                            Ok(*i as u32)
+                                        if *i >= 1 && *i <= crate::variant::MAX_INTEGER {
+                                            Ok(*i as u16)
                                         } else {
                                             // illegal string length
                                             Err(QError::InvalidConstant).with_err_at(pos)
@@ -396,8 +396,11 @@ impl FirstPassOuter {
                             Some(const_value) => {
                                 match const_value {
                                     Variant::VInteger(i) => {
-                                        if *qualifier == TypeQualifier::PercentInteger && *i >= 1 {
-                                            Ok(*i as u32)
+                                        if *qualifier == TypeQualifier::PercentInteger
+                                            && *i >= 1
+                                            && *i <= crate::variant::MAX_INTEGER
+                                        {
+                                            Ok(*i as u16)
                                         } else {
                                             // illegal string length or using wrong qualifier to reference the int constant
                                             Err(QError::InvalidConstant).with_err_at(pos)

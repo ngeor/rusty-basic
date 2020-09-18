@@ -1,5 +1,7 @@
-use crate::common::CanCastTo;
+use super::ResolvedUserDefinedTypes;
+use crate::common::{CanCastTo, StringUtils};
 use crate::parser::{BareName, TypeQualifier};
+use crate::variant::{UserDefinedTypeValue, Variant};
 
 /// A linted (resolved) `TypeDefinition`.
 ///
@@ -7,9 +9,22 @@ use crate::parser::{BareName, TypeQualifier};
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum TypeDefinition {
     BuiltIn(TypeQualifier),
-    String(u32),
+    String(u16),
     UserDefined(BareName),
     FileHandle,
+}
+
+impl TypeDefinition {
+    pub fn default_variant(&self, types: &ResolvedUserDefinedTypes) -> Variant {
+        match self {
+            Self::BuiltIn(q) => Variant::from(*q),
+            Self::String(len) => String::new().fix_length(*len as usize).into(),
+            Self::UserDefined(type_name) => {
+                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
+            }
+            Self::FileHandle => panic!("not possible to get a default file handle"),
+        }
+    }
 }
 
 impl CanCastTo<&TypeDefinition> for TypeDefinition {

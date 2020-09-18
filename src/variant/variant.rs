@@ -1,7 +1,6 @@
 use super::fit::FitToType;
 use super::UserDefinedTypeValue;
 use crate::common::{FileHandle, QError};
-use crate::linter::{ResolvedElementType, ResolvedUserDefinedTypes, TypeDefinition};
 use crate::parser::TypeQualifier;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
@@ -369,65 +368,6 @@ impl Variant {
     }
 }
 
-pub trait DefaultForType<T> {
-    fn default_variant(t: T) -> Self;
-}
-
-impl DefaultForType<TypeQualifier> for Variant {
-    fn default_variant(type_qualifier: TypeQualifier) -> Variant {
-        match type_qualifier {
-            TypeQualifier::BangSingle => Variant::VSingle(0.0),
-            TypeQualifier::HashDouble => Variant::VDouble(0.0),
-            TypeQualifier::DollarString => Variant::VString(String::new()),
-            TypeQualifier::PercentInteger => Variant::VInteger(0),
-            TypeQualifier::AmpersandLong => Variant::VLong(0),
-        }
-    }
-}
-
-pub trait DefaultForTypes<T> {
-    fn default_variant_types(t: T, types: &ResolvedUserDefinedTypes) -> Self;
-}
-
-impl DefaultForTypes<&ResolvedElementType> for Variant {
-    fn default_variant_types(t: &ResolvedElementType, types: &ResolvedUserDefinedTypes) -> Self {
-        match t {
-            ResolvedElementType::Single => Variant::default_variant(TypeQualifier::BangSingle),
-            ResolvedElementType::Double => Variant::default_variant(TypeQualifier::HashDouble),
-            ResolvedElementType::String(_) => Variant::default_variant(TypeQualifier::DollarString),
-            ResolvedElementType::Integer => Variant::default_variant(TypeQualifier::PercentInteger),
-            ResolvedElementType::Long => Variant::default_variant(TypeQualifier::AmpersandLong),
-            ResolvedElementType::UserDefined(type_name) => {
-                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
-            }
-        }
-    }
-}
-
-impl DefaultForTypes<&TypeDefinition> for Variant {
-    fn default_variant_types(
-        type_definition: &TypeDefinition,
-        types: &ResolvedUserDefinedTypes,
-    ) -> Self {
-        match type_definition {
-            TypeDefinition::BuiltIn(q) => Self::default_variant(*q),
-            TypeDefinition::String(len) => {
-                let mut s: String = String::new();
-                let mut i: u32 = *len;
-                while i > 0 {
-                    s.push(' ');
-                    i -= 1;
-                }
-                Self::VString(s)
-            }
-            TypeDefinition::UserDefined(type_name) => {
-                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
-            }
-            TypeDefinition::FileHandle => panic!("not possible to get a default file handle"),
-        }
-    }
-}
-
 impl PartialEq for Variant {
     fn eq(&self, other: &Self) -> bool {
         match self.cmp_same_type_only(other) {
@@ -579,6 +519,22 @@ fn or_bits(a: [bool; INT_BITS], b: [bool; INT_BITS]) -> [bool; INT_BITS] {
         c[i] = a[i] || b[i];
     }
     c
+}
+
+// ========================================================
+// Creating the default variant
+// ========================================================
+
+impl From<TypeQualifier> for Variant {
+    fn from(type_qualifier: TypeQualifier) -> Self {
+        match type_qualifier {
+            TypeQualifier::BangSingle => Self::VSingle(0.0),
+            TypeQualifier::HashDouble => Self::VDouble(0.0),
+            TypeQualifier::DollarString => Self::VString(String::new()),
+            TypeQualifier::PercentInteger => Self::VInteger(0),
+            TypeQualifier::AmpersandLong => Self::VLong(0),
+        }
+    }
 }
 
 #[cfg(test)]

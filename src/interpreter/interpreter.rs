@@ -1,3 +1,4 @@
+use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
 use crate::interpreter::built_ins;
@@ -439,6 +440,19 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
             _ => Err(QError::TypeMismatch),
         }
+    }
+}
+
+pub trait SetVariable<K, V> {
+    fn set_variable(&mut self, name: K, value: V);
+}
+
+impl<S: Stdlib, V> SetVariable<BuiltInFunction, V> for Interpreter<S>
+where
+    Variant: From<V>,
+{
+    fn set_variable(&mut self, name: BuiltInFunction, value: V) {
+        self.context_mut().set_variable(name.into(), value.into());
     }
 }
 

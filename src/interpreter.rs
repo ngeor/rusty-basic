@@ -18,5 +18,5 @@ mod while_wend;
 #[cfg(test)]
 pub mod test_utils;
 
-pub use self::interpreter::Interpreter;
+pub use self::interpreter::{Interpreter, SetVariable};
 pub use self::stdlib::*;

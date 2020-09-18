@@ -4,7 +4,7 @@ use crate::common::{
 };
 use crate::interpreter::context::Argument;
 use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, Stdlib};
+use crate::interpreter::{Interpreter, SetVariable, Stdlib};
 use crate::linter::{
     HasTypeDefinition, ResolvedDeclaredName, ResolvedElement, ResolvedElementType,
     ResolvedUserDefinedType, ResolvedUserDefinedTypes, TypeDefinition,
@@ -53,9 +53,7 @@ mod chr {
         let i: i32 = interpreter.pop_integer();
         let mut s: String = String::new();
         s.push((i as u8) as char);
-        interpreter
-            .context_mut()
-            .set_variable(BuiltInFunction::Chr.into(), s.into());
+        interpreter.set_variable(BuiltInFunction::Chr, s);
         Ok(())
     }
 
@@ -94,9 +92,7 @@ mod environ_fn {
         match v {
             Variant::VString(env_var_name) => {
                 let result = interpreter.stdlib.get_env_var(&env_var_name);
-                interpreter
-                    .context_mut()
-                    .set_variable(BuiltInFunction::Environ.into(), Variant::VString(result));
+                interpreter.set_variable(BuiltInFunction::Environ, result);
                 Ok(())
             }
             _ => panic!("Type mismatch at ENVIRON$",),
@@ -188,9 +184,7 @@ mod eof {
             .eof(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        interpreter
-            .context_mut()
-            .set_variable(BuiltInFunction::Eof.into(), is_eof.into());
+        interpreter.set_variable(BuiltInFunction::Eof, is_eof);
         Ok(())
     }
 }
@@ -434,10 +428,7 @@ mod instr {
             Some(c) => do_instr(a.demand_integer(), b.demand_string(), c.demand_string())?,
             None => do_instr(1, a.demand_string(), b.demand_string())?,
         };
-        interpreter
-            .context_mut()
-            .set_variable(BuiltInFunction::InStr.into(), result.into());
-
+        interpreter.set_variable(BuiltInFunction::InStr, result);
         Ok(())
     }
 
@@ -571,9 +562,7 @@ mod len {
                 sum as i32
             }
         };
-        interpreter
-            .context_mut()
-            .set_variable(BuiltInFunction::Len.into(), len.into());
+        interpreter.set_variable(BuiltInFunction::Len, len);
         Ok(())
     }
 
@@ -828,9 +817,7 @@ mod mid {
         let start: i32 = interpreter.pop_integer();
         let length: Option<i32> = interpreter.pop_unnamed_val().map(|v| v.demand_integer());
         let result: String = do_mid(s, start, length)?;
-        interpreter
-            .context_mut()
-            .set_variable(BuiltInFunction::Mid.into(), result.into());
+        interpreter.set_variable(BuiltInFunction::Mid, result);
         Ok(())
     }
 
@@ -1135,15 +1122,13 @@ mod str_fn {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
         let result = match v {
-            Variant::VSingle(f) => Variant::VString(format!("{}", f)),
-            Variant::VDouble(f) => Variant::VString(format!("{}", f)),
-            Variant::VInteger(f) => Variant::VString(format!("{}", f)),
-            Variant::VLong(f) => Variant::VString(format!("{}", f)),
+            Variant::VSingle(f) => format!("{}", f),
+            Variant::VDouble(f) => format!("{}", f),
+            Variant::VInteger(f) => format!("{}", f),
+            Variant::VLong(f) => format!("{}", f),
             _ => panic!("unexpected arg to STR$"),
         };
-        interpreter
-            .context_mut()
-            .set_variable(BuiltInFunction::Str.into(), result);
+        interpreter.set_variable(BuiltInFunction::Str, result);
         Ok(())
     }
 
@@ -1185,8 +1170,8 @@ mod val {
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v = interpreter.pop_unnamed_val().unwrap();
-        interpreter.context_mut().set_variable(
-            BuiltInFunction::Val.into(),
+        interpreter.set_variable(
+            BuiltInFunction::Val,
             match v {
                 Variant::VString(s) => val(s).with_err_no_pos()?,
                 _ => panic!("unexpected arg to VAL"),

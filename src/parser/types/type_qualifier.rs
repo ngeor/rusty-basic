@@ -1,3 +1,4 @@
+use super::Operator;
 use crate::common::{CanCastTo, QError};
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -49,6 +50,57 @@ impl TypeQualifier {
                 _ => None,
             },
             _ => None,
+        }
+    }
+
+    pub fn cast_binary_op(&self, right: TypeQualifier, op: Operator) -> Option<Self> {
+        match op {
+            // 1. arithmetic operators
+            // 1a. plus -> if we can cast self to right, that's the result
+            Operator::Plus => {
+                match self.bigger_numeric_type(&right) {
+                    Some(result) => Some(result),
+                    None => {
+                        if *self == TypeQualifier::DollarString
+                            && right == TypeQualifier::DollarString
+                        {
+                            // string concatenation
+                            Some(*self)
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
+            // 1b. minus, multiply, divide -> if we can cast self to right, and we're not a string, that's the result
+            Operator::Minus | Operator::Multiply | Operator::Divide => {
+                self.bigger_numeric_type(&right)
+            }
+            // 2. relational operators
+            //    if we an cast self to right, the result is -1 or 0, therefore integer
+            Operator::Less
+            | Operator::LessOrEqual
+            | Operator::Equal
+            | Operator::GreaterOrEqual
+            | Operator::Greater
+            | Operator::NotEqual => {
+                if self.can_cast_to(right) {
+                    Some(TypeQualifier::PercentInteger)
+                } else {
+                    None
+                }
+            }
+            // 3. binary operators
+            //    they only work if both sides are cast-able to integer, which is also the result type
+            Operator::And | Operator::Or => {
+                if self.can_cast_to(TypeQualifier::PercentInteger)
+                    && right.can_cast_to(TypeQualifier::PercentInteger)
+                {
+                    Some(TypeQualifier::PercentInteger)
+                } else {
+                    None
+                }
+            }
         }
     }
 }

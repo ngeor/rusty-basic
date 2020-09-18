@@ -1,6 +1,6 @@
 use super::UserDefinedTypes;
 use crate::common::{CanCastTo, StringUtils};
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, Operator, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
 
 /// A linted (resolved) `TypeDefinition`.
@@ -23,6 +23,28 @@ impl TypeDefinition {
                 Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
             }
             Self::FileHandle => panic!("not possible to get a default file handle"),
+        }
+    }
+
+    pub fn cast_binary_op(&self, right: TypeDefinition, op: Operator) -> Option<TypeDefinition> {
+        match self {
+            TypeDefinition::BuiltIn(q_left) => match right {
+                TypeDefinition::BuiltIn(q_right) => q_left
+                    .cast_binary_op(q_right, op)
+                    .map(|q_result| TypeDefinition::BuiltIn(q_result)),
+                TypeDefinition::String(_) => q_left
+                    .cast_binary_op(TypeQualifier::DollarString, op)
+                    .map(|q_result| TypeDefinition::BuiltIn(q_result)),
+                _ => None,
+            },
+            TypeDefinition::String(_) => match right {
+                TypeDefinition::BuiltIn(TypeQualifier::DollarString)
+                | TypeDefinition::String(_) => TypeQualifier::DollarString
+                    .cast_binary_op(TypeQualifier::DollarString, op)
+                    .map(|q_result| TypeDefinition::BuiltIn(q_result)),
+                _ => None,
+            },
+            _ => None,
         }
     }
 }

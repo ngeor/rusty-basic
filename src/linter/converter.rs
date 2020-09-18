@@ -2,7 +2,6 @@ use super::subprogram_context::{FirstPassOuter, FunctionMap, SubMap};
 use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::casting::CastBinaryOperator;
 use crate::linter::linter_context::LinterContext;
 use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
@@ -586,7 +585,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let t_left = converted_left.type_definition();
                 let t_right = converted_right.type_definition();
                 // get the cast type
-                match op.cast_binary_op(t_left, t_right) {
+                match t_left.cast_binary_op(t_right, op) {
                     Some(type_definition) => Ok(Expression::BinaryExpression(
                         op,
                         Box::new(converted_left),
@@ -600,12 +599,11 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
                 let unboxed_child = *c;
                 let converted_child = self.convert(unboxed_child)?;
                 match converted_child.type_definition() {
-                    TypeDefinition::BuiltIn(q) => {
-                        if super::casting::cast_unary_op(op, q).is_none() {
-                            Err(QError::TypeMismatch).with_err_at(&converted_child)
-                        } else {
-                            Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
-                        }
+                    TypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
+                        Err(QError::TypeMismatch).with_err_at(&converted_child)
+                    }
+                    TypeDefinition::BuiltIn(_) => {
+                        Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
                     }
                     // user defined cannot be in unary expressions
                     _ => Err(QError::TypeMismatch).with_err_no_pos(),

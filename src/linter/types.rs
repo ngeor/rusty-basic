@@ -1,10 +1,12 @@
 mod expression;
 mod has_type_definition;
+mod param_name;
 mod type_definition;
 mod user_defined_type;
 
 pub use self::expression::*;
 pub use self::has_type_definition::*;
+pub use self::param_name::*;
 pub use self::type_definition::*;
 pub use self::user_defined_type::*;
 
@@ -244,34 +246,3 @@ pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;
 // ========================================================
 // parameter name
 // ========================================================
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum ResolvedParamName {
-    // A -> A!
-    // A AS STRING
-    // A$, A% etc
-    BuiltIn(QualifiedName),
-
-    // DIM C AS Card
-    UserDefined(UserDefinedName),
-}
-
-impl AsRef<BareName> for ResolvedParamName {
-    fn as_ref(&self) -> &BareName {
-        match self {
-            Self::BuiltIn(QualifiedName { name, .. }) => name,
-            Self::UserDefined(UserDefinedName { name, .. }) => name,
-        }
-    }
-}
-
-impl HasTypeDefinition for ResolvedParamName {
-    fn type_definition(&self) -> TypeDefinition {
-        match self {
-            Self::BuiltIn(QualifiedName { qualifier, .. }) => TypeDefinition::BuiltIn(*qualifier),
-            Self::UserDefined(UserDefinedName { type_name, .. }) => {
-                TypeDefinition::UserDefined(type_name.clone())
-            }
-        }
-    }
-}

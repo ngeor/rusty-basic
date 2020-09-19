@@ -15,7 +15,10 @@ impl<'a> PostConversionLinter for UserDefinedSubLinter<'a> {
         args: &Vec<ExpressionNode>,
     ) -> Result<(), QErrorNode> {
         match self.subs.get(name) {
-            Some((param_types, _)) => lint_call_args(args, param_types),
+            Some(Locatable {
+                element: param_types,
+                ..
+            }) => lint_call_args(args, param_types),
             None => err_no_pos(QError::SubprogramNotDefined),
         }
     }

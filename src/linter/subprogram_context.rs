@@ -1,12 +1,14 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{
-    CaseInsensitiveString, Locatable, Location, PatchErrPos, QError, QErrorNode,
+    AtLocation, CaseInsensitiveString, Locatable, Location, PatchErrPos, QError, QErrorNode,
     ToErrorEnvelopeNoPos, ToLocatableError,
 };
 use crate::linter::casting::cast;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::types::{ElementType, TypeDefinition, UserDefinedType, UserDefinedTypes};
+use crate::linter::types::{
+    ElementType, ParamTypeDefinition, ParamTypes, UserDefinedType, UserDefinedTypes,
+};
 use crate::parser;
 use crate::parser::{
     BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, DefType, Expression,
@@ -19,7 +21,6 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
-#[derive(Debug)]
 pub struct FirstPassOuter {
     inner: Rc<RefCell<FirstPassInner>>,
     function_context: FunctionContext,
@@ -438,11 +439,11 @@ impl FirstPassInner {
     pub fn parameters(
         &self,
         params: &DeclaredNameNodes,
-    ) -> Result<Vec<TypeDefinition>, QErrorNode> {
+    ) -> Result<Vec<ParamTypeDefinition>, QErrorNode> {
         params.iter().map(|p| self.parameter(p)).collect()
     }
 
-    fn parameter(&self, param: &DeclaredNameNode) -> Result<TypeDefinition, QErrorNode> {
+    fn parameter(&self, param: &DeclaredNameNode) -> Result<ParamTypeDefinition, QErrorNode> {
         let Locatable {
             element: declared_name,
             pos,
@@ -455,13 +456,13 @@ impl FirstPassInner {
         match type_definition {
             parser::TypeDefinition::Bare => {
                 let q: TypeQualifier = self.resolver.resolve(name);
-                Ok(TypeDefinition::BuiltIn(q))
+                Ok(ParamTypeDefinition::BuiltIn(q))
             }
             parser::TypeDefinition::CompactBuiltIn(q)
-            | parser::TypeDefinition::ExtendedBuiltIn(q) => Ok(TypeDefinition::BuiltIn(*q)),
+            | parser::TypeDefinition::ExtendedBuiltIn(q) => Ok(ParamTypeDefinition::BuiltIn(*q)),
             parser::TypeDefinition::UserDefined(u) => {
                 if self.user_defined_types.contains_key(u) {
-                    Ok(TypeDefinition::UserDefined(u.clone()))
+                    Ok(ParamTypeDefinition::UserDefined(u.clone()))
                 } else {
                     Err(QError::TypeNotDefined).with_err_at(pos)
                 }
@@ -470,10 +471,10 @@ impl FirstPassInner {
     }
 }
 
-pub type ParamTypes = Vec<TypeDefinition>;
-pub type FunctionMap = HashMap<CaseInsensitiveString, (TypeQualifier, ParamTypes, Location)>;
+pub type FunctionSignature = (TypeQualifier, ParamTypes);
+pub type FunctionSignatureNode = Locatable<FunctionSignature>;
+pub type FunctionMap = HashMap<CaseInsensitiveString, FunctionSignatureNode>;
 
-#[derive(Debug)]
 struct FunctionContext {
     declarations: FunctionMap,
     implementations: FunctionMap,
@@ -509,7 +510,7 @@ impl FunctionContext {
                 .with_err_no_pos(),
             None => {
                 self.declarations
-                    .insert(bare_name.clone(), (q_name, q_params, declaration_pos));
+                    .insert(bare_name.clone(), (q_name, q_params).at(declaration_pos));
                 Ok(())
             }
         }
@@ -537,7 +538,7 @@ impl FunctionContext {
                 self.check_declaration_type(bare_name, &q_name, &q_params)
                     .with_err_no_pos()?;
                 self.implementations
-                    .insert(bare_name.clone(), (q_name, q_params, implementation_pos));
+                    .insert(bare_name.clone(), (q_name, q_params).at(implementation_pos));
                 Ok(())
             }
         }
@@ -550,7 +551,10 @@ impl FunctionContext {
         q_params: &ParamTypes,
     ) -> Result<(), QError> {
         match self.declarations.get(name) {
-            Some((e_name, e_params, _)) => {
+            Some(Locatable {
+                element: (e_name, e_params),
+                ..
+            }) => {
                 if e_name != q_name || e_params != q_params {
                     return Err(QError::TypeMismatch);
                 }
@@ -567,7 +571,10 @@ impl FunctionContext {
         q_params: &ParamTypes,
     ) -> Result<(), QErrorNode> {
         match self.implementations.get(name) {
-            Some((e_name, e_params, _)) => {
+            Some(Locatable {
+                element: (e_name, e_params),
+                ..
+            }) => {
                 if e_name != q_name || e_params != q_params {
                     return Err(QError::TypeMismatch).with_err_no_pos();
                 }
@@ -580,14 +587,14 @@ impl FunctionContext {
     pub fn post_visit(&self) -> Result<(), QErrorNode> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
-                return Err(QError::SubprogramNotDefined).with_err_at(v.2);
+                return Err(QError::SubprogramNotDefined).with_err_at(v);
             }
         }
 
         for (k, v) in self.implementations.iter() {
             let opt_built_in: Option<BuiltInFunction> = k.into();
             if opt_built_in.is_some() {
-                return Err(QError::DuplicateDefinition).with_err_at(v.2);
+                return Err(QError::DuplicateDefinition).with_err_at(v);
             }
         }
 
@@ -595,9 +602,10 @@ impl FunctionContext {
     }
 }
 
-pub type SubMap = HashMap<CaseInsensitiveString, (ParamTypes, Location)>;
+pub type SubSignature = ParamTypes;
+pub type SubSignatureNode = Locatable<SubSignature>;
+pub type SubMap = HashMap<CaseInsensitiveString, SubSignatureNode>;
 
-#[derive(Debug)]
 struct SubContext {
     declarations: SubMap,
     implementations: SubMap,
@@ -632,7 +640,7 @@ impl SubContext {
                 .with_err_no_pos(),
             None => {
                 self.declarations
-                    .insert(name.clone(), (q_params, declaration_pos));
+                    .insert(name.clone(), q_params.at(declaration_pos));
                 Ok(())
             }
         }
@@ -656,7 +664,7 @@ impl SubContext {
                 self.check_declaration_type(name, &q_params)
                     .with_err_no_pos()?;
                 self.implementations
-                    .insert(name.clone(), (q_params, implementation_pos));
+                    .insert(name.clone(), q_params.at(implementation_pos));
                 Ok(())
             }
         }
@@ -668,7 +676,9 @@ impl SubContext {
         q_params: &ParamTypes,
     ) -> Result<(), QError> {
         match self.declarations.get(name) {
-            Some((e_params, _)) => {
+            Some(Locatable {
+                element: e_params, ..
+            }) => {
                 if e_params != q_params {
                     return Err(QError::TypeMismatch);
                 }
@@ -684,7 +694,9 @@ impl SubContext {
         q_params: &ParamTypes,
     ) -> Result<(), QError> {
         match self.implementations.get(name) {
-            Some((e_params, _)) => {
+            Some(Locatable {
+                element: e_params, ..
+            }) => {
                 if e_params != q_params {
                     return Err(QError::TypeMismatch);
                 }
@@ -697,14 +709,14 @@ impl SubContext {
     pub fn post_visit(&self) -> Result<(), QErrorNode> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
-                return Err(QError::SubprogramNotDefined).with_err_at(v.1);
+                return Err(QError::SubprogramNotDefined).with_err_at(v);
             }
         }
 
         for (k, v) in self.implementations.iter() {
             let opt_built_in: Option<BuiltInSub> = k.into();
             if opt_built_in.is_some() {
-                return Err(QError::DuplicateDefinition).with_err_at(v.1);
+                return Err(QError::DuplicateDefinition).with_err_at(v);
             }
         }
 

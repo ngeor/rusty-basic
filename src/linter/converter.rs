@@ -251,11 +251,14 @@ impl ConverterImpl {
         let bare_name: &BareName = n.as_ref();
         if self.context.is_function_context(&n) {
             // trying to assign to the function
-            let function_type: TypeQualifier = self.functions.get(bare_name).unwrap().0;
-            if n.is_bare_or_of_type(function_type) {
+            let Locatable {
+                element: (function_type, _),
+                ..
+            } = self.functions.get(bare_name).unwrap();
+            if n.is_bare_or_of_type(*function_type) {
                 Ok(ResolvedDeclaredName::BuiltIn(QualifiedName::new(
                     bare_name.clone(),
-                    function_type,
+                    *function_type,
                 )))
             } else {
                 // trying to assign to the function with an explicit wrong type
@@ -296,7 +299,10 @@ impl ConverterImpl {
             Err(QError::DuplicateDefinition)
         } else if self.functions.contains_key(n.as_ref()) {
             // if the function expects arguments, argument count mismatch
-            let (f_type, f_args, _) = self.functions.get(n.as_ref()).unwrap();
+            let Locatable {
+                element: (f_type, f_args),
+                ..
+            } = self.functions.get(n.as_ref()).unwrap();
             if !f_args.is_empty() {
                 Err(QError::ArgumentCountMismatch)
             } else if !n.is_bare_or_of_type(*f_type) {

@@ -471,25 +471,28 @@ impl FirstPassInner {
     }
 }
 
-pub type FunctionSignature = (TypeQualifier, ParamTypes);
-pub type FunctionSignatureNode = Locatable<FunctionSignature>;
-pub type FunctionMap = HashMap<CaseInsensitiveString, FunctionSignatureNode>;
-
-struct FunctionContext {
-    declarations: FunctionMap,
-    implementations: FunctionMap,
+struct SubProgramContext<T> {
+    declarations: HashMap<CaseInsensitiveString, Locatable<T>>,
+    implementations: HashMap<CaseInsensitiveString, Locatable<T>>,
     first_pass: Weak<RefCell<FirstPassInner>>,
 }
 
-impl FunctionContext {
+impl<T> SubProgramContext<T> {
     pub fn new(first_pass: Weak<RefCell<FirstPassInner>>) -> Self {
         Self {
-            declarations: FunctionMap::new(),
-            implementations: FunctionMap::new(),
+            declarations: HashMap::new(),
+            implementations: HashMap::new(),
             first_pass,
         }
     }
+}
 
+pub type FunctionSignature = (TypeQualifier, ParamTypes);
+pub type FunctionSignatureNode = Locatable<FunctionSignature>;
+pub type FunctionMap = HashMap<CaseInsensitiveString, FunctionSignatureNode>;
+type FunctionContext = SubProgramContext<FunctionSignature>;
+
+impl FunctionContext {
     pub fn add_declaration(
         &mut self,
         name_node: &NameNode,
@@ -605,22 +608,9 @@ impl FunctionContext {
 pub type SubSignature = ParamTypes;
 pub type SubSignatureNode = Locatable<SubSignature>;
 pub type SubMap = HashMap<CaseInsensitiveString, SubSignatureNode>;
-
-struct SubContext {
-    declarations: SubMap,
-    implementations: SubMap,
-    first_pass: Weak<RefCell<FirstPassInner>>,
-}
+type SubContext = SubProgramContext<SubSignature>;
 
 impl SubContext {
-    pub fn new(first_pass: Weak<RefCell<FirstPassInner>>) -> Self {
-        Self {
-            declarations: SubMap::new(),
-            implementations: SubMap::new(),
-            first_pass,
-        }
-    }
-
     pub fn add_declaration(
         &mut self,
         bare_name_node: &BareNameNode,

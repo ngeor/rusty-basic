@@ -415,35 +415,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         Ok(())
     }
 
-    // shortcuts to common context_mut operations
-
-    /// Pops the next unnamed argument, starting from the beginning.
-    #[deprecated]
-    pub fn pop_unnamed_arg(&mut self) -> Option<Argument> {
-        self.context.pop_unnamed_arg()
-    }
-
-    /// Pops the value of the next unnamed argument, starting from the beginning.
-    #[deprecated]
-    pub fn pop_unnamed_val(&mut self) -> Option<Variant> {
-        self.context.pop_unnamed_val()
-    }
-
-    #[deprecated]
-    pub fn pop_file_handle(&mut self) -> Result<FileHandle, QError> {
-        match self.pop_unnamed_val().unwrap() {
-            Variant::VFileHandle(f) => Ok(f),
-            Variant::VInteger(i) => {
-                if i >= 1 && i <= 255 {
-                    Ok((i as u8).into())
-                } else {
-                    Err(QError::BadFileNameOrNumber)
-                }
-            }
-            _ => Err(QError::TypeMismatch),
-        }
-    }
-
     fn push_context(&mut self) {
         let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
         let current_context = std::mem::replace(&mut self.context, dummy);

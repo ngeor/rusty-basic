@@ -363,7 +363,6 @@ impl Context {
     // used to be subcontext
     // ========================================================
 
-    #[deprecated]
     pub fn set_value_to_popped_arg(&mut self, arg: &Argument, value: Variant) {
         match arg {
             Argument::ByVal(_) => panic!("Expected: variable"),
@@ -372,29 +371,6 @@ impl Context {
                 .as_mut()
                 .expect("should have parent")
                 .set_variable(n.clone(), value),
-        }
-    }
-
-    /// Pops the next unnamed argument, starting from the beginning.
-    #[deprecated]
-    pub fn pop_unnamed_arg(&mut self) -> Option<Argument> {
-        self.parameters.pop_front()
-    }
-
-    /// Pops the value of the next unnamed argument, starting from the beginning.
-    #[deprecated]
-    pub fn pop_unnamed_val(&mut self) -> Option<Variant> {
-        match self.parameters.pop_front() {
-            Some(arg) => match arg {
-                Argument::ByRef(name_in_parent) => self
-                    .parent
-                    .as_mut()
-                    .expect("should have parent")
-                    .get_r_value(&name_in_parent)
-                    .map(|v| v.clone()),
-                Argument::ByVal(v) => Some(v),
-            },
-            None => None,
         }
     }
 

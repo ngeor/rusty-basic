@@ -236,18 +236,20 @@ mod input {
 
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        loop {
-            match &interpreter.pop_unnamed_arg() {
-                Some(a) => match a {
-                    Argument::ByRef(n) => {
-                        do_input_one_var(interpreter, a, n)?;
-                    }
-                    _ => {
-                        panic!("Expected: variable (linter should have caught this)");
-                    }
-                },
-                None => {
-                    break;
+        let args: Vec<Argument> = interpreter
+            .context()
+            .parameters()
+            .iter()
+            .map(|a| a.clone()) // TODO clone to fix the duplicate borrow FIXME
+            .collect();
+        for a in args.iter() {
+            match a {
+                Argument::ByRef(n) => {
+                    let val: Variant = do_input_one_var(interpreter, n)?;
+                    interpreter.context_mut().set_value_to_popped_arg(a, val);
+                }
+                _ => {
+                    panic!("Expected: variable (linter should have caught this)");
                 }
             }
         }
@@ -256,15 +258,14 @@ mod input {
 
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        a: &Argument,
         n: &ResolvedDeclaredName,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<Variant, QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        let variable_value = match n.type_definition() {
+        Ok(match n.type_definition() {
             TypeDefinition::BuiltIn(TypeQualifier::BangSingle) => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
@@ -274,11 +275,7 @@ mod input {
             }
             TypeDefinition::String(l) => Variant::from(raw_input.sub_str(l as usize)),
             _ => unimplemented!(),
-        };
-        interpreter
-            .context_mut()
-            .set_value_to_popped_arg(a, variable_value);
-        Ok(())
+        })
     }
 
     fn parse_single_input(s: String) -> Result<f32, QError> {
@@ -751,37 +748,35 @@ mod line_input {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
-        let mut has_more = true;
-        while has_more {
-            match interpreter.pop_unnamed_arg() {
-                Some(a) => {
-                    let arg_ref = &a;
-                    match arg_ref {
-                        Argument::ByVal(v) => {
-                            if is_first {
-                                match v {
-                                    Variant::VFileHandle(f) => {
-                                        file_handle = *f;
-                                    }
-                                    _ => {
-                                        panic!("LINE INPUT linter should have caught this");
-                                    }
-                                }
-                            } else {
+        let args: Vec<Argument> = interpreter
+            .context()
+            .parameters()
+            .iter()
+            .map(|a| a.clone()) // TODO clone to fix the duplicate borrow FIXME
+            .collect();
+        for arg_ref in args.iter() {
+            match arg_ref {
+                Argument::ByVal(v) => {
+                    if is_first {
+                        match v {
+                            Variant::VFileHandle(f) => {
+                                file_handle = *f;
+                            }
+                            _ => {
                                 panic!("LINE INPUT linter should have caught this");
                             }
                         }
-                        Argument::ByRef(n) => {
-                            line_input_one(interpreter, arg_ref, n, &file_handle)?;
-                        }
+                    } else {
+                        panic!("LINE INPUT linter should have caught this");
                     }
-                    is_first = false;
                 }
-                None => {
-                    has_more = false;
+                Argument::ByRef(n) => {
+                    line_input_one(interpreter, arg_ref, n, &file_handle)?;
                 }
             }
+            is_first = false;
         }
+
         Ok(())
     }
 
@@ -1119,22 +1114,22 @@ mod print {
         let mut print_args: Vec<String> = vec![];
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
-        loop {
-            match interpreter.pop_unnamed_val() {
-                Some(v) => match v {
-                    Variant::VFileHandle(fh) => {
-                        if is_first {
-                            file_handle = fh;
-                            is_first = false;
-                        } else {
-                            panic!("file handle must be first")
-                        }
+        let values: Vec<Variant> = interpreter
+            .context()
+            .parameter_values()
+            .map(|v| v.clone()) // TODO clone to fix the duplicate borrow FIXME
+            .collect();
+        for v in values {
+            match v {
+                Variant::VFileHandle(fh) => {
+                    if is_first {
+                        file_handle = fh;
+                        is_first = false;
+                    } else {
+                        panic!("file handle must be first")
                     }
-                    _ => print_args.push(v.to_string()),
-                },
-                None => {
-                    break;
                 }
+                _ => print_args.push(v.to_string()),
             }
         }
         if file_handle.is_valid() {
@@ -1239,11 +1234,14 @@ mod val {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v: &String = interpreter.context().parameter_values().next().unwrap().as_ref();
+        let v: &String = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .as_ref();
         let result: Variant = val(v).with_err_no_pos()?;
-        interpreter.set_variable(
-            BuiltInFunction::Val,
-            result);
+        interpreter.set_variable(BuiltInFunction::Val, result);
         Ok(())
     }
 

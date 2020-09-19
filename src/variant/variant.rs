@@ -350,22 +350,6 @@ impl Variant {
             _ => Err(QError::TypeMismatch),
         }
     }
-
-    /// Demands that the variant holds an integer and returns the integer value.
-    /// Panics if the variant is not an integer.
-    pub fn demand_integer(self) -> i32 {
-        match self {
-            Variant::VInteger(v) => v,
-            _ => panic!("not an integer variant"),
-        }
-    }
-
-    pub fn demand_string(self) -> String {
-        match self {
-            Variant::VString(s) => s,
-            _ => panic!("not a string variant"),
-        }
-    }
 }
 
 impl PartialEq for Variant {

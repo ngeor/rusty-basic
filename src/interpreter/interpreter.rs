@@ -430,16 +430,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     }
 
     #[deprecated]
-    pub fn pop_string(&mut self) -> String {
-        self.pop_unnamed_val().unwrap().demand_string()
-    }
-
-    #[deprecated]
-    pub fn pop_integer(&mut self) -> i32 {
-        self.pop_unnamed_val().unwrap().demand_integer()
-    }
-
-    #[deprecated]
     pub fn pop_file_handle(&mut self) -> Result<FileHandle, QError> {
         match self.pop_unnamed_val().unwrap() {
             Variant::VFileHandle(f) => Ok(f),

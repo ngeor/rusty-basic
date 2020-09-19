@@ -139,6 +139,13 @@ impl Arguments {
             Self::Unnamed(v) => v.iter(),
         }
     }
+
+    pub fn get_at(&self, index: usize) -> Option<&Argument> {
+        match self {
+            Self::Named(_) => panic!("Not supported for Arguments::Named"),
+            Self::Unnamed(v) => v.get(index),
+        }
+    }
 }
 
 // ========================================================
@@ -395,7 +402,7 @@ impl Context {
         &self.parameters
     }
 
-    pub fn evaluate_arg<'a>(&'a self, arg: &'a Argument) -> &'a Variant {
+    pub fn evaluate_parameter<'a>(&'a self, arg: &'a Argument) -> &'a Variant {
         match arg {
             Argument::ByRef(name_in_parent) => match &self.parent {
                 Some(p) => p
@@ -407,15 +414,12 @@ impl Context {
         }
     }
 
-    pub fn evaluated_parameters(&self) -> EvaluatedArgIterator {
-        EvaluatedArgIterator::new(self)
+    pub fn evaluated_parameters(&self) -> EvaluatedParameters {
+        EvaluatedParameters::new(self)
     }
 
-    pub fn evaluate_first_parameter(&self) -> &Variant {
-        self.evaluated_parameters()
-            .next()
-            .expect("Should have at least one parameter")
-            .1
+    pub fn parameter_values(&self) -> ParameterValues {
+        ParameterValues::new(self)
     }
 
     // ========================================================
@@ -556,28 +560,80 @@ impl Context {
     }
 }
 
-pub struct EvaluatedArgIterator<'a> {
+// ========================================================
+// EvaluatedParameters
+// ========================================================
+
+pub struct EvaluatedParameters<'a> {
     context: &'a Context,
-    args_iterator: std::collections::vec_deque::Iter<'a, Argument>,
+    parameters: &'a Arguments,
+    parameters_iterator: std::collections::vec_deque::Iter<'a, Argument>,
 }
 
-impl<'a> EvaluatedArgIterator<'a> {
+impl<'a> EvaluatedParameters<'a> {
     pub fn new(context: &'a Context) -> Self {
-        Self {
+        EvaluatedParameters {
             context,
-            args_iterator: context.parameters().iter(),
+            parameters: context.parameters(),
+            parameters_iterator: context.parameters().iter(),
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<(&'a Argument, &'a Variant)> {
+        self.parameters
+            .get_at(index)
+            .map(|a| (a, self.context.evaluate_parameter(a)))
+    }
+}
+
+impl<'a> Iterator for EvaluatedParameters<'a> {
+    type Item = (&'a Argument, &'a Variant);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.parameters_iterator.next() {
+            Some(arg) => {
+                let value = self.context.evaluate_parameter(arg);
+                Some((arg, value))
+            }
+            None => None,
         }
     }
 }
 
-impl<'a> Iterator for EvaluatedArgIterator<'a> {
-    type Item = (&'a Argument, &'a Variant);
+// ========================================================
+// ParameterValues
+// ========================================================
+
+pub struct ParameterValues<'a> {
+    context: &'a Context,
+    parameters: &'a Arguments,
+    parameters_iterator: std::collections::vec_deque::Iter<'a, Argument>,
+}
+
+impl<'a> ParameterValues<'a> {
+    pub fn new(context: &'a Context) -> Self {
+        ParameterValues {
+            context,
+            parameters: context.parameters(),
+            parameters_iterator: context.parameters().iter(),
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<&'a Variant> {
+        self.parameters
+            .get_at(index)
+            .map(|a| self.context.evaluate_parameter(a))
+    }
+}
+
+impl<'a> Iterator for ParameterValues<'a> {
+    type Item = &'a Variant;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.args_iterator.next() {
+        match self.parameters_iterator.next() {
             Some(arg) => {
-                let value = self.context.evaluate_arg(arg);
-                Some((arg, value))
+                let value = self.context.evaluate_parameter(arg);
+                Some(value)
             }
             None => None,
         }

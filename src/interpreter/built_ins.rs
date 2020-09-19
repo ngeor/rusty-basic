@@ -49,7 +49,12 @@ mod chr {
     // CHR$(ascii-code%) returns the text representation of the given ascii code
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let i: i32 = interpreter.context().evaluate_first_parameter().into();
+        let i: i32 = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .into();
         let mut s: String = String::new();
         s.push((i as u8) as char);
         interpreter.set_variable(BuiltInFunction::Chr, s);
@@ -78,8 +83,8 @@ mod close {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let file_handles: Vec<FileHandle> = interpreter
             .context()
-            .evaluated_parameters()
-            .map(|(_, v)| v.into())
+            .parameter_values()
+            .map(|v| v.into())
             .collect();
         for file_handle in file_handles {
             interpreter.file_manager.close(&file_handle);
@@ -93,7 +98,12 @@ mod environ_fn {
     // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let env_var_name: &String = interpreter.context().evaluate_first_parameter().as_ref();
+        let env_var_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .as_ref();
         let result = interpreter.stdlib.get_env_var(env_var_name);
         interpreter.set_variable(BuiltInFunction::Environ, result);
         Ok(())
@@ -142,7 +152,12 @@ mod environ_sub {
     // Parameter must be in the form of name=value or name value (TODO support the latter)
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let s: &String = interpreter.context().evaluate_first_parameter().as_ref();
+        let s: &String = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .as_ref();
         let parts: Vec<&str> = s.split("=").collect();
         if parts.len() != 2 {
             Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()
@@ -184,14 +199,24 @@ mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handle: FileHandle = interpreter.context().evaluate_first_parameter().into();
-        let is_eof: bool = interpreter
-            .file_manager
-            .eof(&file_handle)
-            .map_err(|e| e.into())
-            .with_err_no_pos()?;
-        interpreter.set_variable(BuiltInFunction::Eof, is_eof);
-        Ok(())
+        let file_handle_number: i32 = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .into();
+        if file_handle_number >= 1 && file_handle_number <= 255 {
+            let file_handle = FileHandle::from(file_handle_number as u8);
+            let is_eof: bool = interpreter
+                .file_manager
+                .eof(&file_handle)
+                .map_err(|e| e.into())
+                .with_err_no_pos()?;
+            interpreter.set_variable(BuiltInFunction::Eof, is_eof);
+            Ok(())
+        } else {
+            Err(QError::BadFileNameOrNumber).with_err_no_pos()
+        }
     }
 }
 
@@ -427,17 +452,17 @@ mod instr {
 
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let a: Variant = interpreter.pop_unnamed_val().unwrap();
-        let b: Variant = interpreter.pop_unnamed_val().unwrap();
-        let result: i32 = match interpreter.pop_unnamed_val() {
-            Some(c) => do_instr(a.demand_integer(), b.demand_string(), c.demand_string())?,
-            None => do_instr(1, a.demand_string(), b.demand_string())?,
+        let a: &Variant = interpreter.context().parameter_values().get(0).unwrap();
+        let b: &Variant = interpreter.context().parameter_values().get(1).unwrap();
+        let result: i32 = match interpreter.context().parameter_values().get(2) {
+            Some(c) => do_instr(a.into(), b.as_ref(), c.as_ref())?,
+            None => do_instr(1, a.as_ref(), b.as_ref())?,
         };
         interpreter.set_variable(BuiltInFunction::InStr, result);
         Ok(())
     }
 
-    fn do_instr(start: i32, hay: String, needle: String) -> Result<i32, QErrorNode> {
+    fn do_instr(start: i32, hay: &String, needle: &String) -> Result<i32, QErrorNode> {
         if start <= 0 {
             Err(QError::IllegalFunctionCall).with_err_no_pos()
         } else if hay.is_empty() {
@@ -502,7 +527,12 @@ mod kill {
 
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_name = interpreter.pop_string();
+        let file_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(0)
+            .unwrap()
+            .as_ref();
         std::fs::remove_file(file_name)
             .map_err(|e| e.into())
             .with_err_no_pos()
@@ -544,7 +574,7 @@ mod len {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v = interpreter.pop_unnamed_val().unwrap();
+        let v: &Variant = interpreter.context().parameter_values().next().unwrap();
         let len: i32 = match v {
             Variant::VSingle(_) => 4,
             Variant::VDouble(_) => 8,
@@ -816,15 +846,29 @@ mod mid {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let s: String = interpreter.pop_string();
-        let start: i32 = interpreter.pop_integer();
-        let length: Option<i32> = interpreter.pop_unnamed_val().map(|v| v.demand_integer());
+        let s: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(0)
+            .unwrap()
+            .as_ref();
+        let start: i32 = interpreter
+            .context()
+            .parameter_values()
+            .get(1)
+            .unwrap()
+            .into();
+        let length: Option<i32> = interpreter
+            .context()
+            .parameter_values()
+            .get(2)
+            .map(|v| v.into());
         let result: String = do_mid(s, start, length)?;
         interpreter.set_variable(BuiltInFunction::Mid, result);
         Ok(())
     }
 
-    fn do_mid(s: String, start: i32, opt_length: Option<i32>) -> Result<String, QErrorNode> {
+    fn do_mid(s: &String, start: i32, opt_length: Option<i32>) -> Result<String, QErrorNode> {
         if start <= 0 {
             Err(QError::IllegalFunctionCall).with_err_no_pos()
         } else {
@@ -893,8 +937,18 @@ mod name {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let old_file_name = interpreter.pop_string();
-        let new_file_name = interpreter.pop_string();
+        let old_file_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(0)
+            .unwrap()
+            .as_ref();
+        let new_file_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(1)
+            .unwrap()
+            .as_ref();
         std::fs::rename(old_file_name, new_file_name)
             .map_err(|e| e.into())
             .with_err_no_pos()
@@ -959,13 +1013,26 @@ mod open {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_name = interpreter.pop_string();
-        let file_mode: FileMode = interpreter.pop_integer().into();
-        let file_access: FileAccess = interpreter.pop_integer().into();
-        let file_handle = interpreter.pop_file_handle().with_err_no_pos()?;
+        let file_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(0)
+            .unwrap()
+            .as_ref();
+        let file_mode: FileMode =
+            i32::from(interpreter.context().parameter_values().get(1).unwrap()).into();
+        let file_access: FileAccess =
+            i32::from(interpreter.context().parameter_values().get(2).unwrap()).into();
+        let file_handle: FileHandle = interpreter
+            .context()
+            .parameter_values()
+            .get(3)
+            .unwrap()
+            .into();
+        let f_copy = file_name.clone(); // TODO this was done to break the double borrow
         interpreter
             .file_manager
-            .open(file_handle, file_name.as_ref(), file_mode, file_access)
+            .open(file_handle, f_copy.as_ref(), file_mode, file_access)
             .map_err(|e| e.into())
             .with_err_no_pos()
     }
@@ -1123,7 +1190,7 @@ mod str_fn {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v = interpreter.pop_unnamed_val().unwrap();
+        let v: &Variant = interpreter.context().parameter_values().next().unwrap();
         let result = match v {
             Variant::VSingle(f) => format!("{}", f),
             Variant::VDouble(f) => format!("{}", f),
@@ -1172,18 +1239,15 @@ mod val {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v = interpreter.pop_unnamed_val().unwrap();
+        let v: &String = interpreter.context().parameter_values().next().unwrap().as_ref();
+        let result: Variant = val(v).with_err_no_pos()?;
         interpreter.set_variable(
             BuiltInFunction::Val,
-            match v {
-                Variant::VString(s) => val(s).with_err_no_pos()?,
-                _ => panic!("unexpected arg to VAL"),
-            },
-        );
+            result);
         Ok(())
     }
 
-    fn val(s: String) -> Result<Variant, QError> {
+    fn val(s: &String) -> Result<Variant, QError> {
         let mut is_positive = true;
         let mut value: f64 = 0.0;
         let mut frac_power: i32 = 0;

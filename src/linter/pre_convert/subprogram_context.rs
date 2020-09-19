@@ -3,7 +3,6 @@ use crate::common::{
     AtLocation, CaseInsensitiveString, Locatable, Location, PatchErrPos, QError, QErrorNode,
     ToErrorEnvelopeNoPos, ToLocatableError,
 };
-use crate::linter::casting::cast;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::{
@@ -115,7 +114,7 @@ fn global_const(
             global_constants.insert(b.clone(), v);
         }
         Name::Qualified { name, qualifier } => {
-            let casted = cast(v, *qualifier).with_err_at(pos)?;
+            let casted = v.cast(*qualifier).with_err_at(pos)?;
             global_constants.insert(name.clone(), casted);
         }
     }

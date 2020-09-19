@@ -5,7 +5,6 @@ use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
-use crate::linter::casting::cast;
 use crate::linter::{HasTypeDefinition, ResolvedDeclaredName, UserDefinedTypes};
 use crate::parser::{HasQualifier, TypeQualifier};
 use crate::variant::Variant;
@@ -153,13 +152,12 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
             Instruction::Cast(q) => {
                 let v = self.get_a();
-                let casted = crate::linter::casting::cast(v, *q).with_err_at(pos)?;
+                let casted = v.cast(*q).with_err_at(pos)?;
                 self.set_a(casted);
             }
             Instruction::FixLength(l) => {
                 let v = self.get_a();
-                let casted = crate::linter::casting::cast(v, TypeQualifier::DollarString)
-                    .with_err_at(pos)?;
+                let casted = v.cast(TypeQualifier::DollarString).with_err_at(pos)?;
                 self.set_a(match casted {
                     Variant::VString(s) => {
                         let len: usize = *l as usize;
@@ -284,13 +282,25 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.set_a(is_true.into());
             }
             Instruction::And => {
-                let a = cast(self.get_a(), TypeQualifier::PercentInteger).with_err_at(pos)?;
-                let b = cast(self.get_b(), TypeQualifier::PercentInteger).with_err_at(pos)?;
+                let a = self
+                    .get_a()
+                    .cast(TypeQualifier::PercentInteger)
+                    .with_err_at(pos)?;
+                let b = self
+                    .get_b()
+                    .cast(TypeQualifier::PercentInteger)
+                    .with_err_at(pos)?;
                 self.set_a(a.and(b).with_err_at(pos)?);
             }
             Instruction::Or => {
-                let a = cast(self.get_a(), TypeQualifier::PercentInteger).with_err_at(pos)?;
-                let b = cast(self.get_b(), TypeQualifier::PercentInteger).with_err_at(pos)?;
+                let a = self
+                    .get_a()
+                    .cast(TypeQualifier::PercentInteger)
+                    .with_err_at(pos)?;
+                let b = self
+                    .get_b()
+                    .cast(TypeQualifier::PercentInteger)
+                    .with_err_at(pos)?;
                 self.set_a(a.or(b).with_err_at(pos)?);
             }
             Instruction::JumpIfFalse(resolved_idx) => {

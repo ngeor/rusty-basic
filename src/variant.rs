@@ -1,3 +1,4 @@
+mod casting;
 mod fit;
 mod user_defined_type_value;
 mod variant;

@@ -1,6 +1,6 @@
+use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::post_conversion_linter::PostConversionLinter;
 use crate::linter::types::{Expression, ExpressionNode, HasTypeDefinition, TypeDefinition};
 use crate::parser::TypeQualifier;
 

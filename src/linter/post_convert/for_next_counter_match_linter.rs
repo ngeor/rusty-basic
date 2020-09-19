@@ -1,6 +1,6 @@
 use super::post_conversion_linter::*;
-use super::types::*;
 use crate::common::*;
+use crate::linter::types::*;
 
 pub struct ForNextCounterMatch;
 

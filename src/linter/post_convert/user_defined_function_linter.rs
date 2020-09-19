@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
-use super::subprogram_context::FunctionMap;
-use super::types::*;
 use crate::common::*;
+use crate::linter::pre_convert::subprogram_context::FunctionMap;
+use crate::linter::types::*;
 use crate::parser::{BareName, HasQualifier, QualifiedName, TypeQualifier};
 
 pub struct UserDefinedFunctionLinter<'a> {

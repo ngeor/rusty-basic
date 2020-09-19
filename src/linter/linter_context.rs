@@ -11,7 +11,6 @@ use crate::parser::{
     BareName, DeclaredName, Name, QualifiedName, TypeQualifier, WithTypeQualifier,
 };
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 
 /*
 
@@ -64,11 +63,11 @@ enum SubProgramType {
 //
 
 #[derive(Debug)]
-pub struct LinterContext {
-    parent: Option<Box<LinterContext>>,
+pub struct LinterContext<'a> {
+    parent: Option<Box<LinterContext<'a>>>,
     sub_program: Option<(BareName, SubProgramType)>,
     names: HashMap<BareName, ResolvedTypeDefinitions>,
-    user_defined_types: Rc<UserDefinedTypes>,
+    user_defined_types: &'a UserDefinedTypes,
 
     /// Collects names of variables and parameters whose type is a user defined type.
     /// These names cannot exist elsewhere as a prefix of a dotted variable, constant, parameter, function or sub name,
@@ -78,8 +77,8 @@ pub struct LinterContext {
     pub names_without_dot: Option<HashSet<BareName>>,
 }
 
-impl LinterContext {
-    pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
+impl<'a> LinterContext<'a> {
+    pub fn new(user_defined_types: &'a UserDefinedTypes) -> Self {
         Self {
             parent: None,
             sub_program: None,
@@ -593,7 +592,7 @@ impl LinterContext {
             parent: None,
             sub_program: Some((name.clone(), SubProgramType::Function)),
             names: HashMap::new(),
-            user_defined_types: Rc::clone(&self.user_defined_types),
+            user_defined_types: &self.user_defined_types,
             names_without_dot: None,
         };
         result.parent = Some(Box::new(self));
@@ -605,7 +604,7 @@ impl LinterContext {
             parent: None,
             sub_program: Some((name.clone(), SubProgramType::Sub)),
             names: HashMap::new(),
-            user_defined_types: Rc::clone(&self.user_defined_types),
+            user_defined_types: &self.user_defined_types,
             names_without_dot: None,
         };
         result.parent = Some(Box::new(self));

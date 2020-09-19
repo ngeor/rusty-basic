@@ -1,57 +1,17 @@
-use super::dots_linter::DotsLinter;
-use super::expression_reducer::ExpressionReducer;
-use super::post_conversion_linter::PostConversionLinter;
-use super::subprogram_context::{FunctionMap, SubMap};
 use super::types::*;
 use crate::common::*;
-use crate::linter::converter;
+use crate::linter::converter::convert;
+use crate::linter::post_convert::post_convert;
+use crate::linter::pre_convert::subprogram_context::parse_subprograms_and_types;
 use crate::parser;
-use std::collections::HashSet;
 
 pub fn lint(program: parser::ProgramNode) -> Result<(ProgramNode, UserDefinedTypes), QErrorNode> {
+    // first pass, get user defined types and functions/subs
+    let (functions, subs, user_defined_types) = parse_subprograms_and_types(&program)?;
     // convert to fully typed
-    let (result, functions, subs, user_defined_types, names_without_dot) =
-        converter::convert(program)?;
-    // lint
-    apply_linters(&result, &functions, &subs, &names_without_dot)?;
-    // reduce
-    let reducer = super::undefined_function_reducer::UndefinedFunctionReducer {
-        functions: &functions,
-    };
-    reducer
-        .visit_program(result)
-        .map(|p| (p, user_defined_types))
-}
-
-fn apply_linters(
-    result: &ProgramNode,
-    functions: &FunctionMap,
-    subs: &SubMap,
-    names_without_dot: &HashSet<CaseInsensitiveString>,
-) -> Result<(), QErrorNode> {
-    let linter = super::for_next_counter_match::ForNextCounterMatch {};
-    linter.visit_program(&result)?;
-
-    let linter = DotsLinter { names_without_dot };
-    linter.visit_program(&result)?;
-
-    let linter = super::built_in_linter::BuiltInLinter {};
-    linter.visit_program(&result)?;
-
-    let linter = super::user_defined_function_linter::UserDefinedFunctionLinter { functions };
-    linter.visit_program(&result)?;
-
-    let linter = super::user_defined_sub_linter::UserDefinedSubLinter { subs };
-    linter.visit_program(&result)?;
-
-    let linter = super::select_case_linter::SelectCaseLinter {};
-    linter.visit_program(&result)?;
-
-    let mut linter = super::label_linter::LabelLinter::new();
-    linter.visit_program(&result)?;
-    linter.switch_to_validating_mode();
-    linter.visit_program(&result)?;
-    Ok(())
+    let (result, names_without_dot) = convert(program, &functions, &subs, &user_defined_types)?;
+    // lint and reduce
+    post_convert(result, &functions, &subs, &names_without_dot).map(|p| (p, user_defined_types))
 }
 
 #[cfg(test)]

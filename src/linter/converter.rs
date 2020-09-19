@@ -1,8 +1,8 @@
-use super::subprogram_context::{FirstPassOuter, FunctionMap, SubMap};
 use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::linter::linter_context::LinterContext;
+use crate::linter::pre_convert::subprogram_context::{FunctionMap, SubMap};
 use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser;
@@ -12,7 +12,19 @@ use crate::parser::{
 };
 use std::collections::HashSet;
 use std::convert::TryInto;
-use std::rc::Rc;
+
+pub fn convert(
+    program: parser::ProgramNode,
+    f_c: &FunctionMap,
+    s_c: &SubMap,
+    user_defined_types: &UserDefinedTypes,
+) -> Result<(ProgramNode, HashSet<BareName>), QErrorNode> {
+    let mut converter = ConverterImpl::new(user_defined_types, f_c, s_c);
+    let result = converter.convert(program)?;
+    // consume
+    let names_without_dot = converter.consume();
+    Ok((result, names_without_dot))
+}
 
 //
 // Converter trait
@@ -61,27 +73,31 @@ where
 //
 
 #[derive(Debug)]
-struct ConverterImpl {
+struct ConverterImpl<'a> {
     resolver: TypeResolverImpl,
-    context: LinterContext,
-    functions: FunctionMap,
-    subs: SubMap,
-    user_defined_types: Rc<UserDefinedTypes>,
+    context: LinterContext<'a>,
+    functions: &'a FunctionMap,
+    subs: &'a SubMap,
+    user_defined_types: &'a UserDefinedTypes,
 }
 
-impl ConverterImpl {
-    pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
+impl<'a> ConverterImpl<'a> {
+    pub fn new(
+        user_defined_types: &'a UserDefinedTypes,
+        functions: &'a FunctionMap,
+        subs: &'a SubMap,
+    ) -> Self {
         Self {
-            user_defined_types: Rc::clone(&user_defined_types),
+            user_defined_types,
             resolver: TypeResolverImpl::new(),
             context: LinterContext::new(user_defined_types),
-            functions: FunctionMap::new(),
-            subs: SubMap::new(),
+            functions,
+            subs,
         }
     }
 
-    fn take_context(&mut self) -> LinterContext {
-        let tmp = LinterContext::new(Rc::clone(&self.user_defined_types));
+    fn take_context(&mut self) -> LinterContext<'a> {
+        let tmp = LinterContext::new(&self.user_defined_types);
         std::mem::replace(&mut self.context, tmp)
     }
 
@@ -100,12 +116,8 @@ impl ConverterImpl {
         self.context = old.pop_context();
     }
 
-    pub fn consume(self) -> (FunctionMap, SubMap, HashSet<BareName>) {
-        (
-            self.functions,
-            self.subs,
-            self.context.names_without_dot.unwrap(),
-        )
+    pub fn consume(self) -> HashSet<BareName> {
+        self.context.names_without_dot.unwrap()
     }
 
     fn convert_function_implementation(
@@ -445,34 +457,7 @@ impl ConverterImpl {
     }
 }
 
-pub fn convert(
-    program: parser::ProgramNode,
-) -> Result<
-    (
-        ProgramNode,
-        FunctionMap,
-        SubMap,
-        UserDefinedTypes,
-        HashSet<BareName>,
-    ),
-    QErrorNode,
-> {
-    // first pass
-    let mut first_pass = FirstPassOuter::new();
-    first_pass.parse(&program)?;
-    let (f_c, s_c, user_defined_types) = first_pass.into_inner();
-    // second pass
-    let r = Rc::new(user_defined_types);
-    let mut converter = ConverterImpl::new(Rc::clone(&r));
-    converter.functions = f_c;
-    converter.subs = s_c;
-    let result = converter.convert(program)?;
-    // consume
-    let (f, s, names_without_dot) = converter.consume();
-    Ok((result, f, s, Rc::try_unwrap(r).unwrap(), names_without_dot))
-}
-
-impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
+impl<'a> Converter<parser::ProgramNode, ProgramNode> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::ProgramNode) -> Result<ProgramNode, QErrorNode> {
         let mut result: Vec<TopLevelTokenNode> = vec![];
         for top_level_token_node in a.into_iter() {
@@ -492,7 +477,7 @@ impl Converter<parser::ProgramNode, ProgramNode> for ConverterImpl {
 }
 
 // Option because we filter out DefType and UserDefinedType
-impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
+impl<'a> Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::TopLevelToken) -> Result<Option<TopLevelToken>, QErrorNode> {
         match a {
             parser::TopLevelToken::DefType(d) => {
@@ -518,7 +503,7 @@ impl Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterImpl {
     }
 }
 
-impl Converter<parser::Statement, Statement> for ConverterImpl {
+impl<'a> Converter<parser::Statement, Statement> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::Statement) -> Result<Statement, QErrorNode> {
         match a {
             parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
@@ -558,7 +543,7 @@ impl Converter<parser::Statement, Statement> for ConverterImpl {
     }
 }
 
-impl Converter<parser::Expression, Expression> for ConverterImpl {
+impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::Expression) -> Result<Expression, QErrorNode> {
         match a {
             parser::Expression::SingleLiteral(f) => Ok(Expression::SingleLiteral(f)),
@@ -625,7 +610,7 @@ impl Converter<parser::Expression, Expression> for ConverterImpl {
     }
 }
 
-impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
+impl<'a> Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
         Ok(ForLoopNode {
             variable_name: self.temp_convert(a.variable_name)?,
@@ -644,7 +629,7 @@ impl Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl {
     }
 }
 
-impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for ConverterImpl {
+impl<'a> Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for ConverterImpl<'a> {
     fn convert(
         &mut self,
         a: parser::ConditionalBlockNode,
@@ -656,7 +641,7 @@ impl Converter<parser::ConditionalBlockNode, ConditionalBlockNode> for Converter
     }
 }
 
-impl Converter<parser::IfBlockNode, IfBlockNode> for ConverterImpl {
+impl<'a> Converter<parser::IfBlockNode, IfBlockNode> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::IfBlockNode) -> Result<IfBlockNode, QErrorNode> {
         Ok(IfBlockNode {
             if_block: self.convert(a.if_block)?,
@@ -666,7 +651,7 @@ impl Converter<parser::IfBlockNode, IfBlockNode> for ConverterImpl {
     }
 }
 
-impl Converter<parser::SelectCaseNode, SelectCaseNode> for ConverterImpl {
+impl<'a> Converter<parser::SelectCaseNode, SelectCaseNode> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::SelectCaseNode) -> Result<SelectCaseNode, QErrorNode> {
         Ok(SelectCaseNode {
             expr: self.convert(a.expr)?,
@@ -676,7 +661,7 @@ impl Converter<parser::SelectCaseNode, SelectCaseNode> for ConverterImpl {
     }
 }
 
-impl Converter<parser::CaseBlockNode, CaseBlockNode> for ConverterImpl {
+impl<'a> Converter<parser::CaseBlockNode, CaseBlockNode> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::CaseBlockNode) -> Result<CaseBlockNode, QErrorNode> {
         Ok(CaseBlockNode {
             expr: self.convert(a.expr)?,
@@ -685,7 +670,7 @@ impl Converter<parser::CaseBlockNode, CaseBlockNode> for ConverterImpl {
     }
 }
 
-impl Converter<parser::CaseExpression, CaseExpression> for ConverterImpl {
+impl<'a> Converter<parser::CaseExpression, CaseExpression> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::CaseExpression) -> Result<CaseExpression, QErrorNode> {
         match a {
             parser::CaseExpression::Simple(e) => self.convert(e).map(|x| CaseExpression::Simple(x)),

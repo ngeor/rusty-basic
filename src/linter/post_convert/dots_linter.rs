@@ -1,6 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
-use super::types::*;
 use crate::common::*;
+use crate::linter::types::*;
 use crate::parser::{BareName, BareNameNode, QualifiedName, QualifiedNameNode};
 use std::collections::HashSet;
 

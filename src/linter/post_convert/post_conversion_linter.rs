@@ -1,6 +1,6 @@
-use super::types::*;
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
+use crate::linter::types::*;
 use crate::parser::QualifiedNameNode;
 
 /// Invoked after the conversion to fully typed program.

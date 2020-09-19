@@ -1,7 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
 use crate::common::*;
-use crate::linter::pre_convert::subprogram_context::SubMap;
 use crate::linter::types::*;
 
 pub struct UserDefinedSubLinter<'a> {

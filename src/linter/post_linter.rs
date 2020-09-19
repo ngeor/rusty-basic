@@ -10,13 +10,12 @@ pub mod user_defined_function_linter;
 pub mod user_defined_sub_linter;
 
 use crate::common::{CaseInsensitiveString, QErrorNode};
-use crate::linter::post_convert::expression_reducer::ExpressionReducer;
-use crate::linter::post_convert::post_conversion_linter::PostConversionLinter;
-use crate::linter::pre_convert::subprogram_context::{FunctionMap, SubMap};
-use crate::linter::types::ProgramNode;
+use crate::linter::post_linter::expression_reducer::ExpressionReducer;
+use crate::linter::post_linter::post_conversion_linter::PostConversionLinter;
+use crate::linter::types::{FunctionMap, ProgramNode, SubMap};
 use std::collections::HashSet;
 
-pub fn post_convert(
+pub fn post_linter(
     result: ProgramNode,
     functions: &FunctionMap,
     subs: &SubMap,

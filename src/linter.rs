@@ -1,9 +1,7 @@
-mod convert;
 mod converter;
 mod linter;
-mod linter_context;
-mod post_convert;
-mod pre_convert;
+mod post_linter;
+mod pre_linter;
 mod type_resolver;
 mod type_resolver_impl;
 mod types;

@@ -6,7 +6,8 @@ use crate::common::{
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::{
-    ElementType, ParamTypeDefinition, ParamTypes, UserDefinedType, UserDefinedTypes,
+    ElementType, FunctionMap, FunctionSignature, ParamTypeDefinition, ParamTypes, SubMap,
+    SubSignature, UserDefinedType, UserDefinedTypes,
 };
 use crate::parser;
 use crate::parser::{
@@ -394,9 +395,6 @@ impl<T> SubProgramContext<T> {
     }
 }
 
-pub type FunctionSignature = (TypeQualifier, ParamTypes);
-pub type FunctionSignatureNode = Locatable<FunctionSignature>;
-pub type FunctionMap = HashMap<CaseInsensitiveString, FunctionSignatureNode>;
 type FunctionContext = SubProgramContext<FunctionSignature>;
 
 impl FunctionContext {
@@ -514,9 +512,6 @@ impl FunctionContext {
     }
 }
 
-pub type SubSignature = ParamTypes;
-pub type SubSignatureNode = Locatable<SubSignature>;
-pub type SubMap = HashMap<CaseInsensitiveString, SubSignatureNode>;
 type SubContext = SubProgramContext<SubSignature>;
 
 impl SubContext {

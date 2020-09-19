@@ -1,5 +1,7 @@
 use super::{HasTypeDefinition, TypeDefinition, UserDefinedName};
+use crate::common::Locatable;
 use crate::parser::{BareName, QualifiedName, TypeQualifier};
+use std::collections::HashMap;
 
 // ========================================================
 // ResolvedParamName
@@ -62,3 +64,15 @@ impl PartialEq<TypeDefinition> for ParamTypeDefinition {
         }
     }
 }
+
+// ========================================================
+// SubMap, FunctionMap
+// ========================================================
+
+pub type SubSignature = ParamTypes;
+pub type SubSignatureNode = Locatable<SubSignature>;
+pub type SubMap = HashMap<BareName, SubSignatureNode>;
+
+pub type FunctionSignature = (TypeQualifier, ParamTypes);
+pub type FunctionSignatureNode = Locatable<FunctionSignature>;
+pub type FunctionMap = HashMap<BareName, FunctionSignatureNode>;

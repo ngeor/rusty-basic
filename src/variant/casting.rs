@@ -3,6 +3,10 @@ use crate::parser::TypeQualifier;
 use crate::variant;
 use crate::variant::Variant;
 
+// ========================================================
+// variant casting
+// ========================================================
+
 // https://doc.rust-lang.org/nomicon/casts.html
 // 1. casting from an f32 to an f64 is perfect and lossless
 // 2. casting from a float to an integer will round the float towards zero
@@ -126,46 +130,51 @@ impl QBNumberCast<i32> for i64 {
     }
 }
 
-pub fn cast(value: Variant, target_type: TypeQualifier) -> Result<Variant, QError> {
-    match value {
-        Variant::VSingle(f) => match target_type {
-            TypeQualifier::BangSingle => Ok(value),
-            TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
-            TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
-            TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
-            _ => Err(QError::TypeMismatch),
-        },
-        Variant::VDouble(f) => match target_type {
-            TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
-            TypeQualifier::HashDouble => Ok(value),
-            TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
-            TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
-            _ => Err(QError::TypeMismatch),
-        },
-        Variant::VString(_) => match target_type {
-            TypeQualifier::DollarString => Ok(value),
-            _ => Err(QError::TypeMismatch),
-        },
-        Variant::VInteger(f) => match target_type {
-            TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
-            TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
-            TypeQualifier::PercentInteger => Ok(value),
-            TypeQualifier::AmpersandLong => Ok(Variant::VLong(f.try_cast()?)),
-            _ => Err(QError::TypeMismatch),
-        },
-        Variant::VLong(f) => match target_type {
-            TypeQualifier::BangSingle => Ok(Variant::VSingle(f.try_cast()?)),
-            TypeQualifier::HashDouble => Ok(Variant::VDouble(f.try_cast()?)),
-            TypeQualifier::PercentInteger => Ok(Variant::VInteger(f.try_cast()?)),
-            TypeQualifier::AmpersandLong => Ok(value),
-            _ => Err(QError::TypeMismatch),
-        },
-        Variant::VFileHandle(_) => match target_type {
-            TypeQualifier::FileHandle => Ok(value),
-            _ => Err(QError::TypeMismatch),
-        },
+impl Variant {
+    pub fn cast(self, target_type: TypeQualifier) -> Result<Self, QError> {
+        match self {
+            Self::VSingle(f) => match target_type {
+                TypeQualifier::BangSingle => Ok(self),
+                TypeQualifier::HashDouble => Ok(Self::VDouble(f.try_cast()?)),
+                TypeQualifier::PercentInteger => Ok(Self::VInteger(f.try_cast()?)),
+                TypeQualifier::AmpersandLong => Ok(Self::VLong(f.try_cast()?)),
+                _ => Err(QError::TypeMismatch),
+            },
+            Self::VDouble(f) => match target_type {
+                TypeQualifier::BangSingle => Ok(Self::VSingle(f.try_cast()?)),
+                TypeQualifier::HashDouble => Ok(self),
+                TypeQualifier::PercentInteger => Ok(Self::VInteger(f.try_cast()?)),
+                TypeQualifier::AmpersandLong => Ok(Self::VLong(f.try_cast()?)),
+                _ => Err(QError::TypeMismatch),
+            },
+            Self::VString(_) => match target_type {
+                TypeQualifier::DollarString => Ok(self),
+                _ => Err(QError::TypeMismatch),
+            },
+            Self::VInteger(f) => match target_type {
+                TypeQualifier::BangSingle => Ok(Self::VSingle(f.try_cast()?)),
+                TypeQualifier::HashDouble => Ok(Self::VDouble(f.try_cast()?)),
+                TypeQualifier::PercentInteger => Ok(self),
+                TypeQualifier::AmpersandLong => Ok(Self::VLong(f.try_cast()?)),
+                _ => Err(QError::TypeMismatch),
+            },
+            Self::VLong(f) => match target_type {
+                TypeQualifier::BangSingle => Ok(Self::VSingle(f.try_cast()?)),
+                TypeQualifier::HashDouble => Ok(Self::VDouble(f.try_cast()?)),
+                TypeQualifier::PercentInteger => Ok(Self::VInteger(f.try_cast()?)),
+                TypeQualifier::AmpersandLong => Ok(self),
+                _ => Err(QError::TypeMismatch),
+            },
+            Self::VFileHandle(_) | Self::VUserDefined(_) => Err(QError::TypeMismatch),
+        }
     }
 }
+
+// TODO fix all unimplemented
+// TODO fix all panic
+// TODO fix all unwrap
+// TODO fix all try_unwrap
+// TODO remove all std::rc and std::cell
 
 #[cfg(test)]
 mod tests {
@@ -177,7 +186,9 @@ mod tests {
         #[test]
         fn to_float() {
             assert_eq!(
-                cast(Variant::from(1.0_f32), TypeQualifier::BangSingle).unwrap(),
+                Variant::from(1.0_f32)
+                    .cast(TypeQualifier::BangSingle)
+                    .unwrap(),
                 Variant::from(1.0_f32)
             );
         }
@@ -185,20 +196,26 @@ mod tests {
         #[test]
         fn to_double() {
             assert_eq!(
-                cast(Variant::from(1.0_f32), TypeQualifier::HashDouble).unwrap(),
+                Variant::from(1.0_f32)
+                    .cast(TypeQualifier::HashDouble)
+                    .unwrap(),
                 Variant::from(1.0)
             );
         }
 
         #[test]
         fn to_string() {
-            cast(Variant::from(1.0_f32), TypeQualifier::DollarString).expect_err("Type mismatch");
+            Variant::from(1.0_f32)
+                .cast(TypeQualifier::DollarString)
+                .expect_err("Type mismatch");
         }
 
         #[test]
         fn to_integer() {
             assert_eq!(
-                cast(Variant::from(1.0_f32), TypeQualifier::PercentInteger).unwrap(),
+                Variant::from(1.0_f32)
+                    .cast(TypeQualifier::PercentInteger)
+                    .unwrap(),
                 Variant::from(1)
             );
         }
@@ -206,7 +223,9 @@ mod tests {
         #[test]
         fn to_long() {
             assert_eq!(
-                cast(Variant::from(1.0_f32), TypeQualifier::AmpersandLong).unwrap(),
+                Variant::from(1.0_f32)
+                    .cast(TypeQualifier::AmpersandLong)
+                    .unwrap(),
                 Variant::from(1_i64)
             );
         }
@@ -218,7 +237,7 @@ mod tests {
         #[test]
         fn to_float() {
             assert_eq!(
-                cast(Variant::from(1.0), TypeQualifier::BangSingle).unwrap(),
+                Variant::from(1.0).cast(TypeQualifier::BangSingle).unwrap(),
                 Variant::from(1.0_f32)
             );
         }
@@ -226,20 +245,24 @@ mod tests {
         #[test]
         fn to_double() {
             assert_eq!(
-                cast(Variant::from(1.0), TypeQualifier::HashDouble).unwrap(),
+                Variant::from(1.0).cast(TypeQualifier::HashDouble).unwrap(),
                 Variant::from(1.0)
             );
         }
 
         #[test]
         fn to_string() {
-            cast(Variant::from(1.0), TypeQualifier::DollarString).expect_err("Type mismatch");
+            Variant::from(1.0)
+                .cast(TypeQualifier::DollarString)
+                .expect_err("Type mismatch");
         }
 
         #[test]
         fn to_integer() {
             assert_eq!(
-                cast(Variant::from(1.0), TypeQualifier::PercentInteger).unwrap(),
+                Variant::from(1.0)
+                    .cast(TypeQualifier::PercentInteger)
+                    .unwrap(),
                 Variant::from(1)
             );
         }
@@ -247,7 +270,9 @@ mod tests {
         #[test]
         fn to_long() {
             assert_eq!(
-                cast(Variant::from(1.0), TypeQualifier::AmpersandLong).unwrap(),
+                Variant::from(1.0)
+                    .cast(TypeQualifier::AmpersandLong)
+                    .unwrap(),
                 Variant::from(1_i64)
             );
         }
@@ -258,30 +283,40 @@ mod tests {
 
         #[test]
         fn to_float() {
-            cast(Variant::from("hello"), TypeQualifier::BangSingle).expect_err("Type mismatch");
+            Variant::from("hello")
+                .cast(TypeQualifier::BangSingle)
+                .expect_err("Type mismatch");
         }
 
         #[test]
         fn to_double() {
-            cast(Variant::from("hello"), TypeQualifier::HashDouble).expect_err("Type mismatch");
+            Variant::from("hello")
+                .cast(TypeQualifier::HashDouble)
+                .expect_err("Type mismatch");
         }
 
         #[test]
         fn to_string() {
             assert_eq!(
-                cast(Variant::from("hello"), TypeQualifier::DollarString).unwrap(),
+                Variant::from("hello")
+                    .cast(TypeQualifier::DollarString)
+                    .unwrap(),
                 Variant::from("hello")
             );
         }
 
         #[test]
         fn to_integer() {
-            cast(Variant::from("hello"), TypeQualifier::PercentInteger).expect_err("Type mismatch");
+            Variant::from("hello")
+                .cast(TypeQualifier::PercentInteger)
+                .expect_err("Type mismatch");
         }
 
         #[test]
         fn to_long() {
-            cast(Variant::from("hello"), TypeQualifier::AmpersandLong).expect_err("Type mismatch");
+            Variant::from("hello")
+                .cast(TypeQualifier::AmpersandLong)
+                .expect_err("Type mismatch");
         }
     }
 
@@ -291,7 +326,7 @@ mod tests {
         #[test]
         fn to_float() {
             assert_eq!(
-                cast(Variant::from(1), TypeQualifier::BangSingle).unwrap(),
+                Variant::from(1).cast(TypeQualifier::BangSingle).unwrap(),
                 Variant::from(1.0_f32)
             );
         }
@@ -299,20 +334,24 @@ mod tests {
         #[test]
         fn to_double() {
             assert_eq!(
-                cast(Variant::from(1), TypeQualifier::HashDouble).unwrap(),
+                Variant::from(1).cast(TypeQualifier::HashDouble).unwrap(),
                 Variant::from(1.0)
             );
         }
 
         #[test]
         fn to_string() {
-            cast(Variant::from(1), TypeQualifier::DollarString).expect_err("Type mismatch");
+            Variant::from(1)
+                .cast(TypeQualifier::DollarString)
+                .expect_err("Type mismatch");
         }
 
         #[test]
         fn to_integer() {
             assert_eq!(
-                cast(Variant::from(1), TypeQualifier::PercentInteger).unwrap(),
+                Variant::from(1)
+                    .cast(TypeQualifier::PercentInteger)
+                    .unwrap(),
                 Variant::from(1)
             );
         }
@@ -320,7 +359,7 @@ mod tests {
         #[test]
         fn to_long() {
             assert_eq!(
-                cast(Variant::from(1), TypeQualifier::AmpersandLong).unwrap(),
+                Variant::from(1).cast(TypeQualifier::AmpersandLong).unwrap(),
                 Variant::from(1_i64)
             );
         }
@@ -332,7 +371,9 @@ mod tests {
         #[test]
         fn to_float() {
             assert_eq!(
-                cast(Variant::from(1_i64), TypeQualifier::BangSingle).unwrap(),
+                Variant::from(1_i64)
+                    .cast(TypeQualifier::BangSingle)
+                    .unwrap(),
                 Variant::from(1.0_f32)
             );
         }
@@ -340,20 +381,26 @@ mod tests {
         #[test]
         fn to_double() {
             assert_eq!(
-                cast(Variant::from(1_i64), TypeQualifier::HashDouble).unwrap(),
+                Variant::from(1_i64)
+                    .cast(TypeQualifier::HashDouble)
+                    .unwrap(),
                 Variant::from(1.0)
             );
         }
 
         #[test]
         fn to_string() {
-            cast(Variant::from(1_i64), TypeQualifier::DollarString).expect_err("Type mismatch");
+            Variant::from(1_i64)
+                .cast(TypeQualifier::DollarString)
+                .expect_err("Type mismatch");
         }
 
         #[test]
         fn to_integer() {
             assert_eq!(
-                cast(Variant::from(1_i64), TypeQualifier::PercentInteger).unwrap(),
+                Variant::from(1_i64)
+                    .cast(TypeQualifier::PercentInteger)
+                    .unwrap(),
                 Variant::from(1)
             );
         }
@@ -361,7 +408,9 @@ mod tests {
         #[test]
         fn to_long() {
             assert_eq!(
-                cast(Variant::from(1_i64), TypeQualifier::AmpersandLong).unwrap(),
+                Variant::from(1_i64)
+                    .cast(TypeQualifier::AmpersandLong)
+                    .unwrap(),
                 Variant::from(1_i64)
             );
         }

@@ -1,19 +1,15 @@
 use super::post_conversion_linter::PostConversionLinter;
-use super::subprogram_context::FunctionMap;
-use super::types::*;
 use crate::common::*;
+use crate::linter::types::*;
 use crate::parser::{BareName, HasQualifier, QualifiedName, TypeQualifier};
 
 pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,
 }
 
-type ExpressionNodes = Vec<ExpressionNode>;
-type TypeQualifiers = Vec<TypeQualifier>;
-
 pub fn lint_call_args(
-    args: &ExpressionNodes,
-    param_types: &TypeQualifiers,
+    args: &Vec<ExpressionNode>,
+    param_types: &ParamTypes,
 ) -> Result<(), QErrorNode> {
     if args.len() != param_types.len() {
         return err_no_pos(QError::ArgumentCountMismatch);
@@ -21,17 +17,17 @@ pub fn lint_call_args(
 
     for (arg_node, param_type) in args.iter().zip(param_types.iter()) {
         let arg = arg_node.as_ref();
-        let arg_q = arg_node.try_qualifier()?;
         match arg {
             Expression::Variable(_) => {
                 // it's by ref, it needs to match exactly
-                if arg_q != *param_type {
+                let arg_q = arg_node.type_definition();
+                if param_type != &arg_q {
                     return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
                 }
             }
             _ => {
                 // it's by val, casting is allowed
-                if !arg_q.can_cast_to(*param_type) {
+                if !arg.can_cast_to(param_type) {
                     return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
                 }
             }
@@ -48,7 +44,10 @@ impl<'a> UserDefinedFunctionLinter<'a> {
     ) -> Result<(), QErrorNode> {
         let bare_name: &BareName = name.as_ref();
         match self.functions.get(bare_name) {
-            Some((return_type, param_types, _)) => {
+            Some(Locatable {
+                element: (return_type, param_types),
+                ..
+            }) => {
                 if *return_type != name.qualifier() {
                     err_no_pos(QError::TypeMismatch)
                 } else {
@@ -62,9 +61,15 @@ impl<'a> UserDefinedFunctionLinter<'a> {
     fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
-            let arg_q = arg_node.try_qualifier()?;
-            if arg_q == TypeQualifier::DollarString {
-                return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
+            match arg_node.type_definition() {
+                TypeDefinition::BuiltIn(q) => {
+                    if q == TypeQualifier::DollarString {
+                        return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
+                    }
+                }
+                _ => {
+                    return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
+                }
             }
         }
 
@@ -83,7 +88,7 @@ impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
                 }
                 self.visit_function(n, args).patch_err_pos(pos)
             }
-            Expression::BinaryExpression(_, left, right) => {
+            Expression::BinaryExpression(_, left, right, _) => {
                 self.visit_expression(left)?;
                 self.visit_expression(right)
             }

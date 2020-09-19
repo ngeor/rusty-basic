@@ -50,11 +50,11 @@ fn statement_terminator_after_whitespace(ch: char) -> bool {
 
 fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
     is_statement_terminator: fn(char) -> bool,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ArgumentNodes, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNodes, QError>> {
     Box::new(move |reader| {
         reader.read().and_then(|(reader, opt_res)| match opt_res {
             Some(ch) => {
-                let res: Option<ArgumentNodes> = if is_statement_terminator(ch) {
+                let res: Option<ExpressionNodes> = if is_statement_terminator(ch) {
                     // found statement terminator
                     Some(vec![])
                 } else {
@@ -77,7 +77,7 @@ mod tests {
     use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
-        DeclaredName, Expression, Name, Operand, Statement, TopLevelToken, TypeQualifier,
+        DeclaredName, Expression, Name, Operator, Statement, TopLevelToken, TypeQualifier,
     };
 
     #[test]
@@ -233,11 +233,11 @@ mod tests {
                     vec![Statement::SubCall(
                         "ENVIRON".into(),
                         vec![Expression::BinaryExpression(
-                            Operand::Plus,
+                            Operator::Plus,
                             Box::new("N$".as_var_expr(5, 21)),
                             Box::new(
                                 Expression::BinaryExpression(
-                                    Operand::Plus,
+                                    Operator::Plus,
                                     Box::new("=".as_lit_expr(5, 26)),
                                     Box::new("V$".as_var_expr(5, 32))
                                 )

@@ -71,7 +71,7 @@ fn extended_type<T: BufRead + 'static>(
             )),
             Err(_) => {
                 if x.len() > name::MAX_LENGTH {
-                    Err(QError::syntax_error("Identifier too long"))
+                    Err(QError::IdentifierTooLong)
                 } else {
                     Ok(TypeDefinition::UserDefined(x.into()))
                 }

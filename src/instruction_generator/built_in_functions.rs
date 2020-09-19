@@ -13,8 +13,6 @@ impl InstructionGenerator {
         self.generate_push_unnamed_args_instructions(args, pos);
         self.push(Instruction::PushStack, pos);
         self.push(Instruction::BuiltInFunction(function_name), pos);
-
-        self.push(Instruction::PopStack, pos);
-        self.push(Instruction::CopyResultToA, pos);
+        self.push(Instruction::PopStack(Some(function_name.into())), pos);
     }
 }

@@ -1,6 +1,7 @@
 use super::fit::FitToType;
+use super::UserDefinedTypeValue;
 use crate::common::{FileHandle, QError};
-use crate::parser::{HasQualifier, TypeQualifier};
+use crate::parser::TypeQualifier;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -13,6 +14,7 @@ pub enum Variant {
     VInteger(i32),
     VLong(i64),
     VFileHandle(FileHandle),
+    VUserDefined(Box<UserDefinedTypeValue>),
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
@@ -134,6 +136,7 @@ impl Variant {
                 Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(QError::TypeMismatch),
             },
+            Variant::VUserDefined(_) => Err(QError::TypeMismatch),
         }
     }
 
@@ -163,15 +166,16 @@ impl Variant {
                 Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(QError::TypeMismatch),
             },
+            Variant::VUserDefined(_) => Err(QError::TypeMismatch),
         }
     }
 
-    pub fn negate(&self) -> Result<Self, QError> {
+    pub fn negate(self) -> Result<Self, QError> {
         match self {
             Variant::VSingle(n) => Ok(Variant::VSingle(-n)),
             Variant::VDouble(n) => Ok(Variant::VDouble(-n)),
             Variant::VInteger(n) => {
-                if *n <= MIN_INTEGER {
+                if n <= MIN_INTEGER {
                     // prevent converting -32768 to 32768
                     Err(QError::Overflow)
                 } else {
@@ -179,7 +183,7 @@ impl Variant {
                 }
             }
             Variant::VLong(n) => {
-                if *n <= MIN_LONG {
+                if n <= MIN_LONG {
                     Err(QError::Overflow)
                 } else {
                     Ok(Variant::VLong(-n))
@@ -189,7 +193,7 @@ impl Variant {
         }
     }
 
-    pub fn unary_not(&self) -> Result<Self, QError> {
+    pub fn unary_not(self) -> Result<Self, QError> {
         match self {
             Variant::VSingle(f) => Ok(Variant::VSingle(-f.round() - 1.0)),
             Variant::VDouble(d) => Ok(Variant::VDouble(-d.round() - 1.0)),
@@ -346,46 +350,6 @@ impl Variant {
             _ => Err(QError::TypeMismatch),
         }
     }
-
-    pub fn default_variant(type_qualifier: TypeQualifier) -> Variant {
-        match type_qualifier {
-            TypeQualifier::BangSingle => Variant::VSingle(0.0),
-            TypeQualifier::HashDouble => Variant::VDouble(0.0),
-            TypeQualifier::DollarString => Variant::VString(String::new()),
-            TypeQualifier::PercentInteger => Variant::VInteger(0),
-            TypeQualifier::AmpersandLong => Variant::VLong(0),
-            TypeQualifier::FileHandle => Variant::VFileHandle(FileHandle::default()),
-        }
-    }
-
-    /// Demands that the variant holds an integer and returns the integer value.
-    /// Panics if the variant is not an integer.
-    pub fn demand_integer(self) -> i32 {
-        match self {
-            Variant::VInteger(v) => v,
-            _ => panic!("not an integer variant"),
-        }
-    }
-
-    pub fn demand_string(self) -> String {
-        match self {
-            Variant::VString(s) => s,
-            _ => panic!("not a string variant"),
-        }
-    }
-}
-
-impl HasQualifier for Variant {
-    fn qualifier(&self) -> TypeQualifier {
-        match self {
-            Variant::VSingle(_) => TypeQualifier::BangSingle,
-            Variant::VDouble(_) => TypeQualifier::HashDouble,
-            Variant::VString(_) => TypeQualifier::DollarString,
-            Variant::VInteger(_) => TypeQualifier::PercentInteger,
-            Variant::VLong(_) => TypeQualifier::AmpersandLong,
-            Variant::VFileHandle(_) => TypeQualifier::FileHandle,
-        }
-    }
 }
 
 impl PartialEq for Variant {
@@ -539,6 +503,53 @@ fn or_bits(a: [bool; INT_BITS], b: [bool; INT_BITS]) -> [bool; INT_BITS] {
         c[i] = a[i] || b[i];
     }
     c
+}
+
+// ========================================================
+// Creating the default variant
+// ========================================================
+
+impl From<TypeQualifier> for Variant {
+    fn from(type_qualifier: TypeQualifier) -> Self {
+        match type_qualifier {
+            TypeQualifier::BangSingle => Self::VSingle(0.0),
+            TypeQualifier::HashDouble => Self::VDouble(0.0),
+            TypeQualifier::DollarString => Self::VString(String::new()),
+            TypeQualifier::PercentInteger => Self::VInteger(0),
+            TypeQualifier::AmpersandLong => Self::VLong(0),
+        }
+    }
+}
+
+// ========================================================
+// Convert from Variant to standard types
+// ========================================================
+
+impl AsRef<String> for Variant {
+    fn as_ref(&self) -> &String {
+        match self {
+            Variant::VString(s) => s,
+            _ => panic!("Variant does not hold a string"),
+        }
+    }
+}
+
+impl From<&Variant> for i32 {
+    fn from(v: &Variant) -> i32 {
+        match v {
+            Variant::VInteger(i) => *i,
+            _ => panic!("Variant does not hold an integer"),
+        }
+    }
+}
+
+impl From<&Variant> for FileHandle {
+    fn from(v: &Variant) -> FileHandle {
+        match v {
+            Variant::VFileHandle(i) => *i,
+            _ => panic!("Variant does not hold an FileHandle"),
+        }
+    }
 }
 
 #[cfg(test)]

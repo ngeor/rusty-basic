@@ -42,8 +42,7 @@ mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
-        parse_main_str, BareName, ConditionalBlockNode, Expression, Operand, Statement,
-        TopLevelToken,
+        BareName, ConditionalBlockNode, Expression, Operator, Statement, TopLevelToken,
     };
 
     #[test]
@@ -58,7 +57,7 @@ mod tests {
             program,
             Statement::While(ConditionalBlockNode {
                 condition: Expression::BinaryExpression(
-                    Operand::Less,
+                    Operator::Less,
                     Box::new("A".as_var_expr(2, 15)),
                     Box::new(5.as_lit_expr(2, 19))
                 )
@@ -75,7 +74,7 @@ mod tests {
             program,
             Statement::While(ConditionalBlockNode {
                 condition: Expression::BinaryExpression(
-                    Operand::Less,
+                    Operator::Less,
                     Box::new("A".as_var_expr(1, 7)),
                     Box::new(5.as_lit_expr(1, 11))
                 )
@@ -84,7 +83,7 @@ mod tests {
                     Statement::Assignment(
                         "A".into(),
                         Expression::BinaryExpression(
-                            Operand::Plus,
+                            Operator::Plus,
                             Box::new("A".as_var_expr(1, 18)),
                             Box::new(1.as_lit_expr(1, 22))
                         )
@@ -151,7 +150,7 @@ mod tests {
             Statement::While(ConditionalBlockNode {
                 condition: Expression::Parenthesis(Box::new(
                     Expression::BinaryExpression(
-                        Operand::Greater,
+                        Operator::Greater,
                         Box::new("X".as_var_expr(2, 15)),
                         Box::new(0.as_lit_expr(2, 19))
                     )
@@ -172,7 +171,7 @@ mod tests {
             PRINT X WEND
         "#;
         assert_eq!(
-            parse_main_str(input).unwrap_err(),
+            parse_err_node(input),
             QErrorNode::Pos(
                 QError::syntax_error("Expected: end-of-statement"),
                 Location::new(3, 21)
@@ -193,7 +192,7 @@ mod tests {
             program,
             Statement::While(ConditionalBlockNode {
                 condition: Expression::BinaryExpression(
-                    Operand::Less,
+                    Operator::Less,
                     Box::new("A".as_var_expr(2, 15)),
                     Box::new(5.as_lit_expr(2, 19))
                 )
@@ -202,7 +201,7 @@ mod tests {
                     Statement::Assignment(
                         "A".into(),
                         Expression::BinaryExpression(
-                            Operand::Plus,
+                            Operator::Plus,
                             Box::new("A".as_var_expr(3, 17)),
                             Box::new(1.as_lit_expr(3, 21))
                         )

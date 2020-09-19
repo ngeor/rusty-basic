@@ -1,17 +1,17 @@
+use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
 use crate::interpreter::built_ins;
-use crate::interpreter::casting::cast;
 use crate::interpreter::context::*;
-use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
-use crate::parser::TypeQualifier;
+use crate::linter::{HasTypeDefinition, ResolvedDeclaredName, UserDefinedTypes};
+use crate::parser::{HasQualifier, TypeQualifier};
 use crate::variant::Variant;
-
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Registers {
@@ -74,30 +74,38 @@ impl Registers {
 
 pub type RegisterStack = VecDeque<Registers>;
 
-#[derive(Debug)]
 pub struct Interpreter<S: Stdlib> {
     pub stdlib: S,
-    pub context: Option<Context>,
+    context: Context,
     register_stack: RegisterStack,
     return_stack: Vec<usize>,
     stacktrace: Vec<Location>,
-    pub function_result: Variant,
     pub file_manager: FileManager,
+    pub user_defined_types: Rc<UserDefinedTypes>,
 }
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {
-    pub fn new(stdlib: TStdlib) -> Self {
+    pub fn new(stdlib: TStdlib, user_defined_types: UserDefinedTypes) -> Self {
+        let rc_user_defined_types = Rc::new(user_defined_types);
         let mut result = Interpreter {
             stdlib,
-            context: Some(Context::new()),
+            context: Context::new(Rc::clone(&rc_user_defined_types)),
             return_stack: vec![],
             register_stack: VecDeque::new(),
             stacktrace: vec![],
-            function_result: Variant::VInteger(0),
             file_manager: FileManager::new(),
+            user_defined_types: Rc::clone(&rc_user_defined_types),
         };
         result.register_stack.push_back(Registers::new());
         result
+    }
+
+    pub fn context(&self) -> &Context {
+        &self.context
+    }
+
+    pub fn context_mut(&mut self) -> &mut Context {
+        &mut self.context
     }
 
     fn registers_ref(&self) -> &Registers {
@@ -142,17 +150,35 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Load(v) => {
                 self.set_a(v.clone());
             }
+            Instruction::Cast(q) => {
+                let v = self.get_a();
+                let casted = v.cast(*q).with_err_at(pos)?;
+                self.set_a(casted);
+            }
+            Instruction::FixLength(l) => {
+                let v = self.get_a();
+                let casted = v.cast(TypeQualifier::DollarString).with_err_at(pos)?;
+                self.set_a(match casted {
+                    Variant::VString(s) => {
+                        let len: usize = *l as usize;
+                        Variant::VString(s.fix_length(len))
+                    }
+                    _ => casted,
+                });
+            }
+            Instruction::Dim(resolved_declared_name) => {
+                let v = resolved_declared_name
+                    .type_definition()
+                    .default_variant(self.user_defined_types.as_ref());
+                self.context.set_variable(resolved_declared_name.clone(), v);
+            }
             Instruction::Store(n) => {
                 let v = self.get_a();
-                self.context_mut()
-                    .set_variable(n.clone(), v)
-                    .with_err_at(pos)?;
+                self.context.set_variable(n.clone(), v);
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
-                self.context_mut()
-                    .set_constant(n.clone(), v)
-                    .with_err_at(pos)?;
+                self.context.set_constant(n.clone(), v);
             }
             Instruction::CopyAToB => {
                 self.registers_mut().copy_a_to_b();
@@ -209,13 +235,10 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let c = a.unary_not().with_err_at(pos)?;
                 self.set_a(c);
             }
-            Instruction::CopyVarToA(n) => {
-                let name_node = n.clone().at(pos);
-                match self.context_ref().get_r_value(name_node.as_ref()) {
-                    Some(v) => self.set_a(v),
-                    None => panic!("Variable {:?} undefined at {:?}", n, pos),
-                }
-            }
+            Instruction::CopyVarToA(n) => match self.context.get_r_value(n) {
+                Some(v) => self.set_a(v),
+                None => panic!("CopyVarToA variable {:?} undefined at {:?}", n, pos),
+            },
             Instruction::Equal => {
                 let a = self.get_a();
                 let b = self.get_b();
@@ -259,13 +282,25 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 self.set_a(is_true.into());
             }
             Instruction::And => {
-                let a = cast(self.get_a(), TypeQualifier::PercentInteger).with_err_at(pos)?;
-                let b = cast(self.get_b(), TypeQualifier::PercentInteger).with_err_at(pos)?;
+                let a = self
+                    .get_a()
+                    .cast(TypeQualifier::PercentInteger)
+                    .with_err_at(pos)?;
+                let b = self
+                    .get_b()
+                    .cast(TypeQualifier::PercentInteger)
+                    .with_err_at(pos)?;
                 self.set_a(a.and(b).with_err_at(pos)?);
             }
             Instruction::Or => {
-                let a = cast(self.get_a(), TypeQualifier::PercentInteger).with_err_at(pos)?;
-                let b = cast(self.get_b(), TypeQualifier::PercentInteger).with_err_at(pos)?;
+                let a = self
+                    .get_a()
+                    .cast(TypeQualifier::PercentInteger)
+                    .with_err_at(pos)?;
+                let b = self
+                    .get_b()
+                    .cast(TypeQualifier::PercentInteger)
+                    .with_err_at(pos)?;
                 self.set_a(a.or(b).with_err_at(pos)?);
             }
             Instruction::JumpIfFalse(resolved_idx) => {
@@ -278,44 +313,62 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Jump(resolved_idx) => {
                 *i = resolved_idx - 1;
             }
-            Instruction::PreparePush => {
-                self.push_args_context();
+            Instruction::BeginCollectNamedArguments => {
+                self.context
+                    .arguments_stack()
+                    .begin_collect_named_arguments();
+            }
+            Instruction::BeginCollectUnnamedArguments => {
+                self.context
+                    .arguments_stack()
+                    .begin_collect_unnamed_arguments();
             }
             Instruction::PushStack => {
-                self.swap_args_with_sub_context();
+                self.push_context();
                 self.stacktrace.insert(0, pos);
             }
-            Instruction::PopStack => {
-                self.pop();
+            Instruction::PopStack(opt_function_name) => {
+                // get the function result
+                let function_result: Option<Variant> = match opt_function_name {
+                    Some(function_name) => {
+                        let r = ResolvedDeclaredName::BuiltIn(function_name.clone());
+                        match self.context.get_r_value(&r) {
+                            Some(v) => Some(v),
+                            None => {
+                                // it was a function, but the implementation did not set a result
+                                Some(Variant::from(function_name.qualifier()))
+                            }
+                        }
+                    }
+                    None => None,
+                };
+                self.pop_context();
                 self.stacktrace.remove(0);
+                // store function result into A now that we're in the parent context
+                match function_result {
+                    Some(v) => {
+                        self.set_a(v);
+                    }
+                    None => {}
+                }
             }
-            Instruction::PushUnnamedRefParam(name) => {
-                self.context_mut()
-                    .demand_args()
-                    .push_back_unnamed_ref_parameter(name.clone())
-                    .with_err_at(pos)?;
+            Instruction::PushUnnamedRef(name) => {
+                self.context.arguments_stack().push_unnamed(name.clone());
             }
-            Instruction::PushUnnamedValParam => {
+            Instruction::PushUnnamedVal => {
                 let v = self.get_a();
-
-                self.context_mut()
-                    .demand_args()
-                    .push_back_unnamed_val_parameter(v)
-                    .with_err_at(pos)?;
+                self.context.arguments_stack().push_unnamed(v);
             }
-            Instruction::SetNamedRefParam(named_ref_param) => {
-                self.context_mut()
-                    .demand_args()
-                    .set_named_ref_parameter(named_ref_param)
-                    .with_err_at(pos)?;
+            Instruction::PushNamedRef(parameter_name, argument_name) => {
+                self.context
+                    .arguments_stack()
+                    .push_named(parameter_name.clone(), argument_name.clone());
             }
-            Instruction::SetNamedValParam(param_q_name) => {
+            Instruction::PushNamedVal(param_q_name) => {
                 let v = self.get_a();
-
-                self.context_mut()
-                    .demand_args()
-                    .set_named_val_parameter(param_q_name, v)
-                    .with_err_at(pos)?;
+                self.context
+                    .arguments_stack()
+                    .push_named(param_q_name.clone(), v);
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
@@ -340,14 +393,6 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::PopRet => {
                 let addr = self.return_stack.pop().unwrap();
                 *i = addr - 1;
-            }
-            Instruction::StoreAToResult => {
-                let v = self.get_a();
-                self.function_result = v;
-            }
-            Instruction::CopyResultToA => {
-                let v = self.function_result.clone();
-                self.set_a(v);
             }
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);
@@ -380,38 +425,29 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         Ok(())
     }
 
-    // shortcuts to common context_mut operations
-
-    /// Pops the next unnamed argument, starting from the beginning.
-    pub fn pop_unnamed_arg(&mut self) -> Option<Argument> {
-        self.context_mut().demand_sub().pop_unnamed_arg()
+    fn push_context(&mut self) {
+        let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
+        let current_context = std::mem::replace(&mut self.context, dummy);
+        self.context = current_context.push();
     }
 
-    /// Pops the value of the next unnamed argument, starting from the beginning.
-    pub fn pop_unnamed_val(&mut self) -> Option<Variant> {
-        self.context_mut().demand_sub().pop_unnamed_val()
+    fn pop_context(&mut self) {
+        let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
+        let current_context = std::mem::replace(&mut self.context, dummy);
+        self.context = current_context.pop();
     }
+}
 
-    pub fn pop_string(&mut self) -> String {
-        self.pop_unnamed_val().unwrap().demand_string()
-    }
+pub trait SetVariable<K, V> {
+    fn set_variable(&mut self, name: K, value: V);
+}
 
-    pub fn pop_integer(&mut self) -> i32 {
-        self.pop_unnamed_val().unwrap().demand_integer()
-    }
-
-    pub fn pop_file_handle(&mut self) -> Result<FileHandle, QError> {
-        match self.pop_unnamed_val().unwrap() {
-            Variant::VFileHandle(f) => Ok(f),
-            Variant::VInteger(i) => {
-                if i >= 1 && i <= 255 {
-                    Ok((i as u8).into())
-                } else {
-                    Err(QError::BadFileNameOrNumber)
-                }
-            }
-            _ => Err(QError::TypeMismatch),
-        }
+impl<S: Stdlib, V> SetVariable<BuiltInFunction, V> for Interpreter<S>
+where
+    Variant: From<V>,
+{
+    fn set_variable(&mut self, name: BuiltInFunction, value: V) {
+        self.context.set_variable(name.into(), value.into());
     }
 }
 
@@ -420,11 +456,9 @@ mod tests {
     use crate::assert_err;
     use crate::assert_has_variable;
     use crate::assert_prints;
-    use crate::interpreter::context_owner::ContextOwner;
     use crate::interpreter::test_utils::*;
     use crate::linter::*;
     use crate::variant::Variant;
-    use std::convert::TryFrom;
 
     #[test]
     fn test_interpreter_fixture_hello1() {
@@ -501,9 +535,12 @@ mod tests {
         macro_rules! assert_assign_ok {
             ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
                 let interpreter = interpret($program);
-                let q_name = QualifiedName::try_from($expected_variable_name).unwrap();
+                let resolved_declared_name = ResolvedDeclaredName::parse($expected_variable_name);
                 assert_eq!(
-                    interpreter.context_ref().get_r_value(&q_name).unwrap(),
+                    interpreter
+                        .context
+                        .get_r_value(&resolved_declared_name)
+                        .unwrap(),
                     Variant::from($expected_value)
                 );
             };
@@ -706,9 +743,9 @@ mod tests {
         #[test]
         fn test_assign_integer_overflow() {
             assert_assign_ok!("A% = 32767", "A%", 32767_i32);
-            assert_err!("A% = 32768", "Overflow", 1, 1);
+            assert_err!("A% = 32768", "Overflow", 1, 6);
             assert_assign_ok!("A% = -32768", "A%", -32768_i32);
-            assert_err!("A% = -32769", "Overflow", 1, 1);
+            assert_err!("A% = -32769", "Overflow", 1, 6);
         }
 
         #[test]
@@ -719,8 +756,8 @@ mod tests {
 
         #[test]
         fn test_assign_long_overflow_err() {
-            assert_err!("A& = 2147483648", "Overflow", 1, 1);
-            assert_err!("A& = -2147483649", "Overflow", 1, 1);
+            assert_err!("A& = 2147483648", "Overflow", 1, 6);
+            assert_err!("A& = -2147483649", "Overflow", 1, 6);
         }
 
         #[test]
@@ -870,6 +907,167 @@ mod tests {
             END FUNCTION
             "#;
             assert_prints!(program, "5");
+        }
+    }
+
+    mod user_defined_type {
+        use super::*;
+
+        #[test]
+        fn test_user_defined_type_card() {
+            let input = r#"
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM C AS Card
+            C.Suit = "Hearts"
+            C.Value = 1
+
+            PRINT C.Suit
+            PRINT C.Value
+            "#;
+
+            assert_prints!(input, "Hearts   ", "1");
+        }
+
+        #[test]
+        fn test_user_defined_type_nested() {
+            let input = r#"
+            TYPE PostCode
+                Prefix AS INTEGER
+                Suffix AS STRING * 2
+            END TYPE
+
+            TYPE Address
+                Street AS STRING * 100
+                PostCode AS PostCode
+            END TYPE
+
+            DIM A AS Address
+            A.PostCode.Prefix = 1234
+            A.PostCode.Suffix =  "CZ"
+
+            PRINT A.PostCode.Prefix
+            PRINT A.PostCode.Suffix
+            "#;
+
+            assert_prints!(input, "1234", "CZ");
+        }
+
+        #[test]
+        fn test_truncate_string_at_declared_length() {
+            let input = r#"
+            TYPE Address ' A basic address type
+                ' post code
+                PostCode AS STRING * 6 ' comment here
+                ' comment here too
+            END TYPE
+
+            DIM a AS Address
+            a.PostCode = "1234 AZ"
+            PRINT a.PostCode
+            "#;
+            assert_prints!(input, "1234 A");
+        }
+
+        #[test]
+        fn test_string_const_length() {
+            let input = r#"
+            CONST L = 6
+            TYPE Address
+                PostCode AS STRING * L
+            END TYPE
+
+            DIM a AS Address
+            a.PostCode = "1234 AZ"
+            PRINT a.PostCode
+            "#;
+            assert_prints!(input, "1234 A");
+        }
+
+        #[test]
+        fn test_assign() {
+            let input = r#"
+            TYPE Address
+                Street AS STRING * 5
+                HouseNumber AS INTEGER
+            END TYPE
+            DIM a AS Address
+            DIM b AS Address
+            a.Street = "Hello"
+            a.HouseNumber = 42
+            b = a
+            PRINT b.Street
+            PRINT b.HouseNumber
+            "#;
+            assert_prints!(input, "Hello", "42");
+        }
+
+        #[test]
+        fn test_assign_is_by_val() {
+            let input = r#"
+            TYPE Address
+                Street AS STRING * 15
+                HouseNumber AS INTEGER
+            END TYPE
+            DIM a AS Address
+            DIM b AS Address
+
+            a.Street = "original value"
+            a.HouseNumber = 42
+
+            b = a
+            b.Street = "modified value"
+
+            PRINT a.Street
+            PRINT b.Street
+            "#;
+            assert_prints!(input, "original value ", "modified value ");
+        }
+
+        #[test]
+        fn test_modify_in_sub() {
+            let input = r#"
+            TYPE LPARAM
+                LoWord AS INTEGER
+                HiWord AS INTEGER
+            END TYPE
+
+            DECLARE SUB Swap.LParam(x AS LPARAM)
+
+            DIM p AS LPARAM
+            p.LoWord = 1
+            p.HiWord = 2
+            Swap.LParam p
+            PRINT p.LoWord
+            PRINT p.HiWord
+
+            SUB Swap.LParam(x AS LPARAM)
+                p = x.LoWord
+                x.LoWord = x.HiWord
+                x.HiWord = p
+            END SUB
+            "#;
+            assert_prints!(input, "2", "1");
+        }
+
+        #[test]
+        fn test_concatenate_two_strings_of_fixed_length() {
+            let input = r#"
+            TYPE PostCode
+                Prefix AS STRING * 4
+            END TYPE
+
+            DIM A AS PostCode
+            DIM B AS PostCode
+            A.Prefix = "ab"
+            B.Prefix = "cd"
+            C$ = A.Prefix + B.Prefix
+            PRINT C$
+            "#;
+            assert_prints!(input, "ab  cd  ");
         }
     }
 }

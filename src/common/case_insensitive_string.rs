@@ -11,6 +11,72 @@ impl CaseInsensitiveString {
     pub fn new(value: String) -> CaseInsensitiveString {
         CaseInsensitiveString { inner: value }
     }
+
+    /// Checks if the string contains the given character, case insensitively.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rusty_basic::common::CaseInsensitiveString;
+    /// assert_eq!(CaseInsensitiveString::from("a#").contains('#'), true);
+    /// assert_eq!(CaseInsensitiveString::from("a#").contains('A'), true);
+    /// assert_eq!(CaseInsensitiveString::from("a#").contains('b'), false);
+    /// ```
+    pub fn contains(&self, needle: char) -> bool {
+        for c in self.inner.chars() {
+            if c.to_ascii_uppercase() == needle.to_ascii_uppercase() {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Checks if the string starts with the given prefix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rusty_basic::common::CaseInsensitiveString;
+    /// assert!(CaseInsensitiveString::from("a").starts_with(&CaseInsensitiveString::from("a")));
+    /// assert!(CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("a")));
+    /// assert!(CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("ab")));
+    /// assert!(!CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("abd")));
+    /// assert!(!CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("abcd")));
+    /// ```
+    pub fn starts_with(&self, needle: &Self) -> bool {
+        let n: Vec<char> = needle.inner.chars().collect();
+        let mut i = 0;
+        for c in self.inner.chars() {
+            if i < n.len() && c.to_ascii_uppercase() == n[i].to_ascii_uppercase() {
+                i += 1;
+            } else {
+                break;
+            }
+        }
+        i >= n.len()
+    }
+
+    /// If the string contains the given delimiter, splits the string and returns the part
+    /// before the delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rusty_basic::common::CaseInsensitiveString;
+    /// assert_eq!(CaseInsensitiveString::from("a.b").prefix('.'), Some(CaseInsensitiveString::from("a")));
+    /// assert_eq!(CaseInsensitiveString::from("ab").prefix('.'), None);
+    /// ```
+    pub fn prefix(&self, delimiter: char) -> Option<Self> {
+        if self.contains(delimiter) {
+            let s: String = self.inner.clone();
+            let v: Vec<&str> = s.split('.').collect();
+            let first: Self = v[0].into();
+            Some(first)
+        } else {
+            None
+        }
+    }
 }
 
 impl From<CaseInsensitiveString> for String {
@@ -128,6 +194,15 @@ impl CmpIgnoreAsciiCase for &CaseInsensitiveString {
     }
 }
 
+impl std::ops::Add<char> for CaseInsensitiveString {
+    type Output = Self;
+    fn add(self, other: char) -> Self {
+        let mut s: String = self.into();
+        s.push(other);
+        s.into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,5 +289,12 @@ mod tests {
             CmpIgnoreAsciiCase::compare_ignore_ascii_case("abca", "abc"),
             Ordering::Greater
         );
+    }
+
+    #[test]
+    fn test_add_char() {
+        let x: CaseInsensitiveString = "abc".into();
+        let y: CaseInsensitiveString = x + '.';
+        assert_eq!(y, CaseInsensitiveString::from("abc."));
     }
 }

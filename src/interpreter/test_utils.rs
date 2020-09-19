@@ -1,33 +1,23 @@
 use crate::common::*;
-use crate::instruction_generator;
-use crate::instruction_generator::InstructionNode;
-use crate::interpreter::context_owner::ContextOwner;
+use crate::instruction_generator::generate_instructions;
+use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
-use crate::parser::{parse_main_file, parse_main_str, QualifiedName};
+use crate::linter::ResolvedDeclaredName;
+use crate::parser::parse_main_file;
 use crate::variant::Variant;
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::fs::File;
-
-pub fn generate_instructions<T>(input: T) -> Vec<InstructionNode>
-where
-    T: AsRef<[u8]> + 'static,
-{
-    let program = parse_main_str(input).unwrap();
-    let linted_program = linter::lint(program).unwrap();
-    instruction_generator::generate_instructions(linted_program)
-}
 
 pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>
 where
     T: AsRef<[u8]> + 'static,
 {
-    let instructions = generate_instructions(input);
+    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
     // for i in instructions.iter() {
     //     println!("{:?}", i.as_ref());
     // }
-    let mut interpreter = Interpreter::new(MockStdlib::new());
+    let mut interpreter = Interpreter::new(MockStdlib::new(), user_defined_types);
     interpreter
         .interpret(instructions)
         .map(|_| interpreter)
@@ -39,8 +29,8 @@ where
     T: AsRef<[u8]> + 'static,
     TStdlib: Stdlib,
 {
-    let instructions = generate_instructions(input);
-    let mut interpreter = Interpreter::new(stdlib);
+    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    let mut interpreter = Interpreter::new(stdlib, user_defined_types);
     interpreter
         .interpret(instructions)
         .map(|_| interpreter)
@@ -51,8 +41,8 @@ pub fn interpret_err<T>(input: T) -> QErrorNode
 where
     T: AsRef<[u8]> + 'static,
 {
-    let instructions = generate_instructions(input);
-    let mut interpreter = Interpreter::new(MockStdlib::new());
+    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    let mut interpreter = Interpreter::new(MockStdlib::new(), user_defined_types);
     interpreter.interpret(instructions).unwrap_err()
 }
 
@@ -67,9 +57,9 @@ where
     let file_path = format!("fixtures/{}", filename.as_ref());
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
-    let linted_program = linter::lint(program).unwrap();
-    let instructions = instruction_generator::generate_instructions(linted_program);
-    let mut interpreter = Interpreter::new(stdlib);
+    let (linted_program, user_defined_types) = linter::lint(program).unwrap();
+    let instructions = generate_instructions(linted_program);
+    let mut interpreter = Interpreter::new(stdlib, user_defined_types);
     interpreter.interpret(instructions).map(|_| interpreter)
 }
 
@@ -133,8 +123,8 @@ impl Stdlib for MockStdlib {
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn get_variable_str(&self, name: &str) -> Variant {
-        let q_name = QualifiedName::try_from(name).unwrap();
-        self.context_ref().get_r_value(&q_name).unwrap()
+        let resolved_declared_name = ResolvedDeclaredName::parse(name);
+        self.context().get_r_value(&resolved_declared_name).unwrap()
     }
 }
 

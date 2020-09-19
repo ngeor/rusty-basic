@@ -18,7 +18,7 @@ impl InstructionGenerator {
                 self.generate_push_unnamed_args_instructions(args, pos);
                 self.push(Instruction::PushStack, pos);
                 self.push(Instruction::BuiltInSub(name), pos);
-                self.push(Instruction::PopStack, pos);
+                self.push(Instruction::PopStack(None), pos);
             }
         }
     }

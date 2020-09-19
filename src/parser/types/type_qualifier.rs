@@ -1,11 +1,7 @@
-use crate::common::Locatable;
+use super::Operator;
+use crate::common::{CanCastTo, QError};
 use std::convert::TryFrom;
 use std::fmt::Display;
-use std::str::FromStr;
-
-//
-// TypeQualifier
-//
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable
@@ -21,106 +17,139 @@ pub enum TypeQualifier {
     PercentInteger,
     /// `&` Long-integer
     AmpersandLong,
-    /// Not an actual type, but to be able to call PRINT #1, "hello", we define the file handle type
-    FileHandle,
 }
 
 impl TypeQualifier {
-    pub fn can_cast_to(&self, other: Self) -> bool {
+    pub fn bigger_numeric_type(&self, other: &Self) -> Option<Self> {
         match self {
-            Self::DollarString => other == Self::DollarString,
-            Self::FileHandle => other == Self::FileHandle,
-            _ => other != Self::DollarString && other != Self::FileHandle,
+            Self::BangSingle => match other {
+                Self::BangSingle | Self::PercentInteger | Self::AmpersandLong => {
+                    Some(Self::BangSingle)
+                }
+                Self::HashDouble => Some(Self::HashDouble),
+                _ => None,
+            },
+            Self::HashDouble => match other {
+                Self::BangSingle
+                | Self::PercentInteger
+                | Self::AmpersandLong
+                | Self::HashDouble => Some(Self::HashDouble),
+                _ => None,
+            },
+            Self::PercentInteger => match other {
+                Self::BangSingle => Some(Self::BangSingle),
+                Self::HashDouble => Some(Self::HashDouble),
+                Self::PercentInteger => Some(Self::PercentInteger),
+                Self::AmpersandLong => Some(Self::AmpersandLong),
+                _ => None,
+            },
+            Self::AmpersandLong => match other {
+                Self::BangSingle => Some(Self::BangSingle),
+                Self::HashDouble => Some(Self::HashDouble),
+                Self::PercentInteger | Self::AmpersandLong => Some(Self::AmpersandLong),
+                _ => None,
+            },
+            _ => None,
         }
     }
 
-    /// Maps the given character into a `TypeQualifier`.
-    /// If the character does not represent a type qualifier, `None` is returned.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use rusty_basic::parser::TypeQualifier;
-    /// assert_eq!(TypeQualifier::from_char('#'), Some(TypeQualifier::HashDouble));
-    /// assert_eq!(TypeQualifier::from_char('1'), None);
-    /// ```
-    pub fn from_char(ch: char) -> Option<Self> {
+    pub fn cast_binary_op(&self, right: TypeQualifier, op: Operator) -> Option<Self> {
+        match op {
+            // 1. arithmetic operators
+            // 1a. plus -> if we can cast self to right, that's the result
+            Operator::Plus => {
+                match self.bigger_numeric_type(&right) {
+                    Some(result) => Some(result),
+                    None => {
+                        if *self == TypeQualifier::DollarString
+                            && right == TypeQualifier::DollarString
+                        {
+                            // string concatenation
+                            Some(*self)
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
+            // 1b. minus, multiply, divide -> if we can cast self to right, and we're not a string, that's the result
+            Operator::Minus | Operator::Multiply | Operator::Divide => {
+                self.bigger_numeric_type(&right)
+            }
+            // 2. relational operators
+            //    if we an cast self to right, the result is -1 or 0, therefore integer
+            Operator::Less
+            | Operator::LessOrEqual
+            | Operator::Equal
+            | Operator::GreaterOrEqual
+            | Operator::Greater
+            | Operator::NotEqual => {
+                if self.can_cast_to(right) {
+                    Some(TypeQualifier::PercentInteger)
+                } else {
+                    None
+                }
+            }
+            // 3. binary operators
+            //    they only work if both sides are cast-able to integer, which is also the result type
+            Operator::And | Operator::Or => {
+                if self.can_cast_to(TypeQualifier::PercentInteger)
+                    && right.can_cast_to(TypeQualifier::PercentInteger)
+                {
+                    Some(TypeQualifier::PercentInteger)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+// char -> TypeQualifier
+
+impl TryFrom<char> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(ch: char) -> Result<TypeQualifier, QError> {
         if ch == '!' {
-            Some(TypeQualifier::BangSingle)
+            Ok(TypeQualifier::BangSingle)
         } else if ch == '#' {
-            Some(TypeQualifier::HashDouble)
+            Ok(TypeQualifier::HashDouble)
         } else if ch == '$' {
-            Some(TypeQualifier::DollarString)
+            Ok(TypeQualifier::DollarString)
         } else if ch == '%' {
-            Some(TypeQualifier::PercentInteger)
+            Ok(TypeQualifier::PercentInteger)
         } else if ch == '&' {
-            Some(TypeQualifier::AmpersandLong)
+            Ok(TypeQualifier::AmpersandLong)
         } else {
-            None
+            Err(QError::syntax_error("Expected: %, &, !, # or $"))
+        }
+    }
+}
+
+// TypeQualifier -> char
+
+impl From<TypeQualifier> for char {
+    fn from(q: TypeQualifier) -> char {
+        match q {
+            TypeQualifier::BangSingle => '!',
+            TypeQualifier::HashDouble => '#',
+            TypeQualifier::DollarString => '$',
+            TypeQualifier::PercentInteger => '%',
+            TypeQualifier::AmpersandLong => '&',
         }
     }
 }
 
 impl Display for TypeQualifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TypeQualifier::BangSingle => write!(f, "!"),
-            TypeQualifier::HashDouble => write!(f, "#"),
-            TypeQualifier::DollarString => write!(f, "$"),
-            TypeQualifier::PercentInteger => write!(f, "%"),
-            TypeQualifier::AmpersandLong => write!(f, "&"),
-            TypeQualifier::FileHandle => write!(f, "<file handle>"),
-        }
-    }
-}
-
-impl FromStr for TypeQualifier {
-    type Err = String;
-    fn from_str(s: &str) -> Result<TypeQualifier, String> {
-        if s == "!" {
-            Ok(TypeQualifier::BangSingle)
-        } else if s == "#" {
-            Ok(TypeQualifier::HashDouble)
-        } else if s == "$" {
-            Ok(TypeQualifier::DollarString)
-        } else if s == "%" {
-            Ok(TypeQualifier::PercentInteger)
-        } else if s == "&" {
-            Ok(TypeQualifier::AmpersandLong)
-        } else {
-            Err(format!("Invalid type qualifier {}", s))
-        }
-    }
-}
-
-impl TryFrom<char> for TypeQualifier {
-    type Error = String;
-    fn try_from(ch: char) -> Result<TypeQualifier, String> {
-        TypeQualifier::from_char(ch).ok_or_else(|| format!("Invalid type qualifier {}", ch))
-    }
-}
-
-impl TryFrom<TypeQualifier> for char {
-    type Error = String;
-
-    fn try_from(q: TypeQualifier) -> Result<char, String> {
-        match q {
-            TypeQualifier::BangSingle => Ok('!'),
-            TypeQualifier::HashDouble => Ok('#'),
-            TypeQualifier::DollarString => Ok('$'),
-            TypeQualifier::PercentInteger => Ok('%'),
-            TypeQualifier::AmpersandLong => Ok('&'),
-            _ => Err(format!("Cannot convert {:?} to char", q)),
-        }
+        char::from(*self).fmt(f)
     }
 }
 
 impl PartialEq<char> for TypeQualifier {
     fn eq(&self, that: &char) -> bool {
-        match char::try_from(*self) {
-            Ok(ch) => ch == *that,
-            Err(_) => false,
-        }
+        char::from(*self) == *that
     }
 }
 
@@ -130,17 +159,25 @@ impl PartialEq<TypeQualifier> for char {
     }
 }
 
-//
-// HasQualifier
-//
-
-pub trait HasQualifier {
-    fn qualifier(&self) -> TypeQualifier;
-}
-
-impl<T: HasQualifier> HasQualifier for Locatable<T> {
-    fn qualifier(&self) -> TypeQualifier {
-        self.as_ref().qualifier()
+impl CanCastTo<TypeQualifier> for TypeQualifier {
+    /// Checks if this `TypeQualifier` can be cast into the given one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rusty_basic::common::CanCastTo;
+    /// use rusty_basic::parser::TypeQualifier;
+    ///
+    /// assert!(TypeQualifier::BangSingle.can_cast_to(TypeQualifier::PercentInteger));
+    /// assert!(TypeQualifier::DollarString.can_cast_to(TypeQualifier::DollarString));
+    /// assert!(!TypeQualifier::HashDouble.can_cast_to(TypeQualifier::DollarString));
+    /// assert!(!TypeQualifier::DollarString.can_cast_to(TypeQualifier::AmpersandLong));
+    /// ```
+    fn can_cast_to(&self, other: Self) -> bool {
+        match self {
+            Self::DollarString => other == Self::DollarString,
+            _ => other != Self::DollarString,
+        }
     }
 }
 
@@ -155,32 +192,6 @@ mod tests {
         assert_eq!("$", format!("{}", TypeQualifier::DollarString));
         assert_eq!("%", format!("{}", TypeQualifier::PercentInteger));
         assert_eq!("&", format!("{}", TypeQualifier::AmpersandLong));
-        assert_eq!("<file handle>", format!("{}", TypeQualifier::FileHandle));
-    }
-
-    #[test]
-    fn test_from_str() {
-        assert_eq!(
-            TypeQualifier::from_str("!").unwrap(),
-            TypeQualifier::BangSingle
-        );
-        assert_eq!(
-            TypeQualifier::from_str("#").unwrap(),
-            TypeQualifier::HashDouble
-        );
-        assert_eq!(
-            TypeQualifier::from_str("$").unwrap(),
-            TypeQualifier::DollarString
-        );
-        assert_eq!(
-            TypeQualifier::from_str("%").unwrap(),
-            TypeQualifier::PercentInteger
-        );
-        assert_eq!(
-            TypeQualifier::from_str("&").unwrap(),
-            TypeQualifier::AmpersandLong
-        );
-        TypeQualifier::from_str(".").expect_err("should not parse dot");
     }
 
     #[test]
@@ -210,15 +221,11 @@ mod tests {
 
     #[test]
     fn test_char_from_type_qualifier() {
-        assert_eq!(char::try_from(TypeQualifier::BangSingle).unwrap(), '!');
-        assert_eq!(char::try_from(TypeQualifier::HashDouble).unwrap(), '#');
-        assert_eq!(char::try_from(TypeQualifier::DollarString).unwrap(), '$');
-        assert_eq!(char::try_from(TypeQualifier::PercentInteger).unwrap(), '%');
-        assert_eq!(char::try_from(TypeQualifier::AmpersandLong).unwrap(), '&');
-        assert_eq!(
-            char::try_from(TypeQualifier::FileHandle).unwrap_err(),
-            "Cannot convert FileHandle to char"
-        );
+        assert_eq!(char::from(TypeQualifier::BangSingle), '!');
+        assert_eq!(char::from(TypeQualifier::HashDouble), '#');
+        assert_eq!(char::from(TypeQualifier::DollarString), '$');
+        assert_eq!(char::from(TypeQualifier::PercentInteger), '%');
+        assert_eq!(char::from(TypeQualifier::AmpersandLong), '&');
     }
 
     #[test]
@@ -236,8 +243,5 @@ mod tests {
         // invalid characters
         assert_ne!(TypeQualifier::BangSingle, '.');
         assert_ne!('.', TypeQualifier::BangSingle);
-        // file handle
-        assert_ne!('!', TypeQualifier::FileHandle);
-        assert_ne!(TypeQualifier::FileHandle, '$');
     }
 }

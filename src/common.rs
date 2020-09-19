@@ -3,11 +3,13 @@ mod error;
 mod error_envelope;
 mod file_constants;
 mod location;
-mod result_traits;
+mod string_utils;
+mod traits;
 
 pub use self::case_insensitive_string::*;
 pub use self::error::*;
 pub use self::error_envelope::*;
 pub use self::file_constants::*;
 pub use self::location::*;
-pub use self::result_traits::*;
+pub use self::string_utils::*;
+pub use self::traits::*;

@@ -8,6 +8,8 @@ use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
+// TODO support file handle only for OPEN, PRINT, INPUT, LINE INPUT, CLOSE
+
 /// Parses built-in subs which have a special syntax.
 pub fn parse_built_in<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::Statement, QError>> {
@@ -244,7 +246,6 @@ mod open {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use crate::parser::parse_main_str;
         use crate::parser::test_utils::*;
 
         #[test]
@@ -383,7 +384,7 @@ mod open {
         fn test_open_access_read_for_input_as_file_handle_with_spaces() {
             let input = r#"OPEN "FILE.TXT" ACCESS READ FOR INPUT AS #1"#;
             assert_eq!(
-                parse_main_str(input).unwrap_err(),
+                parse_err_node(input),
                 QErrorNode::Pos(
                     QError::syntax_error("Expected: AS file-number"),
                     Location::new(1, 29)

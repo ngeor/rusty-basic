@@ -88,11 +88,11 @@ mod tests {
     fn test_identifier_too_long() {
         assert_eq!(
             parse_err("ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN = 42"),
-            QError::syntax_error("Identifier too long")
+            QError::IdentifierTooLong
         );
         assert_eq!(
             parse_err("ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN% = 42"),
-            QError::syntax_error("Identifier too long")
+            QError::IdentifierTooLong
         );
     }
 

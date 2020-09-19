@@ -28,10 +28,10 @@ fn main() {
     let f = File::open(&filename).expect(format!("Could not find program {}", filename).as_ref());
     match parser::parse_main_file(f) {
         Ok(program) => match linter::lint(program) {
-            Ok(linted_program) => {
-                let mut interpreter = Interpreter::new(DefaultStdlib {});
+            Ok((linted_program, user_defined_types)) => {
                 let instructions = instruction_generator::generate_instructions(linted_program);
                 set_current_dir(&filename); // Note: only needed to make it work inside Apache.
+                let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
                 match interpreter.interpret(instructions) {
                     Ok(_) => (),
                     Err(e) => eprintln!("Runtime error. {:?}", e),

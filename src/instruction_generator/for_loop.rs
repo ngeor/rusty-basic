@@ -1,16 +1,20 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{ForLoopNode, QualifiedName, StatementNodes};
+use crate::linter::{ForLoopNode, ResolvedDeclaredName, StatementNodes};
 use crate::variant::Variant;
 
 impl InstructionGenerator {
+    fn store_counter(&mut self, counter_var: &ResolvedDeclaredName, pos: Location) {
+        self.push(Instruction::Store(counter_var.clone()), pos);
+    }
+
+    fn load_counter(&mut self, counter_var: &ResolvedDeclaredName, pos: Location) {
+        self.push(Instruction::CopyVarToA(counter_var.clone()), pos);
+    }
+
     pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) {
         let ForLoopNode {
-            variable_name:
-                Locatable {
-                    element: counter_var_name,
-                    ..
-                },
+            variable_name: counter_var_name,
             lower_bound,
             upper_bound,
             step,
@@ -20,7 +24,7 @@ impl InstructionGenerator {
         // lower bound to A
         self.generate_expression_instructions(lower_bound);
         // A to variable
-        self.push(Instruction::Store(counter_var_name.clone()), pos);
+        self.store_counter(&counter_var_name, pos);
         // upper bound to A
         self.generate_expression_instructions(upper_bound);
         // A to C (upper bound to C)
@@ -41,7 +45,7 @@ impl InstructionGenerator {
                 self.jump_if_false("test-positive-or-zero", pos);
                 // negative step
                 self.generate_for_loop_instructions_positive_or_negative_step(
-                    counter_var_name.clone(),
+                    &counter_var_name,
                     statements.clone(),
                     false,
                     pos,
@@ -57,7 +61,7 @@ impl InstructionGenerator {
                 self.jump_if_false("zero", pos);
                 // positive step
                 self.generate_for_loop_instructions_positive_or_negative_step(
-                    counter_var_name,
+                    &counter_var_name,
                     statements,
                     true,
                     pos,
@@ -74,7 +78,7 @@ impl InstructionGenerator {
                 // A to D (step is in D)
                 self.push(Instruction::CopyAToD, pos);
                 self.generate_for_loop_instructions_positive_or_negative_step(
-                    counter_var_name,
+                    &counter_var_name,
                     statements,
                     true,
                     pos,
@@ -86,7 +90,7 @@ impl InstructionGenerator {
 
     fn generate_for_loop_instructions_positive_or_negative_step(
         &mut self,
-        counter_var_name: QualifiedName,
+        counter_var_name: &ResolvedDeclaredName,
         statements: StatementNodes,
         is_positive: bool,
         pos: Location,
@@ -101,7 +105,7 @@ impl InstructionGenerator {
         // upper bound from C to B
         self.push(Instruction::CopyCToB, pos);
         // counter to A
-        self.push(Instruction::CopyVarToA(counter_var_name.clone()), pos);
+        self.load_counter(counter_var_name, pos);
         if is_positive {
             self.push(Instruction::LessOrEqual, pos);
         } else {
@@ -115,11 +119,11 @@ impl InstructionGenerator {
         self.push(Instruction::PopRegisters, pos);
 
         // increment step
-        self.push(Instruction::CopyVarToA(counter_var_name.clone()), pos);
+        self.load_counter(counter_var_name, pos);
         // copy step from D to B
         self.push(Instruction::CopyDToB, pos);
         self.push(Instruction::Plus, pos);
-        self.push(Instruction::Store(counter_var_name), pos);
+        self.store_counter(counter_var_name, pos);
 
         // back to loop
         self.jump(loop_label, pos);

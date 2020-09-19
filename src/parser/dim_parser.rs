@@ -108,10 +108,7 @@ mod tests {
     #[test]
     fn test_parse_dim_user_defined_too_long() {
         let input = "DIM A AS ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO";
-        assert_eq!(
-            parse_err(input),
-            QError::syntax_error("Identifier too long")
-        );
+        assert_eq!(parse_err(input), QError::IdentifierTooLong);
     }
 
     macro_rules! assert_parse_dim_compact {

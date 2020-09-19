@@ -103,7 +103,7 @@ fn next_counter<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::*;
+    use crate::parser::types::*;
 
     #[test]
     fn test_for_loop() {
@@ -260,7 +260,7 @@ mod tests {
         FOR I = 0 TO 2STEP 1
         NEXT I
         ";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(

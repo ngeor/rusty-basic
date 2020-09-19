@@ -19,18 +19,22 @@ pub struct ParseStatementsOptions {
 
 pub fn single_line_non_comment_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>> {
-    crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(zero_or_more(opt_seq2(
-        with_pos(statement::single_line_non_comment_statement()),
-        crate::parser::pc::ws::zero_or_more_around(read(':')),
-    ))))
+    crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(
+        many_with_terminating_indicator(opt_seq2(
+            with_pos(statement::single_line_non_comment_statement()),
+            crate::parser::pc::ws::zero_or_more_around(read(':')),
+        )),
+    ))
 }
 
 pub fn single_line_statements<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>> {
-    crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(zero_or_more(opt_seq2(
-        with_pos(statement::single_line_statement()),
-        crate::parser::pc::ws::zero_or_more_around(read(':')),
-    ))))
+    crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(
+        many_with_terminating_indicator(opt_seq2(
+            with_pos(statement::single_line_statement()),
+            crate::parser::pc::ws::zero_or_more_around(read(':')),
+        )),
+    ))
 }
 
 fn parse_first_statement_separator<T: BufRead + 'static, FE>(
@@ -100,7 +104,7 @@ where
 {
     drop_left(and(
         parse_first_statement_separator(err_fn),
-        zero_or_more(move |reader| {
+        many_with_terminating_indicator(move |reader| {
             match exit_source(reader) {
                 Ok((reader, Some(x))) => {
                     // found the exit
@@ -125,7 +129,7 @@ fn statement_node_and_separator<T: BufRead + 'static>(
     combine_some(
         // first part is the statement node
         statement::statement_node(),
-        // second part the separator, which is used by the zero_or_more to understand if it's the terminal statement
+        // second part the separator, which is used by the `many_with_terminating_indicator` to understand if it's the terminal statement
         |s_node| {
             // if the statement is a comment, the only valid separator is EOL (or EOF)
             let is_comment = match s_node.as_ref() {

@@ -1,7 +1,7 @@
-use super::types::*;
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::{DeclaredNameNode, QualifiedName};
+use crate::linter::types::*;
+use crate::parser::QualifiedNameNode;
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.
@@ -59,7 +59,6 @@ pub trait PostConversionLinter {
             Statement::ErrorHandler(label) => self.visit_error_handler(label),
             Statement::Label(label) => self.visit_label(label),
             Statement::GoTo(label) => self.visit_go_to(label),
-            Statement::SetReturnValue(expr) => self.visit_expression(expr),
             Statement::Comment(c) => self.visit_comment(c),
             Statement::Dim(d) => self.visit_dim(d),
         }
@@ -69,7 +68,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_dim(&self, _d: &DeclaredNameNode) -> Result<(), QErrorNode> {
+    fn visit_dim(&self, _d: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
         Ok(())
     }
 
@@ -103,13 +102,14 @@ pub trait PostConversionLinter {
 
     fn visit_assignment(
         &self,
-        _name: &QualifiedName,
+        _name: &ResolvedDeclaredName,
         v: &ExpressionNode,
     ) -> Result<(), QErrorNode> {
         self.visit_expression(v)
     }
 
     fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
+        // TODO visit variable name
         self.visit_expression(&f.lower_bound)?;
         self.visit_expression(&f.upper_bound)?;
         match &f.step {
@@ -158,7 +158,11 @@ pub trait PostConversionLinter {
         self.visit_statement_nodes(&c.statements)
     }
 
-    fn visit_const(&self, _left: &QNameNode, right: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn visit_const(
+        &self,
+        _left: &QualifiedNameNode,
+        right: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
         self.visit_expression(right)
     }
 

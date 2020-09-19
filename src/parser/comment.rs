@@ -31,13 +31,10 @@ pub fn comments<T: BufRead + 'static>(
     drop_left(and(
         // leading whitespace / eol
         zero_or_more_if(is_eol_or_whitespace),
-        zero_or_more(map(
-            with_pos(drop_right(and(
-                drop_left(and(read('\''), zero_or_more_if(is_not_eol))),
-                zero_or_more_if(is_eol_or_whitespace),
-            ))),
-            |Locatable { element, pos }| (element.at(pos), Some(())),
-        )),
+        many(with_pos(drop_right(and(
+            drop_left(and(read('\''), zero_or_more_if(is_not_eol))),
+            zero_or_more_if(is_eol_or_whitespace),
+        )))),
     ))
 }
 

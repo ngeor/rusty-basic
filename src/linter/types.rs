@@ -1,74 +1,32 @@
-use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::*;
-use crate::parser::*;
+mod expression;
+mod has_type_definition;
+mod param_name;
+mod type_definition;
+mod user_defined_type;
 
-pub type QNameNode = Locatable<QualifiedName>;
+pub use self::expression::*;
+pub use self::has_type_definition::*;
+pub use self::param_name::*;
+pub use self::type_definition::*;
+pub use self::user_defined_type::*;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Expression {
-    SingleLiteral(f32),
-    DoubleLiteral(f64),
-    StringLiteral(String),
-    IntegerLiteral(i32),
-    #[allow(dead_code)]
-    LongLiteral(i64),
-    Constant(QualifiedName),
-    Variable(QualifiedName),
-    FunctionCall(QualifiedName, Vec<ExpressionNode>),
-    BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
-    BinaryExpression(Operand, Box<ExpressionNode>, Box<ExpressionNode>),
-    UnaryExpression(UnaryOperand, Box<ExpressionNode>),
-    Parenthesis(Box<ExpressionNode>),
-    FileHandle(FileHandle),
-}
+use crate::built_ins::BuiltInSub;
+use crate::common::{CanCastTo, Locatable};
+use crate::parser::{
+    BareName, BareNameNode, Operator, QualifiedName, QualifiedNameNode, TypeQualifier,
+};
 
-impl Expression {
-    pub fn try_qualifier(&self, pos: Location) -> Result<TypeQualifier, QErrorNode> {
-        match self {
-            Self::SingleLiteral(_) => Ok(TypeQualifier::BangSingle),
-            Self::DoubleLiteral(_) => Ok(TypeQualifier::HashDouble),
-            Self::StringLiteral(_) => Ok(TypeQualifier::DollarString),
-            Self::IntegerLiteral(_) => Ok(TypeQualifier::PercentInteger),
-            Self::LongLiteral(_) => Ok(TypeQualifier::AmpersandLong),
-            Self::Variable(name) | Self::Constant(name) | Self::FunctionCall(name, _) => {
-                Ok(name.qualifier())
-            }
-            Self::BuiltInFunctionCall(f, _) => Ok(f.qualifier()),
-            Self::BinaryExpression(op, l, r) => {
-                let q_left = l.as_ref().try_qualifier()?;
-                let q_right = r.as_ref().try_qualifier()?;
-                super::operand_type::cast_binary_op(*op, q_left, q_right)
-                    .ok_or_else(|| QError::TypeMismatch)
-                    .with_err_at(r.pos())
-            }
-            Self::UnaryExpression(op, c) => {
-                let q_child = c.as_ref().try_qualifier()?;
-                super::operand_type::cast_unary_op(*op, q_child)
-                    .ok_or_else(|| QError::TypeMismatch)
-                    .with_err_at(c.as_ref())
-            }
-            Self::Parenthesis(c) => c.as_ref().try_qualifier(),
-            Self::FileHandle(_) => Err(QError::TypeMismatch).with_err_at(pos),
-        }
-    }
-}
-
-pub type ExpressionNode = Locatable<Expression>;
-
-impl ExpressionNode {
-    pub fn try_qualifier(&self) -> Result<TypeQualifier, QErrorNode> {
-        self.as_ref().try_qualifier(self.pos())
-    }
-}
+#[cfg(test)]
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
-    pub variable_name: QNameNode,
+    pub variable_name: ResolvedDeclaredName,
     pub lower_bound: ExpressionNode,
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<QNameNode>,
+    pub next_counter: Option<Locatable<ResolvedDeclaredName>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -103,14 +61,14 @@ pub struct CaseBlockNode {
 #[derive(Clone, Debug, PartialEq)]
 pub enum CaseExpression {
     Simple(ExpressionNode),
-    Is(Operand, ExpressionNode),
+    Is(Operator, ExpressionNode),
     Range(ExpressionNode, ExpressionNode),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    Assignment(QualifiedName, ExpressionNode),
-    Const(QNameNode, ExpressionNode),
+    Assignment(ResolvedDeclaredName, ExpressionNode),
+    Const(QualifiedNameNode, ExpressionNode),
     SubCall(BareName, Vec<ExpressionNode>),
     BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),
 
@@ -120,13 +78,12 @@ pub enum Statement {
     ForLoop(ForLoopNode),
     While(ConditionalBlockNode),
 
-    ErrorHandler(CaseInsensitiveString),
-    Label(CaseInsensitiveString),
-    GoTo(CaseInsensitiveString),
+    ErrorHandler(BareName),
+    Label(BareName),
+    GoTo(BareName),
 
-    SetReturnValue(ExpressionNode),
     Comment(String),
-    Dim(DeclaredNameNode),
+    Dim(ResolvedDeclaredNameNode),
 }
 
 pub type StatementNode = Locatable<Statement>;
@@ -134,15 +91,15 @@ pub type StatementNodes = Vec<StatementNode>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionImplementation {
-    pub name: QNameNode,
-    pub params: Vec<QNameNode>,
+    pub name: QualifiedNameNode,
+    pub params: Vec<Locatable<ResolvedParamName>>,
     pub body: StatementNodes,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubImplementation {
     pub name: BareNameNode,
-    pub params: Vec<QNameNode>,
+    pub params: Vec<Locatable<ResolvedParamName>>,
     pub body: StatementNodes,
 }
 
@@ -160,3 +117,132 @@ pub enum TopLevelToken {
 
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
 pub type ProgramNode = Vec<TopLevelTokenNode>;
+
+impl CanCastTo<TypeQualifier> for ResolvedDeclaredName {
+    fn can_cast_to(&self, other: TypeQualifier) -> bool {
+        self.type_definition().can_cast_to(other)
+    }
+}
+
+// ========================================================
+// ResolvedDeclaredName
+// ========================================================
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct UserDefinedName {
+    pub name: BareName,
+    pub type_name: BareName,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum Members {
+    Leaf {
+        name: BareName,
+        element_type: ElementType,
+    },
+    Node(UserDefinedName, Box<Members>),
+}
+
+impl Members {
+    pub fn name_path(&self) -> Vec<BareName> {
+        match self {
+            Self::Leaf { name, .. } => vec![name.clone()],
+            Self::Node(UserDefinedName { name, .. }, boxed_members) => {
+                let mut result = vec![name.clone()];
+                result.extend(boxed_members.name_path());
+                result
+            }
+        }
+    }
+
+    pub fn append(self, other: Self) -> Self {
+        match self {
+            Self::Leaf { name, element_type } => match element_type {
+                ElementType::UserDefined(type_name) => {
+                    Self::Node(UserDefinedName { name, type_name }, Box::new(other))
+                }
+                _ => panic!("Cannot extend leaf element which is not user defined type"),
+            },
+            Self::Node(user_defined_name, boxed_members) => {
+                Self::Node(user_defined_name, Box::new(boxed_members.append(other)))
+            }
+        }
+    }
+}
+
+impl HasTypeDefinition for Members {
+    fn type_definition(&self) -> TypeDefinition {
+        match self {
+            Self::Leaf { element_type, .. } => element_type.type_definition(),
+            Self::Node(_, boxed_members) => boxed_members.type_definition(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum ResolvedDeclaredName {
+    // A -> A!
+    // A AS STRING
+    // A$, A% etc
+    BuiltIn(QualifiedName),
+
+    // DIM C AS Card
+    UserDefined(UserDefinedName),
+
+    // C.Suit, Name.Address, Name.Address.PostCode
+    Many(UserDefinedName, Members),
+}
+
+impl ResolvedDeclaredName {
+    #[cfg(test)]
+    pub fn parse(s: &str) -> Self {
+        Self::BuiltIn(QualifiedName::try_from(s).unwrap())
+    }
+
+    #[cfg(test)]
+    pub fn user_defined(name: &str, type_name: &str) -> Self {
+        Self::UserDefined(UserDefinedName {
+            name: name.into(),
+            type_name: type_name.into(),
+        })
+    }
+
+    pub fn append(self, members: Members) -> Self {
+        match self {
+            Self::BuiltIn(_) => panic!("Cannot append members to built-in resolved name"),
+            Self::UserDefined(user_defined_name) => Self::Many(user_defined_name, members),
+            Self::Many(user_defined_name, existing_members) => {
+                Self::Many(user_defined_name, existing_members.append(members))
+            }
+        }
+    }
+}
+
+impl AsRef<BareName> for ResolvedDeclaredName {
+    fn as_ref(&self) -> &BareName {
+        match self {
+            Self::BuiltIn(QualifiedName { name, .. }) => name,
+            Self::UserDefined(UserDefinedName { name, .. }) => name,
+            Self::Many(UserDefinedName { name, .. }, _) => name,
+        }
+    }
+}
+
+impl HasTypeDefinition for ResolvedDeclaredName {
+    fn type_definition(&self) -> TypeDefinition {
+        match self {
+            Self::BuiltIn(QualifiedName { qualifier, .. }) => TypeDefinition::BuiltIn(*qualifier),
+            Self::UserDefined(UserDefinedName { type_name, .. }) => {
+                TypeDefinition::UserDefined(type_name.clone())
+            }
+            Self::Many(_, members) => members.type_definition(),
+        }
+    }
+}
+
+pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;
+pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;
+
+// ========================================================
+// parameter name
+// ========================================================

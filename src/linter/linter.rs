@@ -1,53 +1,17 @@
-use super::expression_reducer::ExpressionReducer;
-use super::post_conversion_linter::PostConversionLinter;
-use super::subprogram_context::{FunctionMap, SubMap};
 use super::types::*;
 use crate::common::*;
-use crate::linter::converter;
+use crate::linter::converter::convert;
+use crate::linter::post_linter::post_linter;
+use crate::linter::pre_linter::subprogram_context::parse_subprograms_and_types;
 use crate::parser;
 
-pub fn lint(program: parser::ProgramNode) -> Result<ProgramNode, QErrorNode> {
+pub fn lint(program: parser::ProgramNode) -> Result<(ProgramNode, UserDefinedTypes), QErrorNode> {
+    // first pass, get user defined types and functions/subs
+    let (functions, subs, user_defined_types) = parse_subprograms_and_types(&program)?;
     // convert to fully typed
-    let (result, functions, subs) = converter::convert(program)?;
-    // lint
-    apply_linters(&result, &functions, &subs)?;
-    // reduce
-    let reducer = super::undefined_function_reducer::UndefinedFunctionReducer {
-        functions: &functions,
-    };
-    reducer.visit_program(result)
-}
-
-fn apply_linters(
-    result: &ProgramNode,
-    functions: &FunctionMap,
-    subs: &SubMap,
-) -> Result<(), QErrorNode> {
-    let linter = super::no_dynamic_const::NoDynamicConst {};
-    linter.visit_program(&result)?;
-
-    let linter = super::for_next_counter_match::ForNextCounterMatch {};
-    linter.visit_program(&result)?;
-
-    let linter = super::built_in_linter::BuiltInLinter {};
-    linter.visit_program(&result)?;
-
-    let linter = super::user_defined_function_linter::UserDefinedFunctionLinter {
-        functions: &functions,
-    };
-    linter.visit_program(&result)?;
-
-    let linter = super::user_defined_sub_linter::UserDefinedSubLinter { subs: &subs };
-    linter.visit_program(&result)?;
-
-    let linter = super::select_case_linter::SelectCaseLinter {};
-    linter.visit_program(&result)?;
-
-    let mut linter = super::label_linter::LabelLinter::new();
-    linter.visit_program(&result)?;
-    linter.switch_to_validating_mode();
-    linter.visit_program(&result)?;
-    Ok(())
+    let (result, names_without_dot) = convert(program, &functions, &subs, &user_defined_types)?;
+    // lint and reduce
+    post_linter(result, &functions, &subs, &names_without_dot).map(|p| (p, user_defined_types))
 }
 
 #[cfg(test)]
@@ -57,7 +21,8 @@ mod tests {
     use crate::common::*;
     use crate::linter::test_utils::*;
     use crate::linter::*;
-    use std::convert::TryInto;
+    use crate::parser::{Operator, TypeQualifier};
+    use std::collections::HashMap;
 
     mod assignment {
         use super::*;
@@ -114,6 +79,25 @@ mod tests {
             A = 42
             "#;
             assert_linter_err!(program, QError::TypeMismatch, 4, 17);
+        }
+
+        #[test]
+        fn test_assign_binary_plus() {
+            assert_eq!(
+                linter_ok("X% = 1 + 2.1"),
+                vec![TopLevelToken::Statement(Statement::Assignment(
+                    ResolvedDeclaredName::parse("X%"),
+                    Expression::BinaryExpression(
+                        Operator::Plus,
+                        Box::new(Expression::IntegerLiteral(1).at_rc(1, 6),),
+                        Box::new(Expression::SingleLiteral(2.1).at_rc(1, 10)),
+                        // TODO replace with '!'.into()
+                        TypeDefinition::BuiltIn(TypeQualifier::BangSingle)
+                    )
+                    .at_rc(1, 8)
+                ))
+                .at_rc(1, 1)]
+            );
         }
     }
 
@@ -204,6 +188,257 @@ mod tests {
             "#;
             assert_linter_err!(program, QError::DuplicateDefinition, 6, 23);
         }
+
+        #[test]
+        fn test_forward_const_not_allowed() {
+            let input = "
+            CONST A = B + 1
+            CONST B = 42";
+            assert_linter_err!(input, QError::InvalidConstant, 2, 23);
+        }
+    }
+
+    /// Three step tests:
+    /// 1. DIM a new variable
+    /// 2. Assign to the variable
+    /// 3. Use it in an expression
+    mod dim_assign_use_in_expr {
+        use super::*;
+
+        #[test]
+        fn bare() {
+            let program = r#"
+            DIM A
+            A = 42
+            PRINT A
+            "#;
+            assert_eq!(
+                linter_ok(program),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName::parse("A!").at_rc(2, 17)
+                    ))
+                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName::parse("A!"),
+                        Expression::IntegerLiteral(42).at_rc(3, 17)
+                    ))
+                    .at_rc(3, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName::parse("A!")).at_rc(4, 19)]
+                    ))
+                    .at_rc(4, 13)
+                ]
+            );
+        }
+
+        #[test]
+        fn compact_string() {
+            let program = r#"
+            DIM A$
+            A$ = "hello"
+            PRINT A$
+            "#;
+            assert_eq!(
+                linter_ok(program),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName::parse("A$").at_rc(2, 17)
+                    ))
+                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName::parse("A$"),
+                        Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
+                    ))
+                    .at_rc(3, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName::parse("A$")).at_rc(4, 19)]
+                    ))
+                    .at_rc(4, 13)
+                ]
+            );
+        }
+
+        #[test]
+        fn extended_string() {
+            let program = r#"
+            DIM A AS STRING
+            A = "hello"
+            PRINT A
+            "#;
+            assert_eq!(
+                linter_ok(program),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName::parse("A$").at_rc(2, 17)
+                    ))
+                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName::parse("A$"),
+                        Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
+                    ))
+                    .at_rc(3, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName::parse("A$")).at_rc(4, 19)]
+                    ))
+                    .at_rc(4, 13)
+                ]
+            );
+        }
+
+        #[test]
+        fn user_defined_type() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+            DIM A AS Card
+            DIM B AS Card
+            A = B
+            "#;
+            let (program, user_defined_types) = linter_ok_with_types(input);
+            assert_eq!(
+                program,
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
+                    ))
+                    .at_rc(6, 13),
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName::user_defined("B", "Card").at_rc(7, 17)
+                    ))
+                    .at_rc(7, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName::user_defined("A", "Card"),
+                        Expression::Variable(ResolvedDeclaredName::user_defined("B", "Card"))
+                            .at_rc(8, 17)
+                    ))
+                    .at_rc(8, 13)
+                ]
+            );
+            assert_eq!(
+                user_defined_types.len(),
+                1,
+                "Expected one user defined type"
+            );
+            assert!(
+                user_defined_types.contains_key(&"Card".into()),
+                "Expected to contain the `Card` type"
+            );
+            let mut m: HashMap<CaseInsensitiveString, ElementType> = HashMap::new();
+            m.insert("Value".into(), ElementType::Integer);
+            m.insert("Suit".into(), ElementType::String(9));
+            assert_eq!(
+                *user_defined_types.get(&"Card".into()).unwrap(),
+                UserDefinedType::new(m)
+            );
+        }
+
+        #[test]
+        fn user_defined_type_integer_element() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+            DIM A AS Card
+            A.Value = 42
+            PRINT A.Value
+            "#;
+            assert_eq!(
+                linter_ok(input),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
+                    ))
+                    .at_rc(6, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName::Many(
+                            UserDefinedName {
+                                name: "A".into(),
+                                type_name: "Card".into()
+                            },
+                            Members::Leaf {
+                                name: "Value".into(),
+                                element_type: ElementType::Integer
+                            }
+                        ),
+                        Expression::IntegerLiteral(42).at_rc(7, 23)
+                    ))
+                    .at_rc(7, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName::Many(
+                            UserDefinedName {
+                                name: "A".into(),
+                                type_name: "Card".into()
+                            },
+                            Members::Leaf {
+                                name: "Value".into(),
+                                element_type: ElementType::Integer
+                            }
+                        ))
+                        .at_rc(8, 19)]
+                    ))
+                    .at_rc(8, 13)
+                ]
+            );
+        }
+
+        #[test]
+        fn user_defined_type_string_element() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+            DIM A AS Card
+            A.Suit = "diamonds"
+            PRINT A.Suit
+            "#;
+            assert_eq!(
+                linter_ok(input),
+                vec![
+                    TopLevelToken::Statement(Statement::Dim(
+                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
+                    ))
+                    .at_rc(6, 13),
+                    TopLevelToken::Statement(Statement::Assignment(
+                        ResolvedDeclaredName::Many(
+                            UserDefinedName {
+                                name: "A".into(),
+                                type_name: "Card".into()
+                            },
+                            Members::Leaf {
+                                name: "Suit".into(),
+                                element_type: ElementType::String(9)
+                            }
+                        ),
+                        Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
+                    ))
+                    .at_rc(7, 13),
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Print,
+                        vec![Expression::Variable(ResolvedDeclaredName::Many(
+                            UserDefinedName {
+                                name: "A".into(),
+                                type_name: "Card".into()
+                            },
+                            Members::Leaf {
+                                name: "Suit".into(),
+                                element_type: ElementType::String(9)
+                            }
+                        ))
+                        .at_rc(8, 19)]
+                    ))
+                    .at_rc(8, 13)
+                ]
+            );
+        }
     }
 
     mod dim {
@@ -225,38 +460,6 @@ mod tests {
             DIM A AS INTEGER
             "#;
             assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
-        }
-
-        #[test]
-        fn test_dim_string() {
-            let program = r#"
-            DIM A AS STRING
-            A = "hello"
-            PRINT A
-            "#;
-            assert_eq!(
-                linter_ok(program),
-                vec![
-                    TopLevelToken::Statement(Statement::Dim(
-                        DeclaredName::new(
-                            "A".into(),
-                            TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)
-                        )
-                        .at_rc(2, 17)
-                    ))
-                    .at_rc(2, 13),
-                    TopLevelToken::Statement(Statement::Assignment(
-                        "A$".try_into().unwrap(),
-                        Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
-                    ))
-                    .at_rc(3, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable("A$".try_into().unwrap()).at_rc(4, 19)]
-                    ))
-                    .at_rc(4, 13)
-                ]
-            );
         }
 
         #[test]
@@ -494,6 +697,56 @@ mod tests {
             ";
             assert_linter_err!(program, QError::ArgumentTypeMismatch, 2, 21);
         }
+
+        #[test]
+        fn test_function_dotted_name_clashes_variable_of_user_defined_type() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            DIM A AS Card
+
+            FUNCTION A.B
+            END FUNCTION
+            ";
+            assert_linter_err!(input, QError::DotClash, 8, 22);
+        }
+
+        #[test]
+        fn test_function_dotted_name_clashes_variable_of_user_defined_type_in_other_function() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            FUNCTION A.B
+            END FUNCTION
+
+            FUNCTION C.D
+                DIM A AS Card
+            END FUNCTION
+            ";
+            assert_linter_err!(input, QError::DotClash, 6, 22);
+        }
+
+        #[test]
+        fn test_function_dotted_name_clashes_variable_of_user_defined_type_in_other_function_following(
+        ) {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            FUNCTION A.B
+                DIM C AS Card
+            END FUNCTION
+
+            FUNCTION C.D
+            END FUNCTION
+            ";
+            assert_linter_err!(input, QError::DotClash, 10, 22);
+        }
     }
 
     mod sub_implementation {
@@ -580,6 +833,138 @@ mod tests {
             END SUB
             ";
             assert_linter_err!(program, QError::ArgumentTypeMismatch, 4, 19);
+        }
+
+        #[test]
+        fn test_by_ref_parameter_type_mismatch_user_defined_type() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            DIM c AS Card
+            Test c.Value
+
+            SUB Test(N)
+            END SUB
+            ";
+            assert_linter_err!(input, QError::ArgumentTypeMismatch, 7, 18);
+        }
+
+        #[test]
+        fn test_sub_user_defined_param_cannot_contain_dot() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB Test(A.B AS Card)
+            END SUB
+            ";
+            // QBasic actually reports the error on the dot
+            assert_linter_err!(input, QError::IdentifierCannotIncludePeriod, 6, 22);
+        }
+
+        #[test]
+        fn test_sub_dotted_name_clashes_variable_of_user_defined_type() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            DIM A AS Card
+
+            SUB A.B
+            END SUB
+            ";
+            // QBasic actually reports the error on the dot
+            assert_linter_err!(input, QError::DotClash, 8, 17);
+        }
+
+        #[test]
+        fn test_sub_dotted_name_clashes_variable_of_user_defined_type_in_other_sub() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B
+            END SUB
+
+            SUB C.D
+                DIM A AS Card
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 6, 17);
+        }
+
+        #[test]
+        fn test_sub_dotted_name_clashes_variable_of_user_defined_type_in_other_sub_following() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B
+                DIM C AS Card
+            END SUB
+
+            SUB C.D
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 10, 17);
+        }
+
+        #[test]
+        fn test_sub_param_dotted_name_clashes_variable_of_user_defined_type_in_other_sub_following()
+        {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B
+                DIM C AS Card
+            END SUB
+
+            SUB Oops(C.D AS INTEGER)
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 10, 22);
+        }
+
+        #[test]
+        fn test_sub_param_dotted_name_clashes_param_of_user_defined_type_in_other_sub_following() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B(C AS Card)
+            END SUB
+
+            SUB Oops(C.D AS INTEGER)
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 9, 22);
+        }
+
+        #[test]
+        fn test_sub_variable_dotted_name_clashes_variable_of_user_defined_type_in_other_sub() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            SUB A.B
+                DIM X AS Card
+            END SUB
+
+            SUB Oops
+                DIM X.Y AS INTEGER
+            END SUB
+            ";
+            assert_linter_err!(input, QError::DotClash, 11, 21);
         }
     }
 
@@ -732,8 +1117,8 @@ mod tests {
             assert_linter_err!(r#"PRINT "hello" AND "bye""#, QError::TypeMismatch, 1, 19);
 
             assert_linter_err!(r#"PRINT 1 AND #1"#, QError::TypeMismatch, 1, 13);
-            assert_linter_err!(r#"PRINT #1 AND 1"#, QError::TypeMismatch, 1, 7);
-            assert_linter_err!(r#"PRINT #1 AND #1"#, QError::TypeMismatch, 1, 7);
+            assert_linter_err!(r#"PRINT #1 AND 1"#, QError::TypeMismatch, 1, 14);
+            assert_linter_err!(r#"PRINT #1 AND #1"#, QError::TypeMismatch, 1, 14);
         }
 
         #[test]
@@ -761,4 +1146,195 @@ mod tests {
             assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
         }
     }
+
+    mod user_defined_type {
+        use super::*;
+
+        #[test]
+        fn duplicate_type_throws_duplicate_definition() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            TYPE Card
+                Value AS INTEGER
+            END TYPE";
+            assert_linter_err!(input, QError::DuplicateDefinition, 6, 13);
+        }
+
+        #[test]
+        fn duplicate_element_name() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+                Value AS INTEGER
+            END TYPE
+            ";
+            assert_linter_err!(input, QError::DuplicateDefinition, 4, 17);
+        }
+
+        #[test]
+        fn element_using_container_type_throws_type_not_defined() {
+            let input = "
+            TYPE Card
+                Item AS Card
+            END TYPE";
+            // TODO QBasic actually positions the error on the "AS" keyword
+            assert_linter_err!(input, QError::TypeNotDefined, 3, 25);
+        }
+
+        #[test]
+        fn dim_using_undefined_type() {
+            let input = "DIM X AS Card";
+            // TODO QBasic actually positions the error on the "AS" keyword
+            assert_linter_err!(input, QError::TypeNotDefined, 1, 5);
+        }
+
+        #[test]
+        fn using_type_before_defined_throws_type_not_defined() {
+            let input = "
+            TYPE Address
+                PostCode AS PostCode
+            END TYPE
+
+            TYPE PostCode
+                Prefix AS INTEGER
+                Suffix AS STRING * 2
+            END TYPE";
+            assert_linter_err!(input, QError::TypeNotDefined, 3, 29);
+        }
+
+        #[test]
+        fn string_length_must_be_constant() {
+            let input = "
+            TYPE Invalid
+                N AS STRING * A
+            END TYPE";
+            assert_linter_err!(input, QError::InvalidConstant, 3, 31);
+        }
+
+        #[test]
+        fn string_length_must_be_constant_const_cannot_follow_type() {
+            let input = "
+            TYPE Invalid
+                N AS STRING * A
+            END TYPE
+
+            CONST A = 10";
+            assert_linter_err!(input, QError::InvalidConstant, 3, 31);
+        }
+
+        #[test]
+        fn referencing_non_existing_member() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM c AS Card
+            PRINT c.Suite";
+            // TODO QBasic reports the error at the dot
+            assert_linter_err!(input, QError::ElementNotDefined, 8, 19);
+        }
+
+        #[test]
+        fn user_defined_variable_name_cannot_include_period() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM A.B AS Card
+            ";
+            assert_linter_err!(input, QError::IdentifierCannotIncludePeriod, 7, 17);
+        }
+
+        #[test]
+        fn cannot_define_variable_with_dot_if_clashes_with_user_defined_type() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM C AS Card
+            DIM C.Oops AS STRING
+            ";
+            // QBasic actually throws "Expected: , or end-of-statement" at the period position
+            assert_linter_err!(
+                input,
+                QError::syntax_error("Expected: , or end-of-statement"),
+                8,
+                17
+            );
+        }
+
+        #[test]
+        fn cannot_define_variable_with_dot_if_clashes_with_user_defined_type_reverse() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM C.Oops AS STRING
+            DIM C AS Card
+            ";
+            // QBasic actually throws "Expected: , or end-of-statement" at the period position
+            assert_linter_err!(
+                input,
+                QError::syntax_error("Expected: , or end-of-statement"),
+                8,
+                17
+            );
+        }
+
+        #[test]
+        fn cannot_use_in_binary_expression() {
+            let ops = [
+                "=", "<>", ">=", ">", "<", "<=", "+", "-", "*", "/", "AND", "OR",
+            ];
+            for op in &ops {
+                let input = format!(
+                    "
+                    TYPE Card
+                        Value AS INTEGER
+                    END TYPE
+
+                    DIM a AS CARD
+                    DIM b AS CARD
+
+                    IF a {} b THEN
+                    END IF",
+                    op
+                );
+                // QBasic uses the right side expr for the location
+                assert_linter_err!(input, QError::TypeMismatch, 9, 26 + (op.len() as u32) + 1);
+            }
+        }
+
+        #[test]
+        fn cannot_use_in_unary_expression() {
+            let ops = ["-", "NOT "];
+            for op in &ops {
+                let input = format!(
+                    "
+                    TYPE Card
+                        Value AS INTEGER
+                    END TYPE
+
+                    DIM a AS CARD
+                    DIM b AS CARD
+
+                    b = {}A",
+                    op
+                );
+                assert_linter_err!(input, QError::TypeMismatch, 9, 25);
+            }
+        }
+    }
 }
+// TODO test file handle expression cannot be used anywhere except for `OPEN`, `CLOSE`, `LINE INPUT`, `INPUT`

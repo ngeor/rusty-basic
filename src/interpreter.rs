@@ -1,8 +1,6 @@
 mod built_ins;
-mod casting;
 mod constant;
 pub mod context;
-pub mod context_owner;
 mod expression;
 mod for_loop;
 mod function_call;
@@ -19,5 +17,5 @@ mod while_wend;
 #[cfg(test)]
 pub mod test_utils;
 
-pub use self::interpreter::Interpreter;
+pub use self::interpreter::{Interpreter, SetVariable};
 pub use self::stdlib::*;

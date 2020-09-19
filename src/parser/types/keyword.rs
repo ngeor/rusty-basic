@@ -88,6 +88,8 @@ pub enum Keyword {
     Then,
     /// TO
     To,
+    /// TYPE
+    Type,
     /// WEND
     Wend,
     /// WHILE
@@ -136,10 +138,11 @@ const STR_STRING: &str = "STRING";
 const STR_SUB: &str = "SUB";
 const STR_THEN: &str = "THEN";
 const STR_TO: &str = "TO";
+const STR_TYPE: &str = "TYPE";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 44] = [
+const SORTED_KEYWORDS_STR: [&str; 45] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -182,11 +185,12 @@ const SORTED_KEYWORDS_STR: [&str; 44] = [
     STR_SUB,
     STR_THEN,
     STR_TO,
+    STR_TYPE,
     STR_WEND,
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 44] = [
+const SORTED_KEYWORDS: [Keyword; 45] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -229,6 +233,7 @@ const SORTED_KEYWORDS: [Keyword; 44] = [
     Keyword::Sub,
     Keyword::Then,
     Keyword::To,
+    Keyword::Type,
     Keyword::Wend,
     Keyword::While,
 ];
@@ -278,6 +283,7 @@ impl Keyword {
             Self::Sub => STR_SUB,
             Self::Then => STR_THEN,
             Self::To => STR_TO,
+            Self::Type => STR_TYPE,
             Self::Wend => STR_WEND,
             Self::While => STR_WHILE,
         }

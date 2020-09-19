@@ -21,8 +21,8 @@ impl FileManager {
         }
     }
 
-    pub fn close(&mut self, handle: FileHandle) {
-        self.handle_map.remove(&handle);
+    pub fn close(&mut self, handle: &FileHandle) {
+        self.handle_map.remove(handle);
     }
 
     pub fn open(
@@ -75,8 +75,8 @@ impl FileManager {
         Ok(())
     }
 
-    pub fn print(&mut self, handle: FileHandle, print_args: Vec<String>) -> std::io::Result<()> {
-        match self.handle_map.get_mut(&handle) {
+    pub fn print(&mut self, handle: &FileHandle, print_args: Vec<String>) -> std::io::Result<()> {
+        match self.handle_map.get_mut(handle) {
             Some(file_info) => {
                 for elem in print_args {
                     file_info.file.as_ref().unwrap().write(elem.as_bytes())?;
@@ -88,8 +88,8 @@ impl FileManager {
         }
     }
 
-    pub fn read_line(&mut self, handle: FileHandle) -> std::io::Result<String> {
-        match self.handle_map.get_mut(&handle) {
+    pub fn read_line(&mut self, handle: &FileHandle) -> std::io::Result<String> {
+        match self.handle_map.get_mut(handle) {
             Some(file_info) => {
                 let mut buf = String::new();
                 file_info.buf_reader.as_mut().unwrap().read_line(&mut buf)?;
@@ -101,8 +101,8 @@ impl FileManager {
         }
     }
 
-    pub fn eof(&mut self, handle: FileHandle) -> std::io::Result<bool> {
-        match self.handle_map.get_mut(&handle) {
+    pub fn eof(&mut self, handle: &FileHandle) -> std::io::Result<bool> {
+        match self.handle_map.get_mut(handle) {
             Some(file_info) => {
                 let buf = file_info.buf_reader.as_mut().unwrap().fill_buf()?;
                 let len = buf.len();

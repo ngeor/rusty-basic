@@ -1,9 +1,14 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
+use crate::common::{
+    FileAccess, FileHandle, FileMode, QError, QErrorNode, StringUtils, ToErrorEnvelopeNoPos,
+};
 use crate::interpreter::context::Argument;
-use crate::interpreter::context_owner::ContextOwner;
-use crate::interpreter::{Interpreter, Stdlib};
-use crate::parser::{HasQualifier, QualifiedName, TypeQualifier};
+use crate::interpreter::{Interpreter, SetVariable, Stdlib};
+use crate::linter::{
+    ElementType, HasTypeDefinition, ResolvedDeclaredName, TypeDefinition, UserDefinedType,
+    UserDefinedTypes,
+};
+use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
 use std::convert::TryInto;
 
@@ -44,10 +49,15 @@ mod chr {
     // CHR$(ascii-code%) returns the text representation of the given ascii code
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let i: i32 = interpreter.pop_integer();
+        let i: i32 = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .into();
         let mut s: String = String::new();
         s.push((i as u8) as char);
-        interpreter.function_result = s.into();
+        interpreter.set_variable(BuiltInFunction::Chr, s);
         Ok(())
     }
 
@@ -71,8 +81,14 @@ mod close {
     // TODO : close without arguments closes all files
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handle = interpreter.pop_file_handle().with_err_no_pos()?;
-        interpreter.file_manager.close(file_handle);
+        let file_handles: Vec<FileHandle> = interpreter
+            .context()
+            .parameter_values()
+            .map(|v| v.into())
+            .collect();
+        for file_handle in file_handles {
+            interpreter.file_manager.close(&file_handle);
+        }
         Ok(())
     }
 }
@@ -82,15 +98,15 @@ mod environ_fn {
     // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v = interpreter.pop_unnamed_val().unwrap();
-        match v {
-            Variant::VString(env_var_name) => {
-                let result = interpreter.stdlib.get_env_var(&env_var_name);
-                interpreter.function_result = Variant::VString(result);
-                Ok(())
-            }
-            _ => panic!("Type mismatch at ENVIRON$",),
-        }
+        let env_var_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .as_ref();
+        let result = interpreter.stdlib.get_env_var(env_var_name);
+        interpreter.set_variable(BuiltInFunction::Environ, result);
+        Ok(())
     }
 
     #[cfg(test)]
@@ -136,19 +152,20 @@ mod environ_sub {
     // Parameter must be in the form of name=value or name value (TODO support the latter)
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        match interpreter.pop_unnamed_val().unwrap() {
-            Variant::VString(arg_string_value) => {
-                let parts: Vec<&str> = arg_string_value.split("=").collect();
-                if parts.len() != 2 {
-                    Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()
-                } else {
-                    interpreter
-                        .stdlib
-                        .set_env_var(parts[0].to_string(), parts[1].to_string());
-                    Ok(())
-                }
-            }
-            _ => panic!("Type mismatch"),
+        let s: &String = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .as_ref();
+        let parts: Vec<&str> = s.split("=").collect();
+        if parts.len() != 2 {
+            Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()
+        } else {
+            let name = parts[0].to_string();
+            let value = parts[1].to_string();
+            interpreter.stdlib.set_env_var(name, value);
+            Ok(())
         }
     }
 
@@ -165,6 +182,16 @@ mod environ_sub {
             let interpreter = interpret(program);
             assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
         }
+
+        #[test]
+        fn test_sub_call_environ_by_ref() {
+            let program = r#"
+            A$ = "FOO1=BAR2"
+            ENVIRON A$
+            "#;
+            let interpreter = interpret(program);
+            assert_eq!(interpreter.stdlib.get_env_var(&"FOO1".to_string()), "BAR2");
+        }
     }
 }
 
@@ -172,14 +199,24 @@ mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handle: FileHandle = interpreter.pop_file_handle().with_err_no_pos()?;
-        let is_eof: bool = interpreter
-            .file_manager
-            .eof(file_handle)
-            .map_err(|e| e.into())
-            .with_err_no_pos()?;
-        interpreter.function_result = is_eof.into();
-        Ok(())
+        let file_handle_number: i32 = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .into();
+        if file_handle_number >= 1 && file_handle_number <= 255 {
+            let file_handle = FileHandle::from(file_handle_number as u8);
+            let is_eof: bool = interpreter
+                .file_manager
+                .eof(&file_handle)
+                .map_err(|e| e.into())
+                .with_err_no_pos()?;
+            interpreter.set_variable(BuiltInFunction::Eof, is_eof);
+            Ok(())
+        } else {
+            Err(QError::BadFileNameOrNumber).with_err_no_pos()
+        }
     }
 }
 
@@ -199,18 +236,20 @@ mod input {
 
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        loop {
-            match &interpreter.pop_unnamed_arg() {
-                Some(a) => match a {
-                    Argument::ByRef(n) => {
-                        do_input_one_var(interpreter, a, n)?;
-                    }
-                    _ => {
-                        panic!("Expected: variable (linter should have caught this)");
-                    }
-                },
-                None => {
-                    break;
+        let args: Vec<Argument> = interpreter
+            .context()
+            .parameters()
+            .iter()
+            .map(|a| a.clone()) // TODO clone to fix the duplicate borrow FIXME
+            .collect();
+        for a in args.iter() {
+            match a {
+                Argument::ByRef(n) => {
+                    let val: Variant = do_input_one_var(interpreter, n)?;
+                    interpreter.context_mut().set_value_to_popped_arg(a, val);
+                }
+                _ => {
+                    panic!("Expected: variable (linter should have caught this)");
                 }
             }
         }
@@ -219,30 +258,24 @@ mod input {
 
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        a: &Argument,
-        n: &QualifiedName,
-    ) -> Result<(), QErrorNode> {
+        n: &ResolvedDeclaredName,
+    ) -> Result<Variant, QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        let q: TypeQualifier = n.qualifier();
-        let variable_value = match q {
-            TypeQualifier::BangSingle => {
+        Ok(match n.type_definition() {
+            TypeDefinition::BuiltIn(TypeQualifier::BangSingle) => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
-            TypeQualifier::DollarString => Variant::from(raw_input),
-            TypeQualifier::PercentInteger => {
+            TypeDefinition::BuiltIn(TypeQualifier::DollarString) => Variant::from(raw_input),
+            TypeDefinition::BuiltIn(TypeQualifier::PercentInteger) => {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
+            TypeDefinition::String(l) => Variant::from(raw_input.sub_str(l as usize)),
             _ => unimplemented!(),
-        };
-        interpreter
-            .context_mut()
-            .demand_sub()
-            .set_value_to_popped_arg(a, variable_value)
-            .with_err_no_pos()
+        })
     }
 
     fn parse_single_input(s: String) -> Result<f32, QError> {
@@ -335,6 +368,77 @@ mod input {
                 assert_input("42", "A%", "A%", 42);
             }
         }
+
+        #[test]
+        fn test_input_dim_extended_builtin() {
+            let input = "
+            DIM X AS INTEGER
+            INPUT X
+            PRINT X
+            ";
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input("42");
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+        }
+
+        #[test]
+        fn test_input_dim_user_defined() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+
+            DIM X AS Card
+            INPUT X.Value
+            INPUT X.Suit
+            PRINT X.Value
+            PRINT X.Suit
+            ";
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input("2");
+            stdlib.add_next_input("diamonds are forever");
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_eq!(interpreter.stdlib.output, vec!["2", "diamonds "]);
+        }
+
+        #[test]
+        fn test_input_inside_sub() {
+            let input = "
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            DIM X AS Card
+            Test X.Value
+            PRINT X.Value
+
+            SUB Test(X%)
+                INPUT X%
+            END SUB
+            ";
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input("42");
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+        }
+
+        #[test]
+        fn test_input_assign_to_function_directly() {
+            let input = "
+            X = Test
+            PRINT X
+
+            FUNCTION Test
+                INPUT Test
+            END FUNCTION
+            ";
+            let mut stdlib = MockStdlib::new();
+            stdlib.add_next_input("3.14");
+            let interpreter = interpret_with_stdlib(input, stdlib);
+            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+        }
     }
 }
 
@@ -345,17 +449,17 @@ mod instr {
 
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let a: Variant = interpreter.pop_unnamed_val().unwrap();
-        let b: Variant = interpreter.pop_unnamed_val().unwrap();
-        let result: i32 = match interpreter.pop_unnamed_val() {
-            Some(c) => do_instr(a.demand_integer(), b.demand_string(), c.demand_string())?,
-            None => do_instr(1, a.demand_string(), b.demand_string())?,
+        let a: &Variant = interpreter.context().parameter_values().get(0).unwrap();
+        let b: &Variant = interpreter.context().parameter_values().get(1).unwrap();
+        let result: i32 = match interpreter.context().parameter_values().get(2) {
+            Some(c) => do_instr(a.into(), b.as_ref(), c.as_ref())?,
+            None => do_instr(1, a.as_ref(), b.as_ref())?,
         };
-        interpreter.function_result = result.into();
+        interpreter.set_variable(BuiltInFunction::InStr, result);
         Ok(())
     }
 
-    fn do_instr(start: i32, hay: String, needle: String) -> Result<i32, QErrorNode> {
+    fn do_instr(start: i32, hay: &String, needle: &String) -> Result<i32, QErrorNode> {
         if start <= 0 {
             Err(QError::IllegalFunctionCall).with_err_no_pos()
         } else if hay.is_empty() {
@@ -420,7 +524,12 @@ mod kill {
 
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_name = interpreter.pop_string();
+        let file_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(0)
+            .unwrap()
+            .as_ref();
         std::fs::remove_file(file_name)
             .map_err(|e| e.into())
             .with_err_no_pos()
@@ -460,27 +569,58 @@ mod len {
     // LEN(str_expr$) -> number of characters in string
     // LEN(variable) -> number of bytes required to store a variable
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v = interpreter.pop_unnamed_val().unwrap();
-        interpreter.function_result = match v {
-            Variant::VSingle(_) => Variant::VInteger(4),
-            Variant::VDouble(_) => Variant::VInteger(8),
-            Variant::VString(v) => Variant::VInteger(v.len().try_into().unwrap()),
-            Variant::VInteger(_) => Variant::VInteger(2),
-            Variant::VLong(_) => Variant::VInteger(4),
-            _ => {
-                return Err(format!("Variant {:?} not supported in LEN", v).into())
-                    .with_err_no_pos();
+        let v: &Variant = interpreter.context().parameter_values().next().unwrap();
+        let len: i32 = match v {
+            Variant::VSingle(_) => 4,
+            Variant::VDouble(_) => 8,
+            Variant::VString(v) => v.len().try_into().unwrap(),
+            Variant::VInteger(_) => 2,
+            Variant::VLong(_) => 4,
+            Variant::VFileHandle(_) => {
+                return Err("File handle not supported".into()).with_err_no_pos();
+            }
+            Variant::VUserDefined(user_defined_value) => {
+                let user_defined_type = interpreter
+                    .user_defined_types
+                    .as_ref()
+                    .get(user_defined_value.type_name())
+                    .unwrap();
+                let sum: u32 = len_of_user_defined_type(
+                    user_defined_type,
+                    interpreter.user_defined_types.as_ref(),
+                );
+                sum as i32
             }
         };
+        interpreter.set_variable(BuiltInFunction::Len, len);
         Ok(())
+    }
+
+    fn len_of_user_defined_type(
+        user_defined_type: &UserDefinedType,
+        types: &UserDefinedTypes,
+    ) -> u32 {
+        let mut sum: u32 = 0;
+        for (_, element_type) in user_defined_type.elements() {
+            sum += match element_type {
+                ElementType::Single => 4,
+                ElementType::Double => 8,
+                ElementType::Integer => 2,
+                ElementType::Long => 4,
+                ElementType::String(l) => *l as u32,
+                ElementType::UserDefined(type_name) => {
+                    len_of_user_defined_type(types.get(type_name).expect("type not found"), types)
+                }
+            };
+        }
+        sum
     }
 
     #[cfg(test)]
     mod tests {
-        use crate::assert_linter_err;
         use crate::assert_prints;
-        use crate::common::QError;
 
         #[test]
         fn test_len_string() {
@@ -525,35 +665,75 @@ mod len {
         }
 
         #[test]
-        fn test_len_integer_expression_error() {
-            let program = "PRINT LEN(42)";
-            assert_linter_err!(program, QError::VariableRequired, 1, 11);
-        }
-
-        #[test]
-        fn test_len_integer_const_error() {
+        fn test_len_user_defined_type() {
             let program = "
-            CONST X = 42
-            PRINT LEN(X)
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 9
+            END TYPE
+            DIM A AS Card
+            PRINT LEN(A)
             ";
-            assert_linter_err!(program, QError::VariableRequired, 3, 23);
+            assert_prints!(program, "11");
         }
 
         #[test]
-        fn test_len_two_arguments_error() {
-            let program = r#"PRINT LEN("a", "b")"#;
-            assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
+        fn test_len_user_defined_type_nested_one_level() {
+            let program = "
+            TYPE PostCode
+                Prefix AS STRING * 4
+                Suffix AS STRING * 2
+            END TYPE
+            TYPE Address
+                Street AS STRING * 50
+                PostCode AS PostCode
+            END TYPE
+            DIM A AS Address
+            PRINT LEN(A)
+            ";
+            assert_prints!(program, "56");
         }
 
         #[test]
-        fn test_len_must_be_unqualified() {
-            let program = r#"PRINT LEN!("hello")"#;
-            assert_linter_err!(
-                program,
-                QError::syntax_error("Function Len must be unqualified"),
-                1,
-                7
-            );
+        fn test_len_user_defined_type_nested_two_levels() {
+            let program = "
+            TYPE PostCode
+                Prefix AS STRING * 4
+                Suffix AS STRING * 2
+            END TYPE
+            TYPE Address
+                Street AS STRING * 50
+                PostCode AS PostCode
+            END TYPE
+            TYPE Person
+                FullName AS STRING * 100
+                Address AS Address
+            END TYPE
+            DIM A AS Person
+            PRINT LEN(A)
+            ";
+            assert_prints!(program, "156");
+        }
+
+        #[test]
+        fn test_len_user_defined_type_member() {
+            let program = "
+            TYPE PostCode
+                Prefix AS STRING * 4
+                Suffix AS STRING * 2
+            END TYPE
+            TYPE Address
+                Street AS STRING * 50
+                PostCode AS PostCode
+            END TYPE
+            TYPE Person
+                FullName AS STRING * 100
+                Address AS Address
+            END TYPE
+            DIM A AS Person
+            PRINT LEN(A.Address)
+            ";
+            assert_prints!(program, "56");
         }
     }
 }
@@ -568,45 +748,43 @@ mod line_input {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
-        let mut has_more = true;
-        while has_more {
-            match interpreter.pop_unnamed_arg() {
-                Some(a) => {
-                    let arg_ref = &a;
-                    match arg_ref {
-                        Argument::ByVal(v) => {
-                            if is_first {
-                                match v {
-                                    Variant::VFileHandle(f) => {
-                                        file_handle = *f;
-                                    }
-                                    _ => {
-                                        panic!("LINE INPUT linter should have caught this");
-                                    }
-                                }
-                            } else {
+        let args: Vec<Argument> = interpreter
+            .context()
+            .parameters()
+            .iter()
+            .map(|a| a.clone()) // TODO clone to fix the duplicate borrow FIXME
+            .collect();
+        for arg_ref in args.iter() {
+            match arg_ref {
+                Argument::ByVal(v) => {
+                    if is_first {
+                        match v {
+                            Variant::VFileHandle(f) => {
+                                file_handle = *f;
+                            }
+                            _ => {
                                 panic!("LINE INPUT linter should have caught this");
                             }
                         }
-                        Argument::ByRef(n) => {
-                            line_input_one(interpreter, arg_ref, n, file_handle)?;
-                        }
+                    } else {
+                        panic!("LINE INPUT linter should have caught this");
                     }
-                    is_first = false;
                 }
-                None => {
-                    has_more = false;
+                Argument::ByRef(n) => {
+                    line_input_one(interpreter, arg_ref, n, &file_handle)?;
                 }
             }
+            is_first = false;
         }
+
         Ok(())
     }
 
     fn line_input_one<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &QualifiedName,
-        file_handle: FileHandle,
+        n: &ResolvedDeclaredName,
+        file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         if file_handle.is_valid() {
             line_input_one_file(interpreter, arg, n, file_handle)
@@ -618,21 +796,21 @@ mod line_input {
     fn line_input_one_file<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &QualifiedName,
-        file_handle: FileHandle,
+        n: &ResolvedDeclaredName,
+        file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .file_manager
             .read_line(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        let q: TypeQualifier = n.qualifier();
-        match q {
-            TypeQualifier::DollarString => interpreter
-                .context_mut()
-                .demand_sub()
-                .set_value_to_popped_arg(arg, Variant::VString(s))
-                .with_err_no_pos(),
+        match n.type_definition() {
+            TypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
+                interpreter
+                    .context_mut()
+                    .set_value_to_popped_arg(arg, Variant::VString(s));
+                Ok(())
+            }
             _ => unimplemented!(),
         }
     }
@@ -640,7 +818,7 @@ mod line_input {
     fn line_input_one_stdin<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        _n: &QualifiedName,
+        _n: &ResolvedDeclaredName,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .stdlib
@@ -649,9 +827,8 @@ mod line_input {
             .with_err_no_pos()?;
         interpreter
             .context_mut()
-            .demand_sub()
-            .set_value_to_popped_arg(arg, Variant::VString(s))
-            .with_err_no_pos()
+            .set_value_to_popped_arg(arg, Variant::VString(s));
+        Ok(())
     }
 }
 
@@ -664,15 +841,29 @@ mod mid {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let s: String = interpreter.pop_string();
-        let start: i32 = interpreter.pop_integer();
-        let length: Option<i32> = interpreter.pop_unnamed_val().map(|v| v.demand_integer());
+        let s: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(0)
+            .unwrap()
+            .as_ref();
+        let start: i32 = interpreter
+            .context()
+            .parameter_values()
+            .get(1)
+            .unwrap()
+            .into();
+        let length: Option<i32> = interpreter
+            .context()
+            .parameter_values()
+            .get(2)
+            .map(|v| v.into());
         let result: String = do_mid(s, start, length)?;
-        interpreter.function_result = result.into();
+        interpreter.set_variable(BuiltInFunction::Mid, result);
         Ok(())
     }
 
-    fn do_mid(s: String, start: i32, opt_length: Option<i32>) -> Result<String, QErrorNode> {
+    fn do_mid(s: &String, start: i32, opt_length: Option<i32>) -> Result<String, QErrorNode> {
         if start <= 0 {
             Err(QError::IllegalFunctionCall).with_err_no_pos()
         } else {
@@ -741,8 +932,18 @@ mod name {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let old_file_name = interpreter.pop_string();
-        let new_file_name = interpreter.pop_string();
+        let old_file_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(0)
+            .unwrap()
+            .as_ref();
+        let new_file_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(1)
+            .unwrap()
+            .as_ref();
         std::fs::rename(old_file_name, new_file_name)
             .map_err(|e| e.into())
             .with_err_no_pos()
@@ -807,19 +1008,33 @@ mod open {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_name = interpreter.pop_string();
-        let file_mode: FileMode = interpreter.pop_integer().into();
-        let file_access: FileAccess = interpreter.pop_integer().into();
-        let file_handle = interpreter.pop_file_handle().with_err_no_pos()?;
+        let file_name: &String = interpreter
+            .context()
+            .parameter_values()
+            .get(0)
+            .unwrap()
+            .as_ref();
+        let file_mode: FileMode =
+            i32::from(interpreter.context().parameter_values().get(1).unwrap()).into();
+        let file_access: FileAccess =
+            i32::from(interpreter.context().parameter_values().get(2).unwrap()).into();
+        let file_handle: FileHandle = interpreter
+            .context()
+            .parameter_values()
+            .get(3)
+            .unwrap()
+            .into();
+        let f_copy = file_name.clone(); // TODO this was done to break the double borrow
         interpreter
             .file_manager
-            .open(file_handle, file_name.as_ref(), file_mode, file_access)
+            .open(file_handle, f_copy.as_ref(), file_mode, file_access)
             .map_err(|e| e.into())
             .with_err_no_pos()
     }
 
     #[cfg(test)]
     mod tests {
+        use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
         use crate::interpreter::test_utils::*;
         use crate::interpreter::DefaultStdlib;
         use crate::interpreter::Interpreter;
@@ -827,12 +1042,12 @@ mod open {
         #[test]
         fn test_can_create_file() {
             let input = r#"
-        OPEN "TEST1.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        CLOSE #1
-        "#;
-            let instructions = generate_instructions(input);
-            let mut interpreter = Interpreter::new(DefaultStdlib {});
+            OPEN "TEST1.TXT" FOR APPEND AS #1
+            PRINT #1, "Hello, world"
+            CLOSE #1
+            "#;
+            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+            let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             let contents = std::fs::read_to_string("TEST1.TXT").unwrap_or("".to_string());
             std::fs::remove_file("TEST1.TXT").unwrap_or(());
@@ -842,18 +1057,18 @@ mod open {
         #[test]
         fn test_can_read_file() {
             let input = r#"
-        OPEN "TEST2A.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        CLOSE #1
-        OPEN "TEST2A.TXT" FOR INPUT AS #1
-        LINE INPUT #1, T$
-        CLOSE #1
-        OPEN "TEST2B.TXT" FOR APPEND AS #1
-        PRINT #1, T$
-        CLOSE #1
-        "#;
-            let instructions = generate_instructions(input);
-            let mut interpreter = Interpreter::new(DefaultStdlib {});
+            OPEN "TEST2A.TXT" FOR APPEND AS #1
+            PRINT #1, "Hello, world"
+            CLOSE #1
+            OPEN "TEST2A.TXT" FOR INPUT AS #1
+            LINE INPUT #1, T$
+            CLOSE #1
+            OPEN "TEST2B.TXT" FOR APPEND AS #1
+            PRINT #1, T$
+            CLOSE #1
+            "#;
+            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+            let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             let contents = std::fs::read_to_string("TEST2B.TXT").unwrap_or("".to_string());
             std::fs::remove_file("TEST2A.TXT").unwrap_or(());
@@ -864,20 +1079,20 @@ mod open {
         #[test]
         fn test_can_read_file_until_eof() {
             let input = r#"
-        OPEN "TEST3.TXT" FOR APPEND AS #1
-        PRINT #1, "Hello, world"
-        PRINT #1, "Hello, again"
-        CLOSE #1
-        OPEN "TEST3.TXT" FOR INPUT AS #1
-        WHILE NOT EOF(1)
-        LINE INPUT #1, T$
-        PRINT T$
-        WEND
-        CLOSE #1
-        "#;
-            let instructions = generate_instructions(input);
+            OPEN "TEST3.TXT" FOR APPEND AS #1
+            PRINT #1, "Hello, world"
+            PRINT #1, "Hello, again"
+            CLOSE #1
+            OPEN "TEST3.TXT" FOR INPUT AS #1
+            WHILE NOT EOF(1)
+            LINE INPUT #1, T$
+            PRINT T$
+            WEND
+            CLOSE #1
+            "#;
+            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
             let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib);
+            let mut interpreter = Interpreter::new(stdlib, user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             std::fs::remove_file("TEST3.TXT").unwrap_or(());
             assert_eq!(
@@ -899,28 +1114,28 @@ mod print {
         let mut print_args: Vec<String> = vec![];
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
-        loop {
-            match interpreter.pop_unnamed_val() {
-                Some(v) => match v {
-                    Variant::VFileHandle(fh) => {
-                        if is_first {
-                            file_handle = fh;
-                            is_first = false;
-                        } else {
-                            panic!("file handle must be first")
-                        }
+        let values: Vec<Variant> = interpreter
+            .context()
+            .parameter_values()
+            .map(|v| v.clone()) // TODO clone to fix the duplicate borrow FIXME
+            .collect();
+        for v in values {
+            match v {
+                Variant::VFileHandle(fh) => {
+                    if is_first {
+                        file_handle = fh;
+                        is_first = false;
+                    } else {
+                        panic!("file handle must be first")
                     }
-                    _ => print_args.push(v.to_string()),
-                },
-                None => {
-                    break;
                 }
+                _ => print_args.push(v.to_string()),
             }
         }
         if file_handle.is_valid() {
             interpreter
                 .file_manager
-                .print(file_handle, print_args)
+                .print(&file_handle, print_args)
                 .map_err(|e| e.into())
                 .with_err_no_pos()?;
         } else {
@@ -970,14 +1185,15 @@ mod str_fn {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v = interpreter.pop_unnamed_val().unwrap();
-        interpreter.function_result = match v {
-            Variant::VSingle(f) => Variant::VString(format!("{}", f)),
-            Variant::VDouble(f) => Variant::VString(format!("{}", f)),
-            Variant::VInteger(f) => Variant::VString(format!("{}", f)),
-            Variant::VLong(f) => Variant::VString(format!("{}", f)),
+        let v: &Variant = interpreter.context().parameter_values().next().unwrap();
+        let result = match v {
+            Variant::VSingle(f) => format!("{}", f),
+            Variant::VDouble(f) => format!("{}", f),
+            Variant::VInteger(f) => format!("{}", f),
+            Variant::VLong(f) => format!("{}", f),
             _ => panic!("unexpected arg to STR$"),
         };
+        interpreter.set_variable(BuiltInFunction::Str, result);
         Ok(())
     }
 
@@ -1018,15 +1234,18 @@ mod val {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v = interpreter.pop_unnamed_val().unwrap();
-        interpreter.function_result = match v {
-            Variant::VString(s) => val(s).with_err_no_pos()?,
-            _ => panic!("unexpected arg to VAL"),
-        };
+        let v: &String = interpreter
+            .context()
+            .parameter_values()
+            .next()
+            .unwrap()
+            .as_ref();
+        let result: Variant = val(v).with_err_no_pos()?;
+        interpreter.set_variable(BuiltInFunction::Val, result);
         Ok(())
     }
 
-    fn val(s: String) -> Result<Variant, QError> {
+    fn val(s: &String) -> Result<Variant, QError> {
         let mut is_positive = true;
         let mut value: f64 = 0.0;
         let mut frac_power: i32 = 0;

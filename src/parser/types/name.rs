@@ -1,6 +1,8 @@
 use super::{HasQualifier, TypeQualifier};
-use crate::common::{CaseInsensitiveString, Locatable};
+use crate::common::{CaseInsensitiveString, Locatable, QError};
 use std::convert::TryFrom;
+
+// TODO deprecate name in favor of types specific to their usage e.g. LName, ParamName, etc
 
 //
 // BareName
@@ -122,8 +124,8 @@ impl AsRef<BareName> for QualifiedName {
 }
 
 impl TryFrom<&str> for QualifiedName {
-    type Error = String;
-    fn try_from(s: &str) -> Result<QualifiedName, String> {
+    type Error = QError;
+    fn try_from(s: &str) -> Result<QualifiedName, QError> {
         let mut buf = s.to_owned();
         let last_ch: char = buf.pop().unwrap();
         TypeQualifier::try_from(last_ch)
@@ -138,13 +140,6 @@ impl WithTypeQualifier for QualifiedName {
 
     fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
         self.clone().with_type(q)
-    }
-}
-
-impl From<QualifiedNameNode> for QualifiedName {
-    fn from(node: QualifiedNameNode) -> Self {
-        let Locatable { element, .. } = node;
-        element
     }
 }
 
@@ -165,7 +160,7 @@ impl AsRef<BareName> for QualifiedNameNode {
 // Name
 //
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Name {
     Bare(CaseInsensitiveString),
     Qualified {
@@ -247,6 +242,13 @@ impl<S: AsRef<str>> From<S> for Name {
                 Name::Bare(CaseInsensitiveString::new(buf))
             }
         }
+    }
+}
+
+impl From<QualifiedName> for Name {
+    fn from(qualified_name: QualifiedName) -> Self {
+        let QualifiedName { name, qualifier } = qualified_name;
+        Self::Qualified { name, qualifier }
     }
 }
 

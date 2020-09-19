@@ -143,7 +143,7 @@ fn else_if_expr_then<T: BufRead + 'static>(
 
 fn else_if_blocks<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<ConditionalBlockNode>, QError>> {
-    map_default_to_not_found(zero_or_more(map(else_if_block(), |x| (x, Some(())))))
+    map_default_to_not_found(many(else_if_block()))
 }
 
 fn else_if_block<T: BufRead + 'static>(
@@ -198,7 +198,7 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{
-        ConditionalBlockNode, Expression, IfBlockNode, Operand, Statement, TopLevelToken,
+        ConditionalBlockNode, Expression, IfBlockNode, Operator, Statement, TopLevelToken,
     };
 
     #[test]
@@ -439,7 +439,7 @@ end if"#;
             Statement::IfBlock(IfBlockNode {
                 if_block: ConditionalBlockNode {
                     condition: Expression::BinaryExpression(
-                        Operand::Equal,
+                        Operator::Equal,
                         Box::new("ID".as_var_expr(1, 4)),
                         Box::new(0.as_lit_expr(1, 9))
                     )
@@ -529,7 +529,7 @@ end if"#;
                 if_block: ConditionalBlockNode {
                     condition: Expression::Parenthesis(Box::new(
                         Expression::BinaryExpression(
-                            Operand::Greater,
+                            Operator::Greater,
                             Box::new("X".as_var_expr(2, 12)),
                             Box::new(0.as_lit_expr(2, 14)),
                         )
@@ -545,7 +545,7 @@ end if"#;
                 else_if_blocks: vec![ConditionalBlockNode {
                     condition: Expression::Parenthesis(Box::new(
                         Expression::BinaryExpression(
-                            Operand::Less,
+                            Operator::Less,
                             Box::new("X".as_var_expr(4, 16)),
                             Box::new(0.as_lit_expr(4, 18)),
                         )

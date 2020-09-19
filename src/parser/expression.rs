@@ -88,7 +88,7 @@ pub fn expression_node<T: BufRead + 'static>(
             // maybe right side
             |first_expr| {
                 seq2(
-                    operand(first_expr.is_parenthesis()),
+                    operator(first_expr.is_parenthesis()),
                     demand(
                         crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
                         QError::syntax_error_fn("Expected: right side expression"),
@@ -133,7 +133,7 @@ pub fn unary_minus<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected: expression after unary minus"),
             ),
         ),
-        |(l, r)| r.apply_unary_priority_order(UnaryOperand::Minus, l.pos()),
+        |(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos()),
     )
 }
 
@@ -148,7 +148,7 @@ pub fn unary_not<T: BufRead + 'static>(
             ),
             QError::syntax_error_fn("Expected: whitespace after NOT"),
         ),
-        |(l, r)| r.apply_unary_priority_order(UnaryOperand::Not, l.pos()),
+        |(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()),
     )
 }
 
@@ -324,64 +324,64 @@ mod word {
     }
 }
 
-pub fn operand<T: BufRead + 'static>(
+pub fn operator<T: BufRead + 'static>(
     had_parenthesis_before: bool,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operand>, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operator>, QError>> {
     or_vec(vec![
-        crate::parser::pc::ws::zero_or_more_leading(relational_operand()),
+        crate::parser::pc::ws::zero_or_more_leading(relational_operator()),
         map(
             crate::parser::pc::ws::zero_or_more_leading(with_pos(read('+'))),
-            |x| x.map(|_| Operand::Plus),
+            |x| x.map(|_| Operator::Plus),
         ),
         map(
             crate::parser::pc::ws::zero_or_more_leading(with_pos(read('-'))),
-            |x| x.map(|_| Operand::Minus),
+            |x| x.map(|_| Operator::Minus),
         ),
         map(
             crate::parser::pc::ws::zero_or_more_leading(with_pos(read('*'))),
-            |x| x.map(|_| Operand::Multiply),
+            |x| x.map(|_| Operator::Multiply),
         ),
         map(
             crate::parser::pc::ws::zero_or_more_leading(with_pos(read('/'))),
-            |x| x.map(|_| Operand::Divide),
+            |x| x.map(|_| Operator::Divide),
         ),
         if had_parenthesis_before {
             // skip whitespace + AND
             map(
                 crate::parser::pc::ws::zero_or_more_leading(with_pos(keyword(Keyword::And))),
-                |x| x.map(|_| Operand::And),
+                |x| x.map(|_| Operator::And),
             )
         } else {
             // demand whitespace + AND
             map(
                 crate::parser::pc::ws::one_or_more_leading(with_pos(keyword(Keyword::And))),
-                |locatable| locatable.map(|_| Operand::And),
+                |locatable| locatable.map(|_| Operator::And),
             )
         },
         if had_parenthesis_before {
             // skip whitespace + OR
             map(
                 crate::parser::pc::ws::zero_or_more_leading(with_pos(keyword(Keyword::Or))),
-                |x| x.map(|_| Operand::Or),
+                |x| x.map(|_| Operator::Or),
             )
         } else {
             // demand whitespace + OR
             map(
                 crate::parser::pc::ws::one_or_more_leading(with_pos(keyword(Keyword::Or))),
-                |locatable| locatable.map(|_| Operand::Or),
+                |locatable| locatable.map(|_| Operator::Or),
             )
         },
     ])
 }
 
 pub fn lte<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operator, QError>> {
     and_then(
         opt_seq2(read('<'), read_if(|ch| ch == '=' || ch == '>')),
         |(_, opt_r)| match opt_r {
-            Some('=') => Ok(Operand::LessOrEqual),
-            Some('>') => Ok(Operand::NotEqual),
-            None => Ok(Operand::Less),
+            Some('=') => Ok(Operator::LessOrEqual),
+            Some('>') => Ok(Operator::NotEqual),
+            None => Ok(Operator::Less),
             Some(ch) => Err(QError::SyntaxError(format!(
                 "Invalid character {} after <",
                 ch
@@ -391,20 +391,20 @@ pub fn lte<T: BufRead + 'static>(
 }
 
 pub fn gte<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operator, QError>> {
     map(opt_seq2(read('>'), read('=')), |(_, opt_r)| match opt_r {
-        Some(_) => Operand::GreaterOrEqual,
-        _ => Operand::Greater,
+        Some(_) => Operator::GreaterOrEqual,
+        _ => Operator::Greater,
     })
 }
 
 pub fn eq<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operand, QError>> {
-    map(read('='), |_| Operand::Equal)
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operator, QError>> {
+    map(read('='), |_| Operator::Equal)
 }
 
-pub fn relational_operand<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operand>, QError>> {
+pub fn relational_operator<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operator>, QError>> {
     with_pos(or_vec(vec![lte(), gte(), eq()]))
 }
 
@@ -412,7 +412,7 @@ pub fn relational_operand<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Expression, Name, Operand, Statement, UnaryOperand};
+    use crate::parser::{Expression, Name, Operator, Statement, UnaryOperator};
     use crate::{
         assert_expression, assert_literal_expression, assert_sub_call, assert_variable_expression,
     };
@@ -497,7 +497,7 @@ mod tests {
         assert_expression!(
             "N <= 1",
             Expression::BinaryExpression(
-                Operand::LessOrEqual,
+                Operator::LessOrEqual,
                 Box::new("N".as_var_expr(1, 7)),
                 Box::new(1.as_lit_expr(1, 12)),
             )
@@ -509,7 +509,7 @@ mod tests {
         assert_expression!(
             "A < B",
             Expression::BinaryExpression(
-                Operand::Less,
+                Operator::Less,
                 Box::new("A".as_var_expr(1, 7)),
                 Box::new("B".as_var_expr(1, 11)),
             )
@@ -524,10 +524,10 @@ mod tests {
             assert_expression!(
                 "A + B < C",
                 Expression::BinaryExpression(
-                    Operand::Less,
+                    Operator::Less,
                     Box::new(
                         Expression::BinaryExpression(
-                            Operand::Plus,
+                            Operator::Plus,
                             Box::new("A".as_var_expr(1, 7)),
                             Box::new("B".as_var_expr(1, 11))
                         )
@@ -543,12 +543,12 @@ mod tests {
             assert_expression!(
                 "A + (B < C)",
                 Expression::BinaryExpression(
-                    Operand::Plus,
+                    Operator::Plus,
                     Box::new("A".as_var_expr(1, 7)),
                     Box::new(
                         Expression::Parenthesis(Box::new(
                             Expression::BinaryExpression(
-                                Operand::Less,
+                                Operator::Less,
                                 Box::new("B".as_var_expr(1, 12)),
                                 Box::new("C".as_var_expr(1, 16))
                             )
@@ -565,11 +565,11 @@ mod tests {
             assert_expression!(
                 "A < B + C",
                 Expression::BinaryExpression(
-                    Operand::Less,
+                    Operator::Less,
                     Box::new("A".as_var_expr(1, 7)),
                     Box::new(
                         Expression::BinaryExpression(
-                            Operand::Plus,
+                            Operator::Plus,
                             Box::new("B".as_var_expr(1, 11)),
                             Box::new("C".as_var_expr(1, 15))
                         )
@@ -584,11 +584,11 @@ mod tests {
             assert_expression!(
                 "(A < B) + C",
                 Expression::BinaryExpression(
-                    Operand::Plus,
+                    Operator::Plus,
                     Box::new(
                         Expression::Parenthesis(Box::new(
                             Expression::BinaryExpression(
-                                Operand::Less,
+                                Operator::Less,
                                 Box::new("A".as_var_expr(1, 8)),
                                 Box::new("B".as_var_expr(1, 12))
                             )
@@ -606,10 +606,10 @@ mod tests {
             assert_expression!(
                 "A > 0 AND B < 1",
                 Expression::BinaryExpression(
-                    Operand::And,
+                    Operator::And,
                     Box::new(
                         Expression::BinaryExpression(
-                            Operand::Greater,
+                            Operator::Greater,
                             Box::new("A".as_var_expr(1, 7)),
                             Box::new(0.as_lit_expr(1, 11)),
                         )
@@ -617,7 +617,7 @@ mod tests {
                     ),
                     Box::new(
                         Expression::BinaryExpression(
-                            Operand::Less,
+                            Operator::Less,
                             Box::new("B".as_var_expr(1, 17)),
                             Box::new(1.as_lit_expr(1, 21)),
                         )
@@ -632,10 +632,10 @@ mod tests {
             assert_expression!(
                 "NOT EOF(1) AND ID > 0",
                 Expression::BinaryExpression(
-                    Operand::And,
+                    Operator::And,
                     Box::new(
                         Expression::UnaryExpression(
-                            UnaryOperand::Not,
+                            UnaryOperator::Not,
                             Box::new(
                                 Expression::FunctionCall(
                                     Name::from("EOF"),
@@ -648,7 +648,7 @@ mod tests {
                     ),
                     Box::new(
                         Expression::BinaryExpression(
-                            Operand::Greater,
+                            Operator::Greater,
                             Box::new("ID".as_var_expr(1, 22)),
                             Box::new(0.as_lit_expr(1, 27))
                         )
@@ -663,7 +663,7 @@ mod tests {
             assert_expression!(
                 "-5 AND 2",
                 Expression::BinaryExpression(
-                    Operand::And,
+                    Operator::And,
                     Box::new((-5_i32).as_lit_expr(1, 7)),
                     Box::new(2.as_lit_expr(1, 14))
                 )
@@ -675,7 +675,7 @@ mod tests {
             assert_expression!(
                 "-5 + 2",
                 Expression::BinaryExpression(
-                    Operand::Plus,
+                    Operator::Plus,
                     Box::new((-5_i32).as_lit_expr(1, 7)),
                     Box::new(2.as_lit_expr(1, 12))
                 )
@@ -687,7 +687,7 @@ mod tests {
             assert_expression!(
                 "-5 < 2",
                 Expression::BinaryExpression(
-                    Operand::Less,
+                    Operator::Less,
                     Box::new((-5_i32).as_lit_expr(1, 7)),
                     Box::new(2.as_lit_expr(1, 12))
                 )
@@ -703,7 +703,7 @@ mod tests {
             assert_expression!(
                 "N + 1",
                 Expression::BinaryExpression(
-                    Operand::Plus,
+                    Operator::Plus,
                     Box::new("N".as_var_expr(1, 7)),
                     Box::new(1.as_lit_expr(1, 11)),
                 )
@@ -715,11 +715,11 @@ mod tests {
             assert_expression!(
                 "N + 1 + 2",
                 Expression::BinaryExpression(
-                    Operand::Plus,
+                    Operator::Plus,
                     Box::new("N".as_var_expr(1, 7)),
                     Box::new(
                         Expression::BinaryExpression(
-                            Operand::Plus,
+                            Operator::Plus,
                             Box::new(1.as_lit_expr(1, 11)),
                             Box::new(2.as_lit_expr(1, 15))
                         )
@@ -735,7 +735,7 @@ mod tests {
         assert_expression!(
             "N - 2",
             Expression::BinaryExpression(
-                Operand::Minus,
+                Operator::Minus,
                 Box::new("N".as_var_expr(1, 7)),
                 Box::new(2.as_lit_expr(1, 11)),
             )
@@ -746,7 +746,7 @@ mod tests {
     fn test_negated_variable() {
         assert_expression!(
             "-N",
-            Expression::UnaryExpression(UnaryOperand::Minus, Box::new("N".as_var_expr(1, 8)))
+            Expression::UnaryExpression(UnaryOperator::Minus, Box::new("N".as_var_expr(1, 8)))
         );
     }
 
@@ -760,12 +760,12 @@ mod tests {
         assert_expression!(
             "Fib(N - 1) + Fib(N - 2)",
             Expression::BinaryExpression(
-                Operand::Plus,
+                Operator::Plus,
                 Box::new(
                     Expression::FunctionCall(
                         Name::from("Fib"),
                         vec![Expression::BinaryExpression(
-                            Operand::Minus,
+                            Operator::Minus,
                             Box::new("N".as_var_expr(1, 11)),
                             Box::new(1.as_lit_expr(1, 15)),
                         )
@@ -777,7 +777,7 @@ mod tests {
                     Expression::FunctionCall(
                         Name::from("Fib"),
                         vec![Expression::BinaryExpression(
-                            Operand::Minus,
+                            Operator::Minus,
                             Box::new("N".as_var_expr(1, 24)),
                             Box::new(2.as_lit_expr(1, 28)),
                         )
@@ -794,12 +794,12 @@ mod tests {
         assert_expression!(
             "-Fib(-N)",
             Expression::UnaryExpression(
-                UnaryOperand::Minus,
+                UnaryOperator::Minus,
                 Box::new(
                     Expression::FunctionCall(
                         Name::from("Fib"),
                         vec![Expression::UnaryExpression(
-                            UnaryOperand::Minus,
+                            UnaryOperator::Minus,
                             Box::new("N".as_var_expr(1, 13)),
                         )
                         .at_rc(1, 12)],
@@ -815,7 +815,7 @@ mod tests {
         assert_expression!(
             "1 AND 2",
             Expression::BinaryExpression(
-                Operand::And,
+                Operator::And,
                 Box::new(1.as_lit_expr(1, 7)),
                 Box::new(2.as_lit_expr(1, 13))
             )
@@ -827,11 +827,11 @@ mod tests {
         assert_expression!(
             "(1 OR 2)AND 3",
             Expression::BinaryExpression(
-                Operand::And,
+                Operator::And,
                 Box::new(
                     Expression::Parenthesis(Box::new(
                         Expression::BinaryExpression(
-                            Operand::Or,
+                            Operator::Or,
                             Box::new(1.as_lit_expr(1, 8)),
                             Box::new(2.as_lit_expr(1, 13))
                         )
@@ -845,7 +845,7 @@ mod tests {
         assert_expression!(
             "1 OR 2",
             Expression::BinaryExpression(
-                Operand::Or,
+                Operator::Or,
                 Box::new(1.as_lit_expr(1, 7)),
                 Box::new(2.as_lit_expr(1, 12))
             )
@@ -857,11 +857,11 @@ mod tests {
         assert_expression!(
             "(1 AND 2)OR 3",
             Expression::BinaryExpression(
-                Operand::Or,
+                Operator::Or,
                 Box::new(
                     Expression::Parenthesis(Box::new(
                         Expression::BinaryExpression(
-                            Operand::And,
+                            Operator::And,
                             Box::new(1.as_lit_expr(1, 8)),
                             Box::new(2.as_lit_expr(1, 14))
                         )
@@ -918,5 +918,7 @@ mod tests {
                 QError::syntax_error("Expected: digits after #")
             );
         }
+
+        // TODO test file handle expr errors when used in binary or unary expressions
     }
 }

@@ -4,22 +4,44 @@ use crate::common::*;
 use crate::parser::types::*;
 use std::fs::File;
 
-/// Parses the given program and demands success.
+/// Parses the given string and demands success.
+///
+/// # Panics
+///
+/// If the parser has an error.
 pub fn parse<T: AsRef<[u8]> + 'static>(input: T) -> ProgramNode {
     parse_main_str(input).expect("Could not parse program")
 }
 
+/// Parses the given file under the `fixtures` folder.
+///
+/// # Panics
+///
+/// If the files does not exist or if the parser has an error.
 pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
     let file_path = format!("fixtures/{}", filename.as_ref());
     let f = File::open(file_path).expect("Could not read bas file");
     parse_main_file(f).expect("Could not parse program")
 }
 
-/// Parses the given input, expecting that it will fail.
-/// Returns the lexer error.
-/// Panics if parsing actually succeeded.
+/// Parses the given string, expecting that it will fail.
+/// Returns the error with location information.
+///
+/// # Panics
+///
+/// If the parser does not have an error.
+pub fn parse_err_node<T: AsRef<[u8]> + 'static>(input: T) -> QErrorNode {
+    parse_main_str(input).unwrap_err()
+}
+
+/// Parses the given string, expecting that it will fail.
+/// Returns the error without location information.
+///
+/// # Panics
+///
+/// If the parser does not have an error.
 pub fn parse_err<T: AsRef<[u8]> + 'static>(input: T) -> QError {
-    parse_main_str(input).unwrap_err().into_err()
+    parse_err_node(input).into_err()
 }
 
 pub trait DemandSingle<T> {
@@ -130,10 +152,10 @@ macro_rules! assert_sub_call {
         match $actual_statement {
             Statement::SubCall(actual_bare_name, actual_args) => {
                 let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
-                assert_eq!(actual_bare_name, expected_bare_name);
-                assert_eq!(actual_args.is_empty(), true);
+                assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
+                assert!(actual_args.is_empty(), "Expected no args in SubCall");
             }
-            _ => panic!("Expected sub call")
+            _ => panic!("Expected SubCall")
         }
     };
 
@@ -141,11 +163,11 @@ macro_rules! assert_sub_call {
         match $actual_statement {
             Statement::SubCall(actual_bare_name, actual_args) => {
                 let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
-                assert_eq!(actual_bare_name, expected_bare_name);
+                assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
                 let actual_args_no_loc: Vec<crate::parser::types::Expression> = actual_args.into_iter().map(|x| x.strip_location()).collect();
                 assert_eq!(actual_args_no_loc, vec![$($arg),+]);
             }
-            _ => panic!("Expected sub call")
+            _ => panic!("Expected SubCall")
         }
     };
 }

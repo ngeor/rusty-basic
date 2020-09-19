@@ -1,4 +1,6 @@
-use super::{BareNameNode, DeclaredNameNodes, DefType, NameNode, Statement, StatementNodes};
+use super::{
+    BareNameNode, DeclaredNameNodes, DefType, NameNode, Statement, StatementNodes, UserDefinedType,
+};
 use crate::common::*;
 
 pub type ProgramNode = Vec<TopLevelTokenNode>;
@@ -23,6 +25,9 @@ pub enum TopLevelToken {
 
     /// A sub implementation
     SubImplementation(BareNameNode, DeclaredNameNodes, StatementNodes),
+
+    /// A user defined type definition
+    UserDefinedType(UserDefinedType),
 }
 
 impl From<Statement> for TopLevelToken {

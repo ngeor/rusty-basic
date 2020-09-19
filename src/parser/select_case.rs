@@ -20,7 +20,7 @@ use std::io::BufRead;
 
 // CASE <ws+> ELSE (priority)
 // CASE <expr> TO <expr>
-// CASE <ws+> IS <operand> <expr>
+// CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
 pub fn select_case<T: BufRead + 'static>(
@@ -31,7 +31,7 @@ pub fn select_case<T: BufRead + 'static>(
                 parse_select_case_expr(),
                 // parse inline comments after SELECT
                 comment::comments(),
-                zero_or_more(parse_case_any()),
+                many_with_terminating_indicator(parse_case_any()),
             ),
             demand(
                 parse_end_select(),
@@ -145,8 +145,8 @@ fn parse_case_is<T: BufRead + 'static>(
             and(crate::parser::pc::ws::one_or_more(), keyword(Keyword::Is)),
             crate::parser::pc::ws::zero_or_more(),
             demand(
-                expression::relational_operand(),
-                QError::syntax_error_fn("Expected: operand after IS"),
+                expression::relational_operator(),
+                QError::syntax_error_fn("Expected: Operator after IS"),
             ),
             crate::parser::pc::ws::zero_or_more(),
             expression::demand_expression_node(),
@@ -211,7 +211,7 @@ fn parse_end_select<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::*;
+    use crate::parser::types::*;
 
     #[test]
     fn test_select_case_inline_comment() {
@@ -314,7 +314,7 @@ mod tests {
         let input = "
         SELECT CASE1
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(QError::syntax_error("Expected: CASE"), Location::new(2, 16))
@@ -327,7 +327,7 @@ mod tests {
         SELECT CASE X
         CASE1
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -343,7 +343,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -359,7 +359,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -375,7 +375,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO2
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -391,7 +391,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO2
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(
@@ -407,7 +407,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO 2
         END SELECT";
-        let result = parse_main_str(input).unwrap_err();
+        let result = parse_err_node(input);
         assert_eq!(
             result,
             QErrorNode::Pos(

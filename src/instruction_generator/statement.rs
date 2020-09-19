@@ -16,7 +16,7 @@ impl InstructionGenerator {
         } = statement_node;
         match statement {
             Statement::Assignment(left_side, right_side) => {
-                self.generate_assignment_instructions(left_side.at(pos), right_side)
+                self.generate_assignment_instructions(left_side, right_side, pos)
             }
             Statement::Const(n, e) => self.generate_const_instructions(n, e),
             Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at(pos), args),
@@ -36,12 +36,10 @@ impl InstructionGenerator {
             Statement::GoTo(name) => {
                 self.push(Instruction::UnresolvedJump(name.clone()), pos);
             }
-            Statement::SetReturnValue(e) => {
-                self.generate_expression_instructions(e);
-                self.push(Instruction::StoreAToResult, pos);
-            }
             Statement::Comment(_) => {}
-            Statement::Dim(_) => {}
+            Statement::Dim(Locatable { element, pos }) => {
+                self.push(Instruction::Dim(element), pos);
+            }
         }
     }
 }

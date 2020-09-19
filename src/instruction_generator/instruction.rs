@@ -1,14 +1,16 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::QualifiedName;
+use crate::linter::{ResolvedDeclaredName, ResolvedParamName};
+use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
 pub enum Instruction {
+    Dim(ResolvedDeclaredName),
     /// Loads a value into register A
     Load(Variant),
     /// Stores a value from register A
-    Store(QualifiedName),
+    Store(ResolvedDeclaredName),
     /// Stores a value from register A into a constant
     StoreConst(QualifiedName),
     CopyAToB,
@@ -38,7 +40,7 @@ pub enum Instruction {
     Label(CaseInsensitiveString),
     UnresolvedJump(CaseInsensitiveString),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
-    CopyVarToA(QualifiedName),
+    CopyVarToA(ResolvedDeclaredName),
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
     Halt,
@@ -49,32 +51,37 @@ pub enum Instruction {
     PushRet(usize),
     PopRet,
 
-    PreparePush,
-    PushStack,
-    PopStack,
+    /// Starts collecting named arguments.
+    ///
+    /// Arguments are evaluated within the current naming context and pushed with
+    /// PushNamedRef and PushNamedVal.
+    BeginCollectNamedArguments,
 
-    PushUnnamedRefParam(QualifiedName),
+    /// Starts collecting unnamed arguments (for a built-in sub or function).
+    ///
+    /// Arguments are evaluated within the current naming context and pushed with
+    /// PushUnnamedRef and PushUnnamedVal.
+    BeginCollectUnnamedArguments,
+
+    PushNamedRef(ResolvedParamName, ResolvedDeclaredName),
+    PushNamedVal(ResolvedParamName),
+
+    PushUnnamedRef(ResolvedDeclaredName),
 
     /// Pushes the contents of register A at the end of the unnamed stack
-    PushUnnamedValParam,
-    SetNamedRefParam(NamedRefParam),
-    SetNamedValParam(QualifiedName),
+    PushUnnamedVal,
+
+    PushStack,
+    PopStack(Option<QualifiedName>),
 
     Throw(QError),
 
-    /// Stores A as the result of a function
-    StoreAToResult,
-    /// Copies the result of a function to A
-    CopyResultToA,
-
     SetUnresolvedErrorHandler(CaseInsensitiveString),
     SetErrorHandler(usize),
+
+    /// Cast the contents of A into the given type
+    Cast(TypeQualifier),
+    FixLength(u16),
 }
 
 pub type InstructionNode = Locatable<Instruction>;
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct NamedRefParam {
-    pub parameter_name: QualifiedName,
-    pub argument_name: QualifiedName,
-}

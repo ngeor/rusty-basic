@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
-use super::types::*;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
+use crate::linter::types::{Expression, ExpressionNode, HasTypeDefinition, TypeDefinition};
 use crate::parser::TypeQualifier;
 
 /// Lints built-in functions and subs.
@@ -37,7 +37,7 @@ impl PostConversionLinter for BuiltInLinter {
                 }
                 lint(built_in_function, args).patch_err_pos(pos)
             }
-            Expression::BinaryExpression(_, left, right) => {
+            Expression::BinaryExpression(_, left, right, _) => {
                 self.visit_expression(left)?;
                 self.visit_expression(right)
             }
@@ -66,10 +66,7 @@ mod close {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
-            match args[0].as_ref() {
-                Expression::FileHandle(_) => Ok(()),
-                _ => Err(QError::ArgumentTypeMismatch).with_err_at(&args[0]),
-            }
+            require_file_handle(&args[0])
         }
     }
 }
@@ -79,7 +76,7 @@ mod environ_sub {
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
+        } else if !args[0].can_cast_to(TypeQualifier::DollarString) {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
         } else {
             Ok(())
@@ -139,9 +136,32 @@ mod kill {
 
 mod line_input {
     use super::*;
-    pub fn lint(_args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        // TODO lint
-        Ok(())
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // two possible ways:
+        // 1. #file-number%, variable$
+        // 2. variable$
+        if args.len() == 1 {
+            require_string_variable(&args[0])
+        } else if args.len() == 2 {
+            require_file_handle(&args[0])?;
+            require_string_variable(&args[1])
+        } else {
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        }
+    }
+
+    fn require_string_variable(arg: &ExpressionNode) -> Result<(), QErrorNode> {
+        let Locatable { element, pos } = arg;
+        match element {
+            Expression::Variable(n) => {
+                if n.can_cast_to(TypeQualifier::DollarString) {
+                    Ok(())
+                } else {
+                    Err(QError::ArgumentTypeMismatch).with_err_at(pos)
+                }
+            }
+            _ => Err(QError::VariableRequired).with_err_at(pos),
+        }
     }
 }
 
@@ -150,9 +170,9 @@ mod name {
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 2 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else if args[0].try_qualifier()? != TypeQualifier::DollarString {
+        } else if !args[0].can_cast_to(TypeQualifier::DollarString) {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
-        } else if args[1].try_qualifier()? != TypeQualifier::DollarString {
+        } else if !args[1].can_cast_to(TypeQualifier::DollarString) {
             Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])
         } else {
             Ok(())
@@ -170,8 +190,36 @@ mod open {
 
 mod print {
     use super::*;
-    pub fn lint(_args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        for arg in args.iter() {
+            let type_definition = arg.type_definition();
+            match type_definition {
+                TypeDefinition::UserDefined(_) => {
+                    return Err(QError::TypeMismatch).with_err_at(arg);
+                }
+                _ => {}
+            }
+        }
         Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_linter_err;
+
+        #[test]
+        fn cannot_print_user_defined_type() {
+            let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM c AS Card
+            PRINT c";
+            assert_linter_err!(input, QError::TypeMismatch, 8, 19);
+        }
     }
 }
 
@@ -233,14 +281,51 @@ mod len {
             match arg {
                 Expression::Variable(_) => Ok(()),
                 _ => {
-                    let q = args[0].try_qualifier()?;
-                    if q != TypeQualifier::DollarString {
+                    if !args[0].can_cast_to(TypeQualifier::DollarString) {
                         Err(QError::VariableRequired).with_err_at(&args[0])
                     } else {
                         Ok(())
                     }
                 }
             }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_linter_err;
+
+        #[test]
+        fn test_len_integer_expression_error() {
+            let program = "PRINT LEN(42)";
+            assert_linter_err!(program, QError::VariableRequired, 1, 11);
+        }
+
+        #[test]
+        fn test_len_integer_const_error() {
+            let program = "
+            CONST X = 42
+            PRINT LEN(X)
+            ";
+            assert_linter_err!(program, QError::VariableRequired, 3, 23);
+        }
+
+        #[test]
+        fn test_len_two_arguments_error() {
+            let program = r#"PRINT LEN("a", "b")"#;
+            assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
+        }
+
+        #[test]
+        fn test_len_must_be_unqualified() {
+            let program = r#"PRINT LEN!("hello")"#;
+            assert_linter_err!(
+                program,
+                QError::syntax_error("Function Len must be unqualified"),
+                1,
+                7
+            );
         }
     }
 }
@@ -279,11 +364,15 @@ fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), QEr
     if args.len() != 1 {
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
-        let q = args[0].try_qualifier()?;
-        if q == TypeQualifier::DollarString || q == TypeQualifier::FileHandle {
-            Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
-        } else {
-            Ok(())
+        match args[0].type_definition() {
+            TypeDefinition::BuiltIn(q) => {
+                if q == TypeQualifier::DollarString {
+                    Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
+                } else {
+                    Ok(())
+                }
+            }
+            _ => Err(QError::ArgumentTypeMismatch).with_err_at(&args[0]),
         }
     }
 }
@@ -297,8 +386,7 @@ fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), QErr
 }
 
 fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    let q = args[idx].try_qualifier()?;
-    if q != TypeQualifier::DollarString {
+    if !args[idx].can_cast_to(TypeQualifier::DollarString) {
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
@@ -306,10 +394,16 @@ fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(),
 }
 
 fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    let q = args[idx].try_qualifier()?;
-    if q != TypeQualifier::PercentInteger {
+    if !args[idx].can_cast_to(TypeQualifier::PercentInteger) {
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
+    }
+}
+
+fn require_file_handle(arg: &ExpressionNode) -> Result<(), QErrorNode> {
+    match arg.as_ref() {
+        Expression::FileHandle(_) => Ok(()),
+        _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg),
     }
 }

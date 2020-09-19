@@ -26,26 +26,20 @@ impl InstructionGenerator {
 
     pub fn generate_push_named_args_instructions(
         &mut self,
-        param_names: Vec<ResolvedDeclaredName>,
+        param_names: Vec<ResolvedParamName>,
         expressions: Vec<ExpressionNode>,
         pos: Location,
     ) {
-        self.push(Instruction::PreparePush, pos);
+        self.push(Instruction::BeginCollectNamedArguments, pos);
         for (n, e_node) in param_names.into_iter().zip(expressions.into_iter()) {
             let Locatable { element: e, pos } = e_node;
             match e {
                 Expression::Variable(v_name) => {
-                    self.push(
-                        Instruction::SetNamedRefParam(NamedRefParam {
-                            parameter_name: n,
-                            argument_name: v_name,
-                        }),
-                        pos,
-                    );
+                    self.push(Instruction::PushNamedRef(n, v_name), pos);
                 }
                 _ => {
                     self.generate_expression_instructions_casting(e.at(pos), n.type_definition());
-                    self.push(Instruction::SetNamedValParam(n), pos);
+                    self.push(Instruction::PushNamedVal(n), pos);
                 }
             }
         }
@@ -56,16 +50,16 @@ impl InstructionGenerator {
         expressions: Vec<ExpressionNode>,
         pos: Location,
     ) {
-        self.push(Instruction::PreparePush, pos);
+        self.push(Instruction::BeginCollectUnnamedArguments, pos);
         for e_node in expressions.into_iter() {
             let Locatable { element: e, pos } = e_node;
             match e {
                 Expression::Variable(v_name) => {
-                    self.push(Instruction::PushUnnamedRefParam(v_name), pos);
+                    self.push(Instruction::PushUnnamedRef(v_name), pos);
                 }
                 _ => {
                     self.generate_expression_instructions(e.at(pos));
-                    self.push(Instruction::PushUnnamedValParam, pos);
+                    self.push(Instruction::PushUnnamedVal, pos);
                 }
             }
         }

@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::ResolvedDeclaredName;
+use crate::linter::{ResolvedDeclaredName, ResolvedParamName};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
@@ -51,16 +51,28 @@ pub enum Instruction {
     PushRet(usize),
     PopRet,
 
-    PreparePush,
-    PushStack,
-    PopStack(Option<QualifiedName>),
+    /// Starts collecting named arguments.
+    ///
+    /// Arguments are evaluated within the current naming context and pushed with
+    /// PushNamedRef and PushNamedVal.
+    BeginCollectNamedArguments,
 
-    PushUnnamedRefParam(ResolvedDeclaredName),
+    /// Starts collecting unnamed arguments (for a built-in sub or function).
+    ///
+    /// Arguments are evaluated within the current naming context and pushed with
+    /// PushUnnamedRef and PushUnnamedVal.
+    BeginCollectUnnamedArguments,
+
+    PushNamedRef(ResolvedParamName, ResolvedDeclaredName),
+    PushNamedVal(ResolvedParamName),
+
+    PushUnnamedRef(ResolvedDeclaredName),
 
     /// Pushes the contents of register A at the end of the unnamed stack
-    PushUnnamedValParam,
-    SetNamedRefParam(NamedRefParam),
-    SetNamedValParam(ResolvedDeclaredName),
+    PushUnnamedVal,
+
+    PushStack,
+    PopStack(Option<QualifiedName>),
 
     Throw(QError),
 
@@ -73,12 +85,3 @@ pub enum Instruction {
 }
 
 pub type InstructionNode = Locatable<Instruction>;
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct NamedRefParam {
-    /// The name of the parameter as expected in the function or sub
-    pub parameter_name: ResolvedDeclaredName,
-
-    /// The name of the argument as passed at the call location
-    pub argument_name: ResolvedDeclaredName,
-}

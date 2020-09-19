@@ -26,9 +26,23 @@ impl<'a> NoDotNamesCheck<SubImplementation, QErrorNode> for DotsLinter<'a> {
     }
 }
 
-impl<'a> NoDotNamesCheck<ResolvedDeclaredNameNodes, QErrorNode> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &ResolvedDeclaredNameNodes) -> Result<(), QErrorNode> {
+impl<'a> NoDotNamesCheck<Vec<Locatable<ResolvedParamName>>, QErrorNode> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &Vec<Locatable<ResolvedParamName>>) -> Result<(), QErrorNode> {
         x.into_iter().map(|x| self.ensure_no_dots(x)).collect()
+    }
+}
+
+impl<'a> NoDotNamesCheck<Locatable<ResolvedParamName>, QErrorNode> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &Locatable<ResolvedParamName>) -> Result<(), QErrorNode> {
+        let Locatable { element, pos } = x;
+        self.ensure_no_dots(element).with_err_at(pos)
+    }
+}
+
+impl<'a> NoDotNamesCheck<ResolvedParamName, QError> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &ResolvedParamName) -> Result<(), QError> {
+        let bare_name: &BareName = x.as_ref();
+        self.ensure_no_dots(bare_name)
     }
 }
 

@@ -33,7 +33,7 @@
         "--nocapture",
         "--test-threads",
         "1",
-        "type_mismatch_when_used_in_print"
+        "test_modify_in_sub"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

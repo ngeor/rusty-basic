@@ -537,6 +537,37 @@ impl From<TypeQualifier> for Variant {
     }
 }
 
+// ========================================================
+// Convert from Variant to standard types
+// ========================================================
+
+impl AsRef<String> for Variant {
+    fn as_ref(&self) -> &String {
+        match self {
+            Variant::VString(s) => s,
+            _ => panic!("Variant does not hold a string"),
+        }
+    }
+}
+
+impl From<&Variant> for i32 {
+    fn from(v: &Variant) -> i32 {
+        match v {
+            Variant::VInteger(i) => *i,
+            _ => panic!("Variant does not hold an integer"),
+        }
+    }
+}
+
+impl From<&Variant> for FileHandle {
+    fn from(v: &Variant) -> FileHandle {
+        match v {
+            Variant::VFileHandle(i) => *i,
+            _ => panic!("Variant does not hold an FileHandle"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -133,7 +133,7 @@ impl ConverterImpl {
     fn resolve_declared_parameter_name(
         &mut self,
         d: &DeclaredName,
-    ) -> Result<(ResolvedDeclaredName, bool), QError> {
+    ) -> Result<(ResolvedParamName, bool), QError> {
         let DeclaredName {
             name,
             type_definition,
@@ -142,22 +142,22 @@ impl ConverterImpl {
             parser::TypeDefinition::Bare => {
                 let q: TypeQualifier = name.resolve_into(&self.resolver);
                 Ok((
-                    ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), q)),
+                    ResolvedParamName::BuiltIn(QualifiedName::new(name.clone(), q)),
                     false,
                 ))
             }
             parser::TypeDefinition::CompactBuiltIn(q) => Ok((
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), *q)),
+                ResolvedParamName::BuiltIn(QualifiedName::new(name.clone(), *q)),
                 false,
             )),
             parser::TypeDefinition::ExtendedBuiltIn(q) => Ok((
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(name.clone(), *q)),
+                ResolvedParamName::BuiltIn(QualifiedName::new(name.clone(), *q)),
                 true,
             )),
             parser::TypeDefinition::UserDefined(u) => {
                 if self.user_defined_types.contains_key(u) {
                     Ok((
-                        ResolvedDeclaredName::UserDefined(UserDefinedName {
+                        ResolvedParamName::UserDefined(UserDefinedName {
                             name: name.clone(),
                             type_name: u.clone(),
                         }),
@@ -174,8 +174,8 @@ impl ConverterImpl {
         &mut self,
         function_name: &QualifiedName,
         params: DeclaredNameNodes,
-    ) -> Result<ResolvedDeclaredNameNodes, QErrorNode> {
-        let mut result: ResolvedDeclaredNameNodes = vec![];
+    ) -> Result<Vec<Locatable<ResolvedParamName>>, QErrorNode> {
+        let mut result: Vec<Locatable<ResolvedParamName>> = vec![];
         for p in params.into_iter() {
             let Locatable {
                 element: declared_name,
@@ -193,7 +193,7 @@ impl ConverterImpl {
             if bare_function_name == bare_name {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
                 let clashes = match &resolved_declared_name {
-                    ResolvedDeclaredName::BuiltIn(QualifiedName { qualifier, .. }) => {
+                    ResolvedParamName::BuiltIn(QualifiedName { qualifier, .. }) => {
                         *qualifier != function_name.qualifier() || is_extended
                     }
                     _ => true,
@@ -218,7 +218,7 @@ impl ConverterImpl {
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
         self.push_sub_context(sub_name_node.as_ref());
 
-        let mut mapped_params: ResolvedDeclaredNameNodes = vec![];
+        let mut mapped_params: Vec<Locatable<ResolvedParamName>> = vec![];
         for declared_name_node in params.into_iter() {
             let Locatable {
                 element: declared_name,

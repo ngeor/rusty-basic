@@ -3,7 +3,6 @@ use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
-use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::casting::cast;
@@ -76,10 +75,9 @@ impl Registers {
 
 pub type RegisterStack = VecDeque<Registers>;
 
-#[derive(Debug)]
 pub struct Interpreter<S: Stdlib> {
     pub stdlib: S,
-    pub context: Option<Context>,
+    context: Context,
     register_stack: RegisterStack,
     return_stack: Vec<usize>,
     stacktrace: Vec<Location>,
@@ -92,7 +90,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         let rc_user_defined_types = Rc::new(user_defined_types);
         let mut result = Interpreter {
             stdlib,
-            context: Some(Context::new(Rc::clone(&rc_user_defined_types))),
+            context: Context::new(Rc::clone(&rc_user_defined_types)),
             return_stack: vec![],
             register_stack: VecDeque::new(),
             stacktrace: vec![],
@@ -101,6 +99,14 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         };
         result.register_stack.push_back(Registers::new());
         result
+    }
+
+    pub fn context(&self) -> &Context {
+        &self.context
+    }
+
+    pub fn context_mut(&mut self) -> &mut Context {
+        &mut self.context
     }
 
     fn registers_ref(&self) -> &Registers {
@@ -166,16 +172,15 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let v = resolved_declared_name
                     .type_definition()
                     .default_variant(self.user_defined_types.as_ref());
-                self.context_mut()
-                    .set_variable(resolved_declared_name.clone(), v);
+                self.context.set_variable(resolved_declared_name.clone(), v);
             }
             Instruction::Store(n) => {
                 let v = self.get_a();
-                self.context_mut().set_variable(n.clone(), v);
+                self.context.set_variable(n.clone(), v);
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
-                self.context_mut().set_constant(n.clone(), v);
+                self.context.set_constant(n.clone(), v);
             }
             Instruction::CopyAToB => {
                 self.registers_mut().copy_a_to_b();
@@ -232,7 +237,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let c = a.unary_not().with_err_at(pos)?;
                 self.set_a(c);
             }
-            Instruction::CopyVarToA(n) => match self.context_ref().get_r_value(n) {
+            Instruction::CopyVarToA(n) => match self.context.get_r_value(n) {
                 Some(v) => self.set_a(v),
                 None => panic!("CopyVarToA variable {:?} undefined at {:?}", n, pos),
             },
@@ -298,11 +303,18 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Jump(resolved_idx) => {
                 *i = resolved_idx - 1;
             }
-            Instruction::PreparePush => {
-                self.push_args_context();
+            Instruction::BeginCollectNamedArguments => {
+                self.context
+                    .arguments_stack()
+                    .begin_collect_named_arguments();
+            }
+            Instruction::BeginCollectUnnamedArguments => {
+                self.context
+                    .arguments_stack()
+                    .begin_collect_unnamed_arguments();
             }
             Instruction::PushStack => {
-                self.swap_args_with_sub_context();
+                self.push_context();
                 self.stacktrace.insert(0, pos);
             }
             Instruction::PopStack(opt_function_name) => {
@@ -310,7 +322,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let function_result: Option<Variant> = match opt_function_name {
                     Some(function_name) => {
                         let r = ResolvedDeclaredName::BuiltIn(function_name.clone());
-                        match self.context_ref().get_r_value(&r) {
+                        match self.context.get_r_value(&r) {
                             Some(v) => Some(v),
                             None => {
                                 // it was a function, but the implementation did not set a result
@@ -320,7 +332,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     }
                     None => None,
                 };
-                self.pop();
+                self.pop_context();
                 self.stacktrace.remove(0);
                 // store function result into A now that we're in the parent context
                 match function_result {
@@ -330,27 +342,23 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     None => {}
                 }
             }
-            Instruction::PushUnnamedRefParam(name) => {
-                self.context_mut()
-                    .demand_args()
-                    .push_back_unnamed_ref_parameter(name.clone());
+            Instruction::PushUnnamedRef(name) => {
+                self.context.arguments_stack().push_unnamed(name.clone());
             }
-            Instruction::PushUnnamedValParam => {
+            Instruction::PushUnnamedVal => {
                 let v = self.get_a();
-                self.context_mut()
-                    .demand_args()
-                    .push_back_unnamed_val_parameter(v);
+                self.context.arguments_stack().push_unnamed(v);
             }
-            Instruction::SetNamedRefParam(named_ref_param) => {
-                self.context_mut()
-                    .demand_args()
-                    .set_named_ref_parameter(named_ref_param);
+            Instruction::PushNamedRef(parameter_name, argument_name) => {
+                self.context
+                    .arguments_stack()
+                    .push_named(parameter_name.clone(), argument_name.clone());
             }
-            Instruction::SetNamedValParam(param_q_name) => {
+            Instruction::PushNamedVal(param_q_name) => {
                 let v = self.get_a();
-                self.context_mut()
-                    .demand_args()
-                    .set_named_val_parameter(param_q_name, v);
+                self.context
+                    .arguments_stack()
+                    .push_named(param_q_name.clone(), v);
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
@@ -410,23 +418,28 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     // shortcuts to common context_mut operations
 
     /// Pops the next unnamed argument, starting from the beginning.
+    #[deprecated]
     pub fn pop_unnamed_arg(&mut self) -> Option<Argument> {
-        self.context_mut().demand_sub().pop_unnamed_arg()
+        self.context.pop_unnamed_arg()
     }
 
     /// Pops the value of the next unnamed argument, starting from the beginning.
+    #[deprecated]
     pub fn pop_unnamed_val(&mut self) -> Option<Variant> {
-        self.context_mut().demand_sub().pop_unnamed_val()
+        self.context.pop_unnamed_val()
     }
 
+    #[deprecated]
     pub fn pop_string(&mut self) -> String {
         self.pop_unnamed_val().unwrap().demand_string()
     }
 
+    #[deprecated]
     pub fn pop_integer(&mut self) -> i32 {
         self.pop_unnamed_val().unwrap().demand_integer()
     }
 
+    #[deprecated]
     pub fn pop_file_handle(&mut self) -> Result<FileHandle, QError> {
         match self.pop_unnamed_val().unwrap() {
             Variant::VFileHandle(f) => Ok(f),
@@ -440,6 +453,18 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             _ => Err(QError::TypeMismatch),
         }
     }
+
+    fn push_context(&mut self) {
+        let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
+        let current_context = std::mem::replace(&mut self.context, dummy);
+        self.context = current_context.push();
+    }
+
+    fn pop_context(&mut self) {
+        let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
+        let current_context = std::mem::replace(&mut self.context, dummy);
+        self.context = current_context.pop();
+    }
 }
 
 pub trait SetVariable<K, V> {
@@ -451,7 +476,7 @@ where
     Variant: From<V>,
 {
     fn set_variable(&mut self, name: BuiltInFunction, value: V) {
-        self.context_mut().set_variable(name.into(), value.into());
+        self.context.set_variable(name.into(), value.into());
     }
 }
 
@@ -460,7 +485,6 @@ mod tests {
     use crate::assert_err;
     use crate::assert_has_variable;
     use crate::assert_prints;
-    use crate::interpreter::context_owner::ContextOwner;
     use crate::interpreter::test_utils::*;
     use crate::linter::*;
     use crate::variant::Variant;
@@ -543,7 +567,7 @@ mod tests {
                 let resolved_declared_name = ResolvedDeclaredName::parse($expected_variable_name);
                 assert_eq!(
                     interpreter
-                        .context_ref()
+                        .context
                         .get_r_value(&resolved_declared_name)
                         .unwrap(),
                     Variant::from($expected_value)

@@ -5,9 +5,9 @@ use crate::parser::{BareName, HasQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
-// pass 1: collect function names -> parameter names, in order to use them in function/sub calls
+// pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
 
-type ParamMap = HashMap<CaseInsensitiveString, Vec<ResolvedDeclaredName>>;
+type ParamMap = HashMap<CaseInsensitiveString, Vec<ResolvedParamName>>;
 
 fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
     let mut functions: ParamMap = HashMap::new();

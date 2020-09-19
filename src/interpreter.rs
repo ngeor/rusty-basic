@@ -1,7 +1,6 @@
 mod built_ins;
 mod constant;
 pub mod context;
-pub mod context_owner;
 mod expression;
 mod for_loop;
 mod function_call;

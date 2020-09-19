@@ -90,14 +90,14 @@ pub type StatementNodes = Vec<StatementNode>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionImplementation {
     pub name: QualifiedNameNode,
-    pub params: ResolvedDeclaredNameNodes,
+    pub params: Vec<Locatable<ResolvedParamName>>,
     pub body: StatementNodes,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubImplementation {
     pub name: BareNameNode,
-    pub params: ResolvedDeclaredNameNodes,
+    pub params: Vec<Locatable<ResolvedParamName>>,
     pub body: StatementNodes,
 }
 
@@ -205,18 +205,6 @@ impl ResolvedDeclaredName {
         })
     }
 
-    pub fn name_path(&self) -> Vec<BareName> {
-        match self {
-            Self::BuiltIn(QualifiedName { name, .. }) => vec![name.clone()],
-            Self::UserDefined(UserDefinedName { name, .. }) => vec![name.clone()],
-            Self::Many(UserDefinedName { name, .. }, members) => {
-                let mut result = vec![name.clone()];
-                result.extend(members.name_path());
-                result
-            }
-        }
-    }
-
     pub fn append(self, members: Members) -> Self {
         match self {
             Self::BuiltIn(_) => panic!("Cannot append members to built-in resolved name"),
@@ -252,3 +240,38 @@ impl HasTypeDefinition for ResolvedDeclaredName {
 
 pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;
 pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;
+
+// ========================================================
+// parameter name
+// ========================================================
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum ResolvedParamName {
+    // A -> A!
+    // A AS STRING
+    // A$, A% etc
+    BuiltIn(QualifiedName),
+
+    // DIM C AS Card
+    UserDefined(UserDefinedName),
+}
+
+impl AsRef<BareName> for ResolvedParamName {
+    fn as_ref(&self) -> &BareName {
+        match self {
+            Self::BuiltIn(QualifiedName { name, .. }) => name,
+            Self::UserDefined(UserDefinedName { name, .. }) => name,
+        }
+    }
+}
+
+impl HasTypeDefinition for ResolvedParamName {
+    fn type_definition(&self) -> TypeDefinition {
+        match self {
+            Self::BuiltIn(QualifiedName { qualifier, .. }) => TypeDefinition::BuiltIn(*qualifier),
+            Self::UserDefined(UserDefinedName { type_name, .. }) => {
+                TypeDefinition::UserDefined(type_name.clone())
+            }
+        }
+    }
+}

@@ -3,7 +3,6 @@ use crate::common::{
     FileAccess, FileHandle, FileMode, QError, QErrorNode, StringUtils, ToErrorEnvelopeNoPos,
 };
 use crate::interpreter::context::Argument;
-use crate::interpreter::context_owner::ContextOwner;
 use crate::interpreter::{Interpreter, SetVariable, Stdlib};
 use crate::linter::{
     ElementType, HasTypeDefinition, ResolvedDeclaredName, TypeDefinition, UserDefinedType,
@@ -50,7 +49,7 @@ mod chr {
     // CHR$(ascii-code%) returns the text representation of the given ascii code
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let i: i32 = interpreter.pop_integer();
+        let i: i32 = interpreter.context().evaluate_first_parameter().into();
         let mut s: String = String::new();
         s.push((i as u8) as char);
         interpreter.set_variable(BuiltInFunction::Chr, s);
@@ -77,8 +76,14 @@ mod close {
     // TODO : close without arguments closes all files
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handle = interpreter.pop_file_handle().with_err_no_pos()?;
-        interpreter.file_manager.close(file_handle);
+        let file_handles: Vec<FileHandle> = interpreter
+            .context()
+            .evaluated_parameters()
+            .map(|(_, v)| v.into())
+            .collect();
+        for file_handle in file_handles {
+            interpreter.file_manager.close(&file_handle);
+        }
         Ok(())
     }
 }
@@ -88,15 +93,10 @@ mod environ_fn {
     // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v = interpreter.pop_unnamed_val().unwrap();
-        match v {
-            Variant::VString(env_var_name) => {
-                let result = interpreter.stdlib.get_env_var(&env_var_name);
-                interpreter.set_variable(BuiltInFunction::Environ, result);
-                Ok(())
-            }
-            _ => panic!("Type mismatch at ENVIRON$",),
-        }
+        let env_var_name: &String = interpreter.context().evaluate_first_parameter().as_ref();
+        let result = interpreter.stdlib.get_env_var(env_var_name);
+        interpreter.set_variable(BuiltInFunction::Environ, result);
+        Ok(())
     }
 
     #[cfg(test)]
@@ -142,19 +142,15 @@ mod environ_sub {
     // Parameter must be in the form of name=value or name value (TODO support the latter)
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        match interpreter.pop_unnamed_val().unwrap() {
-            Variant::VString(arg_string_value) => {
-                let parts: Vec<&str> = arg_string_value.split("=").collect();
-                if parts.len() != 2 {
-                    Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()
-                } else {
-                    interpreter
-                        .stdlib
-                        .set_env_var(parts[0].to_string(), parts[1].to_string());
-                    Ok(())
-                }
-            }
-            _ => panic!("Type mismatch"),
+        let s: &String = interpreter.context().evaluate_first_parameter().as_ref();
+        let parts: Vec<&str> = s.split("=").collect();
+        if parts.len() != 2 {
+            Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()
+        } else {
+            let name = parts[0].to_string();
+            let value = parts[1].to_string();
+            interpreter.stdlib.set_env_var(name, value);
+            Ok(())
         }
     }
 
@@ -171,6 +167,16 @@ mod environ_sub {
             let interpreter = interpret(program);
             assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
         }
+
+        #[test]
+        fn test_sub_call_environ_by_ref() {
+            let program = r#"
+            A$ = "FOO1=BAR2"
+            ENVIRON A$
+            "#;
+            let interpreter = interpret(program);
+            assert_eq!(interpreter.stdlib.get_env_var(&"FOO1".to_string()), "BAR2");
+        }
     }
 }
 
@@ -178,10 +184,10 @@ mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handle: FileHandle = interpreter.pop_file_handle().with_err_no_pos()?;
+        let file_handle: FileHandle = interpreter.context().evaluate_first_parameter().into();
         let is_eof: bool = interpreter
             .file_manager
-            .eof(file_handle)
+            .eof(&file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
         interpreter.set_variable(BuiltInFunction::Eof, is_eof);
@@ -246,7 +252,6 @@ mod input {
         };
         interpreter
             .context_mut()
-            .demand_sub()
             .set_value_to_popped_arg(a, variable_value);
         Ok(())
     }
@@ -737,7 +742,7 @@ mod line_input {
                             }
                         }
                         Argument::ByRef(n) => {
-                            line_input_one(interpreter, arg_ref, n, file_handle)?;
+                            line_input_one(interpreter, arg_ref, n, &file_handle)?;
                         }
                     }
                     is_first = false;
@@ -754,7 +759,7 @@ mod line_input {
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
         n: &ResolvedDeclaredName,
-        file_handle: FileHandle,
+        file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         if file_handle.is_valid() {
             line_input_one_file(interpreter, arg, n, file_handle)
@@ -767,7 +772,7 @@ mod line_input {
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
         n: &ResolvedDeclaredName,
-        file_handle: FileHandle,
+        file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .file_manager
@@ -778,7 +783,6 @@ mod line_input {
             TypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
                 interpreter
                     .context_mut()
-                    .demand_sub()
                     .set_value_to_popped_arg(arg, Variant::VString(s));
                 Ok(())
             }
@@ -798,7 +802,6 @@ mod line_input {
             .with_err_no_pos()?;
         interpreter
             .context_mut()
-            .demand_sub()
             .set_value_to_popped_arg(arg, Variant::VString(s));
         Ok(())
     }
@@ -1070,7 +1073,7 @@ mod print {
         if file_handle.is_valid() {
             interpreter
                 .file_manager
-                .print(file_handle, print_args)
+                .print(&file_handle, print_args)
                 .map_err(|e| e.into())
                 .with_err_no_pos()?;
         } else {

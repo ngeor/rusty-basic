@@ -918,7 +918,5 @@ mod tests {
                 QError::syntax_error("Expected: digits after #")
             );
         }
-
-        // TODO test file handle expr errors when used in binary or unary expressions
     }
 }

@@ -425,16 +425,25 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
         Ok(())
     }
 
-    fn push_context(&mut self) {
+    /// Takes the current context out of the interpreter.
+    /// The interpreter is left with a dummy context.
+    fn take_context(&mut self) -> Context {
         let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
-        let current_context = std::mem::replace(&mut self.context, dummy);
-        self.context = current_context.push();
+        std::mem::replace(&mut self.context, dummy)
+    }
+
+    fn set_context(&mut self, context: Context) {
+        self.context = context;
+    }
+
+    fn push_context(&mut self) {
+        let current_context = self.take_context();
+        self.set_context(current_context.push());
     }
 
     fn pop_context(&mut self) {
-        let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
-        let current_context = std::mem::replace(&mut self.context, dummy);
-        self.context = current_context.pop();
+        let current_context = self.take_context();
+        self.set_context(current_context.pop());
     }
 }
 

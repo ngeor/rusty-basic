@@ -374,8 +374,12 @@ impl Context {
         }
     }
 
-    pub fn parameters(&self) -> &Arguments {
-        &self.parameters
+    pub fn take_parameters(&mut self) -> Arguments {
+        std::mem::replace(&mut self.parameters, Arguments::unnamed())
+    }
+
+    pub fn parameter_values(&self) -> ParameterValues {
+        ParameterValues::new(self)
     }
 
     pub fn evaluate_parameter<'a>(&'a self, arg: &'a Argument) -> &'a Variant {
@@ -388,14 +392,6 @@ impl Context {
             },
             Argument::ByVal(v) => v,
         }
-    }
-
-    pub fn evaluated_parameters(&self) -> EvaluatedParameters {
-        EvaluatedParameters::new(self)
-    }
-
-    pub fn parameter_values(&self) -> ParameterValues {
-        ParameterValues::new(self)
     }
 
     // ========================================================
@@ -537,52 +533,11 @@ impl Context {
 }
 
 // ========================================================
-// EvaluatedParameters
-// ========================================================
-
-pub struct EvaluatedParameters<'a> {
-    context: &'a Context,
-    parameters: &'a Arguments,
-    parameters_iterator: std::collections::vec_deque::Iter<'a, Argument>,
-}
-
-impl<'a> EvaluatedParameters<'a> {
-    pub fn new(context: &'a Context) -> Self {
-        EvaluatedParameters {
-            context,
-            parameters: context.parameters(),
-            parameters_iterator: context.parameters().iter(),
-        }
-    }
-
-    pub fn get(&self, index: usize) -> Option<(&'a Argument, &'a Variant)> {
-        self.parameters
-            .get_at(index)
-            .map(|a| (a, self.context.evaluate_parameter(a)))
-    }
-}
-
-impl<'a> Iterator for EvaluatedParameters<'a> {
-    type Item = (&'a Argument, &'a Variant);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.parameters_iterator.next() {
-            Some(arg) => {
-                let value = self.context.evaluate_parameter(arg);
-                Some((arg, value))
-            }
-            None => None,
-        }
-    }
-}
-
-// ========================================================
 // ParameterValues
 // ========================================================
 
 pub struct ParameterValues<'a> {
     context: &'a Context,
-    parameters: &'a Arguments,
     parameters_iterator: std::collections::vec_deque::Iter<'a, Argument>,
 }
 
@@ -590,13 +545,13 @@ impl<'a> ParameterValues<'a> {
     pub fn new(context: &'a Context) -> Self {
         ParameterValues {
             context,
-            parameters: context.parameters(),
-            parameters_iterator: context.parameters().iter(),
+            parameters_iterator: context.parameters.iter(),
         }
     }
 
     pub fn get(&self, index: usize) -> Option<&'a Variant> {
-        self.parameters
+        self.context
+            .parameters
             .get_at(index)
             .map(|a| self.context.evaluate_parameter(a))
     }

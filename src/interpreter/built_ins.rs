@@ -235,13 +235,8 @@ mod input {
 
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let args: Vec<Argument> = interpreter
-            .context()
-            .parameters()
-            .iter()
-            .map(|a| a.clone()) // TODO clone to fix the duplicate borrow FIXME
-            .collect();
-        for a in args.iter() {
+        let parameters = interpreter.context_mut().take_parameters();
+        for a in parameters.iter() {
             match a {
                 Argument::ByRef(n) => {
                     let val: Variant = do_input_one_var(interpreter, n)?;
@@ -747,13 +742,8 @@ mod line_input {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
-        let args: Vec<Argument> = interpreter
-            .context()
-            .parameters()
-            .iter()
-            .map(|a| a.clone()) // TODO clone to fix the duplicate borrow FIXME
-            .collect();
-        for arg_ref in args.iter() {
+        let parameters = interpreter.context_mut().take_parameters();
+        for arg_ref in parameters.iter() {
             match arg_ref {
                 Argument::ByVal(v) => {
                     if is_first {
@@ -1006,26 +996,18 @@ mod open {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_name: &String = interpreter
-            .context()
-            .parameter_values()
-            .get(0)
-            .unwrap()
-            .as_ref();
-        let file_mode: FileMode =
-            i32::from(interpreter.context().parameter_values().get(1).unwrap()).into();
-        let file_access: FileAccess =
-            i32::from(interpreter.context().parameter_values().get(2).unwrap()).into();
-        let file_handle: FileHandle = interpreter
-            .context()
-            .parameter_values()
-            .get(3)
-            .unwrap()
-            .into();
-        let f_copy = file_name.clone(); // TODO this was done to break the double borrow
+        let parameters = interpreter.context_mut().take_parameters();
+        let values: Vec<&Variant> = parameters
+            .iter()
+            .map(|p| interpreter.context().evaluate_parameter(p))
+            .collect();
+        let file_name: String = values[0].to_string();
+        let file_mode: FileMode = i32::from(values[1]).into();
+        let file_access: FileAccess = i32::from(values[2]).into();
+        let file_handle: FileHandle = values[3].into();
         interpreter
             .file_manager
-            .open(file_handle, f_copy.as_ref(), file_mode, file_access)
+            .open(file_handle, &file_name, file_mode, file_access)
             .map_err(|e| e.into())
             .with_err_no_pos()
     }
@@ -1112,16 +1094,16 @@ mod print {
         let mut print_args: Vec<String> = vec![];
         let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
-        let values: Vec<Variant> = interpreter
-            .context()
-            .parameter_values()
-            .map(|v| v.clone()) // TODO clone to fix the duplicate borrow FIXME
+        let parameters = interpreter.context_mut().take_parameters();
+        let values: Vec<&Variant> = parameters
+            .iter()
+            .map(|p| interpreter.context().evaluate_parameter(p))
             .collect();
         for v in values {
             match v {
                 Variant::VFileHandle(fh) => {
                     if is_first {
-                        file_handle = fh;
+                        file_handle = *fh;
                         is_first = false;
                     } else {
                         panic!("file handle must be first")

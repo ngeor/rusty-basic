@@ -327,7 +327,6 @@ impl<'a> LinterContext<'a> {
                             .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
                     }
                 }
-                // TODO support top level DIM x AS STRING * 6
                 TypeDefinition::String(_) => {
                     self.names.insert(
                         name.clone(),

@@ -78,7 +78,6 @@ mod chr {
 
 mod close {
     // CLOSE
-    // TODO : close without arguments closes all files
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let file_handles: Vec<FileHandle> = interpreter
@@ -927,7 +926,6 @@ mod mid {
 mod name {
     // NAME old$ AS new$
     // Renames a file or directory.
-    // TODO support directory
 
     use super::*;
 
@@ -1180,7 +1178,6 @@ mod print {
 
 mod str_fn {
     // STR$(numeric-expression) returns a string representation of a number
-    // TODO support hexadecimal literals &H10
 
     use super::*;
 

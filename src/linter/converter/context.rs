@@ -1,15 +1,13 @@
-use crate::common::{
-    CanCastTo, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
-};
+use crate::common::{CaseInsensitiveString, QError};
+use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
     ElementType, Expression, HasTypeDefinition, Members, ResolvedDeclaredName, TypeDefinition,
     UserDefinedName, UserDefinedTypes,
 };
 use crate::parser;
-use crate::parser::{
-    BareName, DeclaredName, Name, QualifiedName, TypeQualifier, WithTypeQualifier,
-};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
 
 /*
@@ -42,10 +40,46 @@ enum ResolvedTypeDefinitions {
     Compact(HashSet<TypeQualifier>),
     /// CONST X = 42
     Constant(TypeQualifier),
+    /// DIM X AS STRING * 5
+    String(u16),
     /// DIM X AS INTEGER
     ExtendedBuiltIn(TypeQualifier),
     /// DIM X AS Card
     UserDefined(BareName),
+}
+
+impl ResolvedTypeDefinitions {
+    pub fn is_constant(&self) -> bool {
+        match self {
+            Self::Constant(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_extended(&self) -> bool {
+        match self {
+            Self::String(_) | Self::ExtendedBuiltIn(_) | Self::UserDefined(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn has_compact(&self, q: TypeQualifier) -> bool {
+        match self {
+            Self::Compact(qualifiers) => qualifiers.contains(&q),
+            _ => false,
+        }
+    }
+
+    pub fn add_compact(&mut self, q: TypeQualifier) {
+        match self {
+            Self::Compact(qualifiers) => {
+                if !qualifiers.insert(q) {
+                    panic!("Duplicate compact qualifier");
+                }
+            }
+            _ => panic!("Cannot add compact to this set"),
+        }
+    }
 }
 
 //
@@ -68,6 +102,7 @@ pub struct LinterContext<'a> {
     sub_program: Option<(BareName, SubProgramType)>,
     names: HashMap<BareName, ResolvedTypeDefinitions>,
     user_defined_types: &'a UserDefinedTypes,
+    const_values: HashMap<BareName, Variant>,
 
     /// Collects names of variables and parameters whose type is a user defined type.
     /// These names cannot exist elsewhere as a prefix of a dotted variable, constant, parameter, function or sub name,
@@ -85,6 +120,32 @@ impl<'a> LinterContext<'a> {
             names: HashMap::new(),
             user_defined_types,
             names_without_dot: Some(HashSet::new()),
+            const_values: HashMap::new(),
+        }
+    }
+
+    pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: &T) -> bool {
+        self.names.contains_key(bare_name.as_ref())
+    }
+
+    pub fn contains_const(&self, name: &BareName) -> bool {
+        match self.names.get(name) {
+            Some(resolved_type_definitions) => resolved_type_definitions.is_constant(),
+            None => false,
+        }
+    }
+
+    pub fn contains_compact(&self, name: &BareName, q: TypeQualifier) -> bool {
+        match self.names.get(name) {
+            Some(resolved_type_definitions) => resolved_type_definitions.has_compact(q),
+            None => false,
+        }
+    }
+
+    pub fn contains_extended(&self, name: &BareName) -> bool {
+        match self.names.get(name) {
+            Some(resolved_type_definitions) => resolved_type_definitions.is_extended(),
+            None => false,
         }
     }
 
@@ -212,15 +273,11 @@ impl<'a> LinterContext<'a> {
     // TODO improve the bool
     fn resolve_declared_name<T: TypeResolver>(
         &self,
-        declared_name: DeclaredName,
+        declared_name: parser::Param,
         resolver: &T,
     ) -> Result<(ResolvedDeclaredName, bool), QError> {
-        let DeclaredName {
-            name,
-            type_definition,
-        } = declared_name;
-        match type_definition {
-            parser::TypeDefinition::Bare => {
+        match declared_name {
+            parser::Param::Bare(name) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 let q: TypeQualifier = (&name).resolve_into(resolver);
                 Ok((
@@ -228,21 +285,21 @@ impl<'a> LinterContext<'a> {
                     false,
                 ))
             }
-            parser::TypeDefinition::CompactBuiltIn(q) => {
+            parser::Param::Compact(name, q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 Ok((
                     ResolvedDeclaredName::BuiltIn(QualifiedName::new(name, q)),
                     false,
                 ))
             }
-            parser::TypeDefinition::ExtendedBuiltIn(q) => {
+            parser::Param::ExtendedBuiltIn(name, q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 Ok((
                     ResolvedDeclaredName::BuiltIn(QualifiedName::new(name, q)),
                     true,
                 ))
             }
-            parser::TypeDefinition::UserDefined(user_defined_type) => {
+            parser::Param::UserDefined(name, user_defined_type) => {
                 if name.contains('.') {
                     Err(QError::IdentifierCannotIncludePeriod)
                 } else if self.user_defined_types.contains_key(&user_defined_type) {
@@ -261,34 +318,11 @@ impl<'a> LinterContext<'a> {
         }
     }
 
-    pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: &T) -> bool {
-        self.names.contains_key(bare_name.as_ref())
-    }
-
     pub fn push_param<T: TypeResolver>(
         &mut self,
-        declared_name: DeclaredName,
+        declared_name: parser::Param,
         resolver: &T,
     ) -> Result<(), QError> {
-        self.push_dim(declared_name, resolver).map(|_| ())
-    }
-
-    fn push_resolved_const(&mut self, q_name: QualifiedName) -> Result<(), QError> {
-        if self.contains_any(&q_name) {
-            Err(QError::DuplicateDefinition)
-        } else {
-            let QualifiedName { name, qualifier } = q_name;
-            self.names
-                .insert(name, ResolvedTypeDefinitions::Constant(qualifier));
-            Ok(())
-        }
-    }
-
-    pub fn push_dim<T: TypeResolver>(
-        &mut self,
-        declared_name: DeclaredName,
-        resolver: &T,
-    ) -> Result<ResolvedDeclaredName, QError> {
         let (resolved_declared_name, is_extended) =
             self.resolve_declared_name(declared_name, resolver)?;
         let name: &BareName = resolved_declared_name.as_ref();
@@ -343,7 +377,65 @@ impl<'a> LinterContext<'a> {
                 TypeDefinition::FileHandle => panic!("not possible to declare a DIM of filehandle"),
             },
         }
-        Ok(resolved_declared_name)
+        Ok(())
+    }
+
+    pub fn push_const(&mut self, b: BareName, q: TypeQualifier, v: Variant) {
+        if self
+            .names
+            .insert(b.clone(), ResolvedTypeDefinitions::Constant(q))
+            .is_some()
+        {
+            panic!("Duplicate definition");
+        }
+
+        if self.const_values.insert(b, v).is_some() {
+            panic!("Duplicate definition");
+        }
+    }
+
+    pub fn push_dim_compact(&mut self, b: BareName, q: TypeQualifier) {
+        match self.names.get_mut(&b) {
+            Some(resolved_type_definitions) => {
+                resolved_type_definitions.add_compact(q);
+            }
+            None => {
+                let mut s: HashSet<TypeQualifier> = HashSet::new();
+                s.insert(q);
+                self.names.insert(b, ResolvedTypeDefinitions::Compact(s));
+            }
+        }
+    }
+
+    pub fn push_dim_extended(&mut self, b: BareName, q: TypeQualifier) {
+        if self
+            .names
+            .insert(b, ResolvedTypeDefinitions::ExtendedBuiltIn(q))
+            .is_some()
+        {
+            panic!("Duplicate definition!");
+        }
+    }
+
+    pub fn push_dim_string(&mut self, b: BareName, len: u16) {
+        if self
+            .names
+            .insert(b, ResolvedTypeDefinitions::String(len))
+            .is_some()
+        {
+            panic!("Duplicate definition!");
+        }
+    }
+
+    pub fn push_dim_user_defined(&mut self, b: BareName, u: BareName) {
+        self.collect_name_without_dot(&b);
+        if self
+            .names
+            .insert(b, ResolvedTypeDefinitions::UserDefined(u))
+            .is_some()
+        {
+            panic!("Duplicate definition!");
+        }
     }
 
     fn do_resolve_assignment<T: TypeResolver>(
@@ -397,6 +489,21 @@ impl<'a> LinterContext<'a> {
                                         name.clone(),
                                         *qualifier,
                                     ))))
+                                } else {
+                                    Err(QError::DuplicateDefinition)
+                                }
+                            }
+                        }
+                    }
+                    ResolvedTypeDefinitions::String(len) => {
+                        // only possible if the name is bare or using the same qualifier
+                        match name {
+                            Name::Bare(b) => {
+                                Ok(Some(ResolvedDeclaredName::String(b.clone(), *len)))
+                            }
+                            Name::Qualified { name, qualifier } => {
+                                if TypeQualifier::DollarString == *qualifier {
+                                    Ok(Some(ResolvedDeclaredName::String(name.clone(), *len)))
                                 } else {
                                     Err(QError::DuplicateDefinition)
                                 }
@@ -471,6 +578,17 @@ impl<'a> LinterContext<'a> {
                         // TODO fix me
                         Ok(Some(Expression::Variable(ResolvedDeclaredName::BuiltIn(
                             QualifiedName::new(bare_name.clone(), *q),
+                        ))))
+                    } else {
+                        Err(QError::DuplicateDefinition)
+                    }
+                }
+                ResolvedTypeDefinitions::String(len) => {
+                    if name.is_bare_or_of_type(TypeQualifier::DollarString) {
+                        // TODO fix me
+                        Ok(Some(Expression::Variable(ResolvedDeclaredName::String(
+                            bare_name.clone(),
+                            *len,
                         ))))
                     } else {
                         Err(QError::DuplicateDefinition)
@@ -593,6 +711,7 @@ impl<'a> LinterContext<'a> {
             names: HashMap::new(),
             user_defined_types: &self.user_defined_types,
             names_without_dot: None,
+            const_values: HashMap::new(),
         };
         result.parent = Some(Box::new(self));
         result
@@ -605,6 +724,7 @@ impl<'a> LinterContext<'a> {
             names: HashMap::new(),
             user_defined_types: &self.user_defined_types,
             names_without_dot: None,
+            const_values: HashMap::new(),
         };
         result.parent = Some(Box::new(self));
         result
@@ -612,31 +732,6 @@ impl<'a> LinterContext<'a> {
 
     pub fn pop_context(self) -> Self {
         *self.parent.expect("Stack underflow!")
-    }
-
-    pub fn push_const(
-        &mut self,
-        name: Name,
-        right_side_type: Locatable<TypeQualifier>,
-    ) -> Result<QualifiedName, QErrorNode> {
-        let Locatable {
-            element: right_side_q,
-            pos: right_side_pos,
-        } = right_side_type;
-        let q = match &name {
-            // bare name resolves from right side, not resolver
-            Name::Bare(_) => right_side_q,
-            Name::Qualified { qualifier, .. } => {
-                if right_side_q.can_cast_to(*qualifier) {
-                    *qualifier
-                } else {
-                    return Err(QError::TypeMismatch).with_err_at(right_side_pos);
-                }
-            }
-        };
-        let q_name = name.with_type(q);
-        self.push_resolved_const(q_name.clone()).with_err_no_pos()?;
-        Ok(q_name)
     }
 
     pub fn resolve_expression<T: TypeResolver>(
@@ -704,6 +799,18 @@ impl<'a> LinterContext<'a> {
                     self.resolve_missing_name_in_assignment(name, resolver)
                 }
             }
+        }
+    }
+}
+
+impl<'a> ConstValueResolver for LinterContext<'a> {
+    fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
+        match self.const_values.get(name) {
+            Some(v) => Some(v),
+            None => match &self.parent {
+                Some(p) => p.get_resolved_constant(name),
+                None => None,
+            },
         }
     }
 }

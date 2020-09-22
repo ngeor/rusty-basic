@@ -833,6 +833,27 @@ mod tests {
             "#;
             assert_prints!(program, "hello", "42");
         }
+
+        #[test]
+        fn test_dim_string_fixed_length() {
+            let program = r#"
+            DIM X AS STRING * 5
+            X = "123456"
+            PRINT X
+            "#;
+            assert_prints!(program, "12345");
+        }
+
+        #[test]
+        fn test_dim_string_fixed_length_length_declared_as_const() {
+            let program = r#"
+            CONST A = 5
+            DIM X AS STRING * A
+            X = "123456"
+            PRINT X
+            "#;
+            assert_prints!(program, "12345");
+        }
     }
 
     mod function_implementation {

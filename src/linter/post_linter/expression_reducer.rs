@@ -2,6 +2,7 @@ use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::linter::types::*;
 use crate::parser::QualifiedNameNode;
+use crate::variant::Variant;
 
 /// Visits the converted program and transforms it into a different program.
 ///
@@ -222,9 +223,9 @@ pub trait ExpressionReducer {
     fn visit_const(
         &self,
         left: QualifiedNameNode,
-        right: ExpressionNode,
-    ) -> Result<(QualifiedNameNode, ExpressionNode), QErrorNode> {
-        Ok((left, self.visit_expression_node(right)?))
+        right: Variant,
+    ) -> Result<(QualifiedNameNode, Variant), QErrorNode> {
+        Ok((left, right))
     }
 
     fn visit_expression_node(

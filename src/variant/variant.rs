@@ -522,7 +522,26 @@ impl From<TypeQualifier> for Variant {
 }
 
 // ========================================================
-// Convert from Variant to standard types
+// Try to get a type qualifier
+// ========================================================
+
+impl TryFrom<&Variant> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VSingle(_) => Ok(TypeQualifier::BangSingle),
+            Variant::VDouble(_) => Ok(TypeQualifier::HashDouble),
+            Variant::VString(_) => Ok(TypeQualifier::DollarString),
+            Variant::VInteger(_) => Ok(TypeQualifier::PercentInteger),
+            Variant::VLong(_) => Ok(TypeQualifier::AmpersandLong),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+// ========================================================
+// Convert from Variant to standard types (will panic if it's not the correct type)
 // ========================================================
 
 impl AsRef<String> for Variant {

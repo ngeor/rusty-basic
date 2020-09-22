@@ -1,6 +1,6 @@
-use super::{HasTypeDefinition, TypeDefinition, UserDefinedName};
+use super::{HasTypeDefinition, TypeDefinition};
 use crate::common::Locatable;
-use crate::parser::{BareName, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, TypeQualifier};
 use std::collections::HashMap;
 
 // ========================================================
@@ -12,17 +12,16 @@ pub enum ResolvedParamName {
     // A -> A!
     // A AS STRING
     // A$, A% etc
-    BuiltIn(QualifiedName),
+    BuiltIn(BareName, TypeQualifier),
 
     // DIM C AS Card
-    UserDefined(UserDefinedName),
+    UserDefined(BareName, BareName),
 }
 
 impl AsRef<BareName> for ResolvedParamName {
     fn as_ref(&self) -> &BareName {
         match self {
-            Self::BuiltIn(QualifiedName { name, .. }) => name,
-            Self::UserDefined(UserDefinedName { name, .. }) => name,
+            Self::BuiltIn(name, _) | Self::UserDefined(name, _) => name,
         }
     }
 }
@@ -30,10 +29,8 @@ impl AsRef<BareName> for ResolvedParamName {
 impl HasTypeDefinition for ResolvedParamName {
     fn type_definition(&self) -> TypeDefinition {
         match self {
-            Self::BuiltIn(QualifiedName { qualifier, .. }) => TypeDefinition::BuiltIn(*qualifier),
-            Self::UserDefined(UserDefinedName { type_name, .. }) => {
-                TypeDefinition::UserDefined(type_name.clone())
-            }
+            Self::BuiltIn(_, qualifier) => TypeDefinition::BuiltIn(*qualifier),
+            Self::UserDefined(_, type_name) => TypeDefinition::UserDefined(type_name.clone()),
         }
     }
 }

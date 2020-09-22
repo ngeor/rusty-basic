@@ -1,3 +1,4 @@
+mod const_value_resolver;
 mod converter;
 mod linter;
 mod post_linter;

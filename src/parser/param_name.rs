@@ -9,20 +9,28 @@ use crate::parser::types::*;
 use std::io::BufRead;
 use std::str::FromStr;
 
-// Parses a declared name. Possible options:
+// Parses a Param name. Possible options:
 // A
 // A%
 // A AS INTEGER
 // A AS UserDefinedType
 
-pub fn declared_name_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DeclaredNameNode, QError>> {
+enum TypeDefinition {
+    ExtendedBuiltIn(TypeQualifier),
+    UserDefined(BareName),
+}
+
+pub fn param_name_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNode, QError>> {
     and_then(
         opt_seq2(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
             Name::Bare(b) => match opt_type_definition {
-                Some(t) => Ok(DeclaredName::new(b, t).at(pos)),
-                None => Ok(DeclaredName::new(b, TypeDefinition::Bare).at(pos)),
+                Some(TypeDefinition::ExtendedBuiltIn(q)) => {
+                    Ok(Param::ExtendedBuiltIn(b, q).at(pos))
+                }
+                Some(TypeDefinition::UserDefined(u)) => Ok(Param::UserDefined(b, u).at(pos)),
+                None => Ok(Param::Bare(b).at(pos)),
             },
             Name::Qualified {
                 name: n,
@@ -31,7 +39,7 @@ pub fn declared_name_node<T: BufRead + 'static>(
                 Some(_) => Err(QError::syntax_error(
                     "Identifier cannot end with %, &, !, #, or $",
                 )),
-                None => Ok(DeclaredName::new(n, TypeDefinition::CompactBuiltIn(q)).at(pos)),
+                None => Ok(Param::Compact(n, q).at(pos)),
             },
         },
     )

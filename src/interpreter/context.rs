@@ -1,6 +1,6 @@
 use crate::common::CaseInsensitiveString;
-use crate::linter::{ResolvedDeclaredName, ResolvedParamName, UserDefinedTypes};
-use crate::parser::{HasQualifier, QualifiedName};
+use crate::linter::{ResolvedDeclaredName, ResolvedParamName, UserDefinedName, UserDefinedTypes};
+use crate::parser::{HasQualifier, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -255,10 +255,9 @@ impl Context {
         // set a parameter or set a variable?
         match name {
             ResolvedDeclaredName::BuiltIn(qualified_name) => {
-                match self
-                    .parameters
-                    .get_mut(&ResolvedParamName::BuiltIn(qualified_name.clone()))
-                {
+                let QualifiedName { name, qualifier } = qualified_name.clone();
+                let p = ResolvedParamName::BuiltIn(name, qualifier);
+                match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
                             let p = name_in_parent.clone();
@@ -276,11 +275,14 @@ impl Context {
                     }
                 }
             }
+            ResolvedDeclaredName::String(name, _len) => {
+                self.variables
+                    .insert(QualifiedName::new(name, TypeQualifier::DollarString), value);
+            }
             ResolvedDeclaredName::UserDefined(user_defined_name) => {
-                match self
-                    .parameters
-                    .get_mut(&ResolvedParamName::UserDefined(user_defined_name.clone()))
-                {
+                let UserDefinedName { name, type_name } = user_defined_name.clone();
+                let p = ResolvedParamName::UserDefined(name, type_name);
+                match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
                             let p = name_in_parent.clone();
@@ -300,10 +302,9 @@ impl Context {
                 }
             }
             ResolvedDeclaredName::Many(user_defined_name, members) => {
-                match self
-                    .parameters
-                    .get_mut(&ResolvedParamName::UserDefined(user_defined_name.clone()))
-                {
+                let UserDefinedName { name, type_name } = user_defined_name.clone();
+                let p = ResolvedParamName::UserDefined(name, type_name);
+                match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
                             let p = name_in_parent.clone().append(members);
@@ -407,10 +408,9 @@ impl Context {
                     Some(v) => Some(v),
                     None => {
                         // is it a parameter
-                        match self
-                            .parameters
-                            .get(&ResolvedParamName::BuiltIn(qualified_name.clone()))
-                        {
+                        let QualifiedName { name, qualifier } = qualified_name.clone();
+                        let p = ResolvedParamName::BuiltIn(name, qualifier);
+                        match self.parameters.get(&p) {
                             Some(arg) => match arg {
                                 Argument::ByRef(name_in_parent) => self
                                     .parent
@@ -433,12 +433,15 @@ impl Context {
                     }
                 }
             }
+            ResolvedDeclaredName::String(name, _len) => {
+                let qualified_name = QualifiedName::new(name.clone(), TypeQualifier::DollarString);
+                self.variables.get(&qualified_name)
+            }
             ResolvedDeclaredName::UserDefined(user_defined_name) => {
                 // is it a parameter
-                match self
-                    .parameters
-                    .get(&ResolvedParamName::UserDefined(user_defined_name.clone()))
-                {
+                let UserDefinedName { name, type_name } = user_defined_name.clone();
+                let p = ResolvedParamName::UserDefined(name, type_name);
+                match self.parameters.get(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => self
                             .parent
@@ -464,10 +467,9 @@ impl Context {
             }
             ResolvedDeclaredName::Many(user_defined_name, members) => {
                 // is it a parameter
-                match self
-                    .parameters
-                    .get(&ResolvedParamName::UserDefined(user_defined_name.clone()))
-                {
+                let UserDefinedName { name, type_name } = user_defined_name.clone();
+                let p = ResolvedParamName::UserDefined(name, type_name);
+                match self.parameters.get(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
                             let p = name_in_parent.clone().append(members.clone());

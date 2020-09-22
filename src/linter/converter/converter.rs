@@ -1,4 +1,4 @@
-use crate::built_ins::{BuiltInFunction, BuiltInSub};
+use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::linter::converter::context::LinterContext;
 use crate::linter::type_resolver::*;
@@ -6,8 +6,7 @@ use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::*;
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, DeclaredName, DeclaredNameNodes, HasQualifier, Name, NameNode,
-    QualifiedName, TypeQualifier, WithTypeQualifier,
+    BareName, BareNameNode, HasQualifier, Name, NameNode, QualifiedName, TypeQualifier,
 };
 use std::collections::HashSet;
 use std::convert::TryInto;
@@ -60,11 +59,11 @@ where
 
 #[derive(Debug)]
 pub struct ConverterImpl<'a> {
-    resolver: TypeResolverImpl,
-    context: LinterContext<'a>,
-    functions: &'a FunctionMap,
-    subs: &'a SubMap,
-    user_defined_types: &'a UserDefinedTypes,
+    pub resolver: TypeResolverImpl,
+    pub context: LinterContext<'a>,
+    pub functions: &'a FunctionMap,
+    pub subs: &'a SubMap,
+    pub user_defined_types: &'a UserDefinedTypes,
 }
 
 impl<'a> ConverterImpl<'a> {
@@ -109,7 +108,7 @@ impl<'a> ConverterImpl<'a> {
     fn convert_function_implementation(
         &mut self,
         function_name_node: NameNode,
-        params: DeclaredNameNodes,
+        params: parser::ParamNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
         let mapped_name = function_name_node.map(|x| x.resolve_into(&self.resolver));
@@ -130,35 +129,23 @@ impl<'a> ConverterImpl<'a> {
     // TODO use linter context there are a lot of similarities
     fn resolve_declared_parameter_name(
         &mut self,
-        d: &DeclaredName,
+        param: &parser::Param,
     ) -> Result<(ResolvedParamName, bool), QError> {
-        let DeclaredName {
-            name,
-            type_definition,
-        } = d;
-        match type_definition {
-            parser::TypeDefinition::Bare => {
+        match param {
+            parser::Param::Bare(name) => {
                 let q: TypeQualifier = name.resolve_into(&self.resolver);
-                Ok((
-                    ResolvedParamName::BuiltIn(QualifiedName::new(name.clone(), q)),
-                    false,
-                ))
+                Ok((ResolvedParamName::BuiltIn(name.clone(), q), false))
             }
-            parser::TypeDefinition::CompactBuiltIn(q) => Ok((
-                ResolvedParamName::BuiltIn(QualifiedName::new(name.clone(), *q)),
-                false,
-            )),
-            parser::TypeDefinition::ExtendedBuiltIn(q) => Ok((
-                ResolvedParamName::BuiltIn(QualifiedName::new(name.clone(), *q)),
-                true,
-            )),
-            parser::TypeDefinition::UserDefined(u) => {
+            parser::Param::Compact(name, q) => {
+                Ok((ResolvedParamName::BuiltIn(name.clone(), *q), false))
+            }
+            parser::Param::ExtendedBuiltIn(name, q) => {
+                Ok((ResolvedParamName::BuiltIn(name.clone(), *q), true))
+            }
+            parser::Param::UserDefined(name, u) => {
                 if self.user_defined_types.contains_key(u) {
                     Ok((
-                        ResolvedParamName::UserDefined(UserDefinedName {
-                            name: name.clone(),
-                            type_name: u.clone(),
-                        }),
+                        ResolvedParamName::UserDefined(name.clone(), u.clone()),
                         true,
                     ))
                 } else {
@@ -171,7 +158,7 @@ impl<'a> ConverterImpl<'a> {
     fn convert_function_params(
         &mut self,
         function_name: &QualifiedName,
-        params: DeclaredNameNodes,
+        params: parser::ParamNodes,
     ) -> Result<Vec<Locatable<ResolvedParamName>>, QErrorNode> {
         let mut result: Vec<Locatable<ResolvedParamName>> = vec![];
         for p in params.into_iter() {
@@ -191,7 +178,7 @@ impl<'a> ConverterImpl<'a> {
             if bare_function_name == bare_name {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
                 let clashes = match &resolved_declared_name {
-                    ResolvedParamName::BuiltIn(QualifiedName { qualifier, .. }) => {
+                    ResolvedParamName::BuiltIn(_, qualifier) => {
                         *qualifier != function_name.qualifier() || is_extended
                     }
                     _ => true,
@@ -211,7 +198,7 @@ impl<'a> ConverterImpl<'a> {
     fn convert_sub_implementation(
         &mut self,
         sub_name_node: BareNameNode,
-        params: DeclaredNameNodes,
+        params: parser::ParamNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
         self.push_sub_context(sub_name_node.as_ref());
@@ -303,9 +290,6 @@ impl<'a> ConverterImpl<'a> {
             } = self.functions.get(n.as_ref()).unwrap();
             if !f_args.is_empty() {
                 Err(QError::ArgumentCountMismatch)
-            } else if !n.is_bare_or_of_type(*f_type) {
-                // if the function is a different type and the name is qualified of a different type, duplication definition
-                Err(QError::DuplicateDefinition)
             } else if self.context.is_function_context(n) {
                 // We are inside a function that takes no args, and we're using again
                 // the name of that function as an expression.
@@ -319,120 +303,26 @@ impl<'a> ConverterImpl<'a> {
                 // Return None and let the next handler add it as a new variable
                 Ok(None)
             } else {
-                // else convert it to function call
-                Ok(Some(Expression::FunctionCall(
-                    n.with_type_ref(*f_type),
-                    vec![],
-                )))
+                match n {
+                    Name::Bare(b) => Ok(Some(Expression::FunctionCall(
+                        QualifiedName::new(b.clone(), *f_type),
+                        vec![],
+                    ))),
+                    Name::Qualified { name, qualifier } => {
+                        // if the function is a different type and the name is qualified of a different type, duplication definition
+                        if f_type != qualifier {
+                            Err(QError::DuplicateDefinition)
+                        } else {
+                            Ok(Some(Expression::FunctionCall(
+                                QualifiedName::new(name.clone(), *f_type),
+                                vec![],
+                            )))
+                        }
+                    }
+                }
             }
         } else {
             Ok(None)
-        }
-    }
-
-    fn constant(
-        &mut self,
-        left: NameNode,
-        right: crate::parser::ExpressionNode,
-    ) -> Result<Statement, QErrorNode> {
-        let Locatable { element: name, pos } = left;
-        let bare_name: &BareName = name.as_ref();
-        if self.functions.contains_key(bare_name)
-            || self.subs.contains_key(bare_name)
-            || self.context.contains_any(&name)
-        {
-            // local variable/param or local constant or function or sub already present by that name
-            Err(QError::DuplicateDefinition).with_err_at(pos)
-        } else {
-            // TODO simplify
-            let checked_right = self.resolve_const_value(right)?;
-            let converted_expression_node = self.convert(checked_right)?;
-            match converted_expression_node.type_definition() {
-                TypeDefinition::BuiltIn(q) => {
-                    let q_name = self
-                        .context
-                        .push_const(name, q.at(converted_expression_node.pos()))
-                        .patch_err_pos(pos)?;
-                    Ok(Statement::Const(q_name.at(pos), converted_expression_node))
-                }
-                _ => Err(QError::InvalidConstant).with_err_at(pos),
-            }
-        }
-    }
-
-    fn resolve_const_value(
-        &self,
-        e: crate::parser::ExpressionNode,
-    ) -> Result<crate::parser::ExpressionNode, QErrorNode> {
-        let Locatable { element, pos } = e;
-        match element {
-            crate::parser::Expression::IntegerLiteral(i) => {
-                Ok(crate::parser::Expression::IntegerLiteral(i).at(pos))
-            }
-            crate::parser::Expression::LongLiteral(l) => {
-                Ok(crate::parser::Expression::LongLiteral(l).at(pos))
-            }
-            crate::parser::Expression::SingleLiteral(f) => {
-                Ok(crate::parser::Expression::SingleLiteral(f).at(pos))
-            }
-            crate::parser::Expression::DoubleLiteral(d) => {
-                Ok(crate::parser::Expression::DoubleLiteral(d).at(pos))
-            }
-            crate::parser::Expression::StringLiteral(s) => {
-                Ok(crate::parser::Expression::StringLiteral(s).at(pos))
-            }
-            crate::parser::Expression::BinaryExpression(op, boxed_l, boxed_r) => {
-                let l: crate::parser::ExpressionNode = *boxed_l;
-                let r: crate::parser::ExpressionNode = *boxed_r;
-                let res_l = self.resolve_const_value(l)?;
-                let res_r = self.resolve_const_value(r)?;
-                // TODO check if casting is applicable and resolve value
-                Ok(crate::parser::Expression::BinaryExpression(
-                    op,
-                    Box::new(res_l),
-                    Box::new(res_r),
-                )
-                .at(pos))
-            }
-            crate::parser::Expression::UnaryExpression(op, boxed_child) => {
-                let child: crate::parser::ExpressionNode = *boxed_child;
-                let res = self.resolve_const_value(child)?;
-                Ok(crate::parser::Expression::UnaryExpression(op, Box::new(res)).at(pos))
-            }
-            crate::parser::Expression::Parenthesis(boxed_child) => {
-                let child: crate::parser::ExpressionNode = *boxed_child;
-                let res = self.resolve_const_value(child)?;
-                Ok(crate::parser::Expression::Parenthesis(Box::new(res)).at(pos))
-            }
-            crate::parser::Expression::VariableName(variable_name) => {
-                // if a constant exists in this scope or the parent scope, it is okay
-                match self
-                    .context
-                    .resolve_const_expression(&variable_name)
-                    .with_err_at(pos)?
-                {
-                    Some(_) => Ok(crate::parser::Expression::VariableName(variable_name).at(pos)),
-                    None => Err(QError::InvalidConstant).with_err_at(pos),
-                }
-            }
-            crate::parser::Expression::FunctionCall(_, _)
-            | crate::parser::Expression::FileHandle(_) => {
-                Err(QError::InvalidConstant).with_err_at(pos)
-            }
-        }
-    }
-
-    fn assignment(
-        &mut self,
-        name: Name,
-        expression_node: crate::parser::ExpressionNode,
-    ) -> Result<Statement, QErrorNode> {
-        let resolved_l_name = self.resolve_name_in_assignment(name).with_err_no_pos()?;
-        let converted_expr: ExpressionNode = self.convert(expression_node)?;
-        if converted_expr.can_cast_to(&resolved_l_name) {
-            Ok(Statement::Assignment(resolved_l_name, converted_expr))
-        } else {
-            Err(QError::TypeMismatch).with_err_at(&converted_expr)
         }
     }
 
@@ -484,46 +374,6 @@ impl<'a> Converter<parser::TopLevelToken, Option<TopLevelToken>> for ConverterIm
             parser::TopLevelToken::UserDefinedType(_) => {
                 // already handled by first pass
                 Ok(None)
-            }
-        }
-    }
-}
-
-impl<'a> Converter<parser::Statement, Statement> for ConverterImpl<'a> {
-    fn convert(&mut self, a: parser::Statement) -> Result<Statement, QErrorNode> {
-        match a {
-            parser::Statement::Comment(c) => Ok(Statement::Comment(c)),
-            parser::Statement::Assignment(n, e) => self.assignment(n, e),
-            parser::Statement::Const(n, e) => self.constant(n, e),
-            parser::Statement::SubCall(n, args) => {
-                let converted_args = self.convert(args)?;
-                let opt_built_in: Option<BuiltInSub> = (&n).into();
-                match opt_built_in {
-                    Some(b) => Ok(Statement::BuiltInSubCall(b, converted_args)),
-                    None => Ok(Statement::SubCall(n, converted_args)),
-                }
-            }
-            parser::Statement::IfBlock(i) => Ok(Statement::IfBlock(self.convert(i)?)),
-            parser::Statement::SelectCase(s) => Ok(Statement::SelectCase(self.convert(s)?)),
-            parser::Statement::ForLoop(f) => Ok(Statement::ForLoop(self.convert(f)?)),
-            parser::Statement::While(c) => Ok(Statement::While(self.convert(c)?)),
-            parser::Statement::ErrorHandler(l) => Ok(Statement::ErrorHandler(l)),
-            parser::Statement::Label(l) => Ok(Statement::Label(l)),
-            parser::Statement::GoTo(l) => Ok(Statement::GoTo(l)),
-            parser::Statement::Dim(declared_name_node) => {
-                let Locatable {
-                    element: declared_name,
-                    pos,
-                } = declared_name_node;
-                let bare_name: &BareName = declared_name.as_ref();
-                if self.subs.contains_key(bare_name) || self.functions.contains_key(bare_name) {
-                    return Err(QError::DuplicateDefinition).with_err_at(pos);
-                }
-                let mapped_declared_name = self
-                    .context
-                    .push_dim(declared_name, &self.resolver)
-                    .with_err_at(pos)?;
-                Ok(Statement::Dim(mapped_declared_name.at(pos)))
             }
         }
     }

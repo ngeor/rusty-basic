@@ -2,8 +2,6 @@ use super::{HasQualifier, TypeQualifier};
 use crate::common::{CaseInsensitiveString, Locatable, QError};
 use std::convert::TryFrom;
 
-// TODO deprecate name in favor of types specific to their usage e.g. LName, ParamName, etc
-
 //
 // BareName
 //
@@ -65,18 +63,6 @@ impl From<NameNode> for BareName {
     }
 }
 
-// WithTypeQualifier
-
-impl WithTypeQualifier for BareName {
-    fn with_type(self, q: TypeQualifier) -> QualifiedName {
-        QualifiedName::new(self, q)
-    }
-
-    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
-        self.clone().with_type(q)
-    }
-}
-
 // AsRef<BareName>
 
 impl AsRef<BareName> for BareName {
@@ -130,16 +116,6 @@ impl TryFrom<&str> for QualifiedName {
         let last_ch: char = buf.pop().unwrap();
         TypeQualifier::try_from(last_ch)
             .map(|q| QualifiedName::new(CaseInsensitiveString::new(buf), q))
-    }
-}
-
-impl WithTypeQualifier for QualifiedName {
-    fn with_type(self, q: TypeQualifier) -> QualifiedName {
-        QualifiedName::new(self.name, q)
-    }
-
-    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
-        self.clone().with_type(q)
     }
 }
 
@@ -206,19 +182,6 @@ impl Name {
     }
 }
 
-impl WithTypeQualifier for Name {
-    fn with_type(self, q: TypeQualifier) -> QualifiedName {
-        match self {
-            Self::Bare(b) => b.with_type(q),
-            Self::Qualified { name, .. } => name.with_type(q),
-        }
-    }
-
-    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName {
-        self.clone().with_type(q)
-    }
-}
-
 impl AsRef<BareName> for Name {
     fn as_ref(&self) -> &BareName {
         match self {
@@ -280,13 +243,4 @@ mod tests {
             }
         );
     }
-}
-
-//
-// WithTypeQualifier
-//
-
-pub trait WithTypeQualifier {
-    fn with_type(self, q: TypeQualifier) -> QualifiedName;
-    fn with_type_ref(&self, q: TypeQualifier) -> QualifiedName;
 }

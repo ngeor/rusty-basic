@@ -3,6 +3,7 @@ use crate::common::{
     AtLocation, CaseInsensitiveString, Locatable, Location, PatchErrPos, QError, QErrorNode,
     ToErrorEnvelopeNoPos, ToLocatableError,
 };
+use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::{
@@ -11,12 +12,10 @@ use crate::linter::types::{
 };
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, DeclaredName, DeclaredNameNode, DeclaredNameNodes, Expression,
-    ExpressionNode, Name, NameNode, Operator, ProgramNode, Statement, TopLevelToken, TypeQualifier,
-    UnaryOperator,
+    BareName, BareNameNode, Expression, ExpressionNode, Name, NameNode, ProgramNode, Statement,
+    TopLevelToken, TypeQualifier,
 };
 use crate::variant::Variant;
-use std::cmp::Ordering;
 use std::collections::HashMap;
 
 pub fn parse_subprograms_and_types(
@@ -105,112 +104,22 @@ fn global_const(
     if global_constants.contains_key(bare_name) {
         return Err(QError::DuplicateDefinition).with_err_at(pos);
     }
-    let Locatable {
-        element: expression,
-        pos,
-    } = expression_node;
-    let v: Variant = resolve_const_value(global_constants, expression).patch_err_pos(pos)?;
+    let v: Variant = global_constants.resolve_const_value_node(expression_node)?;
     match name {
         Name::Bare(b) => {
             global_constants.insert(b.clone(), v);
         }
         Name::Qualified { name, qualifier } => {
-            let casted = v.cast(*qualifier).with_err_at(pos)?;
+            let casted = v.cast(*qualifier).with_err_at(expression_node)?;
             global_constants.insert(name.clone(), casted);
         }
     }
     Ok(())
 }
 
-fn resolve_const_value(
-    global_constants: &HashMap<CaseInsensitiveString, Variant>,
-
-    expression: &Expression,
-) -> Result<Variant, QErrorNode> {
-    match expression {
-        Expression::SingleLiteral(f) => Ok(Variant::VSingle(*f)),
-        Expression::DoubleLiteral(d) => Ok(Variant::VDouble(*d)),
-        Expression::StringLiteral(s) => Ok(Variant::VString(s.clone())),
-        Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
-        Expression::LongLiteral(l) => Ok(Variant::VLong(*l)),
-        Expression::VariableName(name) => match name {
-            Name::Bare(name) => match global_constants.get(name) {
-                Some(v) => Ok(v.clone()),
-                None => Err(QError::InvalidConstant).with_err_no_pos(),
-            },
-            Name::Qualified { name, qualifier } => match global_constants.get(name) {
-                Some(v) => {
-                    let v_q = match v {
-                        Variant::VDouble(_) => TypeQualifier::HashDouble,
-                        Variant::VSingle(_) => TypeQualifier::BangSingle,
-                        Variant::VInteger(_) => TypeQualifier::PercentInteger,
-                        Variant::VLong(_) => TypeQualifier::AmpersandLong,
-                        Variant::VString(_) => TypeQualifier::DollarString,
-                        _ => {
-                            panic!("should not have been possible to store a constant of this type")
-                        }
-                    };
-                    if v_q == *qualifier {
-                        Ok(v.clone())
-                    } else {
-                        Err(QError::TypeMismatch).with_err_no_pos()
-                    }
-                }
-                None => Err(QError::InvalidConstant).with_err_no_pos(),
-            },
-        },
-        Expression::FunctionCall(_, _) => Err(QError::InvalidConstant).with_err_no_pos(),
-        Expression::BinaryExpression(op, left, right) => {
-            let Locatable { element, pos } = left.as_ref();
-            let v_left = resolve_const_value(global_constants, element).patch_err_pos(*pos)?;
-            let Locatable { element, pos } = right.as_ref();
-            let v_right = resolve_const_value(global_constants, element).patch_err_pos(*pos)?;
-            match *op {
-                Operator::Less => {
-                    let order = v_left.cmp(&v_right).with_err_at(*pos)?;
-                    Ok((order == Ordering::Less).into())
-                }
-                Operator::LessOrEqual => {
-                    let order = v_left.cmp(&v_right).with_err_at(*pos)?;
-                    Ok((order == Ordering::Less || order == Ordering::Equal).into())
-                }
-                Operator::Equal => {
-                    let order = v_left.cmp(&v_right).with_err_at(*pos)?;
-                    Ok((order == Ordering::Equal).into())
-                }
-                Operator::GreaterOrEqual => {
-                    let order = v_left.cmp(&v_right).with_err_at(*pos)?;
-                    Ok((order == Ordering::Greater || order == Ordering::Equal).into())
-                }
-                Operator::Greater => {
-                    let order = v_left.cmp(&v_right).with_err_at(*pos)?;
-                    Ok((order == Ordering::Greater).into())
-                }
-                Operator::NotEqual => {
-                    let order = v_left.cmp(&v_right).with_err_at(*pos)?;
-                    Ok((order == Ordering::Less || order == Ordering::Greater).into())
-                }
-                Operator::Plus => v_left.plus(v_right).with_err_at(*pos),
-                Operator::Minus => v_left.minus(v_right).with_err_at(*pos),
-                Operator::Multiply => v_left.multiply(v_right).with_err_at(*pos),
-                Operator::Divide => v_left.divide(v_right).with_err_at(*pos),
-                Operator::And => v_left.and(v_right).with_err_at(*pos),
-                Operator::Or => v_left.or(v_right).with_err_at(*pos),
-            }
-        }
-        Expression::UnaryExpression(op, child) => {
-            let Locatable { element, pos } = child.as_ref();
-            let v = resolve_const_value(global_constants, element).patch_err_pos(*pos)?;
-            match *op {
-                UnaryOperator::Minus => v.negate().with_err_at(*pos),
-                UnaryOperator::Not => v.unary_not().with_err_at(*pos),
-            }
-        }
-        Expression::Parenthesis(child) => {
-            let Locatable { element, pos } = child.as_ref();
-            resolve_const_value(global_constants, element).patch_err_pos(*pos)
-        }
-        Expression::FileHandle(_) => Err(QError::InvalidConstant).with_err_no_pos(),
+impl ConstValueResolver for HashMap<CaseInsensitiveString, Variant> {
+    fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
+        self.get(name)
     }
 }
 
@@ -353,7 +262,7 @@ impl<T> SubProgramContext<T> {
 
     fn parameters(
         &self,
-        params: &DeclaredNameNodes,
+        params: &parser::ParamNodes,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<Vec<ParamTypeDefinition>, QErrorNode> {
@@ -365,26 +274,23 @@ impl<T> SubProgramContext<T> {
 
     fn parameter(
         &self,
-        param: &DeclaredNameNode,
+        param: &parser::ParamNode,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<ParamTypeDefinition, QErrorNode> {
         let Locatable {
-            element: declared_name,
+            element: param,
             pos,
         } = param;
-        let DeclaredName {
-            name,
-            type_definition,
-        } = declared_name;
-        match type_definition {
-            parser::TypeDefinition::Bare => {
+        match param {
+            parser::Param::Bare(name) => {
                 let q: TypeQualifier = resolver.resolve(name);
                 Ok(ParamTypeDefinition::BuiltIn(q))
             }
-            parser::TypeDefinition::CompactBuiltIn(q)
-            | parser::TypeDefinition::ExtendedBuiltIn(q) => Ok(ParamTypeDefinition::BuiltIn(*q)),
-            parser::TypeDefinition::UserDefined(u) => {
+            parser::Param::Compact(_, q) | parser::Param::ExtendedBuiltIn(_, q) => {
+                Ok(ParamTypeDefinition::BuiltIn(*q))
+            }
+            parser::Param::UserDefined(_, u) => {
                 if user_defined_types.contains_key(u) {
                     Ok(ParamTypeDefinition::UserDefined(u.clone()))
                 } else {
@@ -401,7 +307,7 @@ impl FunctionContext {
     pub fn add_declaration(
         &mut self,
         name_node: &NameNode,
-        params: &DeclaredNameNodes,
+        params: &parser::ParamNodes,
         declaration_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -428,7 +334,7 @@ impl FunctionContext {
     pub fn add_implementation(
         &mut self,
         name_node: &NameNode,
-        params: &DeclaredNameNodes,
+        params: &parser::ParamNodes,
         implementation_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -518,7 +424,7 @@ impl SubContext {
     pub fn add_declaration(
         &mut self,
         bare_name_node: &BareNameNode,
-        params: &DeclaredNameNodes,
+        params: &parser::ParamNodes,
         declaration_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -544,7 +450,7 @@ impl SubContext {
     pub fn add_implementation(
         &mut self,
         bare_name_node: &BareNameNode,
-        params: &DeclaredNameNodes,
+        params: &parser::ParamNodes,
         implementation_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,

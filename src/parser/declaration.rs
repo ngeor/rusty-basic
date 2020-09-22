@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::declared_name;
 use crate::parser::name;
+use crate::parser::param_name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then_none, map};
 use crate::parser::pc::*;
@@ -40,8 +40,7 @@ fn function_declaration_token<T: BufRead + 'static>(
 }
 
 pub fn function_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (NameNode, DeclaredNameNodes), QError>>
-{
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (NameNode, ParamNodes), QError>> {
     map(
         seq5(
             keyword(Keyword::Function),
@@ -67,9 +66,8 @@ fn sub_declaration_token<T: BufRead + 'static>(
     })
 }
 
-pub fn sub_declaration<T: BufRead + 'static>() -> Box<
-    dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, DeclaredNameNodes), QError>,
-> {
+pub fn sub_declaration<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, ParamNodes), QError>> {
     map(
         seq5(
             keyword(Keyword::Sub),
@@ -89,9 +87,9 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
 }
 
 fn opt_declaration_parameters<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DeclaredNameNodes, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNodes, QError>> {
     and_then_none(
-        in_parenthesis(csv_zero_or_more(declared_name::declared_name_node())),
+        in_parenthesis(csv_zero_or_more(param_name::param_name_node())),
         || Ok(vec![]),
     )
 }
@@ -101,7 +99,7 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{
-        DeclaredName, Expression, Name, Operator, Statement, TopLevelToken, TypeQualifier,
+        Expression, Name, Operator, Param, Statement, TopLevelToken, TypeQualifier,
     };
 
     macro_rules! assert_function_declaration {
@@ -114,7 +112,7 @@ mod tests {
                         $expected_params.len(),
                         "Parameter count mismatch"
                     );
-                    let parameters_without_location: Vec<DeclaredName> =
+                    let parameters_without_location: Vec<Param> =
                         parameters.into_iter().map(|x| x.strip_location()).collect();
                     for i in 0..parameters_without_location.len() {
                         assert_eq!(
@@ -134,7 +132,7 @@ mod tests {
         assert_function_declaration!(
             "DECLARE FUNCTION Fib! (N!)",
             Name::from("Fib!"),
-            vec![DeclaredName::compact("N", TypeQualifier::BangSingle)]
+            vec![Param::Compact("N".into(), TypeQualifier::BangSingle)]
         );
     }
 
@@ -143,7 +141,7 @@ mod tests {
         assert_function_declaration!(
             "declare function echo$(msg$)",
             Name::from("echo$"),
-            vec![DeclaredName::compact("msg", TypeQualifier::DollarString)]
+            vec![Param::Compact("msg".into(), TypeQualifier::DollarString)]
         );
     }
 
@@ -160,14 +158,14 @@ mod tests {
             vec![
                 TopLevelToken::FunctionDeclaration(
                     "Echo".as_name(2, 26),
-                    vec![DeclaredName::bare("X").at_rc(2, 31)]
+                    vec![Param::Bare("X".into()).at_rc(2, 31)]
                 )
                 .at_rc(2, 9),
                 TopLevelToken::Statement(Statement::Comment(" Echoes stuff back".to_string()))
                     .at_rc(2, 34),
                 TopLevelToken::FunctionImplementation(
                     "Echo".as_name(3, 18),
-                    vec![DeclaredName::bare("X").at_rc(3, 23)],
+                    vec![Param::Bare("X".into()).at_rc(3, 23)],
                     vec![Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)]
                 )
                 .at_rc(3, 9),
@@ -190,8 +188,8 @@ mod tests {
             TopLevelToken::FunctionImplementation(
                 "Add".as_name(2, 18),
                 vec![
-                    DeclaredName::bare("A").at_rc(2, 22),
-                    DeclaredName::bare("B").at_rc(2, 25)
+                    Param::Bare("A".into()).at_rc(2, 22),
+                    Param::Bare("B".into()).at_rc(2, 25)
                 ],
                 vec![Statement::Assignment(
                     "Add".into(),
@@ -221,8 +219,8 @@ mod tests {
             TopLevelToken::FunctionImplementation(
                 "add".as_name(2, 18),
                 vec![
-                    DeclaredName::bare("a").at_rc(2, 22),
-                    DeclaredName::bare("b").at_rc(2, 25)
+                    Param::Bare("a".into()).at_rc(2, 22),
+                    Param::Bare("b".into()).at_rc(2, 25)
                 ],
                 vec![Statement::Assignment(
                     "add".into(),

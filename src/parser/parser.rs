@@ -33,7 +33,7 @@ mod tests {
                 // DECLARE FUNCTION Fib! (N!)
                 TopLevelToken::FunctionDeclaration(
                     "Fib!".as_name(1, 18),
-                    vec![DeclaredName::compact("N", TypeQualifier::BangSingle).at_rc(1, 24)],
+                    vec![Param::Compact("N".into(), TypeQualifier::BangSingle).at_rc(1, 24)],
                 ),
                 // PRINT "Enter the number of fibonacci to calculate"
                 TopLevelToken::Statement(Statement::SubCall(
@@ -73,7 +73,7 @@ mod tests {
                 // FUNCTION Fib (N)
                 TopLevelToken::FunctionImplementation(
                     Name::from("Fib").at_rc(8, 10),
-                    vec![DeclaredName::bare("N").at_rc(8, 15)],
+                    vec![Param::Bare("N".into()).at_rc(8, 15)],
                     vec![
                         // IF N <= 1 THEN
                         Statement::IfBlock(IfBlockNode {

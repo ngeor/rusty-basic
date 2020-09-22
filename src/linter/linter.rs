@@ -1287,12 +1287,7 @@ mod tests {
             DIM C.Oops AS STRING
             ";
             // QBasic actually throws "Expected: , or end-of-statement" at the period position
-            assert_linter_err!(
-                input,
-                QError::syntax_error("Expected: , or end-of-statement"),
-                8,
-                17
-            );
+            assert_linter_err!(input, QError::DotClash, 8, 17);
         }
 
         #[test]
@@ -1307,12 +1302,7 @@ mod tests {
             DIM C AS Card
             ";
             // QBasic actually throws "Expected: , or end-of-statement" at the period position
-            assert_linter_err!(
-                input,
-                QError::syntax_error("Expected: , or end-of-statement"),
-                8,
-                17
-            );
+            assert_linter_err!(input, QError::DotClash, 7, 17);
         }
 
         #[test]

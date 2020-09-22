@@ -15,6 +15,7 @@ use crate::common::{CanCastTo, Locatable};
 use crate::parser::{
     BareName, BareNameNode, Operator, QualifiedName, QualifiedNameNode, TypeQualifier,
 };
+use crate::variant::Variant;
 
 #[cfg(test)]
 use std::convert::TryFrom;
@@ -68,7 +69,7 @@ pub enum CaseExpression {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
     Assignment(ResolvedDeclaredName, ExpressionNode),
-    Const(QualifiedNameNode, ExpressionNode),
+    Const(QualifiedNameNode, Variant),
     SubCall(BareName, Vec<ExpressionNode>),
     BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),
 
@@ -189,6 +190,9 @@ pub enum ResolvedDeclaredName {
     // DIM C AS Card
     UserDefined(UserDefinedName),
 
+    /// DIM X AS STRING * 1
+    String(BareName, u16),
+
     // C.Suit, Name.Address, Name.Address.PostCode
     Many(UserDefinedName, Members),
 }
@@ -209,7 +213,9 @@ impl ResolvedDeclaredName {
 
     pub fn append(self, members: Members) -> Self {
         match self {
-            Self::BuiltIn(_) => panic!("Cannot append members to built-in resolved name"),
+            Self::BuiltIn(_) | Self::String(_, _) => {
+                panic!("Cannot append members to built-in resolved name")
+            }
             Self::UserDefined(user_defined_name) => Self::Many(user_defined_name, members),
             Self::Many(user_defined_name, existing_members) => {
                 Self::Many(user_defined_name, existing_members.append(members))
@@ -222,6 +228,7 @@ impl AsRef<BareName> for ResolvedDeclaredName {
     fn as_ref(&self) -> &BareName {
         match self {
             Self::BuiltIn(QualifiedName { name, .. }) => name,
+            Self::String(name, _) => name,
             Self::UserDefined(UserDefinedName { name, .. }) => name,
             Self::Many(UserDefinedName { name, .. }, _) => name,
         }
@@ -232,6 +239,7 @@ impl HasTypeDefinition for ResolvedDeclaredName {
     fn type_definition(&self) -> TypeDefinition {
         match self {
             Self::BuiltIn(QualifiedName { qualifier, .. }) => TypeDefinition::BuiltIn(*qualifier),
+            Self::String(_, len) => TypeDefinition::String(*len),
             Self::UserDefined(UserDefinedName { type_name, .. }) => {
                 TypeDefinition::UserDefined(type_name.clone())
             }
@@ -242,7 +250,3 @@ impl HasTypeDefinition for ResolvedDeclaredName {
 
 pub type ResolvedDeclaredNameNode = Locatable<ResolvedDeclaredName>;
 pub type ResolvedDeclaredNameNodes = Vec<ResolvedDeclaredNameNode>;
-
-// ========================================================
-// parameter name
-// ========================================================

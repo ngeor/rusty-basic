@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::declared_name;
+use crate::parser::dim_name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
@@ -15,7 +15,7 @@ pub fn dim<T: BufRead + 'static>(
         crate::parser::pc::ws::seq2(
             keyword(Keyword::Dim),
             demand(
-                declared_name::declared_name_node(),
+                dim_name::dim_name_node(),
                 QError::syntax_error_fn("Expected: name after DIM"),
             ),
             QError::syntax_error_fn("Expected: whitespace after DIM"),
@@ -38,11 +38,7 @@ mod tests {
             assert_eq!(
                 p,
                 Statement::Dim(
-                    DeclaredName::new(
-                        $name.into(),
-                        TypeDefinition::ExtendedBuiltIn(TypeQualifier::$qualifier)
-                    )
-                    .at_rc(1, 5)
+                    DimName::ExtendedBuiltIn($name.into(), TypeQualifier::$qualifier).at_rc(1, 5)
                 )
             );
         };
@@ -74,11 +70,7 @@ mod tests {
                 assert_eq!(
                     p,
                     Statement::Dim(
-                        DeclaredName::new(
-                            (*var_name).into(),
-                            TypeDefinition::UserDefined((*var_type).into())
-                        )
-                        .at_rc(1, 5)
+                        DimName::UserDefined((*var_name).into(), (*var_type).into()).at_rc(1, 5)
                     )
                 );
             }
@@ -115,7 +107,7 @@ mod tests {
         ($name: literal) => {
             let input = format!("DIM {}", $name);
             let p = parse(input).demand_single_statement();
-            assert_eq!(p, Statement::Dim(DeclaredName::bare($name).at_rc(1, 5)));
+            assert_eq!(p, Statement::Dim(DimName::Bare($name.into()).at_rc(1, 5)));
         };
 
         ($name: literal, $keyword: literal, $qualifier: ident) => {
@@ -123,7 +115,9 @@ mod tests {
             let p = parse(input).demand_single_statement();
             assert_eq!(
                 p,
-                Statement::Dim(DeclaredName::compact($name, TypeQualifier::$qualifier).at_rc(1, 5))
+                Statement::Dim(
+                    DimName::Compact($name.into(), TypeQualifier::$qualifier).at_rc(1, 5)
+                )
             );
         };
     }

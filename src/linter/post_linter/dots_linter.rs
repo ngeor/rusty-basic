@@ -2,6 +2,7 @@ use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
 use crate::linter::types::*;
 use crate::parser::{BareName, BareNameNode, QualifiedName, QualifiedNameNode};
+use crate::variant::Variant;
 use std::collections::HashSet;
 
 pub struct DotsLinter<'a> {
@@ -171,13 +172,8 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         self.visit_statement_nodes(&f.statements)
     }
 
-    fn visit_const(
-        &self,
-        left: &QualifiedNameNode,
-        right: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
-        self.ensure_no_dots(left)?;
-        self.visit_expression(right)
+    fn visit_const(&self, left: &QualifiedNameNode, _right: &Variant) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(left)
     }
 
     fn visit_expression(&self, e: &ExpressionNode) -> Result<(), QErrorNode> {

@@ -5,8 +5,7 @@ use crate::common::{
 use crate::interpreter::context::Argument;
 use crate::interpreter::{Interpreter, SetVariable, Stdlib};
 use crate::linter::{
-    ElementType, HasTypeDefinition, ResolvedDeclaredName, TypeDefinition, UserDefinedType,
-    UserDefinedTypes,
+    DimName, ElementType, HasTypeDefinition, TypeDefinition, UserDefinedType, UserDefinedTypes,
 };
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
@@ -252,7 +251,7 @@ mod input {
 
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        n: &ResolvedDeclaredName,
+        n: &DimName,
     ) -> Result<Variant, QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
@@ -772,7 +771,7 @@ mod line_input {
     fn line_input_one<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &ResolvedDeclaredName,
+        n: &DimName,
         file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         if file_handle.is_valid() {
@@ -785,7 +784,7 @@ mod line_input {
     fn line_input_one_file<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        n: &ResolvedDeclaredName,
+        n: &DimName,
         file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
@@ -807,7 +806,7 @@ mod line_input {
     fn line_input_one_stdin<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         arg: &Argument,
-        _n: &ResolvedDeclaredName,
+        _n: &DimName,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .stdlib

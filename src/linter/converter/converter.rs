@@ -6,7 +6,8 @@ use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::*;
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, HasQualifier, Name, NameNode, QualifiedName, TypeQualifier,
+    BareName, BareNameNode, HasQualifier, Name, NameNode, QualifiedName, QualifiedNameNode,
+    TypeQualifier,
 };
 use std::collections::HashSet;
 use std::convert::TryInto;
@@ -111,7 +112,8 @@ impl<'a> ConverterImpl<'a> {
         params: parser::ParamNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
-        let mapped_name = function_name_node.map(|x| x.resolve_into(&self.resolver));
+        let mapped_name: QualifiedNameNode =
+            function_name_node.map(|x| x.resolve_into(&self.resolver));
         self.push_function_context(mapped_name.as_ref());
         let mapped_params = self.convert_function_params(mapped_name.as_ref(), params)?;
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
@@ -232,7 +234,7 @@ impl<'a> ConverterImpl<'a> {
         Ok(Some(mapped))
     }
 
-    pub fn resolve_name_in_assignment(&mut self, n: Name) -> Result<ResolvedDeclaredName, QError> {
+    pub fn resolve_name_in_assignment(&mut self, n: Name) -> Result<DimName, QError> {
         let bare_name: &BareName = n.as_ref();
         if self.context.is_function_context(&n) {
             // trying to assign to the function
@@ -241,10 +243,7 @@ impl<'a> ConverterImpl<'a> {
                 ..
             } = self.functions.get(bare_name).unwrap();
             if n.is_bare_or_of_type(*function_type) {
-                Ok(ResolvedDeclaredName::BuiltIn(QualifiedName::new(
-                    bare_name.clone(),
-                    *function_type,
-                )))
+                Ok(DimName::BuiltIn(bare_name.clone(), *function_type))
             } else {
                 // trying to assign to the function with an explicit wrong type
                 Err(QError::DuplicateDefinition)
@@ -258,7 +257,7 @@ impl<'a> ConverterImpl<'a> {
             // parameter might be hiding a function name so it takes precedence
             Err(QError::DuplicateDefinition)
         } else {
-            let resolved_declared_name: ResolvedDeclaredName =
+            let resolved_declared_name: DimName =
                 self.context.resolve_assignment(&n, &self.resolver)?;
             Ok(resolved_declared_name)
         }
@@ -327,7 +326,7 @@ impl<'a> ConverterImpl<'a> {
     }
 
     // TODO fix me
-    fn temp_convert(&mut self, x: NameNode) -> Result<ResolvedDeclaredName, QErrorNode> {
+    fn temp_convert(&mut self, x: NameNode) -> Result<DimName, QErrorNode> {
         let Locatable { element, pos } = x;
         self.resolve_name_in_assignment(element).with_err_at(pos)
     }

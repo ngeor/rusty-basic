@@ -1,6 +1,6 @@
 use crate::common::CaseInsensitiveString;
-use crate::linter::{ResolvedDeclaredName, ResolvedParamName, UserDefinedName, UserDefinedTypes};
-use crate::parser::{HasQualifier, QualifiedName, TypeQualifier};
+use crate::linter::{DimName, ResolvedParamName, UserDefinedName, UserDefinedTypes};
+use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -55,7 +55,7 @@ Call Hello
 #[derive(Clone, Debug, PartialEq)]
 pub enum Argument {
     ByVal(Variant),
-    ByRef(ResolvedDeclaredName),
+    ByRef(DimName),
 }
 
 impl From<Variant> for Argument {
@@ -64,8 +64,8 @@ impl From<Variant> for Argument {
     }
 }
 
-impl From<ResolvedDeclaredName> for Argument {
-    fn from(n: ResolvedDeclaredName) -> Self {
+impl From<DimName> for Argument {
+    fn from(n: DimName) -> Self {
         Self::ByRef(n)
     }
 }
@@ -251,12 +251,11 @@ impl Context {
         self.constants.insert(name, value);
     }
 
-    pub fn set_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
+    pub fn set_variable(&mut self, name: DimName, value: Variant) {
         // set a parameter or set a variable?
         match name {
-            ResolvedDeclaredName::BuiltIn(qualified_name) => {
-                let QualifiedName { name, qualifier } = qualified_name.clone();
-                let p = ResolvedParamName::BuiltIn(name, qualifier);
+            DimName::BuiltIn(name, qualifier) => {
+                let p = ResolvedParamName::BuiltIn(name.clone(), qualifier);
                 match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
@@ -271,15 +270,16 @@ impl Context {
                         }
                     },
                     None => {
-                        self.variables.insert(qualified_name, value);
+                        self.variables
+                            .insert(QualifiedName::new(name, qualifier), value);
                     }
                 }
             }
-            ResolvedDeclaredName::String(name, _len) => {
+            DimName::String(name, _len) => {
                 self.variables
                     .insert(QualifiedName::new(name, TypeQualifier::DollarString), value);
             }
-            ResolvedDeclaredName::UserDefined(user_defined_name) => {
+            DimName::UserDefined(user_defined_name) => {
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
                 let p = ResolvedParamName::UserDefined(name, type_name);
                 match self.parameters.get_mut(&p) {
@@ -301,7 +301,7 @@ impl Context {
                     }
                 }
             }
-            ResolvedDeclaredName::Many(user_defined_name, members) => {
+            DimName::Many(user_defined_name, members) => {
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
                 let p = ResolvedParamName::UserDefined(name, type_name);
                 match self.parameters.get_mut(&p) {
@@ -337,15 +337,13 @@ impl Context {
         }
     }
 
-    pub fn get_r_value(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
+    pub fn get_r_value(&self, name: &DimName) -> Option<Variant> {
         match self.try_get_r_value(name) {
             Some(v) => Some(v.clone()),
             None => {
                 // create it
                 match name {
-                    ResolvedDeclaredName::BuiltIn(qualified_name) => {
-                        Some(qualified_name.qualifier().into())
-                    }
+                    DimName::BuiltIn(_, qualifier) => Some(qualifier.into()),
                     _ => unimplemented!(),
                 }
             }
@@ -399,17 +397,17 @@ impl Context {
     // private
     // ========================================================
 
-    fn try_get_r_value(&self, name: &ResolvedDeclaredName) -> Option<&Variant> {
+    fn try_get_r_value(&self, name: &DimName) -> Option<&Variant> {
         // get a constant or a local thing or a parent constant
         match name {
-            ResolvedDeclaredName::BuiltIn(qualified_name) => {
+            DimName::BuiltIn(name, qualifier) => {
                 // is it a constant
+                let qualified_name = &QualifiedName::new(name.clone(), *qualifier);
                 match self.constants.get(qualified_name) {
                     Some(v) => Some(v),
                     None => {
                         // is it a parameter
-                        let QualifiedName { name, qualifier } = qualified_name.clone();
-                        let p = ResolvedParamName::BuiltIn(name, qualifier);
+                        let p = ResolvedParamName::BuiltIn(name.clone(), *qualifier);
                         match self.parameters.get(&p) {
                             Some(arg) => match arg {
                                 Argument::ByRef(name_in_parent) => self
@@ -433,11 +431,11 @@ impl Context {
                     }
                 }
             }
-            ResolvedDeclaredName::String(name, _len) => {
+            DimName::String(name, _len) => {
                 let qualified_name = QualifiedName::new(name.clone(), TypeQualifier::DollarString);
                 self.variables.get(&qualified_name)
             }
-            ResolvedDeclaredName::UserDefined(user_defined_name) => {
+            DimName::UserDefined(user_defined_name) => {
                 // is it a parameter
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
                 let p = ResolvedParamName::UserDefined(name, type_name);
@@ -465,7 +463,7 @@ impl Context {
                     }
                 }
             }
-            ResolvedDeclaredName::Many(user_defined_name, members) => {
+            DimName::Many(user_defined_name, members) => {
                 // is it a parameter
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
                 let p = ResolvedParamName::UserDefined(name, type_name);

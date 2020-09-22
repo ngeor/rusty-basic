@@ -509,8 +509,8 @@ fn or_bits(a: [bool; INT_BITS], b: [bool; INT_BITS]) -> [bool; INT_BITS] {
 // Creating the default variant
 // ========================================================
 
-impl From<TypeQualifier> for Variant {
-    fn from(type_qualifier: TypeQualifier) -> Self {
+impl From<&TypeQualifier> for Variant {
+    fn from(type_qualifier: &TypeQualifier) -> Self {
         match type_qualifier {
             TypeQualifier::BangSingle => Self::VSingle(0.0),
             TypeQualifier::HashDouble => Self::VDouble(0.0),
@@ -518,6 +518,12 @@ impl From<TypeQualifier> for Variant {
             TypeQualifier::PercentInteger => Self::VInteger(0),
             TypeQualifier::AmpersandLong => Self::VLong(0),
         }
+    }
+}
+
+impl From<TypeQualifier> for Variant {
+    fn from(type_qualifier: TypeQualifier) -> Self {
+        Variant::from(&type_qualifier)
     }
 }
 

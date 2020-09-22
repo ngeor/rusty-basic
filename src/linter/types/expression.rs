@@ -1,4 +1,4 @@
-use super::{HasTypeDefinition, ParamTypeDefinition, ResolvedDeclaredName, TypeDefinition};
+use super::{DimName, HasTypeDefinition, ParamTypeDefinition, TypeDefinition};
 use crate::built_ins::BuiltInFunction;
 use crate::common::{CanCastTo, FileHandle, Locatable};
 use crate::parser::{HasQualifier, Operator, QualifiedName, TypeQualifier, UnaryOperator};
@@ -11,7 +11,7 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Constant(QualifiedName),
-    Variable(ResolvedDeclaredName),
+    Variable(DimName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(

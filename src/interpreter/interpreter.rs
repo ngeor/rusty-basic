@@ -5,7 +5,7 @@ use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
-use crate::linter::{HasTypeDefinition, ResolvedDeclaredName, UserDefinedTypes};
+use crate::linter::{DimName, HasTypeDefinition, UserDefinedTypes};
 use crate::parser::{HasQualifier, TypeQualifier};
 use crate::variant::Variant;
 use std::cmp::Ordering;
@@ -331,7 +331,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 // get the function result
                 let function_result: Option<Variant> = match opt_function_name {
                     Some(function_name) => {
-                        let r = ResolvedDeclaredName::BuiltIn(function_name.clone());
+                        let r = DimName::built_in(function_name.clone());
                         match self.context.get_r_value(&r) {
                             Some(v) => Some(v),
                             None => {
@@ -544,7 +544,7 @@ mod tests {
         macro_rules! assert_assign_ok {
             ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
                 let interpreter = interpret($program);
-                let resolved_declared_name = ResolvedDeclaredName::parse($expected_variable_name);
+                let resolved_declared_name = DimName::parse($expected_variable_name);
                 assert_eq!(
                     interpreter
                         .context

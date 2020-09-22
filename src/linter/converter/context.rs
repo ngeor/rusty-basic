@@ -2,8 +2,8 @@ use crate::common::{CaseInsensitiveString, QError};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
-    ElementType, Expression, HasTypeDefinition, Members, ResolvedDeclaredName, TypeDefinition,
-    UserDefinedName, UserDefinedTypes,
+    DimName, ElementType, Expression, HasTypeDefinition, Members, TypeDefinition, UserDefinedName,
+    UserDefinedTypes,
 };
 use crate::parser;
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
@@ -214,19 +214,19 @@ impl<'a> LinterContext<'a> {
         }
     }
 
-    fn resolve_member(&self, name: &BareName) -> Result<Option<ResolvedDeclaredName>, QError> {
+    fn resolve_member(&self, name: &BareName) -> Result<Option<DimName>, QError> {
         let s: String = name.clone().into();
         let mut v: Vec<BareName> = s.split('.').map(|s| s.into()).collect();
         let first: BareName = v.remove(0);
         match self.get_user_defined_type_name(&first) {
             Some(type_name) => {
                 if v.is_empty() {
-                    Ok(Some(ResolvedDeclaredName::UserDefined(UserDefinedName {
+                    Ok(Some(DimName::UserDefined(UserDefinedName {
                         name: first.clone(),
                         type_name: type_name.clone(),
                     })))
                 } else {
-                    Ok(Some(ResolvedDeclaredName::Many(
+                    Ok(Some(DimName::Many(
                         UserDefinedName {
                             name: first.clone(),
                             type_name: type_name.clone(),
@@ -275,29 +275,20 @@ impl<'a> LinterContext<'a> {
         &self,
         declared_name: parser::Param,
         resolver: &T,
-    ) -> Result<(ResolvedDeclaredName, bool), QError> {
+    ) -> Result<(DimName, bool), QError> {
         match declared_name {
             parser::Param::Bare(name) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 let q: TypeQualifier = (&name).resolve_into(resolver);
-                Ok((
-                    ResolvedDeclaredName::BuiltIn(QualifiedName::new(name, q)),
-                    false,
-                ))
+                Ok((DimName::BuiltIn(name, q), false))
             }
             parser::Param::Compact(name, q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
-                Ok((
-                    ResolvedDeclaredName::BuiltIn(QualifiedName::new(name, q)),
-                    false,
-                ))
+                Ok((DimName::BuiltIn(name, q), false))
             }
             parser::Param::ExtendedBuiltIn(name, q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
-                Ok((
-                    ResolvedDeclaredName::BuiltIn(QualifiedName::new(name, q)),
-                    true,
-                ))
+                Ok((DimName::BuiltIn(name, q), true))
             }
             parser::Param::UserDefined(name, user_defined_type) => {
                 if name.contains('.') {
@@ -305,7 +296,7 @@ impl<'a> LinterContext<'a> {
                 } else if self.user_defined_types.contains_key(&user_defined_type) {
                     self.ensure_user_defined_var_not_clashing_with_dotted_vars(&name)?;
                     Ok((
-                        ResolvedDeclaredName::UserDefined(UserDefinedName {
+                        DimName::UserDefined(UserDefinedName {
                             name,
                             type_name: user_defined_type,
                         }),
@@ -442,7 +433,7 @@ impl<'a> LinterContext<'a> {
         &self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<ResolvedDeclaredName>, QError> {
+    ) -> Result<Option<DimName>, QError> {
         let bare_name: &BareName = name.as_ref();
         match self.names.get(bare_name) {
             Some(resolved_type_definitions) => {
@@ -457,20 +448,14 @@ impl<'a> LinterContext<'a> {
                             Name::Bare(b) => {
                                 let qualifier: TypeQualifier = resolver.resolve(b);
                                 if existing_set.contains(&qualifier) {
-                                    Ok(Some(ResolvedDeclaredName::BuiltIn(QualifiedName::new(
-                                        b.clone(),
-                                        qualifier,
-                                    ))))
+                                    Ok(Some(DimName::BuiltIn(b.clone(), qualifier)))
                                 } else {
                                     Ok(None)
                                 }
                             }
                             Name::Qualified { name, qualifier } => {
                                 if existing_set.contains(qualifier) {
-                                    Ok(Some(ResolvedDeclaredName::BuiltIn(QualifiedName::new(
-                                        name.clone(),
-                                        *qualifier,
-                                    ))))
+                                    Ok(Some(DimName::BuiltIn(name.clone(), *qualifier)))
                                 } else {
                                     Ok(None)
                                 }
@@ -480,15 +465,10 @@ impl<'a> LinterContext<'a> {
                     ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
-                            Name::Bare(b) => Ok(Some(ResolvedDeclaredName::BuiltIn(
-                                QualifiedName::new(b.clone(), *q),
-                            ))),
+                            Name::Bare(b) => Ok(Some(DimName::BuiltIn(b.clone(), *q))),
                             Name::Qualified { name, qualifier } => {
                                 if q == qualifier {
-                                    Ok(Some(ResolvedDeclaredName::BuiltIn(QualifiedName::new(
-                                        name.clone(),
-                                        *qualifier,
-                                    ))))
+                                    Ok(Some(DimName::BuiltIn(name.clone(), *qualifier)))
                                 } else {
                                     Err(QError::DuplicateDefinition)
                                 }
@@ -498,12 +478,10 @@ impl<'a> LinterContext<'a> {
                     ResolvedTypeDefinitions::String(len) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
-                            Name::Bare(b) => {
-                                Ok(Some(ResolvedDeclaredName::String(b.clone(), *len)))
-                            }
+                            Name::Bare(b) => Ok(Some(DimName::String(b.clone(), *len))),
                             Name::Qualified { name, qualifier } => {
                                 if TypeQualifier::DollarString == *qualifier {
-                                    Ok(Some(ResolvedDeclaredName::String(name.clone(), *len)))
+                                    Ok(Some(DimName::String(name.clone(), *len)))
                                 } else {
                                     Err(QError::DuplicateDefinition)
                                 }
@@ -513,12 +491,10 @@ impl<'a> LinterContext<'a> {
                     ResolvedTypeDefinitions::UserDefined(u) => {
                         // only possible if the name is bare
                         match name {
-                            Name::Bare(b) => {
-                                Ok(Some(ResolvedDeclaredName::UserDefined(UserDefinedName {
-                                    name: b.clone(),
-                                    type_name: u.clone(),
-                                })))
-                            }
+                            Name::Bare(b) => Ok(Some(DimName::UserDefined(UserDefinedName {
+                                name: b.clone(),
+                                type_name: u.clone(),
+                            }))),
                             _ => Err(QError::TypeMismatch),
                         }
                     }
@@ -545,8 +521,9 @@ impl<'a> LinterContext<'a> {
                         let qualifier: TypeQualifier = resolver.resolve(b);
                         if existing_set.contains(&qualifier) {
                             // TODO fix me
-                            Ok(Some(Expression::Variable(ResolvedDeclaredName::BuiltIn(
-                                QualifiedName::new(b.clone(), qualifier),
+                            Ok(Some(Expression::Variable(DimName::BuiltIn(
+                                b.clone(),
+                                qualifier,
                             ))))
                         } else {
                             Ok(None)
@@ -555,8 +532,9 @@ impl<'a> LinterContext<'a> {
                     Name::Qualified { name, qualifier } => {
                         if existing_set.contains(qualifier) {
                             // TODO fix me
-                            Ok(Some(Expression::Variable(ResolvedDeclaredName::BuiltIn(
-                                QualifiedName::new(name.clone(), *qualifier),
+                            Ok(Some(Expression::Variable(DimName::BuiltIn(
+                                name.clone(),
+                                *qualifier,
                             ))))
                         } else {
                             Ok(None)
@@ -576,8 +554,9 @@ impl<'a> LinterContext<'a> {
                 ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
                     if name.is_bare_or_of_type(*q) {
                         // TODO fix me
-                        Ok(Some(Expression::Variable(ResolvedDeclaredName::BuiltIn(
-                            QualifiedName::new(bare_name.clone(), *q),
+                        Ok(Some(Expression::Variable(DimName::BuiltIn(
+                            bare_name.clone(),
+                            *q,
                         ))))
                     } else {
                         Err(QError::DuplicateDefinition)
@@ -586,7 +565,7 @@ impl<'a> LinterContext<'a> {
                 ResolvedTypeDefinitions::String(len) => {
                     if name.is_bare_or_of_type(TypeQualifier::DollarString) {
                         // TODO fix me
-                        Ok(Some(Expression::Variable(ResolvedDeclaredName::String(
+                        Ok(Some(Expression::Variable(DimName::String(
                             bare_name.clone(),
                             *len,
                         ))))
@@ -597,12 +576,12 @@ impl<'a> LinterContext<'a> {
                 ResolvedTypeDefinitions::UserDefined(u) => {
                     if name.is_bare() {
                         // TODO fix me
-                        Ok(Some(Expression::Variable(
-                            ResolvedDeclaredName::UserDefined(UserDefinedName {
+                        Ok(Some(Expression::Variable(DimName::UserDefined(
+                            UserDefinedName {
                                 name: bare_name.clone(),
                                 type_name: u.clone(),
-                            }),
-                        )))
+                            },
+                        ))))
                     } else {
                         Err(QError::DuplicateDefinition)
                     }
@@ -667,7 +646,7 @@ impl<'a> LinterContext<'a> {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<ResolvedDeclaredName, QError> {
+    ) -> Result<DimName, QError> {
         let QualifiedName { name, qualifier } = name.resolve_into(resolver);
         match self.names.get_mut(name.as_ref()) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
@@ -676,9 +655,7 @@ impl<'a> LinterContext<'a> {
                         Err(QError::DuplicateDefinition)
                     } else {
                         existing_set.insert(qualifier);
-                        Ok(ResolvedDeclaredName::BuiltIn(QualifiedName::new(
-                            name, qualifier,
-                        )))
+                        Ok(DimName::BuiltIn(name, qualifier))
                     }
                 }
                 _ => Err(QError::DuplicateDefinition),
@@ -688,9 +665,7 @@ impl<'a> LinterContext<'a> {
                 s.insert(qualifier);
                 self.names
                     .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
-                Ok(ResolvedDeclaredName::BuiltIn(QualifiedName::new(
-                    name, qualifier,
-                )))
+                Ok(DimName::BuiltIn(name, qualifier))
             }
         }
     }
@@ -787,7 +762,7 @@ impl<'a> LinterContext<'a> {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<ResolvedDeclaredName, QError> {
+    ) -> Result<DimName, QError> {
         match self.do_resolve_assignment(name, resolver)? {
             Some(x) => Ok(x),
             None => {

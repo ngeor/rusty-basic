@@ -3,10 +3,10 @@ use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::types::{ExpressionNode, ResolvedDeclaredNameNode, Statement};
-use crate::linter::{ResolvedDeclaredName, UserDefinedName};
+use crate::linter::types::{DimNameNode, ExpressionNode, Statement};
+use crate::linter::{DimName, UserDefinedName};
 use crate::parser;
-use crate::parser::{BareName, DimNameNode, Name, NameNode, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, NameNode, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::convert::TryInto;
 
@@ -38,11 +38,8 @@ impl<'a> Converter<parser::Statement, Statement> for ConverterImpl<'a> {
     }
 }
 
-impl<'a> Converter<parser::DimNameNode, ResolvedDeclaredNameNode> for ConverterImpl<'a> {
-    fn convert(
-        &mut self,
-        dim_name_node: DimNameNode,
-    ) -> Result<ResolvedDeclaredNameNode, QErrorNode> {
+impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
+    fn convert(&mut self, dim_name_node: parser::DimNameNode) -> Result<DimNameNode, QErrorNode> {
         let Locatable { element, pos } = dim_name_node;
         let bare_name: &BareName = element.as_ref();
         if self.subs.contains_key(bare_name)
@@ -51,21 +48,21 @@ impl<'a> Converter<parser::DimNameNode, ResolvedDeclaredNameNode> for ConverterI
         {
             return Err(QError::DuplicateDefinition).with_err_at(pos);
         }
-        let n: ResolvedDeclaredName = match element {
+        let n: DimName = match element {
             parser::DimName::Bare(b) => {
                 let q = self.resolver.resolve(&b);
                 if self.context.contains_compact(&b, q) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
                 self.context.push_dim_compact(b.clone(), q);
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(b, q))
+                DimName::BuiltIn(b, q)
             }
             parser::DimName::Compact(b, q) => {
                 if self.context.contains_compact(&b, q) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
                 self.context.push_dim_compact(b.clone(), q);
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(b, q))
+                DimName::BuiltIn(b, q)
             }
             parser::DimName::String(b, len_expr) => {
                 if self.context.contains_any(&b) {
@@ -78,14 +75,14 @@ impl<'a> Converter<parser::DimNameNode, ResolvedDeclaredNameNode> for ConverterI
                     }
                 };
                 self.context.push_dim_string(b.clone(), len);
-                ResolvedDeclaredName::String(b, len)
+                DimName::String(b, len)
             }
             parser::DimName::ExtendedBuiltIn(b, q) => {
                 if self.context.contains_any(&b) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
                 self.context.push_dim_extended(b.clone(), q);
-                ResolvedDeclaredName::BuiltIn(QualifiedName::new(b, q))
+                DimName::BuiltIn(b, q)
             }
             parser::DimName::UserDefined(b, u) => {
                 if self.context.contains_any(&b) {
@@ -98,7 +95,7 @@ impl<'a> Converter<parser::DimNameNode, ResolvedDeclaredNameNode> for ConverterI
                     return Err(QError::IdentifierCannotIncludePeriod).with_err_at(pos);
                 }
                 self.context.push_dim_user_defined(b.clone(), u.clone());
-                ResolvedDeclaredName::UserDefined(UserDefinedName {
+                DimName::UserDefined(UserDefinedName {
                     name: b,
                     type_name: u,
                 })

@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::ResolvedDeclaredName;
+use crate::linter::DimName;
 use crate::parser::{HasQualifier, Name, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
@@ -87,9 +87,9 @@ impl From<BuiltInFunction> for QualifiedName {
 
 // BuiltInFunction -> ResolvedDeclaredName
 
-impl From<BuiltInFunction> for ResolvedDeclaredName {
+impl From<BuiltInFunction> for DimName {
     fn from(x: BuiltInFunction) -> Self {
-        Self::BuiltIn(x.into())
+        Self::BuiltIn(x.into(), x.qualifier())
     }
 }
 

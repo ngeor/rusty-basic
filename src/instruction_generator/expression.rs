@@ -44,12 +44,12 @@ impl InstructionGenerator {
             Expression::LongLiteral(s) => {
                 self.push(Instruction::Load(Variant::from(s)), pos);
             }
-            Expression::Variable(name) => {
-                self.push(Instruction::CopyVarToA(name), pos);
+            Expression::Variable(dim_name) => {
+                self.push(Instruction::CopyVarToA(dim_name), pos);
             }
-            Expression::Constant(name) => {
+            Expression::Constant(qualified_name) => {
                 self.push(
-                    Instruction::CopyVarToA(ResolvedDeclaredName::BuiltIn(name)),
+                    Instruction::CopyVarToA(DimName::built_in(qualified_name)),
                     pos,
                 );
             }

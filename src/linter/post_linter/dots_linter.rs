@@ -47,15 +47,15 @@ impl<'a> NoDotNamesCheck<ResolvedParamName, QError> for DotsLinter<'a> {
     }
 }
 
-impl<'a> NoDotNamesCheck<ResolvedDeclaredNameNode, QErrorNode> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
+impl<'a> NoDotNamesCheck<DimNameNode, QErrorNode> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &DimNameNode) -> Result<(), QErrorNode> {
         let Locatable { element, pos } = x;
         self.ensure_no_dots(element).with_err_at(pos)
     }
 }
 
-impl<'a> NoDotNamesCheck<ResolvedDeclaredName, QError> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &ResolvedDeclaredName) -> Result<(), QError> {
+impl<'a> NoDotNamesCheck<DimName, QError> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &DimName) -> Result<(), QError> {
         let bare_name: &BareName = x.as_ref();
         self.ensure_no_dots(bare_name)
     }
@@ -147,15 +147,11 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         self.visit_statement_nodes(&s.body)
     }
 
-    fn visit_dim(&self, d: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
+    fn visit_dim(&self, d: &DimNameNode) -> Result<(), QErrorNode> {
         self.ensure_no_dots(d)
     }
 
-    fn visit_assignment(
-        &self,
-        name: &ResolvedDeclaredName,
-        v: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
+    fn visit_assignment(&self, name: &DimName, v: &ExpressionNode) -> Result<(), QErrorNode> {
         self.ensure_no_dots(name).with_err_no_pos()?;
         self.visit_expression(v)
     }

@@ -69,7 +69,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_dim(&self, _d: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
+    fn visit_dim(&self, _d: &DimNameNode) -> Result<(), QErrorNode> {
         Ok(())
     }
 
@@ -101,11 +101,7 @@ pub trait PostConversionLinter {
         self.visit_expressions(args)
     }
 
-    fn visit_assignment(
-        &self,
-        _name: &ResolvedDeclaredName,
-        v: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
+    fn visit_assignment(&self, _name: &DimName, v: &ExpressionNode) -> Result<(), QErrorNode> {
         self.visit_expression(v)
     }
 

@@ -1,5 +1,5 @@
 use crate::common::CaseInsensitiveString;
-use crate::linter::{DimName, ParamName, UserDefinedName, UserDefinedTypes};
+use crate::linter::{DimName, ParamName, ParamType, UserDefinedName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
@@ -255,7 +255,7 @@ impl Context {
         // set a parameter or set a variable?
         match dim_name {
             DimName::BuiltIn(bare_name, qualifier) => {
-                let p = ParamName::BuiltIn(bare_name.clone(), qualifier);
+                let p = ParamName::new(bare_name.clone(), ParamType::BuiltIn(qualifier));
                 match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
@@ -275,13 +275,13 @@ impl Context {
                     }
                 }
             }
-            DimName::String(name, _len) => {
+            DimName::FixedLengthString(name, _len) => {
                 self.variables
                     .insert(QualifiedName::new(name, TypeQualifier::DollarString), value);
             }
             DimName::UserDefined(user_defined_name) => {
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
-                let p = ParamName::UserDefined(name, type_name);
+                let p = ParamName::new(name, ParamType::UserDefined(type_name));
                 match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
@@ -303,7 +303,7 @@ impl Context {
             }
             DimName::Many(user_defined_name, members) => {
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
-                let p = ParamName::UserDefined(name, type_name);
+                let p = ParamName::new(name, ParamType::UserDefined(type_name));
                 match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
@@ -407,7 +407,7 @@ impl Context {
                     Some(v) => Some(v),
                     None => {
                         // is it a parameter
-                        let p = ParamName::BuiltIn(bare_name.clone(), *qualifier);
+                        let p = ParamName::new(bare_name.clone(), ParamType::BuiltIn(*qualifier));
                         match self.parameters.get(&p) {
                             Some(arg) => match arg {
                                 Argument::ByRef(name_in_parent) => self
@@ -431,14 +431,14 @@ impl Context {
                     }
                 }
             }
-            DimName::String(name, _len) => {
+            DimName::FixedLengthString(name, _len) => {
                 let qualified_name = QualifiedName::new(name.clone(), TypeQualifier::DollarString);
                 self.variables.get(&qualified_name)
             }
             DimName::UserDefined(user_defined_name) => {
                 // is it a parameter
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
-                let p = ParamName::UserDefined(name, type_name);
+                let p = ParamName::new(name, ParamType::UserDefined(type_name));
                 match self.parameters.get(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => self
@@ -466,7 +466,7 @@ impl Context {
             DimName::Many(user_defined_name, members) => {
                 // is it a parameter
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
-                let p = ParamName::UserDefined(name, type_name);
+                let p = ParamName::new(name, ParamType::UserDefined(type_name));
                 match self.parameters.get(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {

@@ -15,7 +15,7 @@ pub enum DimName {
     UserDefined(UserDefinedName),
 
     /// DIM X AS STRING * 1
-    String(BareName, u16),
+    FixedLengthString(BareName, u16),
 
     // C.Suit, Name.Address, Name.Address.PostCode
     Many(UserDefinedName, Members),
@@ -99,7 +99,7 @@ impl DimName {
 
     pub fn append(self, members: Members) -> Self {
         match self {
-            Self::BuiltIn(_, _) | Self::String(_, _) => {
+            Self::BuiltIn(_, _) | Self::FixedLengthString(_, _) => {
                 panic!("Cannot append members to built-in resolved name")
             }
             Self::UserDefined(user_defined_name) => Self::Many(user_defined_name, members),
@@ -113,7 +113,7 @@ impl DimName {
 impl AsRef<BareName> for DimName {
     fn as_ref(&self) -> &BareName {
         match self {
-            Self::BuiltIn(name, _) | Self::String(name, _) => name,
+            Self::BuiltIn(name, _) | Self::FixedLengthString(name, _) => name,
             Self::UserDefined(UserDefinedName { name, .. }) => name,
             Self::Many(UserDefinedName { name, .. }, _) => name,
         }
@@ -124,7 +124,7 @@ impl HasTypeDefinition for DimName {
     fn type_definition(&self) -> TypeDefinition {
         match self {
             Self::BuiltIn(_, qualifier) => TypeDefinition::BuiltIn(*qualifier),
-            Self::String(_, len) => TypeDefinition::String(*len),
+            Self::FixedLengthString(_, len) => TypeDefinition::String(*len),
             Self::UserDefined(UserDefinedName { type_name, .. }) => {
                 TypeDefinition::UserDefined(type_name.clone())
             }

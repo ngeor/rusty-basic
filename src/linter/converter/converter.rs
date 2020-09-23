@@ -126,7 +126,6 @@ impl<'a> ConverterImpl<'a> {
     }
 
     // TODO trait FromWithContext fn from(other, &ctx) -> Self
-    // TODO more types e.g. ParamName
     // TODO the bool represents extended type, improve this
     // TODO use linter context there are a lot of similarities
     fn resolve_declared_parameter_name(
@@ -137,15 +136,27 @@ impl<'a> ConverterImpl<'a> {
         match param.param_type() {
             parser::ParamType::Bare => {
                 let q: TypeQualifier = bare_name.resolve_into(&self.resolver);
-                Ok((ParamName::BuiltIn(bare_name.clone(), q), false))
+                Ok((
+                    ParamName::new(bare_name.clone(), ParamType::BuiltIn(q)),
+                    false,
+                ))
             }
-            parser::ParamType::Compact(q) => Ok((ParamName::BuiltIn(bare_name.clone(), *q), false)),
-            parser::ParamType::Extended(q) => Ok((ParamName::BuiltIn(bare_name.clone(), *q), true)),
+            parser::ParamType::Compact(q) => Ok((
+                ParamName::new(bare_name.clone(), ParamType::BuiltIn(*q)),
+                false,
+            )),
+            parser::ParamType::Extended(q) => Ok((
+                ParamName::new(bare_name.clone(), ParamType::BuiltIn(*q)),
+                true,
+            )),
             parser::ParamType::UserDefined(u) => {
                 let type_name: &BareName = u.as_ref();
                 if self.user_defined_types.contains_key(type_name) {
                     Ok((
-                        ParamName::UserDefined(bare_name.clone(), type_name.clone()),
+                        ParamName::new(
+                            bare_name.clone(),
+                            ParamType::UserDefined(type_name.clone()),
+                        ),
                         true,
                     ))
                 } else {
@@ -177,8 +188,8 @@ impl<'a> ConverterImpl<'a> {
             let bare_function_name: &BareName = function_name.as_ref();
             if bare_function_name == bare_name {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
-                let clashes = match &param_name {
-                    ParamName::BuiltIn(_, qualifier) => {
+                let clashes = match param_name.param_type() {
+                    ParamType::BuiltIn(qualifier) => {
                         *qualifier != function_name.qualifier() || is_extended
                     }
                     _ => true,

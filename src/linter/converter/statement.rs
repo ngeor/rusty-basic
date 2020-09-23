@@ -75,7 +75,7 @@ impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
                     }
                 };
                 self.context.push_dim_string(bare_name.clone(), len);
-                DimName::String(bare_name.clone(), len)
+                DimName::FixedLengthString(bare_name.clone(), len)
             }
             parser::DimType::Extended(q) => {
                 if self.context.contains_any(bare_name) {

@@ -485,13 +485,13 @@ impl<'a> LinterContext<'a> {
                     ResolvedTypeDefinitions::String(len) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
-                            Name::Bare(b) => Ok(Some(DimName::String(b.clone(), *len))),
+                            Name::Bare(b) => Ok(Some(DimName::FixedLengthString(b.clone(), *len))),
                             Name::Qualified {
                                 bare_name: name,
                                 qualifier,
                             } => {
                                 if TypeQualifier::DollarString == *qualifier {
-                                    Ok(Some(DimName::String(name.clone(), *len)))
+                                    Ok(Some(DimName::FixedLengthString(name.clone(), *len)))
                                 } else {
                                     Err(QError::DuplicateDefinition)
                                 }
@@ -578,7 +578,7 @@ impl<'a> LinterContext<'a> {
                 ResolvedTypeDefinitions::String(len) => {
                     if name.is_bare_or_of_type(TypeQualifier::DollarString) {
                         // TODO fix me
-                        Ok(Some(Expression::Variable(DimName::String(
+                        Ok(Some(Expression::Variable(DimName::FixedLengthString(
                             bare_name.clone(),
                             *len,
                         ))))

@@ -7,8 +7,8 @@ use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::{
-    ElementType, FunctionMap, FunctionSignature, ParamTypeDefinition, ParamTypes, SubMap,
-    SubSignature, UserDefinedType, UserDefinedTypes,
+    ElementType, FunctionMap, FunctionSignature, ParamType, ParamTypes, SubMap, SubSignature,
+    UserDefinedType, UserDefinedTypes,
 };
 use crate::parser;
 use crate::parser::{
@@ -271,7 +271,7 @@ impl<T> SubProgramContext<T> {
         params: &parser::ParamNameNodes,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
-    ) -> Result<Vec<ParamTypeDefinition>, QErrorNode> {
+    ) -> Result<Vec<ParamType>, QErrorNode> {
         params
             .iter()
             .map(|p| self.parameter(p, resolver, user_defined_types))
@@ -283,7 +283,7 @@ impl<T> SubProgramContext<T> {
         param: &parser::ParamNameNode,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
-    ) -> Result<ParamTypeDefinition, QErrorNode> {
+    ) -> Result<ParamType, QErrorNode> {
         let Locatable {
             element: param,
             pos,
@@ -292,15 +292,15 @@ impl<T> SubProgramContext<T> {
         match param.param_type() {
             parser::ParamType::Bare => {
                 let q: TypeQualifier = resolver.resolve(bare_name);
-                Ok(ParamTypeDefinition::BuiltIn(q))
+                Ok(ParamType::BuiltIn(q))
             }
             parser::ParamType::Compact(q) | parser::ParamType::Extended(q) => {
-                Ok(ParamTypeDefinition::BuiltIn(*q))
+                Ok(ParamType::BuiltIn(*q))
             }
             parser::ParamType::UserDefined(u) => {
                 let type_name: &BareName = u.as_ref();
                 if user_defined_types.contains_key(type_name) {
-                    Ok(ParamTypeDefinition::UserDefined(type_name.clone()))
+                    Ok(ParamType::UserDefined(type_name.clone()))
                 } else {
                     Err(QError::TypeNotDefined).with_err_at(pos)
                 }

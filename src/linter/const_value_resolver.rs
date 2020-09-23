@@ -23,7 +23,10 @@ pub trait ConstValueResolver {
                     Some(v) => Ok(v.clone()),
                     None => Err(QError::InvalidConstant).with_err_no_pos(),
                 },
-                Name::Qualified { bare_name: name, qualifier } => match self.get_resolved_constant(name) {
+                Name::Qualified {
+                    bare_name,
+                    qualifier,
+                } => match self.get_resolved_constant(bare_name) {
                     Some(v) => {
                         let v_q = match v {
                             Variant::VDouble(_) => TypeQualifier::HashDouble,

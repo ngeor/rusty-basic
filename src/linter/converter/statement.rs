@@ -143,7 +143,10 @@ impl<'a> ConverterImpl<'a> {
                     self.context.push_const(b.clone(), q, v.clone());
                     Ok(Statement::Const(QualifiedName::new(b, q).at(pos), v))
                 }
-                Name::Qualified { bare_name: name, qualifier } => {
+                Name::Qualified {
+                    bare_name: name,
+                    qualifier,
+                } => {
                     // type comes from the left side + casting
                     let casted_v = v.cast(qualifier).with_err_at(right)?;
                     self.context

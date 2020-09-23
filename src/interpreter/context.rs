@@ -1,5 +1,5 @@
 use crate::common::CaseInsensitiveString;
-use crate::linter::{DimName, ResolvedParamName, UserDefinedName, UserDefinedTypes};
+use crate::linter::{DimName, ParamName, UserDefinedName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, VecDeque};
@@ -75,7 +75,7 @@ impl From<DimName> for Argument {
 // ========================================================
 
 pub enum Arguments {
-    Named(HashMap<ResolvedParamName, Argument>),
+    Named(HashMap<ParamName, Argument>),
     Unnamed(VecDeque<Argument>),
 }
 
@@ -88,16 +88,16 @@ impl Arguments {
         Self::Unnamed(VecDeque::new())
     }
 
-    pub fn get(&self, name: &ResolvedParamName) -> Option<&Argument> {
+    pub fn get(&self, param_name: &ParamName) -> Option<&Argument> {
         match self {
-            Self::Named(map) => map.get(name),
+            Self::Named(map) => map.get(param_name),
             Self::Unnamed(_) => None,
         }
     }
 
-    pub fn get_mut(&mut self, name: &ResolvedParamName) -> Option<&mut Argument> {
+    pub fn get_mut(&mut self, param_name: &ParamName) -> Option<&mut Argument> {
         match self {
-            Self::Named(map) => map.get_mut(name),
+            Self::Named(map) => map.get_mut(param_name),
             Self::Unnamed(_) => None,
         }
     }
@@ -112,7 +112,7 @@ impl Arguments {
         }
     }
 
-    pub fn push_named<T>(&mut self, parameter_name: ResolvedParamName, arg: T)
+    pub fn push_named<T>(&mut self, parameter_name: ParamName, arg: T)
     where
         Argument: From<T>,
     {
@@ -184,11 +184,11 @@ impl ArgumentsStack {
         self.demand().push_unnamed(arg);
     }
 
-    pub fn push_named<T>(&mut self, parameter_name: ResolvedParamName, arg: T)
+    pub fn push_named<T>(&mut self, param_name: ParamName, arg: T)
     where
         Argument: From<T>,
     {
-        self.demand().push_named(parameter_name, arg);
+        self.demand().push_named(param_name, arg);
     }
 
     fn demand(&mut self) -> &mut Arguments {
@@ -247,15 +247,15 @@ impl Context {
         }
     }
 
-    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) {
-        self.constants.insert(name, value);
+    pub fn set_constant(&mut self, qualified_name: QualifiedName, value: Variant) {
+        self.constants.insert(qualified_name, value);
     }
 
-    pub fn set_variable(&mut self, name: DimName, value: Variant) {
+    pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
         // set a parameter or set a variable?
-        match name {
-            DimName::BuiltIn(name, qualifier) => {
-                let p = ResolvedParamName::BuiltIn(name.clone(), qualifier);
+        match dim_name {
+            DimName::BuiltIn(bare_name, qualifier) => {
+                let p = ParamName::BuiltIn(bare_name.clone(), qualifier);
                 match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
@@ -271,7 +271,7 @@ impl Context {
                     },
                     None => {
                         self.variables
-                            .insert(QualifiedName::new(name, qualifier), value);
+                            .insert(QualifiedName::new(bare_name, qualifier), value);
                     }
                 }
             }
@@ -281,7 +281,7 @@ impl Context {
             }
             DimName::UserDefined(user_defined_name) => {
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
-                let p = ResolvedParamName::UserDefined(name, type_name);
+                let p = ParamName::UserDefined(name, type_name);
                 match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
@@ -303,7 +303,7 @@ impl Context {
             }
             DimName::Many(user_defined_name, members) => {
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
-                let p = ResolvedParamName::UserDefined(name, type_name);
+                let p = ParamName::UserDefined(name, type_name);
                 match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
@@ -400,14 +400,14 @@ impl Context {
     fn try_get_r_value(&self, name: &DimName) -> Option<&Variant> {
         // get a constant or a local thing or a parent constant
         match name {
-            DimName::BuiltIn(name, qualifier) => {
+            DimName::BuiltIn(bare_name, qualifier) => {
                 // is it a constant
-                let qualified_name = &QualifiedName::new(name.clone(), *qualifier);
+                let qualified_name = &QualifiedName::new(bare_name.clone(), *qualifier);
                 match self.constants.get(qualified_name) {
                     Some(v) => Some(v),
                     None => {
                         // is it a parameter
-                        let p = ResolvedParamName::BuiltIn(name.clone(), *qualifier);
+                        let p = ParamName::BuiltIn(bare_name.clone(), *qualifier);
                         match self.parameters.get(&p) {
                             Some(arg) => match arg {
                                 Argument::ByRef(name_in_parent) => self
@@ -438,7 +438,7 @@ impl Context {
             DimName::UserDefined(user_defined_name) => {
                 // is it a parameter
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
-                let p = ResolvedParamName::UserDefined(name, type_name);
+                let p = ParamName::UserDefined(name, type_name);
                 match self.parameters.get(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => self
@@ -466,7 +466,7 @@ impl Context {
             DimName::Many(user_defined_name, members) => {
                 // is it a parameter
                 let UserDefinedName { name, type_name } = user_defined_name.clone();
-                let p = ResolvedParamName::UserDefined(name, type_name);
+                let p = ParamName::UserDefined(name, type_name);
                 match self.parameters.get(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {

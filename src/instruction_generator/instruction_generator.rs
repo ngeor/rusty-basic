@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
 
-type ParamMap = HashMap<CaseInsensitiveString, Vec<ResolvedParamName>>;
+type ParamMap = HashMap<CaseInsensitiveString, Vec<ParamName>>;
 
 fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
     let mut functions: ParamMap = HashMap::new();

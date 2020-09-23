@@ -132,24 +132,21 @@ impl<'a> ConverterImpl<'a> {
     fn resolve_declared_parameter_name(
         &mut self,
         param: &parser::ParamName,
-    ) -> Result<(ResolvedParamName, bool), QError> {
+    ) -> Result<(ParamName, bool), QError> {
         match param {
             parser::ParamName::Bare(name) => {
                 let q: TypeQualifier = name.resolve_into(&self.resolver);
-                Ok((ResolvedParamName::BuiltIn(name.clone(), q), false))
+                Ok((ParamName::BuiltIn(name.clone(), q), false))
             }
             parser::ParamName::Compact(name, q) => {
-                Ok((ResolvedParamName::BuiltIn(name.clone(), *q), false))
+                Ok((ParamName::BuiltIn(name.clone(), *q), false))
             }
             parser::ParamName::ExtendedBuiltIn(name, q) => {
-                Ok((ResolvedParamName::BuiltIn(name.clone(), *q), true))
+                Ok((ParamName::BuiltIn(name.clone(), *q), true))
             }
             parser::ParamName::UserDefined(name, u) => {
                 if self.user_defined_types.contains_key(u) {
-                    Ok((
-                        ResolvedParamName::UserDefined(name.clone(), u.clone()),
-                        true,
-                    ))
+                    Ok((ParamName::UserDefined(name.clone(), u.clone()), true))
                 } else {
                     Err(QError::TypeNotDefined)
                 }
@@ -161,8 +158,8 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         function_name: &QualifiedName,
         params: parser::ParamNameNodes,
-    ) -> Result<Vec<Locatable<ResolvedParamName>>, QErrorNode> {
-        let mut result: Vec<Locatable<ResolvedParamName>> = vec![];
+    ) -> Result<Vec<Locatable<ParamName>>, QErrorNode> {
+        let mut result: Vec<Locatable<ParamName>> = vec![];
         for p in params.into_iter() {
             let Locatable {
                 element: declared_name,
@@ -180,7 +177,7 @@ impl<'a> ConverterImpl<'a> {
             if bare_function_name == bare_name {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
                 let clashes = match &param_name {
-                    ResolvedParamName::BuiltIn(_, qualifier) => {
+                    ParamName::BuiltIn(_, qualifier) => {
                         *qualifier != function_name.qualifier() || is_extended
                     }
                     _ => true,
@@ -205,7 +202,7 @@ impl<'a> ConverterImpl<'a> {
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
         self.push_sub_context(sub_name_node.as_ref());
 
-        let mut mapped_params: Vec<Locatable<ResolvedParamName>> = vec![];
+        let mut mapped_params: Vec<Locatable<ParamName>> = vec![];
         for declared_name_node in params.into_iter() {
             let Locatable {
                 element: declared_name,
@@ -257,8 +254,7 @@ impl<'a> ConverterImpl<'a> {
             // parameter might be hiding a function name so it takes precedence
             Err(QError::DuplicateDefinition)
         } else {
-            let dim_name: DimName =
-                self.context.resolve_assignment(&n, &self.resolver)?;
+            let dim_name: DimName = self.context.resolve_assignment(&n, &self.resolver)?;
             Ok(dim_name)
         }
     }
@@ -307,7 +303,10 @@ impl<'a> ConverterImpl<'a> {
                         QualifiedName::new(b.clone(), *f_type),
                         vec![],
                     ))),
-                    Name::Qualified { bare_name: name, qualifier } => {
+                    Name::Qualified {
+                        bare_name: name,
+                        qualifier,
+                    } => {
                         // if the function is a different type and the name is qualified of a different type, duplication definition
                         if f_type != qualifier {
                             Err(QError::DuplicateDefinition)

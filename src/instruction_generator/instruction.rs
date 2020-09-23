@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{DimName, ResolvedParamName};
+use crate::linter::{DimName, ParamName};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
@@ -63,8 +63,8 @@ pub enum Instruction {
     /// PushUnnamedRef and PushUnnamedVal.
     BeginCollectUnnamedArguments,
 
-    PushNamedRef(ResolvedParamName, DimName),
-    PushNamedVal(ResolvedParamName),
+    PushNamedRef(ParamName, DimName),
+    PushNamedVal(ParamName),
 
     PushUnnamedRef(DimName),
 

@@ -109,7 +109,10 @@ fn global_const(
         Name::Bare(b) => {
             global_constants.insert(b.clone(), v);
         }
-        Name::Qualified { bare_name: name, qualifier } => {
+        Name::Qualified {
+            bare_name: name,
+            qualifier,
+        } => {
             let casted = v.cast(*qualifier).with_err_at(expression_node)?;
             global_constants.insert(name.clone(), casted);
         }
@@ -211,7 +214,10 @@ fn validate_element_type_str_len(
                         None => Err(QError::InvalidConstant).with_err_at(pos),
                     }
                 }
-                Name::Qualified { bare_name: name, qualifier } => {
+                Name::Qualified {
+                    bare_name: name,
+                    qualifier,
+                } => {
                     match global_constants.get(name) {
                         // constant exists
                         Some(const_value) => {

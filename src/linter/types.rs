@@ -90,14 +90,14 @@ pub type StatementNodes = Vec<StatementNode>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionImplementation {
     pub name: QualifiedNameNode,
-    pub params: Vec<Locatable<ResolvedParamName>>,
+    pub params: Vec<Locatable<ParamName>>,
     pub body: StatementNodes,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubImplementation {
     pub name: BareNameNode,
-    pub params: Vec<Locatable<ResolvedParamName>>,
+    pub params: Vec<Locatable<ParamName>>,
     pub body: StatementNodes,
 }
 

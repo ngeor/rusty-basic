@@ -77,7 +77,10 @@ impl HasTypeDefinition for Members {
 
 impl DimName {
     pub fn built_in(qualified_name: QualifiedName) -> Self {
-        let QualifiedName { name, qualifier } = qualified_name;
+        let QualifiedName {
+            bare_name: name,
+            qualifier,
+        } = qualified_name;
         Self::BuiltIn(name, qualifier)
     }
 

@@ -314,8 +314,7 @@ impl<'a> LinterContext<'a> {
         declared_name: parser::ParamName,
         resolver: &T,
     ) -> Result<(), QError> {
-        let (dim_name, is_extended) =
-            self.resolve_declared_name(declared_name, resolver)?;
+        let (dim_name, is_extended) = self.resolve_declared_name(declared_name, resolver)?;
         let name: &BareName = dim_name.as_ref();
         match self.names.get_mut(&name) {
             Some(resolved_type_definitions) => {
@@ -453,7 +452,10 @@ impl<'a> LinterContext<'a> {
                                     Ok(None)
                                 }
                             }
-                            Name::Qualified { bare_name: name, qualifier } => {
+                            Name::Qualified {
+                                bare_name: name,
+                                qualifier,
+                            } => {
                                 if existing_set.contains(qualifier) {
                                     Ok(Some(DimName::BuiltIn(name.clone(), *qualifier)))
                                 } else {
@@ -466,7 +468,10 @@ impl<'a> LinterContext<'a> {
                         // only possible if the name is bare or using the same qualifier
                         match name {
                             Name::Bare(b) => Ok(Some(DimName::BuiltIn(b.clone(), *q))),
-                            Name::Qualified { bare_name: name, qualifier } => {
+                            Name::Qualified {
+                                bare_name: name,
+                                qualifier,
+                            } => {
                                 if q == qualifier {
                                     Ok(Some(DimName::BuiltIn(name.clone(), *qualifier)))
                                 } else {
@@ -479,7 +484,10 @@ impl<'a> LinterContext<'a> {
                         // only possible if the name is bare or using the same qualifier
                         match name {
                             Name::Bare(b) => Ok(Some(DimName::String(b.clone(), *len))),
-                            Name::Qualified { bare_name: name, qualifier } => {
+                            Name::Qualified {
+                                bare_name: name,
+                                qualifier,
+                            } => {
                                 if TypeQualifier::DollarString == *qualifier {
                                     Ok(Some(DimName::String(name.clone(), *len)))
                                 } else {
@@ -529,7 +537,10 @@ impl<'a> LinterContext<'a> {
                             Ok(None)
                         }
                     }
-                    Name::Qualified { bare_name: name, qualifier } => {
+                    Name::Qualified {
+                        bare_name: name,
+                        qualifier,
+                    } => {
                         if existing_set.contains(qualifier) {
                             // TODO fix me
                             Ok(Some(Expression::Variable(DimName::BuiltIn(
@@ -647,15 +658,18 @@ impl<'a> LinterContext<'a> {
         name: &Name,
         resolver: &T,
     ) -> Result<DimName, QError> {
-        let QualifiedName { name, qualifier } = name.resolve_into(resolver);
-        match self.names.get_mut(name.as_ref()) {
+        let QualifiedName {
+            bare_name,
+            qualifier,
+        } = name.resolve_into(resolver);
+        match self.names.get_mut(bare_name.as_ref()) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
                 ResolvedTypeDefinitions::Compact(existing_set) => {
                     if existing_set.contains(&qualifier) {
                         Err(QError::DuplicateDefinition)
                     } else {
                         existing_set.insert(qualifier);
-                        Ok(DimName::BuiltIn(name, qualifier))
+                        Ok(DimName::BuiltIn(bare_name, qualifier))
                     }
                 }
                 _ => Err(QError::DuplicateDefinition),
@@ -664,8 +678,8 @@ impl<'a> LinterContext<'a> {
                 let mut s: HashSet<TypeQualifier> = HashSet::new();
                 s.insert(qualifier);
                 self.names
-                    .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
-                Ok(DimName::BuiltIn(name, qualifier))
+                    .insert(bare_name.clone(), ResolvedTypeDefinitions::Compact(s));
+                Ok(DimName::BuiltIn(bare_name, qualifier))
             }
         }
     }

@@ -8,10 +8,7 @@ macro_rules! assert_assign_ok {
         let interpreter = interpret($program);
         let dim_name = crate::linter::DimName::parse($expected_variable_name);
         assert_eq!(
-            interpreter
-                .context()
-                .get_r_value(&dim_name)
-                .unwrap(),
+            interpreter.context().get_r_value(&dim_name).unwrap(),
             crate::variant::Variant::from($expected_value)
         );
     };

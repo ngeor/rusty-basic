@@ -8,7 +8,7 @@ use std::collections::HashMap;
 // ========================================================
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum ResolvedParamName {
+pub enum ParamName {
     // A -> A!
     // A AS STRING
     // A$, A% etc
@@ -18,7 +18,7 @@ pub enum ResolvedParamName {
     UserDefined(BareName, BareName),
 }
 
-impl AsRef<BareName> for ResolvedParamName {
+impl AsRef<BareName> for ParamName {
     fn as_ref(&self) -> &BareName {
         match self {
             Self::BuiltIn(name, _) | Self::UserDefined(name, _) => name,
@@ -26,7 +26,7 @@ impl AsRef<BareName> for ResolvedParamName {
     }
 }
 
-impl HasTypeDefinition for ResolvedParamName {
+impl HasTypeDefinition for ParamName {
     fn type_definition(&self) -> TypeDefinition {
         match self {
             Self::BuiltIn(_, qualifier) => TypeDefinition::BuiltIn(*qualifier),

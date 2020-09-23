@@ -67,7 +67,8 @@ fn sub_declaration_token<T: BufRead + 'static>(
 }
 
 pub fn sub_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, ParamNameNodes), QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, ParamNameNodes), QError>>
+{
     map(
         seq5(
             keyword(Keyword::Sub),
@@ -139,7 +140,10 @@ mod tests {
         assert_function_declaration!(
             "declare function echo$(msg$)",
             Name::from("echo$"),
-            vec![ParamName::Compact("msg".into(), TypeQualifier::DollarString)]
+            vec![ParamName::Compact(
+                "msg".into(),
+                TypeQualifier::DollarString
+            )]
         );
     }
 

@@ -12,7 +12,7 @@ pub type BareName = CaseInsensitiveString;
 
 impl From<QualifiedName> for BareName {
     fn from(qualified_name: QualifiedName) -> BareName {
-        qualified_name.name
+        qualified_name.bare_name
     }
 }
 
@@ -31,7 +31,9 @@ impl From<Name> for BareName {
     fn from(n: Name) -> BareName {
         match n {
             Name::Bare(b) => b,
-            Name::Qualified { bare_name: name, .. } => name,
+            Name::Qualified {
+                bare_name: name, ..
+            } => name,
         }
     }
 }
@@ -83,17 +85,20 @@ pub type BareNameNode = Locatable<BareName>;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QualifiedName {
-    pub name: CaseInsensitiveString,
+    pub bare_name: CaseInsensitiveString,
     pub qualifier: TypeQualifier,
 }
 
 impl QualifiedName {
-    pub fn new(name: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
-        QualifiedName { name, qualifier }
+    pub fn new(bare_name: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
+        QualifiedName {
+            bare_name,
+            qualifier,
+        }
     }
 
-    pub fn is_of_type(&self, q_other: TypeQualifier) -> bool {
-        self.qualifier == q_other
+    pub fn is_of_type(&self, qualifier: TypeQualifier) -> bool {
+        self.qualifier == qualifier
     }
 }
 
@@ -105,7 +110,7 @@ impl HasQualifier for QualifiedName {
 
 impl AsRef<BareName> for QualifiedName {
     fn as_ref(&self) -> &BareName {
-        &self.name
+        &self.bare_name
     }
 }
 
@@ -147,22 +152,22 @@ pub enum Name {
 
 impl Name {
     pub fn new(
-        word: CaseInsensitiveString,
+        bare_name: CaseInsensitiveString,
         optional_type_qualifier: Option<TypeQualifier>,
     ) -> Self {
         match optional_type_qualifier {
-            Some(q) => Self::new_qualified(word, q),
-            None => Self::new_bare(word),
+            Some(q) => Self::new_qualified(bare_name, q),
+            None => Self::new_bare(bare_name),
         }
     }
 
-    pub fn new_bare(word: CaseInsensitiveString) -> Self {
-        Name::Bare(word)
+    pub fn new_bare(bare_name: CaseInsensitiveString) -> Self {
+        Name::Bare(bare_name)
     }
 
-    pub fn new_qualified(word: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
+    pub fn new_qualified(bare_name: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
         Name::Qualified {
-            bare_name: word,
+            bare_name,
             qualifier,
         }
     }
@@ -174,10 +179,10 @@ impl Name {
         }
     }
 
-    pub fn is_bare_or_of_type(&self, q_other: TypeQualifier) -> bool {
+    pub fn is_bare_or_of_type(&self, qualifier: TypeQualifier) -> bool {
         match self {
             Self::Bare(_) => true,
-            Self::Qualified { qualifier: q, .. } => *q == q_other,
+            Self::Qualified { qualifier: q, .. } => *q == qualifier,
         }
     }
 }
@@ -186,7 +191,9 @@ impl AsRef<BareName> for Name {
     fn as_ref(&self) -> &BareName {
         match self {
             Name::Bare(b) => b,
-            Name::Qualified { bare_name: name, .. } => name,
+            Name::Qualified {
+                bare_name: name, ..
+            } => name,
         }
     }
 }
@@ -210,8 +217,14 @@ impl<S: AsRef<str>> From<S> for Name {
 
 impl From<QualifiedName> for Name {
     fn from(qualified_name: QualifiedName) -> Self {
-        let QualifiedName { name, qualifier } = qualified_name;
-        Self::Qualified { bare_name: name, qualifier }
+        let QualifiedName {
+            bare_name,
+            qualifier,
+        } = qualified_name;
+        Self::Qualified {
+            bare_name,
+            qualifier,
+        }
     }
 }
 

@@ -109,7 +109,7 @@ impl<'a> ConverterImpl<'a> {
     fn convert_function_implementation(
         &mut self,
         function_name_node: NameNode,
-        params: parser::ParamNodes,
+        params: parser::ParamNameNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
         let mapped_name: QualifiedNameNode =
@@ -131,20 +131,20 @@ impl<'a> ConverterImpl<'a> {
     // TODO use linter context there are a lot of similarities
     fn resolve_declared_parameter_name(
         &mut self,
-        param: &parser::Param,
+        param: &parser::ParamName,
     ) -> Result<(ResolvedParamName, bool), QError> {
         match param {
-            parser::Param::Bare(name) => {
+            parser::ParamName::Bare(name) => {
                 let q: TypeQualifier = name.resolve_into(&self.resolver);
                 Ok((ResolvedParamName::BuiltIn(name.clone(), q), false))
             }
-            parser::Param::Compact(name, q) => {
+            parser::ParamName::Compact(name, q) => {
                 Ok((ResolvedParamName::BuiltIn(name.clone(), *q), false))
             }
-            parser::Param::ExtendedBuiltIn(name, q) => {
+            parser::ParamName::ExtendedBuiltIn(name, q) => {
                 Ok((ResolvedParamName::BuiltIn(name.clone(), *q), true))
             }
-            parser::Param::UserDefined(name, u) => {
+            parser::ParamName::UserDefined(name, u) => {
                 if self.user_defined_types.contains_key(u) {
                     Ok((
                         ResolvedParamName::UserDefined(name.clone(), u.clone()),
@@ -160,7 +160,7 @@ impl<'a> ConverterImpl<'a> {
     fn convert_function_params(
         &mut self,
         function_name: &QualifiedName,
-        params: parser::ParamNodes,
+        params: parser::ParamNameNodes,
     ) -> Result<Vec<Locatable<ResolvedParamName>>, QErrorNode> {
         let mut result: Vec<Locatable<ResolvedParamName>> = vec![];
         for p in params.into_iter() {
@@ -200,7 +200,7 @@ impl<'a> ConverterImpl<'a> {
     fn convert_sub_implementation(
         &mut self,
         sub_name_node: BareNameNode,
-        params: parser::ParamNodes,
+        params: parser::ParamNameNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
         self.push_sub_context(sub_name_node.as_ref());
@@ -307,7 +307,7 @@ impl<'a> ConverterImpl<'a> {
                         QualifiedName::new(b.clone(), *f_type),
                         vec![],
                     ))),
-                    Name::Qualified { name, qualifier } => {
+                    Name::Qualified { bare_name: name, qualifier } => {
                         // if the function is a different type and the name is qualified of a different type, duplication definition
                         if f_type != qualifier {
                             Err(QError::DuplicateDefinition)

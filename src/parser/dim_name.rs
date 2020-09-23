@@ -36,7 +36,7 @@ pub fn dim_name_node<T: BufRead + 'static>(
                 None => Ok(DimName::Bare(b).at(pos)),
             },
             Name::Qualified {
-                name: n,
+                bare_name: n,
                 qualifier: q,
             } => match opt_type_definition {
                 Some(_) => Err(QError::syntax_error(

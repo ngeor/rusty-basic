@@ -1,5 +1,5 @@
 use super::{
-    BareNameNode, DefType, NameNode, ParamNodes, Statement, StatementNodes, UserDefinedType,
+    BareNameNode, DefType, NameNode, ParamNameNodes, Statement, StatementNodes, UserDefinedType,
 };
 use crate::common::*;
 
@@ -12,19 +12,19 @@ pub enum TopLevelToken {
     DefType(DefType),
 
     /// A function declaration, e.g. `DECLARE FUNCTION Add(A, B)`
-    FunctionDeclaration(NameNode, ParamNodes),
+    FunctionDeclaration(NameNode, ParamNameNodes),
 
     /// A function implementation
-    FunctionImplementation(NameNode, ParamNodes, StatementNodes),
+    FunctionImplementation(NameNode, ParamNameNodes, StatementNodes),
 
     /// A simple or compound statement
     Statement(Statement),
 
     /// A sub declaration, e.g. `DECLARE SUB Connect`
-    SubDeclaration(BareNameNode, ParamNodes),
+    SubDeclaration(BareNameNode, ParamNameNodes),
 
     /// A sub implementation
-    SubImplementation(BareNameNode, ParamNodes, StatementNodes),
+    SubImplementation(BareNameNode, ParamNameNodes, StatementNodes),
 
     /// A user defined type definition
     UserDefinedType(UserDefinedType),

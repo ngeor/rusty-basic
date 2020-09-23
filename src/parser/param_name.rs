@@ -21,25 +21,25 @@ enum TypeDefinition {
 }
 
 pub fn param_name_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNode, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNameNode, QError>> {
     and_then(
         opt_seq2(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
             Name::Bare(b) => match opt_type_definition {
                 Some(TypeDefinition::ExtendedBuiltIn(q)) => {
-                    Ok(Param::ExtendedBuiltIn(b, q).at(pos))
+                    Ok(ParamName::ExtendedBuiltIn(b, q).at(pos))
                 }
-                Some(TypeDefinition::UserDefined(u)) => Ok(Param::UserDefined(b, u).at(pos)),
-                None => Ok(Param::Bare(b).at(pos)),
+                Some(TypeDefinition::UserDefined(u)) => Ok(ParamName::UserDefined(b, u).at(pos)),
+                None => Ok(ParamName::Bare(b).at(pos)),
             },
             Name::Qualified {
-                name: n,
+                bare_name: n,
                 qualifier: q,
             } => match opt_type_definition {
                 Some(_) => Err(QError::syntax_error(
                     "Identifier cannot end with %, &, !, #, or $",
                 )),
-                None => Ok(Param::Compact(n, q).at(pos)),
+                None => Ok(ParamName::Compact(n, q).at(pos)),
             },
         },
     )

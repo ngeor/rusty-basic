@@ -109,7 +109,7 @@ fn global_const(
         Name::Bare(b) => {
             global_constants.insert(b.clone(), v);
         }
-        Name::Qualified { name, qualifier } => {
+        Name::Qualified { bare_name: name, qualifier } => {
             let casted = v.cast(*qualifier).with_err_at(expression_node)?;
             global_constants.insert(name.clone(), casted);
         }
@@ -211,7 +211,7 @@ fn validate_element_type_str_len(
                         None => Err(QError::InvalidConstant).with_err_at(pos),
                     }
                 }
-                Name::Qualified { name, qualifier } => {
+                Name::Qualified { bare_name: name, qualifier } => {
                     match global_constants.get(name) {
                         // constant exists
                         Some(const_value) => {
@@ -262,7 +262,7 @@ impl<T> SubProgramContext<T> {
 
     fn parameters(
         &self,
-        params: &parser::ParamNodes,
+        params: &parser::ParamNameNodes,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<Vec<ParamTypeDefinition>, QErrorNode> {
@@ -274,7 +274,7 @@ impl<T> SubProgramContext<T> {
 
     fn parameter(
         &self,
-        param: &parser::ParamNode,
+        param: &parser::ParamNameNode,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<ParamTypeDefinition, QErrorNode> {
@@ -283,14 +283,14 @@ impl<T> SubProgramContext<T> {
             pos,
         } = param;
         match param {
-            parser::Param::Bare(name) => {
+            parser::ParamName::Bare(name) => {
                 let q: TypeQualifier = resolver.resolve(name);
                 Ok(ParamTypeDefinition::BuiltIn(q))
             }
-            parser::Param::Compact(_, q) | parser::Param::ExtendedBuiltIn(_, q) => {
+            parser::ParamName::Compact(_, q) | parser::ParamName::ExtendedBuiltIn(_, q) => {
                 Ok(ParamTypeDefinition::BuiltIn(*q))
             }
-            parser::Param::UserDefined(_, u) => {
+            parser::ParamName::UserDefined(_, u) => {
                 if user_defined_types.contains_key(u) {
                     Ok(ParamTypeDefinition::UserDefined(u.clone()))
                 } else {
@@ -307,7 +307,7 @@ impl FunctionContext {
     pub fn add_declaration(
         &mut self,
         name_node: &NameNode,
-        params: &parser::ParamNodes,
+        params: &parser::ParamNameNodes,
         declaration_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -334,7 +334,7 @@ impl FunctionContext {
     pub fn add_implementation(
         &mut self,
         name_node: &NameNode,
-        params: &parser::ParamNodes,
+        params: &parser::ParamNameNodes,
         implementation_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -424,7 +424,7 @@ impl SubContext {
     pub fn add_declaration(
         &mut self,
         bare_name_node: &BareNameNode,
-        params: &parser::ParamNodes,
+        params: &parser::ParamNameNodes,
         declaration_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -450,7 +450,7 @@ impl SubContext {
     pub fn add_implementation(
         &mut self,
         bare_name_node: &BareNameNode,
-        params: &parser::ParamNodes,
+        params: &parser::ParamNameNodes,
         implementation_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,

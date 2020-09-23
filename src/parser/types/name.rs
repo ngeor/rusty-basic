@@ -11,16 +11,16 @@ pub type BareName = CaseInsensitiveString;
 // QualifiedName -> BareName
 
 impl From<QualifiedName> for BareName {
-    fn from(n: QualifiedName) -> BareName {
-        n.name
+    fn from(qualified_name: QualifiedName) -> BareName {
+        qualified_name.name
     }
 }
 
 // &QualifiedName -> BareName
 
 impl From<&QualifiedName> for BareName {
-    fn from(n: &QualifiedName) -> BareName {
-        let b: &BareName = n.as_ref();
+    fn from(qualified_name: &QualifiedName) -> BareName {
+        let b: &BareName = qualified_name.as_ref();
         b.clone()
     }
 }
@@ -31,7 +31,7 @@ impl From<Name> for BareName {
     fn from(n: Name) -> BareName {
         match n {
             Name::Bare(b) => b,
-            Name::Qualified { name, .. } => name,
+            Name::Qualified { bare_name: name, .. } => name,
         }
     }
 }
@@ -140,7 +140,7 @@ impl AsRef<BareName> for QualifiedNameNode {
 pub enum Name {
     Bare(CaseInsensitiveString),
     Qualified {
-        name: CaseInsensitiveString,
+        bare_name: CaseInsensitiveString,
         qualifier: TypeQualifier,
     },
 }
@@ -162,7 +162,7 @@ impl Name {
 
     pub fn new_qualified(word: CaseInsensitiveString, qualifier: TypeQualifier) -> Self {
         Name::Qualified {
-            name: word,
+            bare_name: word,
             qualifier,
         }
     }
@@ -186,7 +186,7 @@ impl AsRef<BareName> for Name {
     fn as_ref(&self) -> &BareName {
         match self {
             Name::Bare(b) => b,
-            Name::Qualified { name, .. } => name,
+            Name::Qualified { bare_name: name, .. } => name,
         }
     }
 }
@@ -197,7 +197,7 @@ impl<S: AsRef<str>> From<S> for Name {
         let last_ch: char = buf.pop().unwrap();
         match TypeQualifier::try_from(last_ch) {
             Ok(qualifier) => Name::Qualified {
-                name: CaseInsensitiveString::new(buf),
+                bare_name: CaseInsensitiveString::new(buf),
                 qualifier,
             },
             _ => {
@@ -211,7 +211,7 @@ impl<S: AsRef<str>> From<S> for Name {
 impl From<QualifiedName> for Name {
     fn from(qualified_name: QualifiedName) -> Self {
         let QualifiedName { name, qualifier } = qualified_name;
-        Self::Qualified { name, qualifier }
+        Self::Qualified { bare_name: name, qualifier }
     }
 }
 
@@ -238,7 +238,7 @@ mod tests {
         assert_eq!(
             Name::from("Pos%"),
             Name::Qualified {
-                name: CaseInsensitiveString::new("Pos".to_string()),
+                bare_name: CaseInsensitiveString::new("Pos".to_string()),
                 qualifier: TypeQualifier::PercentInteger
             }
         );

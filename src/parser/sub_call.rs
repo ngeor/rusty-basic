@@ -77,7 +77,7 @@ mod tests {
     use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
-        Expression, Name, Operator, Param, Statement, TopLevelToken, TypeQualifier,
+        Expression, Name, Operator, ParamName, Statement, TopLevelToken, TypeQualifier,
     };
 
     #[test]
@@ -214,8 +214,8 @@ mod tests {
                 TopLevelToken::SubDeclaration(
                     "Hello".as_bare_name(2, 21),
                     vec![
-                        Param::Compact("N".into(), TypeQualifier::DollarString).at_rc(2, 27),
-                        Param::Compact("V".into(), TypeQualifier::DollarString).at_rc(2, 31)
+                        ParamName::Compact("N".into(), TypeQualifier::DollarString).at_rc(2, 27),
+                        ParamName::Compact("V".into(), TypeQualifier::DollarString).at_rc(2, 31)
                     ],
                 ),
                 // Hello
@@ -227,8 +227,8 @@ mod tests {
                 TopLevelToken::SubImplementation(
                     "Hello".as_bare_name(4, 13),
                     vec![
-                        Param::Compact("N".into(), TypeQualifier::DollarString).at_rc(4, 19),
-                        Param::Compact("V".into(), TypeQualifier::DollarString).at_rc(4, 23)
+                        ParamName::Compact("N".into(), TypeQualifier::DollarString).at_rc(4, 19),
+                        ParamName::Compact("V".into(), TypeQualifier::DollarString).at_rc(4, 23)
                     ],
                     vec![Statement::SubCall(
                         "ENVIRON".into(),

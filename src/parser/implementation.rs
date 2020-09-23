@@ -87,8 +87,8 @@ mod tests {
             TopLevelToken::FunctionImplementation(
                 "Add".as_name(2, 18),
                 vec![
-                    Param::Bare("A".into()).at_rc(2, 22),
-                    Param::Bare("B".into()).at_rc(2, 25)
+                    ParamName::Bare("A".into()).at_rc(2, 22),
+                    ParamName::Bare("B".into()).at_rc(2, 25)
                 ],
                 vec![Statement::Assignment(
                     "Add".into(),
@@ -118,8 +118,8 @@ mod tests {
             TopLevelToken::FunctionImplementation(
                 "add".as_name(2, 18),
                 vec![
-                    Param::Bare("a".into()).at_rc(2, 22),
-                    Param::Bare("b".into()).at_rc(2, 25)
+                    ParamName::Bare("a".into()).at_rc(2, 22),
+                    ParamName::Bare("b".into()).at_rc(2, 25)
                 ],
                 vec![Statement::Assignment(
                     "add".into(),

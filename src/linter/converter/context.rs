@@ -273,24 +273,24 @@ impl<'a> LinterContext<'a> {
     // TODO improve the bool
     fn resolve_declared_name<T: TypeResolver>(
         &self,
-        declared_name: parser::Param,
+        declared_name: parser::ParamName,
         resolver: &T,
     ) -> Result<(DimName, bool), QError> {
         match declared_name {
-            parser::Param::Bare(name) => {
+            parser::ParamName::Bare(name) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 let q: TypeQualifier = (&name).resolve_into(resolver);
                 Ok((DimName::BuiltIn(name, q), false))
             }
-            parser::Param::Compact(name, q) => {
+            parser::ParamName::Compact(name, q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 Ok((DimName::BuiltIn(name, q), false))
             }
-            parser::Param::ExtendedBuiltIn(name, q) => {
+            parser::ParamName::ExtendedBuiltIn(name, q) => {
                 self.ensure_not_clashing_with_user_defined_var(&name)?;
                 Ok((DimName::BuiltIn(name, q), true))
             }
-            parser::Param::UserDefined(name, user_defined_type) => {
+            parser::ParamName::UserDefined(name, user_defined_type) => {
                 if name.contains('.') {
                     Err(QError::IdentifierCannotIncludePeriod)
                 } else if self.user_defined_types.contains_key(&user_defined_type) {
@@ -311,7 +311,7 @@ impl<'a> LinterContext<'a> {
 
     pub fn push_param<T: TypeResolver>(
         &mut self,
-        declared_name: parser::Param,
+        declared_name: parser::ParamName,
         resolver: &T,
     ) -> Result<(), QError> {
         let (dim_name, is_extended) =
@@ -453,7 +453,7 @@ impl<'a> LinterContext<'a> {
                                     Ok(None)
                                 }
                             }
-                            Name::Qualified { name, qualifier } => {
+                            Name::Qualified { bare_name: name, qualifier } => {
                                 if existing_set.contains(qualifier) {
                                     Ok(Some(DimName::BuiltIn(name.clone(), *qualifier)))
                                 } else {
@@ -466,7 +466,7 @@ impl<'a> LinterContext<'a> {
                         // only possible if the name is bare or using the same qualifier
                         match name {
                             Name::Bare(b) => Ok(Some(DimName::BuiltIn(b.clone(), *q))),
-                            Name::Qualified { name, qualifier } => {
+                            Name::Qualified { bare_name: name, qualifier } => {
                                 if q == qualifier {
                                     Ok(Some(DimName::BuiltIn(name.clone(), *qualifier)))
                                 } else {
@@ -479,7 +479,7 @@ impl<'a> LinterContext<'a> {
                         // only possible if the name is bare or using the same qualifier
                         match name {
                             Name::Bare(b) => Ok(Some(DimName::String(b.clone(), *len))),
-                            Name::Qualified { name, qualifier } => {
+                            Name::Qualified { bare_name: name, qualifier } => {
                                 if TypeQualifier::DollarString == *qualifier {
                                     Ok(Some(DimName::String(name.clone(), *len)))
                                 } else {
@@ -529,7 +529,7 @@ impl<'a> LinterContext<'a> {
                             Ok(None)
                         }
                     }
-                    Name::Qualified { name, qualifier } => {
+                    Name::Qualified { bare_name: name, qualifier } => {
                         if existing_set.contains(qualifier) {
                             // TODO fix me
                             Ok(Some(Expression::Variable(DimName::BuiltIn(
@@ -679,10 +679,10 @@ impl<'a> LinterContext<'a> {
         Ok(Expression::Variable(dim_name))
     }
 
-    pub fn push_function_context(self, name: &BareName) -> Self {
+    pub fn push_function_context(self, bare_name: &BareName) -> Self {
         let mut result = Self {
             parent: None,
-            sub_program: Some((name.clone(), SubProgramType::Function)),
+            sub_program: Some((bare_name.clone(), SubProgramType::Function)),
             names: HashMap::new(),
             user_defined_types: &self.user_defined_types,
             names_without_dot: None,
@@ -692,10 +692,10 @@ impl<'a> LinterContext<'a> {
         result
     }
 
-    pub fn push_sub_context(self, name: &BareName) -> Self {
+    pub fn push_sub_context(self, bare_name: &BareName) -> Self {
         let mut result = Self {
             parent: None,
-            sub_program: Some((name.clone(), SubProgramType::Sub)),
+            sub_program: Some((bare_name.clone(), SubProgramType::Sub)),
             names: HashMap::new(),
             user_defined_types: &self.user_defined_types,
             names_without_dot: None,

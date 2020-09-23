@@ -152,7 +152,7 @@ fn user_defined_type(
                 parser::ElementType::Long => ElementType::Long,
                 parser::ElementType::Single => ElementType::Single,
                 parser::ElementType::Double => ElementType::Double,
-                parser::ElementType::String(str_len_expression_node) => {
+                parser::ElementType::FixedLengthString(str_len_expression_node) => {
                     let l: u16 =
                         validate_element_type_str_len(global_constants, str_len_expression_node)?;
                     ElementType::String(l)
@@ -294,7 +294,7 @@ impl<T> SubProgramContext<T> {
                 let q: TypeQualifier = resolver.resolve(bare_name);
                 Ok(ParamTypeDefinition::BuiltIn(q))
             }
-            parser::ParamType::Compact(q) | parser::ParamType::ExtendedBuiltIn(q) => {
+            parser::ParamType::Compact(q) | parser::ParamType::Extended(q) => {
                 Ok(ParamTypeDefinition::BuiltIn(*q))
             }
             parser::ParamType::UserDefined(u) => {

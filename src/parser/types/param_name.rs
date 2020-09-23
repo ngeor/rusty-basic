@@ -12,7 +12,7 @@ pub struct ParamName {
 pub enum ParamType {
     Bare,
     Compact(TypeQualifier),
-    ExtendedBuiltIn(TypeQualifier),
+    Extended(TypeQualifier),
     UserDefined(BareNameNode),
 }
 

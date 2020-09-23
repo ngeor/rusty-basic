@@ -55,11 +55,11 @@ fn extended_type<T: BufRead + 'static>(
     and_then(
         with_pos(any_identifier()),
         |Locatable { element: x, pos }| match Keyword::from_str(&x) {
-            Ok(Keyword::Single) => Ok(ParamType::ExtendedBuiltIn(TypeQualifier::BangSingle)),
-            Ok(Keyword::Double) => Ok(ParamType::ExtendedBuiltIn(TypeQualifier::HashDouble)),
-            Ok(Keyword::String_) => Ok(ParamType::ExtendedBuiltIn(TypeQualifier::DollarString)),
-            Ok(Keyword::Integer) => Ok(ParamType::ExtendedBuiltIn(TypeQualifier::PercentInteger)),
-            Ok(Keyword::Long) => Ok(ParamType::ExtendedBuiltIn(TypeQualifier::AmpersandLong)),
+            Ok(Keyword::Single) => Ok(ParamType::Extended(TypeQualifier::BangSingle)),
+            Ok(Keyword::Double) => Ok(ParamType::Extended(TypeQualifier::HashDouble)),
+            Ok(Keyword::String_) => Ok(ParamType::Extended(TypeQualifier::DollarString)),
+            Ok(Keyword::Integer) => Ok(ParamType::Extended(TypeQualifier::PercentInteger)),
+            Ok(Keyword::Long) => Ok(ParamType::Extended(TypeQualifier::AmpersandLong)),
             Ok(_) => Err(QError::syntax_error(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
             )),

@@ -287,7 +287,7 @@ impl<'a> LinterContext<'a> {
                 self.ensure_not_clashing_with_user_defined_var(bare_name)?;
                 Ok((DimName::BuiltIn(bare_name.clone(), *q), false))
             }
-            parser::ParamType::ExtendedBuiltIn(q) => {
+            parser::ParamType::Extended(q) => {
                 self.ensure_not_clashing_with_user_defined_var(bare_name)?;
                 Ok((DimName::BuiltIn(bare_name.clone(), *q), true))
             }

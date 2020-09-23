@@ -29,6 +29,6 @@ pub enum ElementType {
     Long,
     Single,
     Double,
-    String(ExpressionNode),
+    FixedLengthString(ExpressionNode),
     UserDefined(BareNameNode),
 }

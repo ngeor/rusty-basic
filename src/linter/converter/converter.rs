@@ -140,9 +140,7 @@ impl<'a> ConverterImpl<'a> {
                 Ok((ParamName::BuiltIn(bare_name.clone(), q), false))
             }
             parser::ParamType::Compact(q) => Ok((ParamName::BuiltIn(bare_name.clone(), *q), false)),
-            parser::ParamType::ExtendedBuiltIn(q) => {
-                Ok((ParamName::BuiltIn(bare_name.clone(), *q), true))
-            }
+            parser::ParamType::Extended(q) => Ok((ParamName::BuiltIn(bare_name.clone(), *q), true)),
             parser::ParamType::UserDefined(u) => {
                 let type_name: &BareName = u.as_ref();
                 if self.user_defined_types.contains_key(type_name) {

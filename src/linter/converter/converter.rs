@@ -133,20 +133,23 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         param: &parser::ParamName,
     ) -> Result<(ParamName, bool), QError> {
-        match param {
-            parser::ParamName::Bare(name) => {
-                let q: TypeQualifier = name.resolve_into(&self.resolver);
-                Ok((ParamName::BuiltIn(name.clone(), q), false))
+        let bare_name: &BareName = param.as_ref();
+        match param.param_type() {
+            parser::ParamType::Bare => {
+                let q: TypeQualifier = bare_name.resolve_into(&self.resolver);
+                Ok((ParamName::BuiltIn(bare_name.clone(), q), false))
             }
-            parser::ParamName::Compact(name, q) => {
-                Ok((ParamName::BuiltIn(name.clone(), *q), false))
+            parser::ParamType::Compact(q) => Ok((ParamName::BuiltIn(bare_name.clone(), *q), false)),
+            parser::ParamType::ExtendedBuiltIn(q) => {
+                Ok((ParamName::BuiltIn(bare_name.clone(), *q), true))
             }
-            parser::ParamName::ExtendedBuiltIn(name, q) => {
-                Ok((ParamName::BuiltIn(name.clone(), *q), true))
-            }
-            parser::ParamName::UserDefined(name, u) => {
-                if self.user_defined_types.contains_key(u) {
-                    Ok((ParamName::UserDefined(name.clone(), u.clone()), true))
+            parser::ParamType::UserDefined(u) => {
+                let type_name: &BareName = u.as_ref();
+                if self.user_defined_types.contains_key(type_name) {
+                    Ok((
+                        ParamName::UserDefined(bare_name.clone(), type_name.clone()),
+                        true,
+                    ))
                 } else {
                     Err(QError::TypeNotDefined)
                 }

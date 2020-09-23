@@ -3,23 +3,37 @@ use crate::parser::types::*;
 
 // same as dim minus the x as string * 5
 #[derive(Clone, Debug, PartialEq)]
-pub enum ParamName {
-    Bare(BareName),
-    Compact(BareName, TypeQualifier),
-    ExtendedBuiltIn(BareName, TypeQualifier),
-    UserDefined(BareName, BareName),
+pub struct ParamName {
+    bare_name: BareName,
+    param_type: ParamType,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ParamType {
+    Bare,
+    Compact(TypeQualifier),
+    ExtendedBuiltIn(TypeQualifier),
+    UserDefined(BareNameNode),
 }
 
 pub type ParamNameNode = Locatable<ParamName>;
 pub type ParamNameNodes = Vec<ParamNameNode>;
 
+impl ParamName {
+    pub fn new(bare_name: BareName, param_type: ParamType) -> Self {
+        Self {
+            bare_name,
+            param_type,
+        }
+    }
+
+    pub fn param_type(&self) -> &ParamType {
+        &self.param_type
+    }
+}
+
 impl AsRef<BareName> for ParamName {
     fn as_ref(&self) -> &BareName {
-        match self {
-            Self::Bare(n)
-            | Self::Compact(n, _)
-            | Self::ExtendedBuiltIn(n, _)
-            | Self::UserDefined(n, _) => n,
-        }
+        &self.bare_name
     }
 }

@@ -41,7 +41,8 @@ mod tests {
                     crate::parser::DimName::new(
                         $name.into(),
                         crate::parser::DimType::Extended(TypeQualifier::$qualifier)
-                    ).at_rc(1, 5)
+                    )
+                    .at_rc(1, 5)
                 )
             );
         };
@@ -74,17 +75,20 @@ mod tests {
                 let var_type_bare: BareName = (*var_type).into();
                 match p {
                     Statement::Dim(dim_name_node) => {
-                        let Locatable { element: dim_name, pos } = dim_name_node;
+                        let Locatable {
+                            element: dim_name,
+                            pos,
+                        } = dim_name_node;
                         assert_eq!(pos, Location::new(1, 5));
                         assert_eq!(dim_name.as_ref().clone(), var_name_bare);
                         match dim_name.dim_type() {
-                            DimType::UserDefined(Locatable { element, ..}) => {
+                            DimType::UserDefined(Locatable { element, .. }) => {
                                 assert_eq!(element, &var_type_bare);
                             }
-                            _ => panic!("Expected user defined type")
+                            _ => panic!("Expected user defined type"),
                         }
                     }
-                    _ => panic!("Expected dim statement")
+                    _ => panic!("Expected dim statement"),
                 }
             }
         }
@@ -120,7 +124,10 @@ mod tests {
         ($name: literal) => {
             let input = format!("DIM {}", $name);
             let p = parse(input).demand_single_statement();
-            assert_eq!(p, Statement::Dim(DimName::new($name.into(), DimType::Bare).at_rc(1, 5)));
+            assert_eq!(
+                p,
+                Statement::Dim(DimName::new($name.into(), DimType::Bare).at_rc(1, 5))
+            );
         };
 
         ($name: literal, $keyword: literal, $qualifier: ident) => {
@@ -129,7 +136,8 @@ mod tests {
             assert_eq!(
                 p,
                 Statement::Dim(
-                    DimName::new($name.into(), DimType::Compact(TypeQualifier::$qualifier)).at_rc(1, 5)
+                    DimName::new($name.into(), DimType::Compact(TypeQualifier::$qualifier))
+                        .at_rc(1, 5)
                 )
             );
         };

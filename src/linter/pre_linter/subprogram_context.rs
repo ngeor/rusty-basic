@@ -288,17 +288,19 @@ impl<T> SubProgramContext<T> {
             element: param,
             pos,
         } = param;
-        match param {
-            parser::ParamName::Bare(name) => {
-                let q: TypeQualifier = resolver.resolve(name);
+        let bare_name: &BareName = param.as_ref();
+        match param.param_type() {
+            parser::ParamType::Bare => {
+                let q: TypeQualifier = resolver.resolve(bare_name);
                 Ok(ParamTypeDefinition::BuiltIn(q))
             }
-            parser::ParamName::Compact(_, q) | parser::ParamName::ExtendedBuiltIn(_, q) => {
+            parser::ParamType::Compact(q) | parser::ParamType::ExtendedBuiltIn(q) => {
                 Ok(ParamTypeDefinition::BuiltIn(*q))
             }
-            parser::ParamName::UserDefined(_, u) => {
-                if user_defined_types.contains_key(u) {
-                    Ok(ParamTypeDefinition::UserDefined(u.clone()))
+            parser::ParamType::UserDefined(u) => {
+                let type_name: &BareName = u.as_ref();
+                if user_defined_types.contains_key(type_name) {
+                    Ok(ParamTypeDefinition::UserDefined(type_name.clone()))
                 } else {
                     Err(QError::TypeNotDefined).with_err_at(pos)
                 }

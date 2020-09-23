@@ -99,7 +99,7 @@ fn opt_declaration_parameters<T: BufRead + 'static>(
 mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
-    use crate::parser::{Name, ParamName, Statement, TopLevelToken, TypeQualifier};
+    use crate::parser::{Name, ParamName, ParamType, Statement, TopLevelToken, TypeQualifier};
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
@@ -131,7 +131,10 @@ mod tests {
         assert_function_declaration!(
             "DECLARE FUNCTION Fib! (N!)",
             Name::from("Fib!"),
-            vec![ParamName::Compact("N".into(), TypeQualifier::BangSingle)]
+            vec![ParamName::new(
+                "N".into(),
+                ParamType::Compact(TypeQualifier::BangSingle)
+            )]
         );
     }
 
@@ -140,9 +143,9 @@ mod tests {
         assert_function_declaration!(
             "declare function echo$(msg$)",
             Name::from("echo$"),
-            vec![ParamName::Compact(
+            vec![ParamName::new(
                 "msg".into(),
-                TypeQualifier::DollarString
+                ParamType::Compact(TypeQualifier::DollarString)
             )]
         );
     }
@@ -160,14 +163,14 @@ mod tests {
             vec![
                 TopLevelToken::FunctionDeclaration(
                     "Echo".as_name(2, 26),
-                    vec![ParamName::Bare("X".into()).at_rc(2, 31)]
+                    vec![ParamName::new("X".into(), ParamType::Bare).at_rc(2, 31)]
                 )
                 .at_rc(2, 9),
                 TopLevelToken::Statement(Statement::Comment(" Echoes stuff back".to_string()))
                     .at_rc(2, 34),
                 TopLevelToken::FunctionImplementation(
                     "Echo".as_name(3, 18),
-                    vec![ParamName::Bare("X".into()).at_rc(3, 23)],
+                    vec![ParamName::new("X".into(), ParamType::Bare).at_rc(3, 23)],
                     vec![Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)]
                 )
                 .at_rc(3, 9),

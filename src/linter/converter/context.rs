@@ -276,29 +276,31 @@ impl<'a> LinterContext<'a> {
         declared_name: parser::ParamName,
         resolver: &T,
     ) -> Result<(DimName, bool), QError> {
-        match declared_name {
-            parser::ParamName::Bare(name) => {
-                self.ensure_not_clashing_with_user_defined_var(&name)?;
-                let q: TypeQualifier = (&name).resolve_into(resolver);
-                Ok((DimName::BuiltIn(name, q), false))
+        let bare_name: &BareName = declared_name.as_ref();
+        match declared_name.param_type() {
+            parser::ParamType::Bare => {
+                self.ensure_not_clashing_with_user_defined_var(bare_name)?;
+                let q: TypeQualifier = bare_name.resolve_into(resolver);
+                Ok((DimName::BuiltIn(bare_name.clone(), q), false))
             }
-            parser::ParamName::Compact(name, q) => {
-                self.ensure_not_clashing_with_user_defined_var(&name)?;
-                Ok((DimName::BuiltIn(name, q), false))
+            parser::ParamType::Compact(q) => {
+                self.ensure_not_clashing_with_user_defined_var(bare_name)?;
+                Ok((DimName::BuiltIn(bare_name.clone(), *q), false))
             }
-            parser::ParamName::ExtendedBuiltIn(name, q) => {
-                self.ensure_not_clashing_with_user_defined_var(&name)?;
-                Ok((DimName::BuiltIn(name, q), true))
+            parser::ParamType::ExtendedBuiltIn(q) => {
+                self.ensure_not_clashing_with_user_defined_var(bare_name)?;
+                Ok((DimName::BuiltIn(bare_name.clone(), *q), true))
             }
-            parser::ParamName::UserDefined(name, user_defined_type) => {
-                if name.contains('.') {
+            parser::ParamType::UserDefined(u) => {
+                let type_name: &BareName = u.as_ref();
+                if bare_name.contains('.') {
                     Err(QError::IdentifierCannotIncludePeriod)
-                } else if self.user_defined_types.contains_key(&user_defined_type) {
-                    self.ensure_user_defined_var_not_clashing_with_dotted_vars(&name)?;
+                } else if self.user_defined_types.contains_key(type_name) {
+                    self.ensure_user_defined_var_not_clashing_with_dotted_vars(bare_name)?;
                     Ok((
                         DimName::UserDefined(UserDefinedName {
-                            name,
-                            type_name: user_defined_type,
+                            name: bare_name.clone(),
+                            type_name: type_name.clone(),
                         }),
                         true,
                     ))

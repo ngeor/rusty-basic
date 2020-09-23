@@ -95,7 +95,8 @@ impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
                 if bare_name.contains('.') {
                     return Err(QError::IdentifierCannotIncludePeriod).with_err_at(pos);
                 }
-                self.context.push_dim_user_defined(bare_name.clone(), type_name.clone());
+                self.context
+                    .push_dim_user_defined(bare_name.clone(), type_name.clone());
                 DimName::UserDefined(UserDefinedName {
                     name: bare_name.clone(),
                     type_name: type_name.clone(),

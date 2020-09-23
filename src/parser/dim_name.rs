@@ -56,14 +56,8 @@ fn extended_type<T: BufRead + 'static>(
     source_and_then_some(
         with_pos(any_identifier()),
         |reader, Locatable { element: x, pos }| match Keyword::from_str(&x) {
-            Ok(Keyword::Single) => Ok((
-                reader,
-                Some(DimType::Extended(TypeQualifier::BangSingle)),
-            )),
-            Ok(Keyword::Double) => Ok((
-                reader,
-                Some(DimType::Extended(TypeQualifier::HashDouble)),
-            )),
+            Ok(Keyword::Single) => Ok((reader, Some(DimType::Extended(TypeQualifier::BangSingle)))),
+            Ok(Keyword::Double) => Ok((reader, Some(DimType::Extended(TypeQualifier::HashDouble)))),
             Ok(Keyword::String_) => {
                 let expr_res: ReaderResult<EolReader<T>, ExpressionNode, QError> =
                     drop_left(seq2(
@@ -72,24 +66,19 @@ fn extended_type<T: BufRead + 'static>(
                     ))(reader);
                 match expr_res {
                     Ok((reader, Some(e))) => Ok((reader, Some(DimType::FixedLengthString(e)))),
-                    Ok((reader, None)) => Ok((
-                        reader,
-                        Some(DimType::Extended(TypeQualifier::DollarString)),
-                    )),
+                    Ok((reader, None)) => {
+                        Ok((reader, Some(DimType::Extended(TypeQualifier::DollarString))))
+                    }
                     Err(err) => Err(err),
                 }
             }
             Ok(Keyword::Integer) => Ok((
                 reader,
-                Some(DimType::Extended(
-                    TypeQualifier::PercentInteger,
-                )),
+                Some(DimType::Extended(TypeQualifier::PercentInteger)),
             )),
             Ok(Keyword::Long) => Ok((
                 reader,
-                Some(DimType::Extended(
-                    TypeQualifier::AmpersandLong,
-                )),
+                Some(DimType::Extended(TypeQualifier::AmpersandLong)),
             )),
             Ok(_) => Err((
                 reader,

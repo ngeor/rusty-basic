@@ -16,24 +16,14 @@ use std::str::FromStr;
 // A AS INTEGER
 // A AS UserDefinedType
 
-enum TypeDefinition {
-    ExtendedBuiltIn(TypeQualifier),
-    UserDefined(BareName),
-    String(ExpressionNode),
-}
-
 pub fn dim_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimNameNode, QError>> {
     and_then(
         opt_seq2(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
             Name::Bare(b) => match opt_type_definition {
-                Some(TypeDefinition::ExtendedBuiltIn(q)) => {
-                    Ok(DimName::ExtendedBuiltIn(b, q).at(pos))
-                }
-                Some(TypeDefinition::String(e)) => Ok(DimName::String(b, e).at(pos)),
-                Some(TypeDefinition::UserDefined(u)) => Ok(DimName::UserDefined(b, u).at(pos)),
-                None => Ok(DimName::Bare(b).at(pos)),
+                Some(dim_type) => Ok(DimName::new(b, dim_type).at(pos)),
+                None => Ok(DimName::new(b, DimType::Bare).at(pos)),
             },
             Name::Qualified {
                 bare_name: n,
@@ -42,14 +32,14 @@ pub fn dim_name_node<T: BufRead + 'static>(
                 Some(_) => Err(QError::syntax_error(
                     "Identifier cannot end with %, &, !, #, or $",
                 )),
-                None => Ok(DimName::Compact(n, q).at(pos)),
+                None => Ok(DimName::new(n, DimType::Compact(q)).at(pos)),
             },
         },
     )
 }
 
 fn type_definition_extended<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeDefinition, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimType, QError>> {
     // <ws+> AS <ws+> identifier
     drop_left(crate::parser::pc::ws::seq2(
         crate::parser::pc::ws::one_or_more_leading(keyword(Keyword::As)),
@@ -62,17 +52,17 @@ fn type_definition_extended<T: BufRead + 'static>(
 }
 
 fn extended_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeDefinition, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimType, QError>> {
     source_and_then_some(
         with_pos(any_identifier()),
-        |reader, Locatable { element: x, .. }| match Keyword::from_str(&x) {
+        |reader, Locatable { element: x, pos }| match Keyword::from_str(&x) {
             Ok(Keyword::Single) => Ok((
                 reader,
-                Some(TypeDefinition::ExtendedBuiltIn(TypeQualifier::BangSingle)),
+                Some(DimType::Extended(TypeQualifier::BangSingle)),
             )),
             Ok(Keyword::Double) => Ok((
                 reader,
-                Some(TypeDefinition::ExtendedBuiltIn(TypeQualifier::HashDouble)),
+                Some(DimType::Extended(TypeQualifier::HashDouble)),
             )),
             Ok(Keyword::String_) => {
                 let expr_res: ReaderResult<EolReader<T>, ExpressionNode, QError> =
@@ -81,23 +71,23 @@ fn extended_type<T: BufRead + 'static>(
                         demand_expression_node(),
                     ))(reader);
                 match expr_res {
-                    Ok((reader, Some(e))) => Ok((reader, Some(TypeDefinition::String(e)))),
+                    Ok((reader, Some(e))) => Ok((reader, Some(DimType::FixedLengthString(e)))),
                     Ok((reader, None)) => Ok((
                         reader,
-                        Some(TypeDefinition::ExtendedBuiltIn(TypeQualifier::DollarString)),
+                        Some(DimType::Extended(TypeQualifier::DollarString)),
                     )),
                     Err(err) => Err(err),
                 }
             }
             Ok(Keyword::Integer) => Ok((
                 reader,
-                Some(TypeDefinition::ExtendedBuiltIn(
+                Some(DimType::Extended(
                     TypeQualifier::PercentInteger,
                 )),
             )),
             Ok(Keyword::Long) => Ok((
                 reader,
-                Some(TypeDefinition::ExtendedBuiltIn(
+                Some(DimType::Extended(
                     TypeQualifier::AmpersandLong,
                 )),
             )),
@@ -111,7 +101,8 @@ fn extended_type<T: BufRead + 'static>(
                 if x.len() > name::MAX_LENGTH {
                     Err((reader, QError::IdentifierTooLong))
                 } else {
-                    Ok((reader, Some(TypeDefinition::UserDefined(x.into()))))
+                    let type_name: BareName = x.into();
+                    Ok((reader, Some(DimType::UserDefined(type_name.at(pos)))))
                 }
             }
         },

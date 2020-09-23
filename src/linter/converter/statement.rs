@@ -48,56 +48,57 @@ impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
         {
             return Err(QError::DuplicateDefinition).with_err_at(pos);
         }
-        let n: DimName = match element {
-            parser::DimName::Bare(b) => {
-                let q = self.resolver.resolve(&b);
-                if self.context.contains_compact(&b, q) {
+        let n: DimName = match element.dim_type() {
+            parser::DimType::Bare => {
+                let q = self.resolver.resolve(bare_name);
+                if self.context.contains_compact(bare_name, q) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
-                self.context.push_dim_compact(b.clone(), q);
-                DimName::BuiltIn(b, q)
+                self.context.push_dim_compact(bare_name.clone(), q);
+                DimName::BuiltIn(bare_name.clone(), q)
             }
-            parser::DimName::Compact(b, q) => {
-                if self.context.contains_compact(&b, q) {
+            parser::DimType::Compact(q) => {
+                if self.context.contains_compact(bare_name, *q) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
-                self.context.push_dim_compact(b.clone(), q);
-                DimName::BuiltIn(b, q)
+                self.context.push_dim_compact(bare_name.clone(), *q);
+                DimName::BuiltIn(bare_name.clone(), *q)
             }
-            parser::DimName::String(b, len_expr) => {
-                if self.context.contains_any(&b) {
+            parser::DimType::FixedLengthString(len_expr) => {
+                if self.context.contains_any(bare_name) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
-                let len: u16 = match self.context.resolve_const_value_node(&len_expr)? {
+                let len: u16 = match self.context.resolve_const_value_node(len_expr)? {
                     Variant::VInteger(i) => i as u16,
                     _ => {
                         return Err(QError::ArgumentTypeMismatch).with_err_at(len_expr);
                     }
                 };
-                self.context.push_dim_string(b.clone(), len);
-                DimName::String(b, len)
+                self.context.push_dim_string(bare_name.clone(), len);
+                DimName::String(bare_name.clone(), len)
             }
-            parser::DimName::ExtendedBuiltIn(b, q) => {
-                if self.context.contains_any(&b) {
+            parser::DimType::Extended(q) => {
+                if self.context.contains_any(bare_name) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
-                self.context.push_dim_extended(b.clone(), q);
-                DimName::BuiltIn(b, q)
+                self.context.push_dim_extended(bare_name.clone(), *q);
+                DimName::BuiltIn(bare_name.clone(), *q)
             }
-            parser::DimName::UserDefined(b, u) => {
-                if self.context.contains_any(&b) {
+            parser::DimType::UserDefined(u) => {
+                if self.context.contains_any(bare_name) {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
-                if !self.user_defined_types.contains_key(&u) {
+                let type_name: &BareName = u.as_ref();
+                if !self.user_defined_types.contains_key(type_name) {
                     return Err(QError::TypeNotDefined).with_err_at(pos);
                 }
-                if b.contains('.') {
+                if bare_name.contains('.') {
                     return Err(QError::IdentifierCannotIncludePeriod).with_err_at(pos);
                 }
-                self.context.push_dim_user_defined(b.clone(), u.clone());
+                self.context.push_dim_user_defined(bare_name.clone(), type_name.clone());
                 DimName::UserDefined(UserDefinedName {
-                    name: b,
-                    type_name: u,
+                    name: bare_name.clone(),
+                    type_name: type_name.clone(),
                 })
             }
         };

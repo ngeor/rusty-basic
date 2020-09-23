@@ -81,6 +81,16 @@ impl HasTypeDefinition for Members {
     }
 }
 
+impl From<QualifiedName> for DimName {
+    fn from(qualified_name: QualifiedName) -> Self {
+        let QualifiedName {
+            bare_name,
+            qualifier,
+        } = qualified_name;
+        Self::new(bare_name, DimType::BuiltIn(qualifier))
+    }
+}
+
 impl DimName {
     pub fn new(bare_name: BareName, dim_type: DimType) -> Self {
         Self {
@@ -97,17 +107,10 @@ impl DimName {
         (self.bare_name, self.dim_type)
     }
 
-    pub fn built_in(qualified_name: QualifiedName) -> Self {
-        let QualifiedName {
-            bare_name: name,
-            qualifier,
-        } = qualified_name;
-        Self::new(name, DimType::BuiltIn(qualifier))
-    }
-
     #[cfg(test)]
     pub fn parse(s: &str) -> Self {
-        Self::built_in(QualifiedName::try_from(s).unwrap())
+        let qualified_name = QualifiedName::try_from(s).unwrap();
+        qualified_name.into()
     }
 
     #[cfg(test)]

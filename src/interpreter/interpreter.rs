@@ -331,7 +331,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 // get the function result
                 let function_result: Option<Variant> = match opt_function_name {
                     Some(function_name) => {
-                        let r = DimName::built_in(function_name.clone());
+                        let r: DimName = function_name.clone().into();
                         match self.context.get_r_value(&r) {
                             Some(v) => Some(v),
                             None => {

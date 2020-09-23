@@ -96,11 +96,9 @@ fn opt_declaration_parameters<T: BufRead + 'static>(
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{
-        Expression, Name, Operator, Param, Statement, TopLevelToken, TypeQualifier,
-    };
+    use crate::parser::test_utils::*;
+    use crate::parser::{Name, Param, Statement, TopLevelToken, TypeQualifier};
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
@@ -176,64 +174,20 @@ mod tests {
     }
 
     #[test]
-    fn test_function_implementation() {
-        let input = "
-        FUNCTION Add(A, B)
-            Add = A + B
-        END FUNCTION
-        ";
-        let result = parse(input).demand_single();
+    fn test_string_fixed_length_function_param_not_allowed() {
+        let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
         assert_eq!(
-            result,
-            TopLevelToken::FunctionImplementation(
-                "Add".as_name(2, 18),
-                vec![
-                    Param::Bare("A".into()).at_rc(2, 22),
-                    Param::Bare("B".into()).at_rc(2, 25)
-                ],
-                vec![Statement::Assignment(
-                    "Add".into(),
-                    Expression::BinaryExpression(
-                        Operator::Plus,
-                        Box::new("A".as_var_expr(3, 19)),
-                        Box::new("B".as_var_expr(3, 23))
-                    )
-                    .at(Location::new(3, 21))
-                )
-                .at_rc(3, 13)],
-            )
-            .at_rc(2, 9)
+            parse_err(input),
+            QError::syntax_error("Expected: closing parenthesis")
         );
     }
 
     #[test]
-    fn test_function_implementation_lower_case() {
-        let input = "
-        function add(a, b)
-            add = a + b
-        end function
-        ";
-        let result = parse(input).demand_single();
+    fn test_string_fixed_length_sub_param_not_allowed() {
+        let input = "DECLARE SUB Echo(X AS STRING * 5)";
         assert_eq!(
-            result,
-            TopLevelToken::FunctionImplementation(
-                "add".as_name(2, 18),
-                vec![
-                    Param::Bare("a".into()).at_rc(2, 22),
-                    Param::Bare("b".into()).at_rc(2, 25)
-                ],
-                vec![Statement::Assignment(
-                    "add".into(),
-                    Expression::BinaryExpression(
-                        Operator::Plus,
-                        Box::new("a".as_var_expr(3, 19)),
-                        Box::new("b".as_var_expr(3, 23))
-                    )
-                    .at_rc(3, 21)
-                )
-                .at_rc(3, 13)],
-            )
-            .at_rc(2, 9)
+            parse_err(input),
+            QError::syntax_error("Expected: closing parenthesis")
         );
     }
 }

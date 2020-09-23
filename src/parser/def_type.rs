@@ -85,8 +85,8 @@ fn two_letter_range<T: BufRead + 'static>(
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use super::*;
+    use crate::parser::test_utils::*;
     use crate::parser::{HasQualifier, Statement};
 
     /// Asserts that the given input program contains a def type top level token.

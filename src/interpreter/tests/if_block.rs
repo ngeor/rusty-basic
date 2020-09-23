@@ -1,5 +1,5 @@
-use crate::interpreter::test_utils::*;
 use crate::assert_prints;
+use crate::interpreter::test_utils::*;
 
 #[test]
 fn test_if_block_true() {

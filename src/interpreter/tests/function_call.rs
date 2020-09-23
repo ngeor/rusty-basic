@@ -1,6 +1,6 @@
-use crate::interpreter::test_utils::*;
 use crate::assert_has_variable;
 use crate::assert_prints;
+use crate::interpreter::test_utils::*;
 
 #[test]
 fn test_function_call_declared_and_implemented() {

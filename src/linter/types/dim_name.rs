@@ -4,9 +4,25 @@ use crate::parser::{BareName, QualifiedName, TypeQualifier};
 #[cfg(test)]
 use std::convert::TryFrom;
 
-// ========================================================
-// ResolvedDeclaredName
-// ========================================================
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum DimName {
+    // A -> A!
+    // A AS STRING
+    // A$, A% etc
+    BuiltIn(BareName, TypeQualifier),
+
+    // DIM C AS Card
+    UserDefined(UserDefinedName),
+
+    /// DIM X AS STRING * 1
+    String(BareName, u16),
+
+    // C.Suit, Name.Address, Name.Address.PostCode
+    Many(UserDefinedName, Members),
+}
+
+pub type DimNameNode = Locatable<DimName>;
+pub type DimNameNodes = Vec<DimNameNode>;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct UserDefinedName {
@@ -57,23 +73,6 @@ impl HasTypeDefinition for Members {
             Self::Node(_, boxed_members) => boxed_members.type_definition(),
         }
     }
-}
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum DimName {
-    // A -> A!
-    // A AS STRING
-    // A$, A% etc
-    BuiltIn(BareName, TypeQualifier),
-
-    // DIM C AS Card
-    UserDefined(UserDefinedName),
-
-    /// DIM X AS STRING * 1
-    String(BareName, u16),
-
-    // C.Suit, Name.Address, Name.Address.PostCode
-    Many(UserDefinedName, Members),
 }
 
 impl DimName {
@@ -130,9 +129,6 @@ impl HasTypeDefinition for DimName {
         }
     }
 }
-
-pub type DimNameNode = Locatable<DimName>;
-pub type DimNameNodes = Vec<DimNameNode>;
 
 impl CanCastTo<TypeQualifier> for DimName {
     fn can_cast_to(&self, other: TypeQualifier) -> bool {

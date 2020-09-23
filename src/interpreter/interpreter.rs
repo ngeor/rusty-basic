@@ -166,11 +166,11 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     _ => casted,
                 });
             }
-            Instruction::Dim(resolved_declared_name) => {
-                let v = resolved_declared_name
+            Instruction::Dim(dim_name) => {
+                let v = dim_name
                     .type_definition()
                     .default_variant(self.user_defined_types.as_ref());
-                self.context.set_variable(resolved_declared_name.clone(), v);
+                self.context.set_variable(dim_name.clone(), v);
             }
             Instruction::Store(n) => {
                 let v = self.get_a();

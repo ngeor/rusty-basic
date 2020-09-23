@@ -1,7 +1,7 @@
-use crate::interpreter::test_utils::*;
 use crate::assert_has_variable;
 use crate::assert_prints;
 use crate::common::*;
+use crate::interpreter::test_utils::*;
 
 #[test]
 fn test_simple_for_loop() {
@@ -72,7 +72,7 @@ fn test_for_loop_with_zero_step() {
     ";
     assert_eq!(
         interpret_err(input),
-        ErrorEnvelope::Pos(QError::ForLoopZeroStep, Location::new(2, 31))
+        ErrorEnvelope::Pos(QError::ForLoopZeroStep, Location::new(2, 27))
     );
 }
 

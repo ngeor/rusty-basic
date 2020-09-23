@@ -314,14 +314,14 @@ impl<'a> LinterContext<'a> {
         declared_name: parser::Param,
         resolver: &T,
     ) -> Result<(), QError> {
-        let (resolved_declared_name, is_extended) =
+        let (dim_name, is_extended) =
             self.resolve_declared_name(declared_name, resolver)?;
-        let name: &BareName = resolved_declared_name.as_ref();
+        let name: &BareName = dim_name.as_ref();
         match self.names.get_mut(&name) {
             Some(resolved_type_definitions) => {
                 match resolved_type_definitions {
                     ResolvedTypeDefinitions::Compact(existing_set) => {
-                        match resolved_declared_name.type_definition() {
+                        match dim_name.type_definition() {
                             TypeDefinition::BuiltIn(q) => {
                                 if existing_set.contains(&q) || is_extended {
                                     return Err(QError::DuplicateDefinition);
@@ -340,7 +340,7 @@ impl<'a> LinterContext<'a> {
                     }
                 }
             }
-            None => match resolved_declared_name.type_definition() {
+            None => match dim_name.type_definition() {
                 TypeDefinition::BuiltIn(q) => {
                     if is_extended {
                         self.names
@@ -675,8 +675,8 @@ impl<'a> LinterContext<'a> {
         name: &Name,
         resolver: &T,
     ) -> Result<Expression, QError> {
-        let resolved_declared_name = self.resolve_missing_name_in_assignment(name, resolver)?;
-        Ok(Expression::Variable(resolved_declared_name))
+        let dim_name = self.resolve_missing_name_in_assignment(name, resolver)?;
+        Ok(Expression::Variable(dim_name))
     }
 
     pub fn push_function_context(self, name: &BareName) -> Self {

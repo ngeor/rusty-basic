@@ -6,11 +6,11 @@ use crate::interpreter::test_utils::*;
 macro_rules! assert_assign_ok {
     ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
         let interpreter = interpret($program);
-        let resolved_declared_name = crate::linter::DimName::parse($expected_variable_name);
+        let dim_name = crate::linter::DimName::parse($expected_variable_name);
         assert_eq!(
             interpreter
                 .context()
-                .get_r_value(&resolved_declared_name)
+                .get_r_value(&dim_name)
                 .unwrap(),
             crate::variant::Variant::from($expected_value)
         );

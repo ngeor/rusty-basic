@@ -123,8 +123,8 @@ impl Stdlib for MockStdlib {
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn get_variable_str(&self, name: &str) -> Variant {
-        let resolved_declared_name = DimName::parse(name);
-        self.context().get_r_value(&resolved_declared_name).unwrap()
+        let dim_name = DimName::parse(name);
+        self.context().get_r_value(&dim_name).unwrap()
     }
 }
 

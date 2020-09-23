@@ -173,13 +173,13 @@ impl<'a> ConverterImpl<'a> {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let (resolved_declared_name, is_extended) = self
+            let (param_name, is_extended) = self
                 .resolve_declared_parameter_name(&declared_name)
                 .with_err_at(pos)?;
             let bare_function_name: &BareName = function_name.as_ref();
             if bare_function_name == bare_name {
                 // not possible to have a param name clashing with the function name if the type is different or if it's an extended declaration (AS SINGLE)
-                let clashes = match &resolved_declared_name {
+                let clashes = match &param_name {
                     ResolvedParamName::BuiltIn(_, qualifier) => {
                         *qualifier != function_name.qualifier() || is_extended
                     }
@@ -192,7 +192,7 @@ impl<'a> ConverterImpl<'a> {
             self.context
                 .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
-            result.push(resolved_declared_name.at(pos));
+            result.push(param_name.at(pos));
         }
         Ok(result)
     }
@@ -216,13 +216,13 @@ impl<'a> ConverterImpl<'a> {
                 // not possible to have a param name that clashes with a sub (functions are ok)
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let (resolved_declared_name, _) = self
+            let (param_name, _) = self
                 .resolve_declared_parameter_name(&declared_name)
                 .with_err_at(pos)?;
             self.context
                 .push_param(declared_name, &self.resolver)
                 .with_err_at(pos)?;
-            mapped_params.push(resolved_declared_name.at(pos));
+            mapped_params.push(param_name.at(pos));
         }
 
         let mapped = TopLevelToken::SubImplementation(SubImplementation {
@@ -257,9 +257,9 @@ impl<'a> ConverterImpl<'a> {
             // parameter might be hiding a function name so it takes precedence
             Err(QError::DuplicateDefinition)
         } else {
-            let resolved_declared_name: DimName =
+            let dim_name: DimName =
                 self.context.resolve_assignment(&n, &self.resolver)?;
-            Ok(resolved_declared_name)
+            Ok(dim_name)
         }
     }
 

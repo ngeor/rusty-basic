@@ -85,7 +85,7 @@ impl From<BuiltInFunction> for QualifiedName {
     }
 }
 
-// BuiltInFunction -> ResolvedDeclaredName
+// BuiltInFunction -> DimName
 
 impl From<BuiltInFunction> for DimName {
     fn from(x: BuiltInFunction) -> Self {

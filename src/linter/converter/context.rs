@@ -2,8 +2,8 @@ use crate::common::{CaseInsensitiveString, QError};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
-    DimName, ElementType, Expression, HasTypeDefinition, Members, TypeDefinition, UserDefinedName,
-    UserDefinedTypes,
+    DimName, DimType, ElementType, Expression, HasTypeDefinition, Members, ParamName, ParamType,
+    TypeDefinition, UserDefinedName, UserDefinedTypes,
 };
 use crate::parser;
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
@@ -220,20 +220,12 @@ impl<'a> LinterContext<'a> {
         let first: BareName = v.remove(0);
         match self.get_user_defined_type_name(&first) {
             Some(type_name) => {
-                if v.is_empty() {
-                    Ok(Some(DimName::UserDefined(UserDefinedName {
-                        name: first.clone(),
-                        type_name: type_name.clone(),
-                    })))
+                let dim_type = if v.is_empty() {
+                    DimType::UserDefined(type_name.clone())
                 } else {
-                    Ok(Some(DimName::Many(
-                        UserDefinedName {
-                            name: first.clone(),
-                            type_name: type_name.clone(),
-                        },
-                        self.resolve_members(type_name, &v[..])?,
-                    )))
-                }
+                    DimType::Many(type_name.clone(), self.resolve_members(type_name, &v[..])?)
+                };
+                Ok(Some(DimName::new(first.clone(), dim_type)))
             }
             None => {
                 // No user defined variable starts with the first dotted name
@@ -242,6 +234,7 @@ impl<'a> LinterContext<'a> {
         }
     }
 
+    // TODO is this not covered by the dot clash thingy
     fn ensure_not_clashing_with_user_defined_var(&self, name: &BareName) -> Result<(), QError> {
         match name.prefix('.') {
             Some(first) => match self.get_user_defined_type_name(&first) {
@@ -275,33 +268,42 @@ impl<'a> LinterContext<'a> {
         &self,
         declared_name: parser::ParamName,
         resolver: &T,
-    ) -> Result<(DimName, bool), QError> {
+    ) -> Result<(ParamName, bool), QError> {
         let bare_name: &BareName = declared_name.as_ref();
         match declared_name.param_type() {
             parser::ParamType::Bare => {
                 self.ensure_not_clashing_with_user_defined_var(bare_name)?;
                 let q: TypeQualifier = bare_name.resolve_into(resolver);
-                Ok((DimName::BuiltIn(bare_name.clone(), q), false))
+                Ok((
+                    ParamName::new(bare_name.clone(), ParamType::BuiltIn(q)),
+                    false,
+                ))
             }
             parser::ParamType::Compact(q) => {
                 self.ensure_not_clashing_with_user_defined_var(bare_name)?;
-                Ok((DimName::BuiltIn(bare_name.clone(), *q), false))
+                Ok((
+                    ParamName::new(bare_name.clone(), ParamType::BuiltIn(*q)),
+                    false,
+                ))
             }
             parser::ParamType::Extended(q) => {
                 self.ensure_not_clashing_with_user_defined_var(bare_name)?;
-                Ok((DimName::BuiltIn(bare_name.clone(), *q), true))
+                Ok((
+                    ParamName::new(bare_name.clone(), ParamType::BuiltIn(*q)),
+                    true,
+                ))
             }
             parser::ParamType::UserDefined(u) => {
                 let type_name: &BareName = u.as_ref();
                 if bare_name.contains('.') {
-                    Err(QError::IdentifierCannotIncludePeriod)
+                    Err(QError::IdentifierCannotIncludePeriod) // TODO move this to a separate post-linter, unless it is already covered by parser, then remove it completely
                 } else if self.user_defined_types.contains_key(type_name) {
                     self.ensure_user_defined_var_not_clashing_with_dotted_vars(bare_name)?;
                     Ok((
-                        DimName::UserDefined(UserDefinedName {
-                            name: bare_name.clone(),
-                            type_name: type_name.clone(),
-                        }),
+                        ParamName::new(
+                            bare_name.clone(),
+                            ParamType::UserDefined(type_name.clone()),
+                        ),
                         true,
                     ))
                 } else {
@@ -316,13 +318,13 @@ impl<'a> LinterContext<'a> {
         declared_name: parser::ParamName,
         resolver: &T,
     ) -> Result<(), QError> {
-        let (dim_name, is_extended) = self.resolve_declared_name(declared_name, resolver)?;
-        let name: &BareName = dim_name.as_ref();
+        let (param_name, is_extended) = self.resolve_declared_name(declared_name, resolver)?;
+        let name: &BareName = param_name.as_ref();
         match self.names.get_mut(&name) {
             Some(resolved_type_definitions) => {
                 match resolved_type_definitions {
                     ResolvedTypeDefinitions::Compact(existing_set) => {
-                        match dim_name.type_definition() {
+                        match param_name.type_definition() {
                             TypeDefinition::BuiltIn(q) => {
                                 if existing_set.contains(&q) || is_extended {
                                     return Err(QError::DuplicateDefinition);
@@ -341,7 +343,7 @@ impl<'a> LinterContext<'a> {
                     }
                 }
             }
-            None => match dim_name.type_definition() {
+            None => match param_name.type_definition() {
                 TypeDefinition::BuiltIn(q) => {
                     if is_extended {
                         self.names
@@ -366,7 +368,7 @@ impl<'a> LinterContext<'a> {
                         ResolvedTypeDefinitions::UserDefined(u.clone()),
                     );
                 }
-                TypeDefinition::FileHandle => panic!("not possible to declare a DIM of filehandle"),
+                TypeDefinition::FileHandle => panic!("not possible to declare a DIM of FileHandle"),
             },
         }
         Ok(())
@@ -449,7 +451,7 @@ impl<'a> LinterContext<'a> {
                             Name::Bare(b) => {
                                 let qualifier: TypeQualifier = resolver.resolve(b);
                                 if existing_set.contains(&qualifier) {
-                                    Ok(Some(DimName::BuiltIn(b.clone(), qualifier)))
+                                    Ok(Some(DimName::new(b.clone(), DimType::BuiltIn(qualifier))))
                                 } else {
                                     Ok(None)
                                 }
@@ -459,7 +461,10 @@ impl<'a> LinterContext<'a> {
                                 qualifier,
                             } => {
                                 if existing_set.contains(qualifier) {
-                                    Ok(Some(DimName::BuiltIn(name.clone(), *qualifier)))
+                                    Ok(Some(DimName::new(
+                                        name.clone(),
+                                        DimType::BuiltIn(*qualifier),
+                                    )))
                                 } else {
                                     Ok(None)
                                 }
@@ -469,13 +474,18 @@ impl<'a> LinterContext<'a> {
                     ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
-                            Name::Bare(b) => Ok(Some(DimName::BuiltIn(b.clone(), *q))),
+                            Name::Bare(b) => {
+                                Ok(Some(DimName::new(b.clone(), DimType::BuiltIn(*q))))
+                            }
                             Name::Qualified {
                                 bare_name: name,
                                 qualifier,
                             } => {
                                 if q == qualifier {
-                                    Ok(Some(DimName::BuiltIn(name.clone(), *qualifier)))
+                                    Ok(Some(DimName::new(
+                                        name.clone(),
+                                        DimType::BuiltIn(*qualifier),
+                                    )))
                                 } else {
                                     Err(QError::DuplicateDefinition)
                                 }
@@ -485,13 +495,19 @@ impl<'a> LinterContext<'a> {
                     ResolvedTypeDefinitions::String(len) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
-                            Name::Bare(b) => Ok(Some(DimName::FixedLengthString(b.clone(), *len))),
+                            Name::Bare(b) => Ok(Some(DimName::new(
+                                b.clone(),
+                                DimType::FixedLengthString(*len),
+                            ))),
                             Name::Qualified {
                                 bare_name: name,
                                 qualifier,
                             } => {
                                 if TypeQualifier::DollarString == *qualifier {
-                                    Ok(Some(DimName::FixedLengthString(name.clone(), *len)))
+                                    Ok(Some(DimName::new(
+                                        name.clone(),
+                                        DimType::FixedLengthString(*len),
+                                    )))
                                 } else {
                                     Err(QError::DuplicateDefinition)
                                 }
@@ -501,10 +517,10 @@ impl<'a> LinterContext<'a> {
                     ResolvedTypeDefinitions::UserDefined(u) => {
                         // only possible if the name is bare
                         match name {
-                            Name::Bare(b) => Ok(Some(DimName::UserDefined(UserDefinedName {
-                                name: b.clone(),
-                                type_name: u.clone(),
-                            }))),
+                            Name::Bare(b) => Ok(Some(DimName::new(
+                                b.clone(),
+                                DimType::UserDefined(u.clone()),
+                            ))),
                             _ => Err(QError::TypeMismatch),
                         }
                     }
@@ -531,9 +547,9 @@ impl<'a> LinterContext<'a> {
                         let qualifier: TypeQualifier = resolver.resolve(b);
                         if existing_set.contains(&qualifier) {
                             // TODO fix me
-                            Ok(Some(Expression::Variable(DimName::BuiltIn(
+                            Ok(Some(Expression::Variable(DimName::new(
                                 b.clone(),
-                                qualifier,
+                                DimType::BuiltIn(qualifier),
                             ))))
                         } else {
                             Ok(None)
@@ -545,9 +561,9 @@ impl<'a> LinterContext<'a> {
                     } => {
                         if existing_set.contains(qualifier) {
                             // TODO fix me
-                            Ok(Some(Expression::Variable(DimName::BuiltIn(
+                            Ok(Some(Expression::Variable(DimName::new(
                                 name.clone(),
-                                *qualifier,
+                                DimType::BuiltIn(*qualifier),
                             ))))
                         } else {
                             Ok(None)
@@ -567,9 +583,9 @@ impl<'a> LinterContext<'a> {
                 ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
                     if name.is_bare_or_of_type(*q) {
                         // TODO fix me
-                        Ok(Some(Expression::Variable(DimName::BuiltIn(
+                        Ok(Some(Expression::Variable(DimName::new(
                             bare_name.clone(),
-                            *q,
+                            DimType::BuiltIn(*q),
                         ))))
                     } else {
                         Err(QError::DuplicateDefinition)
@@ -578,9 +594,9 @@ impl<'a> LinterContext<'a> {
                 ResolvedTypeDefinitions::String(len) => {
                     if name.is_bare_or_of_type(TypeQualifier::DollarString) {
                         // TODO fix me
-                        Ok(Some(Expression::Variable(DimName::FixedLengthString(
+                        Ok(Some(Expression::Variable(DimName::new(
                             bare_name.clone(),
-                            *len,
+                            DimType::FixedLengthString(*len),
                         ))))
                     } else {
                         Err(QError::DuplicateDefinition)
@@ -589,11 +605,9 @@ impl<'a> LinterContext<'a> {
                 ResolvedTypeDefinitions::UserDefined(u) => {
                     if name.is_bare() {
                         // TODO fix me
-                        Ok(Some(Expression::Variable(DimName::UserDefined(
-                            UserDefinedName {
-                                name: bare_name.clone(),
-                                type_name: u.clone(),
-                            },
+                        Ok(Some(Expression::Variable(DimName::new(
+                            bare_name.clone(),
+                            DimType::UserDefined(u.clone()),
                         ))))
                     } else {
                         Err(QError::DuplicateDefinition)
@@ -671,7 +685,7 @@ impl<'a> LinterContext<'a> {
                         Err(QError::DuplicateDefinition)
                     } else {
                         existing_set.insert(qualifier);
-                        Ok(DimName::BuiltIn(bare_name, qualifier))
+                        Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
                     }
                 }
                 _ => Err(QError::DuplicateDefinition),
@@ -681,7 +695,7 @@ impl<'a> LinterContext<'a> {
                 s.insert(qualifier);
                 self.names
                     .insert(bare_name.clone(), ResolvedTypeDefinitions::Compact(s));
-                Ok(DimName::BuiltIn(bare_name, qualifier))
+                Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
             }
         }
     }

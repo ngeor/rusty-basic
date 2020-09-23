@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::DimName;
+use crate::linter::{DimName, DimType};
 use crate::parser::{HasQualifier, Name, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
@@ -89,7 +89,7 @@ impl From<BuiltInFunction> for QualifiedName {
 
 impl From<BuiltInFunction> for DimName {
     fn from(x: BuiltInFunction) -> Self {
-        Self::BuiltIn(x.into(), x.qualifier())
+        Self::new(x.into(), DimType::BuiltIn(x.qualifier()))
     }
 }
 

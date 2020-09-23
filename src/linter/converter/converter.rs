@@ -252,7 +252,10 @@ impl<'a> ConverterImpl<'a> {
                 ..
             } = self.functions.get(bare_name).unwrap();
             if n.is_bare_or_of_type(*function_type) {
-                Ok(DimName::BuiltIn(bare_name.clone(), *function_type))
+                Ok(DimName::new(
+                    bare_name.clone(),
+                    DimType::BuiltIn(*function_type),
+                ))
             } else {
                 // trying to assign to the function with an explicit wrong type
                 Err(QError::DuplicateDefinition)

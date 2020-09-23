@@ -4,33 +4,39 @@ use crate::parser::{BareName, QualifiedName, TypeQualifier};
 #[cfg(test)]
 use std::convert::TryFrom;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum DimName {
-    // A -> A!
-    // A AS STRING
-    // A$, A% etc
-    BuiltIn(BareName, TypeQualifier),
-
-    // DIM C AS Card
-    UserDefined(UserDefinedName),
-
-    /// DIM X AS STRING * 1
-    FixedLengthString(BareName, u16),
-
-    // C.Suit, Name.Address, Name.Address.PostCode
-    Many(UserDefinedName, Members),
+#[derive(Clone, Debug, PartialEq)]
+pub struct DimName {
+    bare_name: BareName,
+    dim_type: DimType,
 }
 
 pub type DimNameNode = Locatable<DimName>;
 pub type DimNameNodes = Vec<DimNameNode>;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum DimType {
+    // A -> A!
+    // A AS STRING
+    // A$, A% etc
+    BuiltIn(TypeQualifier),
+
+    // DIM C AS Card
+    UserDefined(BareName),
+
+    /// DIM X AS STRING * 1
+    FixedLengthString(u16),
+
+    // C.Suit, Name.Address, Name.Address.PostCode
+    Many(BareName, Members),
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedName {
     pub name: BareName,
     pub type_name: BareName,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Members {
     Leaf {
         name: BareName,
@@ -76,12 +82,27 @@ impl HasTypeDefinition for Members {
 }
 
 impl DimName {
+    pub fn new(bare_name: BareName, dim_type: DimType) -> Self {
+        Self {
+            bare_name,
+            dim_type,
+        }
+    }
+
+    pub fn dim_type(&self) -> &DimType {
+        &self.dim_type
+    }
+
+    pub fn into_inner(self) -> (BareName, DimType) {
+        (self.bare_name, self.dim_type)
+    }
+
     pub fn built_in(qualified_name: QualifiedName) -> Self {
         let QualifiedName {
             bare_name: name,
             qualifier,
         } = qualified_name;
-        Self::BuiltIn(name, qualifier)
+        Self::new(name, DimType::BuiltIn(qualifier))
     }
 
     #[cfg(test)]
@@ -91,43 +112,46 @@ impl DimName {
 
     #[cfg(test)]
     pub fn user_defined(name: &str, type_name: &str) -> Self {
-        Self::UserDefined(UserDefinedName {
-            name: name.into(),
-            type_name: type_name.into(),
-        })
+        Self::new(name.into(), DimType::UserDefined(type_name.into()))
     }
 
     pub fn append(self, members: Members) -> Self {
-        match self {
-            Self::BuiltIn(_, _) | Self::FixedLengthString(_, _) => {
+        let Self {
+            bare_name,
+            dim_type,
+        } = self;
+        match dim_type {
+            DimType::BuiltIn(_) | DimType::FixedLengthString(_) => {
                 panic!("Cannot append members to built-in resolved name")
             }
-            Self::UserDefined(user_defined_name) => Self::Many(user_defined_name, members),
-            Self::Many(user_defined_name, existing_members) => {
-                Self::Many(user_defined_name, existing_members.append(members))
+            DimType::UserDefined(user_defined_type) => {
+                Self::new(bare_name, DimType::Many(user_defined_type, members))
             }
+            DimType::Many(user_defined_name, existing_members) => Self::new(
+                bare_name,
+                DimType::Many(user_defined_name, existing_members.append(members)),
+            ),
         }
     }
 }
 
 impl AsRef<BareName> for DimName {
     fn as_ref(&self) -> &BareName {
-        match self {
-            Self::BuiltIn(name, _) | Self::FixedLengthString(name, _) => name,
-            Self::UserDefined(UserDefinedName { name, .. }) => name,
-            Self::Many(UserDefinedName { name, .. }, _) => name,
-        }
+        &self.bare_name
+    }
+}
+impl HasTypeDefinition for DimName {
+    fn type_definition(&self) -> TypeDefinition {
+        self.dim_type().type_definition()
     }
 }
 
-impl HasTypeDefinition for DimName {
+impl HasTypeDefinition for DimType {
     fn type_definition(&self) -> TypeDefinition {
         match self {
-            Self::BuiltIn(_, qualifier) => TypeDefinition::BuiltIn(*qualifier),
-            Self::FixedLengthString(_, len) => TypeDefinition::String(*len),
-            Self::UserDefined(UserDefinedName { type_name, .. }) => {
-                TypeDefinition::UserDefined(type_name.clone())
-            }
+            Self::BuiltIn(qualifier) => TypeDefinition::BuiltIn(*qualifier),
+            Self::FixedLengthString(len) => TypeDefinition::String(*len),
+            Self::UserDefined(type_name) => TypeDefinition::UserDefined(type_name.clone()),
             Self::Many(_, members) => members.type_definition(),
         }
     }

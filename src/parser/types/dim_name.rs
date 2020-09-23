@@ -26,6 +26,14 @@ impl DimName {
         }
     }
 
+    pub fn into_inner(self) -> (BareName, DimType) {
+        let Self {
+            bare_name,
+            dim_type,
+        } = self;
+        (bare_name, dim_type)
+    }
+
     pub fn dim_type(&self) -> &DimType {
         &self.dim_type
     }

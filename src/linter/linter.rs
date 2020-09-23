@@ -350,30 +350,30 @@ mod tests {
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        DimName::Many(
-                            UserDefinedName {
-                                name: "A".into(),
-                                type_name: "Card".into()
-                            },
-                            Members::Leaf {
-                                name: "Value".into(),
-                                element_type: ElementType::Integer
-                            }
+                        DimName::new(
+                            "A".into(),
+                            DimType::Many(
+                                "Card".into(),
+                                Members::Leaf {
+                                    name: "Value".into(),
+                                    element_type: ElementType::Integer
+                                }
+                            )
                         ),
                         Expression::IntegerLiteral(42).at_rc(7, 23)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::Many(
-                            UserDefinedName {
-                                name: "A".into(),
-                                type_name: "Card".into()
-                            },
-                            Members::Leaf {
-                                name: "Value".into(),
-                                element_type: ElementType::Integer
-                            }
+                        vec![Expression::Variable(DimName::new(
+                            "A".into(),
+                            DimType::Many(
+                                "Card".into(),
+                                Members::Leaf {
+                                    name: "Value".into(),
+                                    element_type: ElementType::Integer
+                                }
+                            )
                         ))
                         .at_rc(8, 19)]
                     ))
@@ -401,30 +401,30 @@ mod tests {
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        DimName::Many(
-                            UserDefinedName {
-                                name: "A".into(),
-                                type_name: "Card".into()
-                            },
-                            Members::Leaf {
-                                name: "Suit".into(),
-                                element_type: ElementType::String(9)
-                            }
+                        DimName::new(
+                            "A".into(),
+                            DimType::Many(
+                                "Card".into(),
+                                Members::Leaf {
+                                    name: "Suit".into(),
+                                    element_type: ElementType::String(9)
+                                }
+                            )
                         ),
                         Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::Many(
-                            UserDefinedName {
-                                name: "A".into(),
-                                type_name: "Card".into()
-                            },
-                            Members::Leaf {
-                                name: "Suit".into(),
-                                element_type: ElementType::String(9)
-                            }
+                        vec![Expression::Variable(DimName::new(
+                            "A".into(),
+                            DimType::Many(
+                                "Card".into(),
+                                Members::Leaf {
+                                    name: "Suit".into(),
+                                    element_type: ElementType::String(9)
+                                }
+                            )
                         ))
                         .at_rc(8, 19)]
                     ))

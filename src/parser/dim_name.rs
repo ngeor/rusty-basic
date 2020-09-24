@@ -22,7 +22,16 @@ pub fn dim_name_node<T: BufRead + 'static>(
         opt_seq2(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
             Name::Bare(b) => match opt_type_definition {
-                Some(dim_type) => Ok(DimName::new(b, dim_type).at(pos)),
+                Some(dim_type) => match dim_type {
+                    DimType::UserDefined(_) => {
+                        if b.contains('.') {
+                            Err(QError::IdentifierCannotIncludePeriod)
+                        } else {
+                            Ok(DimName::new(b, dim_type).at(pos))
+                        }
+                    }
+                    _ => Ok(DimName::new(b, dim_type).at(pos)),
+                },
                 None => Ok(DimName::new(b, DimType::Bare).at(pos)),
             },
             Name::Qualified {

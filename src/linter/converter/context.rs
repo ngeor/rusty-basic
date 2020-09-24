@@ -4,10 +4,8 @@ use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
-    DimName, DimType, ElementType, Expression, HasTypeDefinition, Members, ParamName, ParamType,
-    TypeDefinition, UserDefinedName, UserDefinedTypes,
+    DimName, DimType, ElementType, Expression, Members, UserDefinedName, UserDefinedTypes,
 };
-use crate::parser;
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
@@ -34,11 +32,12 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 
 #[derive(Debug)]
 pub struct Context<'a> {
+    names: HashMap<BareName, BareNameTypes>,
+    const_values: HashMap<BareName, Variant>,
     parent: Option<Box<Context<'a>>>,
     sub_program: Option<(BareName, SubProgramType)>,
-    names: HashMap<BareName, BareNameTypes>,
     user_defined_types: &'a UserDefinedTypes,
-    const_values: HashMap<BareName, Variant>,
+    param_names: HashSet<Name>,
 
     /// Collects names of variables and parameters whose type is a user defined type.
     /// These names cannot exist elsewhere as a prefix of a dotted variable, constant, parameter, function or sub name,
@@ -46,6 +45,7 @@ pub struct Context<'a> {
     ///
     /// This hash set exists only on the parent level.
     pub names_without_dot: Option<HashSet<BareName>>,
+    // TODO add TypeResolver reference instead of passing it as parameter
 }
 
 impl<'a> Context<'a> {
@@ -57,7 +57,52 @@ impl<'a> Context<'a> {
             user_defined_types,
             names_without_dot: Some(HashSet::new()),
             const_values: HashMap::new(),
+            param_names: HashSet::new(),
         }
+    }
+
+    fn is_root_context(&self) -> bool {
+        self.parent.is_none()
+    }
+
+    fn demand_root_context(&self) {
+        if !self.is_root_context() {
+            panic!("Expected root context");
+        }
+    }
+
+    pub fn push_function_context(self, bare_name: &BareName) -> Self {
+        self.demand_root_context();
+        let mut result = Self {
+            parent: None,
+            sub_program: Some((bare_name.clone(), SubProgramType::Function)),
+            names: HashMap::new(),
+            user_defined_types: &self.user_defined_types,
+            names_without_dot: None,
+            const_values: HashMap::new(),
+            param_names: HashSet::new(),
+        };
+        result.parent = Some(Box::new(self));
+        result
+    }
+
+    pub fn push_sub_context(self, bare_name: &BareName) -> Self {
+        self.demand_root_context();
+        let mut result = Self {
+            parent: None,
+            sub_program: Some((bare_name.clone(), SubProgramType::Sub)),
+            names: HashMap::new(),
+            user_defined_types: &self.user_defined_types,
+            names_without_dot: None,
+            const_values: HashMap::new(),
+            param_names: HashSet::new(),
+        };
+        result.parent = Some(Box::new(self));
+        result
+    }
+
+    pub fn pop_context(self) -> Self {
+        *self.parent.expect("Stack underflow!")
     }
 
     pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: &T) -> bool {
@@ -170,140 +215,6 @@ impl<'a> Context<'a> {
         }
     }
 
-    // TODO is this not covered by the dot clash thingy
-    fn ensure_not_clashing_with_user_defined_var(&self, name: &BareName) -> Result<(), QError> {
-        match name.prefix('.') {
-            Some(first) => match self.get_user_defined_type_name(&first) {
-                Some(_) => Err(QError::syntax_error("Expected: , or end-of-statement")),
-                None => Ok(()),
-            },
-            _ => Ok(()),
-        }
-    }
-
-    fn ensure_user_defined_var_not_clashing_with_dotted_vars(
-        &self,
-        name: &BareName,
-    ) -> Result<(), QError> {
-        if self.names.is_empty() {
-            Ok(())
-        } else {
-            let prefix: BareName = name.clone() + '.';
-            for k in self.names.keys() {
-                if k.starts_with(&prefix) {
-                    return Err(QError::syntax_error("Expected: , or end-of-statement"));
-                }
-            }
-            Ok(())
-        }
-    }
-
-    // the bool indicates if it was extended or not.
-    // TODO improve the bool
-    fn resolve_declared_name<T: TypeResolver>(
-        &self,
-        declared_name: parser::ParamName,
-        resolver: &T,
-    ) -> Result<(ParamName, bool), QError> {
-        let bare_name: &BareName = declared_name.as_ref();
-        match declared_name.param_type() {
-            parser::ParamType::Bare => {
-                self.ensure_not_clashing_with_user_defined_var(bare_name)?;
-                let q: TypeQualifier = bare_name.resolve_into(resolver);
-                Ok((
-                    ParamName::new(bare_name.clone(), ParamType::BuiltIn(q)),
-                    false,
-                ))
-            }
-            parser::ParamType::Compact(q) => {
-                self.ensure_not_clashing_with_user_defined_var(bare_name)?;
-                Ok((
-                    ParamName::new(bare_name.clone(), ParamType::BuiltIn(*q)),
-                    false,
-                ))
-            }
-            parser::ParamType::Extended(q) => {
-                self.ensure_not_clashing_with_user_defined_var(bare_name)?;
-                Ok((
-                    ParamName::new(bare_name.clone(), ParamType::BuiltIn(*q)),
-                    true,
-                ))
-            }
-            parser::ParamType::UserDefined(u) => {
-                let type_name: &BareName = u.as_ref();
-                if bare_name.contains('.') {
-                    Err(QError::IdentifierCannotIncludePeriod) // TODO move this to a separate post-linter, unless it is already covered by parser, then remove it completely
-                } else if self.user_defined_types.contains_key(type_name) {
-                    self.ensure_user_defined_var_not_clashing_with_dotted_vars(bare_name)?;
-                    Ok((
-                        ParamName::new(
-                            bare_name.clone(),
-                            ParamType::UserDefined(type_name.clone()),
-                        ),
-                        true,
-                    ))
-                } else {
-                    Err(QError::TypeNotDefined)
-                }
-            }
-        }
-    }
-
-    pub fn push_param<T: TypeResolver>(
-        &mut self,
-        declared_name: parser::ParamName,
-        resolver: &T,
-    ) -> Result<(), QError> {
-        let (param_name, is_extended) = self.resolve_declared_name(declared_name, resolver)?;
-        let name: &BareName = param_name.as_ref();
-        match self.names.get_mut(&name) {
-            Some(resolved_type_definitions) => {
-                match resolved_type_definitions {
-                    BareNameTypes::Compact(existing_set) => match param_name.type_definition() {
-                        TypeDefinition::BuiltIn(q) => {
-                            if existing_set.contains(&q) || is_extended {
-                                return Err(QError::DuplicateDefinition);
-                            } else {
-                                existing_set.insert(q);
-                            }
-                        }
-                        _ => {
-                            return Err(QError::DuplicateDefinition);
-                        }
-                    },
-                    _ => {
-                        // anything else cannot be extended
-                        return Err(QError::DuplicateDefinition);
-                    }
-                }
-            }
-            None => match param_name.type_definition() {
-                TypeDefinition::BuiltIn(q) => {
-                    if is_extended {
-                        self.names.insert(name.clone(), BareNameTypes::Extended(q));
-                    } else {
-                        let mut s: HashSet<TypeQualifier> = HashSet::new();
-                        s.insert(q);
-                        self.names.insert(name.clone(), BareNameTypes::Compact(s));
-                    }
-                }
-                TypeDefinition::String(_) => {
-                    self.names.insert(
-                        name.clone(),
-                        BareNameTypes::Extended(TypeQualifier::DollarString),
-                    );
-                }
-                TypeDefinition::UserDefined(u) => {
-                    self.collect_name_without_dot(name);
-                    self.names
-                        .insert(name.clone(), BareNameTypes::UserDefined(u.clone()));
-                }
-                TypeDefinition::FileHandle => panic!("not possible to declare a DIM of FileHandle"),
-            },
-        }
-        Ok(())
-    }
-
     pub fn push_const(&mut self, b: BareName, q: TypeQualifier, v: Variant) {
         if self
             .names
@@ -356,6 +267,14 @@ impl<'a> Context<'a> {
         {
             panic!("Duplicate definition!");
         }
+    }
+
+    pub fn push_compact_param(&mut self, qualified_name: QualifiedName) {
+        self.param_names.insert(qualified_name.into());
+    }
+
+    pub fn push_extended_param(&mut self, bare_name: BareName) {
+        self.param_names.insert(bare_name.into());
     }
 
     fn do_resolve_assignment<T: TypeResolver>(
@@ -586,16 +505,6 @@ impl<'a> Context<'a> {
         }
     }
 
-    #[deprecated]
-    pub fn resolve_param_assignment<T: TypeResolver>(
-        &self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<bool, QError> {
-        self.do_resolve_assignment(name, resolver)
-            .map(|x| x.is_some())
-    }
-
     fn resolve_missing_name_in_assignment<T: TypeResolver>(
         &mut self,
         name: &Name,
@@ -634,36 +543,6 @@ impl<'a> Context<'a> {
     ) -> Result<Expression, QError> {
         let dim_name = self.resolve_missing_name_in_assignment(name, resolver)?;
         Ok(Expression::Variable(dim_name))
-    }
-
-    pub fn push_function_context(self, bare_name: &BareName) -> Self {
-        let mut result = Self {
-            parent: None,
-            sub_program: Some((bare_name.clone(), SubProgramType::Function)),
-            names: HashMap::new(),
-            user_defined_types: &self.user_defined_types,
-            names_without_dot: None,
-            const_values: HashMap::new(),
-        };
-        result.parent = Some(Box::new(self));
-        result
-    }
-
-    pub fn push_sub_context(self, bare_name: &BareName) -> Self {
-        let mut result = Self {
-            parent: None,
-            sub_program: Some((bare_name.clone(), SubProgramType::Sub)),
-            names: HashMap::new(),
-            user_defined_types: &self.user_defined_types,
-            names_without_dot: None,
-            const_values: HashMap::new(),
-        };
-        result.parent = Some(Box::new(self));
-        result
-    }
-
-    pub fn pop_context(self) -> Self {
-        *self.parent.expect("Stack underflow!")
     }
 
     pub fn resolve_expression<T: TypeResolver>(
@@ -710,6 +589,32 @@ impl<'a> Context<'a> {
         match &self.sub_program {
             Some((function_name, SubProgramType::Function)) => function_name == bare_name,
             _ => false,
+        }
+    }
+
+    pub fn is_param<T: TypeResolver>(&self, name: &Name, resolver: &T) -> bool {
+        let bare_name: &BareName = name.as_ref();
+        match self.names.get(bare_name) {
+            Some(bare_name_types) => {
+                if bare_name_types.is_extended() {
+                    // it's an extended, so it will appear as bare inside the param_names set
+                    let n: Name = bare_name.clone().into();
+                    self.param_names.contains(&n)
+                } else {
+                    // it's a compact, so it will appear as qualified inside the param_names set
+                    match name {
+                        Name::Bare(_) => {
+                            let n: Name = Name::Qualified {
+                                bare_name: bare_name.clone(),
+                                qualifier: resolver.resolve(bare_name),
+                            };
+                            self.param_names.contains(&n)
+                        }
+                        Name::Qualified { .. } => self.param_names.contains(name),
+                    }
+                }
+            }
+            None => false,
         }
     }
 

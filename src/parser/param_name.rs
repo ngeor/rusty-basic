@@ -21,7 +21,16 @@ pub fn param_name_node<T: BufRead + 'static>(
         opt_seq2(with_pos(name::name()), type_definition_extended()),
         |(Locatable { element: name, pos }, opt_type_definition)| match name {
             Name::Bare(b) => match opt_type_definition {
-                Some(param_type) => Ok(ParamName::new(b, param_type).at(pos)),
+                Some(param_type) => match param_type {
+                    ParamType::UserDefined(_) => {
+                        if b.contains('.') {
+                            Err(QError::IdentifierCannotIncludePeriod)
+                        } else {
+                            Ok(ParamName::new(b, param_type).at(pos))
+                        }
+                    }
+                    _ => Ok(ParamName::new(b, param_type).at(pos)),
+                },
                 None => Ok(ParamName::new(b, ParamType::Bare).at(pos)),
             },
             Name::Qualified {

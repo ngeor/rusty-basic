@@ -120,6 +120,12 @@ mod tests {
         assert_eq!(parse_err(input), QError::IdentifierTooLong);
     }
 
+    #[test]
+    fn test_parse_dim_user_defined_cannot_include_period() {
+        let input = "DIM A.B AS Card";
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+    }
+
     macro_rules! assert_parse_dim_compact {
         ($name: literal) => {
             let input = format!("DIM {}", $name);

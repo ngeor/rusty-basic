@@ -28,9 +28,7 @@ impl<'a> ConverterImpl<'a> {
         } else if self.subs.contains_key(bare_name) {
             // trying to assign to a sub
             Err(QError::DuplicateDefinition)
-        } else if !self
-            .context
-            .resolve_param_assignment(&name, &self.resolver)? // TODO fix me
+        } else if !self.context.is_param(&name, &self.resolver)
             && self.functions.contains_key(bare_name)
         {
             // parameter might be hiding a function name so it takes precedence

@@ -197,4 +197,16 @@ mod tests {
             QError::syntax_error("Expected: closing parenthesis")
         );
     }
+
+    #[test]
+    fn test_user_defined_function_param_cannot_include_period() {
+        let input = "DECLARE FUNCTION Echo(X.Y AS Card)";
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+    }
+
+    #[test]
+    fn test_user_defined_sub_param_cannot_include_period() {
+        let input = "DECLARE SUB Echo(X.Y AS Card)";
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+    }
 }

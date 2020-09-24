@@ -845,20 +845,6 @@ mod tests {
         }
 
         #[test]
-        fn test_sub_user_defined_param_cannot_contain_dot() {
-            let input = "
-            TYPE Card
-                Value AS INTEGER
-            END TYPE
-
-            SUB Test(A.B AS Card)
-            END SUB
-            ";
-            // QBasic actually reports the error on the dot
-            assert_linter_err!(input, QError::IdentifierCannotIncludePeriod, 6, 22);
-        }
-
-        #[test]
         fn test_sub_dotted_name_clashes_variable_of_user_defined_type() {
             let input = "
             TYPE Card
@@ -1253,19 +1239,6 @@ mod tests {
             PRINT c.Suite";
             // TODO QBasic reports the error at the dot
             assert_linter_err!(input, QError::ElementNotDefined, 8, 19);
-        }
-
-        #[test]
-        fn user_defined_variable_name_cannot_include_period() {
-            let input = "
-            TYPE Card
-                Suit AS STRING * 9
-                Value AS INTEGER
-            END TYPE
-
-            DIM A.B AS Card
-            ";
-            assert_linter_err!(input, QError::IdentifierCannotIncludePeriod, 7, 17);
         }
 
         #[test]

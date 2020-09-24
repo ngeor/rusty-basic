@@ -1,0 +1,142 @@
+use crate::built_ins::BuiltInFunction;
+use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use crate::linter::converter::converter::{Converter, ConverterImpl};
+use crate::linter::type_resolver::ResolveInto;
+use crate::linter::{Expression, HasTypeDefinition, TypeDefinition};
+use crate::parser;
+use crate::parser::{Name, QualifiedName, TypeQualifier};
+use std::convert::TryInto;
+
+impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
+    fn convert(&mut self, a: parser::Expression) -> Result<Expression, QErrorNode> {
+        match a {
+            parser::Expression::SingleLiteral(f) => Ok(Expression::SingleLiteral(f)),
+            parser::Expression::DoubleLiteral(f) => Ok(Expression::DoubleLiteral(f)),
+            parser::Expression::StringLiteral(f) => Ok(Expression::StringLiteral(f)),
+            parser::Expression::IntegerLiteral(f) => Ok(Expression::IntegerLiteral(f)),
+            parser::Expression::LongLiteral(f) => Ok(Expression::LongLiteral(f)),
+            parser::Expression::VariableName(n) => {
+                self.resolve_name_in_expression(&n).with_err_no_pos()
+            }
+            parser::Expression::FunctionCall(n, args) => {
+                let converted_args = self.convert(args)?;
+                let opt_built_in: Option<BuiltInFunction> = (&n).try_into().with_err_no_pos()?;
+                match opt_built_in {
+                    Some(b) => Ok(Expression::BuiltInFunctionCall(b, converted_args)),
+                    None => Ok(Expression::FunctionCall(
+                        n.resolve_into(&self.resolver),
+                        converted_args,
+                    )),
+                }
+            }
+            parser::Expression::BinaryExpression(op, l, r) => {
+                // unbox them
+                let unboxed_left = *l;
+                let unboxed_right = *r;
+                // convert them
+                let converted_left = self.convert(unboxed_left)?;
+                let converted_right = self.convert(unboxed_right)?;
+                // get the types
+                let t_left = converted_left.type_definition();
+                let t_right = converted_right.type_definition();
+                // get the cast type
+                match t_left.cast_binary_op(t_right, op) {
+                    Some(type_definition) => Ok(Expression::BinaryExpression(
+                        op,
+                        Box::new(converted_left),
+                        Box::new(converted_right),
+                        type_definition,
+                    )),
+                    None => Err(QError::TypeMismatch).with_err_at(&converted_right),
+                }
+            }
+            parser::Expression::UnaryExpression(op, c) => {
+                let unboxed_child = *c;
+                let converted_child = self.convert(unboxed_child)?;
+                match converted_child.type_definition() {
+                    TypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
+                        Err(QError::TypeMismatch).with_err_at(&converted_child)
+                    }
+                    TypeDefinition::BuiltIn(_) => {
+                        Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
+                    }
+                    // user defined cannot be in unary expressions
+                    _ => Err(QError::TypeMismatch).with_err_no_pos(),
+                }
+            }
+            parser::Expression::Parenthesis(c) => {
+                let unboxed_child = *c;
+                let converted_child = self.convert(unboxed_child)?;
+                Ok(Expression::Parenthesis(Box::new(converted_child)))
+            }
+            parser::Expression::FileHandle(i) => Ok(Expression::FileHandle(i)),
+        }
+    }
+}
+
+impl<'a> ConverterImpl<'a> {
+    fn resolve_name_in_expression(&mut self, n: &Name) -> Result<Expression, QError> {
+        // TODO function context should upfront have an implicit variable equal to the function name which can be referenced
+        // as bare or as the correct type and cannot be shadowed by a variable of different type
+        match self.context.resolve_expression(n, &self.resolver)? {
+            Some(x) => Ok(x),
+            None => match self.resolve_name_as_subprogram(n)? {
+                Some(x) => Ok(x),
+                None => self
+                    .context
+                    .resolve_missing_name_in_expression(n, &self.resolver),
+            },
+        }
+    }
+
+    fn resolve_name_as_subprogram(&mut self, n: &Name) -> Result<Option<Expression>, QError> {
+        if self.subs.contains_key(n.as_ref()) {
+            // using the name of a sub as a variable expression
+            Err(QError::DuplicateDefinition)
+        } else if self.functions.contains_key(n.as_ref()) {
+            // if the function expects arguments, argument count mismatch
+            let Locatable {
+                element: (f_type, f_args),
+                ..
+            } = self.functions.get(n.as_ref()).unwrap();
+            if !f_args.is_empty() {
+                Err(QError::ArgumentCountMismatch)
+            } else if self.context.is_function_context(n) {
+                // We are inside a function that takes no args, and we're using again
+                // the name of that function as an expression.
+                // This can only work as a variable, otherwise we'll get infinite recursive call.
+                //
+                // Example:
+                // Function Test
+                //     INPUT Test
+                // End Function
+                //
+                // Return None and let the next handler add it as a new variable
+                Ok(None)
+            } else {
+                match n {
+                    Name::Bare(b) => Ok(Some(Expression::FunctionCall(
+                        QualifiedName::new(b.clone(), *f_type),
+                        vec![],
+                    ))),
+                    Name::Qualified {
+                        bare_name: name,
+                        qualifier,
+                    } => {
+                        // if the function is a different type and the name is qualified of a different type, duplication definition
+                        if f_type != qualifier {
+                            Err(QError::DuplicateDefinition)
+                        } else {
+                            Ok(Some(Expression::FunctionCall(
+                                QualifiedName::new(name.clone(), *f_type),
+                                vec![],
+                            )))
+                        }
+                    }
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    }
+}

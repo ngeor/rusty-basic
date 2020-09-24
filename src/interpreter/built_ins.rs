@@ -2,7 +2,7 @@ use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{
     FileAccess, FileHandle, FileMode, QError, QErrorNode, StringUtils, ToErrorEnvelopeNoPos,
 };
-use crate::interpreter::context::Argument;
+use crate::interpreter::argument::Argument;
 use crate::interpreter::{Interpreter, SetVariable, Stdlib};
 use crate::linter::{
     DimName, ElementType, HasTypeDefinition, TypeDefinition, UserDefinedType, UserDefinedTypes,

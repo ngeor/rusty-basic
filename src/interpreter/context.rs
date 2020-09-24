@@ -5,7 +5,7 @@ use crate::interpreter::arguments_stack::ArgumentsStack;
 use crate::linter::{DimName, DimType, ParamName, ParamType, UserDefinedTypes};
 use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 /*

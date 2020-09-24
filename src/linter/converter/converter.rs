@@ -1,6 +1,6 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
-use crate::linter::converter::context::LinterContext;
+use crate::linter::converter::context::Context;
 use crate::linter::type_resolver::*;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::*;
@@ -61,7 +61,7 @@ where
 #[derive(Debug)]
 pub struct ConverterImpl<'a> {
     pub resolver: TypeResolverImpl,
-    pub context: LinterContext<'a>,
+    pub context: Context<'a>,
     pub functions: &'a FunctionMap,
     pub subs: &'a SubMap,
     pub user_defined_types: &'a UserDefinedTypes,
@@ -76,14 +76,14 @@ impl<'a> ConverterImpl<'a> {
         Self {
             user_defined_types,
             resolver: TypeResolverImpl::new(),
-            context: LinterContext::new(user_defined_types),
+            context: Context::new(user_defined_types),
             functions,
             subs,
         }
     }
 
-    fn take_context(&mut self) -> LinterContext<'a> {
-        let tmp = LinterContext::new(&self.user_defined_types);
+    fn take_context(&mut self) -> Context<'a> {
+        let tmp = Context::new(&self.user_defined_types);
         std::mem::replace(&mut self.context, tmp)
     }
 

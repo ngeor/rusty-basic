@@ -1,5 +1,7 @@
 use crate::common::{CaseInsensitiveString, QError};
 use crate::linter::const_value_resolver::ConstValueResolver;
+use crate::linter::converter::bare_name_types::BareNameTypes;
+use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::{ResolveInto, TypeResolver};
 use crate::linter::types::{
     DimName, DimType, ElementType, Expression, HasTypeDefinition, Members, ParamName, ParamType,
@@ -30,77 +32,11 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
 
-// ========================================================
-// ResolvedTypeDefinitions
-// ========================================================
-
-#[derive(Debug, PartialEq)]
-enum ResolvedTypeDefinitions {
-    /// DIM X, DIM X$, X = 42, etc
-    Compact(HashSet<TypeQualifier>),
-    /// CONST X = 42
-    Constant(TypeQualifier),
-    /// DIM X AS STRING * 5
-    String(u16),
-    /// DIM X AS INTEGER
-    ExtendedBuiltIn(TypeQualifier),
-    /// DIM X AS Card
-    UserDefined(BareName),
-}
-
-impl ResolvedTypeDefinitions {
-    pub fn is_constant(&self) -> bool {
-        match self {
-            Self::Constant(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_extended(&self) -> bool {
-        match self {
-            Self::String(_) | Self::ExtendedBuiltIn(_) | Self::UserDefined(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn has_compact(&self, q: TypeQualifier) -> bool {
-        match self {
-            Self::Compact(qualifiers) => qualifiers.contains(&q),
-            _ => false,
-        }
-    }
-
-    pub fn add_compact(&mut self, q: TypeQualifier) {
-        match self {
-            Self::Compact(qualifiers) => {
-                if !qualifiers.insert(q) {
-                    panic!("Duplicate compact qualifier");
-                }
-            }
-            _ => panic!("Cannot add compact to this set"),
-        }
-    }
-}
-
-//
-// SubProgram Type
-//
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum SubProgramType {
-    Function,
-    Sub,
-}
-
-//
-// LinterContext
-//
-
 #[derive(Debug)]
-pub struct LinterContext<'a> {
-    parent: Option<Box<LinterContext<'a>>>,
+pub struct Context<'a> {
+    parent: Option<Box<Context<'a>>>,
     sub_program: Option<(BareName, SubProgramType)>,
-    names: HashMap<BareName, ResolvedTypeDefinitions>,
+    names: HashMap<BareName, BareNameTypes>,
     user_defined_types: &'a UserDefinedTypes,
     const_values: HashMap<BareName, Variant>,
 
@@ -112,7 +48,7 @@ pub struct LinterContext<'a> {
     pub names_without_dot: Option<HashSet<BareName>>,
 }
 
-impl<'a> LinterContext<'a> {
+impl<'a> Context<'a> {
     pub fn new(user_defined_types: &'a UserDefinedTypes) -> Self {
         Self {
             parent: None,
@@ -164,7 +100,7 @@ impl<'a> LinterContext<'a> {
     fn get_user_defined_type_name(&self, name: &BareName) -> Option<&BareName> {
         match self.names.get(name) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
-                ResolvedTypeDefinitions::UserDefined(type_name) => Some(type_name),
+                BareNameTypes::UserDefined(type_name) => Some(type_name),
                 _ => None,
             },
             None => None,
@@ -323,20 +259,18 @@ impl<'a> LinterContext<'a> {
         match self.names.get_mut(&name) {
             Some(resolved_type_definitions) => {
                 match resolved_type_definitions {
-                    ResolvedTypeDefinitions::Compact(existing_set) => {
-                        match param_name.type_definition() {
-                            TypeDefinition::BuiltIn(q) => {
-                                if existing_set.contains(&q) || is_extended {
-                                    return Err(QError::DuplicateDefinition);
-                                } else {
-                                    existing_set.insert(q);
-                                }
-                            }
-                            _ => {
+                    BareNameTypes::Compact(existing_set) => match param_name.type_definition() {
+                        TypeDefinition::BuiltIn(q) => {
+                            if existing_set.contains(&q) || is_extended {
                                 return Err(QError::DuplicateDefinition);
+                            } else {
+                                existing_set.insert(q);
                             }
                         }
-                    }
+                        _ => {
+                            return Err(QError::DuplicateDefinition);
+                        }
+                    },
                     _ => {
                         // anything else cannot be extended
                         return Err(QError::DuplicateDefinition);
@@ -346,27 +280,23 @@ impl<'a> LinterContext<'a> {
             None => match param_name.type_definition() {
                 TypeDefinition::BuiltIn(q) => {
                     if is_extended {
-                        self.names
-                            .insert(name.clone(), ResolvedTypeDefinitions::ExtendedBuiltIn(q));
+                        self.names.insert(name.clone(), BareNameTypes::Extended(q));
                     } else {
                         let mut s: HashSet<TypeQualifier> = HashSet::new();
                         s.insert(q);
-                        self.names
-                            .insert(name.clone(), ResolvedTypeDefinitions::Compact(s));
+                        self.names.insert(name.clone(), BareNameTypes::Compact(s));
                     }
                 }
                 TypeDefinition::String(_) => {
                     self.names.insert(
                         name.clone(),
-                        ResolvedTypeDefinitions::ExtendedBuiltIn(TypeQualifier::DollarString),
+                        BareNameTypes::Extended(TypeQualifier::DollarString),
                     );
                 }
                 TypeDefinition::UserDefined(u) => {
                     self.collect_name_without_dot(name);
-                    self.names.insert(
-                        name.clone(),
-                        ResolvedTypeDefinitions::UserDefined(u.clone()),
-                    );
+                    self.names
+                        .insert(name.clone(), BareNameTypes::UserDefined(u.clone()));
                 }
                 TypeDefinition::FileHandle => panic!("not possible to declare a DIM of FileHandle"),
             },
@@ -377,7 +307,7 @@ impl<'a> LinterContext<'a> {
     pub fn push_const(&mut self, b: BareName, q: TypeQualifier, v: Variant) {
         if self
             .names
-            .insert(b.clone(), ResolvedTypeDefinitions::Constant(q))
+            .insert(b.clone(), BareNameTypes::Constant(q))
             .is_some()
         {
             panic!("Duplicate definition");
@@ -396,17 +326,13 @@ impl<'a> LinterContext<'a> {
             None => {
                 let mut s: HashSet<TypeQualifier> = HashSet::new();
                 s.insert(q);
-                self.names.insert(b, ResolvedTypeDefinitions::Compact(s));
+                self.names.insert(b, BareNameTypes::Compact(s));
             }
         }
     }
 
     pub fn push_dim_extended(&mut self, b: BareName, q: TypeQualifier) {
-        if self
-            .names
-            .insert(b, ResolvedTypeDefinitions::ExtendedBuiltIn(q))
-            .is_some()
-        {
+        if self.names.insert(b, BareNameTypes::Extended(q)).is_some() {
             panic!("Duplicate definition!");
         }
     }
@@ -414,7 +340,7 @@ impl<'a> LinterContext<'a> {
     pub fn push_dim_string(&mut self, b: BareName, len: u16) {
         if self
             .names
-            .insert(b, ResolvedTypeDefinitions::String(len))
+            .insert(b, BareNameTypes::FixedLengthString(len))
             .is_some()
         {
             panic!("Duplicate definition!");
@@ -425,7 +351,7 @@ impl<'a> LinterContext<'a> {
         self.collect_name_without_dot(&b);
         if self
             .names
-            .insert(b, ResolvedTypeDefinitions::UserDefined(u))
+            .insert(b, BareNameTypes::UserDefined(u))
             .is_some()
         {
             panic!("Duplicate definition!");
@@ -441,11 +367,11 @@ impl<'a> LinterContext<'a> {
         match self.names.get(bare_name) {
             Some(resolved_type_definitions) => {
                 match resolved_type_definitions {
-                    ResolvedTypeDefinitions::Constant(_) => {
+                    BareNameTypes::Constant(_) => {
                         // cannot re-assign a constant
                         Err(QError::DuplicateDefinition)
                     }
-                    ResolvedTypeDefinitions::Compact(existing_set) => {
+                    BareNameTypes::Compact(existing_set) => {
                         // if it's not in the existing set, do not add it implicitly yet (might be a parent constant)
                         match name {
                             Name::Bare(b) => {
@@ -471,7 +397,7 @@ impl<'a> LinterContext<'a> {
                             }
                         }
                     }
-                    ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
+                    BareNameTypes::Extended(q) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
                             Name::Bare(b) => {
@@ -492,7 +418,7 @@ impl<'a> LinterContext<'a> {
                             }
                         }
                     }
-                    ResolvedTypeDefinitions::String(len) => {
+                    BareNameTypes::FixedLengthString(len) => {
                         // only possible if the name is bare or using the same qualifier
                         match name {
                             Name::Bare(b) => Ok(Some(DimName::new(
@@ -514,7 +440,7 @@ impl<'a> LinterContext<'a> {
                             }
                         }
                     }
-                    ResolvedTypeDefinitions::UserDefined(u) => {
+                    BareNameTypes::UserDefined(u) => {
                         // only possible if the name is bare
                         match name {
                             Name::Bare(b) => Ok(Some(DimName::new(
@@ -542,7 +468,7 @@ impl<'a> LinterContext<'a> {
         let bare_name: &BareName = name.as_ref();
         match self.names.get(bare_name) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
-                ResolvedTypeDefinitions::Compact(existing_set) => match name {
+                BareNameTypes::Compact(existing_set) => match name {
                     Name::Bare(b) => {
                         let qualifier: TypeQualifier = resolver.resolve(b);
                         if existing_set.contains(&qualifier) {
@@ -570,7 +496,7 @@ impl<'a> LinterContext<'a> {
                         }
                     }
                 },
-                ResolvedTypeDefinitions::Constant(q) => {
+                BareNameTypes::Constant(q) => {
                     if name.is_bare_or_of_type(*q) {
                         Ok(Some(Expression::Constant(QualifiedName::new(
                             bare_name.clone(),
@@ -580,7 +506,7 @@ impl<'a> LinterContext<'a> {
                         Err(QError::DuplicateDefinition)
                     }
                 }
-                ResolvedTypeDefinitions::ExtendedBuiltIn(q) => {
+                BareNameTypes::Extended(q) => {
                     if name.is_bare_or_of_type(*q) {
                         // TODO fix me
                         Ok(Some(Expression::Variable(DimName::new(
@@ -591,7 +517,7 @@ impl<'a> LinterContext<'a> {
                         Err(QError::DuplicateDefinition)
                     }
                 }
-                ResolvedTypeDefinitions::String(len) => {
+                BareNameTypes::FixedLengthString(len) => {
                     if name.is_bare_or_of_type(TypeQualifier::DollarString) {
                         // TODO fix me
                         Ok(Some(Expression::Variable(DimName::new(
@@ -602,7 +528,7 @@ impl<'a> LinterContext<'a> {
                         Err(QError::DuplicateDefinition)
                     }
                 }
-                ResolvedTypeDefinitions::UserDefined(u) => {
+                BareNameTypes::UserDefined(u) => {
                     if name.is_bare() {
                         // TODO fix me
                         Ok(Some(Expression::Variable(DimName::new(
@@ -627,7 +553,7 @@ impl<'a> LinterContext<'a> {
         let bare_name: &BareName = name.as_ref();
         match self.names.get(bare_name) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
-                ResolvedTypeDefinitions::Constant(q) => {
+                BareNameTypes::Constant(q) => {
                     if name.is_bare_or_of_type(*q) {
                         Ok(Some(Expression::Constant(QualifiedName::new(
                             bare_name.clone(),
@@ -647,7 +573,7 @@ impl<'a> LinterContext<'a> {
         let bare_name: &BareName = name.as_ref();
         match self.names.get(bare_name) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
-                ResolvedTypeDefinitions::Constant(q) => {
+                BareNameTypes::Constant(q) => {
                     if name.is_bare_or_of_type(*q) {
                         Ok(true)
                     } else {
@@ -680,7 +606,7 @@ impl<'a> LinterContext<'a> {
         } = name.resolve_into(resolver);
         match self.names.get_mut(bare_name.as_ref()) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
-                ResolvedTypeDefinitions::Compact(existing_set) => {
+                BareNameTypes::Compact(existing_set) => {
                     if existing_set.contains(&qualifier) {
                         Err(QError::DuplicateDefinition)
                     } else {
@@ -694,7 +620,7 @@ impl<'a> LinterContext<'a> {
                 let mut s: HashSet<TypeQualifier> = HashSet::new();
                 s.insert(qualifier);
                 self.names
-                    .insert(bare_name.clone(), ResolvedTypeDefinitions::Compact(s));
+                    .insert(bare_name.clone(), BareNameTypes::Compact(s));
                 Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
             }
         }
@@ -808,7 +734,7 @@ impl<'a> LinterContext<'a> {
     }
 }
 
-impl<'a> ConstValueResolver for LinterContext<'a> {
+impl<'a> ConstValueResolver for Context<'a> {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
         match self.const_values.get(name) {
             Some(v) => Some(v),

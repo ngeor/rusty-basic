@@ -1,6 +1,8 @@
+mod bare_name_types;
 mod context;
 mod converter;
 mod statement;
+mod sub_program_type;
 
 use crate::common::QErrorNode;
 use crate::linter::converter::converter::{Converter, ConverterImpl};

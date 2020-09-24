@@ -80,14 +80,14 @@ impl<'a> ConverterImpl<'a> {
         std::mem::replace(&mut self.context, tmp)
     }
 
-    pub fn push_function_context(&mut self, name: &CaseInsensitiveString) {
+    pub fn push_function_context<S: AsRef<BareName>>(&mut self, function_name: S) {
         let old = self.take_context();
-        self.context = old.push_function_context(name);
+        self.context = old.push_function_context(function_name.as_ref());
     }
 
-    pub fn push_sub_context(&mut self, name: &CaseInsensitiveString) {
+    pub fn push_sub_context<S: AsRef<BareName>>(&mut self, sub_name: S) {
         let old = self.take_context();
-        self.context = old.push_sub_context(name);
+        self.context = old.push_sub_context(sub_name.as_ref());
     }
 
     pub fn pop_context(&mut self) {

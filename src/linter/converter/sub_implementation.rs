@@ -11,8 +11,7 @@ impl<'a> ConverterImpl<'a> {
         params: parser::ParamNameNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
-        self.push_sub_context(sub_name_node.as_ref());
-
+        self.push_sub_context(&sub_name_node);
         let mut mapped_params: Vec<Locatable<ParamName>> = vec![];
         for declared_name_node in params.into_iter() {
             let Locatable {

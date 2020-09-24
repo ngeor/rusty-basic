@@ -4,7 +4,7 @@ use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::type_resolver::ResolveInto;
 use crate::linter::{Expression, HasTypeDefinition, TypeDefinition};
 use crate::parser;
-use crate::parser::{Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use std::convert::TryInto;
 
 impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
@@ -89,19 +89,20 @@ impl<'a> ConverterImpl<'a> {
         }
     }
 
-    fn resolve_name_as_subprogram(&mut self, n: &Name) -> Result<Option<Expression>, QError> {
-        if self.subs.contains_key(n.as_ref()) {
+    fn resolve_name_as_subprogram(&mut self, name: &Name) -> Result<Option<Expression>, QError> {
+        let bare_name: &BareName = name.as_ref();
+        if self.subs.contains_key(bare_name) {
             // using the name of a sub as a variable expression
             Err(QError::DuplicateDefinition)
-        } else if self.functions.contains_key(n.as_ref()) {
+        } else if self.functions.contains_key(bare_name) {
             // if the function expects arguments, argument count mismatch
             let Locatable {
                 element: (f_type, f_args),
                 ..
-            } = self.functions.get(n.as_ref()).unwrap();
+            } = self.functions.get(bare_name).unwrap();
             if !f_args.is_empty() {
                 Err(QError::ArgumentCountMismatch)
-            } else if self.context.is_function_context(n) {
+            } else if self.context.is_function_context(bare_name) {
                 // We are inside a function that takes no args, and we're using again
                 // the name of that function as an expression.
                 // This can only work as a variable, otherwise we'll get infinite recursive call.
@@ -114,7 +115,7 @@ impl<'a> ConverterImpl<'a> {
                 // Return None and let the next handler add it as a new variable
                 Ok(None)
             } else {
-                match n {
+                match name {
                     Name::Bare(b) => Ok(Some(Expression::FunctionCall(
                         QualifiedName::new(b.clone(), *f_type),
                         vec![],

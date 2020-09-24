@@ -586,6 +586,7 @@ impl<'a> Context<'a> {
         }
     }
 
+    #[deprecated]
     pub fn resolve_param_assignment<T: TypeResolver>(
         &self,
         name: &Name,
@@ -705,15 +706,14 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn is_function_context(&self, name: &Name) -> bool {
+    pub fn is_function_context(&self, bare_name: &BareName) -> bool {
         match &self.sub_program {
-            Some((sub_program_name, sub_program_type)) => {
-                sub_program_name == name.as_ref() && *sub_program_type == SubProgramType::Function
-            }
-            None => false,
+            Some((function_name, SubProgramType::Function)) => function_name == bare_name,
+            _ => false,
         }
     }
 
+    #[deprecated]
     pub fn resolve_assignment<T: TypeResolver>(
         &mut self,
         name: &Name,

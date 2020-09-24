@@ -3,7 +3,7 @@ use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::type_resolver::ResolveInto;
 use crate::linter::{FunctionImplementation, ParamName, ParamType, TopLevelToken};
 use crate::parser;
-use crate::parser::{BareName, HasQualifier, NameNode, QualifiedName, QualifiedNameNode};
+use crate::parser::{BareName, HasQualifier, NameNode, QualifiedName};
 
 impl<'a> ConverterImpl<'a> {
     pub fn convert_function_implementation(
@@ -12,12 +12,15 @@ impl<'a> ConverterImpl<'a> {
         params: parser::ParamNameNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
-        let mapped_name: QualifiedNameNode =
-            function_name_node.map(|x| x.resolve_into(&self.resolver));
-        self.push_function_context(mapped_name.as_ref());
-        let mapped_params = self.convert_function_params(mapped_name.as_ref(), params)?;
+        self.push_function_context(&function_name_node);
+        let Locatable {
+            element: unresolved_function_name,
+            pos,
+        } = function_name_node;
+        let function_name: QualifiedName = unresolved_function_name.resolve_into(&self.resolver);
+        let mapped_params = self.convert_function_params(&function_name, params)?;
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
-            name: mapped_name,
+            name: function_name.at(pos),
             params: mapped_params,
             body: self.convert(block)?,
         });

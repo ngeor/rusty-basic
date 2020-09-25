@@ -144,6 +144,7 @@ impl AsRef<BareName> for QualifiedNameNode {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Name {
     Bare(CaseInsensitiveString),
+    // TODO put back the QualifiedName here
     Qualified {
         bare_name: CaseInsensitiveString,
         qualifier: TypeQualifier,

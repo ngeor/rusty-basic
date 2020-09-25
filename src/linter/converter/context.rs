@@ -2,7 +2,7 @@ use crate::common::{CaseInsensitiveString, QError};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
-use crate::linter::type_resolver::{ResolveInto, TypeResolver};
+use crate::linter::type_resolver::TypeResolver;
 use crate::linter::types::{
     DimName, DimType, ElementType, Expression, Members, UserDefinedName, UserDefinedTypes,
 };
@@ -29,6 +29,9 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5. An extended variable can be referenced either bare or by its correct qualifier
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
+
+// TODO split parent and child context state
+// TODO change `names` so it requires less code for resolve_expression and assignment
 
 #[derive(Debug)]
 pub struct Context<'a> {
@@ -513,7 +516,7 @@ impl<'a> Context<'a> {
         let QualifiedName {
             bare_name,
             qualifier,
-        } = name.resolve_into(resolver);
+        } = resolver.resolve_name(name);
         match self.names.get_mut(bare_name.as_ref()) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
                 BareNameTypes::Compact(existing_set) => {

@@ -1,6 +1,6 @@
 use crate::common::{AtLocation, Locatable, QErrorNode};
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::type_resolver::ResolveInto;
+use crate::linter::type_resolver::TypeResolver;
 use crate::linter::{FunctionImplementation, TopLevelToken};
 use crate::parser;
 use crate::parser::{NameNode, QualifiedName};
@@ -17,7 +17,7 @@ impl<'a> ConverterImpl<'a> {
             element: unresolved_function_name,
             pos,
         } = function_name_node;
-        let function_name: QualifiedName = unresolved_function_name.resolve_into(&self.resolver);
+        let function_name: QualifiedName = self.resolver.resolve_name(&unresolved_function_name);
         let mapped_params = self.resolve_params(params, Some(&function_name))?;
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
             name: function_name.at(pos),

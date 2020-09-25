@@ -4,7 +4,7 @@ use crate::common::{
     ToErrorEnvelopeNoPos, ToLocatableError,
 };
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::type_resolver::{ResolveInto, TypeResolver};
+use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::{
     ElementType, FunctionMap, FunctionSignature, ParamType, ParamTypes, SubMap, SubSignature,
@@ -324,7 +324,7 @@ impl FunctionContext {
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
         let q_params: ParamTypes = self.parameters(params, resolver, user_defined_types)?;
-        let q_name: TypeQualifier = name.resolve_into(resolver);
+        let q_name: TypeQualifier = resolver.resolve_name(name).qualifier;
         let bare_name: &BareName = name.as_ref();
         self.check_implementation_type(bare_name, &q_name, &q_params)?;
         match self.declarations.get(bare_name) {
@@ -354,7 +354,7 @@ impl FunctionContext {
         // param types must match declaration
         // name needs to be unique
         let q_params: ParamTypes = self.parameters(params, resolver, user_defined_types)?;
-        let q_name: TypeQualifier = name.resolve_into(resolver);
+        let q_name: TypeQualifier = resolver.resolve_name(name).qualifier;
         let bare_name: &BareName = name.as_ref();
         match self.implementations.get(bare_name) {
             Some(_) => Err(QError::DuplicateDefinition).with_err_no_pos(),

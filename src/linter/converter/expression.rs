@@ -1,7 +1,7 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::type_resolver::ResolveInto;
+use crate::linter::type_resolver::TypeResolver;
 use crate::linter::{Expression, HasTypeDefinition, TypeDefinition};
 use crate::parser;
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
@@ -24,7 +24,7 @@ impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
                 match opt_built_in {
                     Some(b) => Ok(Expression::BuiltInFunctionCall(b, converted_args)),
                     None => Ok(Expression::FunctionCall(
-                        n.resolve_into(&self.resolver),
+                        self.resolver.resolve_name(&n),
                         converted_args,
                     )),
                 }

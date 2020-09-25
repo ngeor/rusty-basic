@@ -277,7 +277,7 @@ impl<'a> Context<'a> {
         self.param_names.insert(bare_name.into());
     }
 
-    fn do_resolve_assignment<T: TypeResolver>(
+    pub fn do_resolve_assignment<T: TypeResolver>(
         &self,
         name: &Name,
         resolver: &T,
@@ -505,7 +505,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn resolve_missing_name_in_assignment<T: TypeResolver>(
+    pub fn resolve_missing_name_in_assignment<T: TypeResolver>(
         &mut self,
         name: &Name,
         resolver: &T,
@@ -571,7 +571,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn is_parent_constant(&self, n: &Name) -> Result<bool, QError> {
+    pub fn is_parent_constant(&self, n: &Name) -> Result<bool, QError> {
         match &self.parent {
             Some(p) => p.is_constant(n),
             None => Ok(false),
@@ -615,26 +615,6 @@ impl<'a> Context<'a> {
                 }
             }
             None => false,
-        }
-    }
-
-    #[deprecated]
-    pub fn resolve_assignment<T: TypeResolver>(
-        &mut self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<DimName, QError> {
-        match self.do_resolve_assignment(name, resolver)? {
-            Some(x) => Ok(x),
-            None => {
-                // maybe a parent constant?
-                if self.is_parent_constant(name)? {
-                    Err(QError::DuplicateDefinition)
-                } else {
-                    // just insert it
-                    self.resolve_missing_name_in_assignment(name, resolver)
-                }
-            }
         }
     }
 }

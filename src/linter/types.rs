@@ -24,7 +24,7 @@ pub struct ForLoopNode {
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<Locatable<DimName>>,
+    pub next_counter: Option<DimNameNode>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

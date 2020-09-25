@@ -4,6 +4,8 @@ pub trait TypeResolver {
     fn resolve<T: AsRef<str>>(&self, name: T) -> TypeQualifier;
 }
 
+// TODO deprecate these traits
+
 pub trait ResolveFrom<TFrom> {
     fn resolve_from<TResolver: TypeResolver>(x: TFrom, resolver: &TResolver) -> Self;
 }

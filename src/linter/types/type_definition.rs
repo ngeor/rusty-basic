@@ -1,7 +1,5 @@
-use super::UserDefinedTypes;
-use crate::common::{CanCastTo, StringUtils};
+use crate::common::{CanCastTo};
 use crate::parser::{BareName, Operator, TypeQualifier};
-use crate::variant::{UserDefinedTypeValue, Variant};
 
 // TODO is it possible to get rid of TypeDefinition?
 
@@ -17,17 +15,6 @@ pub enum TypeDefinition {
 }
 
 impl TypeDefinition {
-    pub fn default_variant(&self, types: &UserDefinedTypes) -> Variant {
-        match self {
-            Self::BuiltIn(q) => Variant::from(*q),
-            Self::String(len) => String::new().fix_length(*len as usize).into(),
-            Self::UserDefined(type_name) => {
-                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
-            }
-            Self::FileHandle => panic!("not possible to get a default file handle"),
-        }
-    }
-
     pub fn cast_binary_op(&self, right: TypeDefinition, op: Operator) -> Option<TypeDefinition> {
         match self {
             TypeDefinition::BuiltIn(q_left) => match right {

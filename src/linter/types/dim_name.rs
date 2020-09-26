@@ -1,8 +1,9 @@
-use crate::common::{CanCastTo, Locatable};
-use crate::linter::{ElementType, HasTypeDefinition, TypeDefinition};
+use crate::common::{CanCastTo, Locatable, StringUtils};
+use crate::linter::{ElementType, HasTypeDefinition, TypeDefinition, UserDefinedTypes};
 use crate::parser::{BareName, QualifiedName, TypeQualifier};
 #[cfg(test)]
 use std::convert::TryFrom;
+use crate::variant::{Variant, UserDefinedTypeValue};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DimName {
@@ -28,6 +29,19 @@ pub enum DimType {
 
     // C.Suit, Name.Address, Name.Address.PostCode
     Many(BareName, Members),
+}
+
+impl DimType {
+    pub fn default_variant(&self, types: &UserDefinedTypes) -> Variant {
+        match self {
+            Self::BuiltIn(q) => Variant::from(*q),
+            Self::FixedLengthString(len) => String::new().fix_length(*len as usize).into(),
+            Self::UserDefined(type_name) => {
+                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
+            }
+            Self::Many(_, _) => panic!("not possible to declare a variable of type Many"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

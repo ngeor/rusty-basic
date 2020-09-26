@@ -5,7 +5,7 @@ use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
-use crate::linter::{DimName, HasTypeDefinition, UserDefinedTypes};
+use crate::linter::{DimName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::cmp::Ordering;
@@ -168,7 +168,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             }
             Instruction::Dim(dim_name) => {
                 let v = dim_name
-                    .type_definition()
+                    .dim_type()
                     .default_variant(self.user_defined_types.as_ref());
                 self.context.set_variable(dim_name.clone(), v);
             }

@@ -1,4 +1,4 @@
-use super::{HasTypeDefinition, TypeDefinition};
+use super::{ExpressionType, HasExpressionType};
 use crate::common::Locatable;
 use crate::parser::{BareName, TypeQualifier};
 use std::collections::HashMap;
@@ -32,9 +32,9 @@ impl AsRef<BareName> for ParamName {
     }
 }
 
-impl HasTypeDefinition for ParamName {
-    fn type_definition(&self) -> TypeDefinition {
-        self.param_type.type_definition()
+impl HasExpressionType for ParamName {
+    fn expression_type(&self) -> ExpressionType {
+        self.param_type.expression_type()
     }
 }
 
@@ -50,26 +50,26 @@ pub enum ParamType {
 
 pub type ParamTypes = Vec<ParamType>;
 
-impl PartialEq<TypeDefinition> for ParamType {
-    fn eq(&self, type_definition: &TypeDefinition) -> bool {
+impl PartialEq<ExpressionType> for ParamType {
+    fn eq(&self, type_definition: &ExpressionType) -> bool {
         match self {
             Self::BuiltIn(q_left) => match type_definition {
-                TypeDefinition::BuiltIn(q_right) => q_left == q_right,
+                ExpressionType::BuiltIn(q_right) => q_left == q_right,
                 _ => false,
             },
             Self::UserDefined(u_left) => match type_definition {
-                TypeDefinition::UserDefined(u_right) => u_left == u_right,
+                ExpressionType::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
         }
     }
 }
 
-impl HasTypeDefinition for ParamType {
-    fn type_definition(&self) -> TypeDefinition {
+impl HasExpressionType for ParamType {
+    fn expression_type(&self) -> ExpressionType {
         match self {
-            Self::BuiltIn(qualifier) => TypeDefinition::BuiltIn(*qualifier),
-            Self::UserDefined(type_name) => TypeDefinition::UserDefined(type_name.clone()),
+            Self::BuiltIn(qualifier) => ExpressionType::BuiltIn(*qualifier),
+            Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
         }
     }
 }

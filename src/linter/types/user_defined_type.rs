@@ -1,4 +1,4 @@
-use super::{HasTypeDefinition, TypeDefinition};
+use super::{ExpressionType, HasExpressionType};
 use crate::common::{QError, StringUtils};
 use crate::parser::{BareName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
@@ -67,15 +67,15 @@ impl ElementType {
     }
 }
 
-impl HasTypeDefinition for ElementType {
-    fn type_definition(&self) -> TypeDefinition {
+impl HasExpressionType for ElementType {
+    fn expression_type(&self) -> ExpressionType {
         match self {
-            Self::Integer => TypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
-            Self::Long => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
-            Self::Single => TypeDefinition::BuiltIn(TypeQualifier::BangSingle),
-            Self::Double => TypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Self::FixedLengthString(l) => TypeDefinition::String(*l),
-            Self::UserDefined(type_name) => TypeDefinition::UserDefined(type_name.clone()),
+            Self::Integer => ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
+            Self::Long => ExpressionType::BuiltIn(TypeQualifier::AmpersandLong),
+            Self::Single => ExpressionType::BuiltIn(TypeQualifier::BangSingle),
+            Self::Double => ExpressionType::BuiltIn(TypeQualifier::HashDouble),
+            Self::FixedLengthString(l) => ExpressionType::FixedLengthString(*l),
+            Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
         }
     }
 }

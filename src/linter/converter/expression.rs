@@ -2,7 +2,7 @@ use crate::built_ins::BuiltInFunction;
 use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::{Expression, HasTypeDefinition, TypeDefinition};
+use crate::linter::{Expression, ExpressionType, HasExpressionType};
 use crate::parser;
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use std::convert::TryInto;
@@ -37,8 +37,8 @@ impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
                 let converted_left = self.convert(unboxed_left)?;
                 let converted_right = self.convert(unboxed_right)?;
                 // get the types
-                let t_left = converted_left.type_definition();
-                let t_right = converted_right.type_definition();
+                let t_left = converted_left.expression_type();
+                let t_right = converted_right.expression_type();
                 // get the cast type
                 match t_left.cast_binary_op(t_right, op) {
                     Some(type_definition) => Ok(Expression::BinaryExpression(
@@ -53,11 +53,11 @@ impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
             parser::Expression::UnaryExpression(op, c) => {
                 let unboxed_child = *c;
                 let converted_child = self.convert(unboxed_child)?;
-                match converted_child.type_definition() {
-                    TypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
+                match converted_child.expression_type() {
+                    ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
                         Err(QError::TypeMismatch).with_err_at(&converted_child)
                     }
-                    TypeDefinition::BuiltIn(_) => {
+                    ExpressionType::BuiltIn(_) => {
                         Ok(Expression::UnaryExpression(op, Box::new(converted_child)))
                     }
                     // user defined cannot be in unary expressions

@@ -1,15 +1,15 @@
 mod dim_name;
 mod expression;
-mod has_type_definition;
+mod expression_type;
+mod has_expression_type;
 mod param_name;
-mod type_definition;
 mod user_defined_type;
 
 pub use self::dim_name::*;
 pub use self::expression::*;
-pub use self::has_type_definition::*;
+pub use self::expression_type::*;
+pub use self::has_expression_type::*;
 pub use self::param_name::*;
-pub use self::type_definition::*;
 pub use self::user_defined_type::*;
 
 use crate::built_ins::BuiltInSub;

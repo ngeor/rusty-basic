@@ -1,9 +1,9 @@
 use crate::common::{CanCastTo, Locatable, StringUtils};
-use crate::linter::{ElementType, HasTypeDefinition, TypeDefinition, UserDefinedTypes};
+use crate::linter::{ElementType, ExpressionType, HasExpressionType, UserDefinedTypes};
 use crate::parser::{BareName, QualifiedName, TypeQualifier};
+use crate::variant::{UserDefinedTypeValue, Variant};
 #[cfg(test)]
 use std::convert::TryFrom;
-use crate::variant::{Variant, UserDefinedTypeValue};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DimName {
@@ -86,11 +86,11 @@ impl Members {
     }
 }
 
-impl HasTypeDefinition for Members {
-    fn type_definition(&self) -> TypeDefinition {
+impl HasExpressionType for Members {
+    fn expression_type(&self) -> ExpressionType {
         match self {
-            Self::Leaf { element_type, .. } => element_type.type_definition(),
-            Self::Node(_, boxed_members) => boxed_members.type_definition(),
+            Self::Leaf { element_type, .. } => element_type.expression_type(),
+            Self::Node(_, boxed_members) => boxed_members.expression_type(),
         }
     }
 }
@@ -157,25 +157,25 @@ impl AsRef<BareName> for DimName {
         &self.bare_name
     }
 }
-impl HasTypeDefinition for DimName {
-    fn type_definition(&self) -> TypeDefinition {
-        self.dim_type().type_definition()
+impl HasExpressionType for DimName {
+    fn expression_type(&self) -> ExpressionType {
+        self.dim_type().expression_type()
     }
 }
 
-impl HasTypeDefinition for DimType {
-    fn type_definition(&self) -> TypeDefinition {
+impl HasExpressionType for DimType {
+    fn expression_type(&self) -> ExpressionType {
         match self {
-            Self::BuiltIn(qualifier) => TypeDefinition::BuiltIn(*qualifier),
-            Self::FixedLengthString(len) => TypeDefinition::String(*len),
-            Self::UserDefined(type_name) => TypeDefinition::UserDefined(type_name.clone()),
-            Self::Many(_, members) => members.type_definition(),
+            Self::BuiltIn(qualifier) => ExpressionType::BuiltIn(*qualifier),
+            Self::FixedLengthString(len) => ExpressionType::FixedLengthString(*len),
+            Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
+            Self::Many(_, members) => members.expression_type(),
         }
     }
 }
 
 impl CanCastTo<TypeQualifier> for DimName {
     fn can_cast_to(&self, other: TypeQualifier) -> bool {
-        self.type_definition().can_cast_to(other)
+        self.expression_type().can_cast_to(other)
     }
 }

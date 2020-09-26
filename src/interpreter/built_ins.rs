@@ -5,7 +5,7 @@ use crate::common::{
 use crate::interpreter::argument::Argument;
 use crate::interpreter::{Interpreter, SetVariable, Stdlib};
 use crate::linter::{
-    DimName, ElementType, HasTypeDefinition, TypeDefinition, UserDefinedType, UserDefinedTypes,
+    DimName, ElementType, ExpressionType, HasExpressionType, UserDefinedType, UserDefinedTypes,
 };
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
@@ -258,15 +258,15 @@ mod input {
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        Ok(match n.type_definition() {
-            TypeDefinition::BuiltIn(TypeQualifier::BangSingle) => {
+        Ok(match n.expression_type() {
+            ExpressionType::BuiltIn(TypeQualifier::BangSingle) => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
-            TypeDefinition::BuiltIn(TypeQualifier::DollarString) => Variant::from(raw_input),
-            TypeDefinition::BuiltIn(TypeQualifier::PercentInteger) => {
+            ExpressionType::BuiltIn(TypeQualifier::DollarString) => Variant::from(raw_input),
+            ExpressionType::BuiltIn(TypeQualifier::PercentInteger) => {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
-            TypeDefinition::String(l) => Variant::from(raw_input.sub_str(l as usize)),
+            ExpressionType::FixedLengthString(l) => Variant::from(raw_input.sub_str(l as usize)),
             _ => unimplemented!(),
         })
     }
@@ -792,8 +792,8 @@ mod line_input {
             .read_line(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        match n.type_definition() {
-            TypeDefinition::BuiltIn(TypeQualifier::DollarString) => {
+        match n.expression_type() {
+            ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
                 interpreter
                     .context_mut()
                     .set_value_to_popped_arg(arg, Variant::VString(s));

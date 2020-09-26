@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::types::{Expression, ExpressionNode, HasTypeDefinition, TypeDefinition};
+use crate::linter::types::{Expression, ExpressionNode, ExpressionType, HasExpressionType};
 use crate::parser::TypeQualifier;
 
 /// Lints built-in functions and subs.
@@ -192,9 +192,9 @@ mod print {
     use super::*;
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         for arg in args.iter() {
-            let type_definition = arg.type_definition();
+            let type_definition = arg.expression_type();
             match type_definition {
-                TypeDefinition::UserDefined(_) => {
+                ExpressionType::UserDefined(_) => {
                     return Err(QError::TypeMismatch).with_err_at(arg);
                 }
                 _ => {}
@@ -364,8 +364,8 @@ fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), QEr
     if args.len() != 1 {
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
-        match args[0].type_definition() {
-            TypeDefinition::BuiltIn(q) => {
+        match args[0].expression_type() {
+            ExpressionType::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString {
                     Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
                 } else {

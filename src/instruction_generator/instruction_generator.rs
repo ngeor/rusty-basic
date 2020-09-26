@@ -226,7 +226,7 @@ impl InstructionGenerator {
         r: ExpressionNode,
         pos: Location,
     ) {
-        let left_type = l.type_definition();
+        let left_type = l.expression_type();
         self.generate_expression_instructions_casting(r, left_type);
         self.push(Instruction::Store(l), pos);
     }

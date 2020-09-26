@@ -38,7 +38,7 @@ impl InstructionGenerator {
                     self.push(Instruction::PushNamedRef(n, v_name), pos);
                 }
                 _ => {
-                    self.generate_expression_instructions_casting(e.at(pos), n.type_definition());
+                    self.generate_expression_instructions_casting(e.at(pos), n.expression_type());
                     self.push(Instruction::PushNamedVal(n), pos);
                 }
             }

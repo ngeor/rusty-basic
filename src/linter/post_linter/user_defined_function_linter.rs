@@ -20,7 +20,7 @@ pub fn lint_call_args(
         match arg {
             Expression::Variable(_) => {
                 // it's by ref, it needs to match exactly
-                let arg_q = arg_node.type_definition();
+                let arg_q = arg_node.expression_type();
                 if param_type != &arg_q {
                     return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
                 }
@@ -64,8 +64,8 @@ impl<'a> UserDefinedFunctionLinter<'a> {
     fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
-            match arg_node.type_definition() {
-                TypeDefinition::BuiltIn(q) => {
+            match arg_node.expression_type() {
+                ExpressionType::BuiltIn(q) => {
                     if q == TypeQualifier::DollarString {
                         return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
                     }

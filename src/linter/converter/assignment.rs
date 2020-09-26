@@ -20,7 +20,6 @@ impl<'a> ConverterImpl<'a> {
         }
     }
 
-    // FIXME still public due to for loop
     pub fn assignment_name(&mut self, name: Name) -> Result<DimName, QError> {
         let bare_name: &BareName = name.as_ref();
         if self.context.is_function_context(bare_name) {

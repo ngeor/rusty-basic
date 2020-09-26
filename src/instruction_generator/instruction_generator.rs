@@ -17,11 +17,14 @@ fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
         let top_level_token = top_level_token_node.as_ref();
         match top_level_token {
             TopLevelToken::FunctionImplementation(f) => {
-                // collect param names
-                functions.insert((&f.name).into(), f.params.clone().strip_location());
+                let FunctionImplementation { name, params, .. } = f;
+                let bare_name: &BareName = name.as_ref();
+                functions.insert(
+                    bare_name.clone(),
+                    params.iter().map(|p| p.as_ref().clone()).collect(),
+                );
             }
             TopLevelToken::SubImplementation(s) => {
-                // collect param names
                 subs.insert(
                     s.name.clone().strip_location(),
                     s.params.clone().strip_location(),

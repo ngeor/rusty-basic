@@ -12,8 +12,8 @@ use crate::linter::types::{
 };
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, Expression, ExpressionNode, Name, NameNode, ProgramNode, Statement,
-    TopLevelToken, TypeQualifier,
+    BareName, BareNameNode, Expression, ExpressionNode, Name, NameNode, ProgramNode, QualifiedName,
+    Statement, TopLevelToken, TypeQualifier,
 };
 use crate::variant::Variant;
 use std::collections::HashMap;
@@ -109,12 +109,12 @@ fn global_const(
         Name::Bare(b) => {
             global_constants.insert(b.clone(), v);
         }
-        Name::Qualified {
-            bare_name: name,
+        Name::Qualified(QualifiedName {
+            bare_name,
             qualifier,
-        } => {
+        }) => {
             let casted = v.cast(*qualifier).with_err_at(expression_node)?;
-            global_constants.insert(name.clone(), casted);
+            global_constants.insert(bare_name.clone(), casted);
         }
     }
     Ok(())
@@ -214,11 +214,11 @@ fn validate_element_type_str_len(
                         None => Err(QError::InvalidConstant).with_err_at(pos),
                     }
                 }
-                Name::Qualified {
-                    bare_name: name,
+                Name::Qualified(QualifiedName {
+                    bare_name,
                     qualifier,
-                } => {
-                    match global_constants.get(name) {
+                }) => {
+                    match global_constants.get(bare_name) {
                         // constant exists
                         Some(const_value) => {
                             match const_value {

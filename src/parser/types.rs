@@ -1,3 +1,4 @@
+mod bare_name;
 mod def_type;
 mod dim_name;
 mod expression_node;
@@ -7,12 +8,14 @@ mod letter_range;
 mod name;
 mod operator;
 mod param_name;
+mod qualified_name;
 mod statement_node;
 mod top_level_token_node;
 mod type_qualifier;
 mod unary_operator;
 mod user_defined_type;
 
+pub use self::bare_name::*;
 pub use self::def_type::*;
 pub use self::dim_name::*;
 pub use self::expression_node::*;
@@ -22,6 +25,7 @@ pub use self::letter_range::*;
 pub use self::name::*;
 pub use self::operator::*;
 pub use self::param_name::*;
+pub use self::qualified_name::*;
 pub use self::statement_node::*;
 pub use self::top_level_token_node::*;
 pub use self::type_qualifier::*;

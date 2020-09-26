@@ -34,14 +34,14 @@ pub fn dim_name_node<T: BufRead + 'static>(
                 },
                 None => Ok(DimName::new(b, DimType::Bare).at(pos)),
             },
-            Name::Qualified {
-                bare_name: n,
-                qualifier: q,
-            } => match opt_type_definition {
+            Name::Qualified(QualifiedName {
+                bare_name,
+                qualifier,
+            }) => match opt_type_definition {
                 Some(_) => Err(QError::syntax_error(
                     "Identifier cannot end with %, &, !, #, or $",
                 )),
-                None => Ok(DimName::new(n, DimType::Compact(q)).at(pos)),
+                None => Ok(DimName::new(bare_name, DimType::Compact(qualifier)).at(pos)),
             },
         },
     )

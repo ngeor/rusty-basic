@@ -127,7 +127,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                             "Function {:?} must be qualified",
                             n
                         ))),
-                        Name::Qualified { qualifier, .. } => {
+                        Name::Qualified(QualifiedName { qualifier, .. }) => {
                             if *qualifier == TypeQualifier::DollarString {
                                 Ok(Some(b))
                             } else {
@@ -141,7 +141,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                     match n {
                         // confirmed that even with DEFSTR A-Z it won't work as unqualified
                         Name::Bare(_) => Ok(None),
-                        Name::Qualified { qualifier, .. } => {
+                        Name::Qualified(QualifiedName { qualifier, .. }) => {
                             if *qualifier == TypeQualifier::DollarString {
                                 Ok(Some(b))
                             } else {

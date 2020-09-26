@@ -118,16 +118,16 @@ impl<'a> ConverterImpl<'a> {
                         QualifiedName::new(b.clone(), *f_type),
                         vec![],
                     ))),
-                    Name::Qualified {
-                        bare_name: name,
+                    Name::Qualified(QualifiedName {
+                        bare_name,
                         qualifier,
-                    } => {
+                    }) => {
                         // if the function is a different type and the name is qualified of a different type, duplication definition
                         if f_type != qualifier {
                             Err(QError::DuplicateDefinition)
                         } else {
                             Ok(Some(Expression::FunctionCall(
-                                QualifiedName::new(name.clone(), *f_type),
+                                QualifiedName::new(bare_name.clone(), *f_type),
                                 vec![],
                             )))
                         }

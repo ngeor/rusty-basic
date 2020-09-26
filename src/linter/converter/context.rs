@@ -71,8 +71,8 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: &T) -> bool {
-        self.names.contains_key(bare_name.as_ref())
+    pub fn contains_any(&self, bare_name: &BareName) -> bool {
+        self.names.contains_key(bare_name)
     }
 
     pub fn contains_const(&self, name: &BareName) -> bool {
@@ -205,7 +205,7 @@ impl<'a> Context<'a> {
                 BareNameTypes::Compact(existing_set) => {
                     let q = match name {
                         Name::Bare(b) => resolver.resolve(b),
-                        Name::Qualified { qualifier, .. } => *qualifier,
+                        Name::Qualified(QualifiedName { qualifier, .. }) => *qualifier,
                     };
                     if existing_set.contains(&q) {
                         Ok(Some(Expression::Variable(DimName::new(
@@ -328,10 +328,11 @@ impl<'a> Context<'a> {
                             // it's a compact, so it will appear as qualified inside the param_names set
                             match name {
                                 Name::Bare(_) => {
-                                    let n: Name = Name::Qualified {
-                                        bare_name: bare_name.clone(),
-                                        qualifier: resolver.resolve(bare_name),
-                                    };
+                                    let n: Name = QualifiedName::new(
+                                        bare_name.clone(),
+                                        resolver.resolve(bare_name),
+                                    )
+                                    .into();
                                     param_names.contains(&n)
                                 }
                                 Name::Qualified { .. } => param_names.contains(name),
@@ -421,10 +422,10 @@ mod resolve_members {
     pub fn resolve_member(context: &Context, name: &Name) -> Result<Option<DimName>, QError> {
         let (bare_name, opt_qualifier) = match name {
             Name::Bare(bare_name) => (bare_name, None),
-            Name::Qualified {
+            Name::Qualified(QualifiedName {
                 bare_name,
                 qualifier,
-            } => (bare_name, Some(*qualifier)),
+            }) => (bare_name, Some(*qualifier)),
         };
         let s: String = bare_name.clone().into();
         let mut v: Vec<BareName> = s.split('.').map(|s| s.into()).collect();

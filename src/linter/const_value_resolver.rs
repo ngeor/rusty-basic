@@ -1,5 +1,7 @@
 use crate::common::*;
-use crate::parser::{Expression, ExpressionNode, Name, Operator, TypeQualifier, UnaryOperator};
+use crate::parser::{
+    Expression, ExpressionNode, Name, Operator, QualifiedName, TypeQualifier, UnaryOperator,
+};
 use crate::variant::Variant;
 use std::cmp::Ordering;
 
@@ -23,10 +25,10 @@ pub trait ConstValueResolver {
                     Some(v) => Ok(v.clone()),
                     None => Err(QError::InvalidConstant).with_err_no_pos(),
                 },
-                Name::Qualified {
+                Name::Qualified(QualifiedName {
                     bare_name,
                     qualifier,
-                } => match self.get_resolved_constant(bare_name) {
+                }) => match self.get_resolved_constant(bare_name) {
                     Some(v) => {
                         let v_q = match v {
                             Variant::VDouble(_) => TypeQualifier::HashDouble,

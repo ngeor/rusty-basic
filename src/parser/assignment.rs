@@ -68,10 +68,10 @@ mod tests {
         let values = [1, -1, 0, 42];
         for name in &names {
             for value in &values {
-                assert_top_level_assignment!(format!("{} = {}", name, value), name, *value);
-                assert_top_level_assignment!(format!("{}={}", name, value), name, *value);
-                assert_top_level_assignment!(format!("{} ={}", name, value), name, *value);
-                assert_top_level_assignment!(format!("{}= {}", name, value), name, *value);
+                assert_top_level_assignment!(format!("{} = {}", name, value), *name, *value);
+                assert_top_level_assignment!(format!("{}={}", name, value), *name, *value);
+                assert_top_level_assignment!(format!("{} ={}", name, value), *name, *value);
+                assert_top_level_assignment!(format!("{}= {}", name, value), *name, *value);
             }
         }
     }

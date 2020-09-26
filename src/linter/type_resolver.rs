@@ -12,10 +12,7 @@ pub trait TypeResolver {
     fn resolve_name(&self, name: &Name) -> QualifiedName {
         match name {
             Name::Bare(bare_name) => QualifiedName::new(bare_name.clone(), self.resolve(bare_name)),
-            Name::Qualified {
-                bare_name,
-                qualifier,
-            } => QualifiedName::new(bare_name.clone(), qualifier.clone()),
+            Name::Qualified(qualified_name) => qualified_name.clone(),
         }
     }
 }

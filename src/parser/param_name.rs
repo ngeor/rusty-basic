@@ -33,14 +33,14 @@ pub fn param_name_node<T: BufRead + 'static>(
                 },
                 None => Ok(ParamName::new(b, ParamType::Bare).at(pos)),
             },
-            Name::Qualified {
-                bare_name: n,
-                qualifier: q,
-            } => match opt_type_definition {
+            Name::Qualified(QualifiedName {
+                bare_name,
+                qualifier,
+            }) => match opt_type_definition {
                 Some(_) => Err(QError::syntax_error(
                     "Identifier cannot end with %, &, !, #, or $",
                 )),
-                None => Ok(ParamName::new(n, ParamType::Compact(q)).at(pos)),
+                None => Ok(ParamName::new(bare_name, ParamType::Compact(qualifier)).at(pos)),
             },
         },
     )

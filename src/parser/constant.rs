@@ -34,7 +34,7 @@ pub fn constant<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Expression, Statement, TopLevelToken};
+    use crate::parser::{Expression, Name, Statement, TopLevelToken};
 
     #[test]
     fn parse_const() {
@@ -71,7 +71,7 @@ mod tests {
                         Locatable { element: left, .. },
                         Locatable { element: right, .. },
                     ) => {
-                        assert_eq!(left, name.into());
+                        assert_eq!(left, Name::from(*name));
                         assert_eq!(right, Expression::IntegerLiteral(*value));
                     }
                     _ => panic!("Expected constant"),

@@ -10,7 +10,7 @@ use crate::parser::pc::str::{
 };
 /// Parser combinators specific to this parser (e.g. for keywords)
 use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
-use crate::parser::types::{Keyword, Name, TypeQualifier};
+use crate::parser::types::{Keyword, Name, QualifiedName, TypeQualifier};
 use std::convert::TryInto;
 
 // ========================================================
@@ -35,12 +35,12 @@ impl<R: Reader<Item = char>> Undo<Name> for R {
     fn undo(self, n: Name) -> Self {
         match n {
             Name::Bare(b) => self.undo(b),
-            Name::Qualified {
-                bare_name: name,
+            Name::Qualified(QualifiedName {
+                bare_name,
                 qualifier,
-            } => {
+            }) => {
                 let first = self.undo(qualifier);
-                first.undo(name)
+                first.undo(bare_name)
             }
         }
     }

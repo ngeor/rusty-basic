@@ -44,9 +44,6 @@ impl<'a> ConverterImpl<'a> {
             // not possible to have a param name that clashes with a sub (functions are ok)
             return Err(QError::DuplicateDefinition).with_err_no_pos();
         }
-        // TODO are the next two todos already covered by the dot linter?
-        // TODO ensure not clashing with user defined var (except for the user defined itself)
-        // TODO ensure user-defined does not clash with existing dotted variables
         match param_type {
             parser::ParamType::Bare => self.resolve_param_bare(bare_name, opt_function_name),
             parser::ParamType::Compact(q) => {

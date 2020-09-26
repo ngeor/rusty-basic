@@ -751,6 +751,36 @@ mod tests {
             ";
             assert_linter_err!(input, QError::DotClash, 10, 22);
         }
+
+        #[test]
+        fn test_dotted_function_param_clashes_variable_of_user_defined_type() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            FUNCTION Hi(A.B)
+            END FUNCTION
+
+            DIM A AS Card
+            "#;
+            assert_linter_err!(input, QError::DotClash, 6, 25);
+        }
+
+        #[test]
+        fn test_user_defined_function_param_clashes_dotted_variable() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+
+            FUNCTION Hi(A AS Card)
+            END FUNCTION
+
+            DIM A.B
+            "#;
+            assert_linter_err!(input, QError::DotClash, 9, 17);
+        }
     }
 
     mod sub_implementation {
@@ -1068,22 +1098,35 @@ mod tests {
             ";
             assert_linter_err!(input, QError::TypeMismatch, 2, 13);
         }
+
+        #[test]
+        fn test_for_loop_var_name_cannot_include_period_if_variable_of_user_defined_type_exists() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+            FOR A.B = 1 TO 5
+            NEXT
+            DIM A AS Card
+            "#;
+            assert_linter_err!(input, QError::DotClash, 5, 13);
+        }
     }
 
     mod expression {
         use super::*;
 
         macro_rules! assert_condition_err {
-            ($condition:expr, $col:expr) => {
+            ($condition:expr) => {
                 let program = format!(
-                    "
-                IF {} THEN
-                    PRINT \"hi\"
-                END IF
-                ",
+                    r#"
+                    IF {} THEN
+                        PRINT "hi"
+                    END IF
+                    "#,
                     $condition
                 );
-                assert_linter_err!(program, QError::TypeMismatch, 2, $col);
+                assert_linter_err!(program, QError::TypeMismatch);
             };
         }
 
@@ -1122,18 +1165,18 @@ mod tests {
 
         #[test]
         fn test_condition_type_mismatch() {
-            assert_condition_err!("9.1 < \"hello\"", 26);
-            assert_condition_err!("9.1# < \"hello\"", 27);
-            assert_condition_err!("\"hello\" < 3.14", 30);
-            assert_condition_err!("\"hello\" < 3", 30);
-            assert_condition_err!("\"hello\" < 3.14#", 30);
-            assert_condition_err!("9 < \"hello\"", 24);
-            assert_condition_err!("9.1 <= \"hello\"", 27);
-            assert_condition_err!("9.1# <= \"hello\"", 28);
-            assert_condition_err!("\"hello\" <= 3.14", 31);
-            assert_condition_err!("\"hello\" <= 3", 31);
-            assert_condition_err!("\"hello\" <= 3.14#", 31);
-            assert_condition_err!("9 <= \"hello\"", 25);
+            assert_condition_err!("9.1 < \"hello\"");
+            assert_condition_err!("9.1# < \"hello\"");
+            assert_condition_err!("\"hello\" < 3.14");
+            assert_condition_err!("\"hello\" < 3");
+            assert_condition_err!("\"hello\" < 3.14#");
+            assert_condition_err!("9 < \"hello\"");
+            assert_condition_err!("9.1 <= \"hello\"");
+            assert_condition_err!("9.1# <= \"hello\"");
+            assert_condition_err!("\"hello\" <= 3.14");
+            assert_condition_err!("\"hello\" <= 3");
+            assert_condition_err!("\"hello\" <= 3.14#");
+            assert_condition_err!("9 <= \"hello\"");
         }
 
         #[test]

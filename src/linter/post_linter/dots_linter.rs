@@ -157,8 +157,8 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
     }
 
     fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
-        // TODO verify variable name
-
+        // no need to test f.next_counter, as it is the same as variable_name if it exists
+        self.ensure_no_dots(&f.variable_name).with_err_no_pos()?;
         self.visit_expression(&f.lower_bound)?;
         self.visit_expression(&f.upper_bound)?;
         match &f.step {

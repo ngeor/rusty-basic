@@ -53,7 +53,8 @@ mod chr {
             .parameter_values()
             .next()
             .unwrap()
-            .into();
+            .try_into()
+            .with_err_no_pos()?;
         let mut s: String = String::new();
         s.push((i as u8) as char);
         interpreter.set_variable(BuiltInFunction::Chr, s);
@@ -82,8 +83,9 @@ mod close {
         let file_handles: Vec<FileHandle> = interpreter
             .context()
             .parameter_values()
-            .map(|v| v.into())
-            .collect();
+            .map(|v| v.try_into())
+            .collect::<Result<Vec<FileHandle>, QError>>()
+            .with_err_no_pos()?;
         for file_handle in file_handles {
             interpreter.file_manager.close(&file_handle);
         }
@@ -101,7 +103,8 @@ mod environ_fn {
             .parameter_values()
             .next()
             .unwrap()
-            .as_ref();
+            .try_into()
+            .with_err_no_pos()?;
         let result = interpreter.stdlib.get_env_var(env_var_name);
         interpreter.set_variable(BuiltInFunction::Environ, result);
         Ok(())
@@ -155,7 +158,8 @@ mod environ_sub {
             .parameter_values()
             .next()
             .unwrap()
-            .as_ref();
+            .try_into()
+            .with_err_no_pos()?;
         let parts: Vec<&str> = s.split("=").collect();
         if parts.len() != 2 {
             Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()
@@ -197,24 +201,20 @@ mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handle_number: i32 = interpreter
+        let file_handle: FileHandle = interpreter
             .context()
             .parameter_values()
             .next()
             .unwrap()
-            .into();
-        if file_handle_number >= 1 && file_handle_number <= 255 {
-            let file_handle = FileHandle::from(file_handle_number as u8);
-            let is_eof: bool = interpreter
-                .file_manager
-                .eof(&file_handle)
-                .map_err(|e| e.into())
-                .with_err_no_pos()?;
-            interpreter.set_variable(BuiltInFunction::Eof, is_eof);
-            Ok(())
-        } else {
-            Err(QError::BadFileNameOrNumber).with_err_no_pos()
-        }
+            .try_into()
+            .with_err_no_pos()?;
+        let is_eof: bool = interpreter
+            .file_manager
+            .eof(&file_handle)
+            .map_err(|e| e.into())
+            .with_err_no_pos()?;
+        interpreter.set_variable(BuiltInFunction::Eof, is_eof);
+        Ok(())
     }
 }
 
@@ -445,8 +445,16 @@ mod instr {
         let a: &Variant = interpreter.context().parameter_values().get(0).unwrap();
         let b: &Variant = interpreter.context().parameter_values().get(1).unwrap();
         let result: i32 = match interpreter.context().parameter_values().get(2) {
-            Some(c) => do_instr(a.into(), b.as_ref(), c.as_ref())?,
-            None => do_instr(1, a.as_ref(), b.as_ref())?,
+            Some(c) => do_instr(
+                a.try_into().with_err_no_pos()?,
+                b.try_into().with_err_no_pos()?,
+                c.try_into().with_err_no_pos()?,
+            )?,
+            None => do_instr(
+                1,
+                a.try_into().with_err_no_pos()?,
+                b.try_into().with_err_no_pos()?,
+            )?,
         };
         interpreter.set_variable(BuiltInFunction::InStr, result);
         Ok(())
@@ -522,7 +530,8 @@ mod kill {
             .parameter_values()
             .get(0)
             .unwrap()
-            .as_ref();
+            .try_into()
+            .with_err_no_pos()?;
         std::fs::remove_file(file_name)
             .map_err(|e| e.into())
             .with_err_no_pos()
@@ -834,18 +843,19 @@ mod mid {
             .parameter_values()
             .get(0)
             .unwrap()
-            .as_ref();
+            .try_into()
+            .with_err_no_pos()?;
         let start: i32 = interpreter
             .context()
             .parameter_values()
             .get(1)
             .unwrap()
-            .into();
-        let length: Option<i32> = interpreter
-            .context()
-            .parameter_values()
-            .get(2)
-            .map(|v| v.into());
+            .try_into()
+            .with_err_no_pos()?;
+        let length: Option<i32> = match interpreter.context().parameter_values().get(2) {
+            Some(v) => Some(v.try_into().with_err_no_pos()?),
+            None => None,
+        };
         let result: String = do_mid(s, start, length)?;
         interpreter.set_variable(BuiltInFunction::Mid, result);
         Ok(())
@@ -924,13 +934,15 @@ mod name {
             .parameter_values()
             .get(0)
             .unwrap()
-            .as_ref();
+            .try_into()
+            .with_err_no_pos()?;
         let new_file_name: &String = interpreter
             .context()
             .parameter_values()
             .get(1)
             .unwrap()
-            .as_ref();
+            .try_into()
+            .with_err_no_pos()?;
         std::fs::rename(old_file_name, new_file_name)
             .map_err(|e| e.into())
             .with_err_no_pos()
@@ -988,11 +1000,12 @@ mod open {
     // mode: APPEND, BINARY, INPUT, OUTPUT, RANDOM
     // access: READ, WRITE, READ WRITE
     // lock: SHARED, LOCK READ, LOCK WRITE, LOCK READ WRITE
-    // file-number a number in the range 1 through 255 (TODO enforce this)
+    // file-number a number in the range 1 through 255
     // rec-len%: For random access files, the record length (default is 128 bytes)
     //           For sequential files, the number of characters buffered (default is 512 bytes)
 
     use super::*;
+    use std::convert::TryFrom;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let parameters = interpreter.context_mut().take_parameters();
@@ -1001,9 +1014,9 @@ mod open {
             .map(|p| interpreter.context().evaluate_parameter(p))
             .collect();
         let file_name: String = values[0].to_string();
-        let file_mode: FileMode = i32::from(values[1]).into();
-        let file_access: FileAccess = i32::from(values[2]).into();
-        let file_handle: FileHandle = values[3].into();
+        let file_mode: FileMode = i32::try_from(values[1]).with_err_no_pos()?.into();
+        let file_access: FileAccess = i32::try_from(values[2]).with_err_no_pos()?.into();
+        let file_handle: FileHandle = values[3].try_into().with_err_no_pos()?;
         interpreter
             .file_manager
             .open(file_handle, &file_name, file_mode, file_access)
@@ -1013,6 +1026,8 @@ mod open {
 
     #[cfg(test)]
     mod tests {
+        use crate::assert_err;
+        use crate::common::QError;
         use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
         use crate::interpreter::test_utils::*;
         use crate::interpreter::DefaultStdlib;
@@ -1078,6 +1093,16 @@ mod open {
                 interpreter.stdlib.output,
                 vec!["Hello, world", "Hello, again"]
             );
+        }
+
+        #[test]
+        fn test_open_bad_file_number_runtime_error() {
+            let input = r#"
+            A = 256
+            OPEN "TEST.TXT" FOR INPUT AS A
+            CLOSE A
+            "#;
+            assert_err!(input, QError::BadFileNameOrNumber, 3, 13);
         }
     }
 }
@@ -1217,7 +1242,8 @@ mod val {
             .parameter_values()
             .next()
             .unwrap()
-            .as_ref();
+            .try_into()
+            .with_err_no_pos()?;
         let result: Variant = val(v).with_err_no_pos()?;
         interpreter.set_variable(BuiltInFunction::Val, result);
         Ok(())

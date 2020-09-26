@@ -140,17 +140,11 @@ macro_rules! assert_has_variable {
 
 #[macro_export]
 macro_rules! assert_err {
-    ($program:expr, $expected_msg:expr, $expected_row:expr, $expected_col:expr) => {
-        // for backwards compatibility with older tests
-        let expected_interpreter_err = if $expected_msg == "Overflow" {
-            crate::common::QError::Overflow
-        } else {
-            crate::common::QError::Other(format!("{}", $expected_msg))
-        };
+    ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             crate::interpreter::test_utils::interpret_err($program),
             crate::common::ErrorEnvelope::Pos(
-                expected_interpreter_err,
+                $expected_err,
                 crate::common::Location::new($expected_row, $expected_col)
             )
         );

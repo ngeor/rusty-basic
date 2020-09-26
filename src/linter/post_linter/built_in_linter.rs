@@ -66,7 +66,7 @@ mod close {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
-            require_file_handle(&args[0])
+            require_file_handle_or_integer(&args[0])
         }
     }
 }
@@ -405,5 +405,18 @@ fn require_file_handle(arg: &ExpressionNode) -> Result<(), QErrorNode> {
     match arg.as_ref() {
         Expression::FileHandle(_) => Ok(()),
         _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg),
+    }
+}
+
+fn require_file_handle_or_integer(arg: &ExpressionNode) -> Result<(), QErrorNode> {
+    match arg.as_ref() {
+        Expression::FileHandle(_) => Ok(()),
+        _ => {
+            if arg.can_cast_to(TypeQualifier::PercentInteger) {
+                Ok(())
+            } else {
+                Err(QError::ArgumentTypeMismatch).with_err_at(arg)
+            }
+        }
     }
 }

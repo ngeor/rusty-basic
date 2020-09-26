@@ -2,6 +2,7 @@ use super::fit::FitToType;
 use super::UserDefinedTypeValue;
 use crate::common::{FileHandle, QError};
 use crate::parser::TypeQualifier;
+use crate::variant::casting::QBNumberCast;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -379,12 +380,6 @@ impl From<String> for Variant {
     }
 }
 
-impl From<&String> for Variant {
-    fn from(s: &String) -> Self {
-        Variant::VString(s.to_owned())
-    }
-}
-
 impl From<&str> for Variant {
     fn from(s: &str) -> Self {
         Variant::VString(s.to_string())
@@ -547,32 +542,45 @@ impl TryFrom<&Variant> for TypeQualifier {
 }
 
 // ========================================================
-// Convert from Variant to standard types (will panic if it's not the correct type)
+// Convert from Variant to standard types (without casting)
 // ========================================================
 
-impl AsRef<String> for Variant {
-    fn as_ref(&self) -> &String {
-        match self {
-            Variant::VString(s) => s,
-            _ => panic!("Variant does not hold a string"),
+impl<'a> TryFrom<&'a Variant> for &'a String {
+    type Error = QError;
+
+    fn try_from(value: &'a Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VString(s) => Ok(s),
+            _ => Err(QError::TypeMismatch),
         }
     }
 }
 
-impl From<&Variant> for i32 {
-    fn from(v: &Variant) -> i32 {
-        match v {
-            Variant::VInteger(i) => *i,
-            _ => panic!("Variant does not hold an integer"),
+impl TryFrom<&Variant> for i32 {
+    type Error = QError;
+
+    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VInteger(i) => Ok(*i),
+            _ => Err(QError::TypeMismatch),
         }
     }
 }
 
-impl From<&Variant> for FileHandle {
-    fn from(v: &Variant) -> FileHandle {
+impl TryFrom<&Variant> for FileHandle {
+    type Error = QError;
+
+    fn try_from(v: &Variant) -> Result<Self, Self::Error> {
         match v {
-            Variant::VFileHandle(i) => *i,
-            _ => panic!("Variant does not hold an FileHandle"),
+            Variant::VFileHandle(file_handle) => Ok(*file_handle),
+            _ => {
+                let i: i32 = v.try_cast()?;
+                if i >= 1 && i <= 255 {
+                    Ok((i as u8).into())
+                } else {
+                    Err(QError::BadFileNameOrNumber)
+                }
+            }
         }
     }
 }

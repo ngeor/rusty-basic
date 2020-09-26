@@ -14,7 +14,7 @@ use crate::variant::Variant;
 // 3. casting from an integer to float will produce the floating point representation of the integer, rounded if necessary (rounding to nearest, ties to even)
 // 4. casting from an f64 to an f32 will produce the closest possible value (rounding to nearest, ties to even)
 
-trait QBNumberCast<T> {
+pub trait QBNumberCast<T> {
     fn try_cast(&self) -> Result<T, QError>;
 }
 
@@ -130,42 +130,65 @@ impl QBNumberCast<i32> for i64 {
     }
 }
 
+impl QBNumberCast<f32> for Variant {
+    fn try_cast(&self) -> Result<f32, QError> {
+        match self {
+            Self::VSingle(f) => Ok(*f),
+            Self::VDouble(f) => f.try_cast(),
+            Self::VInteger(f) => f.try_cast(),
+            Self::VLong(f) => f.try_cast(),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+impl QBNumberCast<f64> for Variant {
+    fn try_cast(&self) -> Result<f64, QError> {
+        match self {
+            Self::VSingle(f) => f.try_cast(),
+            Self::VDouble(f) => Ok(*f),
+            Self::VInteger(f) => f.try_cast(),
+            Self::VLong(f) => f.try_cast(),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+impl QBNumberCast<i32> for Variant {
+    fn try_cast(&self) -> Result<i32, QError> {
+        match self {
+            Self::VSingle(f) => f.try_cast(),
+            Self::VDouble(f) => f.try_cast(),
+            Self::VInteger(f) => Ok(*f),
+            Self::VLong(f) => f.try_cast(),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+impl QBNumberCast<i64> for Variant {
+    fn try_cast(&self) -> Result<i64, QError> {
+        match self {
+            Self::VSingle(f) => f.try_cast(),
+            Self::VDouble(f) => f.try_cast(),
+            Self::VInteger(f) => f.try_cast(),
+            Self::VLong(f) => Ok(*f),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
 impl Variant {
     pub fn cast(self, target_type: TypeQualifier) -> Result<Self, QError> {
-        match self {
-            Self::VSingle(f) => match target_type {
-                TypeQualifier::BangSingle => Ok(self),
-                TypeQualifier::HashDouble => Ok(Self::VDouble(f.try_cast()?)),
-                TypeQualifier::PercentInteger => Ok(Self::VInteger(f.try_cast()?)),
-                TypeQualifier::AmpersandLong => Ok(Self::VLong(f.try_cast()?)),
+        match target_type {
+            TypeQualifier::BangSingle => Ok(Self::VSingle((&self).try_cast()?)),
+            TypeQualifier::HashDouble => Ok(Self::VDouble((&self).try_cast()?)),
+            TypeQualifier::PercentInteger => Ok(Self::VInteger((&self).try_cast()?)),
+            TypeQualifier::AmpersandLong => Ok(Self::VLong((&self).try_cast()?)),
+            TypeQualifier::DollarString => match self {
+                Self::VString(_) => Ok(self),
                 _ => Err(QError::TypeMismatch),
             },
-            Self::VDouble(f) => match target_type {
-                TypeQualifier::BangSingle => Ok(Self::VSingle(f.try_cast()?)),
-                TypeQualifier::HashDouble => Ok(self),
-                TypeQualifier::PercentInteger => Ok(Self::VInteger(f.try_cast()?)),
-                TypeQualifier::AmpersandLong => Ok(Self::VLong(f.try_cast()?)),
-                _ => Err(QError::TypeMismatch),
-            },
-            Self::VString(_) => match target_type {
-                TypeQualifier::DollarString => Ok(self),
-                _ => Err(QError::TypeMismatch),
-            },
-            Self::VInteger(f) => match target_type {
-                TypeQualifier::BangSingle => Ok(Self::VSingle(f.try_cast()?)),
-                TypeQualifier::HashDouble => Ok(Self::VDouble(f.try_cast()?)),
-                TypeQualifier::PercentInteger => Ok(self),
-                TypeQualifier::AmpersandLong => Ok(Self::VLong(f.try_cast()?)),
-                _ => Err(QError::TypeMismatch),
-            },
-            Self::VLong(f) => match target_type {
-                TypeQualifier::BangSingle => Ok(Self::VSingle(f.try_cast()?)),
-                TypeQualifier::HashDouble => Ok(Self::VDouble(f.try_cast()?)),
-                TypeQualifier::PercentInteger => Ok(Self::VInteger(f.try_cast()?)),
-                TypeQualifier::AmpersandLong => Ok(self),
-                _ => Err(QError::TypeMismatch),
-            },
-            Self::VFileHandle(_) | Self::VUserDefined(_) => Err(QError::TypeMismatch),
         }
     }
 }

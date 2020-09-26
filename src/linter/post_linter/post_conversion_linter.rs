@@ -2,6 +2,7 @@ use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::linter::types::*;
 use crate::parser::QualifiedNameNode;
+use crate::variant::Variant;
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.
@@ -68,7 +69,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_dim(&self, _d: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
+    fn visit_dim(&self, _d: &DimNameNode) -> Result<(), QErrorNode> {
         Ok(())
     }
 
@@ -100,11 +101,7 @@ pub trait PostConversionLinter {
         self.visit_expressions(args)
     }
 
-    fn visit_assignment(
-        &self,
-        _name: &ResolvedDeclaredName,
-        v: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
+    fn visit_assignment(&self, _name: &DimName, v: &ExpressionNode) -> Result<(), QErrorNode> {
         self.visit_expression(v)
     }
 
@@ -158,12 +155,8 @@ pub trait PostConversionLinter {
         self.visit_statement_nodes(&c.statements)
     }
 
-    fn visit_const(
-        &self,
-        _left: &QualifiedNameNode,
-        right: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
-        self.visit_expression(right)
+    fn visit_const(&self, _left: &QualifiedNameNode, _right: &Variant) -> Result<(), QErrorNode> {
+        Ok(())
     }
 
     fn visit_expression(&self, _e: &ExpressionNode) -> Result<(), QErrorNode> {

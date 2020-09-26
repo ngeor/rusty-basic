@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::declared_name;
 use crate::parser::name;
+use crate::parser::param_name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then_none, map};
 use crate::parser::pc::*;
@@ -40,8 +40,7 @@ fn function_declaration_token<T: BufRead + 'static>(
 }
 
 pub fn function_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (NameNode, DeclaredNameNodes), QError>>
-{
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (NameNode, ParamNameNodes), QError>> {
     map(
         seq5(
             keyword(Keyword::Function),
@@ -67,9 +66,9 @@ fn sub_declaration_token<T: BufRead + 'static>(
     })
 }
 
-pub fn sub_declaration<T: BufRead + 'static>() -> Box<
-    dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, DeclaredNameNodes), QError>,
-> {
+pub fn sub_declaration<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, ParamNameNodes), QError>>
+{
     map(
         seq5(
             keyword(Keyword::Sub),
@@ -89,20 +88,18 @@ pub fn sub_declaration<T: BufRead + 'static>() -> Box<
 }
 
 fn opt_declaration_parameters<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DeclaredNameNodes, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNameNodes, QError>> {
     and_then_none(
-        in_parenthesis(csv_zero_or_more(declared_name::declared_name_node())),
+        in_parenthesis(csv_zero_or_more(param_name::param_name_node())),
         || Ok(vec![]),
     )
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{
-        DeclaredName, Expression, Name, Operator, Statement, TopLevelToken, TypeQualifier,
-    };
+    use crate::parser::test_utils::*;
+    use crate::parser::{Name, ParamName, ParamType, Statement, TopLevelToken, TypeQualifier};
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
@@ -114,7 +111,7 @@ mod tests {
                         $expected_params.len(),
                         "Parameter count mismatch"
                     );
-                    let parameters_without_location: Vec<DeclaredName> =
+                    let parameters_without_location: Vec<ParamName> =
                         parameters.into_iter().map(|x| x.strip_location()).collect();
                     for i in 0..parameters_without_location.len() {
                         assert_eq!(
@@ -134,7 +131,10 @@ mod tests {
         assert_function_declaration!(
             "DECLARE FUNCTION Fib! (N!)",
             Name::from("Fib!"),
-            vec![DeclaredName::compact("N", TypeQualifier::BangSingle)]
+            vec![ParamName::new(
+                "N".into(),
+                ParamType::Compact(TypeQualifier::BangSingle)
+            )]
         );
     }
 
@@ -143,7 +143,10 @@ mod tests {
         assert_function_declaration!(
             "declare function echo$(msg$)",
             Name::from("echo$"),
-            vec![DeclaredName::compact("msg", TypeQualifier::DollarString)]
+            vec![ParamName::new(
+                "msg".into(),
+                ParamType::Compact(TypeQualifier::DollarString)
+            )]
         );
     }
 
@@ -160,14 +163,14 @@ mod tests {
             vec![
                 TopLevelToken::FunctionDeclaration(
                     "Echo".as_name(2, 26),
-                    vec![DeclaredName::bare("X").at_rc(2, 31)]
+                    vec![ParamName::new("X".into(), ParamType::Bare).at_rc(2, 31)]
                 )
                 .at_rc(2, 9),
                 TopLevelToken::Statement(Statement::Comment(" Echoes stuff back".to_string()))
                     .at_rc(2, 34),
                 TopLevelToken::FunctionImplementation(
                     "Echo".as_name(3, 18),
-                    vec![DeclaredName::bare("X").at_rc(3, 23)],
+                    vec![ParamName::new("X".into(), ParamType::Bare).at_rc(3, 23)],
                     vec![Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)]
                 )
                 .at_rc(3, 9),
@@ -178,64 +181,32 @@ mod tests {
     }
 
     #[test]
-    fn test_function_implementation() {
-        let input = "
-        FUNCTION Add(A, B)
-            Add = A + B
-        END FUNCTION
-        ";
-        let result = parse(input).demand_single();
+    fn test_string_fixed_length_function_param_not_allowed() {
+        let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
         assert_eq!(
-            result,
-            TopLevelToken::FunctionImplementation(
-                "Add".as_name(2, 18),
-                vec![
-                    DeclaredName::bare("A").at_rc(2, 22),
-                    DeclaredName::bare("B").at_rc(2, 25)
-                ],
-                vec![Statement::Assignment(
-                    "Add".into(),
-                    Expression::BinaryExpression(
-                        Operator::Plus,
-                        Box::new("A".as_var_expr(3, 19)),
-                        Box::new("B".as_var_expr(3, 23))
-                    )
-                    .at(Location::new(3, 21))
-                )
-                .at_rc(3, 13)],
-            )
-            .at_rc(2, 9)
+            parse_err(input),
+            QError::syntax_error("Expected: closing parenthesis")
         );
     }
 
     #[test]
-    fn test_function_implementation_lower_case() {
-        let input = "
-        function add(a, b)
-            add = a + b
-        end function
-        ";
-        let result = parse(input).demand_single();
+    fn test_string_fixed_length_sub_param_not_allowed() {
+        let input = "DECLARE SUB Echo(X AS STRING * 5)";
         assert_eq!(
-            result,
-            TopLevelToken::FunctionImplementation(
-                "add".as_name(2, 18),
-                vec![
-                    DeclaredName::bare("a").at_rc(2, 22),
-                    DeclaredName::bare("b").at_rc(2, 25)
-                ],
-                vec![Statement::Assignment(
-                    "add".into(),
-                    Expression::BinaryExpression(
-                        Operator::Plus,
-                        Box::new("a".as_var_expr(3, 19)),
-                        Box::new("b".as_var_expr(3, 23))
-                    )
-                    .at_rc(3, 21)
-                )
-                .at_rc(3, 13)],
-            )
-            .at_rc(2, 9)
+            parse_err(input),
+            QError::syntax_error("Expected: closing parenthesis")
         );
+    }
+
+    #[test]
+    fn test_user_defined_function_param_cannot_include_period() {
+        let input = "DECLARE FUNCTION Echo(X.Y AS Card)";
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+    }
+
+    #[test]
+    fn test_user_defined_sub_param_cannot_include_period() {
+        let input = "DECLARE SUB Echo(X.Y AS Card)";
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
     }
 }

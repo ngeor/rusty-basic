@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
 
-type ParamMap = HashMap<CaseInsensitiveString, Vec<ResolvedParamName>>;
+type ParamMap = HashMap<CaseInsensitiveString, Vec<ParamName>>;
 
 fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
     let mut functions: ParamMap = HashMap::new();
@@ -209,7 +209,7 @@ impl InstructionGenerator {
 
     pub fn generate_assignment_instructions(
         &mut self,
-        l: ResolvedDeclaredName,
+        l: DimName,
         r: ExpressionNode,
         pos: Location,
     ) {
@@ -224,7 +224,7 @@ mod tests {
     use crate::common::{AtRowCol, StripLocation};
     use crate::instruction_generator::test_utils::*;
     use crate::instruction_generator::Instruction;
-    use crate::linter::ResolvedDeclaredName;
+    use crate::linter::DimName;
     use crate::parser::TypeQualifier;
     use crate::variant::Variant;
 
@@ -235,7 +235,7 @@ mod tests {
             [
                 Instruction::Load(Variant::VInteger(1)).at_rc(1, 5),
                 Instruction::Cast(TypeQualifier::BangSingle).at_rc(1, 5),
-                Instruction::Store(ResolvedDeclaredName::parse("X!")).at_rc(1, 1),
+                Instruction::Store(DimName::parse("X!")).at_rc(1, 1),
                 Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
             ]
         );
@@ -247,7 +247,7 @@ mod tests {
             generate_instructions_str("X% = 1").strip_location(),
             [
                 Instruction::Load(Variant::VInteger(1)),
-                Instruction::Store(ResolvedDeclaredName::parse("X%")),
+                Instruction::Store(DimName::parse("X%")),
                 Instruction::Halt
             ]
         );
@@ -266,7 +266,7 @@ mod tests {
                 Instruction::Plus,
                 Instruction::PopRegisters,
                 Instruction::Cast(TypeQualifier::PercentInteger),
-                Instruction::Store(ResolvedDeclaredName::parse("X%")),
+                Instruction::Store(DimName::parse("X%")),
                 Instruction::Halt
             ]
         );

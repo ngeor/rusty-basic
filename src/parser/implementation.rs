@@ -68,3 +68,111 @@ pub fn sub_implementation<T: BufRead + 'static>(
         |((n, p), body, _, _, _)| TopLevelToken::SubImplementation(n, p, body),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::test_utils::*;
+
+    #[test]
+    fn test_function_implementation() {
+        let input = "
+        FUNCTION Add(A, B)
+            Add = A + B
+        END FUNCTION
+        ";
+        let result = parse(input).demand_single();
+        assert_eq!(
+            result,
+            TopLevelToken::FunctionImplementation(
+                "Add".as_name(2, 18),
+                vec![
+                    ParamName::new("A".into(), ParamType::Bare).at_rc(2, 22),
+                    ParamName::new("B".into(), ParamType::Bare).at_rc(2, 25)
+                ],
+                vec![Statement::Assignment(
+                    "Add".into(),
+                    Expression::BinaryExpression(
+                        Operator::Plus,
+                        Box::new("A".as_var_expr(3, 19)),
+                        Box::new("B".as_var_expr(3, 23))
+                    )
+                    .at(Location::new(3, 21))
+                )
+                .at_rc(3, 13)],
+            )
+            .at_rc(2, 9)
+        );
+    }
+
+    #[test]
+    fn test_function_implementation_lower_case() {
+        let input = "
+        function add(a, b)
+            add = a + b
+        end function
+        ";
+        let result = parse(input).demand_single();
+        assert_eq!(
+            result,
+            TopLevelToken::FunctionImplementation(
+                "add".as_name(2, 18),
+                vec![
+                    ParamName::new("a".into(), ParamType::Bare).at_rc(2, 22),
+                    ParamName::new("b".into(), ParamType::Bare).at_rc(2, 25)
+                ],
+                vec![Statement::Assignment(
+                    "add".into(),
+                    Expression::BinaryExpression(
+                        Operator::Plus,
+                        Box::new("a".as_var_expr(3, 19)),
+                        Box::new("b".as_var_expr(3, 23))
+                    )
+                    .at_rc(3, 21)
+                )
+                .at_rc(3, 13)],
+            )
+            .at_rc(2, 9)
+        );
+    }
+
+    #[test]
+    fn test_string_fixed_length_function_param_not_allowed() {
+        let input = "
+        FUNCTION Echo(X AS STRING * 5)
+        END FUNCTION";
+        assert_eq!(
+            parse_err(input),
+            QError::syntax_error("Expected: closing parenthesis")
+        );
+    }
+
+    #[test]
+    fn test_string_fixed_length_sub_param_not_allowed() {
+        let input = "
+        SUB Echo(X AS STRING * 5)
+        END SUB";
+        assert_eq!(
+            parse_err(input),
+            QError::syntax_error("Expected: closing parenthesis")
+        );
+    }
+
+    #[test]
+    fn test_user_defined_function_param_cannot_include_period() {
+        let input = "
+        FUNCTION Echo(X.Y AS Card)
+        END FUNCTION
+        ";
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+    }
+
+    #[test]
+    fn test_user_defined_sub_param_cannot_include_period() {
+        let input = "
+        SUB Echo(X.Y AS Card)
+        END SUB
+        ";
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+    }
+}

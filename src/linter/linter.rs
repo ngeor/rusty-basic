@@ -86,7 +86,7 @@ mod tests {
             assert_eq!(
                 linter_ok("X% = 1 + 2.1"),
                 vec![TopLevelToken::Statement(Statement::Assignment(
-                    ResolvedDeclaredName::parse("X%"),
+                    DimName::parse("X%"),
                     Expression::BinaryExpression(
                         Operator::Plus,
                         Box::new(Expression::IntegerLiteral(1).at_rc(1, 6),),
@@ -215,18 +215,16 @@ mod tests {
             assert_eq!(
                 linter_ok(program),
                 vec![
-                    TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName::parse("A!").at_rc(2, 17)
-                    ))
-                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").at_rc(2, 17)))
+                        .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::parse("A!"),
+                        DimName::parse("A!"),
                         Expression::IntegerLiteral(42).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::parse("A!")).at_rc(4, 19)]
+                        vec![Expression::Variable(DimName::parse("A!")).at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
                 ]
@@ -243,18 +241,16 @@ mod tests {
             assert_eq!(
                 linter_ok(program),
                 vec![
-                    TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName::parse("A$").at_rc(2, 17)
-                    ))
-                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 17)))
+                        .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::parse("A$"),
+                        DimName::parse("A$"),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::parse("A$")).at_rc(4, 19)]
+                        vec![Expression::Variable(DimName::parse("A$")).at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
                 ]
@@ -271,18 +267,16 @@ mod tests {
             assert_eq!(
                 linter_ok(program),
                 vec![
-                    TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName::parse("A$").at_rc(2, 17)
-                    ))
-                    .at_rc(2, 13),
+                    TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 17)))
+                        .at_rc(2, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::parse("A$"),
+                        DimName::parse("A$"),
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::parse("A$")).at_rc(4, 19)]
+                        vec![Expression::Variable(DimName::parse("A$")).at_rc(4, 19)]
                     ))
                     .at_rc(4, 13)
                 ]
@@ -305,17 +299,16 @@ mod tests {
                 program,
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
+                        DimName::user_defined("A", "Card").at_rc(6, 17)
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName::user_defined("B", "Card").at_rc(7, 17)
+                        DimName::user_defined("B", "Card").at_rc(7, 17)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::user_defined("A", "Card"),
-                        Expression::Variable(ResolvedDeclaredName::user_defined("B", "Card"))
-                            .at_rc(8, 17)
+                        DimName::user_defined("A", "Card"),
+                        Expression::Variable(DimName::user_defined("B", "Card")).at_rc(8, 17)
                     ))
                     .at_rc(8, 13)
                 ]
@@ -331,7 +324,7 @@ mod tests {
             );
             let mut m: HashMap<CaseInsensitiveString, ElementType> = HashMap::new();
             m.insert("Value".into(), ElementType::Integer);
-            m.insert("Suit".into(), ElementType::String(9));
+            m.insert("Suit".into(), ElementType::FixedLengthString(9));
             assert_eq!(
                 *user_defined_types.get(&"Card".into()).unwrap(),
                 UserDefinedType::new(m)
@@ -353,34 +346,34 @@ mod tests {
                 linter_ok(input),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
+                        DimName::user_defined("A", "Card").at_rc(6, 17)
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::Many(
-                            UserDefinedName {
-                                name: "A".into(),
-                                type_name: "Card".into()
-                            },
-                            Members::Leaf {
-                                name: "Value".into(),
-                                element_type: ElementType::Integer
-                            }
+                        DimName::new(
+                            "A".into(),
+                            DimType::Many(
+                                "Card".into(),
+                                Members::Leaf {
+                                    name: "Value".into(),
+                                    element_type: ElementType::Integer
+                                }
+                            )
                         ),
                         Expression::IntegerLiteral(42).at_rc(7, 23)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::Many(
-                            UserDefinedName {
-                                name: "A".into(),
-                                type_name: "Card".into()
-                            },
-                            Members::Leaf {
-                                name: "Value".into(),
-                                element_type: ElementType::Integer
-                            }
+                        vec![Expression::Variable(DimName::new(
+                            "A".into(),
+                            DimType::Many(
+                                "Card".into(),
+                                Members::Leaf {
+                                    name: "Value".into(),
+                                    element_type: ElementType::Integer
+                                }
+                            )
                         ))
                         .at_rc(8, 19)]
                     ))
@@ -404,40 +397,52 @@ mod tests {
                 linter_ok(input),
                 vec![
                     TopLevelToken::Statement(Statement::Dim(
-                        ResolvedDeclaredName::user_defined("A", "Card").at_rc(6, 17)
+                        DimName::user_defined("A", "Card").at_rc(6, 17)
                     ))
                     .at_rc(6, 13),
                     TopLevelToken::Statement(Statement::Assignment(
-                        ResolvedDeclaredName::Many(
-                            UserDefinedName {
-                                name: "A".into(),
-                                type_name: "Card".into()
-                            },
-                            Members::Leaf {
-                                name: "Suit".into(),
-                                element_type: ElementType::String(9)
-                            }
+                        DimName::new(
+                            "A".into(),
+                            DimType::Many(
+                                "Card".into(),
+                                Members::Leaf {
+                                    name: "Suit".into(),
+                                    element_type: ElementType::FixedLengthString(9)
+                                }
+                            )
                         ),
                         Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
                     ))
                     .at_rc(7, 13),
                     TopLevelToken::Statement(Statement::BuiltInSubCall(
                         BuiltInSub::Print,
-                        vec![Expression::Variable(ResolvedDeclaredName::Many(
-                            UserDefinedName {
-                                name: "A".into(),
-                                type_name: "Card".into()
-                            },
-                            Members::Leaf {
-                                name: "Suit".into(),
-                                element_type: ElementType::String(9)
-                            }
+                        vec![Expression::Variable(DimName::new(
+                            "A".into(),
+                            DimType::Many(
+                                "Card".into(),
+                                Members::Leaf {
+                                    name: "Suit".into(),
+                                    element_type: ElementType::FixedLengthString(9)
+                                }
+                            )
                         ))
                         .at_rc(8, 19)]
                     ))
                     .at_rc(8, 13)
                 ]
             );
+        }
+
+        #[test]
+        fn element_type_qualified_wrong_type() {
+            let program = r#"
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+            DIM c AS Card
+            c.Value! = 3
+            "#;
+            assert_linter_err!(program, QError::TypeMismatch, 6, 13);
         }
     }
 
@@ -852,20 +857,6 @@ mod tests {
         }
 
         #[test]
-        fn test_sub_user_defined_param_cannot_contain_dot() {
-            let input = "
-            TYPE Card
-                Value AS INTEGER
-            END TYPE
-
-            SUB Test(A.B AS Card)
-            END SUB
-            ";
-            // QBasic actually reports the error on the dot
-            assert_linter_err!(input, QError::IdentifierCannotIncludePeriod, 6, 22);
-        }
-
-        #[test]
         fn test_sub_dotted_name_clashes_variable_of_user_defined_type() {
             let input = "
             TYPE Card
@@ -1263,19 +1254,6 @@ mod tests {
         }
 
         #[test]
-        fn user_defined_variable_name_cannot_include_period() {
-            let input = "
-            TYPE Card
-                Suit AS STRING * 9
-                Value AS INTEGER
-            END TYPE
-
-            DIM A.B AS Card
-            ";
-            assert_linter_err!(input, QError::IdentifierCannotIncludePeriod, 7, 17);
-        }
-
-        #[test]
         fn cannot_define_variable_with_dot_if_clashes_with_user_defined_type() {
             let input = "
             TYPE Card
@@ -1287,12 +1265,7 @@ mod tests {
             DIM C.Oops AS STRING
             ";
             // QBasic actually throws "Expected: , or end-of-statement" at the period position
-            assert_linter_err!(
-                input,
-                QError::syntax_error("Expected: , or end-of-statement"),
-                8,
-                17
-            );
+            assert_linter_err!(input, QError::DotClash, 8, 17);
         }
 
         #[test]
@@ -1307,12 +1280,7 @@ mod tests {
             DIM C AS Card
             ";
             // QBasic actually throws "Expected: , or end-of-statement" at the period position
-            assert_linter_err!(
-                input,
-                QError::syntax_error("Expected: , or end-of-statement"),
-                8,
-                17
-            );
+            assert_linter_err!(input, QError::DotClash, 7, 17);
         }
 
         #[test]

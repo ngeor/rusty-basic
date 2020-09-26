@@ -1,16 +1,16 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{ResolvedDeclaredName, ResolvedParamName};
+use crate::linter::{DimName, ParamName};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
 pub enum Instruction {
-    Dim(ResolvedDeclaredName),
+    Dim(DimName),
     /// Loads a value into register A
     Load(Variant),
     /// Stores a value from register A
-    Store(ResolvedDeclaredName),
+    Store(DimName),
     /// Stores a value from register A into a constant
     StoreConst(QualifiedName),
     CopyAToB,
@@ -40,7 +40,7 @@ pub enum Instruction {
     Label(CaseInsensitiveString),
     UnresolvedJump(CaseInsensitiveString),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
-    CopyVarToA(ResolvedDeclaredName),
+    CopyVarToA(DimName),
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
     Halt,
@@ -63,10 +63,10 @@ pub enum Instruction {
     /// PushUnnamedRef and PushUnnamedVal.
     BeginCollectUnnamedArguments,
 
-    PushNamedRef(ResolvedParamName, ResolvedDeclaredName),
-    PushNamedVal(ResolvedParamName),
+    PushNamedRef(ParamName, DimName),
+    PushNamedVal(ParamName),
 
-    PushUnnamedRef(ResolvedDeclaredName),
+    PushUnnamedRef(DimName),
 
     /// Pushes the contents of register A at the end of the unnamed stack
     PushUnnamedVal,

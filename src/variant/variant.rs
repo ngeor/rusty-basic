@@ -509,8 +509,8 @@ fn or_bits(a: [bool; INT_BITS], b: [bool; INT_BITS]) -> [bool; INT_BITS] {
 // Creating the default variant
 // ========================================================
 
-impl From<TypeQualifier> for Variant {
-    fn from(type_qualifier: TypeQualifier) -> Self {
+impl From<&TypeQualifier> for Variant {
+    fn from(type_qualifier: &TypeQualifier) -> Self {
         match type_qualifier {
             TypeQualifier::BangSingle => Self::VSingle(0.0),
             TypeQualifier::HashDouble => Self::VDouble(0.0),
@@ -521,8 +521,33 @@ impl From<TypeQualifier> for Variant {
     }
 }
 
+impl From<TypeQualifier> for Variant {
+    fn from(type_qualifier: TypeQualifier) -> Self {
+        Variant::from(&type_qualifier)
+    }
+}
+
 // ========================================================
-// Convert from Variant to standard types
+// Try to get a type qualifier
+// ========================================================
+
+impl TryFrom<&Variant> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VSingle(_) => Ok(TypeQualifier::BangSingle),
+            Variant::VDouble(_) => Ok(TypeQualifier::HashDouble),
+            Variant::VString(_) => Ok(TypeQualifier::DollarString),
+            Variant::VInteger(_) => Ok(TypeQualifier::PercentInteger),
+            Variant::VLong(_) => Ok(TypeQualifier::AmpersandLong),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+// ========================================================
+// Convert from Variant to standard types (will panic if it's not the correct type)
 // ========================================================
 
 impl AsRef<String> for Variant {

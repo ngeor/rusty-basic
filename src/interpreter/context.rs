@@ -1,8 +1,11 @@
 use crate::common::CaseInsensitiveString;
-use crate::linter::{ResolvedDeclaredName, ResolvedParamName, UserDefinedTypes};
-use crate::parser::{HasQualifier, QualifiedName};
+use crate::interpreter::argument::Argument;
+use crate::interpreter::arguments::Arguments;
+use crate::interpreter::arguments_stack::ArgumentsStack;
+use crate::linter::{DimName, DimType, ParamName, ParamType, UserDefinedTypes};
+use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 /*
@@ -47,158 +50,6 @@ Assign to Y in sub context
 Call Hello
 
 */
-
-// ========================================================
-// Argument
-// ========================================================
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Argument {
-    ByVal(Variant),
-    ByRef(ResolvedDeclaredName),
-}
-
-impl From<Variant> for Argument {
-    fn from(v: Variant) -> Self {
-        Self::ByVal(v)
-    }
-}
-
-impl From<ResolvedDeclaredName> for Argument {
-    fn from(n: ResolvedDeclaredName) -> Self {
-        Self::ByRef(n)
-    }
-}
-
-// ========================================================
-// Arguments
-// ========================================================
-
-pub enum Arguments {
-    Named(HashMap<ResolvedParamName, Argument>),
-    Unnamed(VecDeque<Argument>),
-}
-
-impl Arguments {
-    pub fn named() -> Self {
-        Self::Named(HashMap::new())
-    }
-
-    pub fn unnamed() -> Self {
-        Self::Unnamed(VecDeque::new())
-    }
-
-    pub fn get(&self, name: &ResolvedParamName) -> Option<&Argument> {
-        match self {
-            Self::Named(map) => map.get(name),
-            Self::Unnamed(_) => None,
-        }
-    }
-
-    pub fn get_mut(&mut self, name: &ResolvedParamName) -> Option<&mut Argument> {
-        match self {
-            Self::Named(map) => map.get_mut(name),
-            Self::Unnamed(_) => None,
-        }
-    }
-
-    pub fn push_unnamed<T>(&mut self, arg: T)
-    where
-        Argument: From<T>,
-    {
-        match self {
-            Self::Named(_) => panic!("Cannot push unnamed in Arguments::Named"),
-            Self::Unnamed(v) => v.push_back(arg.into()),
-        }
-    }
-
-    pub fn push_named<T>(&mut self, parameter_name: ResolvedParamName, arg: T)
-    where
-        Argument: From<T>,
-    {
-        match self {
-            Self::Named(m) => match m.insert(parameter_name, arg.into()) {
-                Some(_) => panic!("Duplicate key!"),
-                None => {}
-            },
-            Self::Unnamed(_) => panic!("Cannot push named in Arguments::Unnamed"),
-        }
-    }
-
-    #[deprecated]
-    pub fn pop_front(&mut self) -> Option<Argument> {
-        match self {
-            Self::Named(_) => None,
-            Self::Unnamed(v) => v.pop_front(),
-        }
-    }
-
-    pub fn iter(&self) -> std::collections::vec_deque::Iter<Argument> {
-        match self {
-            Self::Named(_) => panic!("Not supported for Arguments::Named"),
-            Self::Unnamed(v) => v.iter(),
-        }
-    }
-
-    pub fn get_at(&self, index: usize) -> Option<&Argument> {
-        match self {
-            Self::Named(_) => panic!("Not supported for Arguments::Named"),
-            Self::Unnamed(v) => v.get(index),
-        }
-    }
-}
-
-// ========================================================
-// ArgumentsStack
-// ========================================================
-
-pub struct ArgumentsStack {
-    stack: VecDeque<Arguments>,
-}
-
-impl ArgumentsStack {
-    pub fn new() -> Self {
-        Self {
-            stack: VecDeque::new(),
-        }
-    }
-
-    pub fn begin_collect_named_arguments(&mut self) {
-        self.stack.push_back(Arguments::named());
-    }
-
-    pub fn begin_collect_unnamed_arguments(&mut self) {
-        self.stack.push_back(Arguments::unnamed());
-    }
-
-    pub fn pop(&mut self) -> Arguments {
-        self.stack
-            .pop_back()
-            .expect("Stack underflow collecting arguments!")
-    }
-
-    pub fn push_unnamed<T>(&mut self, arg: T)
-    where
-        Argument: From<T>,
-    {
-        self.demand().push_unnamed(arg);
-    }
-
-    pub fn push_named<T>(&mut self, parameter_name: ResolvedParamName, arg: T)
-    where
-        Argument: From<T>,
-    {
-        self.demand().push_named(parameter_name, arg);
-    }
-
-    fn demand(&mut self) -> &mut Arguments {
-        self.stack.back_mut().expect("No arguments pushed!")
-    }
-}
-
-// ========================================================
-// Context
-// ========================================================
 
 pub struct Context {
     parent: Option<Box<Context>>,
@@ -247,18 +98,17 @@ impl Context {
         }
     }
 
-    pub fn set_constant(&mut self, name: QualifiedName, value: Variant) {
-        self.constants.insert(name, value);
+    pub fn set_constant(&mut self, qualified_name: QualifiedName, value: Variant) {
+        self.constants.insert(qualified_name, value);
     }
 
-    pub fn set_variable(&mut self, name: ResolvedDeclaredName, value: Variant) {
+    pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
         // set a parameter or set a variable?
-        match name {
-            ResolvedDeclaredName::BuiltIn(qualified_name) => {
-                match self
-                    .parameters
-                    .get_mut(&ResolvedParamName::BuiltIn(qualified_name.clone()))
-                {
+        let (bare_name, dim_type) = dim_name.into_inner();
+        match dim_type {
+            DimType::BuiltIn(qualifier) => {
+                let p = ParamName::new(bare_name.clone(), ParamType::BuiltIn(qualifier));
+                match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
                             let p = name_in_parent.clone();
@@ -272,15 +122,23 @@ impl Context {
                         }
                     },
                     None => {
-                        self.variables.insert(qualified_name, value);
+                        self.variables
+                            .insert(QualifiedName::new(bare_name, qualifier), value);
                     }
                 }
             }
-            ResolvedDeclaredName::UserDefined(user_defined_name) => {
-                match self
-                    .parameters
-                    .get_mut(&ResolvedParamName::UserDefined(user_defined_name.clone()))
-                {
+            DimType::FixedLengthString(_len) => {
+                self.variables.insert(
+                    QualifiedName::new(bare_name, TypeQualifier::DollarString),
+                    value,
+                );
+            }
+            DimType::UserDefined(user_defined_type) => {
+                let p = ParamName::new(
+                    bare_name.clone(),
+                    ParamType::UserDefined(user_defined_type.clone()),
+                );
+                match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
                             let p = name_in_parent.clone();
@@ -294,16 +152,16 @@ impl Context {
                         }
                     },
                     None => {
-                        self.user_defined_type_variables
-                            .insert(user_defined_name.name, value);
+                        self.user_defined_type_variables.insert(bare_name, value);
                     }
                 }
             }
-            ResolvedDeclaredName::Many(user_defined_name, members) => {
-                match self
-                    .parameters
-                    .get_mut(&ResolvedParamName::UserDefined(user_defined_name.clone()))
-                {
+            DimType::Many(user_defined_type, members) => {
+                let p = ParamName::new(
+                    bare_name.clone(),
+                    ParamType::UserDefined(user_defined_type.clone()),
+                );
+                match self.parameters.get_mut(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
                             let p = name_in_parent.clone().append(members);
@@ -316,35 +174,28 @@ impl Context {
                             *arg = Argument::ByVal(value);
                         }
                     },
-                    None => {
-                        match self
-                            .user_defined_type_variables
-                            .get_mut(&user_defined_name.name)
-                        {
-                            Some(v) => match v {
-                                Variant::VUserDefined(box_user_defined_type_value) => {
-                                    let name_path = members.name_path();
-                                    box_user_defined_type_value.insert_path(&name_path, value);
-                                }
-                                _ => unimplemented!(),
-                            },
-                            None => unimplemented!(),
-                        }
-                    }
+                    None => match self.user_defined_type_variables.get_mut(&bare_name) {
+                        Some(v) => match v {
+                            Variant::VUserDefined(box_user_defined_type_value) => {
+                                let name_path = members.name_path();
+                                box_user_defined_type_value.insert_path(&name_path, value);
+                            }
+                            _ => unimplemented!(),
+                        },
+                        None => unimplemented!(),
+                    },
                 }
             }
         }
     }
 
-    pub fn get_r_value(&self, name: &ResolvedDeclaredName) -> Option<Variant> {
+    pub fn get_r_value(&self, name: &DimName) -> Option<Variant> {
         match self.try_get_r_value(name) {
             Some(v) => Some(v.clone()),
             None => {
                 // create it
-                match name {
-                    ResolvedDeclaredName::BuiltIn(qualified_name) => {
-                        Some(qualified_name.qualifier().into())
-                    }
+                match name.dim_type() {
+                    DimType::BuiltIn(qualifier) => Some(qualifier.into()),
                     _ => unimplemented!(),
                 }
             }
@@ -398,19 +249,19 @@ impl Context {
     // private
     // ========================================================
 
-    fn try_get_r_value(&self, name: &ResolvedDeclaredName) -> Option<&Variant> {
+    fn try_get_r_value(&self, name: &DimName) -> Option<&Variant> {
         // get a constant or a local thing or a parent constant
-        match name {
-            ResolvedDeclaredName::BuiltIn(qualified_name) => {
+        let bare_name: &BareName = name.as_ref();
+        match name.dim_type() {
+            DimType::BuiltIn(qualifier) => {
                 // is it a constant
+                let qualified_name = &QualifiedName::new(bare_name.clone(), *qualifier);
                 match self.constants.get(qualified_name) {
                     Some(v) => Some(v),
                     None => {
                         // is it a parameter
-                        match self
-                            .parameters
-                            .get(&ResolvedParamName::BuiltIn(qualified_name.clone()))
-                        {
+                        let p = ParamName::new(bare_name.clone(), ParamType::BuiltIn(*qualifier));
+                        match self.parameters.get(&p) {
                             Some(arg) => match arg {
                                 Argument::ByRef(name_in_parent) => self
                                     .parent
@@ -433,12 +284,18 @@ impl Context {
                     }
                 }
             }
-            ResolvedDeclaredName::UserDefined(user_defined_name) => {
+            DimType::FixedLengthString(_len) => {
+                let qualified_name =
+                    QualifiedName::new(bare_name.clone(), TypeQualifier::DollarString);
+                self.variables.get(&qualified_name)
+            }
+            DimType::UserDefined(user_defined_type) => {
                 // is it a parameter
-                match self
-                    .parameters
-                    .get(&ResolvedParamName::UserDefined(user_defined_name.clone()))
-                {
+                let p = ParamName::new(
+                    bare_name.clone(),
+                    ParamType::UserDefined(user_defined_type.clone()),
+                );
+                match self.parameters.get(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => self
                             .parent
@@ -449,10 +306,7 @@ impl Context {
                     },
                     None => {
                         // is it a variable
-                        match self
-                            .user_defined_type_variables
-                            .get(&user_defined_name.name)
-                        {
+                        match self.user_defined_type_variables.get(bare_name) {
                             Some(v) => Some(v),
                             None => {
                                 // create it in this scope
@@ -462,12 +316,13 @@ impl Context {
                     }
                 }
             }
-            ResolvedDeclaredName::Many(user_defined_name, members) => {
+            DimType::Many(user_defined_type, members) => {
                 // is it a parameter
-                match self
-                    .parameters
-                    .get(&ResolvedParamName::UserDefined(user_defined_name.clone()))
-                {
+                let p = ParamName::new(
+                    bare_name.clone(),
+                    ParamType::UserDefined(user_defined_type.clone()),
+                );
+                match self.parameters.get(&p) {
                     Some(arg) => match arg {
                         Argument::ByRef(name_in_parent) => {
                             let p = name_in_parent.clone().append(members.clone());
@@ -486,10 +341,7 @@ impl Context {
                     },
                     None => {
                         // is it a variable
-                        match self
-                            .user_defined_type_variables
-                            .get(&user_defined_name.name)
-                        {
+                        match self.user_defined_type_variables.get(bare_name) {
                             Some(v) => match v {
                                 Variant::VUserDefined(box_user_defined_type_value) => {
                                     let name_path = members.name_path();

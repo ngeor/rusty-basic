@@ -44,14 +44,11 @@ impl InstructionGenerator {
             Expression::LongLiteral(s) => {
                 self.push(Instruction::Load(Variant::from(s)), pos);
             }
-            Expression::Variable(name) => {
-                self.push(Instruction::CopyVarToA(name), pos);
+            Expression::Variable(dim_name) => {
+                self.push(Instruction::CopyVarToA(dim_name), pos);
             }
-            Expression::Constant(name) => {
-                self.push(
-                    Instruction::CopyVarToA(ResolvedDeclaredName::BuiltIn(name)),
-                    pos,
-                );
+            Expression::Constant(qualified_name) => {
+                self.push(Instruction::CopyVarToA(qualified_name.into()), pos);
             }
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);

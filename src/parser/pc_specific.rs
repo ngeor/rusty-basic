@@ -35,7 +35,10 @@ impl<R: Reader<Item = char>> Undo<Name> for R {
     fn undo(self, n: Name) -> Self {
         match n {
             Name::Bare(b) => self.undo(b),
-            Name::Qualified { name, qualifier } => {
+            Name::Qualified {
+                bare_name: name,
+                qualifier,
+            } => {
                 let first = self.undo(qualifier);
                 first.undo(name)
             }

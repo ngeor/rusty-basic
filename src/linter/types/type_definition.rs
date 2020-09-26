@@ -3,6 +3,8 @@ use crate::common::{CanCastTo, StringUtils};
 use crate::parser::{BareName, Operator, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
 
+// TODO is it possible to get rid of TypeDefinition?
+
 /// A linted (resolved) `TypeDefinition`.
 ///
 /// Similar to the one defined in `parser` but without `Bare` and with `FileHandle`.

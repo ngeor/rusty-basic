@@ -1,6 +1,4 @@
-use super::{
-    BareName, DeclaredNameNode, ExpressionNode, ExpressionNodes, Name, NameNode, Operator,
-};
+use super::{BareName, DimNameNode, ExpressionNode, ExpressionNodes, Name, NameNode, Operator};
 use crate::common::*;
 
 pub type StatementNodes = Vec<StatementNode>;
@@ -8,8 +6,21 @@ pub type StatementNode = Locatable<Statement>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
+    // A = 42
+    // A.Hello = 42 at the parser state it is not known if this is a member variable or not
+    // A$ = "hello"
     Assignment(Name, ExpressionNode),
+
     Const(NameNode, ExpressionNode),
+
+    /// DIM A (Bare)
+    /// DIM A$ (Compact)
+    /// DIM A AS INTEGER (ExtendedBuiltIn)
+    /// DIM A AS STRING (without length)
+    /// DIM A AS STRING * 4 (with fixed length)
+    /// DIM A AS UserDefinedType
+    Dim(DimNameNode),
+
     SubCall(BareName, ExpressionNodes),
 
     IfBlock(IfBlockNode),
@@ -22,10 +33,6 @@ pub enum Statement {
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
     Comment(String),
-    /// Dim VAR.NAME AS TYPE
-    /// or
-    /// Dim A$
-    Dim(DeclaredNameNode),
 }
 
 #[derive(Clone, Debug, PartialEq)]

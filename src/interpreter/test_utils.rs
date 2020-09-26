@@ -3,7 +3,7 @@ use crate::instruction_generator::generate_instructions;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
-use crate::linter::ResolvedDeclaredName;
+use crate::linter::DimName;
 use crate::parser::parse_main_file;
 use crate::variant::Variant;
 use std::collections::HashMap;
@@ -123,8 +123,8 @@ impl Stdlib for MockStdlib {
 
 impl<S: Stdlib> Interpreter<S> {
     pub fn get_variable_str(&self, name: &str) -> Variant {
-        let resolved_declared_name = ResolvedDeclaredName::parse(name);
-        self.context().get_r_value(&resolved_declared_name).unwrap()
+        let dim_name = DimName::parse(name);
+        self.context().get_r_value(&dim_name).unwrap()
     }
 }
 

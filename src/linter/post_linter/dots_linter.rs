@@ -2,6 +2,7 @@ use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
 use crate::linter::types::*;
 use crate::parser::{BareName, BareNameNode, QualifiedName, QualifiedNameNode};
+use crate::variant::Variant;
 use std::collections::HashSet;
 
 pub struct DotsLinter<'a> {
@@ -26,35 +27,35 @@ impl<'a> NoDotNamesCheck<SubImplementation, QErrorNode> for DotsLinter<'a> {
     }
 }
 
-impl<'a> NoDotNamesCheck<Vec<Locatable<ResolvedParamName>>, QErrorNode> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &Vec<Locatable<ResolvedParamName>>) -> Result<(), QErrorNode> {
+impl<'a> NoDotNamesCheck<Vec<Locatable<ParamName>>, QErrorNode> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &Vec<Locatable<ParamName>>) -> Result<(), QErrorNode> {
         x.into_iter().map(|x| self.ensure_no_dots(x)).collect()
     }
 }
 
-impl<'a> NoDotNamesCheck<Locatable<ResolvedParamName>, QErrorNode> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &Locatable<ResolvedParamName>) -> Result<(), QErrorNode> {
+impl<'a> NoDotNamesCheck<Locatable<ParamName>, QErrorNode> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &Locatable<ParamName>) -> Result<(), QErrorNode> {
         let Locatable { element, pos } = x;
         self.ensure_no_dots(element).with_err_at(pos)
     }
 }
 
-impl<'a> NoDotNamesCheck<ResolvedParamName, QError> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &ResolvedParamName) -> Result<(), QError> {
+impl<'a> NoDotNamesCheck<ParamName, QError> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &ParamName) -> Result<(), QError> {
         let bare_name: &BareName = x.as_ref();
         self.ensure_no_dots(bare_name)
     }
 }
 
-impl<'a> NoDotNamesCheck<ResolvedDeclaredNameNode, QErrorNode> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
+impl<'a> NoDotNamesCheck<DimNameNode, QErrorNode> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &DimNameNode) -> Result<(), QErrorNode> {
         let Locatable { element, pos } = x;
         self.ensure_no_dots(element).with_err_at(pos)
     }
 }
 
-impl<'a> NoDotNamesCheck<ResolvedDeclaredName, QError> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &ResolvedDeclaredName) -> Result<(), QError> {
+impl<'a> NoDotNamesCheck<DimName, QError> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &DimName) -> Result<(), QError> {
         let bare_name: &BareName = x.as_ref();
         self.ensure_no_dots(bare_name)
     }
@@ -76,7 +77,9 @@ impl<'a> NoDotNamesCheck<BareNameNode, QErrorNode> for DotsLinter<'a> {
 
 impl<'a> NoDotNamesCheck<QualifiedName, QError> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &QualifiedName) -> Result<(), QError> {
-        let QualifiedName { name, .. } = x;
+        let QualifiedName {
+            bare_name: name, ..
+        } = x;
         self.ensure_no_dots(name)
     }
 }
@@ -115,9 +118,7 @@ impl<'a> NoDotNamesCheck<Expression, QErrorNode> for DotsLinter<'a> {
             Expression::Constant(qualified_name) => {
                 self.ensure_no_dots(qualified_name).with_err_no_pos()
             }
-            Expression::Variable(resolved_declared_name) => self
-                .ensure_no_dots(resolved_declared_name)
-                .with_err_no_pos(),
+            Expression::Variable(dim_name) => self.ensure_no_dots(dim_name).with_err_no_pos(),
             Expression::FunctionCall(name, args) => {
                 self.ensure_no_dots(name).with_err_no_pos()?;
                 self.ensure_no_dots(args)
@@ -146,15 +147,11 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         self.visit_statement_nodes(&s.body)
     }
 
-    fn visit_dim(&self, d: &ResolvedDeclaredNameNode) -> Result<(), QErrorNode> {
+    fn visit_dim(&self, d: &DimNameNode) -> Result<(), QErrorNode> {
         self.ensure_no_dots(d)
     }
 
-    fn visit_assignment(
-        &self,
-        name: &ResolvedDeclaredName,
-        v: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
+    fn visit_assignment(&self, name: &DimName, v: &ExpressionNode) -> Result<(), QErrorNode> {
         self.ensure_no_dots(name).with_err_no_pos()?;
         self.visit_expression(v)
     }
@@ -171,13 +168,8 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         self.visit_statement_nodes(&f.statements)
     }
 
-    fn visit_const(
-        &self,
-        left: &QualifiedNameNode,
-        right: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
-        self.ensure_no_dots(left)?;
-        self.visit_expression(right)
+    fn visit_const(&self, left: &QualifiedNameNode, _right: &Variant) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(left)
     }
 
     fn visit_expression(&self, e: &ExpressionNode) -> Result<(), QErrorNode> {

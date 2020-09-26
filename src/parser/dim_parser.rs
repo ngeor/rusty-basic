@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::declared_name;
+use crate::parser::dim_name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
@@ -15,7 +15,7 @@ pub fn dim<T: BufRead + 'static>(
         crate::parser::pc::ws::seq2(
             keyword(Keyword::Dim),
             demand(
-                declared_name::declared_name_node(),
+                dim_name::dim_name_node(),
                 QError::syntax_error_fn("Expected: name after DIM"),
             ),
             QError::syntax_error_fn("Expected: whitespace after DIM"),
@@ -37,10 +37,10 @@ mod tests {
             let p = parse(input).demand_single_statement();
             assert_eq!(
                 p,
-                Statement::Dim(
-                    DeclaredName::new(
+                crate::parser::Statement::Dim(
+                    crate::parser::DimName::new(
                         $name.into(),
-                        TypeDefinition::ExtendedBuiltIn(TypeQualifier::$qualifier)
+                        crate::parser::DimType::Extended(TypeQualifier::$qualifier)
                     )
                     .at_rc(1, 5)
                 )
@@ -71,16 +71,25 @@ mod tests {
             for var_type in &types {
                 let input = format!("DIM {} AS {}", var_name, var_type);
                 let p = parse(input).demand_single_statement();
-                assert_eq!(
-                    p,
-                    Statement::Dim(
-                        DeclaredName::new(
-                            (*var_name).into(),
-                            TypeDefinition::UserDefined((*var_type).into())
-                        )
-                        .at_rc(1, 5)
-                    )
-                );
+                let var_name_bare: BareName = (*var_name).into();
+                let var_type_bare: BareName = (*var_type).into();
+                match p {
+                    Statement::Dim(dim_name_node) => {
+                        let Locatable {
+                            element: dim_name,
+                            pos,
+                        } = dim_name_node;
+                        assert_eq!(pos, Location::new(1, 5));
+                        assert_eq!(dim_name.as_ref().clone(), var_name_bare);
+                        match dim_name.dim_type() {
+                            DimType::UserDefined(Locatable { element, .. }) => {
+                                assert_eq!(element, &var_type_bare);
+                            }
+                            _ => panic!("Expected user defined type"),
+                        }
+                    }
+                    _ => panic!("Expected dim statement"),
+                }
             }
         }
     }
@@ -111,11 +120,20 @@ mod tests {
         assert_eq!(parse_err(input), QError::IdentifierTooLong);
     }
 
+    #[test]
+    fn test_parse_dim_user_defined_cannot_include_period() {
+        let input = "DIM A.B AS Card";
+        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+    }
+
     macro_rules! assert_parse_dim_compact {
         ($name: literal) => {
             let input = format!("DIM {}", $name);
             let p = parse(input).demand_single_statement();
-            assert_eq!(p, Statement::Dim(DeclaredName::bare($name).at_rc(1, 5)));
+            assert_eq!(
+                p,
+                Statement::Dim(DimName::new($name.into(), DimType::Bare).at_rc(1, 5))
+            );
         };
 
         ($name: literal, $keyword: literal, $qualifier: ident) => {
@@ -123,7 +141,10 @@ mod tests {
             let p = parse(input).demand_single_statement();
             assert_eq!(
                 p,
-                Statement::Dim(DeclaredName::compact($name, TypeQualifier::$qualifier).at_rc(1, 5))
+                Statement::Dim(
+                    DimName::new($name.into(), DimType::Compact(TypeQualifier::$qualifier))
+                        .at_rc(1, 5)
+                )
             );
         };
     }

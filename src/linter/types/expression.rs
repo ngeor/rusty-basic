@@ -1,4 +1,4 @@
-use super::{HasTypeDefinition, ParamTypeDefinition, ResolvedDeclaredName, TypeDefinition};
+use super::{DimName, HasTypeDefinition, TypeDefinition};
 use crate::built_ins::BuiltInFunction;
 use crate::common::{CanCastTo, FileHandle, Locatable};
 use crate::parser::{HasQualifier, Operator, QualifiedName, TypeQualifier, UnaryOperator};
@@ -11,7 +11,7 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Constant(QualifiedName),
-    Variable(ResolvedDeclaredName),
+    Variable(DimName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(
@@ -58,16 +58,5 @@ impl<T: HasTypeDefinition> CanCastTo<&T> for Expression {
     fn can_cast_to(&self, other: &T) -> bool {
         let other_type_definition = other.type_definition();
         self.type_definition().can_cast_to(&other_type_definition)
-    }
-}
-
-impl CanCastTo<&ParamTypeDefinition> for Expression {
-    fn can_cast_to(&self, other: &ParamTypeDefinition) -> bool {
-        match other {
-            ParamTypeDefinition::BuiltIn(q) => self.can_cast_to(*q),
-            ParamTypeDefinition::UserDefined(u) => self
-                .type_definition()
-                .can_cast_to(&TypeDefinition::UserDefined(u.clone())),
-        }
     }
 }

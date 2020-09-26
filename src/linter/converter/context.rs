@@ -181,15 +181,15 @@ impl<'a> Context<'a> {
     }
 
     pub fn resolve_name_in_assignment<T: TypeResolver>(
-        &self,
+        &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<Option<DimName>, QError> {
+    ) -> Result<DimName, QError> {
         match self.resolve_expression(name, resolver)? {
-            Some(Expression::Variable(dim_name)) => Ok(Some(dim_name)),
+            Some(Expression::Variable(dim_name)) => Ok(dim_name),
             // cannot re-assign a constant
             Some(Expression::Constant(_)) => Err(QError::DuplicateDefinition),
-            None => Ok(None),
+            None => self.resolve_missing_name_in_assignment(name, resolver),
             _ => panic!("Unexpected result from resolving name expression"),
         }
     }
@@ -263,7 +263,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn resolve_missing_name_in_assignment<T: TypeResolver>(
+    fn resolve_missing_name_in_assignment<T: TypeResolver>(
         &mut self,
         name: &Name,
         resolver: &T,
@@ -272,26 +272,8 @@ impl<'a> Context<'a> {
             bare_name,
             qualifier,
         } = resolver.resolve_name(name);
-        match self.names.get_mut(bare_name.as_ref()) {
-            Some(bare_name_types) => match bare_name_types {
-                BareNameTypes::Compact(existing_set) => {
-                    if existing_set.contains(&qualifier) {
-                        Err(QError::DuplicateDefinition)
-                    } else {
-                        existing_set.insert(qualifier);
-                        Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
-                    }
-                }
-                _ => Err(QError::DuplicateDefinition),
-            },
-            None => {
-                let mut s: HashSet<TypeQualifier> = HashSet::new();
-                s.insert(qualifier);
-                self.names
-                    .insert(bare_name.clone(), BareNameTypes::Compact(s));
-                Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
-            }
-        }
+        self.push_dim_compact(bare_name.clone(), qualifier);
+        Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
     }
 
     pub fn resolve_missing_name_in_expression<T: TypeResolver>(

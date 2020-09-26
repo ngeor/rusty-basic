@@ -32,15 +32,8 @@ impl<'a> ConverterImpl<'a> {
         {
             Err(QError::DuplicateDefinition)
         } else {
-            match self
-                .context
-                .resolve_name_in_assignment(&name, &self.resolver)?
-            {
-                Some(x) => Ok(x),
-                None => self
-                    .context
-                    .resolve_missing_name_in_assignment(&name, &self.resolver),
-            }
+            self.context
+                .resolve_name_in_assignment(&name, &self.resolver)
         }
     }
 

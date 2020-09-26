@@ -602,7 +602,7 @@ mod len {
                 ElementType::Double => 8,
                 ElementType::Integer => 2,
                 ElementType::Long => 4,
-                ElementType::String(l) => *l as u32,
+                ElementType::FixedLengthString(l) => *l as u32,
                 ElementType::UserDefined(type_name) => {
                     len_of_user_defined_type(types.get(type_name).expect("type not found"), types)
                 }

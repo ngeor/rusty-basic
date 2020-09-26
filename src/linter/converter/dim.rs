@@ -61,9 +61,6 @@ impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
                 if !self.user_defined_types.contains_key(&type_name) {
                     return Err(QError::TypeNotDefined).with_err_at(pos);
                 }
-                if bare_name.contains('.') {
-                    return Err(QError::IdentifierCannotIncludePeriod).with_err_at(pos);
-                }
                 self.context
                     .push_dim_user_defined(bare_name.clone(), type_name.clone());
                 DimType::UserDefined(type_name)

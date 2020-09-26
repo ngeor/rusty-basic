@@ -76,8 +76,6 @@ impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
 
 impl<'a> ConverterImpl<'a> {
     fn resolve_name_in_expression(&mut self, n: &Name) -> Result<Expression, QError> {
-        // TODO function context should upfront have an implicit variable equal to the function name which can be referenced
-        // as bare or as the correct type and cannot be shadowed by a variable of different type
         match self.context.resolve_expression(n, &self.resolver)? {
             Some(x) => Ok(x),
             None => match self.resolve_name_as_subprogram(n)? {

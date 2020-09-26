@@ -25,25 +25,18 @@ impl<'a> ConverterImpl<'a> {
         let bare_name: &BareName = name.as_ref();
         if self.context.is_function_context(bare_name) {
             self.assign_to_function(name)
-        } else if self.subs.contains_key(bare_name) {
-            Err(QError::DuplicateDefinition)
-        } else if !self.context.is_param(&name, &self.resolver)
-            && self.functions.contains_key(bare_name)
+        } else if self.subs.contains_key(bare_name)
+            // it is possible to have a param name shadowing a function name (but not a sub name...)
+            || (!self.context.is_param(&name, &self.resolver) && self.functions.contains_key(bare_name))
+            || self.context.contains_const(bare_name)
         {
             Err(QError::DuplicateDefinition)
         } else {
             match self.context.do_resolve_assignment(&name, &self.resolver)? {
                 Some(x) => Ok(x),
-                None => {
-                    // maybe a parent constant?
-                    if self.context.is_parent_constant(&name)? {
-                        Err(QError::DuplicateDefinition)
-                    } else {
-                        // just insert it
-                        self.context
-                            .resolve_missing_name_in_assignment(&name, &self.resolver)
-                    }
-                }
+                None => self
+                    .context
+                    .resolve_missing_name_in_assignment(&name, &self.resolver),
             }
         }
     }

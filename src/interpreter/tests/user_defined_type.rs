@@ -156,3 +156,29 @@ fn test_concatenate_two_strings_of_fixed_length() {
     "#;
     assert_prints!(input, "ab  cd  ");
 }
+
+#[test]
+fn test_assign_element_type_assign_qualified_use_unqualified() {
+    let input = r#"
+    TYPE PostCode
+        Prefix AS STRING * 4
+    END TYPE
+    DIM p AS PostCode
+    p.Prefix$ = "1234"
+    PRINT p.Prefix
+    "#;
+    assert_prints!(input, "1234");
+}
+
+#[test]
+fn test_assign_element_type_assign_unqualified_use_qualified() {
+    let input = r#"
+    TYPE PostCode
+        Prefix AS STRING * 4
+    END TYPE
+    DIM p AS PostCode
+    p.Prefix = "9876"
+    PRINT p.Prefix$
+    "#;
+    assert_prints!(input, "9876");
+}

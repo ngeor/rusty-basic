@@ -10,6 +10,7 @@ use crate::linter::types::{
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
+use std::convert::TryInto;
 
 /*
 
@@ -30,8 +31,6 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5. An extended variable can be referenced either bare or by its correct qualifier
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
-
-// TODO change `names` so it requires less code for resolve_expression and assignment
 
 #[derive(Debug)]
 enum ContextState<'a> {
@@ -72,48 +71,6 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn demand_root_context(&self) {
-        match &self.state {
-            ContextState::Child { .. } => panic!("Expected root context"),
-            _ => {}
-        }
-    }
-
-    pub fn push_function_context(self, bare_name: BareName) -> Self {
-        self.demand_root_context();
-        Self {
-            names: HashMap::new(),
-            const_values: HashMap::new(),
-            state: ContextState::Child {
-                param_names: HashSet::new(),
-                parent: Box::new(self),
-                sub_program_name: bare_name,
-                sub_program_type: SubProgramType::Function,
-            },
-        }
-    }
-
-    pub fn push_sub_context(self, bare_name: BareName) -> Self {
-        self.demand_root_context();
-        Self {
-            names: HashMap::new(),
-            const_values: HashMap::new(),
-            state: ContextState::Child {
-                param_names: HashSet::new(),
-                parent: Box::new(self),
-                sub_program_name: bare_name,
-                sub_program_type: SubProgramType::Sub,
-            },
-        }
-    }
-
-    pub fn pop_context(self) -> Self {
-        match self.state {
-            ContextState::Child { parent, .. } => *parent,
-            _ => panic!("Stack underflow!"),
-        }
-    }
-
     pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: &T) -> bool {
         self.names.contains_key(bare_name.as_ref())
     }
@@ -146,87 +103,6 @@ impl<'a> Context<'a> {
                 names_without_dot, ..
             } => {
                 names_without_dot.insert(name);
-            }
-        }
-    }
-
-    fn get_user_defined_type_name(&self, name: &BareName) -> Option<&BareName> {
-        match self.names.get(name) {
-            Some(resolved_type_definitions) => match resolved_type_definitions {
-                BareNameTypes::UserDefined(type_name) => Some(type_name),
-                _ => None,
-            },
-            None => None,
-        }
-    }
-
-    fn get_user_defined_type(&self, type_name: &BareName) -> Option<&UserDefinedType> {
-        match &self.state {
-            ContextState::Child { parent, .. } => parent.get_user_defined_type(type_name),
-            ContextState::Root {
-                user_defined_types, ..
-            } => user_defined_types.get(type_name),
-        }
-    }
-
-    fn resolve_members(&self, type_name: &BareName, names: &[BareName]) -> Result<Members, QError> {
-        let (first, rest) = names.split_first().expect("Empty names!");
-        let user_defined_type = self
-            .get_user_defined_type(type_name)
-            .expect("Type not found!");
-        match user_defined_type.find_element(first) {
-            Some(element_type) => match element_type {
-                ElementType::Integer
-                | ElementType::Long
-                | ElementType::Single
-                | ElementType::Double
-                | ElementType::String(_) => {
-                    if rest.is_empty() {
-                        Ok(Members::Leaf {
-                            name: first.clone(),
-                            element_type: element_type.clone(),
-                        })
-                    } else {
-                        Err(QError::syntax_error("Cannot navigate after built-in type"))
-                    }
-                }
-                ElementType::UserDefined(u) => {
-                    if rest.is_empty() {
-                        Ok(Members::Leaf {
-                            name: first.clone(),
-                            element_type: element_type.clone(),
-                        })
-                    } else {
-                        Ok(Members::Node(
-                            UserDefinedName {
-                                name: first.clone(),
-                                type_name: u.clone(),
-                            },
-                            Box::new(self.resolve_members(u, rest)?),
-                        ))
-                    }
-                }
-            },
-            None => Err(QError::ElementNotDefined),
-        }
-    }
-
-    fn resolve_member(&self, name: &BareName) -> Result<Option<DimName>, QError> {
-        let s: String = name.clone().into();
-        let mut v: Vec<BareName> = s.split('.').map(|s| s.into()).collect();
-        let first: BareName = v.remove(0);
-        match self.get_user_defined_type_name(&first) {
-            Some(type_name) => {
-                let dim_type = if v.is_empty() {
-                    DimType::UserDefined(type_name.clone())
-                } else {
-                    DimType::Many(type_name.clone(), self.resolve_members(type_name, &v[..])?)
-                };
-                Ok(Some(DimName::new(first.clone(), dim_type)))
-            }
-            None => {
-                // No user defined variable starts with the first dotted name
-                Ok(None)
             }
         }
     }
@@ -310,100 +186,12 @@ impl<'a> Context<'a> {
         name: &Name,
         resolver: &T,
     ) -> Result<Option<DimName>, QError> {
-        let bare_name: &BareName = name.as_ref();
-        match self.names.get(bare_name) {
-            Some(resolved_type_definitions) => {
-                match resolved_type_definitions {
-                    BareNameTypes::Constant(_) => {
-                        // cannot re-assign a constant
-                        Err(QError::DuplicateDefinition)
-                    }
-                    BareNameTypes::Compact(existing_set) => {
-                        // if it's not in the existing set, do not add it implicitly yet (might be a parent constant)
-                        match name {
-                            Name::Bare(b) => {
-                                let qualifier: TypeQualifier = resolver.resolve(b);
-                                if existing_set.contains(&qualifier) {
-                                    Ok(Some(DimName::new(b.clone(), DimType::BuiltIn(qualifier))))
-                                } else {
-                                    Ok(None)
-                                }
-                            }
-                            Name::Qualified {
-                                bare_name: name,
-                                qualifier,
-                            } => {
-                                if existing_set.contains(qualifier) {
-                                    Ok(Some(DimName::new(
-                                        name.clone(),
-                                        DimType::BuiltIn(*qualifier),
-                                    )))
-                                } else {
-                                    Ok(None)
-                                }
-                            }
-                        }
-                    }
-                    BareNameTypes::Extended(q) => {
-                        // only possible if the name is bare or using the same qualifier
-                        match name {
-                            Name::Bare(b) => {
-                                Ok(Some(DimName::new(b.clone(), DimType::BuiltIn(*q))))
-                            }
-                            Name::Qualified {
-                                bare_name: name,
-                                qualifier,
-                            } => {
-                                if q == qualifier {
-                                    Ok(Some(DimName::new(
-                                        name.clone(),
-                                        DimType::BuiltIn(*qualifier),
-                                    )))
-                                } else {
-                                    Err(QError::DuplicateDefinition)
-                                }
-                            }
-                        }
-                    }
-                    BareNameTypes::FixedLengthString(len) => {
-                        // only possible if the name is bare or using the same qualifier
-                        match name {
-                            Name::Bare(b) => Ok(Some(DimName::new(
-                                b.clone(),
-                                DimType::FixedLengthString(*len),
-                            ))),
-                            Name::Qualified {
-                                bare_name: name,
-                                qualifier,
-                            } => {
-                                if TypeQualifier::DollarString == *qualifier {
-                                    Ok(Some(DimName::new(
-                                        name.clone(),
-                                        DimType::FixedLengthString(*len),
-                                    )))
-                                } else {
-                                    Err(QError::DuplicateDefinition)
-                                }
-                            }
-                        }
-                    }
-                    BareNameTypes::UserDefined(u) => {
-                        // only possible if the name is bare
-                        match name {
-                            Name::Bare(b) => Ok(Some(DimName::new(
-                                b.clone(),
-                                DimType::UserDefined(u.clone()),
-                            ))),
-                            _ => Err(QError::TypeMismatch),
-                        }
-                    }
-                }
-            }
-            None => Ok(if name.is_bare() {
-                self.resolve_member(bare_name)?
-            } else {
-                None
-            }),
+        match self.resolve_expression(name, resolver)? {
+            Some(Expression::Variable(dim_name)) => Ok(Some(dim_name)),
+            // cannot re-assign a constant
+            Some(Expression::Constant(_)) => Err(QError::DuplicateDefinition),
+            None => Ok(None),
+            _ => panic!("Unexpected result from resolving name expression"),
         }
     }
 
@@ -415,34 +203,20 @@ impl<'a> Context<'a> {
         let bare_name: &BareName = name.as_ref();
         match self.names.get(bare_name) {
             Some(resolved_type_definitions) => match resolved_type_definitions {
-                BareNameTypes::Compact(existing_set) => match name {
-                    Name::Bare(b) => {
-                        let qualifier: TypeQualifier = resolver.resolve(b);
-                        if existing_set.contains(&qualifier) {
-                            // TODO fix me
-                            Ok(Some(Expression::Variable(DimName::new(
-                                b.clone(),
-                                DimType::BuiltIn(qualifier),
-                            ))))
-                        } else {
-                            Ok(None)
-                        }
+                BareNameTypes::Compact(existing_set) => {
+                    let q = match name {
+                        Name::Bare(b) => resolver.resolve(b),
+                        Name::Qualified { qualifier, .. } => *qualifier,
+                    };
+                    if existing_set.contains(&q) {
+                        Ok(Some(Expression::Variable(DimName::new(
+                            bare_name.clone(),
+                            DimType::BuiltIn(q),
+                        ))))
+                    } else {
+                        Ok(None)
                     }
-                    Name::Qualified {
-                        bare_name: name,
-                        qualifier,
-                    } => {
-                        if existing_set.contains(qualifier) {
-                            // TODO fix me
-                            Ok(Some(Expression::Variable(DimName::new(
-                                name.clone(),
-                                DimType::BuiltIn(*qualifier),
-                            ))))
-                        } else {
-                            Ok(None)
-                        }
-                    }
-                },
+                }
                 BareNameTypes::Constant(q) => {
                     if name.is_bare_or_of_type(*q) {
                         Ok(Some(Expression::Constant(QualifiedName::new(
@@ -455,7 +229,6 @@ impl<'a> Context<'a> {
                 }
                 BareNameTypes::Extended(q) => {
                     if name.is_bare_or_of_type(*q) {
-                        // TODO fix me
                         Ok(Some(Expression::Variable(DimName::new(
                             bare_name.clone(),
                             DimType::BuiltIn(*q),
@@ -466,7 +239,6 @@ impl<'a> Context<'a> {
                 }
                 BareNameTypes::FixedLengthString(len) => {
                     if name.is_bare_or_of_type(TypeQualifier::DollarString) {
-                        // TODO fix me
                         Ok(Some(Expression::Variable(DimName::new(
                             bare_name.clone(),
                             DimType::FixedLengthString(*len),
@@ -477,7 +249,6 @@ impl<'a> Context<'a> {
                 }
                 BareNameTypes::UserDefined(u) => {
                     if name.is_bare() {
-                        // TODO fix me
                         Ok(Some(Expression::Variable(DimName::new(
                             bare_name.clone(),
                             DimType::UserDefined(u.clone()),
@@ -487,12 +258,9 @@ impl<'a> Context<'a> {
                     }
                 }
             },
-            None => Ok(if name.is_bare() {
-                self.resolve_member(bare_name)?
-                    .map(|n| Expression::Variable(n))
-            } else {
-                None
-            }),
+            None => {
+                Ok(resolve_members::resolve_member(self, name)?.map(|n| Expression::Variable(n)))
+            }
         }
     }
 
@@ -510,26 +278,9 @@ impl<'a> Context<'a> {
                         Err(QError::DuplicateDefinition)
                     }
                 }
-                _ => Err(QError::InvalidConstant),
+                _ => Ok(None),
             },
             None => Ok(None),
-        }
-    }
-
-    fn is_constant(&self, name: &Name) -> Result<bool, QError> {
-        let bare_name: &BareName = name.as_ref();
-        match self.names.get(bare_name) {
-            Some(resolved_type_definitions) => match resolved_type_definitions {
-                BareNameTypes::Constant(q) => {
-                    if name.is_bare_or_of_type(*q) {
-                        Ok(true)
-                    } else {
-                        Err(QError::DuplicateDefinition)
-                    }
-                }
-                _ => Ok(false),
-            },
-            None => Ok(false),
         }
     }
 
@@ -598,14 +349,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn is_parent_constant(&self, n: &Name) -> Result<bool, QError> {
-        match &self.state {
-            ContextState::Child { parent, .. } => parent.is_constant(n),
-            _ => Ok(false),
-        }
-    }
-
-    pub fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
+    fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
         match self.do_resolve_const_expression(n)? {
             Some(e) => Ok(Some(e)),
             None => self.resolve_parent_const_expression(n),
@@ -672,6 +416,157 @@ impl<'a> ConstValueResolver for Context<'a> {
                 ContextState::Child { parent, .. } => parent.get_resolved_constant(name),
                 _ => None,
             },
+        }
+    }
+}
+
+mod context_management {
+    use super::*;
+
+    impl<'a> Context<'a> {
+        fn demand_root_context(&self) {
+            match &self.state {
+                ContextState::Child { .. } => panic!("Expected root context"),
+                _ => {}
+            }
+        }
+
+        pub fn push_function_context(self, bare_name: BareName) -> Self {
+            self.demand_root_context();
+            Self {
+                names: HashMap::new(),
+                const_values: HashMap::new(),
+                state: ContextState::Child {
+                    param_names: HashSet::new(),
+                    parent: Box::new(self),
+                    sub_program_name: bare_name,
+                    sub_program_type: SubProgramType::Function,
+                },
+            }
+        }
+
+        pub fn push_sub_context(self, bare_name: BareName) -> Self {
+            self.demand_root_context();
+            Self {
+                names: HashMap::new(),
+                const_values: HashMap::new(),
+                state: ContextState::Child {
+                    param_names: HashSet::new(),
+                    parent: Box::new(self),
+                    sub_program_name: bare_name,
+                    sub_program_type: SubProgramType::Sub,
+                },
+            }
+        }
+
+        pub fn pop_context(self) -> Self {
+            match self.state {
+                ContextState::Child { parent, .. } => *parent,
+                _ => panic!("Stack underflow!"),
+            }
+        }
+    }
+}
+
+mod resolve_members {
+    use super::*;
+
+    pub fn resolve_member(context: &Context, name: &Name) -> Result<Option<DimName>, QError> {
+        let (bare_name, opt_qualifier) = match name {
+            Name::Bare(bare_name) => (bare_name, None),
+            Name::Qualified {
+                bare_name,
+                qualifier,
+            } => (bare_name, Some(*qualifier)),
+        };
+        let s: String = bare_name.clone().into();
+        let mut v: Vec<BareName> = s.split('.').map(|s| s.into()).collect();
+        let first: BareName = v.remove(0);
+        if v.is_empty() {
+            return Ok(None);
+        }
+        match context.names.get(&first) {
+            Some(BareNameTypes::UserDefined(type_name)) => {
+                let dim_type = DimType::Many(
+                    type_name.clone(),
+                    resolve_members(&context.state, type_name, &v[..], opt_qualifier)?,
+                );
+                Ok(Some(DimName::new(first.clone(), dim_type)))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn resolve_members(
+        state: &ContextState,
+        type_name: &BareName,
+        names: &[BareName],
+        opt_qualifier: Option<TypeQualifier>,
+    ) -> Result<Members, QError> {
+        let (first, rest) = names.split_first().expect("Empty names!");
+        let user_defined_type = get_user_defined_type(state, type_name).expect("Type not found!");
+        match user_defined_type.find_element(first) {
+            Some(element_type) => match element_type {
+                ElementType::Integer
+                | ElementType::Long
+                | ElementType::Single
+                | ElementType::Double
+                | ElementType::FixedLengthString(_) => {
+                    if rest.is_empty() {
+                        let is_correct_type = match opt_qualifier {
+                            Some(q) => {
+                                let element_q: TypeQualifier = element_type.try_into().unwrap();
+                                q == element_q
+                            }
+                            None => true,
+                        };
+                        if is_correct_type {
+                            Ok(Members::Leaf {
+                                name: first.clone(),
+                                element_type: element_type.clone(),
+                            })
+                        } else {
+                            Err(QError::TypeMismatch)
+                        }
+                    } else {
+                        Err(QError::syntax_error("Cannot navigate after built-in type"))
+                    }
+                }
+                ElementType::UserDefined(u) => {
+                    if rest.is_empty() {
+                        if opt_qualifier.is_none() {
+                            Ok(Members::Leaf {
+                                name: first.clone(),
+                                element_type: element_type.clone(),
+                            })
+                        } else {
+                            // e.g. c.Address$ where c.Address is nested user defined
+                            Err(QError::TypeMismatch)
+                        }
+                    } else {
+                        Ok(Members::Node(
+                            UserDefinedName {
+                                name: first.clone(),
+                                type_name: u.clone(),
+                            },
+                            Box::new(resolve_members(state, u, rest, opt_qualifier)?),
+                        ))
+                    }
+                }
+            },
+            None => Err(QError::ElementNotDefined),
+        }
+    }
+
+    fn get_user_defined_type<'a>(
+        state: &'a ContextState,
+        type_name: &'a BareName,
+    ) -> Option<&'a UserDefinedType> {
+        match state {
+            ContextState::Child { parent, .. } => get_user_defined_type(&parent.state, type_name),
+            ContextState::Root {
+                user_defined_types, ..
+            } => user_defined_types.get(type_name),
         }
     }
 }

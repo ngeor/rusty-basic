@@ -324,7 +324,7 @@ mod tests {
             );
             let mut m: HashMap<CaseInsensitiveString, ElementType> = HashMap::new();
             m.insert("Value".into(), ElementType::Integer);
-            m.insert("Suit".into(), ElementType::String(9));
+            m.insert("Suit".into(), ElementType::FixedLengthString(9));
             assert_eq!(
                 *user_defined_types.get(&"Card".into()).unwrap(),
                 UserDefinedType::new(m)
@@ -407,7 +407,7 @@ mod tests {
                                 "Card".into(),
                                 Members::Leaf {
                                     name: "Suit".into(),
-                                    element_type: ElementType::String(9)
+                                    element_type: ElementType::FixedLengthString(9)
                                 }
                             )
                         ),
@@ -422,7 +422,7 @@ mod tests {
                                 "Card".into(),
                                 Members::Leaf {
                                     name: "Suit".into(),
-                                    element_type: ElementType::String(9)
+                                    element_type: ElementType::FixedLengthString(9)
                                 }
                             )
                         ))
@@ -431,6 +431,18 @@ mod tests {
                     .at_rc(8, 13)
                 ]
             );
+        }
+
+        #[test]
+        fn element_type_qualified_wrong_type() {
+            let program = r#"
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
+            DIM c AS Card
+            c.Value! = 3
+            "#;
+            assert_linter_err!(program, QError::TypeMismatch, 6, 13);
         }
     }
 

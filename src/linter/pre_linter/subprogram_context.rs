@@ -155,7 +155,7 @@ fn user_defined_type(
                 parser::ElementType::FixedLengthString(str_len_expression_node) => {
                     let l: u16 =
                         validate_element_type_str_len(global_constants, str_len_expression_node)?;
-                    ElementType::String(l)
+                    ElementType::FixedLengthString(l)
                 }
                 parser::ElementType::UserDefined(Locatable {
                     element: referred_name,

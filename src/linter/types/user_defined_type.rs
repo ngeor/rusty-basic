@@ -1,8 +1,9 @@
 use super::{HasTypeDefinition, TypeDefinition};
-use crate::common::StringUtils;
+use crate::common::{QError, StringUtils};
 use crate::parser::{BareName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedType {
@@ -32,8 +33,23 @@ pub enum ElementType {
     Long,
     Single,
     Double,
-    String(u16),
+    FixedLengthString(u16),
     UserDefined(BareName),
+}
+
+impl TryFrom<&ElementType> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(value: &ElementType) -> Result<Self, Self::Error> {
+        match value {
+            ElementType::Integer => Ok(Self::PercentInteger),
+            ElementType::Long => Ok(Self::AmpersandLong),
+            ElementType::Single => Ok(Self::BangSingle),
+            ElementType::Double => Ok(Self::HashDouble),
+            ElementType::FixedLengthString(_) => Ok(Self::DollarString),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
 }
 
 impl ElementType {
@@ -41,7 +57,7 @@ impl ElementType {
         match self {
             Self::Single => Variant::from(TypeQualifier::BangSingle),
             Self::Double => Variant::from(TypeQualifier::HashDouble),
-            Self::String(len) => String::new().fix_length(*len as usize).into(),
+            Self::FixedLengthString(len) => String::new().fix_length(*len as usize).into(),
             Self::Integer => Variant::from(TypeQualifier::PercentInteger),
             Self::Long => Variant::from(TypeQualifier::AmpersandLong),
             Self::UserDefined(type_name) => {
@@ -58,7 +74,7 @@ impl HasTypeDefinition for ElementType {
             Self::Long => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
             Self::Single => TypeDefinition::BuiltIn(TypeQualifier::BangSingle),
             Self::Double => TypeDefinition::BuiltIn(TypeQualifier::HashDouble),
-            Self::String(l) => TypeDefinition::String(*l),
+            Self::FixedLengthString(l) => TypeDefinition::String(*l),
             Self::UserDefined(type_name) => TypeDefinition::UserDefined(type_name.clone()),
         }
     }

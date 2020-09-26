@@ -36,19 +36,8 @@ impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
                 // convert them
                 let converted_left = self.convert(unboxed_left)?;
                 let converted_right = self.convert(unboxed_right)?;
-                // get the types
-                let t_left = converted_left.expression_type();
-                let t_right = converted_right.expression_type();
-                // get the cast type
-                match t_left.cast_binary_op(t_right, op) {
-                    Some(type_definition) => Ok(Expression::BinaryExpression(
-                        op,
-                        Box::new(converted_left),
-                        Box::new(converted_right),
-                        type_definition,
-                    )),
-                    None => Err(QError::TypeMismatch).with_err_at(&converted_right),
-                }
+                // cast
+                Expression::binary(converted_left, converted_right, op)
             }
             parser::Expression::UnaryExpression(op, c) => {
                 let unboxed_child = *c;

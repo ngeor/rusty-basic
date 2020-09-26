@@ -1,6 +1,6 @@
 use super::{DimName, ExpressionType, HasExpressionType};
 use crate::built_ins::BuiltInFunction;
-use crate::common::{CanCastTo, FileHandle, Locatable};
+use crate::common::{CanCastTo, FileHandle, Locatable, QError, QErrorNode, ToLocatableError};
 use crate::parser::{Operator, QualifiedName, TypeQualifier, UnaryOperator};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -27,6 +27,28 @@ pub enum Expression {
 }
 
 pub type ExpressionNode = Locatable<Expression>;
+
+impl Expression {
+    pub fn binary(
+        left: ExpressionNode,
+        right: ExpressionNode,
+        op: Operator,
+    ) -> Result<Self, QErrorNode> {
+        // get the types
+        let t_left = left.expression_type();
+        let t_right = right.expression_type();
+        // get the cast type
+        match t_left.cast_binary_op(t_right, op) {
+            Some(type_definition) => Ok(Expression::BinaryExpression(
+                op,
+                Box::new(left),
+                Box::new(right),
+                type_definition,
+            )),
+            None => Err(QError::TypeMismatch).with_err_at(&right),
+        }
+    }
+}
 
 impl HasExpressionType for Expression {
     fn expression_type(&self) -> ExpressionType {

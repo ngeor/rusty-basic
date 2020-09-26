@@ -4,7 +4,8 @@ use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::types::{
-    DimName, DimType, ElementType, Expression, Members, UserDefinedName, UserDefinedTypes,
+    DimName, DimType, ElementType, Expression, Members, UserDefinedName, UserDefinedType,
+    UserDefinedTypes,
 };
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
@@ -30,82 +31,87 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
 
-// TODO split parent and child context state
 // TODO change `names` so it requires less code for resolve_expression and assignment
+
+#[derive(Debug)]
+enum ContextState<'a> {
+    Root {
+        user_defined_types: &'a UserDefinedTypes,
+
+        /// Collects names of variables and parameters whose type is a user defined type.
+        /// These names cannot exist elsewhere as a prefix of a dotted variable, constant, parameter, function or sub name,
+        /// regardless of the scope.
+        ///
+        /// This hash set exists only on the parent level.
+        names_without_dot: HashSet<BareName>,
+    },
+    Child {
+        parent: Box<Context<'a>>,
+        param_names: HashSet<Name>,
+        sub_program_name: BareName,
+        sub_program_type: SubProgramType,
+    },
+}
 
 #[derive(Debug)]
 pub struct Context<'a> {
     names: HashMap<BareName, BareNameTypes>,
     const_values: HashMap<BareName, Variant>,
-    parent: Option<Box<Context<'a>>>,
-    sub_program: Option<(BareName, SubProgramType)>,
-    user_defined_types: &'a UserDefinedTypes,
-    param_names: HashSet<Name>,
-
-    /// Collects names of variables and parameters whose type is a user defined type.
-    /// These names cannot exist elsewhere as a prefix of a dotted variable, constant, parameter, function or sub name,
-    /// regardless of the scope.
-    ///
-    /// This hash set exists only on the parent level.
-    pub names_without_dot: Option<HashSet<BareName>>,
-    // TODO add TypeResolver reference instead of passing it as parameter
+    state: ContextState<'a>,
 }
 
 impl<'a> Context<'a> {
     pub fn new(user_defined_types: &'a UserDefinedTypes) -> Self {
         Self {
-            parent: None,
-            sub_program: None,
             names: HashMap::new(),
-            user_defined_types,
-            names_without_dot: Some(HashSet::new()),
             const_values: HashMap::new(),
-            param_names: HashSet::new(),
+            state: ContextState::Root {
+                user_defined_types,
+                names_without_dot: HashSet::new(),
+            },
         }
-    }
-
-    fn is_root_context(&self) -> bool {
-        self.parent.is_none()
     }
 
     fn demand_root_context(&self) {
-        if !self.is_root_context() {
-            panic!("Expected root context");
+        match &self.state {
+            ContextState::Child { .. } => panic!("Expected root context"),
+            _ => {}
         }
     }
 
-    pub fn push_function_context(self, bare_name: &BareName) -> Self {
+    pub fn push_function_context(self, bare_name: BareName) -> Self {
         self.demand_root_context();
-        let mut result = Self {
-            parent: None,
-            sub_program: Some((bare_name.clone(), SubProgramType::Function)),
+        Self {
             names: HashMap::new(),
-            user_defined_types: &self.user_defined_types,
-            names_without_dot: None,
             const_values: HashMap::new(),
-            param_names: HashSet::new(),
-        };
-        result.parent = Some(Box::new(self));
-        result
+            state: ContextState::Child {
+                param_names: HashSet::new(),
+                parent: Box::new(self),
+                sub_program_name: bare_name,
+                sub_program_type: SubProgramType::Function,
+            },
+        }
     }
 
-    pub fn push_sub_context(self, bare_name: &BareName) -> Self {
+    pub fn push_sub_context(self, bare_name: BareName) -> Self {
         self.demand_root_context();
-        let mut result = Self {
-            parent: None,
-            sub_program: Some((bare_name.clone(), SubProgramType::Sub)),
+        Self {
             names: HashMap::new(),
-            user_defined_types: &self.user_defined_types,
-            names_without_dot: None,
             const_values: HashMap::new(),
-            param_names: HashSet::new(),
-        };
-        result.parent = Some(Box::new(self));
-        result
+            state: ContextState::Child {
+                param_names: HashSet::new(),
+                parent: Box::new(self),
+                sub_program_name: bare_name,
+                sub_program_type: SubProgramType::Sub,
+            },
+        }
     }
 
     pub fn pop_context(self) -> Self {
-        *self.parent.expect("Stack underflow!")
+        match self.state {
+            ContextState::Child { parent, .. } => *parent,
+            _ => panic!("Stack underflow!"),
+        }
     }
 
     pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: &T) -> bool {
@@ -133,14 +139,13 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn collect_name_without_dot(&mut self, name: &BareName) {
-        match &mut self.parent {
-            Some(x) => x.collect_name_without_dot(name),
-            None => {
-                self.names_without_dot
-                    .as_mut()
-                    .unwrap()
-                    .insert(name.clone());
+    fn collect_name_without_dot(&mut self, name: BareName) {
+        match &mut self.state {
+            ContextState::Child { parent, .. } => parent.collect_name_without_dot(name),
+            ContextState::Root {
+                names_without_dot, ..
+            } => {
+                names_without_dot.insert(name);
             }
         }
     }
@@ -155,11 +160,19 @@ impl<'a> Context<'a> {
         }
     }
 
+    fn get_user_defined_type(&self, type_name: &BareName) -> Option<&UserDefinedType> {
+        match &self.state {
+            ContextState::Child { parent, .. } => parent.get_user_defined_type(type_name),
+            ContextState::Root {
+                user_defined_types, ..
+            } => user_defined_types.get(type_name),
+        }
+    }
+
     fn resolve_members(&self, type_name: &BareName, names: &[BareName]) -> Result<Members, QError> {
         let (first, rest) = names.split_first().expect("Empty names!");
         let user_defined_type = self
-            .user_defined_types
-            .get(type_name)
+            .get_user_defined_type(type_name)
             .expect("Type not found!");
         match user_defined_type.find_element(first) {
             Some(element_type) => match element_type {
@@ -262,7 +275,7 @@ impl<'a> Context<'a> {
     }
 
     pub fn push_dim_user_defined(&mut self, b: BareName, u: BareName) {
-        self.collect_name_without_dot(&b);
+        self.collect_name_without_dot(b.clone());
         if self
             .names
             .insert(b, BareNameTypes::UserDefined(u))
@@ -273,11 +286,23 @@ impl<'a> Context<'a> {
     }
 
     pub fn push_compact_param(&mut self, qualified_name: QualifiedName) {
-        self.param_names.insert(qualified_name.into());
+        // TODO panic if param is duplicate
+        match &mut self.state {
+            ContextState::Child { param_names, .. } => {
+                param_names.insert(qualified_name.into());
+            }
+            _ => panic!("Root context cannot have parameters"),
+        }
     }
 
     pub fn push_extended_param(&mut self, bare_name: BareName) {
-        self.param_names.insert(bare_name.into());
+        // TODO panic if param is duplicate
+        match &mut self.state {
+            ContextState::Child { param_names, .. } => {
+                param_names.insert(bare_name.into());
+            }
+            _ => panic!("Root context cannot have parameters"),
+        }
     }
 
     pub fn do_resolve_assignment<T: TypeResolver>(
@@ -567,17 +592,16 @@ impl<'a> Context<'a> {
     }
 
     fn resolve_parent_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
-        // try parent constants
-        match &self.parent {
-            Some(p) => p.resolve_const_expression(n),
-            None => Ok(None),
+        match &self.state {
+            ContextState::Child { parent, .. } => parent.resolve_const_expression(n),
+            _ => Ok(None),
         }
     }
 
     pub fn is_parent_constant(&self, n: &Name) -> Result<bool, QError> {
-        match &self.parent {
-            Some(p) => p.is_constant(n),
-            None => Ok(false),
+        match &self.state {
+            ContextState::Child { parent, .. } => parent.is_constant(n),
+            _ => Ok(false),
         }
     }
 
@@ -589,35 +613,53 @@ impl<'a> Context<'a> {
     }
 
     pub fn is_function_context(&self, bare_name: &BareName) -> bool {
-        match &self.sub_program {
-            Some((function_name, SubProgramType::Function)) => function_name == bare_name,
+        match &self.state {
+            ContextState::Child {
+                sub_program_name,
+                sub_program_type: SubProgramType::Function,
+                ..
+            } => sub_program_name == bare_name,
             _ => false,
         }
     }
 
     pub fn is_param<T: TypeResolver>(&self, name: &Name, resolver: &T) -> bool {
-        let bare_name: &BareName = name.as_ref();
-        match self.names.get(bare_name) {
-            Some(bare_name_types) => {
-                if bare_name_types.is_extended() {
-                    // it's an extended, so it will appear as bare inside the param_names set
-                    let n: Name = bare_name.clone().into();
-                    self.param_names.contains(&n)
-                } else {
-                    // it's a compact, so it will appear as qualified inside the param_names set
-                    match name {
-                        Name::Bare(_) => {
-                            let n: Name = Name::Qualified {
-                                bare_name: bare_name.clone(),
-                                qualifier: resolver.resolve(bare_name),
-                            };
-                            self.param_names.contains(&n)
+        match &self.state {
+            ContextState::Child { param_names, .. } => {
+                let bare_name: &BareName = name.as_ref();
+                match self.names.get(bare_name) {
+                    Some(bare_name_types) => {
+                        if bare_name_types.is_extended() {
+                            // it's an extended, so it will appear as bare inside the param_names set
+                            let n: Name = bare_name.clone().into();
+                            param_names.contains(&n)
+                        } else {
+                            // it's a compact, so it will appear as qualified inside the param_names set
+                            match name {
+                                Name::Bare(_) => {
+                                    let n: Name = Name::Qualified {
+                                        bare_name: bare_name.clone(),
+                                        qualifier: resolver.resolve(bare_name),
+                                    };
+                                    param_names.contains(&n)
+                                }
+                                Name::Qualified { .. } => param_names.contains(name),
+                            }
                         }
-                        Name::Qualified { .. } => self.param_names.contains(name),
                     }
+                    None => false,
                 }
             }
-            None => false,
+            _ => false,
+        }
+    }
+
+    pub fn take_names_without_dot(self) -> HashSet<BareName> {
+        match self.state {
+            ContextState::Root {
+                names_without_dot, ..
+            } => names_without_dot,
+            _ => panic!("Expected root context"),
         }
     }
 }
@@ -626,9 +668,9 @@ impl<'a> ConstValueResolver for Context<'a> {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
         match self.const_values.get(name) {
             Some(v) => Some(v),
-            None => match &self.parent {
-                Some(p) => p.get_resolved_constant(name),
-                None => None,
+            None => match &self.state {
+                ContextState::Child { parent, .. } => parent.get_resolved_constant(name),
+                _ => None,
             },
         }
     }

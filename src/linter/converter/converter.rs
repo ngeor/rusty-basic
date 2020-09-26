@@ -80,14 +80,14 @@ impl<'a> ConverterImpl<'a> {
         std::mem::replace(&mut self.context, tmp)
     }
 
-    pub fn push_function_context<S: AsRef<BareName>>(&mut self, function_name: S) {
+    pub fn push_function_context(&mut self, bare_function_name: BareName) {
         let old = self.take_context();
-        self.context = old.push_function_context(function_name.as_ref());
+        self.context = old.push_function_context(bare_function_name);
     }
 
-    pub fn push_sub_context<S: AsRef<BareName>>(&mut self, sub_name: S) {
+    pub fn push_sub_context(&mut self, sub_name: BareName) {
         let old = self.take_context();
-        self.context = old.push_sub_context(sub_name.as_ref());
+        self.context = old.push_sub_context(sub_name);
     }
 
     pub fn pop_context(&mut self) {
@@ -96,6 +96,6 @@ impl<'a> ConverterImpl<'a> {
     }
 
     pub fn consume(self) -> HashSet<BareName> {
-        self.context.names_without_dot.unwrap()
+        self.context.take_names_without_dot()
     }
 }

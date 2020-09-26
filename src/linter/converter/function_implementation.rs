@@ -3,7 +3,7 @@ use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::{FunctionImplementation, TopLevelToken};
 use crate::parser;
-use crate::parser::{NameNode, QualifiedName};
+use crate::parser::{BareName, NameNode, QualifiedName};
 
 impl<'a> ConverterImpl<'a> {
     pub fn convert_function_implementation(
@@ -12,7 +12,8 @@ impl<'a> ConverterImpl<'a> {
         params: parser::ParamNameNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
-        self.push_function_context(&function_name_node);
+        let bare_function_name: &BareName = function_name_node.as_ref();
+        self.push_function_context(bare_function_name.clone());
         let Locatable {
             element: unresolved_function_name,
             pos,

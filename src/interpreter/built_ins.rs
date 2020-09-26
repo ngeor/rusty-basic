@@ -267,7 +267,7 @@ mod input {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
             ExpressionType::FixedLengthString(l) => Variant::from(raw_input.sub_str(l as usize)),
-            _ => unimplemented!(),
+            _ => unimplemented!(), // TODO support more types
         })
     }
 
@@ -808,7 +808,7 @@ mod line_input {
                     .set_value_to_popped_arg(arg, Variant::VString(s));
                 Ok(())
             }
-            _ => unimplemented!(),
+            _ => unimplemented!(), // TODO support more types
         }
     }
 

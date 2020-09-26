@@ -1059,6 +1059,15 @@ mod tests {
             ";
             assert_linter_err!(input, QError::NextWithoutFor, 4, 18);
         }
+
+        #[test]
+        fn test_for_loop_with_string_variable() {
+            let input = "
+            FOR a$ = 1 TO 5
+            NEXT
+            ";
+            assert_linter_err!(input, QError::TypeMismatch, 2, 13);
+        }
     }
 
     mod expression {

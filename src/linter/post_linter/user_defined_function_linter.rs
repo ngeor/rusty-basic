@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
 use crate::linter::types::*;
-use crate::parser::{BareName, HasQualifier, QualifiedName, TypeQualifier};
+use crate::parser::{QualifiedName, TypeQualifier};
 
 pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,
@@ -42,13 +42,16 @@ impl<'a> UserDefinedFunctionLinter<'a> {
         name: &QualifiedName,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), QErrorNode> {
-        let bare_name: &BareName = name.as_ref();
+        let QualifiedName {
+            bare_name,
+            qualifier,
+        } = name;
         match self.functions.get(bare_name) {
             Some(Locatable {
                 element: (return_type, param_types),
                 ..
             }) => {
-                if *return_type != name.qualifier() {
+                if return_type != qualifier {
                     err_no_pos(QError::TypeMismatch)
                 } else {
                     lint_call_args(args, param_types)

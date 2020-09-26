@@ -12,12 +12,12 @@ impl<'a> ConverterImpl<'a> {
         params: parser::ParamNameNodes,
         block: parser::StatementNodes,
     ) -> Result<Option<TopLevelToken>, QErrorNode> {
-        let bare_function_name: &BareName = function_name_node.as_ref();
-        self.push_function_context(bare_function_name.clone());
         let Locatable {
             element: unresolved_function_name,
             pos,
         } = function_name_node;
+        let bare_function_name: &BareName = unresolved_function_name.as_ref();
+        self.push_function_context(bare_function_name.clone());
         let function_name: QualifiedName = self.resolver.resolve_name(&unresolved_function_name);
         let mapped_params = self.resolve_params(params, Some(&function_name))?;
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {

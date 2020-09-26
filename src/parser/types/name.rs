@@ -81,13 +81,6 @@ impl From<QualifiedName> for Name {
 
 pub type NameNode = Locatable<Name>;
 
-impl AsRef<BareName> for NameNode {
-    fn as_ref(&self) -> &BareName {
-        let n: &Name = self.as_ref();
-        n.as_ref()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

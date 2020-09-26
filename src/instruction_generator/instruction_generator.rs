@@ -1,7 +1,7 @@
 use super::instruction::*;
 use crate::common::*;
 use crate::linter::*;
-use crate::parser::{BareName, HasQualifier};
+use crate::parser::{BareName, QualifiedName};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
@@ -17,7 +17,11 @@ fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
         let top_level_token = top_level_token_node.as_ref();
         match top_level_token {
             TopLevelToken::FunctionImplementation(f) => {
-                let FunctionImplementation { name, params, .. } = f;
+                let FunctionImplementation {
+                    name: Locatable { element: name, .. },
+                    params,
+                    ..
+                } = f;
                 let bare_name: &BareName = name.as_ref();
                 functions.insert(
                     bare_name.clone(),
@@ -96,12 +100,18 @@ impl InstructionGenerator {
 
         // functions
         for (f, pos) in functions {
-            let name = f.name;
-            let bare_name: &BareName = name.as_ref();
+            let Locatable {
+                element:
+                    QualifiedName {
+                        bare_name,
+                        qualifier,
+                    },
+                ..
+            } = f.name;
             let block = f.body;
-            self.function_label(bare_name, pos);
+            self.function_label(&bare_name, pos);
             // set default value
-            self.push(Instruction::Load(Variant::from(name.qualifier())), pos);
+            self.push(Instruction::Load(Variant::from(qualifier)), pos);
             self.generate_block_instructions(block);
             self.push(Instruction::PopRet, pos);
         }

@@ -6,7 +6,7 @@ use crate::interpreter::context::*;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
 use crate::linter::{DimName, HasTypeDefinition, UserDefinedTypes};
-use crate::parser::{HasQualifier, TypeQualifier};
+use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -336,7 +336,8 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                             Some(v) => Some(v),
                             None => {
                                 // it was a function, but the implementation did not set a result
-                                Some(Variant::from(function_name.qualifier()))
+                                let QualifiedName { qualifier, .. } = function_name;
+                                Some(Variant::from(qualifier))
                             }
                         }
                     }

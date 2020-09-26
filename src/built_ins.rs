@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::linter::{DimName, DimType};
-use crate::parser::{BareName, HasQualifier, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
 // ========================================================
@@ -62,17 +62,17 @@ impl From<BuiltInFunction> for CaseInsensitiveString {
 
 // BuiltInFunction -> TypeQualifier
 
-impl HasQualifier for BuiltInFunction {
-    fn qualifier(&self) -> TypeQualifier {
-        match self {
-            Self::Chr => TypeQualifier::DollarString,
-            Self::Environ => TypeQualifier::DollarString,
-            Self::Eof => TypeQualifier::PercentInteger,
-            Self::InStr => TypeQualifier::PercentInteger,
-            Self::Len => TypeQualifier::PercentInteger,
-            Self::Mid => TypeQualifier::DollarString,
-            Self::Str => TypeQualifier::DollarString,
-            Self::Val => TypeQualifier::BangSingle,
+impl From<&BuiltInFunction> for TypeQualifier {
+    fn from(x: &BuiltInFunction) -> TypeQualifier {
+        match x {
+            BuiltInFunction::Chr => TypeQualifier::DollarString,
+            BuiltInFunction::Environ => TypeQualifier::DollarString,
+            BuiltInFunction::Eof => TypeQualifier::PercentInteger,
+            BuiltInFunction::InStr => TypeQualifier::PercentInteger,
+            BuiltInFunction::Len => TypeQualifier::PercentInteger,
+            BuiltInFunction::Mid => TypeQualifier::DollarString,
+            BuiltInFunction::Str => TypeQualifier::DollarString,
+            BuiltInFunction::Val => TypeQualifier::BangSingle,
         }
     }
 }
@@ -80,8 +80,9 @@ impl HasQualifier for BuiltInFunction {
 // BuiltInFunction -> QualifiedName
 
 impl From<BuiltInFunction> for QualifiedName {
-    fn from(x: BuiltInFunction) -> Self {
-        Self::new(x.into(), x.qualifier())
+    fn from(built_in_function: BuiltInFunction) -> Self {
+        let qualifier: TypeQualifier = (&built_in_function).into();
+        Self::new(built_in_function.into(), qualifier)
     }
 }
 
@@ -89,7 +90,7 @@ impl From<BuiltInFunction> for QualifiedName {
 
 impl From<BuiltInFunction> for DimName {
     fn from(built_in_function: BuiltInFunction) -> Self {
-        let qualifier: TypeQualifier = built_in_function.qualifier();
+        let qualifier: TypeQualifier = (&built_in_function).into();
         let bare_name: BareName = built_in_function.into();
         Self::new(bare_name, DimType::BuiltIn(qualifier))
     }

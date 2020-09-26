@@ -1,5 +1,5 @@
 use crate::common::{Locatable, QError};
-use crate::parser::types::{BareName, HasQualifier, TypeQualifier};
+use crate::parser::types::{BareName, TypeQualifier};
 use std::convert::TryFrom;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -21,9 +21,9 @@ impl QualifiedName {
     }
 }
 
-impl HasQualifier for QualifiedName {
-    fn qualifier(&self) -> TypeQualifier {
-        self.qualifier
+impl AsRef<TypeQualifier> for QualifiedName {
+    fn as_ref(&self) -> &TypeQualifier {
+        &self.qualifier
     }
 }
 
@@ -53,10 +53,3 @@ impl TryFrom<&str> for QualifiedName {
 //
 
 pub type QualifiedNameNode = Locatable<QualifiedName>;
-
-impl AsRef<BareName> for QualifiedNameNode {
-    fn as_ref(&self) -> &BareName {
-        let n: &QualifiedName = self.as_ref();
-        n.as_ref()
-    }
-}

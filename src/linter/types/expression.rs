@@ -1,7 +1,7 @@
 use super::{DimName, HasTypeDefinition, TypeDefinition};
 use crate::built_ins::BuiltInFunction;
 use crate::common::{CanCastTo, FileHandle, Locatable};
-use crate::parser::{HasQualifier, Operator, QualifiedName, TypeQualifier, UnaryOperator};
+use crate::parser::{Operator, QualifiedName, TypeQualifier, UnaryOperator};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -37,10 +37,11 @@ impl HasTypeDefinition for Expression {
             Self::IntegerLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::PercentInteger),
             Self::LongLiteral(_) => TypeDefinition::BuiltIn(TypeQualifier::AmpersandLong),
             Self::Variable(name) => name.type_definition(),
-            Self::Constant(name) | Self::FunctionCall(name, _) => {
-                TypeDefinition::BuiltIn(name.qualifier())
+            Self::Constant(QualifiedName { qualifier, .. })
+            | Self::FunctionCall(QualifiedName { qualifier, .. }, _) => {
+                TypeDefinition::BuiltIn(*qualifier)
             }
-            Self::BuiltInFunctionCall(f, _) => TypeDefinition::BuiltIn(f.qualifier()),
+            Self::BuiltInFunctionCall(f, _) => TypeDefinition::BuiltIn(f.into()),
             Self::BinaryExpression(_, _, _, type_definition) => type_definition.clone(),
             Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().type_definition(),
             Self::FileHandle(_) => TypeDefinition::FileHandle,

@@ -1,4 +1,4 @@
-use super::{HasQualifier, LetterRange, TypeQualifier};
+use super::{LetterRange, TypeQualifier};
 
 /// Represents a definition of default type, such as DEFINT A-Z.
 #[derive(Clone, Debug, PartialEq)]
@@ -17,8 +17,8 @@ impl DefType {
     }
 }
 
-impl HasQualifier for DefType {
-    fn qualifier(&self) -> TypeQualifier {
-        self.qualifier
+impl AsRef<TypeQualifier> for DefType {
+    fn as_ref(&self) -> &TypeQualifier {
+        &self.qualifier
     }
 }

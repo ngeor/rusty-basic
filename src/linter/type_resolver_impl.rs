@@ -1,5 +1,5 @@
 use crate::linter::type_resolver::TypeResolver;
-use crate::parser::{DefType, HasQualifier, LetterRange, TypeQualifier};
+use crate::parser::{DefType, LetterRange, TypeQualifier};
 
 #[derive(Debug)]
 pub struct TypeResolverImpl {
@@ -29,11 +29,11 @@ impl TypeResolverImpl {
     }
 
     pub fn set(&mut self, x: &DefType) {
-        let q: TypeQualifier = x.qualifier();
+        let q: &TypeQualifier = x.as_ref();
         for r in x.ranges() {
             match *r {
-                LetterRange::Single(c) => self.do_set(c, c, q),
-                LetterRange::Range(start, stop) => self.do_set(start, stop, q),
+                LetterRange::Single(c) => self.do_set(c, c, *q),
+                LetterRange::Range(start, stop) => self.do_set(start, stop, *q),
             }
         }
     }

@@ -87,14 +87,15 @@ fn two_letter_range<T: BufRead + 'static>(
 mod tests {
     use super::*;
     use crate::parser::test_utils::*;
-    use crate::parser::{HasQualifier, Statement};
+    use crate::parser::Statement;
 
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {
         ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
             match parse($input).demand_single().strip_location() {
                 TopLevelToken::DefType(def_type) => {
-                    assert_eq!(def_type.qualifier(), $expected_qualifier);
+                    let def_type_qualifier: &crate::parser::TypeQualifier = def_type.as_ref();
+                    assert_eq!(*def_type_qualifier, $expected_qualifier);
                     assert_eq!(def_type.ranges(), &$expected_ranges);
                 }
                 _ => panic!(format!("{:?}", $input)),

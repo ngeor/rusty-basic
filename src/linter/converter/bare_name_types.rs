@@ -16,13 +16,6 @@ pub enum BareNameTypes {
 }
 
 impl BareNameTypes {
-    pub fn is_constant(&self) -> bool {
-        match self {
-            Self::Constant(_) => true,
-            _ => false,
-        }
-    }
-
     pub fn is_extended(&self) -> bool {
         match self {
             Self::FixedLengthString(_) | Self::Extended(_) | Self::UserDefined(_) => true,
@@ -44,7 +37,7 @@ impl BareNameTypes {
                     panic!("Duplicate compact qualifier");
                 }
             }
-            _ => panic!("Cannot add compact to this set"),
+            _ => panic!("Existing declaration is not compact!"),
         }
     }
 }

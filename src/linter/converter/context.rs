@@ -77,33 +77,22 @@ impl<'a> Context<'a> {
 
     pub fn contains_const(&self, name: &BareName) -> bool {
         match self.names.get(name) {
-            Some(resolved_type_definitions) => resolved_type_definitions.is_constant(),
-            None => false,
+            Some(BareNameTypes::Constant(_)) => true,
+            _ => false,
         }
     }
 
     pub fn contains_compact(&self, name: &BareName, q: TypeQualifier) -> bool {
         match self.names.get(name) {
-            Some(resolved_type_definitions) => resolved_type_definitions.has_compact(q),
+            Some(bare_name_types) => bare_name_types.has_compact(q),
             None => false,
         }
     }
 
     pub fn contains_extended(&self, name: &BareName) -> bool {
         match self.names.get(name) {
-            Some(resolved_type_definitions) => resolved_type_definitions.is_extended(),
+            Some(bare_name_types) => bare_name_types.is_extended(),
             None => false,
-        }
-    }
-
-    fn collect_name_without_dot(&mut self, name: BareName) {
-        match &mut self.state {
-            ContextState::Child { parent, .. } => parent.collect_name_without_dot(name),
-            ContextState::Root {
-                names_without_dot, ..
-            } => {
-                names_without_dot.insert(name);
-            }
         }
     }
 
@@ -123,8 +112,8 @@ impl<'a> Context<'a> {
 
     pub fn push_dim_compact(&mut self, b: BareName, q: TypeQualifier) {
         match self.names.get_mut(&b) {
-            Some(resolved_type_definitions) => {
-                resolved_type_definitions.add_compact(q);
+            Some(bare_name_types) => {
+                bare_name_types.add_compact(q);
             }
             None => {
                 let mut s: HashSet<TypeQualifier> = HashSet::new();
@@ -161,27 +150,37 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn push_compact_param(&mut self, qualified_name: QualifiedName) {
-        // TODO panic if param is duplicate
+    fn collect_name_without_dot(&mut self, name: BareName) {
         match &mut self.state {
-            ContextState::Child { param_names, .. } => {
-                param_names.insert(qualified_name.into());
+            ContextState::Child { parent, .. } => parent.collect_name_without_dot(name),
+            ContextState::Root {
+                names_without_dot, ..
+            } => {
+                names_without_dot.insert(name);
             }
-            _ => panic!("Root context cannot have parameters"),
         }
+    }
+
+    pub fn push_compact_param(&mut self, qualified_name: QualifiedName) {
+        self.push_param(qualified_name.into());
     }
 
     pub fn push_extended_param(&mut self, bare_name: BareName) {
-        // TODO panic if param is duplicate
+        self.push_param(bare_name.into());
+    }
+
+    fn push_param(&mut self, name: Name) {
         match &mut self.state {
             ContextState::Child { param_names, .. } => {
-                param_names.insert(bare_name.into());
+                if !param_names.insert(name) {
+                    panic!("Duplicate parameter");
+                }
             }
             _ => panic!("Root context cannot have parameters"),
         }
     }
 
-    pub fn do_resolve_assignment<T: TypeResolver>(
+    pub fn resolve_name_in_assignment<T: TypeResolver>(
         &self,
         name: &Name,
         resolver: &T,
@@ -202,7 +201,7 @@ impl<'a> Context<'a> {
     ) -> Result<Option<Expression>, QError> {
         let bare_name: &BareName = name.as_ref();
         match self.names.get(bare_name) {
-            Some(resolved_type_definitions) => match resolved_type_definitions {
+            Some(bare_name_types) => match bare_name_types {
                 BareNameTypes::Compact(existing_set) => {
                     let q = match name {
                         Name::Bare(b) => resolver.resolve(b),
@@ -264,26 +263,6 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn do_resolve_const_expression(&self, name: &Name) -> Result<Option<Expression>, QError> {
-        let bare_name: &BareName = name.as_ref();
-        match self.names.get(bare_name) {
-            Some(resolved_type_definitions) => match resolved_type_definitions {
-                BareNameTypes::Constant(q) => {
-                    if name.is_bare_or_of_type(*q) {
-                        Ok(Some(Expression::Constant(QualifiedName::new(
-                            bare_name.clone(),
-                            *q,
-                        ))))
-                    } else {
-                        Err(QError::DuplicateDefinition)
-                    }
-                }
-                _ => Ok(None),
-            },
-            None => Ok(None),
-        }
-    }
-
     pub fn resolve_missing_name_in_assignment<T: TypeResolver>(
         &mut self,
         name: &Name,
@@ -294,7 +273,7 @@ impl<'a> Context<'a> {
             qualifier,
         } = resolver.resolve_name(name);
         match self.names.get_mut(bare_name.as_ref()) {
-            Some(resolved_type_definitions) => match resolved_type_definitions {
+            Some(bare_name_types) => match bare_name_types {
                 BareNameTypes::Compact(existing_set) => {
                     if existing_set.contains(&qualifier) {
                         Err(QError::DuplicateDefinition)
@@ -338,22 +317,8 @@ impl<'a> Context<'a> {
         self.do_resolve_expression(n, resolver)
             .and_then(|opt| match opt {
                 Some(x) => Ok(Some(x)),
-                None => self.resolve_parent_const_expression(n),
+                None => resolve_const::resolve_parent_const_expression(self, n),
             })
-    }
-
-    fn resolve_parent_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
-        match &self.state {
-            ContextState::Child { parent, .. } => parent.resolve_const_expression(n),
-            _ => Ok(None),
-        }
-    }
-
-    fn resolve_const_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
-        match self.do_resolve_const_expression(n)? {
-            Some(e) => Ok(Some(e)),
-            None => self.resolve_parent_const_expression(n),
-        }
     }
 
     pub fn is_function_context(&self, bare_name: &BareName) -> bool {
@@ -567,6 +532,47 @@ mod resolve_members {
             ContextState::Root {
                 user_defined_types, ..
             } => user_defined_types.get(type_name),
+        }
+    }
+}
+
+mod resolve_const {
+    use super::*;
+
+    pub fn resolve_parent_const_expression(
+        context: &Context,
+        n: &Name,
+    ) -> Result<Option<Expression>, QError> {
+        match &context.state {
+            ContextState::Child { parent, .. } => resolve_const_expression(parent, n),
+            _ => Ok(None),
+        }
+    }
+
+    fn resolve_const_expression(context: &Context, n: &Name) -> Result<Option<Expression>, QError> {
+        match do_resolve_const_expression(context, n)? {
+            Some(e) => Ok(Some(e)),
+            None => resolve_parent_const_expression(context, n),
+        }
+    }
+
+    fn do_resolve_const_expression(
+        context: &Context,
+        name: &Name,
+    ) -> Result<Option<Expression>, QError> {
+        let bare_name: &BareName = name.as_ref();
+        match context.names.get(bare_name) {
+            Some(BareNameTypes::Constant(q)) => {
+                if name.is_bare_or_of_type(*q) {
+                    Ok(Some(Expression::Constant(QualifiedName::new(
+                        bare_name.clone(),
+                        *q,
+                    ))))
+                } else {
+                    Err(QError::DuplicateDefinition)
+                }
+            }
+            _ => Ok(None),
         }
     }
 }

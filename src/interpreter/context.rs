@@ -195,19 +195,6 @@ impl Context {
         }
     }
 
-    pub fn get_r_value(&self, name: &DimName) -> Option<Variant> {
-        match self.try_get_r_value(name) {
-            Some(v) => Some(v.clone()),
-            None => {
-                // create it
-                match name.dim_type() {
-                    DimType::BuiltIn(qualifier) => Some(qualifier.into()),
-                    _ => unimplemented!(),
-                }
-            }
-        }
-    }
-
     // ========================================================
     // used to be ArgsContext
     // ========================================================
@@ -216,11 +203,7 @@ impl Context {
         &mut self.arguments_stack
     }
 
-    // ========================================================
-    // private
-    // ========================================================
-
-    fn try_get_r_value(&self, name: &DimName) -> Option<&Variant> {
+    pub fn get_r_value(&self, name: &DimName) -> Option<&Variant> {
         // get a constant or a local thing or a parent constant
         let bare_name: &BareName = name.as_ref();
         match name.dim_type() {
@@ -265,6 +248,10 @@ impl Context {
             }
         }
     }
+
+    // ========================================================
+    // private
+    // ========================================================
 
     fn get_root_const(&self, name: &QualifiedName) -> Option<&Variant> {
         match &self.parent {

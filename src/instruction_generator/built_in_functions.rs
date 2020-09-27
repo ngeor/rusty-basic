@@ -34,7 +34,9 @@ impl InstructionGenerator {
                         ExpressionType::FixedLengthString(_) => {
                             ParamType::BuiltIn(TypeQualifier::DollarString)
                         }
-                        _ => unimplemented!(),
+                        ExpressionType::FileHandle => {
+                            panic!("file handle variables should not be supported")
+                        }
                     };
                     self.push(
                         Instruction::CopyToParent(

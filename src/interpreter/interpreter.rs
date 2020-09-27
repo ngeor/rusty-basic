@@ -167,10 +167,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 });
             }
             Instruction::Dim(dim_name) => {
-                let v = dim_name
-                    .dim_type()
-                    .default_variant(self.user_defined_types.as_ref());
-                self.context.set_variable(dim_name.clone(), v);
+                self.set_default_value(dim_name);
             }
             Instruction::Store(n) => {
                 let v = self.get_a();
@@ -235,10 +232,13 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                 let c = a.unary_not().with_err_at(pos)?;
                 self.set_a(c);
             }
-            Instruction::CopyVarToA(n) => match self.context.get_r_value(n) {
-                Some(v) => self.set_a(v),
-                None => panic!("CopyVarToA variable {:?} undefined at {:?}", n, pos),
-            },
+            Instruction::CopyVarToA(var_name) => {
+                let v = match self.context.get_r_value(var_name) {
+                    Some(v) => v.clone(),
+                    None => self.set_default_value(var_name),
+                };
+                self.set_a(v);
+            }
             Instruction::Equal => {
                 let a = self.get_a();
                 let b = self.get_b();
@@ -333,7 +333,7 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     Some(function_name) => {
                         let r: DimName = function_name.clone().into();
                         match self.context.get_r_value(&r) {
-                            Some(v) => Some(v),
+                            Some(v) => Some(v.clone()),
                             None => {
                                 // it was a function, but the implementation did not set a result
                                 let QualifiedName { qualifier, .. } = function_name;
@@ -440,6 +440,14 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
     fn pop_context(&mut self) {
         let current_context = self.take_context();
         self.set_context(current_context.pop());
+    }
+
+    fn set_default_value(&mut self, dim_name: &DimName) -> Variant {
+        let v = dim_name
+            .dim_type()
+            .default_variant(self.user_defined_types.as_ref());
+        self.context.set_variable(dim_name.clone(), v.clone());
+        v
     }
 }
 

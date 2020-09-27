@@ -11,8 +11,6 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
 
-// TODO fix all unimplemented
-
 /*
 
 Calling a sub
@@ -184,14 +182,11 @@ impl Context {
 
     fn set_variable_member(&mut self, bare_name: BareName, members: Members, value: Variant) {
         match self.user_defined_type_variables.get_mut(&bare_name) {
-            Some(v) => match v {
-                Variant::VUserDefined(box_user_defined_type_value) => {
-                    let name_path = members.name_path();
-                    box_user_defined_type_value.insert_path(&name_path, value);
-                }
-                _ => unimplemented!(),
-            },
-            None => unimplemented!(),
+            Some(Variant::VUserDefined(box_user_defined_type_value)) => {
+                let name_path = members.name_path();
+                box_user_defined_type_value.insert_path(&name_path, value);
+            }
+            _ => panic!("Expected member variable {} {:?}", bare_name, members),
         }
     }
 

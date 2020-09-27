@@ -115,7 +115,7 @@ fn test_assign_is_by_val() {
 }
 
 #[test]
-fn test_modify_in_sub() {
+fn test_modify_members_in_sub() {
     let input = r#"
     TYPE LPARAM
         LoWord AS INTEGER
@@ -138,6 +138,144 @@ fn test_modify_in_sub() {
     END SUB
     "#;
     assert_prints!(input, "2", "1");
+}
+
+mod modify_in_sub {
+    use super::*;
+
+    #[test]
+    fn create_new_local_value_and_copy_to_param() {
+        let input = r#"
+        TYPE PostCode
+            Prefix AS STRING * 4
+        END TYPE
+
+        TYPE Address
+            PostCode AS PostCode
+        END TYPE
+
+        TYPE Person
+            Address AS Address
+        END TYPE
+
+        DIM a AS Person
+        CreateNewLocalValueAndCopyToParam a
+        PRINT a.Address.PostCode.Prefix
+
+        SUB CreateNewLocalValueAndCopyToParam(b AS Person)
+            DIM c AS Person
+            c.Address.PostCode.Prefix = "1234 rest should be trimmed"
+            b = c
+        END SUB
+        "#;
+        assert_prints!(input, "1234");
+    }
+
+    #[test]
+    fn modify_person() {
+        let input = r#"
+        TYPE PostCode
+            Prefix AS STRING * 4
+        END TYPE
+
+        TYPE Address
+            PostCode AS PostCode
+        END TYPE
+
+        TYPE Person
+            Address AS Address
+        END TYPE
+
+        DIM a AS Person
+        ModifyPerson a
+        PRINT a.Address.PostCode.Prefix
+
+        SUB ModifyPerson(b AS Person)
+            b.Address.PostCode.Prefix = "1234 rest should be trimmed"
+        END SUB
+        "#;
+        assert_prints!(input, "1234");
+    }
+
+    #[test]
+    fn modify_address() {
+        let input = r#"
+        TYPE PostCode
+            Prefix AS STRING * 4
+        END TYPE
+
+        TYPE Address
+            PostCode AS PostCode
+        END TYPE
+
+        TYPE Person
+            Address AS Address
+        END TYPE
+
+        DIM a AS Person
+        ModifyAddress a.Address
+        PRINT a.Address.PostCode.Prefix
+
+        SUB ModifyAddress(b AS Address)
+            b.PostCode.Prefix = "1234 rest should be trimmed"
+        END SUB
+        "#;
+        assert_prints!(input, "1234");
+    }
+
+    #[test]
+    fn modify_postcode() {
+        let input = r#"
+        TYPE PostCode
+            Prefix AS STRING * 4
+        END TYPE
+
+        TYPE Address
+            PostCode AS PostCode
+        END TYPE
+
+        TYPE Person
+            Address AS Address
+        END TYPE
+
+        DIM a AS Person
+        ModifyPostCode a.Address.PostCode
+        PRINT a.Address.PostCode.Prefix
+
+        SUB ModifyPostCode(b AS PostCode)
+            b.Prefix = "1234 rest should be trimmed"
+            PRINT b.Prefix
+        END SUB
+        "#;
+        assert_prints!(input, "1234", "1234");
+    }
+
+    #[test]
+    fn modify_prefix() {
+        let input = r#"
+        TYPE PostCode
+            Prefix AS STRING * 4
+        END TYPE
+
+        TYPE Address
+            PostCode AS PostCode
+        END TYPE
+
+        TYPE Person
+            Address AS Address
+        END TYPE
+
+        DIM a AS Person
+        ModifyPrefix a.Address.PostCode.Prefix
+        PRINT a.Address.PostCode.Prefix
+
+        SUB ModifyPrefix(b AS STRING)
+            b$ = "1234 rest should be trimmed"
+            PRINT b$
+        END SUB
+        "#;
+        assert_prints!(input, "1234 rest should be trimmed", "1234");
+    }
 }
 
 #[test]

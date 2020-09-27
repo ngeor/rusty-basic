@@ -20,8 +20,8 @@ pub fn lint_call_args(
         match arg {
             Expression::Variable(_) => {
                 // it's by ref, it needs to match exactly
-                let arg_q = arg_node.expression_type();
-                if param_type != &arg_q {
+                let arg_q = arg.expression_type();
+                if !param_type.accepts_by_ref(&arg_q) {
                     return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
                 }
             }

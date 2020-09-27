@@ -353,19 +353,14 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     None => {}
                 }
             }
-            Instruction::PushUnnamedRef(name) => {
-                self.context.arguments_stack().push_unnamed(name.clone());
+            Instruction::CopyToParent(param_name, parent_var_name) => {
+                self.context.copy_to_parent(param_name, parent_var_name);
             }
-            Instruction::PushUnnamedVal => {
+            Instruction::PushUnnamed => {
                 let v = self.get_a();
                 self.context.arguments_stack().push_unnamed(v);
             }
-            Instruction::PushNamedRef(parameter_name, argument_name) => {
-                self.context
-                    .arguments_stack()
-                    .push_named(parameter_name.clone(), argument_name.clone());
-            }
-            Instruction::PushNamedVal(param_q_name) => {
+            Instruction::PushNamed(param_q_name) => {
                 let v = self.get_a();
                 self.context
                     .arguments_stack()

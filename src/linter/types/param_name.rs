@@ -24,6 +24,10 @@ impl ParamName {
     pub fn param_type(&self) -> &ParamType {
         &self.param_type
     }
+
+    pub fn into_inner(self) -> (BareName, ParamType) {
+        (self.bare_name, self.param_type)
+    }
 }
 
 impl AsRef<BareName> for ParamName {

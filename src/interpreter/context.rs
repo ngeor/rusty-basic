@@ -1,11 +1,14 @@
-use crate::common::CaseInsensitiveString;
-use crate::interpreter::argument::Argument;
+use crate::common::{CaseInsensitiveString, StringUtils};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::arguments_stack::ArgumentsStack;
-use crate::linter::{DimName, DimType, Members, ParamName, ParamType, UserDefinedTypes};
-use crate::parser::{BareName, QualifiedName, TypeQualifier};
+use crate::linter::{
+    DimName, DimType, ExpressionType, HasExpressionType, Members, ParamName, ParamType,
+    UserDefinedTypes,
+};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::rc::Rc;
 
 // TODO fix all unimplemented
@@ -53,6 +56,7 @@ Call Hello
 
 */
 
+#[derive(Debug)]
 pub struct Context {
     parent: Option<Box<Context>>,
     user_defined_types: Rc<UserDefinedTypes>,
@@ -60,11 +64,11 @@ pub struct Context {
     variables: HashMap<QualifiedName, Variant>,
     user_defined_type_variables: HashMap<CaseInsensitiveString, Variant>,
 
+    /// Maps the order of the parameter to the name
+    unnamed: HashMap<u8, Name>,
+
     /// Preparing arguments for the next call
     arguments_stack: ArgumentsStack,
-
-    /// Got these parameters when this call started
-    parameters: Arguments,
 }
 
 impl Context {
@@ -76,7 +80,7 @@ impl Context {
             variables: HashMap::new(),
             user_defined_type_variables: HashMap::new(),
             arguments_stack: ArgumentsStack::new(),
-            parameters: Arguments::unnamed(),
+            unnamed: HashMap::new(),
         }
     }
 
@@ -89,12 +93,53 @@ impl Context {
 
     pub fn push(mut self) -> Self {
         let arguments: Arguments = self.arguments_stack.pop();
+        let mut variables: HashMap<QualifiedName, Variant> = HashMap::new();
+        let mut user_defined_type_variables: HashMap<BareName, Variant> = HashMap::new();
+        let mut unnamed: HashMap<u8, Name> = HashMap::new();
+
+        let mut idx: u8 = 0;
+        match arguments {
+            Arguments::Unnamed(v) => {
+                for arg in v {
+                    let bare_name: CaseInsensitiveString = format!("{}", idx).into();
+                    match TypeQualifier::try_from(&arg) {
+                        Ok(q) => {
+                            unnamed.insert(idx, Name::new(bare_name.clone(), Some(q)));
+                            variables.insert(QualifiedName::new(bare_name, q), arg);
+                        }
+                        Err(_) => {
+                            unnamed.insert(idx, Name::new(bare_name.clone(), None));
+                            user_defined_type_variables.insert(bare_name, arg);
+                        }
+                    }
+
+                    idx += 1;
+                }
+            }
+            Arguments::Named(map) => {
+                for (param_name, arg) in map {
+                    let (bare_name, param_type) = param_name.into_inner();
+                    match param_type {
+                        ParamType::BuiltIn(q) => {
+                            unnamed.insert(idx, Name::new(bare_name.clone(), Some(q)));
+                            variables.insert(QualifiedName::new(bare_name, q), arg);
+                        }
+                        ParamType::UserDefined(_) => {
+                            unnamed.insert(idx, Name::new(bare_name.clone(), None));
+                            user_defined_type_variables.insert(bare_name, arg);
+                        }
+                    }
+
+                    idx += 1;
+                }
+            }
+        }
         Self {
             user_defined_types: Rc::clone(&self.user_defined_types),
             constants: HashMap::new(),
-            variables: HashMap::new(),
-            user_defined_type_variables: HashMap::new(),
-            parameters: arguments,
+            variables,
+            user_defined_type_variables,
+            unnamed,
             arguments_stack: ArgumentsStack::new(),
             parent: Some(Box::new(self)),
         }
@@ -110,19 +155,15 @@ impl Context {
             DimType::BuiltIn(qualifier) => {
                 self.set_variable_built_in(bare_name, qualifier, value);
             }
+            // todo rollback this
             DimType::FixedLengthString(_len) => {
-                // not possible to have a fixed-length string parameter,
-                // just go ahead and set the variable
-                self.variables.insert(
-                    QualifiedName::new(bare_name, TypeQualifier::DollarString),
-                    value,
-                );
+                self.set_variable_built_in(bare_name, TypeQualifier::DollarString, value);
             }
-            DimType::UserDefined(user_defined_type) => {
-                self.set_variable_user_defined(bare_name, user_defined_type, value);
+            DimType::UserDefined(_) => {
+                self.set_variable_user_defined(bare_name, value);
             }
-            DimType::Many(user_defined_type, members) => {
-                self.set_variable_member(bare_name, user_defined_type, members, value);
+            DimType::Many(_, members) => {
+                self.set_variable_member(bare_name, members, value);
             }
         }
     }
@@ -133,90 +174,24 @@ impl Context {
         qualifier: TypeQualifier,
         value: Variant,
     ) {
-        let p = ParamName::new(bare_name.clone(), ParamType::BuiltIn(qualifier));
-        match self.try_set_variable_parameter(p, value) {
-            Some(value) => {
-                self.variables
-                    .insert(QualifiedName::new(bare_name, qualifier), value);
-            }
-            None => {}
-        }
+        self.variables
+            .insert(QualifiedName::new(bare_name, qualifier), value);
     }
 
-    /// Tries to set a value to the given parameter.
-    ///
-    /// Returns `Some(value)` if the parameter does not exist, so that the value can be reused.
-    fn try_set_variable_parameter(
-        &mut self,
-        param_name: ParamName,
-        value: Variant,
-    ) -> Option<Variant> {
-        match self.parameters.get_mut(&param_name) {
-            Some(arg) => {
-                match arg {
-                    Argument::ByRef(name_in_parent) => {
-                        let p = name_in_parent.clone();
-                        self.parent
-                            .as_mut()
-                            .expect("should have parent")
-                            .set_variable(p, value);
-                    }
-                    Argument::ByVal(_old_value) => {
-                        *arg = Argument::ByVal(value);
-                    }
-                }
-                None
-            }
-            None => Some(value),
-        }
+    fn set_variable_user_defined(&mut self, bare_name: BareName, value: Variant) {
+        self.user_defined_type_variables.insert(bare_name, value);
     }
 
-    fn set_variable_user_defined(
-        &mut self,
-        bare_name: BareName,
-        type_name: BareName,
-        value: Variant,
-    ) {
-        let p = ParamName::new(bare_name.clone(), ParamType::UserDefined(type_name.clone()));
-        match self.try_set_variable_parameter(p, value) {
-            Some(value) => {
-                self.user_defined_type_variables.insert(bare_name, value);
-            }
-            None => {}
-        }
-    }
-
-    fn set_variable_member(
-        &mut self,
-        bare_name: BareName,
-        type_name: BareName,
-        members: Members,
-        value: Variant,
-    ) {
-        let p = ParamName::new(bare_name.clone(), ParamType::UserDefined(type_name.clone()));
-        match self.parameters.get_mut(&p) {
-            Some(arg) => match arg {
-                Argument::ByRef(name_in_parent) => {
-                    let p = name_in_parent.clone().append(members);
-                    self.parent
-                        .as_mut()
-                        .expect("should have parent")
-                        .set_variable(p, value);
+    fn set_variable_member(&mut self, bare_name: BareName, members: Members, value: Variant) {
+        match self.user_defined_type_variables.get_mut(&bare_name) {
+            Some(v) => match v {
+                Variant::VUserDefined(box_user_defined_type_value) => {
+                    let name_path = members.name_path();
+                    box_user_defined_type_value.insert_path(&name_path, value);
                 }
-                Argument::ByVal(_old_value) => {
-                    *arg = Argument::ByVal(value);
-                }
+                _ => unimplemented!(),
             },
-            None => match self.user_defined_type_variables.get_mut(&bare_name) {
-                Some(v) => match v {
-                    Variant::VUserDefined(box_user_defined_type_value) => {
-                        let name_path = members.name_path();
-                        box_user_defined_type_value.insert_path(&name_path, value);
-                    }
-                    _ => unimplemented!(),
-                },
-                None => unimplemented!(),
-            },
+            None => unimplemented!(),
         }
     }
 
@@ -242,41 +217,6 @@ impl Context {
     }
 
     // ========================================================
-    // used to be subcontext
-    // ========================================================
-
-    pub fn set_value_to_popped_arg(&mut self, arg: &Argument, value: Variant) {
-        match arg {
-            Argument::ByVal(_) => panic!("Expected: variable"),
-            Argument::ByRef(n) => self
-                .parent
-                .as_mut()
-                .expect("should have parent")
-                .set_variable(n.clone(), value),
-        }
-    }
-
-    pub fn take_parameters(&mut self) -> Arguments {
-        std::mem::replace(&mut self.parameters, Arguments::unnamed())
-    }
-
-    pub fn parameter_values(&self) -> ParameterValues {
-        ParameterValues::new(self)
-    }
-
-    pub fn evaluate_parameter<'a>(&'a self, arg: &'a Argument) -> &'a Variant {
-        match arg {
-            Argument::ByRef(name_in_parent) => match &self.parent {
-                Some(p) => p
-                    .try_get_r_value(name_in_parent)
-                    .expect("Should exist in parent"),
-                None => panic!("Should have parent"),
-            },
-            Argument::ByVal(v) => v,
-        }
-    }
-
-    // ========================================================
     // private
     // ========================================================
 
@@ -290,26 +230,12 @@ impl Context {
                 match self.constants.get(qualified_name) {
                     Some(v) => Some(v),
                     None => {
-                        // is it a parameter
-                        let p = ParamName::new(bare_name.clone(), ParamType::BuiltIn(*qualifier));
-                        match self.parameters.get(&p) {
-                            Some(arg) => match arg {
-                                Argument::ByRef(name_in_parent) => self
-                                    .parent
-                                    .as_ref()
-                                    .expect("should have parent")
-                                    .try_get_r_value(name_in_parent),
-                                Argument::ByVal(v) => Some(v),
-                            },
+                        // is it a variable
+                        match self.variables.get(qualified_name) {
+                            Some(v) => Some(v),
                             None => {
-                                // is it a variable
-                                match self.variables.get(qualified_name) {
-                                    Some(v) => Some(v),
-                                    None => {
-                                        // is it a root constant
-                                        self.get_root_const(qualified_name)
-                                    }
-                                }
+                                // is it a root constant
+                                self.get_root_const(qualified_name)
                             }
                         }
                     }
@@ -320,63 +246,21 @@ impl Context {
                     QualifiedName::new(bare_name.clone(), TypeQualifier::DollarString);
                 self.variables.get(&qualified_name)
             }
-            DimType::UserDefined(user_defined_type) => {
-                // is it a parameter
-                let p = ParamName::new(
-                    bare_name.clone(),
-                    ParamType::UserDefined(user_defined_type.clone()),
-                );
-                match self.parameters.get(&p) {
-                    Some(arg) => match arg {
-                        Argument::ByRef(name_in_parent) => self
-                            .parent
-                            .as_ref()
-                            .expect("should have parent")
-                            .try_get_r_value(name_in_parent),
-                        Argument::ByVal(v) => Some(v),
-                    },
-                    None => {
-                        // is it a variable
-                        match self.user_defined_type_variables.get(bare_name) {
-                            Some(v) => Some(v),
-                            None => None,
-                        }
-                    }
+            DimType::UserDefined(_) => {
+                // is it a variable
+                match self.user_defined_type_variables.get(bare_name) {
+                    Some(v) => Some(v),
+                    None => None,
                 }
             }
-            DimType::Many(user_defined_type, members) => {
-                // is it a parameter
-                let p = ParamName::new(
-                    bare_name.clone(),
-                    ParamType::UserDefined(user_defined_type.clone()),
-                );
-                match self.parameters.get(&p) {
-                    Some(arg) => match arg {
-                        Argument::ByRef(name_in_parent) => {
-                            let p = name_in_parent.clone().append(members.clone());
-                            self.parent
-                                .as_ref()
-                                .expect("should have parent")
-                                .try_get_r_value(&p)
-                        }
-                        Argument::ByVal(v) => match v {
-                            Variant::VUserDefined(box_user_defined_type_value) => {
-                                let name_path = members.name_path();
-                                box_user_defined_type_value.get_path(&name_path)
-                            }
-                            _ => None,
-                        },
-                    },
-                    None => {
-                        // is it a variable
-                        match self.user_defined_type_variables.get(bare_name) {
-                            Some(Variant::VUserDefined(box_user_defined_type_value)) => {
-                                let name_path = members.name_path();
-                                box_user_defined_type_value.get_path(&name_path)
-                            }
-                            _ => None,
-                        }
+            DimType::Many(_, members) => {
+                // is it a variable
+                match self.user_defined_type_variables.get(bare_name) {
+                    Some(Variant::VUserDefined(box_user_defined_type_value)) => {
+                        let name_path = members.name_path();
+                        box_user_defined_type_value.get_path(&name_path)
                     }
+                    _ => None,
                 }
             }
         }
@@ -404,43 +288,59 @@ impl Context {
             }
         }
     }
-}
 
-// ========================================================
-// ParameterValues
-// ========================================================
+    pub fn copy_to_parent(&mut self, param_name: &ParamName, parent_var_name: &DimName) {
+        let bare_param_name: &BareName = param_name.as_ref();
+        let v = match param_name.param_type() {
+            ParamType::BuiltIn(q) => self
+                .variables
+                .get(&QualifiedName::new(bare_param_name.clone(), *q))
+                .expect(&format!("should have built-in variable {:?}", param_name)),
+            ParamType::UserDefined(_) => self
+                .user_defined_type_variables
+                .get(bare_param_name)
+                .expect("should have user defined variable"),
+        };
 
-pub struct ParameterValues<'a> {
-    context: &'a Context,
-    parameters_iterator: std::collections::vec_deque::Iter<'a, Argument>,
-}
+        // if the parent_var_name is fixed length string, trim the value
+        let v = match parent_var_name.dim_type().expression_type() {
+            ExpressionType::FixedLengthString(len) => match v {
+                Variant::VString(s) => Variant::VString(s.clone().fix_length(len as usize)),
+                _ => v.clone(),
+            },
+            _ => v.clone(),
+        };
 
-impl<'a> ParameterValues<'a> {
-    pub fn new(context: &'a Context) -> Self {
-        ParameterValues {
-            context,
-            parameters_iterator: context.parameters.iter(),
+        match &mut self.parent {
+            Some(p) => {
+                p.set_variable(parent_var_name.clone(), v);
+            }
+            None => panic!("Stack underflow in copy_to_parent"),
         }
     }
 
-    pub fn get(&self, index: usize) -> Option<&'a Variant> {
-        self.context
-            .parameters
-            .get_at(index)
-            .map(|a| self.context.evaluate_parameter(a))
-    }
-}
-
-impl<'a> Iterator for ParameterValues<'a> {
-    type Item = &'a Variant;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.parameters_iterator.next() {
-            Some(arg) => {
-                let value = self.context.evaluate_parameter(arg);
-                Some(value)
-            }
+    // TODO move the rest into a special structure 'unnamed' or so
+    pub fn get(&self, idx: u8) -> Option<&Variant> {
+        match self.unnamed.get(&idx) {
+            Some(Name::Bare(b)) => self.user_defined_type_variables.get(b),
+            Some(Name::Qualified(q)) => self.variables.get(q),
             None => None,
+        }
+    }
+
+    pub fn parameter_count(&self) -> u8 {
+        self.unnamed.len() as u8
+    }
+
+    pub fn set(&mut self, idx: u8, value: Variant) {
+        match self.unnamed.get(&idx) {
+            Some(Name::Bare(b)) => {
+                self.user_defined_type_variables.insert(b.clone(), value);
+            }
+            Some(Name::Qualified(q)) => {
+                self.variables.insert(q.clone(), value);
+            }
+            None => panic!("index out of range"),
         }
     }
 }

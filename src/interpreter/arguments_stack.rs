@@ -1,8 +1,9 @@
-use crate::interpreter::argument::Argument;
 use crate::interpreter::arguments::Arguments;
 use crate::linter::ParamName;
+use crate::variant::Variant;
 use std::collections::VecDeque;
 
+#[derive(Debug)]
 pub struct ArgumentsStack {
     stack: VecDeque<Arguments>,
 }
@@ -28,17 +29,11 @@ impl ArgumentsStack {
             .expect("Stack underflow collecting arguments!")
     }
 
-    pub fn push_unnamed<T>(&mut self, arg: T)
-    where
-        Argument: From<T>,
-    {
+    pub fn push_unnamed(&mut self, arg: Variant) {
         self.demand().push_unnamed(arg);
     }
 
-    pub fn push_named<T>(&mut self, param_name: ParamName, arg: T)
-    where
-        Argument: From<T>,
-    {
+    pub fn push_named(&mut self, param_name: ParamName, arg: Variant) {
         self.demand().push_named(param_name, arg);
     }
 

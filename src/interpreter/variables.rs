@@ -85,7 +85,7 @@ impl Variables {
         self.values.get(idx)
     }
 
-    pub fn set(&mut self, idx: usize, value: Variant) {
-        self.values[idx] = value;
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
+        self.values.get_mut(idx)
     }
 }

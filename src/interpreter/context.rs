@@ -243,16 +243,15 @@ impl Context {
         }
     }
 
-    // TODO move the rest into a special structure 'unnamed' or so
-    pub fn get(&self, idx: usize) -> Option<&Variant> {
-        self.variables.get(idx)
-    }
-
     pub fn parameter_count(&self) -> usize {
         self.parameter_count
     }
 
-    pub fn set(&mut self, idx: usize, value: Variant) {
-        self.variables.set(idx, value)
+    pub fn get(&self, idx: usize) -> Option<&Variant> {
+        self.variables.get(idx)
+    }
+
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
+        self.variables.get_mut(idx)
     }
 }

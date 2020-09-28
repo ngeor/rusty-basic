@@ -231,8 +231,7 @@ mod input {
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         for idx in 0..interpreter.context().parameter_count() {
-            let val: Variant = do_input_one_var(interpreter, idx)?;
-            interpreter.context_mut().set(idx, val);
+            do_input_one_var(interpreter, idx)?;
         }
         Ok(())
     }
@@ -240,17 +239,16 @@ mod input {
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         idx: usize,
-    ) -> Result<Variant, QErrorNode> {
+    ) -> Result<(), QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        let existing_value_to_determine_type = interpreter.context().get(idx).unwrap();
-        let q: TypeQualifier = existing_value_to_determine_type
-            .try_into()
-            .with_err_no_pos()?;
-        Ok(match q {
+        let existing_value = interpreter.context_mut().get_mut(idx).unwrap();
+        let temp: &Variant = existing_value;
+        let q: TypeQualifier = temp.try_into().with_err_no_pos()?;
+        *existing_value = match q {
             TypeQualifier::BangSingle => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
@@ -259,7 +257,8 @@ mod input {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
             _ => unimplemented!(), // TODO support more types
-        })
+        };
+        Ok(())
     }
 
     fn parse_single_input(s: String) -> Result<f32, QError> {
@@ -783,7 +782,7 @@ mod line_input {
             .read_line(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        interpreter.context_mut().set(idx, Variant::VString(s));
+        *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }
 
@@ -796,7 +795,7 @@ mod line_input {
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        interpreter.context_mut().set(idx, Variant::VString(s));
+        *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }
 }

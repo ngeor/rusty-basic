@@ -9,7 +9,7 @@ impl InstructionGenerator {
         args: &Vec<ExpressionNode>,
         pos: Location,
     ) {
-        self.push(Instruction::BeginCollectNamedArguments, pos);
+        self.push(Instruction::BeginCollectArguments, pos);
         for (param_name, Locatable { element: arg, pos }) in param_names.iter().zip(args.iter()) {
             self.generate_expression_instructions_casting(
                 arg.clone().at(pos),
@@ -24,7 +24,7 @@ impl InstructionGenerator {
         args: &Vec<ExpressionNode>,
         pos: Location,
     ) {
-        self.push(Instruction::BeginCollectUnnamedArguments, pos);
+        self.push(Instruction::BeginCollectArguments, pos);
         for Locatable { element: arg, pos } in args {
             self.generate_expression_instructions(arg.clone().at(pos));
             self.push(Instruction::PushUnnamed, *pos);

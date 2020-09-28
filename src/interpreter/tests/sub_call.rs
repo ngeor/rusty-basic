@@ -149,20 +149,31 @@ fn test_by_ref_parameter_defined_in_previous_sub_call() {
 
 #[test]
 fn test_by_ref_two_levels_deep() {
-    let program = "
+    let program = r#"
     N = 41
     Sub1 N
     PRINT N
 
     SUB Sub1(N)
+        PRINT "Begin Sub1", N
         Sub2 N, 1
+        PRINT "End Sub1", N
     END SUB
 
     SUB Sub2(N, P)
+        PRINT "Begin Sub2", N
         N = N + P
+        PRINT "End Sub2", N
     END SUB
-    ";
-    assert_prints!(program, "42");
+    "#;
+    assert_prints!(
+        program,
+        "Begin Sub1 41",
+        "Begin Sub2 41",
+        "End Sub2 42",
+        "End Sub1 42",
+        "42"
+    );
 }
 
 #[test]

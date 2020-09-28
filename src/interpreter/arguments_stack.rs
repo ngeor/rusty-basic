@@ -15,12 +15,8 @@ impl ArgumentsStack {
         }
     }
 
-    pub fn begin_collect_named_arguments(&mut self) {
-        self.stack.push_back(Arguments::named());
-    }
-
-    pub fn begin_collect_unnamed_arguments(&mut self) {
-        self.stack.push_back(Arguments::unnamed());
+    pub fn begin_collect_arguments(&mut self) {
+        self.stack.push_back(Arguments::new());
     }
 
     pub fn pop(&mut self) -> Arguments {

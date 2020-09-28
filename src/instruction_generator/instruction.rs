@@ -51,17 +51,11 @@ pub enum Instruction {
     PushRet(usize),
     PopRet,
 
-    /// Starts collecting named arguments.
+    /// Starts collecting arguments.
     ///
     /// Arguments are evaluated within the current naming context and pushed with
-    /// PushNamed.
-    BeginCollectNamedArguments,
-
-    /// Starts collecting unnamed arguments (for a built-in sub or function).
-    ///
-    /// Arguments are evaluated within the current naming context and pushed with
-    /// PushUnnamed.
-    BeginCollectUnnamedArguments,
+    /// PushNamed and PushUnnamed.
+    BeginCollectArguments,
 
     /// Pushes the value of register A as a named parameter to a child context.
     PushNamed(ParamName),

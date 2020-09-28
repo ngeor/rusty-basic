@@ -313,15 +313,8 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
             Instruction::Jump(resolved_idx) => {
                 *i = resolved_idx - 1;
             }
-            Instruction::BeginCollectNamedArguments => {
-                self.context
-                    .arguments_stack()
-                    .begin_collect_named_arguments();
-            }
-            Instruction::BeginCollectUnnamedArguments => {
-                self.context
-                    .arguments_stack()
-                    .begin_collect_unnamed_arguments();
+            Instruction::BeginCollectArguments => {
+                self.context.arguments_stack().begin_collect_arguments();
             }
             Instruction::PushStack => {
                 self.push_context();

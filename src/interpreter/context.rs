@@ -86,16 +86,10 @@ impl Context {
     pub fn push(mut self) -> Self {
         let arguments: Arguments = self.arguments_stack.pop();
         let mut variables = Variables::new();
-        match arguments {
-            Arguments::Unnamed(v) => {
-                for arg in v {
-                    variables.insert_unnamed(arg);
-                }
-            }
-            Arguments::Named(map) => {
-                for (param_name, arg) in map {
-                    variables.insert_param(param_name, arg);
-                }
+        for (opt_param, arg) in arguments.into_iter() {
+            match opt_param {
+                Some(param_name) => variables.insert_param(param_name, arg),
+                None => variables.insert_unnamed(arg),
             }
         }
         let parameter_count = variables.len();

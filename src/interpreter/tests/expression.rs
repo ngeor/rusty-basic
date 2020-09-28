@@ -2,15 +2,6 @@ use crate::assert_has_variable;
 use crate::assert_prints;
 use crate::interpreter::test_utils::*;
 
-#[test]
-fn test_literals() {
-    assert_has_variable!(interpret("X = 3.14"), "X!", 3.14_f32);
-    assert_has_variable!(interpret("X# = 3.14"), "X#", 3.14);
-    assert_has_variable!(interpret("X$ = \"hello\""), "X$", "hello");
-    assert_has_variable!(interpret("X% = 42"), "X%", 42);
-    assert_has_variable!(interpret("X& = 42"), "X&", 42_i64);
-}
-
 mod binary_plus {
     use super::*;
 
@@ -527,4 +518,31 @@ fn test_dot_in_expression_variable_name() {
     END IF
     "#;
     assert_prints!(program, "bye");
+}
+
+#[test]
+fn test_hexadecimals() {
+    assert_prints!("PRINT &H0", "0");
+    assert_prints!("PRINT &H5", "5");
+    assert_prints!("PRINT &HA", "10");
+    assert_prints!("PRINT &H10", "16");
+
+    assert_prints!("PRINT &H1A", "16");
+    assert_prints!("PRINT &HB2", "16");
+
+    assert_prints!("PRINT &H1A1", "10");
+    assert_prints!("PRINT &H2BC", "10");
+    assert_prints!("PRINT &H34C", "10");
+
+    assert_prints!("PRINT &HAB4", "10");
+    assert_prints!("PRINT &HB3E", "10");
+    assert_prints!("PRINT &HC45", "10");
+
+    assert_prints!("PRINT &HFF", "255");
+    assert_prints!("PRINT &H100", "256");
+
+    assert_prints!("PRINT &HFFFF", "-1"); // integer
+    assert_prints!("PRINT -&HFFFF", "1");
+    assert_prints!("PRINT &HFFFFFFFF", "-1"); // long
+    assert_prints!("PRINT &H100000000", "overflow"); // overflow
 }

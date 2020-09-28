@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{DimName, ForLoopNode, StatementNodes};
+use crate::linter::{DimName, ForLoopNode, HasExpressionType, StatementNodes};
 use crate::variant::Variant;
 
 impl InstructionGenerator {
@@ -22,11 +22,17 @@ impl InstructionGenerator {
             ..
         } = f;
         // lower bound to A
-        self.generate_expression_instructions(lower_bound);
+        self.generate_expression_instructions_casting(
+            lower_bound,
+            counter_var_name.dim_type().expression_type(),
+        );
         // A to variable
         self.store_counter(&counter_var_name, pos);
         // upper bound to A
-        self.generate_expression_instructions(upper_bound);
+        self.generate_expression_instructions_casting(
+            upper_bound,
+            counter_var_name.dim_type().expression_type(),
+        );
         // A to C (upper bound to C)
         self.push(Instruction::CopyAToC, pos);
         // load the step expression

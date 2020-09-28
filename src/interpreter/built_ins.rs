@@ -1,12 +1,7 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::{
-    FileAccess, FileHandle, FileMode, QError, QErrorNode, StringUtils, ToErrorEnvelopeNoPos,
-};
-use crate::interpreter::argument::Argument;
+use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
 use crate::interpreter::{Interpreter, SetVariable, Stdlib};
-use crate::linter::{
-    DimName, ElementType, ExpressionType, HasExpressionType, UserDefinedType, UserDefinedTypes,
-};
+use crate::linter::{ElementType, UserDefinedType, UserDefinedTypes};
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
 use std::convert::TryInto;
@@ -47,11 +42,11 @@ pub fn run_sub<S: Stdlib>(
 mod chr {
     // CHR$(ascii-code%) returns the text representation of the given ascii code
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let i: i32 = interpreter
             .context()
-            .parameter_values()
-            .next()
+            .get(0)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;
@@ -79,10 +74,10 @@ mod chr {
 mod close {
     // CLOSE
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handles: Vec<FileHandle> = interpreter
-            .context()
-            .parameter_values()
+        let file_handles: Vec<FileHandle> = (0..interpreter.context().parameter_count())
+            .map(|idx| interpreter.context().get(idx).unwrap())
             .map(|v| v.try_into())
             .collect::<Result<Vec<FileHandle>, QError>>()
             .with_err_no_pos()?;
@@ -97,11 +92,11 @@ mod environ_fn {
     // ENVIRON$ (env-variable$) -> returns the variable
     // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let env_var_name: &String = interpreter
             .context()
-            .parameter_values()
-            .next()
+            .get(0)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;
@@ -152,11 +147,11 @@ mod environ_sub {
     // ENVIRON str-expr$ -> sets the variable.
     // Parameter must be in the form of name=value or name value (TODO support the latter)
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let s: &String = interpreter
             .context()
-            .parameter_values()
-            .next()
+            .get(0)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;
@@ -200,11 +195,11 @@ mod environ_sub {
 mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let file_handle: FileHandle = interpreter
             .context()
-            .parameter_values()
-            .next()
+            .get(0)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;
@@ -233,42 +228,37 @@ mod input {
     // after the user presses the Enter key.
 
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let parameters = interpreter.context_mut().take_parameters();
-        for a in parameters.iter() {
-            match a {
-                Argument::ByRef(n) => {
-                    let val: Variant = do_input_one_var(interpreter, n)?;
-                    interpreter.context_mut().set_value_to_popped_arg(a, val);
-                }
-                _ => {
-                    panic!("Expected: variable (linter should have caught this)");
-                }
-            }
+        for idx in 0..interpreter.context().parameter_count() {
+            do_input_one_var(interpreter, idx)?;
         }
         Ok(())
     }
 
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        n: &DimName,
-    ) -> Result<Variant, QErrorNode> {
+        idx: usize,
+    ) -> Result<(), QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        Ok(match n.expression_type() {
-            ExpressionType::BuiltIn(TypeQualifier::BangSingle) => {
+        let existing_value = interpreter.context_mut().get_mut(idx).unwrap();
+        let temp: &Variant = existing_value;
+        let q: TypeQualifier = temp.try_into().with_err_no_pos()?;
+        *existing_value = match q {
+            TypeQualifier::BangSingle => {
                 Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
             }
-            ExpressionType::BuiltIn(TypeQualifier::DollarString) => Variant::from(raw_input),
-            ExpressionType::BuiltIn(TypeQualifier::PercentInteger) => {
+            TypeQualifier::DollarString => Variant::from(raw_input),
+            TypeQualifier::PercentInteger => {
                 Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
             }
-            ExpressionType::FixedLengthString(l) => Variant::from(raw_input.sub_str(l as usize)),
-            _ => unimplemented!(),
-        })
+            _ => unimplemented!(), // TODO support more types
+        };
+        Ok(())
     }
 
     fn parse_single_input(s: String) -> Result<f32, QError> {
@@ -441,10 +431,11 @@ mod instr {
     // returns the first occurrence of needle$ inside hay$
 
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let a: &Variant = interpreter.context().parameter_values().get(0).unwrap();
-        let b: &Variant = interpreter.context().parameter_values().get(1).unwrap();
-        let result: i32 = match interpreter.context().parameter_values().get(2) {
+        let a: &Variant = interpreter.context().get(0).unwrap();
+        let b: &Variant = interpreter.context().get(1).unwrap();
+        let result: i32 = match interpreter.context().get(2) {
             Some(c) => do_instr(
                 a.try_into().with_err_no_pos()?,
                 b.try_into().with_err_no_pos()?,
@@ -524,10 +515,10 @@ mod kill {
     // KILL file-spec$ -> deletes files from disk
 
     use super::*;
+
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let file_name: &String = interpreter
             .context()
-            .parameter_values()
             .get(0)
             .unwrap()
             .try_into()
@@ -573,7 +564,7 @@ mod len {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v: &Variant = interpreter.context().parameter_values().next().unwrap();
+        let v: &Variant = interpreter.context().get(0).unwrap();
         let len: i32 = match v {
             Variant::VSingle(_) => 4,
             Variant::VDouble(_) => 8,
@@ -748,30 +739,22 @@ mod line_input {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
-        let parameters = interpreter.context_mut().take_parameters();
-        for arg_ref in parameters.iter() {
-            match arg_ref {
-                Argument::ByVal(v) => {
-                    if is_first {
-                        match v {
-                            Variant::VFileHandle(f) => {
-                                file_handle = *f;
-                            }
-                            _ => {
-                                panic!("LINE INPUT linter should have caught this");
-                            }
-                        }
+        for idx in 0..interpreter.context().parameter_count() {
+            let v = interpreter.context().get(idx).unwrap();
+            match v {
+                Variant::VFileHandle(f) => {
+                    if idx == 0 {
+                        file_handle = *f;
                     } else {
                         panic!("LINE INPUT linter should have caught this");
                     }
                 }
-                Argument::ByRef(n) => {
-                    line_input_one(interpreter, arg_ref, n, &file_handle)?;
+                Variant::VString(_) => {
+                    line_input_one(interpreter, idx, &file_handle)?;
                 }
+                _ => panic!("LINE INPUT linter should have caught this"),
             }
-            is_first = false;
         }
 
         Ok(())
@@ -779,21 +762,19 @@ mod line_input {
 
     fn line_input_one<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        arg: &Argument,
-        n: &DimName,
+        idx: usize,
         file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         if file_handle.is_valid() {
-            line_input_one_file(interpreter, arg, n, file_handle)
+            line_input_one_file(interpreter, idx, file_handle)
         } else {
-            line_input_one_stdin(interpreter, arg, n)
+            line_input_one_stdin(interpreter, idx)
         }
     }
 
     fn line_input_one_file<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        arg: &Argument,
-        n: &DimName,
+        idx: usize,
         file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
@@ -801,30 +782,20 @@ mod line_input {
             .read_line(file_handle)
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        match n.expression_type() {
-            ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
-                interpreter
-                    .context_mut()
-                    .set_value_to_popped_arg(arg, Variant::VString(s));
-                Ok(())
-            }
-            _ => unimplemented!(),
-        }
+        *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
+        Ok(())
     }
 
     fn line_input_one_stdin<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        arg: &Argument,
-        _n: &DimName,
+        idx: usize,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .stdlib
             .input()
             .map_err(|e| e.into())
             .with_err_no_pos()?;
-        interpreter
-            .context_mut()
-            .set_value_to_popped_arg(arg, Variant::VString(s));
+        *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }
 }
@@ -840,19 +811,17 @@ mod mid {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let s: &String = interpreter
             .context()
-            .parameter_values()
             .get(0)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;
         let start: i32 = interpreter
             .context()
-            .parameter_values()
             .get(1)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;
-        let length: Option<i32> = match interpreter.context().parameter_values().get(2) {
+        let length: Option<i32> = match interpreter.context().get(2) {
             Some(v) => Some(v.try_into().with_err_no_pos()?),
             None => None,
         };
@@ -931,14 +900,12 @@ mod name {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let old_file_name: &String = interpreter
             .context()
-            .parameter_values()
             .get(0)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;
         let new_file_name: &String = interpreter
             .context()
-            .parameter_values()
             .get(1)
             .unwrap()
             .try_into()
@@ -1008,15 +975,19 @@ mod open {
     use std::convert::TryFrom;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let parameters = interpreter.context_mut().take_parameters();
-        let values: Vec<&Variant> = parameters
-            .iter()
-            .map(|p| interpreter.context().evaluate_parameter(p))
-            .collect();
-        let file_name: String = values[0].to_string();
-        let file_mode: FileMode = i32::try_from(values[1]).with_err_no_pos()?.into();
-        let file_access: FileAccess = i32::try_from(values[2]).with_err_no_pos()?.into();
-        let file_handle: FileHandle = values[3].try_into().with_err_no_pos()?;
+        let file_name: String = interpreter.context().get(0).unwrap().to_string();
+        let file_mode: FileMode = i32::try_from(interpreter.context().get(1).unwrap())
+            .with_err_no_pos()?
+            .into();
+        let file_access: FileAccess = i32::try_from(interpreter.context().get(2).unwrap())
+            .with_err_no_pos()?
+            .into();
+        let file_handle: FileHandle = interpreter
+            .context()
+            .get(3)
+            .unwrap()
+            .try_into()
+            .with_err_no_pos()?;
         interpreter
             .file_manager
             .open(file_handle, &file_name, file_mode, file_access)
@@ -1116,19 +1087,13 @@ mod print {
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let mut print_args: Vec<String> = vec![];
-        let mut is_first = true;
         let mut file_handle: FileHandle = FileHandle::default();
-        let parameters = interpreter.context_mut().take_parameters();
-        let values: Vec<&Variant> = parameters
-            .iter()
-            .map(|p| interpreter.context().evaluate_parameter(p))
-            .collect();
-        for v in values {
+        for idx in 0..interpreter.context().parameter_count() {
+            let v = interpreter.context().get(idx).unwrap();
             match v {
                 Variant::VFileHandle(fh) => {
-                    if is_first {
+                    if idx == 0 {
                         file_handle = *fh;
-                        is_first = false;
                     } else {
                         panic!("file handle must be first")
                     }
@@ -1188,7 +1153,7 @@ mod str_fn {
     use super::*;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let v: &Variant = interpreter.context().parameter_values().next().unwrap();
+        let v: &Variant = interpreter.context().get(0).unwrap();
         let result = match v {
             Variant::VSingle(f) => format!("{}", f),
             Variant::VDouble(f) => format!("{}", f),
@@ -1239,8 +1204,7 @@ mod val {
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let v: &String = interpreter
             .context()
-            .parameter_values()
-            .next()
+            .get(0)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;

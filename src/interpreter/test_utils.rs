@@ -124,7 +124,7 @@ impl Stdlib for MockStdlib {
 impl<S: Stdlib> Interpreter<S> {
     pub fn get_variable_str(&self, name: &str) -> Variant {
         let dim_name = DimName::parse(name);
-        self.context().get_r_value(&dim_name).unwrap()
+        self.context().get_r_value(&dim_name).unwrap().clone()
     }
 }
 

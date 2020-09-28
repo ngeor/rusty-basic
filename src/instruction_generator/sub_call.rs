@@ -1,5 +1,5 @@
-use super::{Instruction, InstructionGenerator};
 use crate::common::Locatable;
+use crate::instruction_generator::{Instruction, InstructionGenerator};
 use crate::linter::ExpressionNode;
 use crate::parser::BareNameNode;
 
@@ -11,11 +11,12 @@ impl InstructionGenerator {
     ) {
         let Locatable { element: name, pos } = name_node;
         let sub_impl_parameters = self.sub_context.get(&name).unwrap().clone();
-        self.generate_push_named_args_instructions(sub_impl_parameters, args, pos);
+        self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
         self.push(Instruction::PushStack, pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_sub(name, pos);
+        self.generate_copy_by_ref_to_parent(&args);
         self.push(Instruction::PopStack(None), pos);
     }
 }

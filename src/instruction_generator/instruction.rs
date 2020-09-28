@@ -54,25 +54,32 @@ pub enum Instruction {
     /// Starts collecting named arguments.
     ///
     /// Arguments are evaluated within the current naming context and pushed with
-    /// PushNamedRef and PushNamedVal.
+    /// PushNamed.
     BeginCollectNamedArguments,
 
     /// Starts collecting unnamed arguments (for a built-in sub or function).
     ///
     /// Arguments are evaluated within the current naming context and pushed with
-    /// PushUnnamedRef and PushUnnamedVal.
+    /// PushUnnamed.
     BeginCollectUnnamedArguments,
 
-    PushNamedRef(ParamName, DimName),
-    PushNamedVal(ParamName),
+    /// Pushes the value of register A as a named parameter to a child context.
+    PushNamed(ParamName),
 
-    PushUnnamedRef(DimName),
-
-    /// Pushes the contents of register A at the end of the unnamed stack
-    PushUnnamedVal,
+    /// Pushes the value of register A as an unnamed parameter to a child context.
+    /// Unnamed parameters are used by built-in functions/subs.
+    PushUnnamed,
 
     PushStack,
     PopStack(Option<QualifiedName>),
+
+    /// Copies the value of a ByRef argument back to the parent context.
+    ///
+    /// The first item in the tuple is the index of the parameter in the function/sub call.
+    /// The second item in the tuple is the name of the variable in the parent context.
+    ///
+    /// Called just before the child context is popped.
+    CopyToParent(usize, DimName),
 
     Throw(QError),
 

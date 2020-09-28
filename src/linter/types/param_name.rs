@@ -24,6 +24,10 @@ impl ParamName {
     pub fn param_type(&self) -> &ParamType {
         &self.param_type
     }
+
+    pub fn into_inner(self) -> (BareName, ParamType) {
+        (self.bare_name, self.param_type)
+    }
 }
 
 impl AsRef<BareName> for ParamName {
@@ -50,11 +54,12 @@ pub enum ParamType {
 
 pub type ParamTypes = Vec<ParamType>;
 
-impl PartialEq<ExpressionType> for ParamType {
-    fn eq(&self, type_definition: &ExpressionType) -> bool {
+impl ParamType {
+    pub fn accepts_by_ref(&self, type_definition: &ExpressionType) -> bool {
         match self {
             Self::BuiltIn(q_left) => match type_definition {
                 ExpressionType::BuiltIn(q_right) => q_left == q_right,
+                ExpressionType::FixedLengthString(_) => *q_left == TypeQualifier::DollarString,
                 _ => false,
             },
             Self::UserDefined(u_left) => match type_definition {

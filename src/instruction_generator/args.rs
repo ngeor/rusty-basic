@@ -6,26 +6,27 @@ impl InstructionGenerator {
     pub fn generate_push_named_args_instructions(
         &mut self,
         param_names: &Vec<ParamName>,
-        expressions: &Vec<ExpressionNode>,
+        args: &Vec<ExpressionNode>,
         pos: Location,
     ) {
         self.push(Instruction::BeginCollectNamedArguments, pos);
-        for (n, e_node) in param_names.iter().zip(expressions.iter()) {
-            let Locatable { element: e, pos } = e_node;
-            self.generate_expression_instructions_casting(e.clone().at(pos), n.expression_type());
-            self.push(Instruction::PushNamed(n.clone()), *pos);
+        for (param_name, Locatable { element: arg, pos }) in param_names.iter().zip(args.iter()) {
+            self.generate_expression_instructions_casting(
+                arg.clone().at(pos),
+                param_name.expression_type(),
+            );
+            self.push(Instruction::PushNamed(param_name.clone()), *pos);
         }
     }
 
     pub fn generate_push_unnamed_args_instructions(
         &mut self,
-        expressions: &Vec<ExpressionNode>,
+        args: &Vec<ExpressionNode>,
         pos: Location,
     ) {
         self.push(Instruction::BeginCollectUnnamedArguments, pos);
-        for e_node in expressions {
-            let Locatable { element: e, pos } = e_node;
-            self.generate_expression_instructions(e.clone().at(pos));
+        for Locatable { element: arg, pos } in args {
+            self.generate_expression_instructions(arg.clone().at(pos));
             self.push(Instruction::PushUnnamed, *pos);
         }
     }

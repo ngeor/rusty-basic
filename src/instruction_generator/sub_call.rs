@@ -1,5 +1,5 @@
-use super::{Instruction, InstructionGenerator};
 use crate::common::Locatable;
+use crate::instruction_generator::{Instruction, InstructionGenerator};
 use crate::linter::ExpressionNode;
 use crate::parser::BareNameNode;
 

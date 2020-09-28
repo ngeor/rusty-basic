@@ -239,7 +239,7 @@ mod input {
 
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        idx: u8,
+        idx: usize,
     ) -> Result<Variant, QErrorNode> {
         let raw_input: String = interpreter
             .stdlib
@@ -763,7 +763,7 @@ mod line_input {
 
     fn line_input_one<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        idx: u8,
+        idx: usize,
         file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         if file_handle.is_valid() {
@@ -775,7 +775,7 @@ mod line_input {
 
     fn line_input_one_file<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        idx: u8,
+        idx: usize,
         file_handle: &FileHandle,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
@@ -789,7 +789,7 @@ mod line_input {
 
     fn line_input_one_stdin<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
-        idx: u8,
+        idx: usize,
     ) -> Result<(), QErrorNode> {
         let s = interpreter
             .stdlib

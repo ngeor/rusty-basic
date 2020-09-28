@@ -68,7 +68,7 @@ pub enum Instruction {
 
     PushStack,
     PopStack(Option<QualifiedName>),
-    CopyToParent(ParamName, DimName),
+    CopyToParent(usize, DimName),
 
     Throw(QError),
 

@@ -353,8 +353,8 @@ impl<TStdlib: Stdlib> Interpreter<TStdlib> {
                     None => {}
                 }
             }
-            Instruction::CopyToParent(param_name, parent_var_name) => {
-                self.context.copy_to_parent(param_name, parent_var_name);
+            Instruction::CopyToParent(idx, parent_var_name) => {
+                self.context.copy_to_parent(*idx, parent_var_name);
             }
             Instruction::PushUnnamed => {
                 let v = self.get_a();

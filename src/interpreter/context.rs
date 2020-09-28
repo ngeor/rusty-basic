@@ -1,14 +1,13 @@
-use crate::common::{CaseInsensitiveString, StringUtils};
+use crate::common::StringUtils;
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::arguments_stack::ArgumentsStack;
+use crate::interpreter::variables::Variables;
 use crate::linter::{
-    DimName, DimType, ExpressionType, HasExpressionType, Members, ParamName, ParamType,
-    UserDefinedTypes,
+    DimName, DimType, ExpressionType, HasExpressionType, Members, UserDefinedTypes,
 };
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::rc::Rc;
 
 /*
@@ -23,35 +22,32 @@ Example:
         Z = X + Y
     END SUB
 
-Evaluate A in root context
-Evaluate B in root context
-Assign to X in sub context
-Assign to Y in sub context
-Call Hello
-
-
+    Evaluate A in root context
+    Evaluate B in root context
+    Assign to X in sub context
+    Assign to Y in sub context
+    Call Hello
 
 Example 2:
 
 
     Hello Add(A, B), Mul(A, B)
 
-Evaluate first arg
-    Evaluate A in root context
-    Evaluate B in root context
-    Assign to X in fn context
-    Assign to Y in fn context
-    Call Add
-Evaluate second arg
-    Evaluate A in root context
-    Evaluate B in root context
-    Assign to X in fn context
-    Assign to Y in fn context
-    Call Mul
-Assign to X in sub context
-Assign to Y in sub context
-Call Hello
-
+    Evaluate first arg
+        Evaluate A in root context
+        Evaluate B in root context
+        Assign to X in fn context
+        Assign to Y in fn context
+        Call Add
+    Evaluate second arg
+        Evaluate A in root context
+        Evaluate B in root context
+        Assign to X in fn context
+        Assign to Y in fn context
+        Call Mul
+    Assign to X in sub context
+    Assign to Y in sub context
+    Call Hello
 */
 
 #[derive(Debug)]
@@ -59,14 +55,13 @@ pub struct Context {
     parent: Option<Box<Context>>,
     user_defined_types: Rc<UserDefinedTypes>,
     constants: HashMap<QualifiedName, Variant>,
-    variables: HashMap<QualifiedName, Variant>,
-    user_defined_type_variables: HashMap<CaseInsensitiveString, Variant>,
-
-    /// Maps the order of the parameter to the name
-    unnamed: HashMap<u8, Name>,
+    variables: Variables,
 
     /// Preparing arguments for the next call
     arguments_stack: ArgumentsStack,
+
+    /// The number of parameters of this context.
+    parameter_count: usize,
 }
 
 impl Context {
@@ -75,10 +70,9 @@ impl Context {
             parent: None,
             user_defined_types,
             constants: HashMap::new(),
-            variables: HashMap::new(),
-            user_defined_type_variables: HashMap::new(),
+            variables: Variables::new(),
             arguments_stack: ArgumentsStack::new(),
-            unnamed: HashMap::new(),
+            parameter_count: 0, // root context, no parameters
         }
     }
 
@@ -91,53 +85,25 @@ impl Context {
 
     pub fn push(mut self) -> Self {
         let arguments: Arguments = self.arguments_stack.pop();
-        let mut variables: HashMap<QualifiedName, Variant> = HashMap::new();
-        let mut user_defined_type_variables: HashMap<BareName, Variant> = HashMap::new();
-        let mut unnamed: HashMap<u8, Name> = HashMap::new();
-
-        let mut idx: u8 = 0;
+        let mut variables = Variables::new();
         match arguments {
             Arguments::Unnamed(v) => {
                 for arg in v {
-                    let bare_name: CaseInsensitiveString = format!("{}", idx).into();
-                    match TypeQualifier::try_from(&arg) {
-                        Ok(q) => {
-                            unnamed.insert(idx, Name::new(bare_name.clone(), Some(q)));
-                            variables.insert(QualifiedName::new(bare_name, q), arg);
-                        }
-                        Err(_) => {
-                            unnamed.insert(idx, Name::new(bare_name.clone(), None));
-                            user_defined_type_variables.insert(bare_name, arg);
-                        }
-                    }
-
-                    idx += 1;
+                    variables.insert_unnamed(arg);
                 }
             }
             Arguments::Named(map) => {
                 for (param_name, arg) in map {
-                    let (bare_name, param_type) = param_name.into_inner();
-                    match param_type {
-                        ParamType::BuiltIn(q) => {
-                            unnamed.insert(idx, Name::new(bare_name.clone(), Some(q)));
-                            variables.insert(QualifiedName::new(bare_name, q), arg);
-                        }
-                        ParamType::UserDefined(_) => {
-                            unnamed.insert(idx, Name::new(bare_name.clone(), None));
-                            user_defined_type_variables.insert(bare_name, arg);
-                        }
-                    }
-
-                    idx += 1;
+                    variables.insert_param(param_name, arg);
                 }
             }
         }
+        let parameter_count = variables.len();
         Self {
             user_defined_types: Rc::clone(&self.user_defined_types),
             constants: HashMap::new(),
             variables,
-            user_defined_type_variables,
-            unnamed,
+            parameter_count,
             arguments_stack: ArgumentsStack::new(),
             parent: Some(Box::new(self)),
         }
@@ -153,7 +119,6 @@ impl Context {
             DimType::BuiltIn(qualifier) => {
                 self.set_variable_built_in(bare_name, qualifier, value);
             }
-            // todo rollback this
             DimType::FixedLengthString(_len) => {
                 self.set_variable_built_in(bare_name, TypeQualifier::DollarString, value);
             }
@@ -172,16 +137,15 @@ impl Context {
         qualifier: TypeQualifier,
         value: Variant,
     ) {
-        self.variables
-            .insert(QualifiedName::new(bare_name, qualifier), value);
+        self.variables.insert_built_in(bare_name, qualifier, value);
     }
 
     fn set_variable_user_defined(&mut self, bare_name: BareName, value: Variant) {
-        self.user_defined_type_variables.insert(bare_name, value);
+        self.variables.insert_user_defined(bare_name, value);
     }
 
     fn set_variable_member(&mut self, bare_name: BareName, members: Members, value: Variant) {
-        match self.user_defined_type_variables.get_mut(&bare_name) {
+        match self.variables.get_user_defined_mut(&bare_name) {
             Some(Variant::VUserDefined(box_user_defined_type_value)) => {
                 let name_path = members.name_path();
                 box_user_defined_type_value.insert_path(&name_path, value);
@@ -209,7 +173,7 @@ impl Context {
                     Some(v) => Some(v),
                     None => {
                         // is it a variable
-                        match self.variables.get(qualified_name) {
+                        match self.variables.get_built_in(bare_name, *qualifier) {
                             Some(v) => Some(v),
                             None => {
                                 // is it a root constant
@@ -219,21 +183,13 @@ impl Context {
                     }
                 }
             }
-            DimType::FixedLengthString(_len) => {
-                let qualified_name =
-                    QualifiedName::new(bare_name.clone(), TypeQualifier::DollarString);
-                self.variables.get(&qualified_name)
-            }
-            DimType::UserDefined(_) => {
-                // is it a variable
-                match self.user_defined_type_variables.get(bare_name) {
-                    Some(v) => Some(v),
-                    None => None,
-                }
-            }
+            DimType::FixedLengthString(_len) => self
+                .variables
+                .get_built_in(bare_name, TypeQualifier::DollarString),
+            DimType::UserDefined(_) => self.variables.get_user_defined(bare_name),
             DimType::Many(_, members) => {
                 // is it a variable
-                match self.user_defined_type_variables.get(bare_name) {
+                match self.variables.get_user_defined(bare_name) {
                     Some(Variant::VUserDefined(box_user_defined_type_value)) => {
                         let name_path = members.name_path();
                         box_user_defined_type_value.get_path(&name_path)
@@ -243,10 +199,6 @@ impl Context {
             }
         }
     }
-
-    // ========================================================
-    // private
-    // ========================================================
 
     fn get_root_const(&self, name: &QualifiedName) -> Option<&Variant> {
         match &self.parent {
@@ -271,18 +223,8 @@ impl Context {
         }
     }
 
-    pub fn copy_to_parent(&mut self, param_name: &ParamName, parent_var_name: &DimName) {
-        let bare_param_name: &BareName = param_name.as_ref();
-        let v = match param_name.param_type() {
-            ParamType::BuiltIn(q) => self
-                .variables
-                .get(&QualifiedName::new(bare_param_name.clone(), *q))
-                .expect(&format!("should have built-in variable {:?}", param_name)),
-            ParamType::UserDefined(_) => self
-                .user_defined_type_variables
-                .get(bare_param_name)
-                .expect("should have user defined variable"),
-        };
+    pub fn copy_to_parent(&mut self, idx: usize, parent_var_name: &DimName) {
+        let v = self.variables.get(idx).expect("Index out of range");
 
         // if the parent_var_name is fixed length string, trim the value
         let v = match parent_var_name.dim_type().expression_type() {
@@ -302,27 +244,15 @@ impl Context {
     }
 
     // TODO move the rest into a special structure 'unnamed' or so
-    pub fn get(&self, idx: u8) -> Option<&Variant> {
-        match self.unnamed.get(&idx) {
-            Some(Name::Bare(b)) => self.user_defined_type_variables.get(b),
-            Some(Name::Qualified(q)) => self.variables.get(q),
-            None => None,
-        }
+    pub fn get(&self, idx: usize) -> Option<&Variant> {
+        self.variables.get(idx)
     }
 
-    pub fn parameter_count(&self) -> u8 {
-        self.unnamed.len() as u8
+    pub fn parameter_count(&self) -> usize {
+        self.parameter_count
     }
 
-    pub fn set(&mut self, idx: u8, value: Variant) {
-        match self.unnamed.get(&idx) {
-            Some(Name::Bare(b)) => {
-                self.user_defined_type_variables.insert(b.clone(), value);
-            }
-            Some(Name::Qualified(q)) => {
-                self.variables.insert(q.clone(), value);
-            }
-            None => panic!("index out of range"),
-        }
+    pub fn set(&mut self, idx: usize, value: Variant) {
+        self.variables.set(idx, value)
     }
 }

@@ -21,29 +21,8 @@ impl InstructionGenerator {
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_function(bare_name, pos);
-        self.generate_copy_by_ref_to_parent_named(&function_parameters, &args);
+        self.generate_copy_by_ref_to_parent(&args);
         self.push(Instruction::PopStack(Some(qualified_name)), pos);
-    }
-
-    /// Generates the instructions that copy back ByRef parameters to the parent context.
-    pub fn generate_copy_by_ref_to_parent_named(
-        &mut self,
-        param_names: &Vec<ParamName>,
-        args: &Vec<ExpressionNode>,
-    ) {
-        for (param_name, Locatable { element: arg, pos }) in param_names.iter().zip(args.iter()) {
-            match arg {
-                Expression::Variable(arg_name) => {
-                    // by ref
-                    // copy to parent context
-                    self.push(
-                        Instruction::CopyToParent(param_name.clone(), arg_name.clone()),
-                        *pos,
-                    );
-                }
-                _ => {}
-            }
-        }
     }
 
     pub fn generate_push_named_args_instructions(

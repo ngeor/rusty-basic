@@ -26,7 +26,8 @@ pub const MAX_INTEGER: i32 = 32767;
 pub const MIN_LONG: i64 = -2147483648;
 pub const MAX_LONG: i64 = 2147483647;
 
-const INT_BITS: usize = 16;
+pub const INT_BITS: usize = 16;
+pub const LONG_BITS: usize = 32;
 
 trait ApproximateCmp {
     fn cmp(left: &Self, right: &Self) -> Ordering;
@@ -446,36 +447,77 @@ impl Display for Variant {
 fn to_bits(a: i32) -> [bool; INT_BITS] {
     let mut result: [bool; INT_BITS] = [false; INT_BITS];
     let mut x: i32 = a;
+    let mut idx = INT_BITS;
     if x > 0 {
-        let mut idx = 0;
-        while x > 0 && idx < INT_BITS {
+        while x > 0 && idx > 0 {
+            idx -= 1;
             result[idx] = (x & 1) == 1;
             x = x >> 1;
-            idx += 1;
         }
     } else if x < 0 {
         x = -x - 1;
         result = [true; INT_BITS];
-        let mut idx = 0;
-        while x > 0 && idx < INT_BITS {
+        while x > 0 && idx > 0 {
+            idx -= 1;
             result[idx] = (x & 1) == 0;
             x = x >> 1;
-            idx += 1;
         }
     }
     result
 }
 
-fn from_bits(bits: [bool; INT_BITS]) -> i32 {
+pub fn from_bit_slice_i32(bits: &[bool]) -> i32 {
+    if bits.len() != INT_BITS {
+        panic!("should be {} bits, was {}", INT_BITS, bits.len());
+    }
     let mut x: i32 = 0;
-    let sign = bits[INT_BITS - 1];
-    let mut idx = INT_BITS - 1;
-    while idx > 0 {
+    let sign = bits[0];
+    let mut idx = 1;
+    while idx < INT_BITS {
         x = x << 1;
-        idx -= 1;
         if bits[idx] != sign {
             x = x | 1;
         }
+        idx += 1;
+    }
+    if sign {
+        -x - 1
+    } else {
+        x
+    }
+}
+
+pub fn from_bit_slice_i64(bits: &[bool]) -> i64 {
+    if bits.len() != LONG_BITS {
+        panic!("should be {} bits, was {}", LONG_BITS, bits.len());
+    }
+    let mut x: i64 = 0;
+    let sign = bits[0];
+    let mut idx = 1;
+    while idx < LONG_BITS {
+        x = x << 1;
+        if bits[idx] != sign {
+            x = x | 1;
+        }
+        idx += 1;
+    }
+    if sign {
+        -x - 1
+    } else {
+        x
+    }
+}
+
+pub fn from_bits(bits: [bool; INT_BITS]) -> i32 {
+    let mut x: i32 = 0;
+    let sign = bits[0];
+    let mut idx = 1;
+    while idx < INT_BITS {
+        x = x << 1;
+        if bits[idx] != sign {
+            x = x | 1;
+        }
+        idx += 1;
     }
     if sign {
         -x - 1
@@ -1791,26 +1833,27 @@ mod tests {
             assert_eq!(to_bits(0), expected_bits);
 
             // 0 | 0 0 1
-            expected_bits[0] = true;
+            expected_bits[INT_BITS - 1] = true;
             assert_eq!(to_bits(1), expected_bits);
 
             // 0 | 0 1 0
-            expected_bits[0] = false;
-            expected_bits[1] = true;
+            expected_bits[INT_BITS - 1] = false;
+            expected_bits[INT_BITS - 2] = true;
             assert_eq!(to_bits(2), expected_bits);
 
             // 0 | 0 1 1
-            expected_bits[0] = true;
+            expected_bits[INT_BITS - 1] = true;
+            expected_bits[INT_BITS - 2] = true;
             assert_eq!(to_bits(3), expected_bits);
 
             // 0 | 1 0 0
-            expected_bits[0] = false;
-            expected_bits[1] = false;
-            expected_bits[2] = true;
+            expected_bits[INT_BITS - 1] = false;
+            expected_bits[INT_BITS - 2] = false;
+            expected_bits[INT_BITS - 3] = true;
             assert_eq!(to_bits(4), expected_bits);
 
             // 0 | 1 0 1
-            expected_bits[0] = true;
+            expected_bits[INT_BITS - 1] = true;
             assert_eq!(to_bits(5), expected_bits);
         }
 
@@ -1822,22 +1865,22 @@ mod tests {
             assert_eq!(to_bits(-1), expected_bits);
 
             // 1 | 1 1 0
-            expected_bits[0] = false;
+            expected_bits[INT_BITS - 1] = false;
             assert_eq!(to_bits(-2), expected_bits);
 
             // 1 | 1 0 1
-            expected_bits[0] = true;
-            expected_bits[1] = false;
+            expected_bits[INT_BITS - 1] = true;
+            expected_bits[INT_BITS - 2] = false;
             assert_eq!(to_bits(-3), expected_bits);
 
             // 1 | 1 0 0
-            expected_bits[0] = false;
+            expected_bits[INT_BITS - 1] = false;
             assert_eq!(to_bits(-4), expected_bits);
 
             // 1 | 0 1 1
-            expected_bits[0] = true;
-            expected_bits[1] = true;
-            expected_bits[2] = false;
+            expected_bits[INT_BITS - 1] = true;
+            expected_bits[INT_BITS - 2] = true;
+            expected_bits[INT_BITS - 3] = false;
             assert_eq!(to_bits(-5), expected_bits);
         }
 

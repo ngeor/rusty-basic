@@ -527,22 +527,48 @@ fn test_hexadecimals() {
     assert_prints!("PRINT &HA", "10");
     assert_prints!("PRINT &H10", "16");
 
-    assert_prints!("PRINT &H1A", "16");
-    assert_prints!("PRINT &HB2", "16");
+    assert_prints!("PRINT &H1A", "26");
+    assert_prints!("PRINT &HB2", "178");
 
-    assert_prints!("PRINT &H1A1", "10");
-    assert_prints!("PRINT &H2BC", "10");
-    assert_prints!("PRINT &H34C", "10");
+    assert_prints!("PRINT &H1A1", "417");
+    assert_prints!("PRINT &H2BC", "700");
+    assert_prints!("PRINT &H34C", "844");
 
-    assert_prints!("PRINT &HAB4", "10");
-    assert_prints!("PRINT &HB3E", "10");
-    assert_prints!("PRINT &HC45", "10");
+    assert_prints!("PRINT &HAB4", "2740");
+    assert_prints!("PRINT &HB3E", "2878");
+    assert_prints!("PRINT &HC45", "3141");
 
-    assert_prints!("PRINT &HFF", "255");
+    assert_prints!("PRINT &HFF", "255"); // 0000 0000 1111 1111
+    assert_prints!("PRINT &H00FF", "255");
     assert_prints!("PRINT &H100", "256");
 
+    assert_prints!("PRINT &H7FFF", "32767"); // max positive integer 0111 1111 1111 1111
+    assert_prints!("PRINT &H8000", "-32768"); // min negative integer 1000 0000 0000 0000
     assert_prints!("PRINT &HFFFF", "-1"); // integer
     assert_prints!("PRINT -&HFFFF", "1");
-    assert_prints!("PRINT &HFFFFFFFF", "-1"); // long
-    assert_prints!("PRINT &H100000000", "overflow"); // overflow
+
+    // long
+    assert_prints!("PRINT &H10000", "65536");
+    assert_prints!("PRINT &H7FFFFFFF", "2147483647");
+    assert_prints!("PRINT &H000007FFFFFFF", "2147483647");
+    assert_prints!("PRINT &H80000000", "-2147483648");
+    assert_prints!("PRINT &HFFFFFFFF", "-1");
+}
+
+#[test]
+fn test_octal() {
+    assert_prints!("PRINT &O0", "0");
+    assert_prints!("PRINT &O5", "5");
+    assert_prints!("PRINT &O10", "8");
+    assert_prints!("PRINT &O010", "8");
+    assert_prints!("PRINT &O377", "255");
+    assert_prints!("PRINT &O400", "256");
+    assert_prints!("PRINT &O2000", "1024");
+    assert_prints!("PRINT &O77777", "32767");
+    assert_prints!("PRINT &O100000", "-32768");
+    assert_prints!("PRINT &O177777", "-1");
+    assert_prints!("PRINT &O200000", "65536");
+    assert_prints!("PRINT &O17777777777", "2147483647");
+    assert_prints!("PRINT &O20000000000", "-2147483648");
+    assert_prints!("PRINT &O37777777777", "-1");
 }

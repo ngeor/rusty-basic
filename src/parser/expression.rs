@@ -116,6 +116,8 @@ fn single_expression_node<T: BufRead + 'static>(
         with_pos(word::word()),
         number_literal::number_literal(),
         number_literal::float_without_leading_zero(),
+        number_literal::hexadecimal_literal(),
+        number_literal::octal_literal(),
         with_pos(file_handle()),
         with_pos(parenthesis()),
         unary_not(),
@@ -293,6 +295,168 @@ mod number_literal {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
                 Ok(f) => Ok(Expression::SingleLiteral(f).at(pos)),
                 Err(err) => Err(err.into()),
+            }
+        }
+    }
+
+    pub fn hexadecimal_literal<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+        with_pos(and_then(
+            and(
+                str::str_case_insensitive("&H"),
+                or(
+                    and(read('-'), str::one_or_more_if(is_hex_digit)),
+                    map(str::one_or_more_if(is_hex_digit), |h| ('+', h)),
+                ),
+            ),
+            |(_ampersand_h, (sign, digits))| convert_hex_digits(sign, digits),
+        ))
+    }
+
+    fn is_hex_digit(ch: char) -> bool {
+        ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
+    }
+
+    fn convert_hex_digits(sign: char, digits: String) -> Result<Expression, QError> {
+        if sign == '-' {
+            Err(QError::Overflow) // seems &H-10 just yields overflow immediately
+        } else {
+            let mut result: BitVec = BitVec::new();
+            let mut found_leading_non_zero = false;
+            for digit in digits.chars() {
+                let hex = convert_hex_digit(digit);
+                if !found_leading_non_zero {
+                    if hex == 0 {
+                        // still skipping through leading zeroes
+                    } else {
+                        // found the first non zero digit
+                        found_leading_non_zero = true;
+                        result.push_hex(hex);
+                    }
+                } else {
+                    // not the first digit
+                    result.push_hex(hex);
+                }
+            }
+            result.create_expression()
+        }
+    }
+
+    fn convert_hex_digit(ch: char) -> u8 {
+        if ch >= '0' && ch <= '9' {
+            (ch as u8) - ('0' as u8)
+        } else if ch >= 'a' && ch <= 'f' {
+            (ch as u8) - ('a' as u8) + 10
+        } else if ch >= 'A' && ch <= 'F' {
+            (ch as u8) - ('A' as u8) + 10
+        } else {
+            panic!("Unexpected hex digit: {}", ch)
+        }
+    }
+
+    pub fn octal_literal<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+        with_pos(and_then(
+            and(
+                str::str_case_insensitive("&O"),
+                or(
+                    and(read('-'), str::one_or_more_if(is_oct_digit)),
+                    map(str::one_or_more_if(is_oct_digit), |h| ('+', h)),
+                ),
+            ),
+            |(_ampersand_h, (sign, digits))| convert_oct_digits(sign, digits),
+        ))
+    }
+
+    fn is_oct_digit(ch: char) -> bool {
+        ch >= '0' && ch <= '7'
+    }
+
+    fn convert_oct_digits(sign: char, digits: String) -> Result<Expression, QError> {
+        if sign == '-' {
+            Err(QError::Overflow) // seems &O-10 just yields overflow immediately
+        } else {
+            let mut result: BitVec = BitVec::new();
+            let mut found_leading_non_zero = false;
+            for digit in digits.chars() {
+                let oct = convert_oct_digit(digit);
+                if !found_leading_non_zero {
+                    if oct == 0 {
+                        // still skipping through leading zeroes
+                    } else {
+                        // found the first non zero digit
+                        found_leading_non_zero = true;
+                        result.push_octal(oct);
+                    }
+                } else {
+                    // not the first digit
+                    result.push_octal(oct);
+                }
+            }
+            result.create_expression()
+        }
+    }
+
+    fn convert_oct_digit(ch: char) -> u8 {
+        if ch >= '0' && ch <= '7' {
+            (ch as u8) - ('0' as u8)
+        } else {
+            panic!("Unexpected oct digit: {}", ch)
+        }
+    }
+}
+
+struct BitVec {
+    v: Vec<bool>,
+}
+
+impl BitVec {
+    pub fn new() -> Self {
+        Self { v: vec![] }
+    }
+
+    pub fn push_hex(&mut self, u: u8) {
+        self.v.push(u & 8 == 8);
+        self.v.push(u & 4 == 4);
+        self.v.push(u & 2 == 2);
+        self.v.push(u & 1 == 1);
+    }
+
+    pub fn push_octal(&mut self, u: u8) {
+        self.v.push(u & 4 == 4);
+        self.v.push(u & 2 == 2);
+        self.v.push(u & 1 == 1);
+    }
+
+    pub fn create_expression(&mut self) -> Result<Expression, QError> {
+        // find first non-zero bit
+        let mut first_non_zero_bit: usize = 0;
+        while first_non_zero_bit < self.v.len() && !self.v[first_non_zero_bit] {
+            first_non_zero_bit += 1;
+        }
+        if self.v.len() - first_non_zero_bit <= variant::INT_BITS {
+            self.fit_to(variant::INT_BITS);
+            Ok(Expression::IntegerLiteral(variant::from_bit_slice_i32(
+                self.v.as_slice(),
+            )))
+        } else if self.v.len() - first_non_zero_bit <= variant::LONG_BITS {
+            self.fit_to(variant::LONG_BITS);
+            Ok(Expression::LongLiteral(variant::from_bit_slice_i64(
+                self.v.as_slice(),
+            )))
+        } else {
+            Err(QError::Overflow)
+        }
+    }
+
+    fn fit_to(&mut self, bits: usize) {
+        if self.v.len() > bits {
+            while self.v.len() > bits {
+                self.v.remove(0);
+            }
+        } else if self.v.len() < bits {
+            while self.v.len() < bits {
+                self.v.insert(0, false);
             }
         }
     }
@@ -917,6 +1081,26 @@ mod tests {
                 parse_err(input),
                 QError::syntax_error("Expected: digits after #")
             );
+        }
+    }
+
+    mod hexadecimal {
+        use super::*;
+
+        #[test]
+        fn test_overflow() {
+            assert_eq!(parse_err("PRINT &H-10"), QError::Overflow);
+            assert_eq!(parse_err("PRINT &H100000000"), QError::Overflow);
+        }
+    }
+
+    mod octal {
+        use super::*;
+
+        #[test]
+        fn test_overflow() {
+            assert_eq!(parse_err("PRINT &O-10"), QError::Overflow);
+            assert_eq!(parse_err("PRINT &O40000000000"), QError::Overflow);
         }
     }
 }

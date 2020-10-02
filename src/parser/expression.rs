@@ -209,6 +209,7 @@ mod string_literal {
 
 mod number_literal {
     use super::*;
+    use crate::variant::BitVec;
 
     pub fn number_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
@@ -344,7 +345,7 @@ mod number_literal {
             let hex = convert_hex_digit(digit);
             result.push_hex(hex);
         }
-        result.create_expression()
+        create_expression_from_bit_vec(result)
     }
 
     fn convert_hex_digit(ch: char) -> u8 {
@@ -363,9 +364,9 @@ mod number_literal {
         let mut result: BitVec = BitVec::new();
         for digit in digits.chars().skip_while(|ch| *ch == '0') {
             let oct = convert_oct_digit(digit);
-            result.push_octal(oct);
+            result.push_oct(oct);
         }
-        result.create_expression()
+        create_expression_from_bit_vec(result)
     }
 
     fn convert_oct_digit(ch: char) -> u8 {
@@ -375,60 +376,15 @@ mod number_literal {
             panic!("Unexpected oct digit: {}", ch)
         }
     }
-}
 
-struct BitVec {
-    v: Vec<bool>,
-}
-
-impl BitVec {
-    pub fn new() -> Self {
-        Self { v: vec![] }
-    }
-
-    pub fn push_hex(&mut self, u: u8) {
-        self.v.push(u & 8 == 8);
-        self.v.push(u & 4 == 4);
-        self.v.push(u & 2 == 2);
-        self.v.push(u & 1 == 1);
-    }
-
-    pub fn push_octal(&mut self, u: u8) {
-        self.v.push(u & 4 == 4);
-        self.v.push(u & 2 == 2);
-        self.v.push(u & 1 == 1);
-    }
-
-    pub fn create_expression(&mut self) -> Result<Expression, QError> {
-        // find first non-zero bit
-        let mut first_non_zero_bit: usize = 0;
-        while first_non_zero_bit < self.v.len() && !self.v[first_non_zero_bit] {
-            first_non_zero_bit += 1;
-        }
-        if self.v.len() - first_non_zero_bit <= variant::INT_BITS {
-            self.fit_to(variant::INT_BITS);
-            Ok(Expression::IntegerLiteral(variant::from_bit_slice_i32(
-                self.v.as_slice(),
-            )))
-        } else if self.v.len() - first_non_zero_bit <= variant::LONG_BITS {
-            self.fit_to(variant::LONG_BITS);
-            Ok(Expression::LongLiteral(variant::from_bit_slice_i64(
-                self.v.as_slice(),
-            )))
+    fn create_expression_from_bit_vec(mut bit_vec: BitVec) ->  Result<Expression, QError> {
+        bit_vec.fit()?;
+        if bit_vec.len() == variant::INT_BITS {
+            Ok(Expression::IntegerLiteral( bit_vec.into() ) )
+        } else if bit_vec.len() == variant::LONG_BITS {
+            Ok(Expression::LongLiteral( bit_vec.into() ) )
         } else {
             Err(QError::Overflow)
-        }
-    }
-
-    fn fit_to(&mut self, bits: usize) {
-        if self.v.len() > bits {
-            while self.v.len() > bits {
-                self.v.remove(0);
-            }
-        } else if self.v.len() < bits {
-            while self.v.len() < bits {
-                self.v.insert(0, false);
-            }
         }
     }
 }

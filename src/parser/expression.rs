@@ -301,45 +301,50 @@ mod number_literal {
 
     pub fn hexadecimal_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+        hex_or_oct_literal("&H", is_hex_digit, convert_hex_digits)
+    }
+
+    pub fn octal_literal<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+        hex_or_oct_literal("&O", is_oct_digit, convert_oct_digits)
+    }
+
+    fn hex_or_oct_literal<T: BufRead + 'static>(
+        needle: &'static str,
+        predicate: fn(char) -> bool,
+        converter: fn(String) -> Result<Expression, QError>
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
         with_pos(and_then(
             and(
-                str::str_case_insensitive("&H"),
+                str::str_case_insensitive(needle),
                 or(
-                    and(read('-'), str::one_or_more_if(is_hex_digit)),
-                    map(str::one_or_more_if(is_hex_digit), |h| ('+', h)),
+                    and(read('-'), str::one_or_more_if(predicate)),
+                    map(str::one_or_more_if(predicate), |h| ('+', h)),
                 ),
             ),
-            |(_ampersand_h, (sign, digits))| convert_hex_digits(sign, digits),
+            move |(_ampersand, (sign, digits))| if sign == '-' {
+                Err(QError::Overflow)
+            } else {
+                converter(digits)
+            },
         ))
+    }
+
+    fn is_oct_digit(ch: char) -> bool {
+        ch >= '0' && ch <= '7'
     }
 
     fn is_hex_digit(ch: char) -> bool {
         ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
     }
 
-    fn convert_hex_digits(sign: char, digits: String) -> Result<Expression, QError> {
-        if sign == '-' {
-            Err(QError::Overflow) // seems &H-10 just yields overflow immediately
-        } else {
-            let mut result: BitVec = BitVec::new();
-            let mut found_leading_non_zero = false;
-            for digit in digits.chars() {
-                let hex = convert_hex_digit(digit);
-                if !found_leading_non_zero {
-                    if hex == 0 {
-                        // still skipping through leading zeroes
-                    } else {
-                        // found the first non zero digit
-                        found_leading_non_zero = true;
-                        result.push_hex(hex);
-                    }
-                } else {
-                    // not the first digit
-                    result.push_hex(hex);
-                }
-            }
-            result.create_expression()
+    fn convert_hex_digits(digits: String) -> Result<Expression, QError> {
+        let mut result: BitVec = BitVec::new();
+        for digit in digits.chars().skip_while(|ch| *ch == '0') {
+            let hex = convert_hex_digit(digit);
+            result.push_hex(hex);
         }
+        result.create_expression()
     }
 
     fn convert_hex_digit(ch: char) -> u8 {
@@ -354,47 +359,13 @@ mod number_literal {
         }
     }
 
-    pub fn octal_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-        with_pos(and_then(
-            and(
-                str::str_case_insensitive("&O"),
-                or(
-                    and(read('-'), str::one_or_more_if(is_oct_digit)),
-                    map(str::one_or_more_if(is_oct_digit), |h| ('+', h)),
-                ),
-            ),
-            |(_ampersand_h, (sign, digits))| convert_oct_digits(sign, digits),
-        ))
-    }
-
-    fn is_oct_digit(ch: char) -> bool {
-        ch >= '0' && ch <= '7'
-    }
-
-    fn convert_oct_digits(sign: char, digits: String) -> Result<Expression, QError> {
-        if sign == '-' {
-            Err(QError::Overflow) // seems &O-10 just yields overflow immediately
-        } else {
-            let mut result: BitVec = BitVec::new();
-            let mut found_leading_non_zero = false;
-            for digit in digits.chars() {
-                let oct = convert_oct_digit(digit);
-                if !found_leading_non_zero {
-                    if oct == 0 {
-                        // still skipping through leading zeroes
-                    } else {
-                        // found the first non zero digit
-                        found_leading_non_zero = true;
-                        result.push_octal(oct);
-                    }
-                } else {
-                    // not the first digit
-                    result.push_octal(oct);
-                }
-            }
-            result.create_expression()
+    fn convert_oct_digits(digits: String) -> Result<Expression, QError> {
+        let mut result: BitVec = BitVec::new();
+        for digit in digits.chars().skip_while(|ch| *ch == '0') {
+            let oct = convert_oct_digit(digit);
+            result.push_octal(oct);
         }
+        result.create_expression()
     }
 
     fn convert_oct_digit(ch: char) -> u8 {

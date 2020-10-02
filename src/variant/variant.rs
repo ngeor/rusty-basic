@@ -3,10 +3,10 @@ use super::UserDefinedTypeValue;
 use crate::common::{FileHandle, QError};
 use crate::parser::TypeQualifier;
 use crate::variant::casting::QBNumberCast;
+use crate::variant::{qb_and, qb_or};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::Display;
-use crate::variant::{qb_and, qb_or};
 
 #[derive(Clone, Debug)]
 pub enum Variant {
@@ -331,9 +331,7 @@ impl Variant {
     pub fn and(self, other: Self) -> Result<Self, QError> {
         match self {
             Variant::VInteger(a) => match other {
-                Variant::VInteger(b) => {
-                    Ok(Variant::VInteger(qb_and(a, b)))
-                },
+                Variant::VInteger(b) => Ok(Variant::VInteger(qb_and(a, b))),
                 _ => Err(QError::TypeMismatch),
             },
             _ => Err(QError::TypeMismatch),
@@ -343,9 +341,7 @@ impl Variant {
     pub fn or(self, other: Self) -> Result<Self, QError> {
         match self {
             Variant::VInteger(a) => match other {
-                Variant::VInteger(b) => {
-                    Ok(Variant::VInteger(qb_or(a, b)))
-                },
+                Variant::VInteger(b) => Ok(Variant::VInteger(qb_or(a, b))),
                 _ => Err(QError::TypeMismatch),
             },
             _ => Err(QError::TypeMismatch),

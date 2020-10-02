@@ -313,7 +313,7 @@ mod number_literal {
     fn hex_or_oct_literal<T: BufRead + 'static>(
         needle: &'static str,
         predicate: fn(char) -> bool,
-        converter: fn(String) -> Result<Expression, QError>
+        converter: fn(String) -> Result<Expression, QError>,
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
         with_pos(and_then(
             and(
@@ -323,10 +323,12 @@ mod number_literal {
                     map(str::one_or_more_if(predicate), |h| ('+', h)),
                 ),
             ),
-            move |(_ampersand, (sign, digits))| if sign == '-' {
-                Err(QError::Overflow)
-            } else {
-                converter(digits)
+            move |(_ampersand, (sign, digits))| {
+                if sign == '-' {
+                    Err(QError::Overflow)
+                } else {
+                    converter(digits)
+                }
             },
         ))
     }
@@ -377,12 +379,12 @@ mod number_literal {
         }
     }
 
-    fn create_expression_from_bit_vec(mut bit_vec: BitVec) ->  Result<Expression, QError> {
+    fn create_expression_from_bit_vec(mut bit_vec: BitVec) -> Result<Expression, QError> {
         bit_vec.fit()?;
         if bit_vec.len() == variant::INT_BITS {
-            Ok(Expression::IntegerLiteral( bit_vec.into() ) )
+            Ok(Expression::IntegerLiteral(bit_vec.into()))
         } else if bit_vec.len() == variant::LONG_BITS {
-            Ok(Expression::LongLiteral( bit_vec.into() ) )
+            Ok(Expression::LongLiteral(bit_vec.into()))
         } else {
             Err(QError::Overflow)
         }

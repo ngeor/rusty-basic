@@ -1,7 +1,8 @@
 use crate::common::QError;
 use crate::variant::{INT_BITS, LONG_BITS};
+use std::fmt::Write;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct BitVec {
     v: Vec<bool>,
 }
@@ -66,7 +67,7 @@ impl From<Vec<bool>> for BitVec {
 
 impl From<[bool; INT_BITS]> for BitVec {
     fn from(bits: [bool; 16]) -> Self {
-        let v : Vec<bool> = bits.into();
+        let v: Vec<bool> = bits.into();
         v.into()
     }
 }
@@ -187,17 +188,37 @@ impl std::ops::BitOr for BitVec {
 }
 
 pub fn qb_and(a: i32, b: i32) -> i32 {
-    let a_bits : BitVec = a.into();
+    let a_bits: BitVec = a.into();
     let b_bits: BitVec = b.into();
-    let result  = a_bits & b_bits;
+    let result = a_bits & b_bits;
     result.into()
 }
 
 pub fn qb_or(a: i32, b: i32) -> i32 {
-    let a_bits : BitVec = a.into();
+    let a_bits: BitVec = a.into();
     let b_bits: BitVec = b.into();
-    let result  = a_bits | b_bits;
+    let result = a_bits | b_bits;
     result.into()
+}
+
+impl std::fmt::Debug for BitVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+
+impl std::fmt::Display for BitVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in 0..self.len() {
+            let bit = self[i];
+            let ch = if bit { '1' } else { '0' };
+            if i % 4 == 0 && i > 0 {
+                f.write_char(' ')?;
+            }
+            f.write_char(ch)?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -279,5 +300,18 @@ mod tests {
     fn test_and_bits() {
         assert_eq!(4, qb_and(5, -2));
         assert_eq!(2, qb_and(-5, 2));
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(format!("{}", BitVec::from(0)), "0000 0000 0000 0000");
+        assert_eq!(format!("{}", BitVec::from(1)), "0000 0000 0000 0001");
+        assert_eq!(format!("{}", BitVec::from(2)), "0000 0000 0000 0010");
+        assert_eq!(format!("{}", BitVec::from(3)), "0000 0000 0000 0011");
+        assert_eq!(format!("{}", BitVec::from(4)), "0000 0000 0000 0100");
+        assert_eq!(format!("{}", BitVec::from(5)), "0000 0000 0000 0101");
+        assert_eq!(format!("{}", BitVec::from(32767)), "0111 1111 1111 1111");
+        assert_eq!(format!("{}", BitVec::from(-32768)), "1000 0000 0000 0000");
+        assert_eq!(format!("{}", BitVec::from(-1)), "1111 1111 1111 1111");
     }
 }

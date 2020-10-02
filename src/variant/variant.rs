@@ -3,6 +3,7 @@ use super::UserDefinedTypeValue;
 use crate::common::{FileHandle, QError};
 use crate::parser::TypeQualifier;
 use crate::variant::casting::QBNumberCast;
+use crate::variant::{qb_and, qb_or};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -26,7 +27,8 @@ pub const MAX_INTEGER: i32 = 32767;
 pub const MIN_LONG: i64 = -2147483648;
 pub const MAX_LONG: i64 = 2147483647;
 
-const INT_BITS: usize = 16;
+pub const INT_BITS: usize = 16;
+pub const LONG_BITS: usize = 32;
 
 trait ApproximateCmp {
     fn cmp(left: &Self, right: &Self) -> Ordering;
@@ -329,10 +331,7 @@ impl Variant {
     pub fn and(self, other: Self) -> Result<Self, QError> {
         match self {
             Variant::VInteger(a) => match other {
-                Variant::VInteger(b) => Ok(Variant::VInteger(from_bits(and_bits(
-                    to_bits(a),
-                    to_bits(b),
-                )))),
+                Variant::VInteger(b) => Ok(Variant::VInteger(qb_and(a, b))),
                 _ => Err(QError::TypeMismatch),
             },
             _ => Err(QError::TypeMismatch),
@@ -342,10 +341,7 @@ impl Variant {
     pub fn or(self, other: Self) -> Result<Self, QError> {
         match self {
             Variant::VInteger(a) => match other {
-                Variant::VInteger(b) => Ok(Variant::VInteger(from_bits(or_bits(
-                    to_bits(a),
-                    to_bits(b),
-                )))),
+                Variant::VInteger(b) => Ok(Variant::VInteger(qb_or(a, b))),
                 _ => Err(QError::TypeMismatch),
             },
             _ => Err(QError::TypeMismatch),
@@ -441,63 +437,6 @@ impl Display for Variant {
             _ => Err(std::fmt::Error),
         }
     }
-}
-
-fn to_bits(a: i32) -> [bool; INT_BITS] {
-    let mut result: [bool; INT_BITS] = [false; INT_BITS];
-    let mut x: i32 = a;
-    if x > 0 {
-        let mut idx = 0;
-        while x > 0 && idx < INT_BITS {
-            result[idx] = (x & 1) == 1;
-            x = x >> 1;
-            idx += 1;
-        }
-    } else if x < 0 {
-        x = -x - 1;
-        result = [true; INT_BITS];
-        let mut idx = 0;
-        while x > 0 && idx < INT_BITS {
-            result[idx] = (x & 1) == 0;
-            x = x >> 1;
-            idx += 1;
-        }
-    }
-    result
-}
-
-fn from_bits(bits: [bool; INT_BITS]) -> i32 {
-    let mut x: i32 = 0;
-    let sign = bits[INT_BITS - 1];
-    let mut idx = INT_BITS - 1;
-    while idx > 0 {
-        x = x << 1;
-        idx -= 1;
-        if bits[idx] != sign {
-            x = x | 1;
-        }
-    }
-    if sign {
-        -x - 1
-    } else {
-        x
-    }
-}
-
-fn and_bits(a: [bool; INT_BITS], b: [bool; INT_BITS]) -> [bool; INT_BITS] {
-    let mut c: [bool; INT_BITS] = [false; INT_BITS];
-    for i in 0..INT_BITS {
-        c[i] = a[i] && b[i];
-    }
-    c
-}
-
-fn or_bits(a: [bool; INT_BITS], b: [bool; INT_BITS]) -> [bool; INT_BITS] {
-    let mut c: [bool; INT_BITS] = [false; INT_BITS];
-    for i in 0..INT_BITS {
-        c[i] = a[i] || b[i];
-    }
-    c
 }
 
 // ========================================================
@@ -1777,81 +1716,6 @@ mod tests {
             assert_less(Variant::from(1_i64), Variant::from(2_i64));
             assert_equal(Variant::from(3_i64), Variant::from(3_i64));
             assert_greater(Variant::from(5_i64), Variant::from(4_i64));
-        }
-    }
-
-    mod bits {
-        use super::*;
-
-        #[test]
-        fn test_positive_bits() {
-            let mut expected_bits: [bool; INT_BITS] = [false; INT_BITS];
-
-            // 0 | 0 0 0
-            assert_eq!(to_bits(0), expected_bits);
-
-            // 0 | 0 0 1
-            expected_bits[0] = true;
-            assert_eq!(to_bits(1), expected_bits);
-
-            // 0 | 0 1 0
-            expected_bits[0] = false;
-            expected_bits[1] = true;
-            assert_eq!(to_bits(2), expected_bits);
-
-            // 0 | 0 1 1
-            expected_bits[0] = true;
-            assert_eq!(to_bits(3), expected_bits);
-
-            // 0 | 1 0 0
-            expected_bits[0] = false;
-            expected_bits[1] = false;
-            expected_bits[2] = true;
-            assert_eq!(to_bits(4), expected_bits);
-
-            // 0 | 1 0 1
-            expected_bits[0] = true;
-            assert_eq!(to_bits(5), expected_bits);
-        }
-
-        #[test]
-        fn test_negative_bits() {
-            let mut expected_bits: [bool; INT_BITS] = [true; INT_BITS];
-
-            // 1 | 1 1 1
-            assert_eq!(to_bits(-1), expected_bits);
-
-            // 1 | 1 1 0
-            expected_bits[0] = false;
-            assert_eq!(to_bits(-2), expected_bits);
-
-            // 1 | 1 0 1
-            expected_bits[0] = true;
-            expected_bits[1] = false;
-            assert_eq!(to_bits(-3), expected_bits);
-
-            // 1 | 1 0 0
-            expected_bits[0] = false;
-            assert_eq!(to_bits(-4), expected_bits);
-
-            // 1 | 0 1 1
-            expected_bits[0] = true;
-            expected_bits[1] = true;
-            expected_bits[2] = false;
-            assert_eq!(to_bits(-5), expected_bits);
-        }
-
-        #[test]
-        fn test_from_to_bits() {
-            for i in -5..6 {
-                assert_eq!(i, from_bits(to_bits(i)));
-            }
-        }
-
-        #[test]
-        fn test_and_bits() {
-            assert_eq!(4, from_bits(and_bits(to_bits(5), to_bits(-2))));
-            assert_eq!(2, from_bits(and_bits(to_bits(-5), to_bits(2))));
         }
     }
 }

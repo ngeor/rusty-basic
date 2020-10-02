@@ -16,6 +16,15 @@ macro_rules! assert_assign_ok {
 }
 
 #[test]
+fn test_literals() {
+    assert_has_variable!(interpret("X = 3.14"), "X!", 3.14_f32);
+    assert_has_variable!(interpret("X# = 3.14"), "X#", 3.14);
+    assert_has_variable!(interpret("X$ = \"hello\""), "X$", "hello");
+    assert_has_variable!(interpret("X% = 42"), "X%", 42);
+    assert_has_variable!(interpret("X& = 42"), "X&", 42_i64);
+}
+
+#[test]
 fn test_assign_literal_to_unqualified_float() {
     assert_assign_ok!("X = 1.0", "X!", 1.0_f32);
     assert_assign_ok!("X = -1.0", "X!", -1.0_f32);

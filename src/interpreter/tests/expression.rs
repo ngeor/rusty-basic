@@ -2,15 +2,6 @@ use crate::assert_has_variable;
 use crate::assert_prints;
 use crate::interpreter::test_utils::*;
 
-#[test]
-fn test_literals() {
-    assert_has_variable!(interpret("X = 3.14"), "X!", 3.14_f32);
-    assert_has_variable!(interpret("X# = 3.14"), "X#", 3.14);
-    assert_has_variable!(interpret("X$ = \"hello\""), "X$", "hello");
-    assert_has_variable!(interpret("X% = 42"), "X%", 42);
-    assert_has_variable!(interpret("X& = 42"), "X&", 42_i64);
-}
-
 mod binary_plus {
     use super::*;
 
@@ -527,4 +518,57 @@ fn test_dot_in_expression_variable_name() {
     END IF
     "#;
     assert_prints!(program, "bye");
+}
+
+#[test]
+fn test_hexadecimals() {
+    assert_prints!("PRINT &H0", "0");
+    assert_prints!("PRINT &H5", "5");
+    assert_prints!("PRINT &HA", "10");
+    assert_prints!("PRINT &H10", "16");
+
+    assert_prints!("PRINT &H1A", "26");
+    assert_prints!("PRINT &HB2", "178");
+
+    assert_prints!("PRINT &H1A1", "417");
+    assert_prints!("PRINT &H2BC", "700");
+    assert_prints!("PRINT &H34C", "844");
+
+    assert_prints!("PRINT &HAB4", "2740");
+    assert_prints!("PRINT &HB3E", "2878");
+    assert_prints!("PRINT &HC45", "3141");
+
+    assert_prints!("PRINT &HFF", "255"); // 0000 0000 1111 1111
+    assert_prints!("PRINT &H00FF", "255");
+    assert_prints!("PRINT &H100", "256");
+
+    assert_prints!("PRINT &H7FFF", "32767"); // max positive integer 0111 1111 1111 1111
+    assert_prints!("PRINT &H8000", "-32768"); // min negative integer 1000 0000 0000 0000
+    assert_prints!("PRINT &HFFFF", "-1"); // integer
+    assert_prints!("PRINT -&HFFFF", "1");
+
+    // long
+    assert_prints!("PRINT &H10000", "65536");
+    assert_prints!("PRINT &H7FFFFFFF", "2147483647");
+    assert_prints!("PRINT &H000007FFFFFFF", "2147483647");
+    assert_prints!("PRINT &H80000000", "-2147483648");
+    assert_prints!("PRINT &HFFFFFFFF", "-1");
+}
+
+#[test]
+fn test_octal() {
+    assert_prints!("PRINT &O0", "0");
+    assert_prints!("PRINT &O5", "5");
+    assert_prints!("PRINT &O10", "8");
+    assert_prints!("PRINT &O010", "8");
+    assert_prints!("PRINT &O377", "255");
+    assert_prints!("PRINT &O400", "256");
+    assert_prints!("PRINT &O2000", "1024");
+    assert_prints!("PRINT &O77777", "32767");
+    assert_prints!("PRINT &O100000", "-32768");
+    assert_prints!("PRINT &O177777", "-1");
+    assert_prints!("PRINT &O200000", "65536");
+    assert_prints!("PRINT &O17777777777", "2147483647");
+    assert_prints!("PRINT &O20000000000", "-2147483648");
+    assert_prints!("PRINT &O37777777777", "-1");
 }

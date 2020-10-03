@@ -1,5 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
+use crate::interpreter::print;
 use crate::interpreter::{Interpreter, SetVariable, Stdlib};
 use crate::linter::{ElementType, UserDefinedType, UserDefinedTypes};
 use crate::parser::TypeQualifier;
@@ -34,7 +35,7 @@ pub fn run_sub<S: Stdlib>(
         BuiltInSub::LineInput => line_input::run(interpreter),
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
-        BuiltInSub::Print => print::run(interpreter),
+        BuiltInSub::Print => print::run(interpreter).with_err_no_pos(),
         BuiltInSub::System => system::run(interpreter),
     }
 }
@@ -1144,75 +1145,6 @@ mod open {
             "#;
             assert_err!(input, QError::FileAlreadyOpen, 3, 13);
             std::fs::remove_file("a.txt").unwrap_or(());
-        }
-    }
-}
-
-mod print {
-    // PRINT [#file-number%,] [expression-list] [{; | ,}]
-    // ; -> output immediately after the last value
-    // , -> print at the start of the next print zone (print zones are 14 characters wide)
-
-    use super::*;
-
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let mut print_args: Vec<String> = vec![];
-        let mut file_handle: FileHandle = FileHandle::default();
-        for idx in 0..interpreter.context().parameter_count() {
-            let v = interpreter.context().get(idx).unwrap();
-            match v {
-                Variant::VFileHandle(fh) => {
-                    if idx == 0 {
-                        file_handle = *fh;
-                    } else {
-                        panic!("file handle must be first")
-                    }
-                }
-                _ => print_args.push(v.to_string()),
-            }
-        }
-        if file_handle.is_valid() {
-            interpreter
-                .file_manager
-                .print(&file_handle, print_args)
-                .map_err(|e| e.into())
-                .with_err_no_pos()?;
-        } else {
-            interpreter.stdlib.print(print_args);
-        }
-        Ok(())
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use crate::assert_prints;
-
-        #[test]
-        fn test_print_no_args() {
-            assert_prints!("PRINT", "");
-        }
-
-        #[test]
-        fn test_interpret_print_hello_world_one_arg() {
-            let input = "PRINT \"Hello, world!\"";
-            assert_prints!(input, "Hello, world!");
-        }
-
-        #[test]
-        fn test_interpret_print_hello_world_two_args() {
-            let input = r#"PRINT "Hello", "world!""#;
-            assert_prints!(input, "Hello world!");
-        }
-
-        #[test]
-        fn test_interpret_print_hello_world_two_args_one_is_function() {
-            let input = r#"
-        PRINT "Hello", Test(1)
-        FUNCTION Test(N)
-            Test = N + 1
-        END FUNCTION
-        "#;
-            assert_prints!(input, "Hello 2");
         }
     }
 }

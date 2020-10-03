@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_for_loop() {
-        let input = "FOR I = 1 TO 10\r\nPRINT I\r\nNEXT";
+        let input = "FOR I = 1 TO 10\r\nFlint I\r\nNEXT";
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
@@ -117,7 +117,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![
-                    Statement::SubCall("PRINT".into(), vec!["I".as_var_expr(2, 7)]).at_rc(2, 1)
+                    Statement::SubCall("Flint".into(), vec!["I".as_var_expr(2, 7)]).at_rc(2, 1)
                 ],
                 next_counter: None,
             })
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_for_loop_lower_case() {
-        let input = "for i = 1 TO 10\r\nprint i\r\nnext";
+        let input = "for i = 1 TO 10\r\nflint i\r\nnext";
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
@@ -136,7 +136,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![
-                    Statement::SubCall("print".into(), vec!["i".as_var_expr(2, 7)]).at_rc(2, 1)
+                    Statement::SubCall("flint".into(), vec!["i".as_var_expr(2, 7)]).at_rc(2, 1)
                 ],
                 next_counter: None,
             })
@@ -227,7 +227,7 @@ mod tests {
     fn test_inline_comment() {
         let input = r#"
         FOR I = 1 TO 10 ' for loop
-        PRINT I ' print it
+        Flint I ' print it
         NEXT ' end of loop
         "#;
         let result = parse(input);
@@ -241,7 +241,7 @@ mod tests {
                     step: None,
                     statements: vec![
                         Statement::Comment(" for loop".to_string()).at_rc(2, 25),
-                        Statement::SubCall("PRINT".into(), vec!["I".as_var_expr(3, 15)])
+                        Statement::SubCall("Flint".into(), vec!["I".as_var_expr(3, 15)])
                             .at_rc(3, 9),
                         Statement::Comment(" print it".to_string()).at_rc(3, 17),
                     ],

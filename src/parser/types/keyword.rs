@@ -1,8 +1,7 @@
 use crate::common::CmpIgnoreAsciiCase;
-use std::fmt::Display;
 use std::str::FromStr;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Keyword {
     /// ACCESS
     Access,
@@ -58,6 +57,8 @@ pub enum Keyword {
     Line,
     /// LONG
     Long,
+    /// LPRINT
+    LPrint,
     /// NAME
     Name,
     /// NEXT
@@ -72,6 +73,8 @@ pub enum Keyword {
     Or,
     /// OUTPUT
     Output,
+    /// PRINT
+    Print,
     /// READ
     Read,
     /// SELECT
@@ -90,6 +93,8 @@ pub enum Keyword {
     To,
     /// TYPE
     Type,
+    /// USING
+    Using,
     /// WEND
     Wend,
     /// WHILE
@@ -123,6 +128,7 @@ const STR_INTEGER: &str = "INTEGER";
 const STR_IS: &str = "IS";
 const STR_LINE: &str = "LINE";
 const STR_LONG: &str = "LONG";
+const STR_LPRINT: &str = "LPRINT";
 const STR_NAME: &str = "NAME";
 const STR_NEXT: &str = "NEXT";
 const STR_NOT: &str = "NOT";
@@ -130,6 +136,7 @@ const STR_ON: &str = "ON";
 const STR_OPEN: &str = "OPEN";
 const STR_OR: &str = "OR";
 const STR_OUTPUT: &str = "OUTPUT";
+const STR_PRINT: &str = "PRINT";
 const STR_READ: &str = "READ";
 const STR_SELECT: &str = "SELECT";
 const STR_SINGLE: &str = "SINGLE";
@@ -139,10 +146,11 @@ const STR_SUB: &str = "SUB";
 const STR_THEN: &str = "THEN";
 const STR_TO: &str = "TO";
 const STR_TYPE: &str = "TYPE";
+const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 45] = [
+const SORTED_KEYWORDS_STR: [&str; 48] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -170,6 +178,7 @@ const SORTED_KEYWORDS_STR: [&str; 45] = [
     STR_IS,
     STR_LINE,
     STR_LONG,
+    STR_LPRINT,
     STR_NAME,
     STR_NEXT,
     STR_NOT,
@@ -177,6 +186,7 @@ const SORTED_KEYWORDS_STR: [&str; 45] = [
     STR_OPEN,
     STR_OR,
     STR_OUTPUT,
+    STR_PRINT,
     STR_READ,
     STR_SELECT,
     STR_SINGLE,
@@ -186,11 +196,12 @@ const SORTED_KEYWORDS_STR: [&str; 45] = [
     STR_THEN,
     STR_TO,
     STR_TYPE,
+    STR_USING,
     STR_WEND,
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 45] = [
+const SORTED_KEYWORDS: [Keyword; 48] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -218,6 +229,7 @@ const SORTED_KEYWORDS: [Keyword; 45] = [
     Keyword::Is,
     Keyword::Line,
     Keyword::Long,
+    Keyword::LPrint,
     Keyword::Name,
     Keyword::Next,
     Keyword::Not,
@@ -225,6 +237,7 @@ const SORTED_KEYWORDS: [Keyword; 45] = [
     Keyword::Open,
     Keyword::Or,
     Keyword::Output,
+    Keyword::Print,
     Keyword::Read,
     Keyword::Select,
     Keyword::Single,
@@ -234,6 +247,7 @@ const SORTED_KEYWORDS: [Keyword; 45] = [
     Keyword::Then,
     Keyword::To,
     Keyword::Type,
+    Keyword::Using,
     Keyword::Wend,
     Keyword::While,
 ];
@@ -268,6 +282,7 @@ impl Keyword {
             Self::Is => STR_IS,
             Self::Line => STR_LINE,
             Self::Long => STR_LONG,
+            Self::LPrint => STR_LPRINT,
             Self::Name => STR_NAME,
             Self::Next => STR_NEXT,
             Self::Not => STR_NOT,
@@ -275,6 +290,7 @@ impl Keyword {
             Self::Open => STR_OPEN,
             Self::Or => STR_OR,
             Self::Output => STR_OUTPUT,
+            Self::Print => STR_PRINT,
             Self::Read => STR_READ,
             Self::Select => STR_SELECT,
             Self::Single => STR_SINGLE,
@@ -284,15 +300,22 @@ impl Keyword {
             Self::Then => STR_THEN,
             Self::To => STR_TO,
             Self::Type => STR_TYPE,
+            Self::Using => STR_USING,
             Self::Wend => STR_WEND,
             Self::While => STR_WHILE,
         }
     }
 }
 
-impl Display for Keyword {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        self.as_str().fmt(f)
+impl std::fmt::Debug for Keyword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+
+impl std::fmt::Display for Keyword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 

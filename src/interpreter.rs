@@ -4,6 +4,7 @@ mod built_ins;
 pub mod context;
 mod interpreter;
 mod io;
+mod print;
 mod stdlib;
 mod variables;
 

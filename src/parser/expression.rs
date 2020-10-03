@@ -118,7 +118,7 @@ fn single_expression_node<T: BufRead + 'static>(
         number_literal::float_without_leading_zero(),
         number_literal::hexadecimal_literal(),
         number_literal::octal_literal(),
-        with_pos(file_handle()),
+        with_pos(file_handle_as_expression()),
         with_pos(parenthesis()),
         unary_not(),
         unary_minus(),
@@ -154,8 +154,13 @@ pub fn unary_not<T: BufRead + 'static>(
     )
 }
 
-pub fn file_handle<T: BufRead + 'static>(
+pub fn file_handle_as_expression<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
+    map(file_handle(), |f| Expression::FileHandle(f))
+}
+
+pub fn file_handle<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileHandle, QError>> {
     and_then(
         seq2(
             read('#'),
@@ -167,7 +172,7 @@ pub fn file_handle<T: BufRead + 'static>(
         |(_, digits)| match digits.parse::<u8>() {
             Ok(d) => {
                 if d > 0 {
-                    Ok(Expression::FileHandle(d.into()))
+                    Ok(d.into())
                 } else {
                     Err(QError::BadFileNameOrNumber)
                 }

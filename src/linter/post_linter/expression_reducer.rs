@@ -99,6 +99,9 @@ pub trait ExpressionReducer {
                         Statement::BuiltInSubCall(reduced_name, reduced_expr)
                     })
             }
+            Statement::Print(p) => self
+                .visit_print_node(p)
+                .map(|reduced_p| Statement::Print(reduced_p)),
             Statement::IfBlock(i) => self.visit_if_block(i).map(|x| Statement::IfBlock(x)),
             Statement::SelectCase(s) => self.visit_select_case(s).map(|x| Statement::SelectCase(x)),
             Statement::ForLoop(f) => self.visit_for_loop(f).map(|x| Statement::ForLoop(x)),
@@ -249,5 +252,33 @@ pub trait ExpressionReducer {
         args.into_iter()
             .map(|a| self.visit_expression_node(a))
             .collect::<Result<Vec<ExpressionNode>, QErrorNode>>()
+    }
+
+    fn visit_print_node(&self, print_node: PrintNode) -> Result<PrintNode, QErrorNode> {
+        Ok(PrintNode {
+            file_number: print_node.file_number,
+            lpt1: print_node.lpt1,
+            format_string: match print_node.format_string {
+                Some(f) => self.visit_expression_node(f).map(|e| Some(e))?,
+                _ => None,
+            },
+            args: self.visit_print_args(print_node.args)?,
+        })
+    }
+
+    fn visit_print_args(&self, print_args: Vec<PrintArg>) -> Result<Vec<PrintArg>, QErrorNode> {
+        print_args
+            .into_iter()
+            .map(|a| self.visit_print_arg(a))
+            .collect::<Result<Vec<PrintArg>, QErrorNode>>()
+    }
+
+    fn visit_print_arg(&self, print_arg: PrintArg) -> Result<PrintArg, QErrorNode> {
+        match print_arg {
+            PrintArg::Expression(e) => self
+                .visit_expression_node(e)
+                .map(|converted_expr_node| PrintArg::Expression(converted_expr_node)),
+            _ => Ok(print_arg),
+        }
     }
 }

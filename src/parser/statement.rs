@@ -153,7 +153,7 @@ mod tests {
         assert_eq!(
             program,
             vec![TopLevelToken::Statement(Statement::SubCall(
-                "PRINT".into(),
+                "Flint".into(),
                 vec![42.as_lit_expr(1, 9)]
             ))
             .at_rc(1, 3)]

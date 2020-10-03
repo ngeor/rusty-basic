@@ -16,6 +16,7 @@ pub fn parse_built_in<T: BufRead + 'static>(
         line_input::parse_line_input(),
         name::parse_name(),
         open::parse_open(),
+        print::parse_print(),
     ])
 }
 
@@ -389,5 +390,46 @@ mod open {
                 )
             );
         }
+    }
+}
+
+mod print {
+    use super::*;
+    use crate::parser::pc::map::and_then;
+
+    pub fn parse_print<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+        and_then(
+            opt_seq3(
+                keyword(Keyword::Print),
+                parse_file_number(),
+                many(parse_print_arg()),
+            ),
+            |(_, file_number, print_args)| {
+                Ok(Statement::Print(PrintNode {
+                    file_number,
+                    lpt1: false,
+                    format_string: None,
+                    args: print_args.unwrap_or_default(),
+                }))
+            },
+        )
+    }
+
+    fn parse_file_number<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileHandle, QError>> {
+        ws::one_or_more_leading(expression::file_handle())
+    }
+
+    fn parse_print_arg<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
+        or_vec(vec![
+            map(ws::zero_or_more_leading(read(';')), |_| PrintArg::Semicolon),
+            map(ws::zero_or_more_leading(read(',')), |_| PrintArg::Comma),
+            map(
+                ws::zero_or_more_leading(expression::expression_node()),
+                |e| PrintArg::Expression(e),
+            ),
+        ])
     }
 }

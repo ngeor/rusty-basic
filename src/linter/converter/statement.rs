@@ -20,6 +20,9 @@ impl<'a> Converter<parser::Statement, Statement> for ConverterImpl<'a> {
             parser::Statement::Dim(dim_name_node) => {
                 self.convert(dim_name_node).map(|x| Statement::Dim(x))
             }
+            parser::Statement::Print(print_node) => {
+                self.convert(print_node).map(|p| Statement::Print(p))
+            }
         }
     }
 }

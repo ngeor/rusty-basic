@@ -218,9 +218,9 @@ mod tests {
         let input = r#"
         SELECT CASE X ' testing for x
         CASE 1        ' is it one?
-        PRINT "One"   ' print it
+        Flint "One"   ' print it
         CASE ELSE     ' something else?
-        PRINT "Nope"  ' print nope
+        Flint "Nope"  ' print nope
         END SELECT    ' end of select
         "#;
         let result = parse(input);
@@ -234,14 +234,14 @@ mod tests {
                         expr: CaseExpression::Simple(1.as_lit_expr(3, 14)),
                         statements: vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(3, 23),
-                            Statement::SubCall("PRINT".into(), vec!["One".as_lit_expr(4, 15)])
+                            Statement::SubCall("Flint".into(), vec!["One".as_lit_expr(4, 15)])
                                 .at_rc(4, 9),
                             Statement::Comment(" print it".to_string()).at_rc(4, 23),
                         ]
                     }],
                     else_block: Some(vec![
                         Statement::Comment(" something else?".to_string()).at_rc(5, 23),
-                        Statement::SubCall("PRINT".into(), vec!["Nope".as_lit_expr(6, 15)])
+                        Statement::SubCall("Flint".into(), vec!["Nope".as_lit_expr(6, 15)])
                             .at_rc(6, 9),
                         Statement::Comment(" print nope".to_string()).at_rc(6, 23),
                     ]),

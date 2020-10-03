@@ -221,10 +221,9 @@ mod tests {
                         Expression::IntegerLiteral(42).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::parse("A!")).at_rc(4, 19)]
-                    ))
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::parse("A!")).at_rc(4, 19)
+                    )))
                     .at_rc(4, 13)
                 ]
             );
@@ -247,10 +246,9 @@ mod tests {
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
                     ))
                     .at_rc(3, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::parse("A$")).at_rc(4, 19)]
-                    ))
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::parse("A$")).at_rc(4, 19)
+                    )))
                     .at_rc(4, 13)
                 ]
             );
@@ -273,10 +271,9 @@ mod tests {
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::parse("A$")).at_rc(4, 19)]
-                    ))
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::parse("A$")).at_rc(4, 19)
+                    )))
                     .at_rc(4, 13)
                 ]
             );
@@ -362,9 +359,8 @@ mod tests {
                         Expression::IntegerLiteral(42).at_rc(7, 23)
                     ))
                     .at_rc(7, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::new(
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::new(
                             "A".into(),
                             DimType::Many(
                                 "Card".into(),
@@ -374,8 +370,8 @@ mod tests {
                                 }
                             )
                         ))
-                        .at_rc(8, 19)]
-                    ))
+                        .at_rc(8, 19)
+                    )))
                     .at_rc(8, 13)
                 ]
             );
@@ -413,9 +409,8 @@ mod tests {
                         Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
                     ))
                     .at_rc(7, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::new(
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::new(
                             "A".into(),
                             DimType::Many(
                                 "Card".into(),
@@ -425,8 +420,8 @@ mod tests {
                                 }
                             )
                         ))
-                        .at_rc(8, 19)]
-                    ))
+                        .at_rc(8, 19)
+                    )))
                     .at_rc(8, 13)
                 ]
             );

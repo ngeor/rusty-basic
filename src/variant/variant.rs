@@ -15,6 +15,7 @@ pub enum Variant {
     VString(String),
     VInteger(i32),
     VLong(i64),
+    #[deprecated]
     VFileHandle(FileHandle),
     VUserDefined(Box<UserDefinedTypeValue>),
 }
@@ -401,6 +402,13 @@ impl From<bool> for Variant {
         } else {
             V_FALSE
         }
+    }
+}
+
+impl From<FileHandle> for Variant {
+    fn from(file_handle: FileHandle) -> Variant {
+        let file_number: u8 = file_handle.into();
+        Variant::VInteger(file_number as i32)
     }
 }
 

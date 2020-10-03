@@ -58,6 +58,22 @@ fn test_interpret_sub_call_user_defined_var_arg_is_by_ref() {
 }
 
 #[test]
+fn test_interpret_sub_call_var_in_parenthesis_is_by_val() {
+    let program = r#"
+    DECLARE SUB Hello(X)
+    A = 1
+    Hello (A)
+    PRINT A
+    SUB Hello(X)
+        PRINT X
+        X = 42
+        PRINT X
+    END SUB
+    "#;
+    assert_prints!(program, "1", "42", "1");
+}
+
+#[test]
 fn test_interpret_sub_call_user_defined_cannot_access_global_scope() {
     let program = "
     DECLARE SUB Hello

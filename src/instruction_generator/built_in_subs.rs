@@ -12,6 +12,9 @@ impl InstructionGenerator {
     ) {
         match name {
             BuiltInSub::System => {
+                // implicitly close all files
+                self.generate_built_in_sub_call_instructions(BuiltInSub::Close, vec![], pos);
+                // halt
                 self.push(Instruction::Halt, pos);
             }
             _ => {

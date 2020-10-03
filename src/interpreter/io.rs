@@ -1,4 +1,4 @@
-use crate::common::{FileAccess, FileHandle, FileMode};
+use crate::common::{FileAccess, FileHandle, FileMode, QError};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
@@ -25,15 +25,19 @@ impl FileManager {
         self.handle_map.remove(handle);
     }
 
+    pub fn close_all(&mut self) {
+        self.handle_map.clear();
+    }
+
     pub fn open(
         &mut self,
         handle: FileHandle,
         file_name: &str,
         file_mode: FileMode,
         _file_access: FileAccess,
-    ) -> std::io::Result<()> {
+    ) -> Result<(), QError> {
         if self.handle_map.contains_key(&handle) {
-            return Err(std::io::Error::from(std::io::ErrorKind::AddrInUse));
+            return Err(QError::FileAlreadyOpen);
         }
 
         match file_mode {

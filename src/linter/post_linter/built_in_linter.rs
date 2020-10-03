@@ -63,11 +63,10 @@ fn lint(built_in: &BuiltInFunction, args: &Vec<ExpressionNode>) -> Result<(), QE
 mod close {
     use super::*;
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() != 1 {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else {
-            require_file_handle_or_integer(&args[0])
+        for arg in args {
+            require_file_handle_or_integer(arg)?;
         }
+        Ok(())
     }
 }
 

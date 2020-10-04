@@ -1,7 +1,5 @@
 use crate::common::{FileHandle, QError};
 use crate::interpreter::{Interpreter, Stdlib};
-use crate::linter::{PrintArg, PrintNode};
-use crate::variant::Variant;
 use std::convert::TryFrom;
 
 pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {

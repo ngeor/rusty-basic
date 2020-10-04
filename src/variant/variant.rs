@@ -15,8 +15,6 @@ pub enum Variant {
     VString(String),
     VInteger(i32),
     VLong(i64),
-    #[deprecated]
-    VFileHandle(FileHandle),
     VUserDefined(Box<UserDefinedTypeValue>),
 }
 
@@ -136,10 +134,6 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => other.cmp(self).map(|x| x.reverse()),
             },
-            Variant::VFileHandle(s_left) => match other {
-                Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
-                _ => Err(QError::TypeMismatch),
-            },
             Variant::VUserDefined(_) => Err(QError::TypeMismatch),
         }
     }
@@ -164,10 +158,6 @@ impl Variant {
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
-                _ => Err(QError::TypeMismatch),
-            },
-            Variant::VFileHandle(s_left) => match other {
-                Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(QError::TypeMismatch),
             },
             Variant::VUserDefined(_) => Err(QError::TypeMismatch),
@@ -518,16 +508,11 @@ impl TryFrom<&Variant> for FileHandle {
     type Error = QError;
 
     fn try_from(v: &Variant) -> Result<Self, Self::Error> {
-        match v {
-            Variant::VFileHandle(file_handle) => Ok(*file_handle),
-            _ => {
-                let i: i32 = v.try_cast()?;
-                if i >= 1 && i <= 255 {
-                    Ok((i as u8).into())
-                } else {
-                    Err(QError::BadFileNameOrNumber)
-                }
-            }
+        let i: i32 = v.try_cast()?;
+        if i >= 1 && i <= 255 {
+            Ok((i as u8).into())
+        } else {
+            Err(QError::BadFileNameOrNumber)
         }
     }
 }

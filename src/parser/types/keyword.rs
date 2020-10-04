@@ -13,6 +13,8 @@ pub enum Keyword {
     As,
     /// CASE
     Case,
+    /// CLOSE
+    Close,
     /// CONST
     Const,
     /// DECLARE
@@ -106,6 +108,7 @@ const STR_AND: &str = "AND";
 const STR_APPEND: &str = "APPEND";
 const STR_AS: &str = "AS";
 const STR_CASE: &str = "CASE";
+const STR_CLOSE: &str = "CLOSE";
 const STR_CONST: &str = "CONST";
 const STR_DECLARE: &str = "DECLARE";
 const STR_DEFDBL: &str = "DEFDBL";
@@ -150,12 +153,13 @@ const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 48] = [
+const SORTED_KEYWORDS_STR: [&str; 49] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
     STR_AS,
     STR_CASE,
+    STR_CLOSE,
     STR_CONST,
     STR_DECLARE,
     STR_DEFDBL,
@@ -201,12 +205,13 @@ const SORTED_KEYWORDS_STR: [&str; 48] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 48] = [
+const SORTED_KEYWORDS: [Keyword; 49] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
     Keyword::As,
     Keyword::Case,
+    Keyword::Close,
     Keyword::Const,
     Keyword::Declare,
     Keyword::DefDbl,
@@ -260,6 +265,7 @@ impl Keyword {
             Self::Append => STR_APPEND,
             Self::As => STR_AS,
             Self::Case => STR_CASE,
+            Self::Close => STR_CLOSE,
             Self::Const => STR_CONST,
             Self::Declare => STR_DECLARE,
             Self::DefDbl => STR_DEFDBL,

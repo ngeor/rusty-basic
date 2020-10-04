@@ -613,9 +613,6 @@ mod len {
             Variant::VString(v) => v.len().try_into().unwrap(),
             Variant::VInteger(_) => 2,
             Variant::VLong(_) => 4,
-            Variant::VFileHandle(_) => {
-                return Err("File handle not supported".into()).with_err_no_pos();
-            }
             Variant::VUserDefined(user_defined_value) => {
                 let user_defined_type = interpreter
                     .user_defined_types
@@ -785,13 +782,13 @@ mod line_input {
         for idx in 0..interpreter.context().parameter_count() {
             let v = interpreter.context().get(idx).unwrap();
             match v {
-                Variant::VFileHandle(f) => {
-                    if idx == 0 {
-                        file_handle = *f;
-                    } else {
-                        panic!("LINE INPUT linter should have caught this");
-                    }
-                }
+                // Variant::VFileHandle(f) => {
+                //     if idx == 0 {
+                //         file_handle = *f;
+                //     } else {
+                //         panic!("LINE INPUT linter should have caught this");
+                //     }
+                // }
                 Variant::VString(_) => {
                     line_input_one(interpreter, idx, &file_handle)?;
                 }

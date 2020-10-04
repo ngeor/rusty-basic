@@ -12,6 +12,7 @@ use std::io::BufRead;
 pub fn parse_built_in<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::Statement, QError>> {
     or_vec(vec![
+        close::parse_close(),
         input::parse_input(),
         line_input::parse_line_input(),
         name::parse_name(),
@@ -20,12 +21,39 @@ pub fn parse_built_in<T: BufRead + 'static>(
     ])
 }
 
+mod close {
+    use super::*;
+    use crate::built_ins::BuiltInSub;
+    use crate::parser::pc::ws::one_or_more_leading;
+
+    pub fn parse_close<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+        map(
+            opt_seq2(
+                keyword(Keyword::Close),
+                one_or_more_leading(csv_zero_or_more(expression_or_file_handle())),
+            ),
+            |(_, args)| Statement::SubCall(BuiltInSub::Close.into(), args.unwrap_or_default()),
+        )
+    }
+
+    fn expression_or_file_handle<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+        or(
+            file_handle_as_expression_node(),
+            expression::expression_node(),
+        )
+    }
+}
+
 mod input {
     use super::*;
+    use crate::built_ins::BuiltInSub;
+
     pub fn parse_input<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(parse_input_args(), |r| {
-            Statement::SubCall("INPUT".into(), r)
+            Statement::SubCall(BuiltInSub::Input.into(), r)
         })
     }
 
@@ -88,6 +116,8 @@ mod input {
 
 mod line_input {
     use super::*;
+    use crate::built_ins::BuiltInSub;
+
     pub fn parse_line_input<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(
@@ -99,13 +129,15 @@ mod line_input {
                 ),
                 QError::syntax_error_fn("Expected: whitespace after LINE"),
             ),
-            |(_, r)| Statement::SubCall("LINE INPUT".into(), r),
+            |(_, r)| Statement::SubCall(BuiltInSub::LineInput.into(), r),
         )
     }
 }
 
 mod name {
     use super::*;
+    use crate::built_ins::BuiltInSub;
+
     pub fn parse_name<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(
@@ -115,13 +147,14 @@ mod name {
                 demand_keyword(Keyword::As),
                 expression::demand_guarded_expression_node(),
             ),
-            |(_, l, _, r)| Statement::SubCall("NAME".into(), vec![l, r]),
+            |(_, l, _, r)| Statement::SubCall(BuiltInSub::Name.into(), vec![l, r]),
         )
     }
 }
 
 mod open {
     use super::*;
+    use crate::built_ins::BuiltInSub;
 
     pub fn parse_open<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
@@ -141,7 +174,7 @@ mod open {
             ),
             |(_, file_name, (opt_file_mode, opt_file_access), file_number)| {
                 Statement::SubCall(
-                    "OPEN".into(),
+                    BuiltInSub::Open.into(),
                     vec![
                         file_name,
                         map_opt_locatable_enum(opt_file_mode, FileMode::Input),
@@ -238,7 +271,10 @@ mod open {
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
         drop_left(crate::parser::pc::common::seq2(
             keyword(Keyword::As),
-            expression::demand_guarded_expression_node(),
+            or(
+                ws::one_or_more_leading(file_handle_as_expression_node()),
+                expression::demand_guarded_expression_node(),
+            ),
         ))
     }
 
@@ -259,7 +295,7 @@ mod open {
                         "FILE.TXT".as_lit_expr(1, 6),
                         1.as_lit_expr(1, 21),
                         1.as_lit_expr(1, 34),
-                        Expression::FileHandle(1.into()).at_rc(1, 42)
+                        1.as_lit_expr(1, 42)
                     ]
                 )
             );
@@ -267,7 +303,7 @@ mod open {
 
         #[test]
         fn test_open_for_input_access_read_as_file_handle_no_spaces() {
-            let input = r#"OPEN("FILE.TXT")FOR INPUT ACCESS READ AS(#1)"#;
+            let input = r#"OPEN("FILE.TXT")FOR INPUT ACCESS READ AS(1)"#;
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
@@ -277,10 +313,7 @@ mod open {
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
                         1.as_lit_expr(1, 21),
                         1.as_lit_expr(1, 34),
-                        Expression::Parenthesis(Box::new(
-                            Expression::FileHandle(1.into()).at_rc(1, 42)
-                        ))
-                        .at_rc(1, 41)
+                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 42))).at_rc(1, 41)
                     ]
                 )
             );
@@ -298,7 +331,7 @@ mod open {
                         "FILE.TXT".as_lit_expr(1, 6),
                         1.as_lit_expr(1, 21),
                         0.as_lit_expr(1, 1),
-                        Expression::FileHandle(1.into()).at_rc(1, 30)
+                        1.as_lit_expr(1, 30)
                     ]
                 )
             );
@@ -316,7 +349,7 @@ mod open {
                         "FILE.TXT".as_lit_expr(1, 6),
                         1.as_lit_expr(1, 1),
                         1.as_lit_expr(1, 24),
-                        Expression::FileHandle(1.into()).at_rc(1, 32)
+                        1.as_lit_expr(1, 32),
                     ]
                 )
             );
@@ -334,7 +367,7 @@ mod open {
                         "FILE.TXT".as_lit_expr(1, 6),
                         1.as_lit_expr(1, 1),
                         0.as_lit_expr(1, 1),
-                        Expression::FileHandle(1.into()).at_rc(1, 20)
+                        1.as_lit_expr(1, 20)
                     ]
                 )
             );
@@ -360,7 +393,7 @@ mod open {
 
         #[test]
         fn test_open_as_file_handle_no_spaces() {
-            let input = r#"OPEN("FILE.TXT")AS(#1)"#;
+            let input = r#"OPEN("FILE.TXT")AS(1)"#;
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
@@ -370,10 +403,7 @@ mod open {
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
                         1.as_lit_expr(1, 1),
                         0.as_lit_expr(1, 1),
-                        Expression::Parenthesis(Box::new(
-                            Expression::FileHandle(1.into()).at_rc(1, 20)
-                        ))
-                        .at_rc(1, 19)
+                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 20))).at_rc(1, 19)
                     ]
                 )
             );
@@ -432,4 +462,13 @@ mod print {
             ),
         ])
     }
+}
+
+/// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
+fn file_handle_as_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    map(
+        with_pos(expression::file_handle()),
+        |Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos),
+    )
 }

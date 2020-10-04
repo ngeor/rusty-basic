@@ -402,16 +402,14 @@ fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<()
     }
 }
 
+#[deprecated]
 fn require_file_handle(arg: &ExpressionNode) -> Result<(), QErrorNode> {
-    match arg.as_ref() {
-        Expression::FileHandle(_) => Ok(()),
-        _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg),
-    }
+    unimplemented!()
 }
 
+#[deprecated]
 fn require_file_handle_or_integer(arg: &ExpressionNode) -> Result<(), QErrorNode> {
     match arg.as_ref() {
-        Expression::FileHandle(_) => Ok(()),
         _ => {
             if arg.can_cast_to(TypeQualifier::PercentInteger) {
                 Ok(())

@@ -259,7 +259,7 @@ mod tests {
     fn test_close_file_handle() {
         let input = "CLOSE #1";
         let program = parse(input).demand_single_statement();
-        assert_sub_call!(program, "CLOSE", Expression::FileHandle(1.into()));
+        assert_sub_call!(program, "CLOSE", Expression::IntegerLiteral(1));
     }
 
     #[test]
@@ -271,7 +271,7 @@ mod tests {
             vec![
                 TopLevelToken::Statement(Statement::SubCall(
                     "CLOSE".into(),
-                    vec![Expression::FileHandle(1.into()).at_rc(1, 7)]
+                    vec![1.as_lit_expr(1, 7)]
                 ))
                 .at_rc(1, 1),
                 TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))

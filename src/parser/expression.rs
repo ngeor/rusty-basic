@@ -118,7 +118,6 @@ fn single_expression_node<T: BufRead + 'static>(
         number_literal::float_without_leading_zero(),
         number_literal::hexadecimal_literal(),
         number_literal::octal_literal(),
-        with_pos(file_handle_as_expression()),
         with_pos(parenthesis()),
         unary_not(),
         unary_minus(),
@@ -152,11 +151,6 @@ pub fn unary_not<T: BufRead + 'static>(
         ),
         |(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()),
     )
-}
-
-pub fn file_handle_as_expression<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
-    map(file_handle(), |f| Expression::FileHandle(f))
 }
 
 pub fn file_handle<T: BufRead + 'static>(
@@ -979,21 +973,21 @@ mod tests {
         fn test_file_handle_one() {
             let input = "CLOSE #1";
             let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::FileHandle(1.into()));
+            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(1));
         }
 
         #[test]
         fn test_file_handle_two() {
             let input = "CLOSE #2";
             let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::FileHandle(2.into()));
+            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(2));
         }
 
         #[test]
         fn test_file_handle_max() {
             let input = "CLOSE #255";
             let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::FileHandle(255.into()));
+            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(255));
         }
 
         #[test]

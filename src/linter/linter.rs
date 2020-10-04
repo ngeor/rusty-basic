@@ -1152,10 +1152,6 @@ mod tests {
             assert_linter_err!(r#"PRINT 1 AND "hello""#, QError::TypeMismatch, 1, 13);
             assert_linter_err!(r#"PRINT "hello" AND 1"#, QError::TypeMismatch, 1, 19);
             assert_linter_err!(r#"PRINT "hello" AND "bye""#, QError::TypeMismatch, 1, 19);
-
-            assert_linter_err!(r#"PRINT 1 AND #1"#, QError::TypeMismatch, 1, 13);
-            assert_linter_err!(r#"PRINT #1 AND 1"#, QError::TypeMismatch, 1, 14);
-            assert_linter_err!(r#"PRINT #1 AND #1"#, QError::TypeMismatch, 1, 14);
         }
 
         #[test]
@@ -1181,29 +1177,6 @@ mod tests {
             PRINT X!
             ";
             assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
-        }
-
-        #[test]
-        fn test_file_handle_binary_expression() {
-            let operators = [
-                "+", "-", "*", "/", "AND", "OR", "<", ">", "=", "<>", ">=", "<=",
-            ];
-            for operator in &operators {
-                let input = format!("CLOSE #1 {} #2", operator);
-                assert_linter_err!(input, QError::TypeMismatch);
-            }
-        }
-
-        #[test]
-        fn test_file_handle_unary_minus() {
-            let input = "CLOSE -#1";
-            assert_linter_err!(input, QError::TypeMismatch);
-        }
-
-        #[test]
-        fn test_file_handle_unary_not() {
-            let input = "CLOSE NOT #1";
-            assert_linter_err!(input, QError::TypeMismatch);
         }
     }
 
@@ -1374,4 +1347,3 @@ mod tests {
         }
     }
 }
-// TODO test file handle expression cannot be used anywhere except for `OPEN`, `CLOSE`, `LINE INPUT`, `INPUT`

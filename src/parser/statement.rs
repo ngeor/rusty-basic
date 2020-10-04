@@ -131,7 +131,7 @@ pub fn statement_illegal_keywords<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Statement, TopLevelToken};
+    use crate::parser::{PrintNode, Statement, TopLevelToken};
 
     #[test]
     fn test_top_level_comment() {
@@ -152,11 +152,10 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![TopLevelToken::Statement(Statement::SubCall(
-                "Flint".into(),
-                vec![42.as_lit_expr(1, 9)]
-            ))
-            .at_rc(1, 3)]
+            vec![
+                TopLevelToken::Statement(Statement::Print(PrintNode::one(42.as_lit_expr(1, 9))))
+                    .at_rc(1, 3)
+            ]
         );
     }
 }

@@ -153,10 +153,16 @@ mod tests {
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
-                statements: vec![Statement::SubCall(
-                    "PRINT".into(),
-                    vec!["Hello".as_lit_expr(2, 11), "I".as_var_expr(2, 20)]
-                )
+                statements: vec![Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![
+                        PrintArg::Expression("Hello".as_lit_expr(2, 11)),
+                        PrintArg::Comma,
+                        PrintArg::Expression("I".as_var_expr(2, 20))
+                    ],
+                })
                 .at_rc(2, 5)],
                 next_counter: None,
             })
@@ -169,56 +175,64 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                TopLevelToken::Statement(Statement::SubCall(
-                    "PRINT".into(),
-                    vec!["Before the outer loop".as_lit_expr(1, 7)]
-                )),
+                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                    "Before the outer loop".as_lit_expr(1, 7)
+                ))),
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
                     variable_name: "I".as_name(2, 5),
                     lower_bound: 1.as_lit_expr(2, 9),
                     upper_bound: 10.as_lit_expr(2, 14),
                     step: None,
                     statements: vec![
-                        Statement::SubCall(
-                            "PRINT".into(),
-                            vec![
-                                "Before the inner loop".as_lit_expr(3, 11),
-                                "I".as_var_expr(3, 36)
-                            ]
-                        )
+                        Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![
+                                PrintArg::Expression("Before the inner loop".as_lit_expr(3, 11)),
+                                PrintArg::Comma,
+                                PrintArg::Expression("I".as_var_expr(3, 36))
+                            ],
+                        })
                         .at_rc(3, 5),
                         Statement::ForLoop(ForLoopNode {
                             variable_name: "J".as_name(4, 9),
                             lower_bound: 1.as_lit_expr(4, 13),
                             upper_bound: 10.as_lit_expr(4, 18),
                             step: None,
-                            statements: vec![Statement::SubCall(
-                                "PRINT".into(),
-                                vec![
-                                    "Inner loop".as_lit_expr(5, 15),
-                                    "I".as_var_expr(5, 29),
-                                    "J".as_var_expr(5, 32)
-                                ]
-                            )
+                            statements: vec![Statement::Print(PrintNode {
+                                file_number: None,
+                                lpt1: false,
+                                format_string: None,
+                                args: vec![
+                                    PrintArg::Expression("Inner loop".as_lit_expr(5, 15)),
+                                    PrintArg::Comma,
+                                    PrintArg::Expression("I".as_var_expr(5, 29)),
+                                    PrintArg::Comma,
+                                    PrintArg::Expression("J".as_var_expr(5, 32)),
+                                ],
+                            })
                             .at_rc(5, 9)],
                             next_counter: None,
                         })
                         .at_rc(4, 5),
-                        Statement::SubCall(
-                            "PRINT".into(),
-                            vec![
-                                "After the inner loop".as_lit_expr(7, 11),
-                                "I".as_var_expr(7, 35)
-                            ]
-                        )
+                        Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![
+                                PrintArg::Expression("After the inner loop".as_lit_expr(7, 11)),
+                                PrintArg::Comma,
+                                PrintArg::Expression("I".as_var_expr(7, 35))
+                            ],
+                        })
                         .at_rc(7, 5)
                     ],
                     next_counter: None,
                 })),
-                TopLevelToken::Statement(Statement::SubCall(
-                    BareName::from("PRINT"),
-                    vec!["After the outer loop".as_lit_expr(9, 7)]
-                )),
+                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                    "After the outer loop".as_lit_expr(9, 7)
+                ))),
             ]
         );
     }
@@ -265,7 +279,7 @@ mod tests {
             result,
             QErrorNode::Pos(
                 QError::syntax_error("Expected: STEP or end-of-statement"),
-                Location::new(2, 23)
+                Location::new(2, 23),
             )
         );
     }

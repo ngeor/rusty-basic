@@ -56,6 +56,17 @@ pub struct PrintNode {
     pub args: Vec<PrintArg>,
 }
 
+impl PrintNode {
+    pub fn one(expression_node: ExpressionNode) -> Self {
+        Self {
+            file_number: None,
+            lpt1: false,
+            format_string: None,
+            args: vec![PrintArg::Expression(expression_node)],
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum PrintArg {
     Comma,

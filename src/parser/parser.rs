@@ -39,10 +39,9 @@ mod tests {
                     ],
                 ),
                 // PRINT "Enter the number of fibonacci to calculate"
-                TopLevelToken::Statement(Statement::SubCall(
-                    BareName::from("PRINT"),
-                    vec!["Enter the number of fibonacci to calculate".as_lit_expr(2, 7)],
-                )),
+                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                    "Enter the number of fibonacci to calculate".as_lit_expr(2, 7)
+                ))),
                 // INPUT N
                 TopLevelToken::Statement(Statement::SubCall(
                     BareName::from("INPUT"),
@@ -56,19 +55,26 @@ mod tests {
                     step: None,
                     statements: vec![
                         // PRINT "Fibonacci of ", I, " is ", Fib(I)
-                        Statement::SubCall(
-                            BareName::from("PRINT"),
-                            vec![
-                                "Fibonacci of".as_lit_expr(5, 11),
-                                "I".as_var_expr(5, 27),
-                                "is".as_lit_expr(5, 30),
-                                Expression::FunctionCall(
-                                    Name::from("Fib"),
-                                    vec!["I".as_var_expr(5, 40)],
-                                )
-                                .at_rc(5, 36),
-                            ],
-                        )
+                        Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![
+                                PrintArg::Expression("Fibonacci of".as_lit_expr(5, 11)),
+                                PrintArg::Comma,
+                                PrintArg::Expression("I".as_var_expr(5, 27)),
+                                PrintArg::Comma,
+                                PrintArg::Expression("is".as_lit_expr(5, 30)),
+                                PrintArg::Comma,
+                                PrintArg::Expression(
+                                    Expression::FunctionCall(
+                                        Name::from("Fib"),
+                                        vec!["I".as_var_expr(5, 40)],
+                                    )
+                                    .at_rc(5, 36)
+                                ),
+                            ]
+                        })
                         .at_rc(5, 5),
                     ],
                     next_counter: None,

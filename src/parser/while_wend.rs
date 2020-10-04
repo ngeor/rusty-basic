@@ -185,7 +185,7 @@ mod tests {
             r#"
         WHILE A < 5
             A = A + 1
-            PRINT A: WEND"#,
+            Flint A: WEND"#,
         )
         .demand_single_statement();
         assert_eq!(
@@ -208,7 +208,7 @@ mod tests {
                         .at_rc(3, 19)
                     )
                     .at_rc(3, 13),
-                    Statement::SubCall(BareName::from("PRINT"), vec!["A".as_var_expr(4, 19)])
+                    Statement::SubCall(BareName::from("Flint"), vec!["A".as_var_expr(4, 19)])
                         .at_rc(4, 13)
                 ]
             })

@@ -133,7 +133,7 @@ mod input {
         for i in starting_index..args.len() {
             if let Locatable {
                 element: Expression::Variable(_),
-                pos,
+                ..
             } = args[i]
             {
                 // ok

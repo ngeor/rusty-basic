@@ -1,6 +1,6 @@
 use crate::common::{FileHandle, QError};
 use crate::interpreter::{Interpreter, Stdlib};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
     let mut idx: usize = 0;
@@ -19,9 +19,13 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
 
     let mut print_args: Vec<String> = vec![];
     while idx < interpreter.context().parameter_count() {
-        let v = interpreter.context().get(idx).unwrap();
+        let v_type: i32 = interpreter.context().get(idx).unwrap().try_into()?;
         idx += 1;
-        print_args.push(v.to_string());
+        if v_type == 0 {
+            let v = interpreter.context().get(idx).unwrap();
+            idx += 1;
+            print_args.push(v.to_string());
+        }
     }
 
     if file_handle.is_valid() {

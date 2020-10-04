@@ -23,10 +23,19 @@ impl InstructionGenerator {
         for print_arg in print_node.args {
             match print_arg {
                 PrintArg::Expression(Locatable { element: arg, pos }) => {
+                    self.push(Instruction::Load(0.into()), pos);
+                    self.push(Instruction::PushUnnamed, pos);
                     self.generate_expression_instructions(arg.at(pos));
                     self.push(Instruction::PushUnnamed, pos);
                 }
-                _ => {}
+                PrintArg::Comma => {
+                    self.push(Instruction::Load(1.into()), pos);
+                    self.push(Instruction::PushUnnamed, pos);
+                }
+                PrintArg::Semicolon => {
+                    self.push(Instruction::Load(2.into()), pos);
+                    self.push(Instruction::PushUnnamed, pos);
+                }
             }
         }
 

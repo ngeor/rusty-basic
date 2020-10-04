@@ -147,7 +147,10 @@ mod tests {
             vec![
                 TopLevelToken::Statement(Statement::SubCall(
                     "INPUT".into(),
-                    vec!["N".as_var_expr(1, 7)]
+                    vec![
+                        0.as_lit_expr(1, 1), // no file number
+                        "N".as_var_expr(1, 7)
+                    ]
                 )),
                 TopLevelToken::Statement(Statement::Print(PrintNode::one("N".as_var_expr(2, 7)))),
             ],

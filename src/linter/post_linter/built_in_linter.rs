@@ -64,9 +64,10 @@ fn lint(built_in: &BuiltInFunction, args: &Vec<ExpressionNode>) -> Result<(), QE
 
 mod close {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        for arg in args {
-            require_file_handle_or_integer(arg)?;
+        for i in 0..args.len() {
+            require_integer_argument(args, i)?;
         }
         Ok(())
     }
@@ -74,6 +75,7 @@ mod close {
 
 mod environ_sub {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
@@ -87,17 +89,60 @@ mod environ_sub {
 
 mod input {
     use super::*;
+    use crate::common::ToErrorEnvelopeNoPos;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() == 0 {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else {
-            args.iter()
-                .map(|a| match a.as_ref() {
-                    Expression::Variable(_) => Ok(()),
-                    _ => Err(QError::VariableRequired).with_err_at(a),
-                })
-                .collect()
+        // the first one or two arguments stand for the file number
+        // if the first argument is 0, no file handle
+        // if the first argument is 1, the second is the file handle
+
+        if args.len() <= 1 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
+        let mut has_file_number: bool = false;
+        if let Locatable {
+            element: Expression::IntegerLiteral(0),
+            ..
+        } = args[0]
+        {
+            // does not have a file number
+        } else if let Locatable {
+            element: Expression::IntegerLiteral(1),
+            ..
+        } = args[0]
+        {
+            // must have a file number
+            if let Locatable {
+                element: Expression::IntegerLiteral(_),
+                ..
+            } = args[1]
+            {
+                has_file_number = true;
+            } else {
+                panic!("parser sent unexpected arguments");
+            }
+        } else {
+            panic!("parser sent unexpected arguments");
+        }
+
+        let starting_index = if has_file_number { 2 } else { 1 };
+        if args.len() <= starting_index {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+
+        for i in starting_index..args.len() {
+            if let Locatable {
+                element: Expression::Variable(_),
+                pos,
+            } = args[i]
+            {
+                // ok
+            } else {
+                return Err(QError::VariableRequired).with_err_at(&args[i]);
+            }
+        }
+
+        Ok(())
     }
 
     #[cfg(test)]
@@ -120,9 +165,9 @@ mod input {
         #[test]
         fn test_const() {
             let input = r#"
-            CONST A$ = "hello"
-            INPUT A$
-            "#;
+                CONST A$ = "hello"
+                INPUT A$
+                "#;
             assert_linter_err!(input, QError::VariableRequired);
         }
     }
@@ -137,32 +182,61 @@ mod kill {
 
 mod line_input {
     use super::*;
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        // two possible ways:
-        // 1. #file-number%, variable$
-        // 2. variable$
-        if args.len() == 1 {
-            require_string_variable(&args[0])
-        } else if args.len() == 2 {
-            require_file_handle(&args[0])?;
-            require_string_variable(&args[1])
-        } else {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        }
-    }
+    use crate::common::ToErrorEnvelopeNoPos;
 
-    fn require_string_variable(arg: &ExpressionNode) -> Result<(), QErrorNode> {
-        let Locatable { element, pos } = arg;
-        match element {
-            Expression::Variable(n) => {
-                if n.can_cast_to(TypeQualifier::DollarString) {
-                    Ok(())
-                } else {
-                    Err(QError::ArgumentTypeMismatch).with_err_at(pos)
-                }
-            }
-            _ => Err(QError::VariableRequired).with_err_at(pos),
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // the first one or two arguments stand for the file number
+        // if the first argument is 0, no file handle
+        // if the first argument is 1, the second is the file handle
+
+        if args.len() <= 1 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
+        let mut has_file_number: bool = false;
+        if let Locatable {
+            element: Expression::IntegerLiteral(0),
+            ..
+        } = args[0]
+        {
+            // does not have a file number
+        } else if let Locatable {
+            element: Expression::IntegerLiteral(1),
+            ..
+        } = args[0]
+        {
+            // must have a file number
+            if let Locatable {
+                element: Expression::IntegerLiteral(_),
+                ..
+            } = args[1]
+            {
+                has_file_number = true;
+            } else {
+                panic!("parser sent unexpected arguments");
+            }
+        } else {
+            panic!("parser sent unexpected arguments");
+        }
+
+        let starting_index = if has_file_number { 2 } else { 1 };
+        if args.len() != starting_index + 1 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+
+        let Locatable {
+            element: var_arg,
+            pos,
+        } = &args[starting_index];
+        match var_arg {
+            Expression::Variable(dim_name) => match dim_name.dim_type().expression_type() {
+                ExpressionType::BuiltIn(TypeQualifier::DollarString)
+                | ExpressionType::FixedLengthString(_) => {}
+                _ => return Err(QError::TypeMismatch).with_err_at(*pos),
+            },
+            _ => return Err(QError::TypeMismatch).with_err_at(*pos),
+        }
+
+        Ok(())
     }
 }
 
@@ -186,41 +260,6 @@ mod open {
     pub fn lint(_args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // not needed because of special parsing
         Ok(())
-    }
-}
-
-mod print {
-    use super::*;
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        for arg in args.iter() {
-            let type_definition = arg.expression_type();
-            match type_definition {
-                ExpressionType::UserDefined(_) => {
-                    return Err(QError::TypeMismatch).with_err_at(arg);
-                }
-                _ => {}
-            }
-        }
-        Ok(())
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use crate::assert_linter_err;
-
-        #[test]
-        fn cannot_print_user_defined_type() {
-            let input = "
-            TYPE Card
-                Suit AS STRING * 9
-                Value AS INTEGER
-            END TYPE
-
-            DIM c AS Card
-            PRINT c";
-            assert_linter_err!(input, QError::TypeMismatch, 8, 19);
-        }
     }
 }
 
@@ -399,23 +438,5 @@ fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<()
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
-    }
-}
-
-#[deprecated]
-fn require_file_handle(arg: &ExpressionNode) -> Result<(), QErrorNode> {
-    unimplemented!()
-}
-
-#[deprecated]
-fn require_file_handle_or_integer(arg: &ExpressionNode) -> Result<(), QErrorNode> {
-    match arg.as_ref() {
-        _ => {
-            if arg.can_cast_to(TypeQualifier::PercentInteger) {
-                Ok(())
-            } else {
-                Err(QError::ArgumentTypeMismatch).with_err_at(arg)
-            }
-        }
     }
 }

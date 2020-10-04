@@ -1,3 +1,6 @@
+use crate::common::QError;
+use std::convert::TryFrom;
+
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum FileMode {
     Input,
@@ -82,6 +85,18 @@ impl From<FileHandle> for u8 {
 impl From<FileHandle> for i32 {
     fn from(file_handle: FileHandle) -> i32 {
         file_handle.0 as i32
+    }
+}
+
+impl TryFrom<i32> for FileHandle {
+    type Error = QError;
+
+    fn try_from(i: i32) -> Result<Self, Self::Error> {
+        if i >= 1 && i <= 255 {
+            Ok((i as u8).into())
+        } else {
+            Err(QError::BadFileNameOrNumber)
+        }
     }
 }
 

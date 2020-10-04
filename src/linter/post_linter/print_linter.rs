@@ -1,6 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::{QError, QErrorNode, ToLocatableError};
-use crate::linter::types::{ExpressionNode, ExpressionType, HasExpressionType};
+use crate::linter::types::{ExpressionType, HasExpressionType};
 use crate::linter::{PrintArg, PrintNode};
 
 pub struct PrintLinter;

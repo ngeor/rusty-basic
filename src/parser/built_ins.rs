@@ -59,14 +59,37 @@ mod input {
 
     pub fn parse_input_args<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<ExpressionNode>, QError>> {
-        drop_left(crate::parser::pc::ws::seq2(
-            keyword(Keyword::Input),
-            demand(
-                map_default_to_not_found(csv_zero_or_more(expression::expression_node())),
-                QError::syntax_error_fn("Expected: at least one variable"),
+        map(
+            opt_seq3(
+                keyword(Keyword::Input),
+                drop_right(seq2(
+                    with_pos(parse_file_number()),
+                    demand(
+                        ws::zero_or_more_leading(read(',')),
+                        QError::syntax_error_fn("Expected comma after file number"),
+                    ),
+                )),
+                demand(
+                    map_default_to_not_found(ws::one_or_more_leading(csv_zero_or_more(
+                        expression::expression_node(),
+                    ))),
+                    QError::syntax_error_fn("Expected: at least one variable"),
+                ),
             ),
-            QError::syntax_error_fn("Expected: whitespace after INPUT"),
-        ))
+            |(_, opt_file_number, opt_args)| {
+                let mut args: Vec<ExpressionNode> = vec![];
+                if let Some(Locatable { element, pos }) = opt_file_number {
+                    args.push(Expression::IntegerLiteral(1.into()).at(pos));
+                    args.push(Expression::IntegerLiteral(element.into()).at(pos));
+                } else {
+                    args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
+                }
+                if let Some(a) = opt_args {
+                    args.extend(a);
+                }
+                args
+            },
+        )
     }
 
     #[cfg(test)]
@@ -79,7 +102,12 @@ mod input {
         fn test_parse_one_variable() {
             let input = "INPUT A$";
             let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "INPUT", Expression::VariableName("A$".into()));
+            assert_sub_call!(
+                result,
+                "INPUT",
+                Expression::IntegerLiteral(0), // no file number
+                Expression::VariableName("A$".into())
+            );
         }
 
         #[test]
@@ -89,6 +117,7 @@ mod input {
             assert_sub_call!(
                 result,
                 "INPUT",
+                Expression::IntegerLiteral(0), // no file number
                 Expression::VariableName("A$".into()),
                 Expression::VariableName("B".into())
             );
@@ -99,7 +128,7 @@ mod input {
             let input = "INPUT";
             assert_eq!(
                 parse_err(input),
-                QError::syntax_error("Expected: whitespace after INPUT")
+                QError::syntax_error("Expected: at least one variable")
             );
         }
 
@@ -446,11 +475,6 @@ mod print {
         )
     }
 
-    fn parse_file_number<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileHandle, QError>> {
-        ws::one_or_more_leading(expression::file_handle())
-    }
-
     fn parse_print_arg<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
         or_vec(vec![
@@ -471,4 +495,9 @@ fn file_handle_as_expression_node<T: BufRead + 'static>(
         with_pos(expression::file_handle()),
         |Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos),
     )
+}
+
+fn parse_file_number<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileHandle, QError>> {
+    ws::one_or_more_leading(expression::file_handle())
 }

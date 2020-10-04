@@ -270,10 +270,33 @@ mod input {
     // after the user presses the Enter key.
 
     use super::*;
+    use std::convert::TryFrom;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+        let mut file_handle: FileHandle = FileHandle::default();
+        let mut has_file_handle = false;
         for idx in 0..interpreter.context().parameter_count() {
-            do_input_one_var(interpreter, idx)?;
+            let v = interpreter.context().get(idx).unwrap();
+            match v {
+                Variant::VInteger(f) => {
+                    if idx == 0 {
+                        has_file_handle = *f == 1;
+                    } else if idx == 1 {
+                        if has_file_handle {
+                            file_handle = FileHandle::try_from(*f).with_err_no_pos()?;
+                        } else {
+                            // input integer variable
+                            do_input_one_var(interpreter, idx)?;
+                        }
+                    } else {
+                        // input integer variable
+                        do_input_one_var(interpreter, idx)?;
+                    }
+                }
+                _ => {
+                    do_input_one_var(interpreter, idx)?;
+                }
+            }
         }
         Ok(())
     }
@@ -776,23 +799,32 @@ mod line_input {
     // LINE INPUT #file-number%, variable$
 
     use super::*;
+    use std::convert::TryFrom;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
         let mut file_handle: FileHandle = FileHandle::default();
+        let mut has_file_handle = false;
         for idx in 0..interpreter.context().parameter_count() {
             let v = interpreter.context().get(idx).unwrap();
             match v {
-                // Variant::VFileHandle(f) => {
-                //     if idx == 0 {
-                //         file_handle = *f;
-                //     } else {
-                //         panic!("LINE INPUT linter should have caught this");
-                //     }
-                // }
+                Variant::VInteger(f) => {
+                    if idx == 0 {
+                        has_file_handle = *f == 1;
+                    } else if idx == 1 {
+                        if has_file_handle {
+                            file_handle = FileHandle::try_from(*f).with_err_no_pos()?;
+                        } else {
+                            // input integer variable?
+                            panic!("Linter should have caught this");
+                        }
+                    } else {
+                        panic!("Linter should have caught this");
+                    }
+                }
                 Variant::VString(_) => {
                     line_input_one(interpreter, idx, &file_handle)?;
                 }
-                _ => panic!("LINE INPUT linter should have caught this"),
+                _ => panic!("Linter should have caught this"),
             }
         }
 

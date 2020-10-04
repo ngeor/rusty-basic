@@ -509,11 +509,7 @@ impl TryFrom<&Variant> for FileHandle {
 
     fn try_from(v: &Variant) -> Result<Self, Self::Error> {
         let i: i32 = v.try_cast()?;
-        if i >= 1 && i <= 255 {
-            Ok((i as u8).into())
-        } else {
-            Err(QError::BadFileNameOrNumber)
-        }
+        FileHandle::try_from(i)
     }
 }
 

@@ -45,7 +45,10 @@ mod tests {
                 // INPUT N
                 TopLevelToken::Statement(Statement::SubCall(
                     BareName::from("INPUT"),
-                    vec!["N".as_var_expr(3, 7)]
+                    vec![
+                        0.as_lit_expr(1, 1), // no file number
+                        "N".as_var_expr(3, 7)
+                    ]
                 )),
                 // FOR I = 0 TO N
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {

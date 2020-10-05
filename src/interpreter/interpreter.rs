@@ -1,10 +1,10 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
+use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
-use crate::interpreter::{built_ins, Printer};
 use crate::linter::{DimName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;

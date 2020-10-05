@@ -5,7 +5,7 @@ use crate::parser::TypeQualifier;
 use crate::variant::casting::QBNumberCast;
 use crate::variant::{qb_and, qb_or};
 use std::cmp::Ordering;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 
 #[derive(Clone, Debug)]
@@ -373,6 +373,12 @@ impl From<&str> for Variant {
     }
 }
 
+impl From<u8> for Variant {
+    fn from(i: u8) -> Self {
+        Variant::VInteger(i as i32)
+    }
+}
+
 impl From<i32> for Variant {
     fn from(i: i32) -> Self {
         Variant::VInteger(i)
@@ -500,6 +506,18 @@ impl TryFrom<&Variant> for i32 {
         match value {
             Variant::VInteger(i) => Ok(*i),
             _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+impl TryFrom<&Variant> for u8 {
+    type Error = QError;
+    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
+        let i: i32 = value.try_into()?;
+        if i >= 0 && i <= 255 {
+            Ok(i as u8)
+        } else {
+            Err(QError::Overflow)
         }
     }
 }

@@ -33,6 +33,7 @@ pub fn run_sub<S: Stdlib>(
         BuiltInSub::Input => input::run(interpreter),
         BuiltInSub::Kill => kill::run(interpreter),
         BuiltInSub::LineInput => line_input::run(interpreter),
+        BuiltInSub::LPrint => todo!(),
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
         BuiltInSub::Print => print::run(interpreter).with_err_no_pos(),
@@ -286,15 +287,15 @@ mod input {
                             file_handle = FileHandle::try_from(*f).with_err_no_pos()?;
                         } else {
                             // input integer variable
-                            do_input_one_var(interpreter, idx)?;
+                            do_input_one_var(interpreter, idx, file_handle)?;
                         }
                     } else {
                         // input integer variable
-                        do_input_one_var(interpreter, idx)?;
+                        do_input_one_var(interpreter, idx, file_handle)?;
                     }
                 }
                 _ => {
-                    do_input_one_var(interpreter, idx)?;
+                    do_input_one_var(interpreter, idx, file_handle)?;
                 }
             }
         }
@@ -304,12 +305,21 @@ mod input {
     fn do_input_one_var<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         idx: usize,
+        file_handle: FileHandle,
     ) -> Result<(), QErrorNode> {
-        let raw_input: String = interpreter
-            .stdlib
-            .input()
-            .map_err(|e| e.into())
-            .with_err_no_pos()?;
+        let raw_input: String = if file_handle.is_valid() {
+            interpreter
+                .file_manager
+                .read_line(&file_handle)
+                .map_err(|e| e.into())
+                .with_err_no_pos()?
+        } else {
+            interpreter
+                .stdlib
+                .input()
+                .map_err(|e| e.into())
+                .with_err_no_pos()?
+        };
         let existing_value = interpreter.context_mut().get_mut(idx).unwrap();
         let temp: &Variant = existing_value;
         let q: TypeQualifier = temp.try_into().with_err_no_pos()?;
@@ -349,6 +359,7 @@ mod input {
         use super::*;
         use crate::assert_has_variable;
         use crate::interpreter::test_utils::{interpret_with_stdlib, MockStdlib};
+        use crate::interpreter::DefaultStdlib;
 
         fn assert_input<T>(
             raw_input: &str,
@@ -486,6 +497,32 @@ mod input {
             stdlib.add_next_input("3.14");
             let interpreter = interpret_with_stdlib(input, stdlib);
             assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+        }
+
+        #[test]
+        fn test_input_string_from_file() {
+            // arrange
+            std::fs::write("test1.txt", "Hello, world").unwrap();
+
+            // act
+            let stdlib = DefaultStdlib::new();
+            let input = r#"
+            OPEN "test1.txt" FOR INPUT AS #1
+            OPEN "test2.txt" FOR OUTPUT AS #2
+            INPUT #1, A$
+            PRINT #2, A$
+            INPUT #1, A$
+            PRINT #2, A$
+            CLOSE
+            "#;
+            interpret_with_stdlib(input, stdlib);
+
+            // assert
+            let bytes = std::fs::read("test2.txt").expect("Should have created output file");
+            let s: String = String::from_utf8(bytes).expect("Should be valid utf-8");
+            std::fs::remove_file("test1.txt").unwrap_or_default();
+            std::fs::remove_file("test2.txt").unwrap_or_default();
+            assert_eq!(s, "Hello\r\nworld\r\n");
         }
     }
 }

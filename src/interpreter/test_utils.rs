@@ -69,6 +69,7 @@ pub struct MockStdlib {
     last_print_col: usize,
     saw_new_line: bool,
     pub output: Vec<String>,
+    pub lpt1output: Vec<String>,
     pub env: HashMap<String, String>,
 }
 
@@ -77,6 +78,7 @@ impl MockStdlib {
         MockStdlib {
             next_input: vec![],
             output: vec![],
+            lpt1output: vec![],
             env: HashMap::new(),
             last_print_col: 0,
             saw_new_line: true,
@@ -173,6 +175,20 @@ macro_rules! assert_prints {
     ($program:expr, $($x:expr),+) => (
         let interpreter = crate::interpreter::test_utils::interpret($program);
         assert_eq!(interpreter.stdlib.output, vec![$($x),+]);
+    );
+    //($program:expr, $($x:expr,)*) => ($crate::assert_prints![$program, $($x),*])
+
+}
+
+#[macro_export]
+macro_rules! assert_lprints {
+    ($program:expr; nothing) => {
+        let interpreter = crate::interpreter::test_utils::interpret($program);
+        assert_eq!(interpreter.stdlib.lpt1output, Vec::<String>::new());
+    };
+    ($program:expr, $($x:expr),+) => (
+        let interpreter = crate::interpreter::test_utils::interpret($program);
+        assert_eq!(interpreter.stdlib.lpt1output, vec![$($x),+]);
     );
     //($program:expr, $($x:expr,)*) => ($crate::assert_prints![$program, $($x),*])
 

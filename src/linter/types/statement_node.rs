@@ -96,7 +96,7 @@ impl PrintNode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PrintArg {
+    Expression(ExpressionNode),
     Comma,
     Semicolon,
-    Expression(ExpressionNode),
 }

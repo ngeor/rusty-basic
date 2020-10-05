@@ -22,8 +22,8 @@ impl PostConversionLinter for BuiltInLinter {
             BuiltInSub::LineInput => line_input::lint(args),
             BuiltInSub::Name => name::lint(args),
             BuiltInSub::Open => open::lint(args),
-            BuiltInSub::Print => {
-                panic!("Should not end up here, PRINT is handled with Statement(Print)")
+            BuiltInSub::LPrint | BuiltInSub::Print => {
+                panic!("Should not end up here, handled with Statement(Print)")
             }
             BuiltInSub::System => system::lint(args),
         }

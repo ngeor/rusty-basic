@@ -17,7 +17,6 @@ pub fn lint(program: parser::ProgramNode) -> Result<(ProgramNode, UserDefinedTyp
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::linter::test_utils::*;
     use crate::linter::*;

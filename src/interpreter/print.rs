@@ -1,5 +1,6 @@
 use crate::common::{FileHandle, QError};
-use crate::interpreter::{Interpreter, PrintVal, Printer, Stdlib};
+use crate::instruction_generator::print::{FLAG_COMMA, FLAG_EXPRESSION, FLAG_SEMICOLON};
+use crate::interpreter::{Interpreter, PrintVal, Stdlib};
 use std::convert::{TryFrom, TryInto};
 
 pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
@@ -20,16 +21,16 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
     let mut print_val: PrintVal = PrintVal::NewLine;
 
     while idx < interpreter.context().parameter_count() {
-        let v_type: i32 = interpreter.context().get(idx).unwrap().try_into()?;
+        let v_type: u8 = interpreter.context().get(idx).unwrap().try_into()?;
         idx += 1;
 
-        print_val = if v_type == 0 {
+        print_val = if v_type == FLAG_EXPRESSION {
             let v = interpreter.context().get(idx).unwrap();
             idx += 1;
             PrintVal::Value(v.clone())
-        } else if v_type == 1 {
+        } else if v_type == FLAG_COMMA {
             PrintVal::Comma
-        } else if v_type == 2 {
+        } else if v_type == FLAG_SEMICOLON {
             PrintVal::Semicolon
         } else {
             panic!("Unexpected PrintArg {}", v_type);
@@ -69,6 +70,7 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::assert_lprints;
     use crate::assert_prints;
 
     #[test]
@@ -122,5 +124,20 @@ mod tests {
             PRINT "B"
             "#;
         assert_prints!(input, "AB");
+    }
+
+    #[test]
+    fn test_print_using() {
+        assert_prints!("PRINT USING \"#.###\"; 3.14", "3.140");
+    }
+
+    #[test]
+    fn test_lprint() {
+        assert_lprints!("LPRINT 42", "42");
+    }
+
+    #[test]
+    fn test_lprint_using() {
+        assert_lprints!("LPRINT USING \"#.###\"; 3.14", "3.140");
     }
 }

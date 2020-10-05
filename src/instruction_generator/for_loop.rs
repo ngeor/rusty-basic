@@ -1,7 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
 use crate::linter::{DimName, ForLoopNode, HasExpressionType, StatementNodes};
-use crate::variant::Variant;
 
 impl InstructionGenerator {
     fn store_counter(&mut self, counter_var: &DimName, pos: Location) {
@@ -40,7 +39,7 @@ impl InstructionGenerator {
             Some(s) => {
                 let step_location = s.pos();
                 // load 0 to B
-                self.push(Instruction::Load(Variant::VInteger(0)), pos);
+                self.push_load(0, pos);
                 self.push(Instruction::CopyAToB, pos);
                 // load step to A
                 self.generate_expression_instructions(s);
@@ -80,7 +79,7 @@ impl InstructionGenerator {
                 self.label("out-of-for", pos);
             }
             None => {
-                self.push(Instruction::Load(Variant::VInteger(1)), pos);
+                self.push_load(1, pos);
                 // A to D (step is in D)
                 self.push(Instruction::CopyAToD, pos);
                 self.generate_for_loop_instructions_positive_or_negative_step(

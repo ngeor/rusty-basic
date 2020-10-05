@@ -193,30 +193,33 @@ pub enum BuiltInSub {
     Input,
     Kill,
     LineInput,
+    LPrint,
     Name,
     Open,
     Print,
     System,
 }
 
-const SORTED_BUILT_IN_SUBS: [BuiltInSub; 9] = [
+const SORTED_BUILT_IN_SUBS: [BuiltInSub; 10] = [
     BuiltInSub::Close,
     BuiltInSub::Environ,
     BuiltInSub::Input,
     BuiltInSub::Kill,
     BuiltInSub::LineInput,
+    BuiltInSub::LPrint,
     BuiltInSub::Name,
     BuiltInSub::Open,
     BuiltInSub::Print,
     BuiltInSub::System,
 ];
 
-const SORTED_BUILT_IN_SUB_NAMES: [&str; 9] = [
+const SORTED_BUILT_IN_SUB_NAMES: [&str; 10] = [
     "CLOSE",
     "ENVIRON",
     "INPUT",
     "KILL",
     "LINE INPUT",
+    "LPRINT",
     "NAME",
     "OPEN",
     "PRINT",

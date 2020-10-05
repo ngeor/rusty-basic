@@ -111,7 +111,7 @@ impl InstructionGenerator {
             let block = f.body;
             self.function_label(&bare_name, pos);
             // set default value
-            self.push(Instruction::Load(Variant::from(qualifier)), pos);
+            self.push_load(qualifier, pos);
             self.generate_block_instructions(block);
             self.push(Instruction::PopRet, pos);
         }
@@ -145,6 +145,13 @@ impl InstructionGenerator {
 
     pub fn push(&mut self, i: Instruction, pos: Location) {
         self.instructions.push(i.at(pos));
+    }
+
+    pub fn push_load<T>(&mut self, v: T, pos: Location)
+    where
+        Variant: From<T>,
+    {
+        self.push(Instruction::Load(v.into()), pos);
     }
 
     pub fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {

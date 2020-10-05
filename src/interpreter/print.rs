@@ -1,5 +1,5 @@
 use crate::common::{FileHandle, QError};
-use crate::interpreter::{Interpreter, Stdlib};
+use crate::interpreter::{Interpreter, PrintVal, Printer, Stdlib};
 use std::convert::{TryFrom, TryInto};
 
 pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
@@ -14,24 +14,55 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
     };
 
     if has_file {
-        idx += 1;
+        idx += 2; // skip file + skip comma after file
     }
 
-    let mut print_args: Vec<String> = vec![];
+    let mut print_val: PrintVal = PrintVal::NewLine;
+
     while idx < interpreter.context().parameter_count() {
         let v_type: i32 = interpreter.context().get(idx).unwrap().try_into()?;
         idx += 1;
-        if v_type == 0 {
+
+        print_val = if v_type == 0 {
             let v = interpreter.context().get(idx).unwrap();
             idx += 1;
-            print_args.push(v.to_string());
+            PrintVal::Value(v.clone())
+        } else if v_type == 1 {
+            PrintVal::Comma
+        } else if v_type == 2 {
+            PrintVal::Semicolon
+        } else {
+            panic!("Unexpected PrintArg {}", v_type);
+        };
+
+        if file_handle.is_valid() {
+            print_val.print(
+                interpreter
+                    .file_manager
+                    .get_file_info_mut(&file_handle)
+                    .unwrap(),
+            )?;
+        } else {
+            print_val.print(&mut interpreter.stdlib)?;
         }
     }
 
-    if file_handle.is_valid() {
-        interpreter.file_manager.print(&file_handle, print_args)?;
-    } else {
-        interpreter.stdlib.print(print_args);
+    // print new line?
+    match print_val {
+        PrintVal::NewLine | PrintVal::Value(_) => {
+            print_val = PrintVal::NewLine;
+            if file_handle.is_valid() {
+                print_val.print(
+                    interpreter
+                        .file_manager
+                        .get_file_info_mut(&file_handle)
+                        .unwrap(),
+                )?;
+            } else {
+                print_val.print(&mut interpreter.stdlib)?;
+            }
+        }
+        _ => {}
     }
     Ok(())
 }
@@ -52,9 +83,15 @@ mod tests {
     }
 
     #[test]
-    fn test_interpret_print_hello_world_two_args() {
+    fn test_interpret_print_hello_world_two_args_comma() {
         let input = r#"PRINT "Hello", "world!""#;
-        assert_prints!(input, "Hello world!");
+        assert_prints!(input, "Hello         world!");
+    }
+
+    #[test]
+    fn test_interpret_print_hello_world_two_args_semicolon() {
+        let input = r#"PRINT "Hello, "; "world!""#;
+        assert_prints!(input, "Hello, world!");
     }
 
     #[test]
@@ -65,7 +102,7 @@ mod tests {
                 Test = N + 1
             END FUNCTION
             "#;
-        assert_prints!(input, "Hello 2");
+        assert_prints!(input, "Hello         2");
     }
 
     #[test]

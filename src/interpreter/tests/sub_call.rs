@@ -184,10 +184,10 @@ fn test_by_ref_two_levels_deep() {
     "#;
     assert_prints!(
         program,
-        "Begin Sub1 41",
-        "Begin Sub2 41",
-        "End Sub2 42",
-        "End Sub1 42",
+        "Begin Sub1    41",
+        "Begin Sub2    41",
+        "End Sub2      42",
+        "End Sub1      42",
         "42"
     );
 }

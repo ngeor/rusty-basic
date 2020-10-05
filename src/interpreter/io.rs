@@ -1,12 +1,28 @@
 use crate::common::{FileAccess, FileHandle, FileMode, QError};
+use crate::interpreter::Printer;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 
 #[derive(Debug)]
-struct FileInfo {
+pub struct FileInfo {
     file: Option<File>,
     buf_reader: Option<BufReader<File>>,
+    last_print_col: usize,
+}
+
+impl Printer for FileInfo {
+    fn print(&mut self, s: String) -> std::io::Result<usize> {
+        self.file.as_ref().unwrap().write(s.as_bytes())
+    }
+
+    fn get_last_print_col(&self) -> usize {
+        self.last_print_col
+    }
+
+    fn set_last_print_col(&mut self, col: usize) {
+        self.last_print_col = col;
+    }
 }
 
 #[derive(Debug)]
@@ -49,6 +65,7 @@ impl FileManager {
                     FileInfo {
                         file: None,
                         buf_reader: Some(buf_reader),
+                        last_print_col: 0,
                     },
                 );
             }
@@ -59,6 +76,7 @@ impl FileManager {
                     FileInfo {
                         file: Some(file),
                         buf_reader: None,
+                        last_print_col: 0,
                     },
                 );
             }
@@ -72,6 +90,7 @@ impl FileManager {
                     FileInfo {
                         file: Some(file),
                         buf_reader: None,
+                        last_print_col: 0,
                     },
                 );
             }
@@ -79,17 +98,8 @@ impl FileManager {
         Ok(())
     }
 
-    pub fn print(&mut self, handle: &FileHandle, print_args: Vec<String>) -> std::io::Result<()> {
-        match self.handle_map.get_mut(handle) {
-            Some(file_info) => {
-                for elem in print_args {
-                    file_info.file.as_ref().unwrap().write(elem.as_bytes())?;
-                }
-                file_info.file.as_ref().unwrap().write(&[13, 10])?;
-                Ok(())
-            }
-            None => Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
-        }
+    pub fn get_file_info_mut(&mut self, handle: &FileHandle) -> Option<&mut FileInfo> {
+        self.handle_map.get_mut(handle)
     }
 
     pub fn read_line(&mut self, handle: &FileHandle) -> std::io::Result<String> {

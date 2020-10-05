@@ -1102,7 +1102,7 @@ mod open {
             CLOSE #1
             "#;
             let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-            let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
+            let mut interpreter = Interpreter::new(DefaultStdlib::new(), user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             let contents = std::fs::read_to_string("TEST1.TXT").unwrap_or("".to_string());
             std::fs::remove_file("TEST1.TXT").unwrap_or(());
@@ -1123,7 +1123,7 @@ mod open {
             CLOSE #1
             "#;
             let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-            let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
+            let mut interpreter = Interpreter::new(DefaultStdlib::new(), user_defined_types);
             interpreter.interpret(instructions).unwrap_or_default();
             let contents = std::fs::read_to_string("TEST2B.TXT").unwrap_or("".to_string());
             std::fs::remove_file("TEST2A.TXT").unwrap_or(());

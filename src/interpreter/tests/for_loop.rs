@@ -127,13 +127,13 @@ fn test_for_loop_end_expression_evaluated_only_once() {
 
 #[test]
 fn test_nested_for_loop() {
-    let input = "
+    let input = r#"
     FOR I = 1 to 2
     FOR J = 3 to 4
-    PRINT I, J
+    PRINT I; " "; J
     NEXT
     NEXT
-    ";
+    "#;
     assert_prints!(input, "1 3", "1 4", "2 3", "2 4");
 }
 

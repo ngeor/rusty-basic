@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::instruction_generator::generate_instructions;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
-use crate::interpreter::{Interpreter, Stdlib};
+use crate::interpreter::{Interpreter, Printer, Stdlib};
 use crate::linter;
 use crate::linter::DimName;
 use crate::parser::parse_main_file;
@@ -66,6 +66,8 @@ where
 #[derive(Debug)]
 pub struct MockStdlib {
     next_input: Vec<String>,
+    last_print_col: usize,
+    saw_new_line: bool,
     pub output: Vec<String>,
     pub env: HashMap<String, String>,
 }
@@ -76,6 +78,8 @@ impl MockStdlib {
             next_input: vec![],
             output: vec![],
             env: HashMap::new(),
+            last_print_col: 0,
+            saw_new_line: true,
         }
     }
 
@@ -84,23 +88,32 @@ impl MockStdlib {
     }
 }
 
-impl Stdlib for MockStdlib {
-    fn print(&mut self, args: Vec<String>) {
-        let mut is_first = true;
-        let mut buf = String::new();
-        for arg in args {
-            if is_first {
-                is_first = false;
+impl Printer for MockStdlib {
+    fn print(&mut self, s: String) -> std::io::Result<usize> {
+        print!("{}", s);
+        if self.saw_new_line {
+            self.output.push(if s == "\r\n" {
+                "".to_string()
             } else {
-                buf.push(' ');
-            }
-            buf.push_str(&arg);
+                s.clone()
+            });
+        } else if s != "\r\n" {
+            self.output.last_mut().unwrap().push_str(s.as_str());
         }
-
-        println!("{}", buf);
-        self.output.push(buf);
+        self.saw_new_line = s == "\r\n";
+        Ok(s.len())
     }
 
+    fn get_last_print_col(&self) -> usize {
+        self.last_print_col
+    }
+
+    fn set_last_print_col(&mut self, col: usize) {
+        self.last_print_col = col;
+    }
+}
+
+impl Stdlib for MockStdlib {
     fn system(&self) {
         println!("would have exited")
     }

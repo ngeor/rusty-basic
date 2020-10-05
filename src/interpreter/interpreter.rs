@@ -1,10 +1,10 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
-use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::Stdlib;
+use crate::interpreter::{built_ins, Printer};
 use crate::linter::{DimName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
@@ -501,17 +501,17 @@ mod tests {
             output,
             vec![
                 "Enter the number of fibonacci to calculate",
-                "Fibonacci of 0 is 0",
-                "Fibonacci of 1 is 1",
-                "Fibonacci of 2 is 1",
-                "Fibonacci of 3 is 2",
-                "Fibonacci of 4 is 3",
-                "Fibonacci of 5 is 5",
-                "Fibonacci of 6 is 8",
-                "Fibonacci of 7 is 13",
-                "Fibonacci of 8 is 21",
-                "Fibonacci of 9 is 34",
-                "Fibonacci of 10 is 55"
+                "Fibonacci of  0             is            0",
+                "Fibonacci of  1             is            1",
+                "Fibonacci of  2             is            1",
+                "Fibonacci of  3             is            2",
+                "Fibonacci of  4             is            3",
+                "Fibonacci of  5             is            5",
+                "Fibonacci of  6             is            8",
+                "Fibonacci of  7             is            13",
+                "Fibonacci of  8             is            21",
+                "Fibonacci of  9             is            34",
+                "Fibonacci of  10            is            55"
             ]
         );
     }

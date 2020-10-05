@@ -1,9 +1,17 @@
-/// The standard functions that QBasic offers
-pub trait Stdlib {
+use crate::variant::Variant;
+
+pub trait Printer {
     /// Implementation of PRINT x[, y, z]
     /// Mutable because of the test implementation
-    fn print(&mut self, args: Vec<String>);
+    fn print(&mut self, s: String) -> std::io::Result<usize>;
 
+    fn get_last_print_col(&self) -> usize;
+
+    fn set_last_print_col(&mut self, col: usize);
+}
+
+/// The standard functions that QBasic offers
+pub trait Stdlib: Printer {
     /// Implementation of SYSTEM
     fn system(&self);
 
@@ -18,17 +26,64 @@ pub trait Stdlib {
     fn set_env_var(&mut self, name: String, value: String);
 }
 
-pub struct DefaultStdlib {}
+pub struct DefaultStdlib {
+    last_print_col: usize,
+}
 
-impl Stdlib for DefaultStdlib {
-    fn print(&mut self, args: Vec<String>) {
-        for a in args {
-            print!("{}", a)
+impl DefaultStdlib {
+    pub fn new() -> Self {
+        Self { last_print_col: 0 }
+    }
+}
+
+pub enum PrintVal {
+    Comma,
+    Semicolon,
+    NewLine,
+    Value(Variant),
+}
+
+impl PrintVal {
+    pub fn print<T: Printer>(&self, stdlib: &mut T) -> std::io::Result<usize> {
+        match self {
+            Self::Comma => {
+                let col = stdlib.get_last_print_col();
+                let len = 14 - col % 14;
+                let s: String = (0..len).map(|_| ' ').collect();
+                stdlib.set_last_print_col(col + len);
+                stdlib.print(s)
+            }
+            Self::Semicolon => Ok(0),
+            Self::NewLine => {
+                stdlib.set_last_print_col(0);
+                stdlib.print("\r\n".to_string())
+            }
+            Self::Value(v) => {
+                // TODO what if s contains new line
+                let s = v.to_string();
+                stdlib.set_last_print_col(stdlib.get_last_print_col() + s.len());
+                stdlib.print(s)
+            }
         }
+    }
+}
 
-        println!("")
+impl Printer for DefaultStdlib {
+    fn print(&mut self, s: String) -> std::io::Result<usize> {
+        print!("{}", s);
+        Ok(s.len())
     }
 
+    fn get_last_print_col(&self) -> usize {
+        self.last_print_col
+    }
+
+    fn set_last_print_col(&mut self, col: usize) {
+        self.last_print_col = col;
+    }
+}
+
+impl Stdlib for DefaultStdlib {
     fn system(&self) {
         std::process::exit(0)
     }

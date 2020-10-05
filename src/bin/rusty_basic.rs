@@ -17,7 +17,7 @@ fn main() {
                 if is_running_in_apache {
                     set_current_dir(&filename); // Note: only needed to make it work inside Apache.
                 }
-                let mut interpreter = Interpreter::new(DefaultStdlib {}, user_defined_types);
+                let mut interpreter = Interpreter::new(DefaultStdlib::new(), user_defined_types);
                 match interpreter.interpret(instructions) {
                     Ok(_) => (),
                     Err(e) => eprintln!("Runtime error. {:?}", e),

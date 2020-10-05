@@ -147,11 +147,23 @@ impl InstructionGenerator {
         self.instructions.push(i.at(pos));
     }
 
-    pub fn push_load<T>(&mut self, v: T, pos: Location)
+    /// Adds a Load instruction, converting the given value into a Variant
+    /// and storing it in register A.
+    pub fn push_load<T>(&mut self, value: T, pos: Location)
     where
         Variant: From<T>,
     {
-        self.push(Instruction::Load(v.into()), pos);
+        self.push(Instruction::Load(value.into()), pos);
+    }
+
+    /// Adds a Load instruction, converting the given value into a Variant
+    /// and storing it in register A, followed by a PushUnnamed instruction.
+    pub fn push_load_unnamed_arg<T>(&mut self, value: T, pos: Location)
+    where
+        Variant: From<T>,
+    {
+        self.push_load(value, pos);
+        self.push(Instruction::PushUnnamed, pos);
     }
 
     pub fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {

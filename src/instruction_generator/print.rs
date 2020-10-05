@@ -3,8 +3,11 @@ use crate::common::{AtLocation, FileHandle, Locatable, Location};
 use crate::instruction_generator::{Instruction, InstructionGenerator};
 use crate::linter::{PrintArg, PrintNode};
 
+/// Indicates that the next argument in a PRINT call is an expression
 pub const FLAG_EXPRESSION: u8 = 0;
+/// Indicates a comma in a PRINT call
 pub const FLAG_COMMA: u8 = 1;
+/// Indicates a semicolon in a PRINT call
 pub const FLAG_SEMICOLON: u8 = 2;
 
 impl InstructionGenerator {

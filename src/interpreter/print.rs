@@ -140,4 +140,18 @@ mod tests {
     fn test_lprint_using() {
         assert_lprints!("LPRINT USING \"#.###\"; 3.14", "3.140");
     }
+
+    #[test]
+    fn test_print_zones_numbers() {
+        let input = r#"
+        PRINT "1", "2", "3"
+        PRINT 1, 2, 3
+        PRINT -1, -2, -3
+        "#;
+        assert_prints!(input,
+        "1             2              3",
+        " 1             2              3",
+        "-1            -2             -3",
+        );
+    }
 }

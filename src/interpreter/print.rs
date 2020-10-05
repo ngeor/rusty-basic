@@ -148,10 +148,11 @@ mod tests {
         PRINT 1, 2, 3
         PRINT -1, -2, -3
         "#;
-        assert_prints!(input,
-        "1             2              3",
-        " 1             2              3",
-        "-1            -2             -3",
+        assert_prints!(
+            input,
+            "1             2              3",
+            " 1             2              3",
+            "-1            -2             -3"
         );
     }
 }

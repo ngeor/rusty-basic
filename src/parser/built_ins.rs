@@ -44,6 +44,115 @@ mod close {
             expression::expression_node(),
         )
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_sub_call;
+        use crate::parser::test_utils::*;
+
+        #[test]
+        fn test_no_args() {
+            let input = "CLOSE";
+            todo!()
+        }
+
+        #[test]
+        fn test_one_file_number_no_hash() {
+            let input = "CLOSE 1";
+            todo!()
+        }
+
+        #[test]
+        fn test_one_file_number_no_hash_no_leading_space() {
+            let input = "CLOSE1";
+            todo!()
+        }
+
+        #[test]
+        fn test_one_file_number_no_hash_parenthesis_leading_space() {
+            let input = "CLOSE (1)";
+            todo!()
+        }
+
+        #[test]
+        fn test_one_file_number_no_hash_parenthesis_no_leading_space() {
+            let input = "CLOSE(1)";
+            todo!()
+        }
+
+        #[test]
+        fn test_one_file_number_with_hash() {
+            let input = "CLOSE #1";
+            todo!()
+        }
+
+        #[test]
+        fn test_one_file_number_with_hash_no_leading_space() {
+            let input = "CLOSE#1";
+            todo!()
+        }
+
+        #[test]
+        fn test_one_file_number_with_hash_parenthesis_leading_space() {
+            let input = "CLOSE (#1)";
+            todo!()
+        }
+
+        #[test]
+        fn test_one_file_number_with_hash_parenthesis_no_leading_space() {
+            let input = "CLOSE(#1)";
+            todo!()
+        }
+
+        #[test]
+        fn test_two_file_number_no_hash_space_after_comma() {
+            let input = "CLOSE 1, 2";
+            todo!()
+        }
+
+        #[test]
+        fn test_two_file_number_no_hash_space_before_comma() {
+            let input = "CLOSE 1 ,2";
+            todo!()
+        }
+
+        #[test]
+        fn test_two_file_number_no_hash_space_around_comma() {
+            let input = "CLOSE 1 , 2";
+            todo!()
+        }
+
+        #[test]
+        fn test_two_file_number_no_hash_no_space_around_comma() {
+            let input = "CLOSE 1,2";
+            todo!()
+        }
+
+        #[test]
+        fn test_two_file_number_hash_space_after_comma() {
+            let input = "CLOSE #1, #2";
+            todo!()
+        }
+
+        #[test]
+        fn test_two_file_number_hash_space_before_comma() {
+            let input = "CLOSE #1 ,#2";
+            todo!()
+        }
+
+        #[test]
+        fn test_two_file_number_hash_space_around_comma() {
+            let input = "CLOSE #1 , #2";
+            todo!()
+        }
+
+        #[test]
+        fn test_two_file_number_hash_no_space_around_comma() {
+            let input = "CLOSE #1,#2";
+            todo!()
+        }
+    }
 }
 
 mod input {
@@ -140,6 +249,24 @@ mod input {
                 QError::syntax_error("Expected: at least one variable")
             );
         }
+
+        #[test]
+        fn test_file_hash_one_variable_space_after_comma() {
+            let input = "INPUT #1, A";
+            todo!()
+        }
+
+        #[test]
+        fn test_file_hash_one_variable_no_comma() {
+            let input = "INPUT #1,A";
+            todo!()
+        }
+
+        #[test]
+        fn test_file_hash_one_variable_space_before_comma() {
+            let input = "INPUT #1 ,A";
+            todo!()
+        }
     }
 }
 
@@ -160,6 +287,74 @@ mod line_input {
             ),
             |(_, r)| Statement::SubCall(BuiltInSub::LineInput.into(), r),
         )
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_sub_call;
+        use crate::parser::test_utils::*;
+
+        #[test]
+        fn test_parse_one_variable() {
+            let input = "LINE INPUT A$";
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(
+                result,
+                "INPUT",
+                Expression::IntegerLiteral(0), // no file number
+                Expression::VariableName("A$".into())
+            );
+        }
+
+        #[test]
+        fn test_parse_two_variables() {
+            let input = "LINE INPUT A$, B";
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(
+                result,
+                "INPUT",
+                Expression::IntegerLiteral(0), // no file number
+                Expression::VariableName("A$".into()),
+                Expression::VariableName("B".into())
+            );
+        }
+
+        #[test]
+        fn test_no_whitespace_after_input() {
+            let input = "LINE INPUT";
+            assert_eq!(
+                parse_err(input),
+                QError::syntax_error("Expected: at least one variable")
+            );
+        }
+
+        #[test]
+        fn test_no_variable() {
+            let input = "LINE INPUT ";
+            assert_eq!(
+                parse_err(input),
+                QError::syntax_error("Expected: at least one variable")
+            );
+        }
+
+        #[test]
+        fn test_file_hash_one_variable_space_after_comma() {
+            let input = "LINE INPUT #1, A";
+            todo!()
+        }
+
+        #[test]
+        fn test_file_hash_one_variable_no_comma() {
+            let input = "LINE INPUT #1,A";
+            todo!()
+        }
+
+        #[test]
+        fn test_file_hash_one_variable_space_before_comma() {
+            let input = "LINE INPUT #1 ,A";
+            todo!()
+        }
     }
 }
 
@@ -485,6 +680,114 @@ mod print {
                 |e| PrintArg::Expression(e),
             ),
         ])
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::parser::test_utils::*;
+
+        #[test]
+        fn test_print_no_args() {
+            let input = "PRINT";
+            todo!()
+        }
+
+        #[test]
+        fn test_lprint_no_args() {
+            let input = "LPRINT";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_one_arg() {
+            let input = "PRINT 42";
+            todo!()
+        }
+
+        #[test]
+        fn test_lprint_one_arg() {
+            let input = "LPRINT 42";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_two_args() {
+            let input = "PRINT 42, A";
+            todo!()
+        }
+
+        #[test]
+        fn test_lprint_two_args() {
+            let input = "LPRINT 42, A";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_file_no_args() {
+            let input = "PRINT #1";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_file_one_arg() {
+            let input = "PRINT #1, 42";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_file_two_args() {
+            let input = "PRINT #1, A, B";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_using_no_args() {
+            let input = "PRINT USING \"#\";";
+            todo!()
+        }
+
+        #[test]
+        fn test_lprint_using_no_args() {
+            let input = "LPRINT USING \"#\";";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_using_no_args_missing_semicolon() {
+            let input = "PRINT USING \"#\"";
+            todo!()
+        }
+
+        #[test]
+        fn test_lprint_using_no_args_missing_semicolon() {
+            let input = "LPRINT USING \"#\"";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_using_one_arg() {
+            let input = "PRINT USING \"#\"; 42";
+            todo!()
+        }
+
+        #[test]
+        fn test_lprint_using_one_arg() {
+            let input = "LPRINT USING \"#\"; 42";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_file_using_no_args() {
+            let input = "PRINT #1, USING \"#\";";
+            todo!()
+        }
+
+        #[test]
+        fn test_print_file_using_one_arg() {
+            let input = "PRINT #1, USING \"#\"; 3.14";
+            todo!()
+        }
     }
 }
 

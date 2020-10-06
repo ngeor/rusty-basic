@@ -48,109 +48,206 @@ mod close {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use crate::assert_sub_call;
         use crate::parser::test_utils::*;
 
         #[test]
         fn test_no_args() {
             let input = "CLOSE";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(statement, Statement::SubCall("CLOSE".into(), vec![]));
         }
 
         #[test]
         fn test_one_file_number_no_hash() {
             let input = "CLOSE 1";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall("CLOSE".into(), vec![1.as_lit_expr(1, 7)])
+            );
         }
 
         #[test]
         fn test_one_file_number_no_hash_no_leading_space() {
             let input = "CLOSE1";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(statement, Statement::SubCall("CLOSE1".into(), vec![]));
         }
 
         #[test]
         fn test_one_file_number_no_hash_parenthesis_leading_space() {
             let input = "CLOSE (1)";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![Expression::Parenthesis(Box::new(1.as_lit_expr(1, 8))).at_rc(1, 7)]
+                )
+            );
         }
 
         #[test]
         fn test_one_file_number_no_hash_parenthesis_no_leading_space() {
             let input = "CLOSE(1)";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![Expression::Parenthesis(Box::new(1.as_lit_expr(1, 7))).at_rc(1, 6)]
+                )
+            );
         }
 
         #[test]
         fn test_one_file_number_with_hash() {
             let input = "CLOSE #1";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall("CLOSE".into(), vec![1.as_lit_expr(1, 7)])
+            );
         }
 
         #[test]
         fn test_one_file_number_with_hash_no_leading_space() {
             let input = "CLOSE#1";
-            todo!()
+            assert_eq!(
+                parse_err_node(input),
+                QErrorNode::Pos(
+                    QError::syntax_error("Expected: file-number or end-of-statement"),
+                    Location::new(1, 6)
+                )
+            );
         }
 
         #[test]
         fn test_one_file_number_with_hash_parenthesis_leading_space() {
             let input = "CLOSE (#1)";
-            todo!()
+            assert_eq!(
+                parse_err_node(input),
+                QErrorNode::Pos(
+                    QError::syntax_error("Expected: expression"),
+                    Location::new(1, 8)
+                )
+            );
         }
 
         #[test]
         fn test_one_file_number_with_hash_parenthesis_no_leading_space() {
             let input = "CLOSE(#1)";
-            todo!()
+            assert_eq!(
+                parse_err_node(input),
+                QErrorNode::Pos(
+                    QError::syntax_error("Expected: expression"),
+                    Location::new(1, 7)
+                )
+            );
         }
 
         #[test]
         fn test_two_file_number_no_hash_space_after_comma() {
             let input = "CLOSE 1, 2";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
+                )
+            );
         }
 
         #[test]
         fn test_two_file_number_no_hash_space_before_comma() {
             let input = "CLOSE 1 ,2";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
+                )
+            );
         }
 
         #[test]
         fn test_two_file_number_no_hash_space_around_comma() {
             let input = "CLOSE 1 , 2";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
+                )
+            );
         }
 
         #[test]
         fn test_two_file_number_no_hash_no_space_around_comma() {
             let input = "CLOSE 1,2";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 9)]
+                )
+            );
         }
 
         #[test]
         fn test_two_file_number_hash_space_after_comma() {
             let input = "CLOSE #1, #2";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
+                )
+            );
         }
 
         #[test]
         fn test_two_file_number_hash_space_before_comma() {
             let input = "CLOSE #1 ,#2";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
+                )
+            );
         }
 
         #[test]
         fn test_two_file_number_hash_space_around_comma() {
             let input = "CLOSE #1 , #2";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 12)]
+                )
+            );
         }
 
         #[test]
         fn test_two_file_number_hash_no_space_around_comma() {
             let input = "CLOSE #1,#2";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "CLOSE".into(),
+                    vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
+                )
+            );
         }
     }
 }
@@ -253,19 +350,37 @@ mod input {
         #[test]
         fn test_file_hash_one_variable_space_after_comma() {
             let input = "INPUT #1, A";
-            todo!()
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(
+                result,
+                "INPUT",
+                Expression::IntegerLiteral(1), // file number
+                Expression::VariableName("A".into())
+            );
         }
 
         #[test]
         fn test_file_hash_one_variable_no_comma() {
             let input = "INPUT #1,A";
-            todo!()
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(
+                result,
+                "INPUT",
+                Expression::IntegerLiteral(1), // file number
+                Expression::VariableName("A".into())
+            );
         }
 
         #[test]
         fn test_file_hash_one_variable_space_before_comma() {
             let input = "INPUT #1 ,A";
-            todo!()
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(
+                result,
+                "INPUT",
+                Expression::IntegerLiteral(1), // file number
+                Expression::VariableName("A".into())
+            );
         }
     }
 }
@@ -301,7 +416,7 @@ mod line_input {
             let result = parse(input).demand_single_statement();
             assert_sub_call!(
                 result,
-                "INPUT",
+                "LINE INPUT",
                 Expression::IntegerLiteral(0), // no file number
                 Expression::VariableName("A$".into())
             );
@@ -313,7 +428,7 @@ mod line_input {
             let result = parse(input).demand_single_statement();
             assert_sub_call!(
                 result,
-                "INPUT",
+                "LINE INPUT",
                 Expression::IntegerLiteral(0), // no file number
                 Expression::VariableName("A$".into()),
                 Expression::VariableName("B".into())
@@ -341,19 +456,37 @@ mod line_input {
         #[test]
         fn test_file_hash_one_variable_space_after_comma() {
             let input = "LINE INPUT #1, A";
-            todo!()
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(
+                result,
+                "LINE INPUT",
+                Expression::IntegerLiteral(1), // file number
+                Expression::VariableName("A".into())
+            );
         }
 
         #[test]
         fn test_file_hash_one_variable_no_comma() {
             let input = "LINE INPUT #1,A";
-            todo!()
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(
+                result,
+                "LINE INPUT",
+                Expression::IntegerLiteral(1), // file number
+                Expression::VariableName("A".into())
+            );
         }
 
         #[test]
         fn test_file_hash_one_variable_space_before_comma() {
             let input = "LINE INPUT #1 ,A";
-            todo!()
+            let result = parse(input).demand_single_statement();
+            assert_sub_call!(
+                result,
+                "LINE INPUT",
+                Expression::IntegerLiteral(1), // file number
+                Expression::VariableName("A".into())
+            );
         }
     }
 }
@@ -690,103 +823,389 @@ mod print {
         #[test]
         fn test_print_no_args() {
             let input = "PRINT";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![]
+                })
+            );
+        }
+
+        #[test]
+        fn test_print_no_other_args_only_trailing_comma_space_variations() {
+            let variations = ["PRINT,", "PRINT ,"];
+            for input in &variations {
+                let statement = parse(*input).demand_single_statement();
+                assert_eq!(
+                    statement,
+                    Statement::Print(PrintNode {
+                        file_number: None,
+                        lpt1: false,
+                        format_string: None,
+                        args: vec![PrintArg::Comma]
+                    })
+                );
+            }
+        }
+
+        #[test]
+        fn test_print_no_other_args_only_trailing_semicolon_space_variations() {
+            let variations = ["PRINT;", "PRINT ;"];
+            for input in &variations {
+                let statement = parse(*input).demand_single_statement();
+                assert_eq!(
+                    statement,
+                    Statement::Print(PrintNode {
+                        file_number: None,
+                        lpt1: false,
+                        format_string: None,
+                        args: vec![PrintArg::Semicolon]
+                    })
+                );
+            }
+        }
+
+        #[test]
+        fn test_print_leading_comma_numeric_arg_space_variations() {
+            let variations = ["PRINT,1", "PRINT ,1", "PRINT, 1", "PRINT , 1"];
+            for input in &variations {
+                let statement = parse(*input).demand_single_statement();
+                match statement {
+                    Statement::Print(print_node) => {
+                        assert_eq!(print_node.file_number, None);
+                        assert_eq!(print_node.lpt1, false);
+                        assert_eq!(print_node.format_string, None);
+                        assert_eq!(print_node.args[0], PrintArg::Comma);
+                        match print_node.args[1] {
+                            PrintArg::Expression(Locatable {
+                                element: Expression::IntegerLiteral(1),
+                                ..
+                            }) => {}
+                            _ => panic!("Argument mismatch"),
+                        }
+                        assert_eq!(print_node.args.len(), 2);
+                    }
+                    _ => panic!("{} did not yield a PrintNode", input),
+                }
+            }
+        }
+
+        #[test]
+        fn test_print_leading_semicolon_numeric_arg_space_variations() {
+            let variations = ["PRINT;1", "PRINT ;1", "PRINT; 1", "PRINT ; 1"];
+            for input in &variations {
+                let statement = parse(*input).demand_single_statement();
+                match statement {
+                    Statement::Print(print_node) => {
+                        assert_eq!(print_node.file_number, None);
+                        assert_eq!(print_node.lpt1, false);
+                        assert_eq!(print_node.format_string, None);
+                        assert_eq!(print_node.args[0], PrintArg::Semicolon);
+                        match print_node.args[1] {
+                            PrintArg::Expression(Locatable {
+                                element: Expression::IntegerLiteral(1),
+                                ..
+                            }) => {}
+                            _ => panic!("Argument mismatch"),
+                        }
+                        assert_eq!(print_node.args.len(), 2);
+                    }
+                    _ => panic!("{} did not yield a PrintNode", input),
+                }
+            }
         }
 
         #[test]
         fn test_lprint_no_args() {
             let input = "LPRINT";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: true,
+                    format_string: None,
+                    args: vec![]
+                })
+            );
         }
 
         #[test]
         fn test_print_one_arg() {
             let input = "PRINT 42";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                })
+            );
         }
 
         #[test]
         fn test_lprint_one_arg() {
             let input = "LPRINT 42";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: true,
+                    format_string: None,
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                })
+            );
         }
 
         #[test]
         fn test_print_two_args() {
             let input = "PRINT 42, A";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![
+                        PrintArg::Expression(42.as_lit_expr(1, 7)),
+                        PrintArg::Comma,
+                        PrintArg::Expression("A".as_var_expr(1, 11))
+                    ]
+                })
+            );
         }
 
         #[test]
         fn test_lprint_two_args() {
             let input = "LPRINT 42, A";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: true,
+                    format_string: None,
+                    args: vec![
+                        PrintArg::Expression(42.as_lit_expr(1, 7)),
+                        PrintArg::Comma,
+                        PrintArg::Expression("A".as_var_expr(1, 7))
+                    ]
+                })
+            );
         }
 
         #[test]
         fn test_print_file_no_args() {
             let input = "PRINT #1";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: Some(FileHandle::from(1)),
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![]
+                })
+            );
         }
 
         #[test]
         fn test_print_file_one_arg() {
             let input = "PRINT #1, 42";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: Some(FileHandle::from(1)),
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                })
+            );
+        }
+
+        #[test]
+        fn test_print_file_semicolon_after_file_number_err() {
+            let input = "PRINT #1; 42";
+            assert_eq!(
+                parse_err_node(input),
+                QErrorNode::Pos(QError::syntax_error("Expected: ,"), Location::new(1, 9))
+            );
         }
 
         #[test]
         fn test_print_file_two_args() {
             let input = "PRINT #1, A, B";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: Some(FileHandle::from(1)),
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![
+                        PrintArg::Expression("A".as_var_expr(1, 11)),
+                        PrintArg::Comma,
+                        PrintArg::Expression("B".as_var_expr(1, 14))
+                    ]
+                })
+            );
+        }
+
+        #[test]
+        fn test_print_file_leading_comma() {
+            let input = "PRINT #1,, A, B";
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: Some(FileHandle::from(1)),
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![
+                        PrintArg::Comma,
+                        PrintArg::Expression("A".as_var_expr(1, 11)),
+                        PrintArg::Comma,
+                        PrintArg::Expression("B".as_var_expr(1, 14))
+                    ]
+                })
+            );
+        }
+
+        #[test]
+        fn test_print_file_leading_semicolon() {
+            let input = "PRINT #1,; A, B";
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: Some(FileHandle::from(1)),
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![
+                        PrintArg::Semicolon,
+                        PrintArg::Expression("A".as_var_expr(1, 11)),
+                        PrintArg::Comma,
+                        PrintArg::Expression("B".as_var_expr(1, 14))
+                    ]
+                })
+            );
         }
 
         #[test]
         fn test_print_using_no_args() {
             let input = "PRINT USING \"#\";";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: false,
+                    format_string: Some("#".as_lit_expr(1, 1)),
+                    args: vec![]
+                })
+            );
         }
 
         #[test]
         fn test_lprint_using_no_args() {
             let input = "LPRINT USING \"#\";";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: true,
+                    format_string: Some("#".as_lit_expr(1, 1)),
+                    args: vec![]
+                })
+            );
         }
 
         #[test]
         fn test_print_using_no_args_missing_semicolon() {
             let input = "PRINT USING \"#\"";
-            todo!()
+            assert_eq!(
+                parse_err_node(input),
+                QErrorNode::Pos(QError::syntax_error("Expected: ;"), Location::new(1, 7))
+            );
         }
 
         #[test]
         fn test_lprint_using_no_args_missing_semicolon() {
             let input = "LPRINT USING \"#\"";
-            todo!()
+            assert_eq!(
+                parse_err_node(input),
+                QErrorNode::Pos(QError::syntax_error("Expected: ;"), Location::new(1, 7))
+            );
         }
 
         #[test]
         fn test_print_using_one_arg() {
             let input = "PRINT USING \"#\"; 42";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: false,
+                    format_string: Some("#".as_lit_expr(1, 1)),
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                })
+            );
         }
 
         #[test]
         fn test_lprint_using_one_arg() {
             let input = "LPRINT USING \"#\"; 42";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: true,
+                    format_string: Some("#".as_lit_expr(1, 1)),
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                })
+            );
         }
 
         #[test]
         fn test_print_file_using_no_args() {
             let input = "PRINT #1, USING \"#\";";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: Some(FileHandle::from(1)),
+                    lpt1: false,
+                    format_string: Some("#".as_lit_expr(1, 1)),
+                    args: vec![]
+                })
+            );
         }
 
         #[test]
         fn test_print_file_using_one_arg() {
             let input = "PRINT #1, USING \"#\"; 3.14";
-            todo!()
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::Print(PrintNode {
+                    file_number: Some(FileHandle::from(1)),
+                    lpt1: false,
+                    format_string: Some("#".as_lit_expr(1, 1)),
+                    args: vec![PrintArg::Expression(3.14.as_lit_expr(1, 7))]
+                })
+            );
         }
     }
 }

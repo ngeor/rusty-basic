@@ -975,7 +975,7 @@ mod print {
                     file_number: None,
                     lpt1: true,
                     format_string: None,
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 8))]
                 })
             );
         }
@@ -1010,9 +1010,9 @@ mod print {
                     lpt1: true,
                     format_string: None,
                     args: vec![
-                        PrintArg::Expression(42.as_lit_expr(1, 7)),
+                        PrintArg::Expression(42.as_lit_expr(1, 8)),
                         PrintArg::Comma,
-                        PrintArg::Expression("A".as_var_expr(1, 7))
+                        PrintArg::Expression("A".as_var_expr(1, 12))
                     ]
                 })
             );

@@ -18,6 +18,7 @@ pub fn parse_built_in<T: BufRead + 'static>(
         name::parse_name(),
         open::parse_open(),
         print::parse_print(),
+        print::parse_lprint(),
     ])
 }
 
@@ -796,6 +797,21 @@ mod print {
                 Ok(Statement::Print(PrintNode {
                     file_number,
                     lpt1: false,
+                    format_string: None,
+                    args: print_args.unwrap_or_default(),
+                }))
+            },
+        )
+    }
+
+    pub fn parse_lprint<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+        and_then(
+            opt_seq2(keyword(Keyword::LPrint), many(parse_print_arg())),
+            |(_, print_args)| {
+                Ok(Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: true,
                     format_string: None,
                     args: print_args.unwrap_or_default(),
                 }))

@@ -14,7 +14,7 @@ pub fn run_function<S: Stdlib>(
     match f {
         BuiltInFunction::Chr => chr::run(interpreter),
         BuiltInFunction::Environ => environ_fn::run(interpreter),
-        BuiltInFunction::Eof => eof::run(interpreter),
+        BuiltInFunction::Eof => eof::run(interpreter).with_err_no_pos(),
         BuiltInFunction::InStr => instr::run(interpreter),
         BuiltInFunction::Len => len::run(interpreter),
         BuiltInFunction::Mid => mid::run(interpreter),
@@ -30,9 +30,9 @@ pub fn run_sub<S: Stdlib>(
     match s {
         BuiltInSub::Close => close::run(interpreter),
         BuiltInSub::Environ => environ_sub::run(interpreter),
-        BuiltInSub::Input => input::run(interpreter),
+        BuiltInSub::Input => input::run(interpreter).with_err_no_pos(),
         BuiltInSub::Kill => kill::run(interpreter),
-        BuiltInSub::LineInput => line_input::run(interpreter),
+        BuiltInSub::LineInput => line_input::run(interpreter).with_err_no_pos(),
         BuiltInSub::LPrint => todo!(),
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
@@ -239,18 +239,12 @@ mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
-        let file_handle: FileHandle = interpreter
-            .context()
-            .get(0)
-            .unwrap()
-            .try_into()
-            .with_err_no_pos()?;
-        let is_eof: bool = interpreter
+    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
+        let file_handle: FileHandle = interpreter.context().get(0).unwrap().try_into()?;
+        let file_input = interpreter
             .file_manager
-            .eof(&file_handle)
-            .map_err(|e| e.into())
-            .with_err_no_pos()?;
+            .try_get_file_info_input_mut(&file_handle)?;
+        let is_eof: bool = file_input.eof()?;
         interpreter.set_variable(BuiltInFunction::Eof, is_eof);
         Ok(())
     }
@@ -273,7 +267,7 @@ mod input {
     use super::*;
     use std::convert::TryFrom;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
         let mut file_handle: FileHandle = FileHandle::default();
         let mut has_file_handle = false;
         for idx in 0..interpreter.context().parameter_count() {
@@ -284,7 +278,7 @@ mod input {
                         has_file_handle = *f == 1;
                     } else if idx == 1 {
                         if has_file_handle {
-                            file_handle = FileHandle::try_from(*f).with_err_no_pos()?;
+                            file_handle = FileHandle::try_from(*f)?;
                         } else {
                             // input integer variable
                             do_input_one_var(interpreter, idx, file_handle)?;
@@ -306,31 +300,22 @@ mod input {
         interpreter: &mut Interpreter<S>,
         idx: usize,
         file_handle: FileHandle,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<(), QError> {
         let raw_input: String = if file_handle.is_valid() {
-            interpreter
+            let file_input = interpreter
                 .file_manager
-                .read_line(&file_handle)
-                .map_err(|e| e.into())
-                .with_err_no_pos()?
+                .try_get_file_info_input_mut(&file_handle)?;
+            file_input.read_until_comma_or_eol()?
         } else {
-            interpreter
-                .stdlib
-                .input()
-                .map_err(|e| e.into())
-                .with_err_no_pos()?
+            interpreter.stdlib.input()?
         };
         let existing_value = interpreter.context_mut().get_mut(idx).unwrap();
         let temp: &Variant = existing_value;
-        let q: TypeQualifier = temp.try_into().with_err_no_pos()?;
+        let q: TypeQualifier = temp.try_into()?;
         *existing_value = match q {
-            TypeQualifier::BangSingle => {
-                Variant::from(parse_single_input(raw_input).with_err_no_pos()?)
-            }
+            TypeQualifier::BangSingle => Variant::from(parse_single_input(raw_input)?),
             TypeQualifier::DollarString => Variant::from(raw_input),
-            TypeQualifier::PercentInteger => {
-                Variant::from(parse_int_input(raw_input).with_err_no_pos()?)
-            }
+            TypeQualifier::PercentInteger => Variant::from(parse_int_input(raw_input)?),
             _ => unimplemented!(), // TODO support more types
         };
         Ok(())
@@ -838,7 +823,7 @@ mod line_input {
     use super::*;
     use std::convert::TryFrom;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
         let mut file_handle: FileHandle = FileHandle::default();
         let mut has_file_handle = false;
         for idx in 0..interpreter.context().parameter_count() {
@@ -849,7 +834,7 @@ mod line_input {
                         has_file_handle = *f == 1;
                     } else if idx == 1 {
                         if has_file_handle {
-                            file_handle = FileHandle::try_from(*f).with_err_no_pos()?;
+                            file_handle = FileHandle::try_from(*f)?;
                         } else {
                             // input integer variable?
                             panic!("Linter should have caught this");
@@ -872,7 +857,7 @@ mod line_input {
         interpreter: &mut Interpreter<S>,
         idx: usize,
         file_handle: &FileHandle,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<(), QError> {
         if file_handle.is_valid() {
             line_input_one_file(interpreter, idx, file_handle)
         } else {
@@ -884,12 +869,11 @@ mod line_input {
         interpreter: &mut Interpreter<S>,
         idx: usize,
         file_handle: &FileHandle,
-    ) -> Result<(), QErrorNode> {
-        let s = interpreter
+    ) -> Result<(), QError> {
+        let file_input = interpreter
             .file_manager
-            .read_line(file_handle)
-            .map_err(|e| e.into())
-            .with_err_no_pos()?;
+            .try_get_file_info_input_mut(file_handle)?;
+        let s = file_input.read_line()?;
         *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }
@@ -897,12 +881,8 @@ mod line_input {
     fn line_input_one_stdin<S: Stdlib>(
         interpreter: &mut Interpreter<S>,
         idx: usize,
-    ) -> Result<(), QErrorNode> {
-        let s = interpreter
-            .stdlib
-            .input()
-            .map_err(|e| e.into())
-            .with_err_no_pos()?;
+    ) -> Result<(), QError> {
+        let s = interpreter.stdlib.input()?;
         *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }

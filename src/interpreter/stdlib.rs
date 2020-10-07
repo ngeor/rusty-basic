@@ -1,3 +1,4 @@
+use crate::interpreter::io::read_until_comma_or_eol;
 use crate::variant::Variant;
 
 pub trait Printer {
@@ -9,6 +10,8 @@ pub trait Printer {
 
     fn set_last_print_col(&mut self, col: usize);
 }
+
+// TODO trait Reader like Printer read_until_comma read_until_eol
 
 /// The standard functions that QBasic offers
 pub trait Stdlib: Printer {
@@ -28,11 +31,15 @@ pub trait Stdlib: Printer {
 
 pub struct DefaultStdlib {
     last_print_col: usize,
+    stdin_buffer: String,
 }
 
 impl DefaultStdlib {
     pub fn new() -> Self {
-        Self { last_print_col: 0 }
+        Self {
+            last_print_col: 0,
+            stdin_buffer: String::new(),
+        }
     }
 }
 
@@ -89,11 +96,10 @@ impl Stdlib for DefaultStdlib {
     }
 
     fn input(&mut self) -> std::io::Result<String> {
-        let mut line = String::new();
-        match std::io::stdin().read_line(&mut line) {
-            Ok(_) => Ok(line.trim_end().to_string()),
-            Err(x) => Err(x),
-        }
+        let (_, remainder, line) =
+            read_until_comma_or_eol(std::io::stdin().lock(), self.stdin_buffer.clone())?;
+        self.stdin_buffer = remainder;
+        Ok(line)
     }
 
     fn get_env_var(&self, name: &String) -> String {

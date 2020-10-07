@@ -40,7 +40,7 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
             print_val.print(
                 interpreter
                     .file_manager
-                    .get_file_info_mut(&file_handle)
+                    .try_get_file_info_output_mut(&file_handle)
                     .unwrap(),
             )?;
         } else {
@@ -56,7 +56,7 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
                 print_val.print(
                     interpreter
                         .file_manager
-                        .get_file_info_mut(&file_handle)
+                        .try_get_file_info_output_mut(&file_handle)
                         .unwrap(),
                 )?;
             } else {

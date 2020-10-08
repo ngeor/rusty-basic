@@ -265,6 +265,7 @@ mod input {
     // after the user presses the Enter key.
 
     use super::*;
+    use crate::interpreter::input_source::InputSource;
     use std::convert::TryFrom;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
@@ -305,7 +306,7 @@ mod input {
             let file_input = interpreter
                 .file_manager
                 .try_get_file_info_input_mut(&file_handle)?;
-            file_input.read_until_comma_or_eol()?
+            file_input.input()?
         } else {
             interpreter.stdlib.input()?
         };
@@ -395,7 +396,14 @@ mod input {
 
             #[test]
             fn test_input_hello() {
-                assert_input("hello", "A$", "A$", "hello");
+                let mut stdlib = MockStdlib::new();
+                stdlib.add_next_input("hello");
+                let input = r#"
+                INPUT A$
+                PRINT A$
+                "#;
+                let interpreter = interpret_with_stdlib(input, stdlib);
+                assert_eq!(interpreter.stdlib.output(), "hello");
             }
 
             #[test]
@@ -423,7 +431,7 @@ mod input {
             let mut stdlib = MockStdlib::new();
             stdlib.add_next_input("42");
             let interpreter = interpret_with_stdlib(input, stdlib);
-            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+            assert_eq!(interpreter.stdlib.output(), "42");
         }
 
         #[test]
@@ -444,7 +452,7 @@ mod input {
             stdlib.add_next_input("2");
             stdlib.add_next_input("diamonds are forever");
             let interpreter = interpret_with_stdlib(input, stdlib);
-            assert_eq!(interpreter.stdlib.output, vec!["2", "diamonds "]);
+            assert_eq!(interpreter.stdlib.output_exact(), " 2 \r\ndiamonds \r\n");
         }
 
         #[test]
@@ -465,7 +473,7 @@ mod input {
             let mut stdlib = MockStdlib::new();
             stdlib.add_next_input("42");
             let interpreter = interpret_with_stdlib(input, stdlib);
-            assert_eq!(interpreter.stdlib.output, vec!["42"]);
+            assert_eq!(interpreter.stdlib.output(), "42");
         }
 
         #[test]
@@ -481,11 +489,14 @@ mod input {
             let mut stdlib = MockStdlib::new();
             stdlib.add_next_input("3.14");
             let interpreter = interpret_with_stdlib(input, stdlib);
-            assert_eq!(interpreter.stdlib.output, vec!["3.14"]);
+            assert_eq!(interpreter.stdlib.output(), "3.14");
         }
 
         #[test]
         fn test_input_string_from_file() {
+            // TODO one more test with 3 input, showing that it will throw EOF error
+            // TODO test with stdio INPUT and PRINT
+
             // arrange
             std::fs::write("test1.txt", "Hello, world").unwrap();
 
@@ -821,6 +832,7 @@ mod line_input {
     // LINE INPUT #file-number%, variable$
 
     use super::*;
+    use crate::interpreter::input_source::InputSource;
     use std::convert::TryFrom;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
@@ -873,7 +885,7 @@ mod line_input {
         let file_input = interpreter
             .file_manager
             .try_get_file_info_input_mut(file_handle)?;
-        let s = file_input.read_line()?;
+        let s = file_input.line_input()?;
         *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }
@@ -1168,7 +1180,7 @@ mod open {
             interpreter.interpret(instructions).unwrap_or_default();
             std::fs::remove_file("TEST3.TXT").unwrap_or(());
             assert_eq!(
-                interpreter.stdlib.output,
+                interpreter.stdlib.output_lines(),
                 vec!["Hello, world", "Hello, again"]
             );
         }

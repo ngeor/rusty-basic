@@ -496,22 +496,22 @@ mod tests {
         let mut stdlib = MockStdlib::new();
         stdlib.add_next_input("10");
         let interpreter = interpret_file("FIB.BAS", stdlib).unwrap();
-        let output = interpreter.stdlib.output;
+        let output = interpreter.stdlib.output_lines();
         assert_eq!(
             output,
             vec![
                 "Enter the number of fibonacci to calculate",
-                "Fibonacci of  0             is            0",
-                "Fibonacci of  1             is            1",
-                "Fibonacci of  2             is            1",
-                "Fibonacci of  3             is            2",
-                "Fibonacci of  4             is            3",
-                "Fibonacci of  5             is            5",
-                "Fibonacci of  6             is            8",
-                "Fibonacci of  7             is            13",
-                "Fibonacci of  8             is            21",
-                "Fibonacci of  9             is            34",
-                "Fibonacci of  10            is            55"
+                "Fibonacci of   0            is             0",
+                "Fibonacci of   1            is             1",
+                "Fibonacci of   2            is             1",
+                "Fibonacci of   3            is             2",
+                "Fibonacci of   4            is             3",
+                "Fibonacci of   5            is             5",
+                "Fibonacci of   6            is             8",
+                "Fibonacci of   7            is             13",
+                "Fibonacci of   8            is             21",
+                "Fibonacci of   9            is             34",
+                "Fibonacci of   10           is             55"
             ]
         );
     }

@@ -1,4 +1,5 @@
 use crate::assert_prints;
+use crate::assert_prints_nothing;
 use crate::interpreter::test_utils::*;
 
 #[test]
@@ -18,7 +19,7 @@ fn test_if_block_false() {
         PRINT \"hello\"
     END IF
     ";
-    assert_prints!(input; nothing);
+    assert_prints_nothing!(input);
 }
 
 #[test]
@@ -90,7 +91,7 @@ fn test_if_elseif_block_false_false() {
         PRINT \"bye\"
     END IF
     ";
-    assert_prints!(input; nothing);
+    assert_prints_nothing!(input);
 }
 
 #[test]
@@ -146,7 +147,7 @@ fn test_if_elseif_else_block_false_false() {
         PRINT \"else\"
     END IF
     ";
-    assert_eq!(interpret(input).stdlib.output, vec!["else"]);
+    assert_eq!(interpret(input).stdlib.output_lines(), vec!["else"]);
 }
 
 #[test]
@@ -172,14 +173,14 @@ fn test_single_line_if() {
     let input = r#"
     IF 0 THEN PRINT "hello"
     "#;
-    assert_prints!(input; nothing);
+    assert_prints_nothing!(input);
     let input = r#"
     PRINT "before"
     IF 1 THEN PRINT "hello"
     PRINT "after"
     "#;
     assert_eq!(
-        interpret(input).stdlib.output,
+        interpret(input).stdlib.output_lines(),
         vec!["before", "hello", "after"]
     );
     let input = r#"
@@ -187,5 +188,8 @@ fn test_single_line_if() {
     IF 0 THEN PRINT "hello"
     PRINT "after"
     "#;
-    assert_eq!(interpret(input).stdlib.output, vec!["before", "after"]);
+    assert_eq!(
+        interpret(input).stdlib.output_lines(),
+        vec!["before", "after"]
+    );
 }

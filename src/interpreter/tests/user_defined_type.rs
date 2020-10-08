@@ -1,4 +1,4 @@
-use crate::assert_prints;
+use crate::assert_prints_exact;
 
 #[test]
 fn test_user_defined_type_card() {
@@ -16,7 +16,7 @@ fn test_user_defined_type_card() {
     PRINT C.Value
     "#;
 
-    assert_prints!(input, "Hearts   ", "1");
+    assert_prints_exact!(input, "Hearts   ", " 1 ", "");
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn test_user_defined_type_nested() {
     PRINT A.PostCode.Suffix
     "#;
 
-    assert_prints!(input, "1234", "CZ");
+    assert_prints_exact!(input, " 1234 ", "CZ", "");
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn test_truncate_string_at_declared_length() {
     a.PostCode = "1234 AZ"
     PRINT a.PostCode
     "#;
-    assert_prints!(input, "1234 A");
+    assert_prints_exact!(input, "1234 A", "");
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn test_string_const_length() {
     a.PostCode = "1234 AZ"
     PRINT a.PostCode
     "#;
-    assert_prints!(input, "1234 A");
+    assert_prints_exact!(input, "1234 A", "");
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn test_assign() {
     PRINT b.Street
     PRINT b.HouseNumber
     "#;
-    assert_prints!(input, "Hello", "42");
+    assert_prints_exact!(input, "Hello", " 42 ", "");
 }
 
 #[test]
@@ -111,7 +111,7 @@ fn test_assign_is_by_val() {
     PRINT a.Street
     PRINT b.Street
     "#;
-    assert_prints!(input, "original value ", "modified value ");
+    assert_prints_exact!(input, "original value ", "modified value ", "");
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn test_modify_members_in_sub() {
         x.HiWord = p
     END SUB
     "#;
-    assert_prints!(input, "2", "1");
+    assert_prints_exact!(input, " 2 ", " 1 ", "");
 }
 
 mod modify_in_sub {
@@ -168,7 +168,7 @@ mod modify_in_sub {
             b = c
         END SUB
         "#;
-        assert_prints!(input, "1234");
+        assert_prints_exact!(input, "1234", "");
     }
 
     #[test]
@@ -194,7 +194,7 @@ mod modify_in_sub {
             b.Address.PostCode.Prefix = "1234 rest should be trimmed"
         END SUB
         "#;
-        assert_prints!(input, "1234");
+        assert_prints_exact!(input, "1234", "");
     }
 
     #[test]
@@ -220,7 +220,7 @@ mod modify_in_sub {
             b.PostCode.Prefix = "1234 rest should be trimmed"
         END SUB
         "#;
-        assert_prints!(input, "1234");
+        assert_prints_exact!(input, "1234", "");
     }
 
     #[test]
@@ -247,7 +247,7 @@ mod modify_in_sub {
             PRINT b.Prefix
         END SUB
         "#;
-        assert_prints!(input, "1234", "1234");
+        assert_prints_exact!(input, "1234", "1234", "");
     }
 
     #[test]
@@ -274,7 +274,7 @@ mod modify_in_sub {
             PRINT b$
         END SUB
         "#;
-        assert_prints!(input, "1234 rest should be trimmed", "1234");
+        assert_prints_exact!(input, "1234 rest should be trimmed", "1234", "");
     }
 }
 
@@ -292,7 +292,7 @@ fn test_concatenate_two_strings_of_fixed_length() {
     C$ = A.Prefix + B.Prefix
     PRINT C$
     "#;
-    assert_prints!(input, "ab  cd  ");
+    assert_prints_exact!(input, "ab  cd  ", "");
 }
 
 #[test]
@@ -305,7 +305,7 @@ fn test_assign_element_type_assign_qualified_use_unqualified() {
     p.Prefix$ = "1234"
     PRINT p.Prefix
     "#;
-    assert_prints!(input, "1234");
+    assert_prints_exact!(input, "1234", "");
 }
 
 #[test]
@@ -318,5 +318,5 @@ fn test_assign_element_type_assign_unqualified_use_qualified() {
     p.Prefix = "9876"
     PRINT p.Prefix$
     "#;
-    assert_prints!(input, "9876");
+    assert_prints_exact!(input, "9876", "");
 }

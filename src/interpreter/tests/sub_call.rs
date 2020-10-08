@@ -160,7 +160,7 @@ fn test_by_ref_parameter_defined_in_previous_sub_call() {
     let mut stdlib = MockStdlib::new();
     stdlib.add_next_input("42");
     let interpreter = interpret_with_stdlib(program, stdlib);
-    assert_eq!(interpreter.stdlib.output, vec!["42", "43"]);
+    assert_eq!(interpreter.stdlib.output_lines(), vec!["42", "43"]);
 }
 
 #[test]
@@ -184,10 +184,10 @@ fn test_by_ref_two_levels_deep() {
     "#;
     assert_prints!(
         program,
-        "Begin Sub1    41",
-        "Begin Sub2    41",
-        "End Sub2      42",
-        "End Sub1      42",
+        "Begin Sub1     41",
+        "Begin Sub2     41",
+        "End Sub2       42",
+        "End Sub1       42",
         "42"
     );
 }

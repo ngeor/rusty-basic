@@ -52,7 +52,7 @@ fn test_function_call_not_setting_return_value_defaults_to_zero() {
     ";
     let interpreter = interpret(program);
     assert_has_variable!(interpreter, "X!", 0.0_f32);
-    assert_eq!(interpreter.stdlib.output, vec!["3"]);
+    assert_eq!(interpreter.stdlib.output_lines(), vec!["3"]);
 }
 
 #[test]

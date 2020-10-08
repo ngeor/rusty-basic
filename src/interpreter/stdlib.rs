@@ -1,15 +1,6 @@
 use crate::interpreter::io::read_until_comma_or_eol;
-use crate::variant::Variant;
-
-pub trait Printer {
-    /// Implementation of PRINT x[, y, z]
-    /// Mutable because of the test implementation
-    fn print(&mut self, s: String) -> std::io::Result<usize>;
-
-    fn get_last_print_col(&self) -> usize;
-
-    fn set_last_print_col(&mut self, col: usize);
-}
+use crate::interpreter::printer::{Printer, WritePrinter};
+use std::io::Stdout;
 
 // TODO trait Reader like Printer read_until_comma read_until_eol
 
@@ -29,64 +20,32 @@ pub trait Stdlib: Printer {
     fn set_env_var(&mut self, name: String, value: String);
 }
 
+// TODO DefaultStdlib<W: Write, R: Read>
 pub struct DefaultStdlib {
-    last_print_col: usize,
     stdin_buffer: String,
+    stdout: WritePrinter<Stdout>,
 }
 
 impl DefaultStdlib {
     pub fn new() -> Self {
         Self {
-            last_print_col: 0,
             stdin_buffer: String::new(),
-        }
-    }
-}
-
-pub enum PrintVal {
-    Comma,
-    Semicolon,
-    NewLine,
-    Value(Variant),
-}
-
-impl PrintVal {
-    pub fn print<T: Printer>(&self, stdlib: &mut T) -> std::io::Result<usize> {
-        match self {
-            Self::Comma => {
-                let col = stdlib.get_last_print_col();
-                let len = 14 - col % 14;
-                let s: String = (0..len).map(|_| ' ').collect();
-                stdlib.set_last_print_col(col + len);
-                stdlib.print(s)
-            }
-            Self::Semicolon => Ok(0),
-            Self::NewLine => {
-                stdlib.set_last_print_col(0);
-                stdlib.print("\r\n".to_string())
-            }
-            Self::Value(v) => {
-                // TODO what if s contains new line
-                let s = v.to_string();
-                stdlib.set_last_print_col(stdlib.get_last_print_col() + s.len());
-                stdlib.print(s)
-            }
+            stdout: WritePrinter::new(std::io::stdout()),
         }
     }
 }
 
 impl Printer for DefaultStdlib {
-    fn print(&mut self, s: String) -> std::io::Result<usize> {
-        print!("{}", s);
-        Ok(s.len())
+    fn print(&mut self, s: &str) -> std::io::Result<usize> {
+        self.stdout.print(s)
     }
 
-    fn get_last_print_col(&self) -> usize {
-        self.last_print_col
+    fn println(&mut self) -> std::io::Result<usize> {
+        self.stdout.println()
     }
 
-    fn set_last_print_col(&mut self, col: usize) {
-        self.last_print_col = col;
+    fn move_to_next_print_zone(&mut self) -> std::io::Result<usize> {
+        self.stdout.move_to_next_print_zone()
     }
 }
 
@@ -96,10 +55,7 @@ impl Stdlib for DefaultStdlib {
     }
 
     fn input(&mut self) -> std::io::Result<String> {
-        let (_, remainder, line) =
-            read_until_comma_or_eol(std::io::stdin().lock(), self.stdin_buffer.clone())?;
-        self.stdin_buffer = remainder;
-        Ok(line)
+        read_until_comma_or_eol(&mut std::io::stdin().lock(), &mut self.stdin_buffer)
     }
 
     fn get_env_var(&self, name: &String) -> String {

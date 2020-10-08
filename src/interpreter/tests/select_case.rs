@@ -1,4 +1,5 @@
 use crate::assert_prints;
+use crate::assert_prints_nothing;
 
 #[test]
 fn test_select_case_match_first() {
@@ -36,7 +37,7 @@ fn test_select_case_match_none() {
             PRINT "two"
     END SELECT
     "#;
-    assert_prints!(input; nothing);
+    assert_prints_nothing!(input);
 }
 
 #[test]
@@ -95,7 +96,7 @@ fn test_select_is_no_match() {
             PRINT "greater than 5"
     END SELECT
     "#;
-    assert_prints!(input; nothing);
+    assert_prints_nothing!(input);
 }
 
 #[test]
@@ -117,7 +118,7 @@ fn test_select_range_above_range() {
             PRINT "between 2 and 3"
     END SELECT
     "#;
-    assert_prints!(input; nothing);
+    assert_prints_nothing!(input);
 }
 
 #[test]
@@ -128,7 +129,7 @@ fn test_select_range_below_range() {
             PRINT "between 2 and 3"
     END SELECT
     "#;
-    assert_prints!(input; nothing);
+    assert_prints_nothing!(input);
 }
 
 #[test]

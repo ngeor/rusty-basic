@@ -1,16 +1,15 @@
 use crate::common::{FileAccess, FileHandle, FileMode, QError};
-use crate::interpreter::Printer;
+use crate::interpreter::input_source::InputSource;
+use crate::interpreter::printer::WritePrinter;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Cursor, Read, Write};
+use std::io::{BufRead, BufReader, Read};
 
-#[derive(Debug)]
 pub enum FileInfo {
     Input(FileInfoInput),
     Output(FileInfoOutput),
 }
 
-#[derive(Debug)]
 pub struct FileInfoInput {
     buf_reader: BufReader<File>,
     previous_buffer: String,
@@ -24,61 +23,35 @@ impl FileInfoInput {
         }
     }
 
-    pub fn read_line(&mut self) -> Result<String, QError> {
-        let mut buf = String::new();
-        self.buf_reader.read_line(&mut buf)?;
-        let cr_lf: &[_] = &['\r', '\n'];
-        buf = buf.trim_end_matches(cr_lf).to_string();
-        Ok(buf)
-    }
-
-    pub fn read_until_comma_or_eol(&mut self) -> Result<String, QError> {
-        // read_until_comma_or_eol(file_input.buf_reader, file_input.previous_buffer)
-        let mut buf = String::new();
-        self.buf_reader.read_line(&mut buf)?;
-        let cr_lf: &[_] = &['\r', '\n'];
-        buf = buf.trim_end_matches(cr_lf).to_string();
-        Ok(buf)
-    }
-
     pub fn eof(&mut self) -> Result<bool, QError> {
-        // TODO take previous buffer into account
-        let buf = self.buf_reader.fill_buf()?;
-        let len = buf.len();
-        Ok(len == 0)
-    }
-}
-
-#[derive(Debug)]
-pub struct FileInfoOutput {
-    file: File,
-    last_print_col: usize,
-}
-
-impl FileInfoOutput {
-    pub fn new(file: File) -> Self {
-        Self {
-            file,
-            last_print_col: 0,
+        if self.previous_buffer.is_empty() {
+            let buf = self.buf_reader.fill_buf()?;
+            let len = buf.len();
+            Ok(len == 0)
+        } else {
+            Ok(false)
         }
     }
 }
 
-impl Printer for FileInfoOutput {
-    fn print(&mut self, s: String) -> std::io::Result<usize> {
-        self.file.write(s.as_bytes())
+// TODO same implementation for stdio
+// TODO for MockStdlib only the stdio source should be overriden
+impl InputSource for FileInfoInput {
+    fn input(&mut self) -> std::io::Result<String> {
+        read_until_comma_or_eol(&mut self.buf_reader, &mut self.previous_buffer)
     }
 
-    fn get_last_print_col(&self) -> usize {
-        self.last_print_col
-    }
-
-    fn set_last_print_col(&mut self, col: usize) {
-        self.last_print_col = col;
+    fn line_input(&mut self) -> std::io::Result<String> {
+        let mut buf = String::new();
+        self.buf_reader.read_line(&mut buf)?;
+        let cr_lf: &[_] = &['\r', '\n'];
+        buf = buf.trim_end_matches(cr_lf).to_string();
+        Ok(buf)
     }
 }
 
-#[derive(Debug)]
+pub type FileInfoOutput = WritePrinter<File>;
+
 pub struct FileManager {
     handle_map: HashMap<FileHandle, FileInfo>,
 }
@@ -162,12 +135,42 @@ impl FileManager {
     }
 }
 
+struct StringRefReader<'a> {
+    buf: &'a mut String,
+}
+
+impl<'a> Read for StringRefReader<'a> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let mut i: usize = 0;
+        while i < buf.len() && !self.buf.is_empty() {
+            buf[i] = self.buf.remove(0) as u8;
+            i += 1;
+        }
+        Ok(i)
+    }
+}
+
+impl<'a> BufRead for StringRefReader<'a> {
+    fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
+        Ok(self.buf.as_bytes())
+    }
+
+    fn consume(&mut self, amt: usize) {
+        for _i in 0..amt {
+            self.buf.remove(0);
+        }
+    }
+}
+
 pub fn read_until_comma_or_eol<T: BufRead>(
-    buf_read: T,
-    previous_buffer: String,
-) -> std::io::Result<(T, String, String)> {
+    buf_read: &mut T,
+    previous_buffer: &mut String,
+) -> std::io::Result<String> {
     // create a temporary reader that reads first from previous_buffer and then from buf_read if needed
-    let mut chain = Cursor::new(previous_buffer.into_bytes()).chain(buf_read);
+    let str_ref_reader = StringRefReader {
+        buf: previous_buffer,
+    };
+    let mut chain = str_ref_reader.chain(buf_read);
 
     let mut buf: String = String::new();
     let bytes_read = chain.read_line(&mut buf)?;
@@ -177,17 +180,14 @@ pub fn read_until_comma_or_eol<T: BufRead>(
     } else {
         match buf.find(',') {
             Some(comma_pos) => {
-                remainder = buf.split_off(comma_pos + 1);
+                remainder = buf.split_off(comma_pos);
+                remainder = remainder.split_off(1);
             }
-            None => {
-                // TODO trim trailing CR LF
-            }
+            None => {}
         }
     }
 
-    let (cursor, buf_read) = chain.into_inner();
-    let bytes = cursor.into_inner();
-    let mut previous_buffer: String = String::from_utf8(bytes).unwrap();
+    buf = buf.trim().to_string();
     previous_buffer.insert_str(0, remainder.as_str());
-    Ok((buf_read, previous_buffer, buf))
+    Ok(buf)
 }

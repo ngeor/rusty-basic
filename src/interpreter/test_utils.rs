@@ -1,7 +1,8 @@
 use crate::common::*;
 use crate::instruction_generator::generate_instructions;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
-use crate::interpreter::{Interpreter, Printer, Stdlib};
+use crate::interpreter::printer::{Printer, WritePrinter};
+use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
 use crate::linter::DimName;
 use crate::parser::parse_main_file;
@@ -63,12 +64,9 @@ where
     interpreter.interpret(instructions).map(|_| interpreter)
 }
 
-#[derive(Debug)]
 pub struct MockStdlib {
     next_input: Vec<String>,
-    last_print_col: usize,
-    saw_new_line: bool,
-    pub output: Vec<String>,
+    stdout: WritePrinter<Vec<u8>>,
     pub lpt1output: Vec<String>,
     pub env: HashMap<String, String>,
 }
@@ -77,41 +75,61 @@ impl MockStdlib {
     pub fn new() -> MockStdlib {
         MockStdlib {
             next_input: vec![],
-            output: vec![],
+            stdout: WritePrinter::new(vec![]),
             lpt1output: vec![],
             env: HashMap::new(),
-            last_print_col: 0,
-            saw_new_line: true,
         }
     }
 
     pub fn add_next_input<S: AsRef<str>>(&mut self, value: S) {
         self.next_input.push(value.as_ref().to_string())
     }
+
+    /// Gets the captured output of stdout as-is, without trimming or removing CRLF
+    pub fn output_exact(self) -> String {
+        let (bytes, _) = self.stdout.into_inner();
+        String::from_utf8(bytes).unwrap()
+    }
+
+    /// Gets the captured output of stdout, trimmed and without CRLF
+    pub fn output(self) -> String {
+        self.output_exact()
+            .trim()
+            .trim_matches(|ch| ch == '\r' || ch == '\n')
+            .to_string()
+    }
+
+    /// Gets the captured output of stdout as a collection of lines.
+    /// Each line is trimmed of whitespace and CRLF.
+    pub fn output_lines(self) -> Vec<String> {
+        self.output_exact()
+            .trim_matches(|ch| ch == '\r' || ch == '\n')
+            .split("\r\n")
+            .map(|x| x.trim().to_string())
+            .collect()
+    }
+
+    /// Gets the captures output of stdout as a collection of lines.
+    /// Lines are not trimmed.
+    pub fn output_lines_exact(self) -> Vec<String> {
+        self.output_exact()
+            .split("\r\n")
+            .map(|x| x.to_string())
+            .collect()
+    }
 }
 
 impl Printer for MockStdlib {
-    fn print(&mut self, s: String) -> std::io::Result<usize> {
-        print!("{}", s);
-        if self.saw_new_line {
-            self.output.push(if s == "\r\n" {
-                "".to_string()
-            } else {
-                s.clone()
-            });
-        } else if s != "\r\n" {
-            self.output.last_mut().unwrap().push_str(s.as_str());
-        }
-        self.saw_new_line = s == "\r\n";
-        Ok(s.len())
+    fn print(&mut self, s: &str) -> std::io::Result<usize> {
+        self.stdout.print(s)
     }
 
-    fn get_last_print_col(&self) -> usize {
-        self.last_print_col
+    fn println(&mut self) -> std::io::Result<usize> {
+        self.stdout.println()
     }
 
-    fn set_last_print_col(&mut self, col: usize) {
-        self.last_print_col = col;
+    fn move_to_next_print_zone(&mut self) -> std::io::Result<usize> {
+        self.stdout.move_to_next_print_zone()
     }
 }
 
@@ -167,17 +185,27 @@ macro_rules! assert_err {
 }
 
 #[macro_export]
-macro_rules! assert_prints {
-    ($program:expr; nothing) => {
+macro_rules! assert_prints_nothing {
+    ($program:expr) => {
         let interpreter = crate::interpreter::test_utils::interpret($program);
-        assert_eq!(interpreter.stdlib.output, Vec::<String>::new());
+        assert_eq!(interpreter.stdlib.output_exact(), "");
     };
+}
+
+#[macro_export]
+macro_rules! assert_prints {
     ($program:expr, $($x:expr),+) => (
         let interpreter = crate::interpreter::test_utils::interpret($program);
-        assert_eq!(interpreter.stdlib.output, vec![$($x),+]);
+        assert_eq!(interpreter.stdlib.output_lines(), vec![$($x),+]);
     );
-    //($program:expr, $($x:expr,)*) => ($crate::assert_prints![$program, $($x),*])
+}
 
+#[macro_export]
+macro_rules! assert_prints_exact {
+    ($program:expr, $($x:expr),+) => (
+        let interpreter = crate::interpreter::test_utils::interpret($program);
+        assert_eq!(interpreter.stdlib.output_lines_exact(), vec![$($x),+]);
+    );
 }
 
 #[macro_export]

@@ -1,7 +1,48 @@
 use crate::common::{FileHandle, QError};
 use crate::instruction_generator::print::{FLAG_COMMA, FLAG_EXPRESSION, FLAG_SEMICOLON};
-use crate::interpreter::{Interpreter, PrintVal, Stdlib};
+use crate::interpreter::printer::Printer;
+use crate::interpreter::{Interpreter, Stdlib};
+use crate::variant::Variant;
 use std::convert::{TryFrom, TryInto};
+use std::fmt::Display;
+
+enum PrintVal {
+    Comma,
+    Semicolon,
+    NewLine,
+    Value(Variant),
+}
+
+fn print_number<T: Printer, V: Display>(
+    printer: &mut T,
+    number: V,
+    leading_space: bool,
+) -> std::io::Result<usize> {
+    let s: String = if leading_space {
+        format!(" {} ", number)
+    } else {
+        format!("{} ", number)
+    };
+    printer.print(s.as_str())
+}
+
+impl PrintVal {
+    fn print<T: Printer>(&self, printer: &mut T) -> std::io::Result<usize> {
+        match self {
+            Self::Comma => printer.move_to_next_print_zone(),
+            Self::Semicolon => Ok(0),
+            Self::NewLine => printer.println(),
+            Self::Value(v) => match v {
+                Variant::VSingle(f) => print_number(printer, f, *f >= 0.0),
+                Variant::VDouble(d) => print_number(printer, d, *d >= 0.0),
+                Variant::VString(s) => printer.print(s),
+                Variant::VInteger(i) => print_number(printer, i, *i >= 0),
+                Variant::VLong(l) => print_number(printer, l, *l >= 0),
+                _ => panic!("Cannot print user defined type, linter should have caught this"),
+            },
+        }
+    }
+}
 
 pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
     let mut idx: usize = 0;
@@ -104,7 +145,7 @@ mod tests {
                 Test = N + 1
             END FUNCTION
             "#;
-        assert_prints!(input, "Hello         2");
+        assert_prints!(input, "Hello          2");
     }
 
     #[test]
@@ -150,9 +191,9 @@ mod tests {
         "#;
         assert_prints!(
             input,
-            "1             2              3",
-            " 1             2              3",
-            "-1            -2             -3"
+            "1             2             3",
+            " 1             2             3",
+            "-1            -2            -3"
         );
     }
 }

@@ -1,14 +1,18 @@
 use crate::common::*;
 use crate::instruction_generator::generate_instructions;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
+use crate::interpreter::input_source::{InputSource, ReadInputSource};
 use crate::interpreter::printer::{Printer, WritePrinter};
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::linter;
 use crate::linter::DimName;
 use crate::parser::parse_main_file;
 use crate::variant::Variant;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::Read;
+use std::rc::Rc;
 
 pub fn interpret<T>(input: T) -> Interpreter<MockStdlib>
 where
@@ -65,16 +69,35 @@ where
 }
 
 pub struct MockStdlib {
-    next_input: Vec<String>,
+    input: Rc<RefCell<Vec<u8>>>,
+    stdin: ReadInputSource<MockStdin>,
     stdout: WritePrinter<Vec<u8>>,
     pub lpt1output: Vec<String>,
     pub env: HashMap<String, String>,
 }
 
+struct MockStdin {
+    stdin: Rc<RefCell<Vec<u8>>>,
+}
+
+impl Read for MockStdin {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let mut x: RefMut<_> = self.stdin.as_ref().borrow_mut();
+        let mut n: usize = 0;
+        while !x.is_empty() && n < buf.len() {
+            buf[n] = x.remove(0);
+            n += 1;
+        }
+        Ok(n)
+    }
+}
+
 impl MockStdlib {
     pub fn new() -> MockStdlib {
+        let input: Rc<RefCell<Vec<u8>>> = Rc::new(RefCell::new(vec![]));
         MockStdlib {
-            next_input: vec![],
+            input: Rc::clone(&input),
+            stdin: ReadInputSource::new(MockStdin { stdin: input }),
             stdout: WritePrinter::new(vec![]),
             lpt1output: vec![],
             env: HashMap::new(),
@@ -82,7 +105,10 @@ impl MockStdlib {
     }
 
     pub fn add_next_input<S: AsRef<str>>(&mut self, value: S) {
-        self.next_input.push(value.as_ref().to_string())
+        self.input
+            .as_ref()
+            .borrow_mut()
+            .extend_from_slice(value.as_ref().as_bytes());
     }
 
     /// Gets the captured output of stdout as-is, without trimming or removing CRLF
@@ -133,13 +159,23 @@ impl Printer for MockStdlib {
     }
 }
 
-impl Stdlib for MockStdlib {
-    fn system(&self) {
-        println!("would have exited")
+impl InputSource for MockStdlib {
+    fn eof(&mut self) -> std::io::Result<bool> {
+        self.stdin.eof()
     }
 
     fn input(&mut self) -> std::io::Result<String> {
-        Ok(self.next_input.remove(0))
+        self.stdin.input()
+    }
+
+    fn line_input(&mut self) -> std::io::Result<String> {
+        self.stdin.line_input()
+    }
+}
+
+impl Stdlib for MockStdlib {
+    fn system(&self) {
+        println!("would have exited")
     }
 
     fn get_env_var(&self, name: &String) -> String {

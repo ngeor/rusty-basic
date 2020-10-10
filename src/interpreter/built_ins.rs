@@ -238,6 +238,7 @@ mod environ_sub {
 mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
+    use crate::interpreter::input_source::InputSource;
 
     pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
         let file_handle: FileHandle = interpreter.context().get(0).unwrap().try_into()?;
@@ -395,20 +396,41 @@ mod input {
             use super::*;
 
             #[test]
-            fn test_input_hello() {
+            fn test_input_one_variable_hello_no_cr_lf() {
                 let mut stdlib = MockStdlib::new();
                 stdlib.add_next_input("hello");
                 let input = r#"
                 INPUT A$
-                PRINT A$
+                PRINT A$ + "."
                 "#;
                 let interpreter = interpret_with_stdlib(input, stdlib);
-                assert_eq!(interpreter.stdlib.output(), "hello");
+                assert_eq!(interpreter.stdlib.output(), "hello.");
             }
 
             #[test]
-            fn test_input_does_not_trim_new_line() {
-                assert_input("hello\r\n", "A$", "A$", "hello\r\n");
+            fn test_input_one_variable_hello_cr_lf() {
+                let mut stdlib = MockStdlib::new();
+                stdlib.add_next_input("hello\r\n");
+                let input = r#"
+                INPUT A$
+                PRINT A$ + "."
+                "#;
+                let interpreter = interpret_with_stdlib(input, stdlib);
+                assert_eq!(interpreter.stdlib.output_exact(), "hello.\r\n");
+            }
+
+            #[test]
+            fn test_input_two_variables_hello_world_comma_no_cr_lf() {
+                let mut stdlib = MockStdlib::new();
+                stdlib.add_next_input("hello, world");
+                let input = r#"
+                INPUT A$
+                PRINT A$ + "."
+                INPUT A$
+                PRINT A$ + "."
+                "#;
+                let interpreter = interpret_with_stdlib(input, stdlib);
+                assert_eq!(interpreter.stdlib.output_exact(), "hello.\r\nworld.\r\n");
             }
         }
 
@@ -449,8 +471,7 @@ mod input {
             PRINT X.Suit
             ";
             let mut stdlib = MockStdlib::new();
-            stdlib.add_next_input("2");
-            stdlib.add_next_input("diamonds are forever");
+            stdlib.add_next_input("2, diamonds are forever");
             let interpreter = interpret_with_stdlib(input, stdlib);
             assert_eq!(interpreter.stdlib.output_exact(), " 2 \r\ndiamonds \r\n");
         }

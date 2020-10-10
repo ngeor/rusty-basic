@@ -1,17 +1,13 @@
-use crate::interpreter::io::read_until_comma_or_eol;
+use crate::interpreter::input_source::{InputSource, ReadInputSource};
 use crate::interpreter::printer::{Printer, WritePrinter};
-use std::io::Stdout;
+use std::io::{Stdin, Stdout};
 
 // TODO trait Reader like Printer read_until_comma read_until_eol
 
 /// The standard functions that QBasic offers
-pub trait Stdlib: Printer {
+pub trait Stdlib: InputSource + Printer {
     /// Implementation of SYSTEM
     fn system(&self);
-
-    /// Implementation of INPUT
-    /// Mutable because of the test implementation
-    fn input(&mut self) -> std::io::Result<String>;
 
     /// Gets an environment variable (used by built-in function ENVIRON$)
     fn get_env_var(&self, name: &String) -> String;
@@ -22,14 +18,14 @@ pub trait Stdlib: Printer {
 
 // TODO DefaultStdlib<W: Write, R: Read>
 pub struct DefaultStdlib {
-    stdin_buffer: String,
+    stdin: ReadInputSource<Stdin>,
     stdout: WritePrinter<Stdout>,
 }
 
 impl DefaultStdlib {
     pub fn new() -> Self {
         Self {
-            stdin_buffer: String::new(),
+            stdin: ReadInputSource::new(std::io::stdin()),
             stdout: WritePrinter::new(std::io::stdout()),
         }
     }
@@ -49,13 +45,23 @@ impl Printer for DefaultStdlib {
     }
 }
 
-impl Stdlib for DefaultStdlib {
-    fn system(&self) {
-        std::process::exit(0)
+impl InputSource for DefaultStdlib {
+    fn eof(&mut self) -> std::io::Result<bool> {
+        self.stdin.eof()
     }
 
     fn input(&mut self) -> std::io::Result<String> {
-        read_until_comma_or_eol(&mut std::io::stdin().lock(), &mut self.stdin_buffer)
+        self.stdin.input()
+    }
+
+    fn line_input(&mut self) -> std::io::Result<String> {
+        self.stdin.line_input()
+    }
+}
+
+impl Stdlib for DefaultStdlib {
+    fn system(&self) {
+        std::process::exit(0)
     }
 
     fn get_env_var(&self, name: &String) -> String {

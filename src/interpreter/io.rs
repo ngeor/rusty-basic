@@ -1,55 +1,16 @@
 use crate::common::{FileAccess, FileHandle, FileMode, QError};
-use crate::interpreter::input_source::InputSource;
+use crate::interpreter::input_source::ReadInputSource;
 use crate::interpreter::printer::WritePrinter;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Read};
+use std::io::BufReader;
 
 pub enum FileInfo {
     Input(FileInfoInput),
     Output(FileInfoOutput),
 }
 
-pub struct FileInfoInput {
-    buf_reader: BufReader<File>,
-    previous_buffer: String,
-}
-
-impl FileInfoInput {
-    pub fn new(file: File) -> Self {
-        Self {
-            buf_reader: BufReader::new(file),
-            previous_buffer: String::new(),
-        }
-    }
-
-    pub fn eof(&mut self) -> Result<bool, QError> {
-        if self.previous_buffer.is_empty() {
-            let buf = self.buf_reader.fill_buf()?;
-            let len = buf.len();
-            Ok(len == 0)
-        } else {
-            Ok(false)
-        }
-    }
-}
-
-// TODO same implementation for stdio
-// TODO for MockStdlib only the stdio source should be overriden
-impl InputSource for FileInfoInput {
-    fn input(&mut self) -> std::io::Result<String> {
-        read_until_comma_or_eol(&mut self.buf_reader, &mut self.previous_buffer)
-    }
-
-    fn line_input(&mut self) -> std::io::Result<String> {
-        let mut buf = String::new();
-        self.buf_reader.read_line(&mut buf)?;
-        let cr_lf: &[_] = &['\r', '\n'];
-        buf = buf.trim_end_matches(cr_lf).to_string();
-        Ok(buf)
-    }
-}
-
+pub type FileInfoInput = ReadInputSource<BufReader<File>>;
 pub type FileInfoOutput = WritePrinter<File>;
 
 pub struct FileManager {
@@ -85,8 +46,10 @@ impl FileManager {
         match file_mode {
             FileMode::Input => {
                 let file = File::open(file_name)?;
-                self.handle_map
-                    .insert(handle, FileInfo::Input(FileInfoInput::new(file)));
+                self.handle_map.insert(
+                    handle,
+                    FileInfo::Input(FileInfoInput::new(BufReader::new(file))),
+                );
             }
             FileMode::Output => {
                 let file = File::create(file_name)?;
@@ -133,61 +96,4 @@ impl FileManager {
             Err(err) => Err(err),
         }
     }
-}
-
-struct StringRefReader<'a> {
-    buf: &'a mut String,
-}
-
-impl<'a> Read for StringRefReader<'a> {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let mut i: usize = 0;
-        while i < buf.len() && !self.buf.is_empty() {
-            buf[i] = self.buf.remove(0) as u8;
-            i += 1;
-        }
-        Ok(i)
-    }
-}
-
-impl<'a> BufRead for StringRefReader<'a> {
-    fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
-        Ok(self.buf.as_bytes())
-    }
-
-    fn consume(&mut self, amt: usize) {
-        for _i in 0..amt {
-            self.buf.remove(0);
-        }
-    }
-}
-
-pub fn read_until_comma_or_eol<T: BufRead>(
-    buf_read: &mut T,
-    previous_buffer: &mut String,
-) -> std::io::Result<String> {
-    // create a temporary reader that reads first from previous_buffer and then from buf_read if needed
-    let str_ref_reader = StringRefReader {
-        buf: previous_buffer,
-    };
-    let mut chain = str_ref_reader.chain(buf_read);
-
-    let mut buf: String = String::new();
-    let bytes_read = chain.read_line(&mut buf)?;
-    let mut remainder: String = String::new();
-    if bytes_read == 0 {
-        // EOF
-    } else {
-        match buf.find(',') {
-            Some(comma_pos) => {
-                remainder = buf.split_off(comma_pos);
-                remainder = remainder.split_off(1);
-            }
-            None => {}
-        }
-    }
-
-    buf = buf.trim().to_string();
-    previous_buffer.insert_str(0, remainder.as_str());
-    Ok(buf)
 }

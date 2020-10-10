@@ -72,7 +72,7 @@ pub struct MockStdlib {
     input: Rc<RefCell<Vec<u8>>>,
     stdin: ReadInputSource<MockStdin>,
     stdout: WritePrinter<Vec<u8>>,
-    pub lpt1output: Vec<String>,
+    lpt1: WritePrinter<Vec<u8>>,
     pub env: HashMap<String, String>,
 }
 
@@ -99,7 +99,7 @@ impl MockStdlib {
             input: Rc::clone(&input),
             stdin: ReadInputSource::new(MockStdin { stdin: input }),
             stdout: WritePrinter::new(vec![]),
-            lpt1output: vec![],
+            lpt1: WritePrinter::new(vec![]),
             env: HashMap::new(),
         }
     }
@@ -143,6 +143,19 @@ impl MockStdlib {
             .map(|x| x.to_string())
             .collect()
     }
+
+    /// Gets the captured output of lpt1 as-is, without trimming or removing CRLF
+    pub fn lpt1_output_exact(self) -> String {
+        let (bytes, _) = self.lpt1.into_inner();
+        String::from_utf8(bytes).unwrap()
+    }
+
+    pub fn lpt1_output_lines_exact(self) -> Vec<String> {
+        self.lpt1_output_exact()
+            .split("\r\n")
+            .map(|x| x.to_string())
+            .collect()
+    }
 }
 
 impl Printer for MockStdlib {
@@ -174,6 +187,8 @@ impl InputSource for MockStdlib {
 }
 
 impl Stdlib for MockStdlib {
+    type LPT1 = Vec<u8>;
+
     fn system(&self) {
         println!("would have exited")
     }
@@ -187,6 +202,10 @@ impl Stdlib for MockStdlib {
 
     fn set_env_var(&mut self, name: String, value: String) {
         self.env.insert(name, value);
+    }
+
+    fn lpt1(&mut self) -> &mut WritePrinter<Self::LPT1> {
+        &mut self.lpt1
     }
 }
 
@@ -245,15 +264,9 @@ macro_rules! assert_prints_exact {
 }
 
 #[macro_export]
-macro_rules! assert_lprints {
-    ($program:expr; nothing) => {
-        let interpreter = crate::interpreter::test_utils::interpret($program);
-        assert_eq!(interpreter.stdlib.lpt1output, Vec::<String>::new());
-    };
+macro_rules! assert_lprints_exact {
     ($program:expr, $($x:expr),+) => (
         let interpreter = crate::interpreter::test_utils::interpret($program);
-        assert_eq!(interpreter.stdlib.lpt1output, vec![$($x),+]);
+        assert_eq!(interpreter.stdlib.lpt1_output_lines_exact(), vec![$($x),+]);
     );
-    //($program:expr, $($x:expr,)*) => ($crate::assert_prints![$program, $($x),*])
-
 }

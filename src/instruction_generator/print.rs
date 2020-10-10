@@ -1,19 +1,102 @@
 use crate::built_ins::BuiltInSub;
-use crate::common::{AtLocation, FileHandle, Locatable, Location};
+use crate::common::{AtLocation, Locatable, Location, QError};
 use crate::instruction_generator::{Instruction, InstructionGenerator};
 use crate::linter::{PrintArg, PrintNode};
+use crate::variant::Variant;
+use std::convert::TryFrom;
 
-/// Indicates that the next argument in a PRINT call is an expression
-pub const FLAG_EXPRESSION: u8 = 0;
-/// Indicates a comma in a PRINT call
-pub const FLAG_COMMA: u8 = 1;
-/// Indicates a semicolon in a PRINT call
-pub const FLAG_SEMICOLON: u8 = 2;
+pub enum PrintHandle {
+    Print,
+    LPrint,
+    File,
+}
+
+impl From<PrintHandle> for u8 {
+    fn from(print_handle: PrintHandle) -> Self {
+        match print_handle {
+            PrintHandle::Print => 0,
+            PrintHandle::LPrint => 1,
+            PrintHandle::File => 2,
+        }
+    }
+}
+
+impl From<PrintHandle> for Variant {
+    fn from(print_handle: PrintHandle) -> Self {
+        Self::from(u8::from(print_handle))
+    }
+}
+
+impl TryFrom<u8> for PrintHandle {
+    type Error = QError;
+    fn try_from(encoded_print_handle: u8) -> Result<Self, Self::Error> {
+        if encoded_print_handle == Self::Print.into() {
+            Ok(Self::Print)
+        } else if encoded_print_handle == Self::LPrint.into() {
+            Ok(Self::LPrint)
+        } else if encoded_print_handle == Self::File.into() {
+            Ok(Self::File)
+        } else {
+            Err(QError::TypeMismatch)
+        }
+    }
+}
+
+impl TryFrom<&Variant> for PrintHandle {
+    type Error = QError;
+    fn try_from(encoded_print_handle: &Variant) -> Result<Self, Self::Error> {
+        u8::try_from(encoded_print_handle).and_then(|x| PrintHandle::try_from(x))
+    }
+}
+
+pub enum PrintArgType {
+    Expression,
+    Comma,
+    Semicolon,
+}
+
+impl From<PrintArgType> for u8 {
+    fn from(print_arg_type: PrintArgType) -> Self {
+        match print_arg_type {
+            PrintArgType::Expression => 0,
+            PrintArgType::Comma => 1,
+            PrintArgType::Semicolon => 2,
+        }
+    }
+}
+
+impl From<PrintArgType> for Variant {
+    fn from(print_arg_type: PrintArgType) -> Self {
+        Self::from(u8::from(print_arg_type))
+    }
+}
+
+impl TryFrom<u8> for PrintArgType {
+    type Error = QError;
+    fn try_from(encoded_print_arg_type: u8) -> Result<Self, Self::Error> {
+        if encoded_print_arg_type == Self::Expression.into() {
+            Ok(Self::Expression)
+        } else if encoded_print_arg_type == Self::Comma.into() {
+            Ok(Self::Comma)
+        } else if encoded_print_arg_type == Self::Semicolon.into() {
+            Ok(Self::Semicolon)
+        } else {
+            Err(QError::TypeMismatch)
+        }
+    }
+}
+
+impl TryFrom<&Variant> for PrintArgType {
+    type Error = QError;
+    fn try_from(encoded_print_arg_type: &Variant) -> Result<Self, Self::Error> {
+        u8::try_from(encoded_print_arg_type).and_then(|x| PrintArgType::try_from(x))
+    }
+}
 
 impl InstructionGenerator {
     pub fn generate_print_instructions(&mut self, print_node: PrintNode, pos: Location) {
         self.push(Instruction::BeginCollectArguments, pos);
-        self.generate_opt_file_handle_instructions(print_node.file_number, pos);
+        self.generate_opt_file_handle_instructions(&print_node, pos);
 
         for print_arg in print_node.args {
             self.generate_print_arg_instructions(print_arg, pos);
@@ -24,20 +107,23 @@ impl InstructionGenerator {
         self.push(Instruction::PopStack(None), pos);
     }
 
-    pub fn generate_opt_file_handle_instructions(
-        &mut self,
-        opt_file_handle: Option<FileHandle>,
-        pos: Location,
-    ) {
-        match opt_file_handle {
+    pub fn generate_opt_file_handle_instructions(&mut self, print_node: &PrintNode, pos: Location) {
+        match print_node.file_number {
             Some(f) => {
-                // first push true to indicate it has file handle
-                self.push_load_unnamed_arg(true, pos);
+                // first push to indicate it has file handle
+                self.push_load_unnamed_arg(PrintHandle::File, pos);
                 // then push the file handle itself
                 self.push_load_unnamed_arg(f, pos);
             }
             None => {
-                self.push_load_unnamed_arg(false, pos);
+                self.push_load_unnamed_arg(
+                    if print_node.lpt1 {
+                        PrintHandle::LPrint
+                    } else {
+                        PrintHandle::Print
+                    },
+                    pos,
+                );
             }
         }
     }
@@ -45,15 +131,15 @@ impl InstructionGenerator {
     fn generate_print_arg_instructions(&mut self, print_arg: PrintArg, pos: Location) {
         match print_arg {
             PrintArg::Expression(Locatable { element: arg, pos }) => {
-                self.push_load_unnamed_arg(FLAG_EXPRESSION, pos);
+                self.push_load_unnamed_arg(PrintArgType::Expression, pos);
                 self.generate_expression_instructions(arg.at(pos));
                 self.push(Instruction::PushUnnamed, pos);
             }
             PrintArg::Comma => {
-                self.push_load_unnamed_arg(FLAG_COMMA, pos);
+                self.push_load_unnamed_arg(PrintArgType::Comma, pos);
             }
             PrintArg::Semicolon => {
-                self.push_load_unnamed_arg(FLAG_SEMICOLON, pos);
+                self.push_load_unnamed_arg(PrintArgType::Semicolon, pos);
             }
         }
     }

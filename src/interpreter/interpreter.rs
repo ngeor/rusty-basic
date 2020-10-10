@@ -11,6 +11,7 @@ use crate::variant::Variant;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
+use std::io::Write;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -82,6 +83,18 @@ pub struct Interpreter<S: Stdlib> {
     stacktrace: Vec<Location>,
     pub file_manager: FileManager,
     pub user_defined_types: Rc<UserDefinedTypes>,
+}
+
+pub struct Lpt1Write {}
+
+impl Write for Lpt1Write {
+    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+        unimplemented!()
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        unimplemented!()
+    }
 }
 
 impl<TStdlib: Stdlib> Interpreter<TStdlib> {

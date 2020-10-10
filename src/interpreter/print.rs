@@ -1,5 +1,5 @@
 use crate::common::{FileHandle, QError};
-use crate::instruction_generator::print::{FLAG_COMMA, FLAG_EXPRESSION, FLAG_SEMICOLON};
+use crate::instruction_generator::print::{PrintArgType, PrintHandle};
 use crate::interpreter::printer::Printer;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::variant::Variant;
@@ -46,64 +46,70 @@ impl PrintVal {
 
 pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
     let mut idx: usize = 0;
-    let has_file = bool::try_from(interpreter.context().get(idx).unwrap())?;
+    let output_type: PrintHandle = interpreter.context().get(idx).unwrap().try_into()?;
     idx += 1;
 
-    let file_handle: FileHandle = if has_file {
+    let file_handle: FileHandle = if let PrintHandle::File = output_type {
         FileHandle::try_from(interpreter.context().get(idx).unwrap())?
     } else {
         FileHandle::default()
     };
 
-    if has_file {
+    if file_handle.is_valid() {
         idx += 2; // skip file + skip comma after file
     }
 
     let mut print_val: PrintVal = PrintVal::NewLine;
 
     while idx < interpreter.context().parameter_count() {
-        let v_type: u8 = interpreter.context().get(idx).unwrap().try_into()?;
+        let v_type: PrintArgType = interpreter.context().get(idx).unwrap().try_into()?;
         idx += 1;
 
-        print_val = if v_type == FLAG_EXPRESSION {
-            let v = interpreter.context().get(idx).unwrap();
-            idx += 1;
-            PrintVal::Value(v.clone())
-        } else if v_type == FLAG_COMMA {
-            PrintVal::Comma
-        } else if v_type == FLAG_SEMICOLON {
-            PrintVal::Semicolon
-        } else {
-            panic!("Unexpected PrintArg {}", v_type);
+        print_val = match v_type {
+            PrintArgType::Expression => {
+                let v = interpreter.context().get(idx).unwrap();
+                idx += 1;
+                PrintVal::Value(v.clone())
+            }
+            PrintArgType::Comma => PrintVal::Comma,
+            PrintArgType::Semicolon => PrintVal::Semicolon,
         };
 
-        if file_handle.is_valid() {
-            print_val.print(
-                interpreter
-                    .file_manager
-                    .try_get_file_info_output_mut(&file_handle)
-                    .unwrap(),
-            )?;
-        } else {
-            print_val.print(&mut interpreter.stdlib)?;
-        }
-    }
-
-    // print new line?
-    match print_val {
-        PrintVal::NewLine | PrintVal::Value(_) => {
-            print_val = PrintVal::NewLine;
-            if file_handle.is_valid() {
+        match output_type {
+            PrintHandle::File => {
                 print_val.print(
                     interpreter
                         .file_manager
                         .try_get_file_info_output_mut(&file_handle)
                         .unwrap(),
                 )?;
-            } else {
+            }
+            PrintHandle::LPrint => {
+                print_val.print(interpreter.stdlib.lpt1())?;
+            }
+            PrintHandle::Print => {
                 print_val.print(&mut interpreter.stdlib)?;
             }
         }
+    }
+
+    // print new line?
+    match print_val {
+        PrintVal::NewLine | PrintVal::Value(_) => match output_type {
+            PrintHandle::File => {
+                interpreter
+                    .file_manager
+                    .try_get_file_info_output_mut(&file_handle)
+                    .unwrap()
+                    .println()?;
+            }
+            PrintHandle::LPrint => {
+                interpreter.stdlib.lpt1().println()?;
+            }
+            PrintHandle::Print => {
+                interpreter.stdlib.println()?;
+            }
+        },
         _ => {}
     }
     Ok(())
@@ -111,8 +117,9 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_lprints;
+    use crate::assert_lprints_exact;
     use crate::assert_prints;
+    use crate::assert_prints_exact;
 
     #[test]
     fn test_print_no_args() {
@@ -174,12 +181,12 @@ mod tests {
 
     #[test]
     fn test_lprint() {
-        assert_lprints!("LPRINT 42", "42");
+        assert_lprints_exact!("LPRINT 42", " 42 ", "");
     }
 
     #[test]
     fn test_lprint_using() {
-        assert_lprints!("LPRINT USING \"#.###\"; 3.14", "3.140");
+        assert_lprints_exact!("LPRINT USING \"#.###\"; 3.14", " 3.140 ", "");
     }
 
     #[test]
@@ -189,11 +196,12 @@ mod tests {
         PRINT 1, 2, 3
         PRINT -1, -2, -3
         "#;
-        assert_prints!(
+        assert_prints_exact!(
             input,
             "1             2             3",
-            " 1             2             3",
-            "-1            -2            -3"
+            " 1             2             3 ",
+            "-1            -2            -3 ",
+            ""
         );
     }
 }

@@ -59,6 +59,9 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
         idx += 1; // skip file
     }
 
+    let format_string: &String = interpreter.context().get(idx).unwrap().try_into()?;
+    idx += 1;
+
     let mut print_val: PrintVal = PrintVal::NewLine;
 
     while idx < interpreter.context().parameter_count() {
@@ -176,7 +179,37 @@ mod tests {
 
     #[test]
     fn test_print_using() {
-        assert_prints!("PRINT USING \"#.###\"; 3.14", "3.140");
+        assert_prints_exact!("PRINT USING \"#.###\"; 3.14", "3.140", "");
+    }
+
+    #[test]
+    fn test_print_using_one_placeholder_two_variables() {
+        assert_prints_exact!("PRINT USING \"####.##\"; 42; 3.147", "  42.00   3.15");
+    }
+
+    #[test]
+    fn test_print_using_two_placeholders_two_variables() {
+        assert_prints_exact!(
+            "PRINT USING \"Income: ####.## Expense: ####.##\"; 42; 3.144",
+            "Income:   42.00 Expense:    3.14"
+        );
+    }
+
+    #[test]
+    fn test_print_using_two_placeholders_one_variable() {
+        assert_prints_exact!(
+            "PRINT USING \"Income: ####.## Expense: ####.## omitted\"; 42",
+            "Income:   42.00 Expense: "
+        );
+    }
+
+    #[test]
+    fn test_print_using_two_placeholders_three_variables() {
+        assert_prints_exact!(
+            "PRINT USING \"A: # B: # C\"; 1; 2; 3",
+            "A: 1 B: 2 CA: 3 B: ",
+            ""
+        );
     }
 
     #[test]
@@ -186,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_lprint_using() {
-        assert_lprints_exact!("LPRINT USING \"#.###\"; 3.14", " 3.140 ", "");
+        assert_lprints_exact!("LPRINT USING \"#.###\"; 3.14", "3.140", "");
     }
 
     #[test]

@@ -97,7 +97,7 @@ impl InstructionGenerator {
     pub fn generate_print_instructions(&mut self, print_node: PrintNode, pos: Location) {
         self.push(Instruction::BeginCollectArguments, pos);
         self.generate_opt_file_handle_instructions(&print_node, pos);
-
+        self.generate_opt_format_string_instructions(&print_node, pos);
         for print_arg in print_node.args {
             self.generate_print_arg_instructions(print_arg, pos);
         }
@@ -107,7 +107,7 @@ impl InstructionGenerator {
         self.push(Instruction::PopStack(None), pos);
     }
 
-    pub fn generate_opt_file_handle_instructions(&mut self, print_node: &PrintNode, pos: Location) {
+    fn generate_opt_file_handle_instructions(&mut self, print_node: &PrintNode, pos: Location) {
         match print_node.file_number {
             Some(f) => {
                 // first push to indicate it has file handle
@@ -124,6 +124,18 @@ impl InstructionGenerator {
                     },
                     pos,
                 );
+            }
+        }
+    }
+
+    fn generate_opt_format_string_instructions(&mut self, print_node: &PrintNode, pos: Location) {
+        match &print_node.format_string {
+            Some(format_string) => {
+                self.generate_expression_instructions(format_string.clone());
+                self.push(Instruction::PushUnnamed, pos);
+            }
+            None => {
+                self.push_load_unnamed_arg("", pos);
             }
         }
     }

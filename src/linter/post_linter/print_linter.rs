@@ -2,29 +2,23 @@ use super::post_conversion_linter::PostConversionLinter;
 use crate::common::{QError, QErrorNode, ToLocatableError};
 use crate::linter::types::{ExpressionType, HasExpressionType};
 use crate::linter::{PrintArg, PrintNode};
+use crate::parser::TypeQualifier;
 
 pub struct PrintLinter;
 
 impl PostConversionLinter for PrintLinter {
     fn visit_print_node(&self, print_node: &PrintNode) -> Result<(), QErrorNode> {
-        match &print_node.format_string {
-            Some(f) => self.visit_expression(f)?,
-            None => {}
-        };
+        if let Some(f) = &print_node.format_string {
+            if f.expression_type() != ExpressionType::BuiltIn(TypeQualifier::DollarString) {
+                return Err(QError::TypeMismatch).with_err_at(f);
+            }
+        }
         for print_arg in &print_node.args {
-            match print_arg {
-                PrintArg::Expression(expr_node) => {
-                    let type_definition = expr_node.expression_type();
-                    match type_definition {
-                        ExpressionType::UserDefined(_) => {
-                            return Err(QError::TypeMismatch).with_err_at(expr_node);
-                        }
-                        _ => {}
-                    }
-
-                    self.visit_expression(expr_node)?;
+            if let PrintArg::Expression(expr_node) = print_arg {
+                let type_definition = expr_node.expression_type();
+                if let ExpressionType::UserDefined(_) = type_definition {
+                    return Err(QError::TypeMismatch).with_err_at(expr_node);
                 }
-                _ => {}
             }
         }
         Ok(())

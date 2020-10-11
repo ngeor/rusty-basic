@@ -256,7 +256,7 @@ mod close {
 mod input {
     use super::*;
     use crate::built_ins::BuiltInSub;
-    use crate::parser::pc::combine::combine_any;
+    use crate::parser::pc::combine::combine_if_first_ok;
 
     pub fn parse_input<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
@@ -270,7 +270,7 @@ mod input {
         map(
             seq3(
                 keyword(Keyword::Input),
-                combine_any(parse_file_number(), parse_first_arg_after_file_number),
+                combine_if_first_ok(parse_file_number(), parse_first_arg_after_file_number),
                 many(drop_left(seq2(
                     ws::zero_or_more_around(read(',')),
                     expression::demand_expression_node(),
@@ -387,7 +387,7 @@ mod input {
 mod line_input {
     use super::*;
     use crate::built_ins::BuiltInSub;
-    use crate::parser::pc::combine::combine_any;
+    use crate::parser::pc::combine::combine_if_first_ok;
     use crate::parser::pc::map::and_then;
 
     pub fn parse_line_input<T: BufRead + 'static>(
@@ -397,7 +397,7 @@ mod line_input {
                 keyword(Keyword::Line),
                 ws::one_or_more_leading(keyword(Keyword::Input)),
                 demand(
-                    combine_any(parse_file_number(), parse_first_arg_after_file_number),
+                    combine_if_first_ok(parse_file_number(), parse_first_arg_after_file_number),
                     QError::syntax_error_fn("Expected: #file-number or variable"),
                 ),
             ),
@@ -795,121 +795,148 @@ mod open {
 
 mod print {
     use super::*;
-    use crate::parser::pc::combine::{combine_any3, switch};
-    use crate::parser::pc::map::and_then;
+    use crate::parser::pc::combine::{combine_if_first_ok, switch};
+    use crate::parser::pc::map::opt_map;
 
-    // PRINT <ws+> #1 <ws*> , <ws*> print-arg ( [ ; | , ] print-arg )*
-    // print-arg := expression | nothing
-    //
-    // PRINT(1) PRINT guarded-expression
-    // PRINT<ws+>
-    // PRINT [#1,] USING format-string;
     pub fn parse_print<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-        and_then(
-            opt_seq3(
-                keyword(Keyword::Print),
-                parse_file_number(),
-                many(parse_print_arg()),
-            ),
-            |(_, opt_loc_file_number, print_args)| {
-                Ok(Statement::Print(PrintNode {
-                    file_number: opt_loc_file_number.map(|Locatable { element, .. }| element),
-                    lpt1: false,
-                    format_string: None,
-                    args: print_args.unwrap_or_default(),
-                }))
-            },
-        )
+        parse_print_or_lprint(false)
     }
 
     pub fn parse_lprint<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-        and_then(
-            // TODO something like combine_anyX_if_first
+        parse_print_or_lprint(true)
+    }
+
+    fn parse_print_or_lprint<T: BufRead + 'static>(
+        lpt1: bool,
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+        map(
             opt_seq2(
-                keyword(Keyword::LPrint),
+                keyword(if lpt1 {
+                    Keyword::LPrint
+                } else {
+                    Keyword::Print
+                }),
                 switch(
-                    combine_any3(|r| Ok((r, None)), parse_using, parse_first_print_arg),
+                    print_file_number_and_format_string_and_first_arg(lpt1),
                     parse_remaining_print_args,
                 ),
             ),
-            |(_, o)| match o {
-                Some((format_string, args)) => Ok(Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: true,
-                    format_string,
-                    args,
-                })),
-                None => Ok(Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: true,
-                    format_string: None,
-                    args: vec![],
-                })),
-            },
+            move |(_, o)| map_print_result(lpt1, o),
         )
-
-        /*
-        combine4_if_first(
-            keyword(Keyword::LPrint),
-            |r| Ok((r, None)), // dummy file number for LPRINT
-            parse_using,
-            parse_first_print_arg
-        ) -> (Keyword, Option, Option, Option)
-
-
-         */
     }
 
-    fn parse_remaining_print_args<T: BufRead + 'static>(
-        args: Option<(
+    fn map_print_result(
+        lpt1: bool,
+        o: Option<(
             Option<Locatable<FileHandle>>,
             Option<ExpressionNode>,
-            Option<PrintArg>,
+            Vec<PrintArg>,
         )>,
-    ) -> Box<
-        dyn Fn(
-            EolReader<T>,
-        )
-            -> ReaderResult<EolReader<T>, (Option<ExpressionNode>, Vec<PrintArg>), QError>,
-    > {
-        match args {
-            Some((_, opt_format_string, opt_first_arg)) => match &opt_first_arg {
-                Some(first_arg) => map(
-                    many_looking_back(Some(first_arg.clone()), parse_print_arg_looking_back),
-                    move |args| (opt_format_string.clone(), args),
-                ),
-                None => Box::new(move |r| Ok((r, Some((opt_format_string.clone(), vec![]))))),
-            },
-            None => Box::new(|r| Ok((r, None))),
+    ) -> Statement {
+        match o {
+            Some((file_number, format_string, args)) => Statement::Print(PrintNode {
+                file_number: file_number.map(|x| x.strip_location()),
+                lpt1,
+                format_string,
+                args,
+            }),
+            None => Statement::Print(PrintNode {
+                file_number: None,
+                lpt1,
+                format_string: None,
+                args: vec![],
+            }),
         }
     }
 
-    fn parse_print_arg_looking_back<T: BufRead + 'static>(
-        opt_prev_arg: Option<&PrintArg>,
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
-        match opt_prev_arg {
-            Some(prev_arg) => {
-                match prev_arg {
-                    PrintArg::Expression(_) => {
-                        // only comma or semicolon is allowed
-                        ws::zero_or_more_leading(or_vec(vec![
-                            map(read(';'), |_| PrintArg::Semicolon),
-                            map(read(','), |_| PrintArg::Comma),
-                        ]))
+    fn parse_remaining_print_args<T: BufRead + 'static>(
+        args: (
+            Option<Locatable<FileHandle>>,
+            Option<ExpressionNode>,
+            Option<PrintArg>,
+        ),
+    ) -> Box<
+        dyn Fn(
+            EolReader<T>,
+        ) -> ReaderResult<
+            EolReader<T>,
+            (
+                Option<Locatable<FileHandle>>,
+                Option<ExpressionNode>,
+                Vec<PrintArg>,
+            ),
+            QError,
+        >,
+    > {
+        let (opt_file_handle, opt_format_string, opt_first_arg) = args;
+        match opt_first_arg {
+            Some(first_arg) => map(
+                many_looking_back(Some(first_arg), parse_print_arg_looking_back),
+                move |args| (opt_file_handle.clone(), opt_format_string.clone(), args),
+            ),
+            None => Box::new(move |r| {
+                Ok((
+                    r,
+                    Some((opt_file_handle.clone(), opt_format_string.clone(), vec![])),
+                ))
+            }),
+        }
+    }
+
+    fn print_file_number_and_format_string_and_first_arg<T: BufRead + 'static>(
+        lpt1: bool,
+    ) -> Box<
+        dyn Fn(
+            EolReader<T>,
+        ) -> ReaderResult<
+            EolReader<T>,
+            (
+                Option<Locatable<FileHandle>>,
+                Option<ExpressionNode>,
+                Option<PrintArg>,
+            ),
+            QError,
+        >,
+    > {
+        opt_map(
+            combine_if_first_ok(
+                print_file_number_and_format_string(lpt1),
+                parse_first_print_arg,
+            ),
+            |(opt_file_number_and_format_string, opt_first_print_arg)| {
+                match opt_file_number_and_format_string {
+                    Some((opt_file_number, opt_format_string)) => {
+                        Some((opt_file_number, opt_format_string, opt_first_print_arg))
                     }
-                    _ => {
-                        // everything is allowed
-                        ws::zero_or_more_leading(or_vec(vec![
-                            map(read(';'), |_| PrintArg::Semicolon),
-                            map(read(','), |_| PrintArg::Comma),
-                            map(expression::expression_node(), |e| PrintArg::Expression(e)),
-                        ]))
+                    None => {
+                        if opt_first_print_arg.is_some() {
+                            Some((None, None, opt_first_print_arg))
+                        } else {
+                            None
+                        }
                     }
                 }
-            }
-            None => Box::new(|r| Ok((r, None))),
+            },
+        )
+    }
+
+    fn print_file_number_and_format_string<T: BufRead + 'static>(
+        lpt1: bool,
+    ) -> Box<
+        dyn Fn(
+            EolReader<T>,
+        ) -> ReaderResult<
+            EolReader<T>,
+            (Option<Locatable<FileHandle>>, Option<ExpressionNode>),
+            QError,
+        >,
+    > {
+        if lpt1 {
+            combine_if_first_ok(|r| Ok((r, None)), parse_using)
+        } else {
+            combine_if_first_ok(parse_file_number(), parse_using)
         }
     }
 
@@ -940,10 +967,12 @@ mod print {
     }
 
     fn parse_first_print_arg<T: BufRead + 'static>(
-        opt_file_handle: Option<&Locatable<FileHandle>>,
-        opt_format_string: Option<&ExpressionNode>,
+        opt_file_handle_and_format_string: Option<&(
+            Option<Locatable<FileHandle>>,
+            Option<ExpressionNode>,
+        )>,
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
-        if opt_file_handle.is_some() || opt_format_string.is_some() {
+        if opt_file_handle_and_format_string.is_some() {
             // we're either past PRINT #1, or PRINT [#1,]USING "x";
             // in any case, no need to demand whitespace
             ws::zero_or_more_leading(or_vec(vec![
@@ -963,16 +992,31 @@ mod print {
         }
     }
 
-    fn parse_print_arg<T: BufRead + 'static>(
+    fn parse_print_arg_looking_back<T: BufRead + 'static>(
+        opt_prev_arg: Option<&PrintArg>,
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
-        or_vec(vec![
-            map(ws::zero_or_more_leading(read(';')), |_| PrintArg::Semicolon),
-            map(ws::zero_or_more_leading(read(',')), |_| PrintArg::Comma),
-            map(
-                ws::zero_or_more_leading(expression::expression_node()),
-                |e| PrintArg::Expression(e),
-            ),
-        ])
+        match opt_prev_arg {
+            Some(prev_arg) => {
+                match prev_arg {
+                    PrintArg::Expression(_) => {
+                        // only comma or semicolon is allowed
+                        ws::zero_or_more_leading(or_vec(vec![
+                            map(read(';'), |_| PrintArg::Semicolon),
+                            map(read(','), |_| PrintArg::Comma),
+                        ]))
+                    }
+                    _ => {
+                        // everything is allowed
+                        ws::zero_or_more_leading(or_vec(vec![
+                            map(read(';'), |_| PrintArg::Semicolon),
+                            map(read(','), |_| PrintArg::Comma),
+                            map(expression::expression_node(), |e| PrintArg::Expression(e)),
+                        ]))
+                    }
+                }
+            }
+            None => Box::new(|r| Ok((r, None))),
+        }
     }
 
     #[cfg(test)]
@@ -1382,7 +1426,10 @@ mod print {
             let input = "LPRINT 1 2";
             assert_eq!(
                 parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("No separator: 2"), Location::new(1, 11))
+                QErrorNode::Pos(
+                    QError::syntax_error("No separator: 2"),
+                    Location::new(1, 11)
+                )
             );
         }
     }

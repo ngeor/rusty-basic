@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::combine::combine_some;
+use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
@@ -19,7 +19,7 @@ pub fn for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         seq3(
-            combine_some(parse_for(), parse_step),
+            combine_if_first_some(parse_for(), parse_step),
             statements::statements(
                 keyword(Keyword::Next),
                 QError::syntax_error_fn("Expected: STEP or end-of-statement"),

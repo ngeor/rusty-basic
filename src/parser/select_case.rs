@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::pc::combine::combine_some;
+use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
@@ -158,7 +158,7 @@ fn parse_case_is<T: BufRead + 'static>(
 fn parse_case_simple_or_range<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
     map(
-        combine_some(expression::guarded_expression_node(), parse_range),
+        combine_if_first_some(expression::guarded_expression_node(), parse_range),
         |(l, opt_r)| match opt_r {
             Some(r) => ExprOrElse::Expr(CaseExpression::Range(l, r)),
             _ => ExprOrElse::Expr(CaseExpression::Simple(l)),

@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
-use crate::parser::pc::combine::combine_some;
+use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
@@ -82,7 +82,7 @@ pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
 pub fn expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
-        combine_some(
+        combine_if_first_some(
             // left side
             single_expression_node(),
             // maybe right side

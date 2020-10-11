@@ -56,7 +56,7 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
     };
 
     if file_handle.is_valid() {
-        idx += 2; // skip file + skip comma after file
+        idx += 1; // skip file
     }
 
     let mut print_val: PrintVal = PrintVal::NewLine;

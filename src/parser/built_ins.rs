@@ -256,6 +256,7 @@ mod close {
 mod input {
     use super::*;
     use crate::built_ins::BuiltInSub;
+    use crate::parser::pc::combine::combine_any;
 
     pub fn parse_input<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
@@ -267,33 +268,27 @@ mod input {
     pub fn parse_input_args<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<ExpressionNode>, QError>> {
         map(
-            opt_seq3(
+            seq3(
                 keyword(Keyword::Input),
-                drop_right(seq2(
-                    with_pos(parse_file_number()),
-                    demand(
-                        ws::zero_or_more_leading(read(',')),
-                        QError::syntax_error_fn("Expected comma after file number"),
-                    ),
-                )),
-                demand(
-                    map_default_to_not_found(ws::one_or_more_leading(csv_zero_or_more(
-                        expression::expression_node(),
-                    ))),
-                    QError::syntax_error_fn("Expected: at least one variable"),
-                ),
+                combine_any(parse_file_number(), parse_first_arg_after_file_number),
+                many(drop_left(seq2(
+                    ws::zero_or_more_around(read(',')),
+                    expression::demand_expression_node(),
+                ))),
             ),
-            |(_, opt_file_number, opt_args)| {
+            |(_, (opt_loc_file_number, opt_first_variable), remaining_variables)| {
                 let mut args: Vec<ExpressionNode> = vec![];
-                if let Some(Locatable { element, pos }) = opt_file_number {
-                    args.push(Expression::IntegerLiteral(1.into()).at(pos));
+                if let Some(Locatable { element, pos }) = opt_loc_file_number {
+                    args.push(Expression::IntegerLiteral(1.into()).at(Location::start()));
                     args.push(Expression::IntegerLiteral(element.into()).at(pos));
                 } else {
                     args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
                 }
-                if let Some(a) = opt_args {
-                    args.extend(a);
+                if let Some(first_variable) = opt_first_variable {
+                    args.push(first_variable);
                 }
+                // TODO demand at least one variable
+                args.extend(remaining_variables);
                 args
             },
         )
@@ -355,6 +350,7 @@ mod input {
             assert_sub_call!(
                 result,
                 "INPUT",
+                Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::VariableName("A".into())
             );
@@ -362,24 +358,26 @@ mod input {
 
         #[test]
         fn test_file_hash_one_variable_no_comma() {
-            let input = "INPUT #1,A";
+            let input = "INPUT #2,A";
             let result = parse(input).demand_single_statement();
             assert_sub_call!(
                 result,
                 "INPUT",
-                Expression::IntegerLiteral(1), // file number
+                Expression::IntegerLiteral(1), // has file number
+                Expression::IntegerLiteral(2), // file number
                 Expression::VariableName("A".into())
             );
         }
 
         #[test]
         fn test_file_hash_one_variable_space_before_comma() {
-            let input = "INPUT #1 ,A";
+            let input = "INPUT #3 ,A";
             let result = parse(input).demand_single_statement();
             assert_sub_call!(
                 result,
                 "INPUT",
-                Expression::IntegerLiteral(1), // file number
+                Expression::IntegerLiteral(1), // has file number
+                Expression::IntegerLiteral(3), // file number
                 Expression::VariableName("A".into())
             );
         }
@@ -389,19 +387,37 @@ mod input {
 mod line_input {
     use super::*;
     use crate::built_ins::BuiltInSub;
+    use crate::parser::pc::combine::combine_any;
+    use crate::parser::pc::map::and_then;
 
     pub fn parse_line_input<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-        map(
-            crate::parser::pc::ws::seq2(
+        and_then(
+            seq3(
                 keyword(Keyword::Line),
+                ws::one_or_more_leading(keyword(Keyword::Input)),
                 demand(
-                    super::input::parse_input_args(),
-                    QError::syntax_error_fn("Expected: INPUT after LINE"),
+                    combine_any(parse_file_number(), parse_first_arg_after_file_number),
+                    QError::syntax_error_fn("Expected: #file-number or variable"),
                 ),
-                QError::syntax_error_fn("Expected: whitespace after LINE"),
             ),
-            |(_, r)| Statement::SubCall(BuiltInSub::LineInput.into(), r),
+            |(_, _, (opt_loc_file_handle, opt_variable))| {
+                let mut args: Vec<ExpressionNode> = vec![];
+                // add dummy arguments to encode the file number
+                if let Some(Locatable { element, pos }) = opt_loc_file_handle {
+                    args.push(Expression::IntegerLiteral(1.into()).at(Location::start()));
+                    args.push(Expression::IntegerLiteral(element.into()).at(pos));
+                } else {
+                    args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
+                }
+                // add the LINE INPUT variable
+                if let Some(variable) = opt_variable {
+                    args.push(variable);
+                    Ok(Statement::SubCall(BuiltInSub::LineInput.into(), args))
+                } else {
+                    Err(QError::syntax_error("Expected variable"))
+                }
+            },
         )
     }
 
@@ -426,14 +442,7 @@ mod line_input {
         #[test]
         fn test_parse_two_variables() {
             let input = "LINE INPUT A$, B";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
-                Expression::IntegerLiteral(0), // no file number
-                Expression::VariableName("A$".into()),
-                Expression::VariableName("B".into())
-            );
+            assert_eq!(parse_err(input), QError::syntax_error("No separator: ,"));
         }
 
         #[test]
@@ -441,7 +450,7 @@ mod line_input {
             let input = "LINE INPUT";
             assert_eq!(
                 parse_err(input),
-                QError::syntax_error("Expected: at least one variable")
+                QError::syntax_error("Expected: #file-number or variable")
             );
         }
 
@@ -450,7 +459,7 @@ mod line_input {
             let input = "LINE INPUT ";
             assert_eq!(
                 parse_err(input),
-                QError::syntax_error("Expected: at least one variable")
+                QError::syntax_error("Expected: #file-number or variable")
             );
         }
 
@@ -461,6 +470,7 @@ mod line_input {
             assert_sub_call!(
                 result,
                 "LINE INPUT",
+                Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::VariableName("A".into())
             );
@@ -468,12 +478,13 @@ mod line_input {
 
         #[test]
         fn test_file_hash_one_variable_no_comma() {
-            let input = "LINE INPUT #1,A";
+            let input = "LINE INPUT #2,A";
             let result = parse(input).demand_single_statement();
             assert_sub_call!(
                 result,
                 "LINE INPUT",
-                Expression::IntegerLiteral(1), // file number
+                Expression::IntegerLiteral(1), // has file number
+                Expression::IntegerLiteral(2), // file number
                 Expression::VariableName("A".into())
             );
         }
@@ -485,6 +496,7 @@ mod line_input {
             assert_sub_call!(
                 result,
                 "LINE INPUT",
+                Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::VariableName("A".into())
             );
@@ -783,8 +795,15 @@ mod open {
 
 mod print {
     use super::*;
+    use crate::parser::pc::combine::{combine_any3, switch};
     use crate::parser::pc::map::and_then;
 
+    // PRINT <ws+> #1 <ws*> , <ws*> print-arg ( [ ; | , ] print-arg )*
+    // print-arg := expression | nothing
+    //
+    // PRINT(1) PRINT guarded-expression
+    // PRINT<ws+>
+    // PRINT [#1,] USING format-string;
     pub fn parse_print<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         and_then(
@@ -793,9 +812,9 @@ mod print {
                 parse_file_number(),
                 many(parse_print_arg()),
             ),
-            |(_, file_number, print_args)| {
+            |(_, opt_loc_file_number, print_args)| {
                 Ok(Statement::Print(PrintNode {
-                    file_number,
+                    file_number: opt_loc_file_number.map(|Locatable { element, .. }| element),
                     lpt1: false,
                     format_string: None,
                     args: print_args.unwrap_or_default(),
@@ -807,16 +826,141 @@ mod print {
     pub fn parse_lprint<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         and_then(
-            opt_seq2(keyword(Keyword::LPrint), many(parse_print_arg())),
-            |(_, print_args)| {
-                Ok(Statement::Print(PrintNode {
+            // TODO something like combine_anyX_if_first
+            opt_seq2(
+                keyword(Keyword::LPrint),
+                switch(
+                    combine_any3(|r| Ok((r, None)), parse_using, parse_first_print_arg),
+                    parse_remaining_print_args,
+                ),
+            ),
+            |(_, o)| match o {
+                Some((format_string, args)) => Ok(Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: true,
+                    format_string,
+                    args,
+                })),
+                None => Ok(Statement::Print(PrintNode {
                     file_number: None,
                     lpt1: true,
                     format_string: None,
-                    args: print_args.unwrap_or_default(),
-                }))
+                    args: vec![],
+                })),
             },
         )
+
+        /*
+        combine4_if_first(
+            keyword(Keyword::LPrint),
+            |r| Ok((r, None)), // dummy file number for LPRINT
+            parse_using,
+            parse_first_print_arg
+        ) -> (Keyword, Option, Option, Option)
+
+
+         */
+    }
+
+    fn parse_remaining_print_args<T: BufRead + 'static>(
+        args: Option<(
+            Option<Locatable<FileHandle>>,
+            Option<ExpressionNode>,
+            Option<PrintArg>,
+        )>,
+    ) -> Box<
+        dyn Fn(
+            EolReader<T>,
+        )
+            -> ReaderResult<EolReader<T>, (Option<ExpressionNode>, Vec<PrintArg>), QError>,
+    > {
+        match args {
+            Some((_, opt_format_string, opt_first_arg)) => match &opt_first_arg {
+                Some(first_arg) => map(
+                    many_looking_back(Some(first_arg.clone()), parse_print_arg_looking_back),
+                    move |args| (opt_format_string.clone(), args),
+                ),
+                None => Box::new(move |r| Ok((r, Some((opt_format_string.clone(), vec![]))))),
+            },
+            None => Box::new(|r| Ok((r, None))),
+        }
+    }
+
+    fn parse_print_arg_looking_back<T: BufRead + 'static>(
+        opt_prev_arg: Option<&PrintArg>,
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
+        match opt_prev_arg {
+            Some(prev_arg) => {
+                match prev_arg {
+                    PrintArg::Expression(_) => {
+                        // only comma or semicolon is allowed
+                        ws::zero_or_more_leading(or_vec(vec![
+                            map(read(';'), |_| PrintArg::Semicolon),
+                            map(read(','), |_| PrintArg::Comma),
+                        ]))
+                    }
+                    _ => {
+                        // everything is allowed
+                        ws::zero_or_more_leading(or_vec(vec![
+                            map(read(';'), |_| PrintArg::Semicolon),
+                            map(read(','), |_| PrintArg::Comma),
+                            map(expression::expression_node(), |e| PrintArg::Expression(e)),
+                        ]))
+                    }
+                }
+            }
+            None => Box::new(|r| Ok((r, None))),
+        }
+    }
+
+    fn parse_using<T: BufRead + 'static>(
+        file_number: Option<&Locatable<FileHandle>>,
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+        if file_number.is_some() {
+            // we are past PRINT #1,  we don't need to demand space before USING
+            map(
+                seq3(
+                    ws::zero_or_more_leading(keyword(Keyword::Using)),
+                    expression::demand_guarded_expression_node(),
+                    demand(read(';'), QError::syntax_error_fn("Expected: ;")),
+                ),
+                |(_, expr, _)| expr,
+            )
+        } else {
+            // we are past PRINT, we need a whitespace
+            map(
+                seq3(
+                    ws::one_or_more_leading(keyword(Keyword::Using)),
+                    expression::demand_guarded_expression_node(),
+                    demand(read(';'), QError::syntax_error_fn("Expected: ;")),
+                ),
+                |(_, expr, _)| expr,
+            )
+        }
+    }
+
+    fn parse_first_print_arg<T: BufRead + 'static>(
+        opt_file_handle: Option<&Locatable<FileHandle>>,
+        opt_format_string: Option<&ExpressionNode>,
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
+        if opt_file_handle.is_some() || opt_format_string.is_some() {
+            // we're either past PRINT #1, or PRINT [#1,]USING "x";
+            // in any case, no need to demand whitespace
+            ws::zero_or_more_leading(or_vec(vec![
+                map(read(';'), |_| PrintArg::Semicolon),
+                map(read(','), |_| PrintArg::Comma),
+                map(expression::expression_node(), |e| PrintArg::Expression(e)),
+            ]))
+        } else {
+            // we're just past PRINT. No need for space for ; or , but we need it for expressions
+            or_vec(vec![
+                map(ws::zero_or_more_leading(read(';')), |_| PrintArg::Semicolon),
+                map(ws::zero_or_more_leading(read(',')), |_| PrintArg::Comma),
+                map(expression::guarded_expression_node(), |e| {
+                    PrintArg::Expression(e)
+                }),
+            ])
+        }
     }
 
     fn parse_print_arg<T: BufRead + 'static>(
@@ -1019,8 +1163,17 @@ mod print {
         }
 
         #[test]
-        fn test_print_file_no_args() {
+        fn test_print_file_no_args_no_comma() {
             let input = "PRINT #1";
+            assert_eq!(
+                parse_err_node(input),
+                QErrorNode::Pos(QError::syntax_error("Expected: ,"), Location::new(1, 9))
+            );
+        }
+
+        #[test]
+        fn test_print_file_no_args() {
+            let input = "PRINT #1,";
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
@@ -1043,7 +1196,7 @@ mod print {
                     file_number: Some(FileHandle::from(1)),
                     lpt1: false,
                     format_string: None,
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 11))]
                 })
             );
         }
@@ -1088,9 +1241,9 @@ mod print {
                     format_string: None,
                     args: vec![
                         PrintArg::Comma,
-                        PrintArg::Expression("A".as_var_expr(1, 11)),
+                        PrintArg::Expression("A".as_var_expr(1, 12)),
                         PrintArg::Comma,
-                        PrintArg::Expression("B".as_var_expr(1, 14))
+                        PrintArg::Expression("B".as_var_expr(1, 15))
                     ]
                 })
             );
@@ -1108,9 +1261,9 @@ mod print {
                     format_string: None,
                     args: vec![
                         PrintArg::Semicolon,
-                        PrintArg::Expression("A".as_var_expr(1, 11)),
+                        PrintArg::Expression("A".as_var_expr(1, 12)),
                         PrintArg::Comma,
-                        PrintArg::Expression("B".as_var_expr(1, 14))
+                        PrintArg::Expression("B".as_var_expr(1, 15))
                     ]
                 })
             );
@@ -1140,7 +1293,7 @@ mod print {
                 Statement::Print(PrintNode {
                     file_number: None,
                     lpt1: true,
-                    format_string: Some("#".as_lit_expr(1, 1)),
+                    format_string: Some("#".as_lit_expr(1, 14)),
                     args: vec![]
                 })
             );
@@ -1160,7 +1313,7 @@ mod print {
             let input = "LPRINT USING \"#\"";
             assert_eq!(
                 parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("Expected: ;"), Location::new(1, 7))
+                QErrorNode::Pos(QError::syntax_error("Expected: ;"), Location::new(1, 17))
             );
         }
 
@@ -1188,8 +1341,8 @@ mod print {
                 Statement::Print(PrintNode {
                     file_number: None,
                     lpt1: true,
-                    format_string: Some("#".as_lit_expr(1, 1)),
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                    format_string: Some("#".as_lit_expr(1, 14)),
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 19))]
                 })
             );
         }
@@ -1223,19 +1376,45 @@ mod print {
                 })
             );
         }
+
+        #[test]
+        fn test_lprint_no_comma_between_expressions_is_error() {
+            let input = "LPRINT 1 2";
+            assert_eq!(
+                parse_err_node(input),
+                QErrorNode::Pos(QError::syntax_error("No separator: 2"), Location::new(1, 11))
+            );
+        }
     }
 }
 
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
 fn file_handle_as_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    map(
-        with_pos(expression::file_handle()),
-        |Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos),
-    )
+    map(expression::file_handle(), |Locatable { element, pos }| {
+        Expression::IntegerLiteral(element.into()).at(pos)
+    })
 }
 
 fn parse_file_number<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileHandle, QError>> {
-    ws::one_or_more_leading(expression::file_handle())
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<FileHandle>, QError>> {
+    drop_right(seq2(
+        ws::one_or_more_leading(expression::file_handle()),
+        demand(
+            ws::zero_or_more_leading(read(',')),
+            QError::syntax_error_fn("Expected: ,"),
+        ),
+    ))
+}
+
+fn parse_first_arg_after_file_number<T: BufRead + 'static>(
+    file_handle: Option<&Locatable<FileHandle>>,
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    // if we're after a #1, we don't need to demand whitespace or parenthesis
+    // otherwise, we do (so we need a guarded expression)
+    if file_handle.is_some() {
+        ws::zero_or_more_leading(expression::expression_node())
+    } else {
+        expression::guarded_expression_node()
+    }
 }

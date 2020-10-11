@@ -18,6 +18,26 @@ pub fn demand_expression_node<T: BufRead + 'static>(
     )
 }
 
+pub fn demand_guarded_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    // ws* ( expr )
+    // ws+ expr
+    demand(
+        guarded_expression_node(),
+        QError::syntax_error_fn("Expected: expression"),
+    )
+}
+
+pub fn guarded_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    // ws* ( expr )
+    // ws+ expr
+    or(
+        guarded_parenthesis_expression_node(),
+        guarded_whitespace_expression_node(),
+    )
+}
+
 fn guarded_parenthesis_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     // ws* ( expr )
@@ -37,26 +57,6 @@ fn guarded_whitespace_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     // ws+ expr
     crate::parser::pc::ws::one_or_more_leading(expression_node())
-}
-
-pub fn guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // ws* ( expr )
-    // ws+ expr
-    or(
-        guarded_parenthesis_expression_node(),
-        guarded_whitespace_expression_node(),
-    )
-}
-
-pub fn demand_guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // ws* ( expr )
-    // ws+ expr
-    demand(
-        guarded_expression_node(),
-        QError::syntax_error_fn("Expected: expression"),
-    )
 }
 
 pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
@@ -154,19 +154,19 @@ pub fn unary_not<T: BufRead + 'static>(
 }
 
 pub fn file_handle<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, FileHandle, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<FileHandle>, QError>> {
     and_then(
         seq2(
-            read('#'),
+            with_pos(read('#')),
             demand(
                 any_digits(),
                 QError::syntax_error_fn("Expected: digits after #"),
             ),
         ),
-        |(_, digits)| match digits.parse::<u8>() {
+        |(Locatable { pos, .. }, digits)| match digits.parse::<u8>() {
             Ok(d) => {
                 if d > 0 {
-                    Ok(d.into())
+                    Ok(Locatable::new(d.into(), pos))
                 } else {
                     Err(QError::BadFileNameOrNumber)
                 }

@@ -1207,6 +1207,21 @@ mod open {
         }
 
         #[test]
+        fn test_can_write_file_append_mode() {
+            std::fs::remove_file("test_can_write_file_append_mode.TXT").unwrap_or(());
+            let input = r#"
+            OPEN "test_can_write_file_append_mode.TXT" FOR APPEND AS #1
+            PRINT #1, "Hello, world"
+            PRINT #1, "Hello, again"
+            CLOSE #1
+            "#;
+            interpret(input);
+            let read_result = std::fs::read_to_string("test_can_write_file_append_mode.TXT");
+            std::fs::remove_file("test_can_write_file_append_mode.TXT").unwrap_or(());
+            assert_eq!(read_result.unwrap(), "Hello, world\r\nHello, again\r\n");
+        }
+
+        #[test]
         fn test_open_bad_file_number_runtime_error() {
             let input = r#"
             A = 256

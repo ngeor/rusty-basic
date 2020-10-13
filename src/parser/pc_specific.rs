@@ -214,6 +214,9 @@ where
     ))
 }
 
+/// Parses opening and closing parenthesis around the given source.
+///
+/// Panics if the source returns `Ok(None)`.
 pub fn in_parenthesis<R, S, T>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, QError>>
 where
     R: Reader<Item = char, Err = QError> + 'static,

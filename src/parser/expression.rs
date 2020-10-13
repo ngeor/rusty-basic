@@ -30,11 +30,12 @@ pub fn demand_guarded_expression_node<T: BufRead + 'static>(
 
 pub fn guarded_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // ws* ( expr )
+    // the order is important because if there is whitespace we can pick up any expression
     // ws+ expr
+    // ws* ( expr )
     or(
-        guarded_parenthesis_expression_node(),
         guarded_whitespace_expression_node(),
+        guarded_parenthesis_expression_node(),
     )
 }
 
@@ -179,9 +180,10 @@ pub fn file_handle<T: BufRead + 'static>(
 pub fn parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
     map(
-        in_parenthesis(crate::parser::pc::ws::zero_or_more_around(lazy(
-            expression_node,
-        ))),
+        in_parenthesis(demand(
+            crate::parser::pc::ws::zero_or_more_around(lazy(expression_node)),
+            QError::syntax_error_fn("Expected: expression"),
+        )),
         |v| Expression::Parenthesis(Box::new(v)),
     )
 }

@@ -25,16 +25,28 @@ pub fn parse_built_in<T: BufRead + 'static>(
 mod close {
     use super::*;
     use crate::built_ins::BuiltInSub;
-    use crate::parser::pc::ws::one_or_more_leading;
 
     pub fn parse_close<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
         map(
             opt_seq2(
                 keyword(Keyword::Close),
-                one_or_more_leading(csv_zero_or_more(expression_or_file_handle())),
+                opt_seq2(
+                    first_expression_or_file_handle(),
+                    many(drop_left(seq2(
+                        ws::zero_or_more_around(read(',')),
+                        expression_or_file_handle(),
+                    ))),
+                ),
             ),
-            |(_, args)| Statement::SubCall(BuiltInSub::Close.into(), args.unwrap_or_default()),
+            |(_, opt_first_and_remaining)| {
+                let mut args: ExpressionNodes = vec![];
+                if let Some((first, opt_remaining)) = opt_first_and_remaining {
+                    args.push(first);
+                    args.extend(opt_remaining.unwrap_or_default());
+                }
+                Statement::SubCall(BuiltInSub::Close.into(), args)
+            },
         )
     }
 
@@ -43,6 +55,14 @@ mod close {
         or(
             file_handle_as_expression_node(),
             expression::expression_node(),
+        )
+    }
+
+    fn first_expression_or_file_handle<T: BufRead + 'static>(
+    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+        or(
+            ws::one_or_more_leading(file_handle_as_expression_node()),
+            expression::guarded_expression_node(),
         )
     }
 
@@ -116,10 +136,7 @@ mod close {
             let input = "CLOSE#1";
             assert_eq!(
                 parse_err_node(input),
-                QErrorNode::Pos(
-                    QError::syntax_error("Expected: file-number or end-of-statement"),
-                    Location::new(1, 6)
-                )
+                QErrorNode::Pos(QError::syntax_error("No separator: #"), Location::new(1, 7))
             );
         }
 
@@ -257,6 +274,7 @@ mod input {
     use super::*;
     use crate::built_ins::BuiltInSub;
     use crate::parser::pc::combine::combine_if_first_ok;
+    use crate::parser::pc::map::and_then;
 
     pub fn parse_input<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
@@ -267,7 +285,7 @@ mod input {
 
     pub fn parse_input_args<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<ExpressionNode>, QError>> {
-        map(
+        and_then(
             seq3(
                 keyword(Keyword::Input),
                 combine_if_first_ok(parse_file_number(), parse_first_arg_after_file_number),
@@ -286,10 +304,11 @@ mod input {
                 }
                 if let Some(first_variable) = opt_first_variable {
                     args.push(first_variable);
+                    args.extend(remaining_variables);
+                    Ok(args)
+                } else {
+                    Err(QError::syntax_error("Expected: variable"))
                 }
-                // TODO demand at least one variable
-                args.extend(remaining_variables);
-                args
             },
         )
     }
@@ -415,7 +434,7 @@ mod line_input {
                     args.push(variable);
                     Ok(Statement::SubCall(BuiltInSub::LineInput.into(), args))
                 } else {
-                    Err(QError::syntax_error("Expected variable"))
+                    Err(QError::syntax_error("Expected: variable"))
                 }
             },
         )

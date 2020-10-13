@@ -499,12 +499,34 @@ impl<'a> TryFrom<&'a Variant> for &'a String {
     }
 }
 
+impl TryFrom<Variant> for String {
+    type Error = QError;
+
+    fn try_from(value: Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VString(s) => Ok(s),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
 impl TryFrom<&Variant> for i32 {
     type Error = QError;
 
     fn try_from(value: &Variant) -> Result<Self, Self::Error> {
         match value {
             Variant::VInteger(i) => Ok(*i),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+impl TryFrom<Variant> for i32 {
+    type Error = QError;
+
+    fn try_from(value: Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VInteger(i) => Ok(i),
             _ => Err(QError::TypeMismatch),
         }
     }
@@ -522,10 +544,31 @@ impl TryFrom<&Variant> for u8 {
     }
 }
 
+impl TryFrom<Variant> for u8 {
+    type Error = QError;
+    fn try_from(value: Variant) -> Result<Self, Self::Error> {
+        let i: i32 = value.try_into()?;
+        if i >= 0 && i <= 255 {
+            Ok(i as u8)
+        } else {
+            Err(QError::Overflow)
+        }
+    }
+}
+
 impl TryFrom<&Variant> for FileHandle {
     type Error = QError;
 
     fn try_from(v: &Variant) -> Result<Self, Self::Error> {
+        let i: i32 = v.try_cast()?;
+        FileHandle::try_from(i)
+    }
+}
+
+impl TryFrom<Variant> for FileHandle {
+    type Error = QError;
+
+    fn try_from(v: Variant) -> Result<Self, Self::Error> {
         let i: i32 = v.try_cast()?;
         FileHandle::try_from(i)
     }

@@ -3,8 +3,107 @@ use crate::instruction_generator::print::{PrintArgType, PrintHandle};
 use crate::interpreter::printer::Printer;
 use crate::interpreter::{Interpreter, Stdlib};
 use crate::variant::Variant;
+use std::collections::VecDeque;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
+
+pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
+    let parameter_count = interpreter.context().parameter_count();
+    // get all args (cloned) to fight the borrow checker
+    let mut args: VecDeque<Variant> = (0..parameter_count)
+        .map(|i| interpreter.context().get(i).unwrap().clone())
+        .collect();
+    let (print_handle, file_handle) = decode_print_handle(&mut args)?;
+    let format_string: String = decode_format_string(&mut args)?.clone();
+    let mut printer = PrinterWrapper {
+        interpreter,
+        print_handle,
+        file_handle,
+    };
+    if format_string.is_empty() {
+        print_without_format_string(&mut printer, &mut args)
+    } else {
+        print_with_format_string(&mut printer, &mut args, format_string)
+    }
+}
+
+fn decode_print_handle(args: &mut VecDeque<Variant>) -> Result<(PrintHandle, FileHandle), QError> {
+    let print_handle = PrintHandle::try_from(
+        args.pop_front()
+            .expect("Should have print handle parameter"),
+    )?;
+    let file_handle = if let PrintHandle::File = print_handle {
+        FileHandle::try_from(args.pop_front().expect("Should have file handle parameter"))?
+    } else {
+        FileHandle::default()
+    };
+    Ok((print_handle, file_handle))
+}
+
+fn decode_format_string(args: &mut VecDeque<Variant>) -> Result<String, QError> {
+    let v: Variant = args.pop_front().expect("Expected format string parameter");
+    v.try_into()
+}
+
+fn decode_print_arg(args: &mut VecDeque<Variant>) -> Result<PrintVal, QError> {
+    let print_arg_type =
+        PrintArgType::try_from(args.pop_front().expect("Expected print arg type parameter"))?;
+    match print_arg_type {
+        PrintArgType::Expression => {
+            let v = args.pop_front().expect("Expected expression parameter");
+            Ok(PrintVal::Value(v))
+        }
+        PrintArgType::Comma => Ok(PrintVal::Comma),
+        PrintArgType::Semicolon => Ok(PrintVal::Semicolon),
+    }
+}
+
+struct PrinterWrapper<'a, S: Stdlib> {
+    interpreter: &'a mut Interpreter<S>,
+    print_handle: PrintHandle,
+    file_handle: FileHandle,
+}
+
+impl<'a, S: Stdlib> Printer for PrinterWrapper<'a, S> {
+    fn print(&mut self, s: &str) -> std::io::Result<usize> {
+        match self.print_handle {
+            PrintHandle::File => self
+                .interpreter
+                .file_manager
+                .try_get_file_info_output_mut(&self.file_handle)
+                .expect("Expected file handle")
+                .print(s),
+            PrintHandle::LPrint => self.interpreter.stdlib.lpt1().print(s),
+            PrintHandle::Print => self.interpreter.stdlib.print(s),
+        }
+    }
+
+    fn println(&mut self) -> std::io::Result<usize> {
+        match self.print_handle {
+            PrintHandle::File => self
+                .interpreter
+                .file_manager
+                .try_get_file_info_output_mut(&self.file_handle)
+                .expect("Expected file handle")
+                .println(),
+            PrintHandle::LPrint => self.interpreter.stdlib.lpt1().println(),
+            PrintHandle::Print => self.interpreter.stdlib.println(),
+        }
+    }
+
+    fn move_to_next_print_zone(&mut self) -> std::io::Result<usize> {
+        match self.print_handle {
+            PrintHandle::File => self
+                .interpreter
+                .file_manager
+                .try_get_file_info_output_mut(&self.file_handle)
+                .expect("Expected file handle")
+                .move_to_next_print_zone(),
+            PrintHandle::LPrint => self.interpreter.stdlib.lpt1().move_to_next_print_zone(),
+            PrintHandle::Print => self.interpreter.stdlib.move_to_next_print_zone(),
+        }
+    }
+}
 
 enum PrintVal {
     Comma,
@@ -44,76 +143,198 @@ impl PrintVal {
     }
 }
 
-pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
-    let mut idx: usize = 0;
-    let output_type: PrintHandle = interpreter.context().get(idx).unwrap().try_into()?;
-    idx += 1;
-
-    let file_handle: FileHandle = if let PrintHandle::File = output_type {
-        FileHandle::try_from(interpreter.context().get(idx).unwrap())?
-    } else {
-        FileHandle::default()
-    };
-
-    if file_handle.is_valid() {
-        idx += 1; // skip file
-    }
-
-    let format_string: &String = interpreter.context().get(idx).unwrap().try_into()?;
-    idx += 1;
-
+fn print_without_format_string<T: Printer>(
+    printer: &mut T,
+    args: &mut VecDeque<Variant>,
+) -> Result<(), QError> {
     let mut print_val: PrintVal = PrintVal::NewLine;
 
-    while idx < interpreter.context().parameter_count() {
-        let v_type: PrintArgType = interpreter.context().get(idx).unwrap().try_into()?;
-        idx += 1;
-
-        print_val = match v_type {
-            PrintArgType::Expression => {
-                let v = interpreter.context().get(idx).unwrap();
-                idx += 1;
-                PrintVal::Value(v.clone())
-            }
-            PrintArgType::Comma => PrintVal::Comma,
-            PrintArgType::Semicolon => PrintVal::Semicolon,
-        };
-
-        match output_type {
-            PrintHandle::File => {
-                print_val.print(
-                    interpreter
-                        .file_manager
-                        .try_get_file_info_output_mut(&file_handle)
-                        .unwrap(),
-                )?;
-            }
-            PrintHandle::LPrint => {
-                print_val.print(interpreter.stdlib.lpt1())?;
-            }
-            PrintHandle::Print => {
-                print_val.print(&mut interpreter.stdlib)?;
-            }
-        }
+    while !args.is_empty() {
+        print_val = decode_print_arg(args)?;
+        print_val.print(printer)?;
     }
 
     // print new line?
     match print_val {
-        PrintVal::NewLine | PrintVal::Value(_) => match output_type {
-            PrintHandle::File => {
-                interpreter
-                    .file_manager
-                    .try_get_file_info_output_mut(&file_handle)
-                    .unwrap()
-                    .println()?;
-            }
-            PrintHandle::LPrint => {
-                interpreter.stdlib.lpt1().println()?;
-            }
-            PrintHandle::Print => {
-                interpreter.stdlib.println()?;
-            }
-        },
+        PrintVal::NewLine | PrintVal::Value(_) => {
+            printer.println()?;
+        }
         _ => {}
+    }
+    Ok(())
+}
+
+fn print_with_format_string<T: Printer>(
+    printer: &mut T,
+    args: &mut VecDeque<Variant>,
+    format_string: String,
+) -> Result<(), QError> {
+    let mut print_new_line = true;
+    let format_string_chars: Vec<char> = format_string.chars().collect();
+    if format_string_chars.is_empty() {
+        // TODO test
+        return Err(QError::IllegalFunctionCall);
+    }
+    let mut format_string_idx: usize = 0;
+
+    while !args.is_empty() {
+        print_new_line = false;
+        match decode_print_arg(args)? {
+            PrintVal::Comma => {
+                printer.move_to_next_print_zone()?;
+            }
+            PrintVal::Value(v) => {
+                print_new_line = true;
+
+                // copy from format_string until we hit a formatting character
+                format_string_idx = format_string_idx % format_string_chars.len();
+                print_non_formatting_chars(
+                    printer,
+                    format_string_chars.as_slice(),
+                    &mut format_string_idx,
+                )?;
+
+                // format the argument using the formatting character
+                print_formatting_chars(
+                    printer,
+                    format_string_chars.as_slice(),
+                    &mut format_string_idx,
+                    v,
+                )?;
+            }
+            _ => {}
+        }
+    }
+
+    // copy from format_string until we hit a formatting character
+    print_remaining_non_formatting_chars(
+        printer,
+        format_string_chars.as_slice(),
+        &mut format_string_idx,
+    )?;
+
+    // print new line?
+    if print_new_line {
+        printer.println()?;
+    }
+    Ok(())
+}
+
+fn print_non_formatting_chars<T: Printer>(
+    printer: &mut T,
+    format_string_chars: &[char],
+    idx: &mut usize,
+) -> Result<(), QError> {
+    // copy from format_string until we hit a formatting character
+    let mut buf: String = String::new();
+    let starting_index = *idx;
+    let mut i = starting_index;
+    while format_string_chars[i] != '#' {
+        buf.push(format_string_chars[i]);
+        i = (i + 1) % format_string_chars.len();
+        if i == starting_index {
+            // looped over to the starting point without encountering a formatting character
+            // TODO test
+            return Err(QError::IllegalFunctionCall);
+        }
+    }
+    printer.print(buf.as_str())?;
+    *idx = i;
+    Ok(())
+}
+
+fn print_remaining_non_formatting_chars<T: Printer>(
+    printer: &mut T,
+    format_string_chars: &[char],
+    idx: &mut usize,
+) -> Result<(), QError> {
+    // copy from format_string until we hit a formatting character
+    let mut buf: String = String::new();
+    let starting_index = *idx;
+    let mut i = starting_index;
+    while i < format_string_chars.len() && format_string_chars[i] != '#' {
+        buf.push(format_string_chars[i]);
+        i += 1;
+    }
+    printer.print(buf.as_str())?;
+    *idx = i;
+    Ok(())
+}
+
+fn print_formatting_chars<T: Printer>(
+    printer: &mut T,
+    format_string_chars: &[char],
+    idx: &mut usize,
+    v: Variant,
+) -> Result<(), QError> {
+    let mut integer_digits: usize = 0;
+    while *idx < format_string_chars.len() && format_string_chars[*idx] == '#' {
+        *idx += 1;
+        integer_digits += 1;
+    }
+    if *idx < format_string_chars.len() && format_string_chars[*idx] == '.' {
+        // it has a fractional part too
+        *idx += 1;
+        let mut fraction_digits: usize = 0;
+        while *idx < format_string_chars.len() && format_string_chars[*idx] == '#' {
+            *idx += 1;
+            fraction_digits += 1;
+        }
+        // print dot
+        // print decimal part with rounding
+        match v {
+            Variant::VSingle(f) => {
+                // formatting to a variable precision with rounding https://stackoverflow.com/a/61101531/153258
+                let mut x = format!("{:.1$}", f, fraction_digits);
+                if let Some(dot_index) = x.find('.') {
+                    let mut spaces_to_add: i32 = integer_digits as i32 - dot_index as i32;
+                    while spaces_to_add > 0 {
+                        x.insert(0, ' ');
+                        spaces_to_add -= 1;
+                    }
+                }
+                printer.print(x.as_str())?;
+            }
+            Variant::VDouble(d) => todo!(),
+            Variant::VInteger(i) => {
+                let mut x = i.to_string();
+                let mut spaces_to_add: i32 = integer_digits as i32 - x.len() as i32;
+                while spaces_to_add > 0 {
+                    x.insert(0, ' ');
+                    spaces_to_add -= 1;
+                }
+                x.push('.');
+                for _i in 0..fraction_digits {
+                    x.push('0');
+                }
+                printer.print(x.as_str())?;
+            }
+            Variant::VLong(l) => todo!(),
+            _ => {
+                // TODO test
+                return Err(QError::IllegalFunctionCall);
+            }
+        }
+    } else {
+        // just the integer part
+        match v {
+            Variant::VSingle(f) => todo!(),
+            Variant::VDouble(d) => todo!(),
+            Variant::VInteger(i) => {
+                let mut x = i.to_string();
+                let mut spaces_to_add: i32 = integer_digits as i32 - x.len() as i32;
+                while spaces_to_add > 0 {
+                    x.insert(0, ' ');
+                    spaces_to_add -= 1;
+                }
+                printer.print(x.as_str())?;
+            }
+            Variant::VLong(l) => todo!(),
+            _ => {
+                // TODO test
+                return Err(QError::IllegalFunctionCall);
+            }
+        }
     }
     Ok(())
 }
@@ -184,14 +405,15 @@ mod tests {
 
     #[test]
     fn test_print_using_one_placeholder_two_variables() {
-        assert_prints_exact!("PRINT USING \"####.##\"; 42; 3.147", "  42.00   3.15");
+        assert_prints_exact!("PRINT USING \"####.##\"; 42; 3.147", "  42.00   3.15", "");
     }
 
     #[test]
     fn test_print_using_two_placeholders_two_variables() {
         assert_prints_exact!(
             "PRINT USING \"Income: ####.## Expense: ####.##\"; 42; 3.144",
-            "Income:   42.00 Expense:    3.14"
+            "Income:   42.00 Expense:    3.14",
+            ""
         );
     }
 
@@ -199,7 +421,8 @@ mod tests {
     fn test_print_using_two_placeholders_one_variable() {
         assert_prints_exact!(
             "PRINT USING \"Income: ####.## Expense: ####.## omitted\"; 42",
-            "Income:   42.00 Expense: "
+            "Income:   42.00 Expense: ",
+            ""
         );
     }
 

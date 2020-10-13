@@ -1322,7 +1322,7 @@ mod print {
                 Statement::Print(PrintNode {
                     file_number: None,
                     lpt1: false,
-                    format_string: Some("#".as_lit_expr(1, 1)),
+                    format_string: Some("#".as_lit_expr(1, 13)),
                     args: vec![]
                 })
             );
@@ -1348,7 +1348,7 @@ mod print {
             let input = "PRINT USING \"#\"";
             assert_eq!(
                 parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("Expected: ;"), Location::new(1, 7))
+                QErrorNode::Pos(QError::syntax_error("Expected: ;"), Location::new(1, 16))
             );
         }
 
@@ -1370,8 +1370,8 @@ mod print {
                 Statement::Print(PrintNode {
                     file_number: None,
                     lpt1: false,
-                    format_string: Some("#".as_lit_expr(1, 1)),
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
+                    format_string: Some("#".as_lit_expr(1, 13)),
+                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 18))]
                 })
             );
         }
@@ -1400,7 +1400,7 @@ mod print {
                 Statement::Print(PrintNode {
                     file_number: Some(FileHandle::from(1)),
                     lpt1: false,
-                    format_string: Some("#".as_lit_expr(1, 1)),
+                    format_string: Some("#".as_lit_expr(1, 17)),
                     args: vec![]
                 })
             );
@@ -1415,8 +1415,8 @@ mod print {
                 Statement::Print(PrintNode {
                     file_number: Some(FileHandle::from(1)),
                     lpt1: false,
-                    format_string: Some("#".as_lit_expr(1, 1)),
-                    args: vec![PrintArg::Expression(3.14.as_lit_expr(1, 7))]
+                    format_string: Some("#".as_lit_expr(1, 17)),
+                    args: vec![PrintArg::Expression(3.14_f32.as_lit_expr(1, 22))]
                 })
             );
         }

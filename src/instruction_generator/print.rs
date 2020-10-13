@@ -49,6 +49,13 @@ impl TryFrom<&Variant> for PrintHandle {
     }
 }
 
+impl TryFrom<Variant> for PrintHandle {
+    type Error = QError;
+    fn try_from(encoded_print_handle: Variant) -> Result<Self, Self::Error> {
+        u8::try_from(encoded_print_handle).and_then(|x| PrintHandle::try_from(x))
+    }
+}
+
 pub enum PrintArgType {
     Expression,
     Comma,
@@ -89,6 +96,13 @@ impl TryFrom<u8> for PrintArgType {
 impl TryFrom<&Variant> for PrintArgType {
     type Error = QError;
     fn try_from(encoded_print_arg_type: &Variant) -> Result<Self, Self::Error> {
+        u8::try_from(encoded_print_arg_type).and_then(|x| PrintArgType::try_from(x))
+    }
+}
+
+impl TryFrom<Variant> for PrintArgType {
+    type Error = QError;
+    fn try_from(encoded_print_arg_type: Variant) -> Result<Self, Self::Error> {
         u8::try_from(encoded_print_arg_type).and_then(|x| PrintArgType::try_from(x))
     }
 }

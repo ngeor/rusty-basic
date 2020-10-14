@@ -288,7 +288,10 @@ mod input {
         and_then(
             seq3(
                 keyword(Keyword::Input),
-                combine_if_first_ok(parse_file_number(), parse_first_arg_after_file_number),
+                demand(
+                    combine_if_first_ok(parse_file_number(), parse_first_arg_after_file_number),
+                    QError::syntax_error_fn("Expected: #file-number or variable"),
+                ),
                 many(drop_left(seq2(
                     ws::zero_or_more_around(read(',')),
                     expression::demand_expression_node(),
@@ -349,7 +352,7 @@ mod input {
             let input = "INPUT";
             assert_eq!(
                 parse_err(input),
-                QError::syntax_error("Expected: at least one variable")
+                QError::syntax_error("Expected: #file-number or variable")
             );
         }
 
@@ -358,7 +361,7 @@ mod input {
             let input = "INPUT ";
             assert_eq!(
                 parse_err(input),
-                QError::syntax_error("Expected: at least one variable")
+                QError::syntax_error("Expected: #file-number or variable")
             );
         }
 

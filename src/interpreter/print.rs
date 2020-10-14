@@ -1,4 +1,4 @@
-use crate::common::{FileHandle, QError};
+use crate::common::{FileHandle, QError, StringUtils};
 use crate::instruction_generator::print::{PrintArgType, PrintHandle};
 use crate::interpreter::printer::Printer;
 use crate::interpreter::{Interpreter, Stdlib};
@@ -297,12 +297,7 @@ fn print_formatting_chars<T: Printer>(
             }
             Variant::VDouble(d) => todo!(),
             Variant::VInteger(i) => {
-                let mut x = i.to_string();
-                let mut spaces_to_add: i32 = integer_digits as i32 - x.len() as i32;
-                while spaces_to_add > 0 {
-                    x.insert(0, ' ');
-                    spaces_to_add -= 1;
-                }
+                let mut x = i.to_string().pad_left(integer_digits);
                 x.push('.');
                 for _i in 0..fraction_digits {
                     x.push('0');
@@ -318,18 +313,24 @@ fn print_formatting_chars<T: Printer>(
     } else {
         // just the integer part
         match v {
-            Variant::VSingle(f) => todo!(),
-            Variant::VDouble(d) => todo!(),
-            Variant::VInteger(i) => {
-                let mut x = i.to_string();
-                let mut spaces_to_add: i32 = integer_digits as i32 - x.len() as i32;
-                while spaces_to_add > 0 {
-                    x.insert(0, ' ');
-                    spaces_to_add -= 1;
-                }
+            Variant::VSingle(f) => {
+                let l = f.round() as i64;
+                let x = l.to_string().pad_left(integer_digits);
                 printer.print(x.as_str())?;
             }
-            Variant::VLong(l) => todo!(),
+            Variant::VDouble(d) => {
+                let l = d.round() as i64;
+                let x = l.to_string().pad_left(integer_digits);
+                printer.print(x.as_str())?;
+            }
+            Variant::VInteger(i) => {
+                let x = i.to_string().pad_left(integer_digits);
+                printer.print(x.as_str())?;
+            }
+            Variant::VLong(l) => {
+                let x = l.to_string().pad_left(integer_digits);
+                printer.print(x.as_str())?;
+            },
             _ => {
                 // TODO test
                 return Err(QError::IllegalFunctionCall);
@@ -459,5 +460,69 @@ mod tests {
             "-1            -2            -3 ",
             ""
         );
+    }
+
+    #[test]
+    fn test_print_using_numeric_types_with_two_integer_digits_format_string() {
+        let input = [
+            "42",
+            "2",
+            "-1",
+            "3.0",
+            "3.14#",
+            "3.9",
+            "61.9",
+            "&HFFFFFF"
+        ];
+        let output = [
+            "42",
+            " 2",
+            "-1",
+            " 3",
+            " 3",
+            " 4",
+            "62",
+            "16777215"
+        ];
+        for i in 0..input.len() {
+            let program = format!("PRINT USING \"##\"; {};", input[i]);
+            assert_prints_exact!(program, output[i]);
+        }
+    }
+
+    #[test]
+    fn test_print_using_numeric_types_with_two_integer_digits_and_two_fraction_digits_format_string() {
+        let input = [
+            "42",
+            "2",
+            "-1",
+            "3.0",
+            "3.14#",
+            "3.9",
+            "61.9",
+            "&HFFFFFF",
+            "1.2345",
+            "1.9876",
+            "2.134#",
+            "2.199#",
+        ];
+        let output = [
+            "42.00",
+            " 2.00",
+            "-1.00",
+            " 3.00",
+            " 3.14",
+            " 3.90",
+            "61.90",
+            "16777215",
+            " 1.23",
+            " 1.99",
+            " 2.13",
+            " 2.20"
+        ];
+        for i in 0..input.len() {
+            let program = format!("PRINT USING \"##.##\"; {};", input[i]);
+            assert_prints_exact!(program, output[i]);
+        }
     }
 }

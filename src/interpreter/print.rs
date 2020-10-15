@@ -14,16 +14,15 @@ pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
         .map(|i| interpreter.context().get(i).unwrap().clone())
         .collect();
     let (print_handle, file_handle) = decode_print_handle(&mut args)?;
-    let format_string: String = decode_format_string(&mut args)?.clone();
+    let opt_format_string: Option<String> = decode_format_string(&mut args)?.clone();
     let mut printer = PrinterWrapper {
         interpreter,
         print_handle,
         file_handle,
     };
-    if format_string.is_empty() {
-        print_without_format_string(&mut printer, &mut args)
-    } else {
-        print_with_format_string(&mut printer, &mut args, format_string)
+    match opt_format_string {
+        Some(format_string) => print_with_format_string(&mut printer, &mut args, format_string),
+        _ => print_without_format_string(&mut printer, &mut args),
     }
 }
 
@@ -40,9 +39,17 @@ fn decode_print_handle(args: &mut VecDeque<Variant>) -> Result<(PrintHandle, Fil
     Ok((print_handle, file_handle))
 }
 
-fn decode_format_string(args: &mut VecDeque<Variant>) -> Result<String, QError> {
-    let v: Variant = args.pop_front().expect("Expected format string parameter");
-    v.try_into()
+fn decode_format_string(args: &mut VecDeque<Variant>) -> Result<Option<String>, QError> {
+    let has_format_string: bool = args
+        .pop_front()
+        .expect("Expected flag parameter for format string")
+        .try_into()?;
+    if has_format_string {
+        let v: Variant = args.pop_front().expect("Expected format string parameter");
+        v.try_into().map(|x| Some(x))
+    } else {
+        Ok(None)
+    }
 }
 
 fn decode_print_arg(args: &mut VecDeque<Variant>) -> Result<PrintVal, QError> {
@@ -172,7 +179,6 @@ fn print_with_format_string<T: Printer>(
     let mut print_new_line = true;
     let format_string_chars: Vec<char> = format_string.chars().collect();
     if format_string_chars.is_empty() {
-        // TODO test
         return Err(QError::IllegalFunctionCall);
     }
     let mut format_string_idx: usize = 0;
@@ -234,7 +240,6 @@ fn print_non_formatting_chars<T: Printer>(
         i = (i + 1) % format_string_chars.len();
         if i == starting_index {
             // looped over to the starting point without encountering a formatting character
-            // TODO test
             return Err(QError::IllegalFunctionCall);
         }
     }
@@ -323,8 +328,7 @@ fn print_formatting_chars<T: Printer>(
                 printer.print(x.as_str())?;
             }
             _ => {
-                // TODO test
-                return Err(QError::IllegalFunctionCall);
+                return Err(QError::TypeMismatch);
             }
         }
     } else {
@@ -349,8 +353,7 @@ fn print_formatting_chars<T: Printer>(
                 printer.print(x.as_str())?;
             }
             _ => {
-                // TODO test
-                return Err(QError::IllegalFunctionCall);
+                return Err(QError::TypeMismatch);
             }
         }
     }
@@ -359,9 +362,11 @@ fn print_formatting_chars<T: Printer>(
 
 #[cfg(test)]
 mod tests {
+    use crate::assert_err;
     use crate::assert_lprints_exact;
     use crate::assert_prints;
     use crate::assert_prints_exact;
+    use crate::common::QError;
 
     #[test]
     fn test_print_no_args() {
@@ -514,5 +519,30 @@ mod tests {
             let program = format!("PRINT USING \"##.##\"; {};", input[i]);
             assert_prints_exact!(program, output[i]);
         }
+    }
+
+    #[test]
+    fn test_print_using_empty_format_string_is_error() {
+        assert_err!("PRINT USING \"\"; 0", QError::IllegalFunctionCall, 1, 1);
+    }
+
+    #[test]
+    fn test_print_using_without_format_specifiers_is_error() {
+        assert_err!(
+            "PRINT USING \"oops\"; 12",
+            QError::IllegalFunctionCall,
+            1,
+            1
+        );
+    }
+
+    #[test]
+    fn test_print_using_numeric_format_string_with_string_arg_is_error() {
+        assert_err!("PRINT USING \"#.##\"; \"hi\"", QError::TypeMismatch, 1, 1);
+    }
+
+    #[test]
+    fn test_print_using_integer_format_string_with_string_arg_is_error() {
+        assert_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 1);
     }
 }

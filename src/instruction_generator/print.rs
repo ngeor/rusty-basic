@@ -145,11 +145,12 @@ impl InstructionGenerator {
     fn generate_opt_format_string_instructions(&mut self, print_node: &PrintNode, pos: Location) {
         match &print_node.format_string {
             Some(format_string) => {
+                self.push_load_unnamed_arg(true, pos);
                 self.generate_expression_instructions(format_string.clone());
                 self.push(Instruction::PushUnnamed, pos);
             }
             None => {
-                self.push_load_unnamed_arg("", pos);
+                self.push_load_unnamed_arg(false, pos);
             }
         }
     }

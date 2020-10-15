@@ -33,7 +33,7 @@ pub fn run_sub<S: Stdlib>(
         BuiltInSub::Input => input::run(interpreter).with_err_no_pos(),
         BuiltInSub::Kill => kill::run(interpreter),
         BuiltInSub::LineInput => line_input::run(interpreter).with_err_no_pos(),
-        BuiltInSub::LPrint => todo!(),
+        BuiltInSub::LPrint => todo!("LPT1 printing not implemented yet"),
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
         BuiltInSub::Print => print::run(interpreter).with_err_no_pos(),
@@ -318,7 +318,7 @@ mod input {
             TypeQualifier::BangSingle => Variant::from(parse_single_input(raw_input)?),
             TypeQualifier::DollarString => Variant::from(raw_input),
             TypeQualifier::PercentInteger => Variant::from(parse_int_input(raw_input)?),
-            _ => unimplemented!(), // TODO support more types
+            _ => todo!("INPUT type {} not supported yet", q),
         };
         Ok(())
     }

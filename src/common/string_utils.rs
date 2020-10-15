@@ -41,7 +41,7 @@ impl StringUtils for String {
     /// # Examples
     /// ```
     /// use rusty_basic::common::StringUtils;
-    /// assert_eq!(String::from("abc").pad_left(0), String::from("ab"));
+    /// assert_eq!(String::from("abc").pad_left(0), String::from("abc"));
     /// assert_eq!(String::from("abc").pad_left(3), String::from("abc"));
     /// assert_eq!(String::from("abc").pad_left(4), String::from(" abc"));
     /// ```
@@ -50,7 +50,7 @@ impl StringUtils for String {
             self
         } else {
             // prepend spaces
-            let mut result : String =  std::iter::repeat(' ').take(len - self.len()).collect();
+            let mut result: String = std::iter::repeat(' ').take(len - self.len()).collect();
             result.push_str(self.as_str());
             result
         }

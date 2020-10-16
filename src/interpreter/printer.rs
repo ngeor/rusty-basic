@@ -24,14 +24,31 @@ impl<T: Write> WritePrinter<T> {
     pub fn into_inner(self) -> (T, usize) {
         (self.writer, self.last_column)
     }
+
+    fn print_as_is(&mut self, s: &str) -> std::io::Result<usize> {
+        let bytes_written = self.writer.write(s.as_bytes())?;
+        self.last_column += s.len();
+        Ok(bytes_written)
+    }
 }
 
 impl<T: Write> Printer for WritePrinter<T> {
     fn print(&mut self, s: &str) -> std::io::Result<usize> {
-        let len = s.len();
-        self.last_column += len;
-        // TODO what if s contains \r\n
-        self.writer.write(s.as_bytes())
+        // This isn't a bug: it seems QBasic does not split on CRLF,
+        // but separately on CR and LF for this particular case.
+        // Might be a bug on QBasic side arguably.
+        let split = s.split(|ch| ch == '\r' || ch == '\n');
+        let mut is_first = true;
+        let mut bytes_written: usize = 0;
+        for part in split {
+            if is_first {
+                is_first = false;
+            } else {
+                bytes_written += self.println()?;
+            }
+            bytes_written += self.print_as_is(part)?;
+        }
+        Ok(bytes_written)
     }
 
     fn println(&mut self) -> std::io::Result<usize> {

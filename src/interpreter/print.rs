@@ -545,4 +545,14 @@ mod tests {
     fn test_print_using_integer_format_string_with_string_arg_is_error() {
         assert_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 1);
     }
+
+    #[test]
+    fn test_print_zones_when_arg_contains_crlf() {
+        let input = r#"
+        X$ = CHR$(13) + CHR$(10)
+        A$ = "hello, " + X$ + " world"
+        PRINT "a", A$, "z"
+        "#;
+        assert_prints_exact!(input, "a             hello, ", "", " world        z", "");
+    }
 }

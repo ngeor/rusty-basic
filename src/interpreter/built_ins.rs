@@ -344,6 +344,7 @@ mod input {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crate::assert_err;
         use crate::assert_has_variable;
         use crate::interpreter::test_utils::{interpret_with_stdlib, MockStdlib};
         use crate::interpreter::DefaultStdlib;
@@ -368,7 +369,7 @@ mod input {
 
             #[test]
             fn test_input_empty() {
-                assert_input("", "N", "N!", 0.0_f32);
+                assert_input("\r\n", "N", "N!", 0.0_f32);
             }
 
             #[test]
@@ -515,7 +516,6 @@ mod input {
 
         #[test]
         fn test_input_string_from_file() {
-            // TODO one more test with 3 input, showing that it will throw EOF error
             // TODO test with stdio INPUT and PRINT
 
             // arrange
@@ -540,6 +540,22 @@ mod input {
             std::fs::remove_file("test1.txt").unwrap_or_default();
             std::fs::remove_file("test2.txt").unwrap_or_default();
             assert_eq!(s, "Hello\r\nworld\r\n");
+        }
+
+        #[test]
+        fn test_input_string_from_file_eof() {
+            std::fs::write("test_input_string_from_file_eof.txt", "Hello, world").unwrap();
+
+            let input = r#"
+            OPEN "test_input_string_from_file_eof.txt" FOR INPUT AS #1
+            INPUT #1, A$
+            INPUT #1, A$
+            INPUT #1, A$ ' should EOF here
+            CLOSE
+            "#;
+
+            assert_err!(input, QError::InputPastEndOfFile, 5, 13);
+            std::fs::remove_file("test_input_string_from_file_eof.txt").unwrap_or_default();
         }
     }
 }
@@ -919,6 +935,29 @@ mod line_input {
         *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_err;
+
+        #[test]
+        fn test_line_input_string_from_file_eof() {
+            std::fs::remove_file("test1.txt").unwrap_or_default();
+            std::fs::write("test1.txt", "Hello\r\nWorld\r\n").unwrap();
+
+            let input = r#"
+            OPEN "test1.txt" FOR INPUT AS #1
+            LINE INPUT #1, A$
+            LINE INPUT #1, A$
+            LINE INPUT #1, A$ ' should EOF here
+            CLOSE
+            "#;
+
+            assert_err!(input, QError::InputPastEndOfFile, 5, 13);
+            std::fs::remove_file("test1.txt").unwrap_or_default();
+        }
+    }
 }
 
 mod mid {
@@ -1146,6 +1185,7 @@ mod open {
 
         #[test]
         fn test_can_create_file() {
+            std::fs::remove_file("TEST1.TXT").unwrap_or(());
             let input = r#"
             OPEN "TEST1.TXT" FOR APPEND AS #1
             PRINT #1, "Hello, world"

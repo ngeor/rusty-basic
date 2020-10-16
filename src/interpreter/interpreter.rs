@@ -539,7 +539,8 @@ mod tests {
     #[test]
     fn test_interpreter_fixture_input() {
         let mut stdlib = MockStdlib::new();
-        stdlib.add_next_input("");
-        interpret_file("INPUT.BAS", stdlib).unwrap();
+        stdlib.add_next_input("\r\n");
+        let interpreter = interpret_file("INPUT.BAS", stdlib).unwrap();
+        assert_eq!(interpreter.stdlib.output_exact(), " 0 \r\n");
     }
 }

@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{ErrorKind, Read};
 
 pub trait InputSource {
     fn eof(&mut self) -> std::io::Result<bool>;
@@ -104,6 +104,10 @@ impl<T: Read> InputSource for ReadInputSource<T> {
     }
 
     fn input(&mut self) -> std::io::Result<String> {
+        if self.eof()? {
+            return Err(std::io::Error::from(ErrorKind::UnexpectedEof));
+        }
+
         // skip leading whitespace
         self.skip_while(|ch| ch == ' ')?;
         // read until comma or eol
@@ -111,6 +115,9 @@ impl<T: Read> InputSource for ReadInputSource<T> {
     }
 
     fn line_input(&mut self) -> std::io::Result<String> {
+        if self.eof()? {
+            return Err(std::io::Error::from(ErrorKind::UnexpectedEof));
+        }
         self.read_until(|ch| ch == '\r' || ch == '\n')
     }
 }

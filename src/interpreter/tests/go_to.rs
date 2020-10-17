@@ -1,4 +1,5 @@
 use crate::assert_prints;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 #[test]
 fn go_to_label_go_to_is_before_label_declaration() {

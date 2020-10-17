@@ -1,3 +1,6 @@
+use crate::common::QError;
+use std::convert::TryFrom;
+
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum FileMode {
     Input,
@@ -58,7 +61,7 @@ impl From<i32> for FileAccess {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FileHandle(u8);
 
 impl FileHandle {
@@ -70,5 +73,41 @@ impl FileHandle {
 impl From<u8> for FileHandle {
     fn from(x: u8) -> FileHandle {
         FileHandle(x)
+    }
+}
+
+impl From<FileHandle> for u8 {
+    fn from(file_handle: FileHandle) -> u8 {
+        file_handle.0
+    }
+}
+
+impl From<FileHandle> for i32 {
+    fn from(file_handle: FileHandle) -> i32 {
+        file_handle.0 as i32
+    }
+}
+
+impl TryFrom<i32> for FileHandle {
+    type Error = QError;
+
+    fn try_from(i: i32) -> Result<Self, Self::Error> {
+        if i >= 1 && i <= 255 {
+            Ok((i as u8).into())
+        } else {
+            Err(QError::BadFileNameOrNumber)
+        }
+    }
+}
+
+impl std::fmt::Debug for FileHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#{}", self.0)
+    }
+}
+
+impl std::fmt::Display for FileHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
     }
 }

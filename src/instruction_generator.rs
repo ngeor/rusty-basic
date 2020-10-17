@@ -8,6 +8,7 @@ mod function_call;
 mod if_block;
 mod instruction;
 mod instruction_generator;
+pub mod print;
 mod select_case;
 mod statement;
 mod sub_call;

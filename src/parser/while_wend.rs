@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn test_while_wend_single_line() {
-        let program = parse("WHILE A < 5: A = A + 1: PRINT A: WEND").demand_single_statement();
+        let program = parse("WHILE A < 5: A = A + 1: Flint A: WEND").demand_single_statement();
         assert_eq!(
             program,
             Statement::While(ConditionalBlockNode {
@@ -90,7 +90,7 @@ mod tests {
                         .at_rc(1, 20)
                     )
                     .at_rc(1, 14),
-                    Statement::SubCall(BareName::from("PRINT"), vec!["A".as_var_expr(1, 31)])
+                    Statement::SubCall(BareName::from("Flint"), vec!["A".as_var_expr(1, 31)])
                         .at_rc(1, 25)
                 ]
             })
@@ -142,7 +142,7 @@ mod tests {
     fn test_while_condition_in_parenthesis() {
         let input = r#"
         WHILE(X > 0)
-            PRINT X
+            Flint X
         WEND"#;
         let program = parse(input).demand_single_statement();
         assert_eq!(
@@ -158,7 +158,7 @@ mod tests {
                 ))
                 .at_rc(2, 14),
                 statements: vec![
-                    Statement::SubCall("PRINT".into(), vec!["X".as_var_expr(3, 19)]).at_rc(3, 13)
+                    Statement::SubCall("Flint".into(), vec!["X".as_var_expr(3, 19)]).at_rc(3, 13)
                 ]
             })
         );
@@ -185,7 +185,7 @@ mod tests {
             r#"
         WHILE A < 5
             A = A + 1
-            PRINT A: WEND"#,
+            Flint A: WEND"#,
         )
         .demand_single_statement();
         assert_eq!(
@@ -208,7 +208,7 @@ mod tests {
                         .at_rc(3, 19)
                     )
                     .at_rc(3, 13),
-                    Statement::SubCall(BareName::from("PRINT"), vec!["A".as_var_expr(4, 19)])
+                    Statement::SubCall(BareName::from("Flint"), vec!["A".as_var_expr(4, 19)])
                         .at_rc(4, 13)
                 ]
             })

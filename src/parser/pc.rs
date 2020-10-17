@@ -199,13 +199,12 @@ pub mod map {
 // ========================================================
 
 pub mod combine {
-    use super::map::*;
     use super::*;
 
     /// Combines the two given sources, letting the second use the value returned by the first one.
     /// The second source is only used if the first result was `Ok(Some)`.
     /// Errors from any source have priority.
-    pub fn combine_some<R, S1, PS2, T1, T2, E>(
+    pub fn combine_if_first_some<R, S1, PS2, T1, T2, E>(
         first: S1,
         second: PS2,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, Option<T2>), E>>
@@ -214,9 +213,59 @@ pub mod combine {
         S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
         PS2: Fn(&T1) -> Box<dyn Fn(R) -> ReaderResult<R, T2, E>> + 'static,
     {
-        source_and_then_some(first, move |reader, r1| {
-            second(&r1)(reader).and_then(|(reader, opt_r2)| Ok((reader, Some((r1, opt_r2)))))
+        Box::new(move |reader| match first(reader) {
+            Ok((reader, Some(first_result))) => {
+                second(&first_result)(reader).and_then(|(reader, opt_second_result)| {
+                    Ok((reader, Some((first_result, opt_second_result))))
+                })
+            }
+            Ok((reader, None)) => Ok((reader, None)),
+            Err(err) => Err(err),
         })
+    }
+
+    /// Combines the two given sources, letting the second use the value returned by the first one.
+    /// The second source is used if the first result was `Ok`.
+    /// Errors from any source have priority.
+    pub fn combine_if_first_ok<R, S1, PS2, T1, T2, E>(
+        first: S1,
+        second: PS2,
+    ) -> Box<dyn Fn(R) -> ReaderResult<R, (Option<T1>, Option<T2>), E>>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
+        PS2: Fn(Option<&T1>) -> Box<dyn Fn(R) -> ReaderResult<R, T2, E>> + 'static,
+    {
+        Box::new(move |reader| match first(reader) {
+            Ok((reader, opt_first_result)) => {
+                second(opt_first_result.as_ref())(reader).and_then(|(reader, opt_second_result)| {
+                    if opt_first_result.is_none() && opt_second_result.is_none() {
+                        Ok((reader, None))
+                    } else {
+                        Ok((reader, Some((opt_first_result, opt_second_result))))
+                    }
+                })
+            }
+            Err(err) => Err(err),
+        })
+    }
+
+    /// Uses the first source to get an intermediate result which is used
+    /// to create the source that returns the final result.
+    pub fn switch<R, S1, S2, T1, T2, E>(
+        first: S1,
+        second: S2,
+    ) -> impl Fn(R) -> ReaderResult<R, T2, E>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
+        S2: Fn(T1) -> Box<dyn Fn(R) -> ReaderResult<R, T2, E>> + 'static,
+    {
+        move |reader| match first(reader) {
+            Ok((reader, Some(first_result))) => second(first_result)(reader),
+            Ok((reader, None)) => Ok((reader, None)),
+            Err(err) => Err(err),
+        }
     }
 }
 
@@ -606,6 +655,46 @@ pub mod common {
                                 if last {
                                     break;
                                 }
+                            }
+                            None => {
+                                break;
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            }
+            Ok((cr, Some(result)))
+        })
+    }
+
+    pub fn many_looking_back<R, S, T, E>(
+        opt_first_arg: Option<T>,
+        source: S,
+    ) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
+    where
+        R: Reader + 'static,
+        S: Fn(Option<&T>) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>> + 'static,
+        T: Clone + 'static,
+        E: 'static,
+    {
+        Box::new(move |char_reader| {
+            let mut result: Vec<T> = match &opt_first_arg {
+                Some(first_arg) => vec![first_arg.clone()],
+                None => vec![],
+            };
+            let mut cr: R = char_reader;
+            loop {
+                let last = result.last();
+                let s = source(last);
+                match s(cr) {
+                    Ok((next_cr, opt_res)) => {
+                        cr = next_cr;
+                        match opt_res {
+                            Some(t) => {
+                                result.push(t);
                             }
                             None => {
                                 break;

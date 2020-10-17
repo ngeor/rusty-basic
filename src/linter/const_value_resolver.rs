@@ -100,7 +100,6 @@ pub trait ConstValueResolver {
                 let Locatable { element, pos } = child.as_ref();
                 self.resolve_const_value(element).patch_err_pos(*pos)
             }
-            Expression::FileHandle(_) => Err(QError::InvalidConstant).with_err_no_pos(),
         }
     }
 }

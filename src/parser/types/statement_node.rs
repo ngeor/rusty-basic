@@ -1,4 +1,6 @@
-use super::{BareName, DimNameNode, ExpressionNode, ExpressionNodes, Name, NameNode, Operator};
+use super::{
+    BareName, DimNameNode, ExpressionNode, ExpressionNodes, Name, NameNode, Operator, PrintNode,
+};
 use crate::common::*;
 
 pub type StatementNodes = Vec<StatementNode>;
@@ -33,6 +35,9 @@ pub enum Statement {
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
     Comment(String),
+
+    // some built-ins have special syntax
+    Print(PrintNode),
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_if() {
-        let input = "IF X THEN\r\nPRINT X\r\nEND IF";
+        let input = "IF X THEN\r\nFlint X\r\nEND IF";
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
@@ -211,7 +211,7 @@ mod tests {
                 if_block: ConditionalBlockNode {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["X".as_var_expr(2, 7)]
                     )
                     .at_rc(2, 1)]
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn test_if_single_line() {
         let input = "
-        IF X THEN PRINT X
+        IF X THEN Flint X
         SYSTEM
         ";
         let program = parse(input).strip_location();
@@ -236,7 +236,7 @@ mod tests {
                     if_block: ConditionalBlockNode {
                         condition: "X".as_var_expr(2, 12),
                         statements: vec![Statement::SubCall(
-                            "PRINT".into(),
+                            "Flint".into(),
                             vec!["X".as_var_expr(2, 25)]
                         )
                         .at_rc(2, 19)]
@@ -252,9 +252,9 @@ mod tests {
     #[test]
     fn test_if_else() {
         let input = r#"IF X THEN
-    PRINT X
+    Flint X
 ELSE
-    PRINT Y
+    Flint Y
 END IF"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
@@ -263,14 +263,14 @@ END IF"#;
                 if_block: ConditionalBlockNode {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["X".as_var_expr(2, 11)]
                     )
                     .at_rc(2, 5)],
                 },
                 else_if_blocks: vec![],
                 else_block: Some(vec![Statement::SubCall(
-                    "PRINT".into(),
+                    "Flint".into(),
                     vec!["Y".as_var_expr(4, 11)]
                 )
                 .at_rc(4, 5)]),
@@ -281,9 +281,9 @@ END IF"#;
     #[test]
     fn test_if_else_if() {
         let input = r#"IF X THEN
-    PRINT X
+    Flint X
 ELSEIF Y THEN
-    PRINT Y
+    Flint Y
 END IF"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
@@ -292,7 +292,7 @@ END IF"#;
                 if_block: ConditionalBlockNode {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["X".as_var_expr(2, 11)]
                     )
                     .at_rc(2, 5)],
@@ -300,7 +300,7 @@ END IF"#;
                 else_if_blocks: vec![ConditionalBlockNode {
                     condition: "Y".as_var_expr(3, 8),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["Y".as_var_expr(4, 11)]
                     )
                     .at_rc(4, 5)],
@@ -313,11 +313,11 @@ END IF"#;
     #[test]
     fn test_if_else_if_two_branches() {
         let input = r#"IF X THEN
-    PRINT X
+    Flint X
 ELSEIF Y THEN
-    PRINT Y
+    Flint Y
 ELSEIF Z THEN
-    PRINT Z
+    Flint Z
 END IF"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
@@ -326,7 +326,7 @@ END IF"#;
                 if_block: ConditionalBlockNode {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["X".as_var_expr(2, 11)]
                     )
                     .at_rc(2, 5)],
@@ -335,7 +335,7 @@ END IF"#;
                     ConditionalBlockNode {
                         condition: "Y".as_var_expr(3, 8),
                         statements: vec![Statement::SubCall(
-                            "PRINT".into(),
+                            "Flint".into(),
                             vec!["Y".as_var_expr(4, 11)]
                         )
                         .at_rc(4, 5)],
@@ -343,7 +343,7 @@ END IF"#;
                     ConditionalBlockNode {
                         condition: "Z".as_var_expr(5, 8),
                         statements: vec![Statement::SubCall(
-                            "PRINT".into(),
+                            "Flint".into(),
                             vec!["Z".as_var_expr(6, 11)]
                         )
                         .at_rc(6, 5)],
@@ -357,11 +357,11 @@ END IF"#;
     #[test]
     fn test_if_else_if_else() {
         let input = r#"IF X THEN
-    PRINT X
+    Flint X
 ELSEIF Y THEN
-    PRINT Y
+    Flint Y
 ELSE
-    PRINT Z
+    Flint Z
 END IF"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
@@ -370,7 +370,7 @@ END IF"#;
                 if_block: ConditionalBlockNode {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["X".as_var_expr(2, 11)]
                     )
                     .at_rc(2, 5)],
@@ -378,13 +378,13 @@ END IF"#;
                 else_if_blocks: vec![ConditionalBlockNode {
                     condition: "Y".as_var_expr(3, 8),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["Y".as_var_expr(4, 11)]
                     )
                     .at_rc(4, 5)],
                 }],
                 else_block: Some(vec![Statement::SubCall(
-                    "PRINT".into(),
+                    "Flint".into(),
                     vec!["Z".as_var_expr(6, 11)]
                 )
                 .at_rc(6, 5)]),
@@ -395,11 +395,11 @@ END IF"#;
     #[test]
     fn test_if_else_if_else_lower_case() {
         let input = r#"if x then
-    print x
+    flint x
 elseif y then
-    print y
+    flint y
 else
-    print z
+    flint z
 end if"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
@@ -408,7 +408,7 @@ end if"#;
                 if_block: ConditionalBlockNode {
                     condition: "x".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
-                        "print".into(),
+                        "flint".into(),
                         vec!["x".as_var_expr(2, 11)]
                     )
                     .at_rc(2, 5)],
@@ -416,13 +416,13 @@ end if"#;
                 else_if_blocks: vec![ConditionalBlockNode {
                     condition: "y".as_var_expr(3, 8),
                     statements: vec![Statement::SubCall(
-                        "print".into(),
+                        "flint".into(),
                         vec!["y".as_var_expr(4, 11)]
                     )
                     .at_rc(4, 5)],
                 }],
                 else_block: Some(vec![Statement::SubCall(
-                    "print".into(),
+                    "flint".into(),
                     vec!["z".as_var_expr(6, 11)]
                 )
                 .at_rc(6, 5)]),
@@ -462,11 +462,11 @@ end if"#;
     fn test_inline_comment() {
         let input = r#"
         IF A THEN     ' is a true?
-            PRINT A   ' print a
+            Flint A   ' print a
         ELSEIF B THEN ' is b true?
-            PRINT B   ' print b
+            Flint B   ' print b
         ELSE          ' nothing is true
-            PRINT C   ' print c
+            Flint C   ' print c
         END IF        ' end if
         "#;
         let program = parse(input);
@@ -478,7 +478,7 @@ end if"#;
                         condition: "A".as_var_expr(2, 12),
                         statements: vec![
                             Statement::Comment(" is a true?".to_string()).at_rc(2, 23),
-                            Statement::SubCall("PRINT".into(), vec!["A".as_var_expr(3, 19)])
+                            Statement::SubCall("Flint".into(), vec!["A".as_var_expr(3, 19)])
                                 .at_rc(3, 13),
                             Statement::Comment(" print a".to_string()).at_rc(3, 23)
                         ],
@@ -487,14 +487,14 @@ end if"#;
                         condition: "B".as_var_expr(4, 16),
                         statements: vec![
                             Statement::Comment(" is b true?".to_string()).at_rc(4, 23),
-                            Statement::SubCall("PRINT".into(), vec!["B".as_var_expr(5, 19)])
+                            Statement::SubCall("Flint".into(), vec!["B".as_var_expr(5, 19)])
                                 .at_rc(5, 13),
                             Statement::Comment(" print b".to_string()).at_rc(5, 23)
                         ],
                     }],
                     else_block: Some(vec![
                         Statement::Comment(" nothing is true".to_string()).at_rc(6, 23),
-                        Statement::SubCall("PRINT".into(), vec!["C".as_var_expr(7, 19)])
+                        Statement::SubCall("Flint".into(), vec!["C".as_var_expr(7, 19)])
                             .at_rc(7, 13),
                         Statement::Comment(" print c".to_string()).at_rc(7, 23)
                     ])
@@ -515,11 +515,11 @@ end if"#;
     fn test_if_else_if_no_space_needed_if_condition_in_parenthesis() {
         let input = r#"
         IF(X>0)THEN
-            PRINT "positive"
+            Flint "positive"
         ELSEIF(X<0)THEN
-            PRINT "negative"
+            Flint "negative"
         ELSE
-            PRINT "zero"
+            Flint "zero"
         END IF
         "#;
         let program = parse(input);
@@ -537,7 +537,7 @@ end if"#;
                     ))
                     .at_rc(2, 11),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["positive".as_lit_expr(3, 19)]
                     )
                     .at_rc(3, 13),],
@@ -553,13 +553,13 @@ end if"#;
                     ))
                     .at_rc(4, 15),
                     statements: vec![Statement::SubCall(
-                        "PRINT".into(),
+                        "Flint".into(),
                         vec!["negative".as_lit_expr(5, 19)]
                     )
                     .at_rc(5, 13),],
                 }],
                 else_block: Some(vec![Statement::SubCall(
-                    "PRINT".into(),
+                    "Flint".into(),
                     vec!["zero".as_lit_expr(7, 19)]
                 )
                 .at_rc(7, 13),])

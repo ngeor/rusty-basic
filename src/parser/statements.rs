@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::EolReader;
-use crate::parser::pc::combine::combine_some;
+use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::str::{map_to_str, zero_or_more_if_leading_remaining};
 use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace, is_whitespace};
@@ -126,7 +126,7 @@ where
 fn statement_node_and_separator<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (StatementNode, Option<String>), QError>>
 {
-    combine_some(
+    combine_if_first_some(
         // first part is the statement node
         statement::statement_node(),
         // second part the separator, which is used by the `many_with_terminating_indicator` to understand if it's the terminal statement

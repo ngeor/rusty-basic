@@ -1,7 +1,8 @@
 use crate::assert_prints;
 use crate::common::*;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::test_utils::*;
-use crate::interpreter::Stdlib;
 
 #[test]
 fn test_interpret_sub_call_user_defined_no_args() {
@@ -13,7 +14,7 @@ fn test_interpret_sub_call_user_defined_no_args() {
     END SUB
     "#;
     let interpreter = interpret(program);
-    assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
+    assert_eq!(interpreter.stdlib().get_env_var(&"FOO".to_string()), "BAR");
 }
 
 #[test]
@@ -26,7 +27,7 @@ fn test_interpret_sub_call_user_defined_two_args() {
     END SUB
     "#;
     let interpreter = interpret(program);
-    assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
+    assert_eq!(interpreter.stdlib().get_env_var(&"FOO".to_string()), "BAR");
 }
 
 #[test]
@@ -157,10 +158,8 @@ fn test_by_ref_parameter_defined_in_previous_sub_call() {
         N% = N% + 1
     END SUB
     ";
-    let mut stdlib = MockStdlib::new();
-    stdlib.add_next_input("42");
-    let interpreter = interpret_with_stdlib(program, stdlib);
-    assert_eq!(interpreter.stdlib.output, vec!["42", "43"]);
+    let mut interpreter = interpret_with_raw_input(program, "42");
+    assert_eq!(interpreter.stdout().output_lines(), vec!["42", "43"]);
 }
 
 #[test]
@@ -184,10 +183,10 @@ fn test_by_ref_two_levels_deep() {
     "#;
     assert_prints!(
         program,
-        "Begin Sub1 41",
-        "Begin Sub2 41",
-        "End Sub2 42",
-        "End Sub1 42",
+        "Begin Sub1     41",
+        "Begin Sub2     41",
+        "End Sub2       42",
+        "End Sub1       42",
         "42"
     );
 }

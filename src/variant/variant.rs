@@ -5,7 +5,7 @@ use crate::parser::TypeQualifier;
 use crate::variant::casting::QBNumberCast;
 use crate::variant::{qb_and, qb_or};
 use std::cmp::Ordering;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 
 #[derive(Clone, Debug)]
@@ -15,7 +15,6 @@ pub enum Variant {
     VString(String),
     VInteger(i32),
     VLong(i64),
-    VFileHandle(FileHandle),
     VUserDefined(Box<UserDefinedTypeValue>),
 }
 
@@ -135,10 +134,6 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => other.cmp(self).map(|x| x.reverse()),
             },
-            Variant::VFileHandle(s_left) => match other {
-                Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
-                _ => Err(QError::TypeMismatch),
-            },
             Variant::VUserDefined(_) => Err(QError::TypeMismatch),
         }
     }
@@ -163,10 +158,6 @@ impl Variant {
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
-                _ => Err(QError::TypeMismatch),
-            },
-            Variant::VFileHandle(s_left) => match other {
-                Variant::VFileHandle(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(QError::TypeMismatch),
             },
             Variant::VUserDefined(_) => Err(QError::TypeMismatch),
@@ -382,6 +373,12 @@ impl From<&str> for Variant {
     }
 }
 
+impl From<u8> for Variant {
+    fn from(i: u8) -> Self {
+        Variant::VInteger(i as i32)
+    }
+}
+
 impl From<i32> for Variant {
     fn from(i: i32) -> Self {
         Variant::VInteger(i)
@@ -401,6 +398,13 @@ impl From<bool> for Variant {
         } else {
             V_FALSE
         }
+    }
+}
+
+impl From<FileHandle> for Variant {
+    fn from(file_handle: FileHandle) -> Variant {
+        let file_number: u8 = file_handle.into();
+        Variant::VInteger(file_number as i32)
     }
 }
 
@@ -495,6 +499,17 @@ impl<'a> TryFrom<&'a Variant> for &'a String {
     }
 }
 
+impl TryFrom<Variant> for String {
+    type Error = QError;
+
+    fn try_from(value: Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VString(s) => Ok(s),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
 impl TryFrom<&Variant> for i32 {
     type Error = QError;
 
@@ -506,21 +521,56 @@ impl TryFrom<&Variant> for i32 {
     }
 }
 
+impl TryFrom<Variant> for i32 {
+    type Error = QError;
+
+    fn try_from(value: Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VInteger(i) => Ok(i),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+impl TryFrom<&Variant> for u8 {
+    type Error = QError;
+    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
+        let i: i32 = value.try_into()?;
+        if i >= 0 && i <= 255 {
+            Ok(i as u8)
+        } else {
+            Err(QError::Overflow)
+        }
+    }
+}
+
+impl TryFrom<Variant> for u8 {
+    type Error = QError;
+    fn try_from(value: Variant) -> Result<Self, Self::Error> {
+        let i: i32 = value.try_into()?;
+        if i >= 0 && i <= 255 {
+            Ok(i as u8)
+        } else {
+            Err(QError::Overflow)
+        }
+    }
+}
+
 impl TryFrom<&Variant> for FileHandle {
     type Error = QError;
 
     fn try_from(v: &Variant) -> Result<Self, Self::Error> {
-        match v {
-            Variant::VFileHandle(file_handle) => Ok(*file_handle),
-            _ => {
-                let i: i32 = v.try_cast()?;
-                if i >= 1 && i <= 255 {
-                    Ok((i as u8).into())
-                } else {
-                    Err(QError::BadFileNameOrNumber)
-                }
-            }
-        }
+        let i: i32 = v.try_cast()?;
+        FileHandle::try_from(i)
+    }
+}
+
+impl TryFrom<Variant> for FileHandle {
+    type Error = QError;
+
+    fn try_from(v: Variant) -> Result<Self, Self::Error> {
+        let i: i32 = v.try_cast()?;
+        FileHandle::try_from(i)
     }
 }
 

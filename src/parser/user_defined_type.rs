@@ -276,7 +276,6 @@ mod tests {
             "\"hello\"",
             "(1+1)",
             "Foo(1)",
-            "#1",
             "32768", // MAX_INT (32767) + 1
         ];
         for e in &illegal_expressions {

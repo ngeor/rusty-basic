@@ -62,6 +62,7 @@ pub trait PostConversionLinter {
             Statement::GoTo(label) => self.visit_go_to(label),
             Statement::Comment(c) => self.visit_comment(c),
             Statement::Dim(d) => self.visit_dim(d),
+            Statement::Print(print_node) => self.visit_print_node(print_node),
         }
     }
 
@@ -164,5 +165,21 @@ pub trait PostConversionLinter {
 
     fn visit_expressions(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         args.iter().map(|e| self.visit_expression(e)).collect()
+    }
+
+    fn visit_print_node(&self, print_node: &PrintNode) -> Result<(), QErrorNode> {
+        match &print_node.format_string {
+            Some(f) => self.visit_expression(f)?,
+            None => {}
+        };
+        for print_arg in &print_node.args {
+            match print_arg {
+                PrintArg::Expression(e) => {
+                    self.visit_expression(e)?;
+                }
+                _ => {}
+            }
+        }
+        Ok(())
     }
 }

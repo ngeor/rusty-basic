@@ -1,5 +1,5 @@
 use super::{Name, Operator, UnaryOperator};
-use crate::common::{AtLocation, FileHandle, HasLocation, Locatable, Location};
+use crate::common::{AtLocation, HasLocation, Locatable, Location};
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -14,9 +14,6 @@ pub enum Expression {
     BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
-
-    /// A file handle is used in built-in subs such as CLOSE #1
-    FileHandle(FileHandle),
 }
 
 pub type ExpressionNode = Locatable<Expression>;

@@ -1,15 +1,18 @@
 use crate::common::{FileAccess, FileHandle, FileMode, QError};
+use crate::interpreter::read_input::ReadInputSource;
+use crate::interpreter::write_printer::WritePrinter;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::io::BufReader;
 
-#[derive(Debug)]
-struct FileInfo {
-    file: Option<File>,
-    buf_reader: Option<BufReader<File>>,
+pub enum FileInfo {
+    Input(FileInfoInput),
+    Output(FileInfoOutput),
 }
 
-#[derive(Debug)]
+pub type FileInfoInput = ReadInputSource<BufReader<File>>;
+pub type FileInfoOutput = WritePrinter<File>;
+
 pub struct FileManager {
     handle_map: HashMap<FileHandle, FileInfo>,
 }
@@ -43,76 +46,54 @@ impl FileManager {
         match file_mode {
             FileMode::Input => {
                 let file = File::open(file_name)?;
-                let buf_reader = BufReader::new(file);
                 self.handle_map.insert(
                     handle,
-                    FileInfo {
-                        file: None,
-                        buf_reader: Some(buf_reader),
-                    },
+                    FileInfo::Input(FileInfoInput::new(BufReader::new(file))),
                 );
             }
             FileMode::Output => {
                 let file = File::create(file_name)?;
-                self.handle_map.insert(
-                    handle,
-                    FileInfo {
-                        file: Some(file),
-                        buf_reader: None,
-                    },
-                );
+                self.handle_map
+                    .insert(handle, FileInfo::Output(FileInfoOutput::new(file)));
             }
             FileMode::Append => {
                 let file = OpenOptions::new()
                     .append(true)
                     .create(true)
                     .open(file_name)?;
-                self.handle_map.insert(
-                    handle,
-                    FileInfo {
-                        file: Some(file),
-                        buf_reader: None,
-                    },
-                );
+                self.handle_map
+                    .insert(handle, FileInfo::Output(FileInfoOutput::new(file)));
             }
         }
         Ok(())
     }
 
-    pub fn print(&mut self, handle: &FileHandle, print_args: Vec<String>) -> std::io::Result<()> {
+    fn try_get_file_info_mut(&mut self, handle: &FileHandle) -> Result<&mut FileInfo, QError> {
         match self.handle_map.get_mut(handle) {
-            Some(file_info) => {
-                for elem in print_args {
-                    file_info.file.as_ref().unwrap().write(elem.as_bytes())?;
-                }
-                file_info.file.as_ref().unwrap().write(&[13, 10])?;
-                Ok(())
-            }
-            None => Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+            Some(f) => Ok(f),
+            None => Err(QError::FileNotFound),
         }
     }
 
-    pub fn read_line(&mut self, handle: &FileHandle) -> std::io::Result<String> {
-        match self.handle_map.get_mut(handle) {
-            Some(file_info) => {
-                let mut buf = String::new();
-                file_info.buf_reader.as_mut().unwrap().read_line(&mut buf)?;
-                let cr_lf: &[_] = &['\r', '\n'];
-                buf = buf.trim_end_matches(cr_lf).to_string();
-                Ok(buf)
-            }
-            None => Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+    pub fn try_get_file_info_input_mut(
+        &mut self,
+        handle: &FileHandle,
+    ) -> Result<&mut FileInfoInput, QError> {
+        match self.try_get_file_info_mut(handle) {
+            Ok(FileInfo::Input(input)) => Ok(input),
+            Ok(FileInfo::Output(_)) => Err(QError::BadFileMode),
+            Err(err) => Err(err),
         }
     }
 
-    pub fn eof(&mut self, handle: &FileHandle) -> std::io::Result<bool> {
-        match self.handle_map.get_mut(handle) {
-            Some(file_info) => {
-                let buf = file_info.buf_reader.as_mut().unwrap().fill_buf()?;
-                let len = buf.len();
-                Ok(len == 0)
-            }
-            None => Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+    pub fn try_get_file_info_output_mut(
+        &mut self,
+        handle: &FileHandle,
+    ) -> Result<&mut FileInfoOutput, QError> {
+        match self.try_get_file_info_mut(handle) {
+            Ok(FileInfo::Output(output)) => Ok(output),
+            Ok(FileInfo::Input(_)) => Err(QError::BadFileMode),
+            Err(err) => Err(err),
         }
     }
 }

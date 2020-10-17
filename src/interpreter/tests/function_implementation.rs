@@ -1,4 +1,5 @@
 use crate::assert_prints;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 #[test]
 fn test_function_param_same_as_function_name_allowed() {

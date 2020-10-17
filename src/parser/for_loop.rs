@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::combine::combine_some;
+use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
@@ -19,7 +19,7 @@ pub fn for_loop<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         seq3(
-            combine_some(parse_for(), parse_step),
+            combine_if_first_some(parse_for(), parse_step),
             statements::statements(
                 keyword(Keyword::Next),
                 QError::syntax_error_fn("Expected: STEP or end-of-statement"),
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_for_loop() {
-        let input = "FOR I = 1 TO 10\r\nPRINT I\r\nNEXT";
+        let input = "FOR I = 1 TO 10\r\nFlint I\r\nNEXT";
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
@@ -117,7 +117,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![
-                    Statement::SubCall("PRINT".into(), vec!["I".as_var_expr(2, 7)]).at_rc(2, 1)
+                    Statement::SubCall("Flint".into(), vec!["I".as_var_expr(2, 7)]).at_rc(2, 1)
                 ],
                 next_counter: None,
             })
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_for_loop_lower_case() {
-        let input = "for i = 1 TO 10\r\nprint i\r\nnext";
+        let input = "for i = 1 TO 10\r\nflint i\r\nnext";
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
@@ -136,7 +136,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![
-                    Statement::SubCall("print".into(), vec!["i".as_var_expr(2, 7)]).at_rc(2, 1)
+                    Statement::SubCall("flint".into(), vec!["i".as_var_expr(2, 7)]).at_rc(2, 1)
                 ],
                 next_counter: None,
             })
@@ -153,10 +153,16 @@ mod tests {
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
-                statements: vec![Statement::SubCall(
-                    "PRINT".into(),
-                    vec!["Hello".as_lit_expr(2, 11), "I".as_var_expr(2, 20)]
-                )
+                statements: vec![Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: false,
+                    format_string: None,
+                    args: vec![
+                        PrintArg::Expression("Hello".as_lit_expr(2, 11)),
+                        PrintArg::Comma,
+                        PrintArg::Expression("I".as_var_expr(2, 20))
+                    ],
+                })
                 .at_rc(2, 5)],
                 next_counter: None,
             })
@@ -169,56 +175,64 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                TopLevelToken::Statement(Statement::SubCall(
-                    "PRINT".into(),
-                    vec!["Before the outer loop".as_lit_expr(1, 7)]
-                )),
+                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                    "Before the outer loop".as_lit_expr(1, 7)
+                ))),
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
                     variable_name: "I".as_name(2, 5),
                     lower_bound: 1.as_lit_expr(2, 9),
                     upper_bound: 10.as_lit_expr(2, 14),
                     step: None,
                     statements: vec![
-                        Statement::SubCall(
-                            "PRINT".into(),
-                            vec![
-                                "Before the inner loop".as_lit_expr(3, 11),
-                                "I".as_var_expr(3, 36)
-                            ]
-                        )
+                        Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![
+                                PrintArg::Expression("Before the inner loop".as_lit_expr(3, 11)),
+                                PrintArg::Comma,
+                                PrintArg::Expression("I".as_var_expr(3, 36))
+                            ],
+                        })
                         .at_rc(3, 5),
                         Statement::ForLoop(ForLoopNode {
                             variable_name: "J".as_name(4, 9),
                             lower_bound: 1.as_lit_expr(4, 13),
                             upper_bound: 10.as_lit_expr(4, 18),
                             step: None,
-                            statements: vec![Statement::SubCall(
-                                "PRINT".into(),
-                                vec![
-                                    "Inner loop".as_lit_expr(5, 15),
-                                    "I".as_var_expr(5, 29),
-                                    "J".as_var_expr(5, 32)
-                                ]
-                            )
+                            statements: vec![Statement::Print(PrintNode {
+                                file_number: None,
+                                lpt1: false,
+                                format_string: None,
+                                args: vec![
+                                    PrintArg::Expression("Inner loop".as_lit_expr(5, 15)),
+                                    PrintArg::Comma,
+                                    PrintArg::Expression("I".as_var_expr(5, 29)),
+                                    PrintArg::Comma,
+                                    PrintArg::Expression("J".as_var_expr(5, 32)),
+                                ],
+                            })
                             .at_rc(5, 9)],
                             next_counter: None,
                         })
                         .at_rc(4, 5),
-                        Statement::SubCall(
-                            "PRINT".into(),
-                            vec![
-                                "After the inner loop".as_lit_expr(7, 11),
-                                "I".as_var_expr(7, 35)
-                            ]
-                        )
+                        Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![
+                                PrintArg::Expression("After the inner loop".as_lit_expr(7, 11)),
+                                PrintArg::Comma,
+                                PrintArg::Expression("I".as_var_expr(7, 35))
+                            ],
+                        })
                         .at_rc(7, 5)
                     ],
                     next_counter: None,
                 })),
-                TopLevelToken::Statement(Statement::SubCall(
-                    BareName::from("PRINT"),
-                    vec!["After the outer loop".as_lit_expr(9, 7)]
-                )),
+                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                    "After the outer loop".as_lit_expr(9, 7)
+                ))),
             ]
         );
     }
@@ -227,7 +241,7 @@ mod tests {
     fn test_inline_comment() {
         let input = r#"
         FOR I = 1 TO 10 ' for loop
-        PRINT I ' print it
+        Flint I ' print it
         NEXT ' end of loop
         "#;
         let result = parse(input);
@@ -241,7 +255,7 @@ mod tests {
                     step: None,
                     statements: vec![
                         Statement::Comment(" for loop".to_string()).at_rc(2, 25),
-                        Statement::SubCall("PRINT".into(), vec!["I".as_var_expr(3, 15)])
+                        Statement::SubCall("Flint".into(), vec!["I".as_var_expr(3, 15)])
                             .at_rc(3, 9),
                         Statement::Comment(" print it".to_string()).at_rc(3, 17),
                     ],
@@ -265,7 +279,7 @@ mod tests {
             result,
             QErrorNode::Pos(
                 QError::syntax_error("Expected: STEP or end-of-statement"),
-                Location::new(2, 23)
+                Location::new(2, 23),
             )
         );
     }

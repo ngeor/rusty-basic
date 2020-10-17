@@ -2,7 +2,6 @@ use super::{Instruction, InstructionGenerator};
 use crate::common::*;
 use crate::linter::*;
 use crate::parser::{Operator, UnaryOperator};
-use crate::variant::Variant;
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(
@@ -30,19 +29,19 @@ impl InstructionGenerator {
         let Locatable { element: e, pos } = expr_node;
         match e {
             Expression::SingleLiteral(s) => {
-                self.push(Instruction::Load(Variant::from(s)), pos);
+                self.push_load(s, pos);
             }
             Expression::DoubleLiteral(s) => {
-                self.push(Instruction::Load(Variant::from(s)), pos);
+                self.push_load(s, pos);
             }
             Expression::StringLiteral(s) => {
-                self.push(Instruction::Load(Variant::from(s)), pos);
+                self.push_load(s, pos);
             }
             Expression::IntegerLiteral(s) => {
-                self.push(Instruction::Load(Variant::from(s)), pos);
+                self.push_load(s, pos);
             }
             Expression::LongLiteral(s) => {
-                self.push(Instruction::Load(Variant::from(s)), pos);
+                self.push_load(s, pos);
             }
             Expression::Variable(dim_name) => {
                 self.push(Instruction::CopyVarToA(dim_name), pos);
@@ -91,9 +90,6 @@ impl InstructionGenerator {
             },
             Expression::Parenthesis(child) => {
                 self.generate_expression_instructions(*child);
-            }
-            Expression::FileHandle(i) => {
-                self.push(Instruction::Load(Variant::VFileHandle(i)), pos);
             }
         }
     }

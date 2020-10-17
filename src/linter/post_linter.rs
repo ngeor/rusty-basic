@@ -4,6 +4,7 @@ pub mod expression_reducer;
 pub mod for_next_counter_match_linter;
 pub mod label_linter;
 pub mod post_conversion_linter;
+pub mod print_linter;
 pub mod select_case_linter;
 pub mod undefined_function_reducer;
 pub mod user_defined_function_linter;
@@ -41,6 +42,9 @@ fn apply_linters(
     linter.visit_program(&result)?;
 
     let linter = built_in_linter::BuiltInLinter {};
+    linter.visit_program(&result)?;
+
+    let linter = print_linter::PrintLinter {};
     linter.visit_program(&result)?;
 
     let linter = user_defined_function_linter::UserDefinedFunctionLinter { functions };

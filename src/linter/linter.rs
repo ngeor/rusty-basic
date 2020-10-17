@@ -17,7 +17,6 @@ pub fn lint(program: parser::ProgramNode) -> Result<(ProgramNode, UserDefinedTyp
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::linter::test_utils::*;
     use crate::linter::*;
@@ -221,10 +220,9 @@ mod tests {
                         Expression::IntegerLiteral(42).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::parse("A!")).at_rc(4, 19)]
-                    ))
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::parse("A!")).at_rc(4, 19)
+                    )))
                     .at_rc(4, 13)
                 ]
             );
@@ -247,10 +245,9 @@ mod tests {
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
                     ))
                     .at_rc(3, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::parse("A$")).at_rc(4, 19)]
-                    ))
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::parse("A$")).at_rc(4, 19)
+                    )))
                     .at_rc(4, 13)
                 ]
             );
@@ -273,10 +270,9 @@ mod tests {
                         Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
                     ))
                     .at_rc(3, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::parse("A$")).at_rc(4, 19)]
-                    ))
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::parse("A$")).at_rc(4, 19)
+                    )))
                     .at_rc(4, 13)
                 ]
             );
@@ -362,9 +358,8 @@ mod tests {
                         Expression::IntegerLiteral(42).at_rc(7, 23)
                     ))
                     .at_rc(7, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::new(
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::new(
                             "A".into(),
                             DimType::Many(
                                 "Card".into(),
@@ -374,8 +369,8 @@ mod tests {
                                 }
                             )
                         ))
-                        .at_rc(8, 19)]
-                    ))
+                        .at_rc(8, 19)
+                    )))
                     .at_rc(8, 13)
                 ]
             );
@@ -413,9 +408,8 @@ mod tests {
                         Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
                     ))
                     .at_rc(7, 13),
-                    TopLevelToken::Statement(Statement::BuiltInSubCall(
-                        BuiltInSub::Print,
-                        vec![Expression::Variable(DimName::new(
+                    TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                        Expression::Variable(DimName::new(
                             "A".into(),
                             DimType::Many(
                                 "Card".into(),
@@ -425,8 +419,8 @@ mod tests {
                                 }
                             )
                         ))
-                        .at_rc(8, 19)]
-                    ))
+                        .at_rc(8, 19)
+                    )))
                     .at_rc(8, 13)
                 ]
             );
@@ -1157,10 +1151,6 @@ mod tests {
             assert_linter_err!(r#"PRINT 1 AND "hello""#, QError::TypeMismatch, 1, 13);
             assert_linter_err!(r#"PRINT "hello" AND 1"#, QError::TypeMismatch, 1, 19);
             assert_linter_err!(r#"PRINT "hello" AND "bye""#, QError::TypeMismatch, 1, 19);
-
-            assert_linter_err!(r#"PRINT 1 AND #1"#, QError::TypeMismatch, 1, 13);
-            assert_linter_err!(r#"PRINT #1 AND 1"#, QError::TypeMismatch, 1, 14);
-            assert_linter_err!(r#"PRINT #1 AND #1"#, QError::TypeMismatch, 1, 14);
         }
 
         #[test]
@@ -1186,29 +1176,6 @@ mod tests {
             PRINT X!
             ";
             assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
-        }
-
-        #[test]
-        fn test_file_handle_binary_expression() {
-            let operators = [
-                "+", "-", "*", "/", "AND", "OR", "<", ">", "=", "<>", ">=", "<=",
-            ];
-            for operator in &operators {
-                let input = format!("CLOSE #1 {} #2", operator);
-                assert_linter_err!(input, QError::TypeMismatch);
-            }
-        }
-
-        #[test]
-        fn test_file_handle_unary_minus() {
-            let input = "CLOSE -#1";
-            assert_linter_err!(input, QError::TypeMismatch);
-        }
-
-        #[test]
-        fn test_file_handle_unary_not() {
-            let input = "CLOSE NOT #1";
-            assert_linter_err!(input, QError::TypeMismatch);
         }
     }
 
@@ -1379,4 +1346,3 @@ mod tests {
         }
     }
 }
-// TODO test file handle expression cannot be used anywhere except for `OPEN`, `CLOSE`, `LINE INPUT`, `INPUT`

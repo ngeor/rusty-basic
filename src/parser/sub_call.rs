@@ -77,23 +77,24 @@ mod tests {
     use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
-        Expression, Name, Operator, ParamName, ParamType, Statement, TopLevelToken, TypeQualifier,
+        Expression, Name, Operator, ParamName, ParamType, PrintArg, PrintNode, Statement,
+        TopLevelToken, TypeQualifier,
     };
 
     #[test]
     fn test_parse_sub_call_no_args() {
-        let input = "PRINT";
+        let input = "Flint";
         let program = parse(input).demand_single_statement();
-        assert_sub_call!(program, "PRINT");
+        assert_sub_call!(program, "Flint");
     }
 
     #[test]
     fn test_parse_sub_call_single_arg_string_literal() {
-        let input = "PRINT \"Hello, world!\"";
+        let input = "Flint \"Hello, world!\"";
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::SubCall("PRINT".into(), vec!["Hello, world!".as_lit_expr(1, 7)])
+            Statement::SubCall("Flint".into(), vec!["Hello, world!".as_lit_expr(1, 7)])
         );
     }
 
@@ -102,7 +103,7 @@ mod tests {
         let program = parse_file("HELLO1.BAS").demand_single_statement();
         assert_eq!(
             program,
-            Statement::SubCall("PRINT".into(), vec!["Hello, world!".as_lit_expr(1, 7)])
+            Statement::Print(PrintNode::one("Hello, world!".as_lit_expr(1, 7)))
         );
     }
 
@@ -111,10 +112,16 @@ mod tests {
         let program = parse_file("HELLO2.BAS").demand_single_statement();
         assert_eq!(
             program,
-            Statement::SubCall(
-                "PRINT".into(),
-                vec!["Hello".as_lit_expr(1, 7), "world!".as_lit_expr(1, 16)]
-            )
+            Statement::Print(PrintNode {
+                file_number: None,
+                lpt1: false,
+                format_string: None,
+                args: vec![
+                    PrintArg::Expression("Hello".as_lit_expr(1, 7)),
+                    PrintArg::Comma,
+                    PrintArg::Expression("world!".as_lit_expr(1, 16))
+                ]
+            })
         );
     }
 
@@ -124,10 +131,9 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::SubCall(
-                    "PRINT".into(),
-                    vec!["Hello, world!".as_lit_expr(1, 7)]
-                )),
+                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                    "Hello, world!".as_lit_expr(1, 7)
+                ))),
                 TopLevelToken::Statement(Statement::SubCall("SYSTEM".into(), vec![])),
             ],
         );
@@ -141,12 +147,12 @@ mod tests {
             vec![
                 TopLevelToken::Statement(Statement::SubCall(
                     "INPUT".into(),
-                    vec!["N".as_var_expr(1, 7)]
+                    vec![
+                        0.as_lit_expr(1, 1), // no file number
+                        "N".as_var_expr(1, 7)
+                    ]
                 )),
-                TopLevelToken::Statement(Statement::SubCall(
-                    "PRINT".into(),
-                    vec!["N".as_var_expr(2, 7)]
-                )),
+                TopLevelToken::Statement(Statement::Print(PrintNode::one("N".as_var_expr(2, 7)))),
             ],
         );
     }
@@ -156,14 +162,10 @@ mod tests {
         let program = parse_file("ENVIRON.BAS").strip_location();
         assert_eq!(
             program,
-            vec![TopLevelToken::Statement(Statement::SubCall(
-                "PRINT".into(),
-                vec![Expression::FunctionCall(
-                    Name::from("ENVIRON$"),
-                    vec!["PATH".as_lit_expr(1, 16)]
-                )
-                .at_rc(1, 7)]
-            ))]
+            vec![TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                Expression::FunctionCall(Name::from("ENVIRON$"), vec!["PATH".as_lit_expr(1, 16)])
+                    .at_rc(1, 7)
+            )))]
         );
     }
 
@@ -260,7 +262,7 @@ mod tests {
     fn test_close_file_handle() {
         let input = "CLOSE #1";
         let program = parse(input).demand_single_statement();
-        assert_sub_call!(program, "CLOSE", Expression::FileHandle(1.into()));
+        assert_sub_call!(program, "CLOSE", Expression::IntegerLiteral(1));
     }
 
     #[test]
@@ -272,7 +274,7 @@ mod tests {
             vec![
                 TopLevelToken::Statement(Statement::SubCall(
                     "CLOSE".into(),
-                    vec![Expression::FileHandle(1.into()).at_rc(1, 7)]
+                    vec![1.as_lit_expr(1, 7)]
                 ))
                 .at_rc(1, 1),
                 TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))

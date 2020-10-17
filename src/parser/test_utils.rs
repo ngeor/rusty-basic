@@ -175,8 +175,8 @@ macro_rules! assert_sub_call {
 #[macro_export]
 macro_rules! assert_expression {
     ($left:expr, $right:expr) => {
-        let program = parse(format!("PRINT {}", $left)).demand_single_statement();
-        crate::assert_sub_call!(program, "PRINT", $right);
+        let program = parse(format!("Flint {}", $left)).demand_single_statement();
+        crate::assert_sub_call!(program, "Flint", $right);
     };
 }
 

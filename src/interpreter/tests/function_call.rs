@@ -1,5 +1,6 @@
 use crate::assert_has_variable;
 use crate::assert_prints;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
 
 #[test]
@@ -50,9 +51,9 @@ fn test_function_call_not_setting_return_value_defaults_to_zero() {
         PRINT A + B
     END FUNCTION
     ";
-    let interpreter = interpret(program);
+    let mut interpreter = interpret(program);
     assert_has_variable!(interpreter, "X!", 0.0_f32);
-    assert_eq!(interpreter.stdlib.output, vec!["3"]);
+    assert_eq!(interpreter.stdout().output_lines(), vec!["3"]);
 }
 
 #[test]

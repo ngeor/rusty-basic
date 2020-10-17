@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
-use crate::parser::pc::combine::combine_some;
+use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
@@ -15,6 +15,27 @@ pub fn demand_expression_node<T: BufRead + 'static>(
     demand(
         expression_node(),
         QError::syntax_error_fn("Expected: expression"),
+    )
+}
+
+pub fn demand_guarded_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    // ws* ( expr )
+    // ws+ expr
+    demand(
+        guarded_expression_node(),
+        QError::syntax_error_fn("Expected: expression"),
+    )
+}
+
+pub fn guarded_expression_node<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+    // the order is important because if there is whitespace we can pick up any expression
+    // ws+ expr
+    // ws* ( expr )
+    or(
+        guarded_whitespace_expression_node(),
+        guarded_parenthesis_expression_node(),
     )
 }
 
@@ -37,26 +58,6 @@ fn guarded_whitespace_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     // ws+ expr
     crate::parser::pc::ws::one_or_more_leading(expression_node())
-}
-
-pub fn guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // ws* ( expr )
-    // ws+ expr
-    or(
-        guarded_parenthesis_expression_node(),
-        guarded_whitespace_expression_node(),
-    )
-}
-
-pub fn demand_guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // ws* ( expr )
-    // ws+ expr
-    demand(
-        guarded_expression_node(),
-        QError::syntax_error_fn("Expected: expression"),
-    )
 }
 
 pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
@@ -82,7 +83,7 @@ pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
 pub fn expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
     map(
-        combine_some(
+        combine_if_first_some(
             // left side
             single_expression_node(),
             // maybe right side
@@ -118,7 +119,6 @@ fn single_expression_node<T: BufRead + 'static>(
         number_literal::float_without_leading_zero(),
         number_literal::hexadecimal_literal(),
         number_literal::octal_literal(),
-        with_pos(file_handle()),
         with_pos(parenthesis()),
         unary_not(),
         unary_minus(),
@@ -155,19 +155,19 @@ pub fn unary_not<T: BufRead + 'static>(
 }
 
 pub fn file_handle<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<FileHandle>, QError>> {
     and_then(
         seq2(
-            read('#'),
+            with_pos(read('#')),
             demand(
                 any_digits(),
                 QError::syntax_error_fn("Expected: digits after #"),
             ),
         ),
-        |(_, digits)| match digits.parse::<u8>() {
+        |(Locatable { pos, .. }, digits)| match digits.parse::<u8>() {
             Ok(d) => {
                 if d > 0 {
-                    Ok(Expression::FileHandle(d.into()))
+                    Ok(Locatable::new(d.into(), pos))
                 } else {
                     Err(QError::BadFileNameOrNumber)
                 }
@@ -180,9 +180,10 @@ pub fn file_handle<T: BufRead + 'static>(
 pub fn parenthesis<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
     map(
-        in_parenthesis(crate::parser::pc::ws::zero_or_more_around(lazy(
-            expression_node,
-        ))),
+        in_parenthesis(demand(
+            crate::parser::pc::ws::zero_or_more_around(lazy(expression_node)),
+            QError::syntax_error_fn("Expected: expression"),
+        )),
         |v| Expression::Parenthesis(Box::new(v)),
     )
 }
@@ -974,21 +975,21 @@ mod tests {
         fn test_file_handle_one() {
             let input = "CLOSE #1";
             let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::FileHandle(1.into()));
+            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(1));
         }
 
         #[test]
         fn test_file_handle_two() {
             let input = "CLOSE #2";
             let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::FileHandle(2.into()));
+            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(2));
         }
 
         #[test]
         fn test_file_handle_max() {
             let input = "CLOSE #255";
             let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::FileHandle(255.into()));
+            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(255));
         }
 
         #[test]

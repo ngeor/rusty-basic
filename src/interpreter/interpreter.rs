@@ -1,82 +1,26 @@
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
+use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
-use crate::interpreter::input_source::{InputSource, ReadInputSource};
+use crate::interpreter::default_stdlib::DefaultStdlib;
+use crate::interpreter::input::Input;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::FileManager;
-use crate::interpreter::printer::{Printer, WritePrinter};
-use crate::interpreter::Stdlib;
-use crate::interpreter::{built_ins, DefaultStdlib};
+use crate::interpreter::lpt1_write::Lpt1Write;
+use crate::interpreter::printer::Printer;
+use crate::interpreter::read_input::ReadInputSource;
+use crate::interpreter::registers::{RegisterStack, Registers};
+use crate::interpreter::stdlib::Stdlib;
+use crate::interpreter::write_printer::WritePrinter;
 use crate::linter::{DimName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
-use std::io::Write;
 use std::rc::Rc;
 
-#[derive(Debug)]
-pub struct Registers {
-    a: Variant,
-    b: Variant,
-    c: Variant,
-    d: Variant,
-}
-
-impl Registers {
-    pub fn new() -> Self {
-        Self {
-            a: Variant::VInteger(0),
-            b: Variant::VInteger(0),
-            c: Variant::VInteger(0),
-            d: Variant::VInteger(0),
-        }
-    }
-
-    pub fn get_a(&self) -> Variant {
-        self.a.clone()
-    }
-
-    pub fn get_b(&self) -> Variant {
-        self.b.clone()
-    }
-
-    pub fn set_a(&mut self, v: Variant) {
-        self.a = v;
-    }
-
-    pub fn copy_a_to_b(&mut self) {
-        self.b = self.a.clone();
-    }
-
-    pub fn copy_a_to_c(&mut self) {
-        self.c = self.a.clone();
-    }
-
-    pub fn copy_a_to_d(&mut self) {
-        self.d = self.a.clone();
-    }
-
-    pub fn copy_c_to_b(&mut self) {
-        self.b = self.c.clone();
-    }
-
-    pub fn copy_d_to_a(&mut self) {
-        self.a = self.d.clone();
-    }
-
-    pub fn copy_d_to_b(&mut self) {
-        self.b = self.d.clone();
-    }
-
-    pub fn swap_a_with_b(&mut self) {
-        std::mem::swap(&mut self.a, &mut self.b);
-    }
-}
-
-pub type RegisterStack = VecDeque<Registers>;
-
-pub struct Interpreter<TStdlib: Stdlib, TStdIn: InputSource, TStdOut: Printer, TLpt1: Printer> {
+pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
     stdlib: TStdlib,
     context: Context,
     register_stack: RegisterStack,
@@ -89,32 +33,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: InputSource, TStdOut: Printer, T
     lpt1: TLpt1,
 }
 
-pub trait InterpreterTrait {
-    type TStdlib: Stdlib;
-    type TStdIn: InputSource;
-    type TStdOut: Printer;
-    type TLpt1: Printer;
-
-    fn context(&self) -> &Context;
-
-    fn context_mut(&mut self) -> &mut Context;
-
-    fn file_manager(&mut self) -> &mut FileManager;
-
-    fn stdlib(&self) -> &Self::TStdlib;
-
-    fn stdlib_mut(&mut self) -> &mut Self::TStdlib;
-
-    fn user_defined_types(&self) -> &UserDefinedTypes;
-
-    fn stdin(&mut self) -> &mut Self::TStdIn;
-
-    fn stdout(&mut self) -> &mut Self::TStdOut;
-
-    fn lpt1(&mut self) -> &mut Self::TLpt1;
-}
-
-impl<TStdlib: Stdlib, TStdIn: InputSource, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
+impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
     for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
 {
     type TStdlib = TStdlib;
@@ -159,26 +78,14 @@ impl<TStdlib: Stdlib, TStdIn: InputSource, TStdOut: Printer, TLpt1: Printer> Int
     }
 }
 
-pub struct Lpt1Write {}
-
-impl Write for Lpt1Write {
-    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
-        unimplemented!()
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        unimplemented!()
-    }
-}
-
-pub fn new_default(
-    user_defined_types: UserDefinedTypes,
-) -> Interpreter<
+pub type DefaultInterpreter = Interpreter<
     DefaultStdlib,
     ReadInputSource<std::io::Stdin>,
     WritePrinter<std::io::Stdout>,
     WritePrinter<Lpt1Write>,
-> {
+>;
+
+pub fn new_default_interpreter(user_defined_types: UserDefinedTypes) -> DefaultInterpreter {
     let stdlib = DefaultStdlib::new();
     let stdin = ReadInputSource::new(std::io::stdin());
     let stdout = WritePrinter::new(std::io::stdout());
@@ -186,7 +93,7 @@ pub fn new_default(
     Interpreter::new(stdlib, stdin, stdout, lpt1, user_defined_types)
 }
 
-impl<TStdlib: Stdlib, TStdIn: InputSource, TStdOut: Printer, TLpt1: Printer>
+impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
     Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
 {
     pub fn new(
@@ -551,7 +458,7 @@ impl<TStdlib: Stdlib, TStdIn: InputSource, TStdOut: Printer, TLpt1: Printer>
 
 #[cfg(test)]
 mod tests {
-    use crate::interpreter::interpreter::InterpreterTrait;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::*;
 
     #[test]

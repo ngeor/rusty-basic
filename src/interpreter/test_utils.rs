@@ -1,10 +1,11 @@
 use crate::common::*;
 use crate::instruction_generator::generate_instructions;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
-use crate::interpreter::input_source::ReadInputSource;
-use crate::interpreter::interpreter::InterpreterTrait;
-use crate::interpreter::printer::WritePrinter;
-use crate::interpreter::{Interpreter, Stdlib};
+use crate::interpreter::interpreter::Interpreter;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::interpreter::read_input::ReadInputSource;
+use crate::interpreter::stdlib::Stdlib;
+use crate::interpreter::write_printer::WritePrinter;
 use crate::linter;
 use crate::linter::{DimName, UserDefinedTypes};
 use crate::parser::parse_main_file;

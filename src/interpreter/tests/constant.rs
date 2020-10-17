@@ -1,5 +1,5 @@
 use crate::assert_prints;
-use crate::interpreter::interpreter::InterpreterTrait;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 mod unqualified_integer_declaration {
     use super::*;

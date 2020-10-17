@@ -1,6 +1,6 @@
 use crate::common::{FileAccess, FileHandle, FileMode, QError};
-use crate::interpreter::input_source::ReadInputSource;
-use crate::interpreter::printer::WritePrinter;
+use crate::interpreter::read_input::ReadInputSource;
+use crate::interpreter::write_printer::WritePrinter;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::BufReader;

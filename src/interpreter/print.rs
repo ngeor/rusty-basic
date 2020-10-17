@@ -1,6 +1,6 @@
 use crate::common::{FileHandle, QError, StringUtils};
 use crate::instruction_generator::print::{PrintArgType, PrintHandle};
-use crate::interpreter::interpreter::InterpreterTrait;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::printer::Printer;
 use crate::variant::Variant;
 use std::collections::VecDeque;
@@ -367,7 +367,7 @@ mod tests {
     use crate::assert_prints;
     use crate::assert_prints_exact;
     use crate::common::QError;
-    use crate::interpreter::interpreter::InterpreterTrait;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
 
     #[test]
     fn test_print_no_args() {

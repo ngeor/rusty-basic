@@ -1,12 +1,5 @@
+use crate::interpreter::input::Input;
 use std::io::{ErrorKind, Read};
-
-pub trait InputSource {
-    fn eof(&mut self) -> std::io::Result<bool>;
-
-    fn input(&mut self) -> std::io::Result<String>;
-
-    fn line_input(&mut self) -> std::io::Result<String>;
-}
 
 pub struct ReadInputSource<T: Read> {
     read: T,
@@ -102,7 +95,7 @@ impl<T: Read> ReadInputSource<T> {
     }
 }
 
-impl<T: Read> InputSource for ReadInputSource<T> {
+impl<T: Read> Input for ReadInputSource<T> {
     fn eof(&mut self) -> std::io::Result<bool> {
         self.peek().map(|ch| ch.is_none())
     }

@@ -2,7 +2,7 @@ use std::env;
 use std::fs::File;
 
 use rusty_basic::instruction_generator;
-use rusty_basic::interpreter;
+use rusty_basic::interpreter::interpreter::new_default_interpreter;
 use rusty_basic::linter;
 use rusty_basic::parser;
 
@@ -17,7 +17,7 @@ fn main() {
                 if is_running_in_apache {
                     set_current_dir(&filename); // Note: only needed to make it work inside Apache.
                 }
-                let mut interpreter = interpreter::new_default(user_defined_types);
+                let mut interpreter = new_default_interpreter(user_defined_types);
                 match interpreter.interpret(instructions) {
                     Ok(_) => (),
                     Err(e) => eprintln!("Runtime error. {:?}", e),

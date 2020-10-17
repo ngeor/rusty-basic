@@ -1,8 +1,8 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
-use crate::interpreter::interpreter::InterpreterTrait;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::print;
-use crate::interpreter::Stdlib;
+use crate::interpreter::stdlib::Stdlib;
 use crate::linter::{ElementType, UserDefinedType, UserDefinedTypes};
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
@@ -63,7 +63,7 @@ mod chr {
         use crate::assert_linter_err;
         use crate::assert_prints;
         use crate::common::QError;
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
         #[test]
         fn test_chr() {
             assert_prints!("PRINT CHR$(33)", "!");
@@ -155,9 +155,9 @@ mod environ_fn {
         use crate::assert_has_variable;
         use crate::assert_linter_err;
         use crate::common::QError;
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
+        use crate::interpreter::stdlib::Stdlib;
         use crate::interpreter::test_utils::*;
-        use crate::interpreter::Stdlib;
 
         #[test]
         fn test_function_call_environ() {
@@ -215,7 +215,7 @@ mod environ_sub {
 
     #[cfg(test)]
     mod tests {
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
         use crate::interpreter::stdlib::Stdlib;
         use crate::interpreter::test_utils::interpret;
 
@@ -246,7 +246,7 @@ mod environ_sub {
 mod eof {
     // EOF(file-number%) -> checks if the end of file has been reached
     use super::*;
-    use crate::interpreter::input_source::InputSource;
+    use crate::interpreter::input::Input;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let file_handle: FileHandle = interpreter.context().get(0).unwrap().try_into()?;
@@ -276,7 +276,7 @@ mod input {
     // after the user presses the Enter key.
 
     use super::*;
-    use crate::interpreter::input_source::InputSource;
+    use crate::interpreter::input::Input;
     use std::convert::TryFrom;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
@@ -603,7 +603,7 @@ mod instr {
         use crate::assert_linter_err;
         use crate::assert_prints;
         use crate::common::*;
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
         use crate::interpreter::test_utils::interpret_err;
 
         #[test]
@@ -738,7 +738,7 @@ mod len {
     #[cfg(test)]
     mod tests {
         use crate::assert_prints;
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
         #[test]
         fn test_len_string() {
             let program = r#"PRINT LEN("hello")"#;
@@ -861,7 +861,7 @@ mod line_input {
     // LINE INPUT #file-number%, variable$
 
     use super::*;
-    use crate::interpreter::input_source::InputSource;
+    use crate::interpreter::input::Input;
     use std::convert::TryFrom;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
@@ -1012,7 +1012,7 @@ mod mid {
         use crate::assert_linter_err;
         use crate::assert_prints;
         use crate::common::*;
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
         use crate::interpreter::test_utils::interpret_err;
         #[test]
         fn test_mid_happy_flow() {
@@ -1173,7 +1173,7 @@ mod open {
         use crate::assert_err;
         use crate::assert_prints;
         use crate::common::QError;
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
         use crate::interpreter::test_utils::*;
 
         #[test]
@@ -1288,7 +1288,7 @@ mod str_fn {
     #[cfg(test)]
     mod tests {
         use crate::assert_prints;
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
 
         #[test]
         fn test_str_float() {
@@ -1425,7 +1425,7 @@ mod val {
     #[cfg(test)]
     mod tests {
         use crate::assert_prints;
-        use crate::interpreter::interpreter::InterpreterTrait;
+        use crate::interpreter::interpreter_trait::InterpreterTrait;
 
         #[test]
         fn test_val_float() {

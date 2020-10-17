@@ -1,5 +1,5 @@
 use crate::assert_prints;
-use crate::interpreter::interpreter::InterpreterTrait;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 #[test]
 fn test_while_wend() {

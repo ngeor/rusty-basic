@@ -15,5 +15,5 @@ pub mod test_utils;
 #[cfg(test)]
 mod tests;
 
-pub use self::interpreter::{Interpreter, SetVariable};
+pub use self::interpreter::{new_default, Interpreter};
 pub use self::stdlib::*;

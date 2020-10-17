@@ -1,13 +1,13 @@
 use crate::common::{FileHandle, QError, StringUtils};
 use crate::instruction_generator::print::{PrintArgType, PrintHandle};
+use crate::interpreter::interpreter::InterpreterTrait;
 use crate::interpreter::printer::Printer;
-use crate::interpreter::{Interpreter, Stdlib};
 use crate::variant::Variant;
 use std::collections::VecDeque;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 
-pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let parameter_count = interpreter.context().parameter_count();
     // get all args (cloned) to fight the borrow checker
     let mut args: VecDeque<Variant> = (0..parameter_count)
@@ -65,23 +65,23 @@ fn decode_print_arg(args: &mut VecDeque<Variant>) -> Result<PrintVal, QError> {
     }
 }
 
-struct PrinterWrapper<'a, S: Stdlib> {
-    interpreter: &'a mut Interpreter<S>,
+struct PrinterWrapper<'a, S> {
+    interpreter: &'a mut S,
     print_handle: PrintHandle,
     file_handle: FileHandle,
 }
 
-impl<'a, S: Stdlib> Printer for PrinterWrapper<'a, S> {
+impl<'a, S: InterpreterTrait> Printer for PrinterWrapper<'a, S> {
     fn print(&mut self, s: &str) -> std::io::Result<usize> {
         match self.print_handle {
             PrintHandle::File => self
                 .interpreter
-                .file_manager
+                .file_manager()
                 .try_get_file_info_output_mut(&self.file_handle)
                 .expect("Expected file handle")
                 .print(s),
-            PrintHandle::LPrint => self.interpreter.stdlib.lpt1().print(s),
-            PrintHandle::Print => self.interpreter.stdlib.print(s),
+            PrintHandle::LPrint => self.interpreter.lpt1().print(s),
+            PrintHandle::Print => self.interpreter.stdout().print(s),
         }
     }
 
@@ -89,12 +89,12 @@ impl<'a, S: Stdlib> Printer for PrinterWrapper<'a, S> {
         match self.print_handle {
             PrintHandle::File => self
                 .interpreter
-                .file_manager
+                .file_manager()
                 .try_get_file_info_output_mut(&self.file_handle)
                 .expect("Expected file handle")
                 .println(),
-            PrintHandle::LPrint => self.interpreter.stdlib.lpt1().println(),
-            PrintHandle::Print => self.interpreter.stdlib.println(),
+            PrintHandle::LPrint => self.interpreter.lpt1().println(),
+            PrintHandle::Print => self.interpreter.stdout().println(),
         }
     }
 
@@ -102,12 +102,12 @@ impl<'a, S: Stdlib> Printer for PrinterWrapper<'a, S> {
         match self.print_handle {
             PrintHandle::File => self
                 .interpreter
-                .file_manager
+                .file_manager()
                 .try_get_file_info_output_mut(&self.file_handle)
                 .expect("Expected file handle")
                 .move_to_next_print_zone(),
-            PrintHandle::LPrint => self.interpreter.stdlib.lpt1().move_to_next_print_zone(),
-            PrintHandle::Print => self.interpreter.stdlib.move_to_next_print_zone(),
+            PrintHandle::LPrint => self.interpreter.lpt1().move_to_next_print_zone(),
+            PrintHandle::Print => self.interpreter.stdout().move_to_next_print_zone(),
         }
     }
 }
@@ -367,6 +367,7 @@ mod tests {
     use crate::assert_prints;
     use crate::assert_prints_exact;
     use crate::common::QError;
+    use crate::interpreter::interpreter::InterpreterTrait;
 
     #[test]
     fn test_print_no_args() {

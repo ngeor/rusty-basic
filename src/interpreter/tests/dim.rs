@@ -1,4 +1,5 @@
 use crate::assert_prints;
+use crate::interpreter::interpreter::InterpreterTrait;
 
 #[test]
 fn test_dim_string() {

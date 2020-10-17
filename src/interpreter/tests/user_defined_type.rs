@@ -1,4 +1,5 @@
 use crate::assert_prints_exact;
+use crate::interpreter::interpreter::InterpreterTrait;
 
 #[test]
 fn test_user_defined_type_card() {

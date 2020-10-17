@@ -1,4 +1,5 @@
 use crate::assert_prints;
+use crate::interpreter::interpreter::InterpreterTrait;
 
 #[test]
 fn test_sub_params_same_name_different_qualifier() {

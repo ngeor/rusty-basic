@@ -21,8 +21,8 @@ impl<T: Write> WritePrinter<T> {
         }
     }
 
-    pub fn into_inner(self) -> (T, usize) {
-        (self.writer, self.last_column)
+    pub fn inner(&self) -> &T {
+        &self.writer
     }
 
     fn print_as_is(&mut self, s: &str) -> std::io::Result<usize> {

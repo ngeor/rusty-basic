@@ -1,6 +1,6 @@
 use crate::assert_prints;
 use crate::assert_prints_nothing;
-use crate::interpreter::test_utils::*;
+use crate::interpreter::interpreter::InterpreterTrait;
 
 #[test]
 fn test_if_block_true() {
@@ -147,7 +147,7 @@ fn test_if_elseif_else_block_false_false() {
         PRINT \"else\"
     END IF
     ";
-    assert_eq!(interpret(input).stdlib.output_lines(), vec!["else"]);
+    assert_prints!(input, "else");
 }
 
 #[test]
@@ -179,17 +179,11 @@ fn test_single_line_if() {
     IF 1 THEN PRINT "hello"
     PRINT "after"
     "#;
-    assert_eq!(
-        interpret(input).stdlib.output_lines(),
-        vec!["before", "hello", "after"]
-    );
+    assert_prints!(input, "before", "hello", "after");
     let input = r#"
     PRINT "before"
     IF 0 THEN PRINT "hello"
     PRINT "after"
     "#;
-    assert_eq!(
-        interpret(input).stdlib.output_lines(),
-        vec!["before", "after"]
-    );
+    assert_prints!(input, "before", "after");
 }

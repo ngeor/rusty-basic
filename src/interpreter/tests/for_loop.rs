@@ -2,6 +2,7 @@ use crate::assert_has_variable;
 use crate::assert_prints;
 use crate::assert_prints_exact;
 use crate::common::*;
+use crate::interpreter::interpreter::InterpreterTrait;
 use crate::interpreter::test_utils::*;
 
 #[test]
@@ -38,10 +39,9 @@ fn test_simple_for_loop_value_of_variable_after_loop_never_entering() {
         PRINT i%
     NEXT
     ";
-    let interpreter = interpret(input);
+    let mut interpreter = interpret(input);
     assert_has_variable!(interpreter, "i%", 1);
-    let stdlib = interpreter.stdlib;
-    assert_eq!(stdlib.output(), "");
+    assert_eq!(interpreter.stdout().output(), "");
 }
 
 #[test]
@@ -84,11 +84,10 @@ fn test_for_loop_with_negative_step_minus_one() {
         PRINT i%
     NEXT
     ";
-    let interpreter = interpret(input);
+    let mut interpreter = interpret(input);
     assert_has_variable!(interpreter, "i%", -4);
-    let stdlib = interpreter.stdlib;
     assert_eq!(
-        stdlib.output_lines(),
+        interpreter.stdout().output_lines(),
         vec!["3", "2", "1", "0", "-1", "-2", "-3"]
     );
 }
@@ -122,11 +121,10 @@ fn test_for_loop_end_expression_evaluated_only_once() {
         N% = N% - 1
     NEXT
     ";
-    let interpreter = interpret(input);
+    let mut interpreter = interpret(input);
     assert_has_variable!(interpreter, "I%", 4);
     assert_has_variable!(interpreter, "N%", 0);
-    let stdlib = interpreter.stdlib;
-    assert_eq!(stdlib.output_lines(), vec!["1", "2", "3"]);
+    assert_eq!(interpreter.stdout().output_lines(), vec!["1", "2", "3"]);
 }
 
 #[test]

@@ -1,5 +1,6 @@
 use crate::assert_has_variable;
 use crate::assert_prints;
+use crate::interpreter::interpreter::InterpreterTrait;
 use crate::interpreter::test_utils::*;
 
 mod binary_plus {
@@ -170,7 +171,7 @@ macro_rules! assert_condition {
         ",
             $condition
         );
-        if interpret(program).stdlib.output().len() > 0 {
+        if interpret(program).stdout().output().len() > 0 {
             panic!(format!(
                 "Expected: condition to be true but was false: {}",
                 $condition
@@ -189,7 +190,7 @@ macro_rules! assert_condition_false {
         ",
             $condition
         );
-        if interpret(program).stdlib.output().len() > 0 {
+        if interpret(program).stdout().output().len() > 0 {
             panic!(format!(
                 "Expected: condition to be false but was true: {}",
                 $condition

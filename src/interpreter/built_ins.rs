@@ -1,15 +1,16 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
+use crate::interpreter::interpreter::InterpreterTrait;
 use crate::interpreter::print;
-use crate::interpreter::{Interpreter, SetVariable, Stdlib};
+use crate::interpreter::Stdlib;
 use crate::linter::{ElementType, UserDefinedType, UserDefinedTypes};
 use crate::parser::TypeQualifier;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
 use std::convert::TryInto;
 
-pub fn run_function<S: Stdlib>(
+pub fn run_function<S: InterpreterTrait>(
     f: &BuiltInFunction,
-    interpreter: &mut Interpreter<S>,
+    interpreter: &mut S,
 ) -> Result<(), QErrorNode> {
     match f {
         BuiltInFunction::Chr => chr::run(interpreter),
@@ -23,10 +24,7 @@ pub fn run_function<S: Stdlib>(
     }
 }
 
-pub fn run_sub<S: Stdlib>(
-    s: &BuiltInSub,
-    interpreter: &mut Interpreter<S>,
-) -> Result<(), QErrorNode> {
+pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QErrorNode> {
     match s {
         BuiltInSub::Close => close::run(interpreter),
         BuiltInSub::Environ => environ_sub::run(interpreter),
@@ -45,7 +43,7 @@ mod chr {
     // CHR$(ascii-code%) returns the text representation of the given ascii code
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let i: i32 = interpreter
             .context()
             .get(0)
@@ -54,7 +52,9 @@ mod chr {
             .with_err_no_pos()?;
         let mut s: String = String::new();
         s.push((i as u8) as char);
-        interpreter.set_variable(BuiltInFunction::Chr, s);
+        interpreter
+            .context_mut()
+            .set_variable(BuiltInFunction::Chr.into(), s.into());
         Ok(())
     }
 
@@ -63,7 +63,7 @@ mod chr {
         use crate::assert_linter_err;
         use crate::assert_prints;
         use crate::common::QError;
-
+        use crate::interpreter::interpreter::InterpreterTrait;
         #[test]
         fn test_chr() {
             assert_prints!("PRINT CHR$(33)", "!");
@@ -77,17 +77,17 @@ mod close {
     // CLOSE
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let file_handles: Vec<FileHandle> = (0..interpreter.context().parameter_count())
             .map(|idx| interpreter.context().get(idx).unwrap())
             .map(|v| v.try_into())
             .collect::<Result<Vec<FileHandle>, QError>>()
             .with_err_no_pos()?;
         if file_handles.is_empty() {
-            interpreter.file_manager.close_all();
+            interpreter.file_manager().close_all();
         } else {
             for file_handle in file_handles {
-                interpreter.file_manager.close(&file_handle);
+                interpreter.file_manager().close(&file_handle);
             }
         }
         Ok(())
@@ -136,15 +136,17 @@ mod environ_fn {
     // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let env_var_name: &String = interpreter
             .context()
             .get(0)
             .unwrap()
             .try_into()
             .with_err_no_pos()?;
-        let result = interpreter.stdlib.get_env_var(env_var_name);
-        interpreter.set_variable(BuiltInFunction::Environ, result);
+        let result = interpreter.stdlib().get_env_var(env_var_name);
+        interpreter
+            .context_mut()
+            .set_variable(BuiltInFunction::Environ.into(), result.into());
         Ok(())
     }
 
@@ -153,6 +155,7 @@ mod environ_fn {
         use crate::assert_has_variable;
         use crate::assert_linter_err;
         use crate::common::QError;
+        use crate::interpreter::interpreter::InterpreterTrait;
         use crate::interpreter::test_utils::*;
         use crate::interpreter::Stdlib;
 
@@ -162,9 +165,10 @@ mod environ_fn {
             X$ = ENVIRON$("abc")
             Y$ = ENVIRON$("def")
             "#;
-            let mut stdlib = MockStdlib::new();
-            stdlib.set_env_var("abc".to_string(), "foo".to_string());
-            let interpreter = interpret_with_stdlib(program, stdlib);
+            let interpreter = interpret_with_env(program, |x| {
+                x.stdlib_mut()
+                    .set_env_var("abc".to_string(), "foo".to_string())
+            });
             assert_has_variable!(interpreter, "X$", "foo");
             assert_has_variable!(interpreter, "Y$", "");
         }
@@ -191,7 +195,7 @@ mod environ_sub {
     // Parameter must be in the form of name=value or name value (TODO support the latter)
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let s: &String = interpreter
             .context()
             .get(0)
@@ -204,13 +208,14 @@ mod environ_sub {
         } else {
             let name = parts[0].to_string();
             let value = parts[1].to_string();
-            interpreter.stdlib.set_env_var(name, value);
+            interpreter.stdlib_mut().set_env_var(name, value);
             Ok(())
         }
     }
 
     #[cfg(test)]
     mod tests {
+        use crate::interpreter::interpreter::InterpreterTrait;
         use crate::interpreter::stdlib::Stdlib;
         use crate::interpreter::test_utils::interpret;
 
@@ -220,7 +225,7 @@ mod environ_sub {
             ENVIRON "FOO=BAR"
             "#;
             let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.get_env_var(&"FOO".to_string()), "BAR");
+            assert_eq!(interpreter.stdlib().get_env_var(&"FOO".to_string()), "BAR");
         }
 
         #[test]
@@ -230,7 +235,10 @@ mod environ_sub {
             ENVIRON A$
             "#;
             let interpreter = interpret(program);
-            assert_eq!(interpreter.stdlib.get_env_var(&"FOO1".to_string()), "BAR2");
+            assert_eq!(
+                interpreter.stdlib().get_env_var(&"FOO1".to_string()),
+                "BAR2"
+            );
         }
     }
 }
@@ -240,13 +248,15 @@ mod eof {
     use super::*;
     use crate::interpreter::input_source::InputSource;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let file_handle: FileHandle = interpreter.context().get(0).unwrap().try_into()?;
         let file_input = interpreter
-            .file_manager
+            .file_manager()
             .try_get_file_info_input_mut(&file_handle)?;
         let is_eof: bool = file_input.eof()?;
-        interpreter.set_variable(BuiltInFunction::Eof, is_eof);
+        interpreter
+            .context_mut()
+            .set_variable(BuiltInFunction::Eof.into(), is_eof.into());
         Ok(())
     }
 }
@@ -269,7 +279,7 @@ mod input {
     use crate::interpreter::input_source::InputSource;
     use std::convert::TryFrom;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let mut file_handle: FileHandle = FileHandle::default();
         let mut has_file_handle = false;
         for idx in 0..interpreter.context().parameter_count() {
@@ -298,18 +308,18 @@ mod input {
         Ok(())
     }
 
-    fn do_input_one_var<S: Stdlib>(
-        interpreter: &mut Interpreter<S>,
+    fn do_input_one_var<S: InterpreterTrait>(
+        interpreter: &mut S,
         idx: usize,
         file_handle: FileHandle,
     ) -> Result<(), QError> {
         let raw_input: String = if file_handle.is_valid() {
             let file_input = interpreter
-                .file_manager
+                .file_manager()
                 .try_get_file_info_input_mut(&file_handle)?;
             file_input.input()?
         } else {
-            interpreter.stdlib.input()?
+            interpreter.stdin().input()?
         };
         let existing_value = interpreter.context_mut().get_mut(idx).unwrap();
         let temp: &Variant = existing_value;
@@ -346,8 +356,7 @@ mod input {
         use super::*;
         use crate::assert_err;
         use crate::assert_has_variable;
-        use crate::interpreter::test_utils::{interpret_with_stdlib, MockStdlib};
-        use crate::interpreter::DefaultStdlib;
+        use crate::interpreter::test_utils::{interpret, interpret_with_raw_input};
 
         fn assert_input<T>(
             raw_input: &str,
@@ -357,10 +366,8 @@ mod input {
         ) where
             Variant: From<T>,
         {
-            let mut stdlib = MockStdlib::new();
-            stdlib.add_next_input(raw_input);
             let input = format!("INPUT {}", variable_literal);
-            let interpreter = interpret_with_stdlib(input, stdlib);
+            let interpreter = interpret_with_raw_input(input, raw_input);
             assert_has_variable!(interpreter, qualified_variable, expected_value);
         }
 
@@ -398,40 +405,34 @@ mod input {
 
             #[test]
             fn test_input_one_variable_hello_no_cr_lf() {
-                let mut stdlib = MockStdlib::new();
-                stdlib.add_next_input("hello");
                 let input = r#"
                 INPUT A$
                 PRINT A$ + "."
                 "#;
-                let interpreter = interpret_with_stdlib(input, stdlib);
-                assert_eq!(interpreter.stdlib.output(), "hello.");
+                let mut interpreter = interpret_with_raw_input(input, "hello");
+                assert_eq!(interpreter.stdout().output(), "hello.");
             }
 
             #[test]
             fn test_input_one_variable_hello_cr_lf() {
-                let mut stdlib = MockStdlib::new();
-                stdlib.add_next_input("hello\r\n");
                 let input = r#"
                 INPUT A$
                 PRINT A$ + "."
                 "#;
-                let interpreter = interpret_with_stdlib(input, stdlib);
-                assert_eq!(interpreter.stdlib.output_exact(), "hello.\r\n");
+                let mut interpreter = interpret_with_raw_input(input, "hello\r\n");
+                assert_eq!(interpreter.stdout().output_exact(), "hello.\r\n");
             }
 
             #[test]
             fn test_input_two_variables_hello_world_comma_no_cr_lf() {
-                let mut stdlib = MockStdlib::new();
-                stdlib.add_next_input("hello, world");
                 let input = r#"
                 INPUT A$
                 PRINT A$ + "."
                 INPUT A$
                 PRINT A$ + "."
                 "#;
-                let interpreter = interpret_with_stdlib(input, stdlib);
-                assert_eq!(interpreter.stdlib.output_exact(), "hello.\r\nworld.\r\n");
+                let mut interpreter = interpret_with_raw_input(input, "hello, world");
+                assert_eq!(interpreter.stdout().output_exact(), "hello.\r\nworld.\r\n");
             }
         }
 
@@ -451,10 +452,8 @@ mod input {
             INPUT X
             PRINT X
             ";
-            let mut stdlib = MockStdlib::new();
-            stdlib.add_next_input("42");
-            let interpreter = interpret_with_stdlib(input, stdlib);
-            assert_eq!(interpreter.stdlib.output(), "42");
+            let mut interpreter = interpret_with_raw_input(input, "42");
+            assert_eq!(interpreter.stdout().output(), "42");
         }
 
         #[test]
@@ -471,10 +470,8 @@ mod input {
             PRINT X.Value
             PRINT X.Suit
             ";
-            let mut stdlib = MockStdlib::new();
-            stdlib.add_next_input("2, diamonds are forever");
-            let interpreter = interpret_with_stdlib(input, stdlib);
-            assert_eq!(interpreter.stdlib.output_exact(), " 2 \r\ndiamonds \r\n");
+            let mut interpreter = interpret_with_raw_input(input, "2, diamonds are forever");
+            assert_eq!(interpreter.stdout().output_exact(), " 2 \r\ndiamonds \r\n");
         }
 
         #[test]
@@ -492,10 +489,8 @@ mod input {
                 INPUT X%
             END SUB
             ";
-            let mut stdlib = MockStdlib::new();
-            stdlib.add_next_input("42");
-            let interpreter = interpret_with_stdlib(input, stdlib);
-            assert_eq!(interpreter.stdlib.output(), "42");
+            let mut interpreter = interpret_with_raw_input(input, "42");
+            assert_eq!(interpreter.stdout().output(), "42");
         }
 
         #[test]
@@ -508,21 +503,16 @@ mod input {
                 INPUT Test
             END FUNCTION
             ";
-            let mut stdlib = MockStdlib::new();
-            stdlib.add_next_input("3.14");
-            let interpreter = interpret_with_stdlib(input, stdlib);
-            assert_eq!(interpreter.stdlib.output(), "3.14");
+            let mut interpreter = interpret_with_raw_input(input, "3.14");
+            assert_eq!(interpreter.stdout().output(), "3.14");
         }
 
         #[test]
         fn test_input_string_from_file() {
-            // TODO test with stdio INPUT and PRINT
-
             // arrange
             std::fs::write("test1.txt", "Hello, world").unwrap();
 
             // act
-            let stdlib = DefaultStdlib::new();
             let input = r#"
             OPEN "test1.txt" FOR INPUT AS #1
             OPEN "test2.txt" FOR OUTPUT AS #2
@@ -532,7 +522,7 @@ mod input {
             PRINT #2, A$
             CLOSE
             "#;
-            interpret_with_stdlib(input, stdlib);
+            interpret(input);
 
             // assert
             let bytes = std::fs::read("test2.txt").expect("Should have created output file");
@@ -567,7 +557,7 @@ mod instr {
 
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let a: &Variant = interpreter.context().get(0).unwrap();
         let b: &Variant = interpreter.context().get(1).unwrap();
         let result: i32 = match interpreter.context().get(2) {
@@ -582,7 +572,9 @@ mod instr {
                 b.try_into().with_err_no_pos()?,
             )?,
         };
-        interpreter.set_variable(BuiltInFunction::InStr, result);
+        interpreter
+            .context_mut()
+            .set_variable(BuiltInFunction::InStr.into(), result.into());
         Ok(())
     }
 
@@ -611,6 +603,7 @@ mod instr {
         use crate::assert_linter_err;
         use crate::assert_prints;
         use crate::common::*;
+        use crate::interpreter::interpreter::InterpreterTrait;
         use crate::interpreter::test_utils::interpret_err;
 
         #[test]
@@ -651,7 +644,7 @@ mod kill {
 
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let file_name: &String = interpreter
             .context()
             .get(0)
@@ -698,7 +691,7 @@ mod len {
     // LEN(variable) -> number of bytes required to store a variable
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let v: &Variant = interpreter.context().get(0).unwrap();
         let len: i32 = match v {
             Variant::VSingle(_) => 4,
@@ -708,18 +701,17 @@ mod len {
             Variant::VLong(_) => 4,
             Variant::VUserDefined(user_defined_value) => {
                 let user_defined_type = interpreter
-                    .user_defined_types
-                    .as_ref()
+                    .user_defined_types()
                     .get(user_defined_value.type_name())
                     .unwrap();
-                let sum: u32 = len_of_user_defined_type(
-                    user_defined_type,
-                    interpreter.user_defined_types.as_ref(),
-                );
+                let sum: u32 =
+                    len_of_user_defined_type(user_defined_type, interpreter.user_defined_types());
                 sum as i32
             }
         };
-        interpreter.set_variable(BuiltInFunction::Len, len);
+        interpreter
+            .context_mut()
+            .set_variable(BuiltInFunction::Len.into(), len.into());
         Ok(())
     }
 
@@ -746,7 +738,7 @@ mod len {
     #[cfg(test)]
     mod tests {
         use crate::assert_prints;
-
+        use crate::interpreter::interpreter::InterpreterTrait;
         #[test]
         fn test_len_string() {
             let program = r#"PRINT LEN("hello")"#;
@@ -872,7 +864,7 @@ mod line_input {
     use crate::interpreter::input_source::InputSource;
     use std::convert::TryFrom;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QError> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let mut file_handle: FileHandle = FileHandle::default();
         let mut has_file_handle = false;
         for idx in 0..interpreter.context().parameter_count() {
@@ -902,8 +894,8 @@ mod line_input {
         Ok(())
     }
 
-    fn line_input_one<S: Stdlib>(
-        interpreter: &mut Interpreter<S>,
+    fn line_input_one<S: InterpreterTrait>(
+        interpreter: &mut S,
         idx: usize,
         file_handle: &FileHandle,
     ) -> Result<(), QError> {
@@ -914,24 +906,24 @@ mod line_input {
         }
     }
 
-    fn line_input_one_file<S: Stdlib>(
-        interpreter: &mut Interpreter<S>,
+    fn line_input_one_file<S: InterpreterTrait>(
+        interpreter: &mut S,
         idx: usize,
         file_handle: &FileHandle,
     ) -> Result<(), QError> {
         let file_input = interpreter
-            .file_manager
+            .file_manager()
             .try_get_file_info_input_mut(file_handle)?;
         let s = file_input.line_input()?;
         *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }
 
-    fn line_input_one_stdin<S: Stdlib>(
-        interpreter: &mut Interpreter<S>,
+    fn line_input_one_stdin<S: InterpreterTrait>(
+        interpreter: &mut S,
         idx: usize,
     ) -> Result<(), QError> {
-        let s = interpreter.stdlib.input()?;
+        let s = interpreter.stdin().input()?;
         *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
         Ok(())
     }
@@ -968,7 +960,7 @@ mod mid {
     // if the length is omitted, returns or replaces all remaining characters
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let s: &String = interpreter
             .context()
             .get(0)
@@ -986,7 +978,9 @@ mod mid {
             None => None,
         };
         let result: String = do_mid(s, start, length)?;
-        interpreter.set_variable(BuiltInFunction::Mid, result);
+        interpreter
+            .context_mut()
+            .set_variable(BuiltInFunction::Mid.into(), result.into());
         Ok(())
     }
 
@@ -1018,8 +1012,8 @@ mod mid {
         use crate::assert_linter_err;
         use crate::assert_prints;
         use crate::common::*;
+        use crate::interpreter::interpreter::InterpreterTrait;
         use crate::interpreter::test_utils::interpret_err;
-
         #[test]
         fn test_mid_happy_flow() {
             assert_prints!(r#"PRINT MID$("hay", 1)"#, "hay");
@@ -1057,7 +1051,7 @@ mod name {
 
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let old_file_name: &String = interpreter
             .context()
             .get(0)
@@ -1154,7 +1148,7 @@ mod open {
     use super::*;
     use std::convert::TryFrom;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let file_name: String = interpreter.context().get(0).unwrap().to_string();
         let file_mode: FileMode = i32::try_from(interpreter.context().get(1).unwrap())
             .with_err_no_pos()?
@@ -1169,7 +1163,7 @@ mod open {
             .try_into()
             .with_err_no_pos()?;
         interpreter
-            .file_manager
+            .file_manager()
             .open(file_handle, &file_name, file_mode, file_access)
             .with_err_no_pos()
     }
@@ -1177,11 +1171,10 @@ mod open {
     #[cfg(test)]
     mod tests {
         use crate::assert_err;
+        use crate::assert_prints;
         use crate::common::QError;
-        use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
+        use crate::interpreter::interpreter::InterpreterTrait;
         use crate::interpreter::test_utils::*;
-        use crate::interpreter::DefaultStdlib;
-        use crate::interpreter::Interpreter;
 
         #[test]
         fn test_can_create_file() {
@@ -1191,9 +1184,7 @@ mod open {
             PRINT #1, "Hello, world"
             CLOSE #1
             "#;
-            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-            let mut interpreter = Interpreter::new(DefaultStdlib::new(), user_defined_types);
-            interpreter.interpret(instructions).unwrap_or_default();
+            interpret(input);
             let contents = std::fs::read_to_string("TEST1.TXT").unwrap_or("".to_string());
             std::fs::remove_file("TEST1.TXT").unwrap_or(());
             assert_eq!("Hello, world\r\n", contents);
@@ -1212,9 +1203,7 @@ mod open {
             PRINT #1, T$
             CLOSE #1
             "#;
-            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-            let mut interpreter = Interpreter::new(DefaultStdlib::new(), user_defined_types);
-            interpreter.interpret(instructions).unwrap_or_default();
+            interpret(input);
             let contents = std::fs::read_to_string("TEST2B.TXT").unwrap_or("".to_string());
             std::fs::remove_file("TEST2A.TXT").unwrap_or(());
             std::fs::remove_file("TEST2B.TXT").unwrap_or(());
@@ -1235,15 +1224,8 @@ mod open {
             WEND
             CLOSE #1
             "#;
-            let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-            let stdlib = MockStdlib::new();
-            let mut interpreter = Interpreter::new(stdlib, user_defined_types);
-            interpreter.interpret(instructions).unwrap_or_default();
+            assert_prints!(input, "Hello, world", "Hello, again");
             std::fs::remove_file("TEST3.TXT").unwrap_or(());
-            assert_eq!(
-                interpreter.stdlib.output_lines(),
-                vec!["Hello, world", "Hello, again"]
-            );
         }
 
         #[test]
@@ -1288,7 +1270,7 @@ mod str_fn {
 
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let v: &Variant = interpreter.context().get(0).unwrap();
         let result = match v {
             Variant::VSingle(f) => format!("{}", f),
@@ -1297,13 +1279,16 @@ mod str_fn {
             Variant::VLong(f) => format!("{}", f),
             _ => panic!("unexpected arg to STR$"),
         };
-        interpreter.set_variable(BuiltInFunction::Str, result);
+        interpreter
+            .context_mut()
+            .set_variable(BuiltInFunction::Str.into(), result.into());
         Ok(())
     }
 
     #[cfg(test)]
     mod tests {
         use crate::assert_prints;
+        use crate::interpreter::interpreter::InterpreterTrait;
 
         #[test]
         fn test_str_float() {
@@ -1316,7 +1301,7 @@ mod str_fn {
 mod system {
     use super::*;
 
-    pub fn run<S: Stdlib>(_interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(_interpreter: &mut S) -> Result<(), QErrorNode> {
         panic!("Should have been handled at the IG level")
     }
 
@@ -1337,7 +1322,7 @@ mod val {
 
     use super::*;
 
-    pub fn run<S: Stdlib>(interpreter: &mut Interpreter<S>) -> Result<(), QErrorNode> {
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let v: &String = interpreter
             .context()
             .get(0)
@@ -1345,7 +1330,9 @@ mod val {
             .try_into()
             .with_err_no_pos()?;
         let result: Variant = val(v).with_err_no_pos()?;
-        interpreter.set_variable(BuiltInFunction::Val, result);
+        interpreter
+            .context_mut()
+            .set_variable(BuiltInFunction::Val.into(), result.into());
         Ok(())
     }
 
@@ -1438,6 +1425,7 @@ mod val {
     #[cfg(test)]
     mod tests {
         use crate::assert_prints;
+        use crate::interpreter::interpreter::InterpreterTrait;
 
         #[test]
         fn test_val_float() {

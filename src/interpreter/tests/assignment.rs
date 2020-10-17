@@ -2,6 +2,7 @@ use crate::assert_err;
 use crate::assert_has_variable;
 use crate::assert_prints;
 use crate::common::QError;
+use crate::interpreter::interpreter::InterpreterTrait;
 use crate::interpreter::test_utils::*;
 
 macro_rules! assert_assign_ok {

@@ -1,5 +1,6 @@
 use crate::assert_prints;
 use crate::assert_prints_nothing;
+use crate::interpreter::interpreter::InterpreterTrait;
 
 #[test]
 fn test_select_case_match_first() {

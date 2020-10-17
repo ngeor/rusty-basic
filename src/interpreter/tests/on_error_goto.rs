@@ -1,4 +1,5 @@
-use crate::interpreter::test_utils::*;
+use crate::assert_prints;
+use crate::interpreter::interpreter::InterpreterTrait;
 
 #[test]
 fn on_error_go_to_label() {
@@ -10,8 +11,7 @@ fn on_error_go_to_label() {
     ErrTrap:
         PRINT "Saved by the bell"
     "#;
-    let interpreter = interpret(input);
-    assert_eq!(interpreter.stdlib.output_lines(), vec!["Saved by the bell"]);
+    assert_prints!(input, "Saved by the bell");
 }
 
 #[test]
@@ -23,9 +23,5 @@ fn on_error_go_to_label_with_dots_in_label_name() {
     Err.Trap:
         PRINT "Almost divided by zero"
     "#;
-    let interpreter = interpret(input);
-    assert_eq!(
-        interpreter.stdlib.output_lines(),
-        vec!["Almost divided by zero"]
-    );
+    assert_prints!(input, "Almost divided by zero");
 }

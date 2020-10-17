@@ -21,6 +21,10 @@ impl<T: Read> ReadInputSource<T> {
         }
     }
 
+    pub fn inner(&mut self) -> &mut T {
+        &mut self.read
+    }
+
     fn peek(&mut self) -> std::io::Result<Option<&u8>> {
         if self.fill_buffer()? == 0 {
             Ok(None)

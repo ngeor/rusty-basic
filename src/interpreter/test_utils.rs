@@ -222,7 +222,7 @@ macro_rules! assert_has_variable {
 }
 
 #[macro_export]
-macro_rules! assert_err {
+macro_rules! assert_interpreter_err {
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             crate::interpreter::test_utils::interpret_err($program),

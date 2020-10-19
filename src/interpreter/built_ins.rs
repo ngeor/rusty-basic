@@ -354,8 +354,8 @@ mod input {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use crate::assert_err;
         use crate::assert_has_variable;
+        use crate::assert_interpreter_err;
         use crate::interpreter::test_utils::{interpret, interpret_with_raw_input};
 
         fn assert_input<T>(
@@ -544,7 +544,7 @@ mod input {
             CLOSE
             "#;
 
-            assert_err!(input, QError::InputPastEndOfFile, 5, 13);
+            assert_interpreter_err!(input, QError::InputPastEndOfFile, 5, 13);
             std::fs::remove_file("test_input_string_from_file_eof.txt").unwrap_or_default();
         }
     }
@@ -931,7 +931,7 @@ mod line_input {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use crate::assert_err;
+        use crate::assert_interpreter_err;
 
         #[test]
         fn test_line_input_string_from_file_eof() {
@@ -946,7 +946,7 @@ mod line_input {
             CLOSE
             "#;
 
-            assert_err!(input, QError::InputPastEndOfFile, 5, 13);
+            assert_interpreter_err!(input, QError::InputPastEndOfFile, 5, 13);
             std::fs::remove_file("test1.txt").unwrap_or_default();
         }
     }
@@ -1170,7 +1170,7 @@ mod open {
 
     #[cfg(test)]
     mod tests {
-        use crate::assert_err;
+        use crate::assert_interpreter_err;
         use crate::assert_prints;
         use crate::common::QError;
         use crate::interpreter::interpreter_trait::InterpreterTrait;
@@ -1250,7 +1250,7 @@ mod open {
             OPEN "TEST.TXT" FOR INPUT AS A
             CLOSE A
             "#;
-            assert_err!(input, QError::BadFileNameOrNumber, 3, 13);
+            assert_interpreter_err!(input, QError::BadFileNameOrNumber, 3, 13);
         }
 
         #[test]
@@ -1259,7 +1259,7 @@ mod open {
             OPEN "a.txt" FOR OUTPUT AS #1
             OPEN "a.txt" FOR OUTPUT AS #1
             "#;
-            assert_err!(input, QError::FileAlreadyOpen, 3, 13);
+            assert_interpreter_err!(input, QError::FileAlreadyOpen, 3, 13);
             std::fs::remove_file("a.txt").unwrap_or(());
         }
     }

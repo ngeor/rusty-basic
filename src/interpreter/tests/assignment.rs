@@ -1,5 +1,5 @@
-use crate::assert_err;
 use crate::assert_has_variable;
+use crate::assert_interpreter_err;
 use crate::assert_prints;
 use crate::common::QError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
@@ -222,9 +222,9 @@ fn test_assign_with_def_str() {
 #[test]
 fn test_assign_integer_overflow() {
     assert_assign_ok!("A% = 32767", "A%", 32767_i32);
-    assert_err!("A% = 32768", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A% = 32768", QError::Overflow, 1, 6);
     assert_assign_ok!("A% = -32768", "A%", -32768_i32);
-    assert_err!("A% = -32769", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A% = -32769", QError::Overflow, 1, 6);
 }
 
 #[test]
@@ -235,8 +235,8 @@ fn test_assign_long_overflow_ok() {
 
 #[test]
 fn test_assign_long_overflow_err() {
-    assert_err!("A& = 2147483648", QError::Overflow, 1, 6);
-    assert_err!("A& = -2147483649", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A& = 2147483648", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A& = -2147483649", QError::Overflow, 1, 6);
 }
 
 #[test]

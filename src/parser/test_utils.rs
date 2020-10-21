@@ -186,15 +186,3 @@ macro_rules! assert_literal_expression {
         crate::assert_expression!($left, crate::parser::types::Expression::from($right));
     };
 }
-
-#[macro_export]
-macro_rules! assert_variable_expression {
-    ($left:expr, $right:expr) => {
-        crate::assert_expression!(
-            $left,
-            crate::parser::types::Expression::VariableName(crate::parser::types::Name::from(
-                $right
-            ))
-        );
-    };
-}

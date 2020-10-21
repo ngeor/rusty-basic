@@ -507,9 +507,7 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{Expression, Name, Operator, Statement, UnaryOperator};
-    use crate::{
-        assert_expression, assert_literal_expression, assert_sub_call, assert_variable_expression,
-    };
+    use crate::{assert_expression, assert_literal_expression, assert_sub_call};
 
     #[test]
     fn test_parse_literals() {
@@ -523,9 +521,50 @@ mod tests {
         assert_literal_expression!("-42", -42);
     }
 
-    #[test]
-    fn test_variable_expression() {
-        assert_variable_expression!("A", "A");
+    mod variable_expressions {
+        use super::*;
+
+        #[test]
+        fn test_variable_expression() {
+            assert_expression!("A", Expression::VariableName(Name::from("A")));
+        }
+
+        #[test]
+        fn test_array() {
+            assert_expression!("choice$()", Expression::VariableName(Name::from("choice$")));
+        }
+
+        #[test]
+        fn test_array_element_single_dimension() {
+            assert_expression!(
+                "choice$(1)",
+                Expression::VariableName(Name::from("choice$"))
+            );
+        }
+
+        #[test]
+        fn test_array_element_two_dimensions() {
+            assert_expression!(
+                "choice$(1, 2)",
+                Expression::VariableName(Name::from("choice$"))
+            );
+        }
+
+        #[test]
+        fn test_array_element_user_defined_type() {
+            assert_expression!(
+                "cards(1).Value",
+                Expression::VariableName(Name::from("choice"))
+            );
+        }
+
+        #[test]
+        fn test_array_element_function_call_as_dimension() {
+            assert_expression!(
+                "cards(lbound(cards) + 1).Value",
+                Expression::VariableName(Name::from("choice"))
+            );
+        }
     }
 
     mod function_call {

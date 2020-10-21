@@ -120,4 +120,34 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_array_with_single_dimension() {
+        let input = "A(2) = 1";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(Name::Bare("A".into()), 1.as_lit_expr(1, 1))
+        );
+    }
+
+    #[test]
+    fn test_array_with_two_dimensions() {
+        let input = "A(1, 2) = 3";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(Name::Bare("A".into()), 1.as_lit_expr(1, 1))
+        );
+    }
+
+    #[test]
+    fn test_array_with_user_defined_type_element() {
+        let input = "A(1).Height = 2";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(Name::Bare("A".into()), 1.as_lit_expr(1, 1))
+        );
+    }
 }

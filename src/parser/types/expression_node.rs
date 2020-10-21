@@ -1,5 +1,5 @@
-use super::{Name, Operator, UnaryOperator};
 use crate::common::{AtLocation, HasLocation, Locatable, Location};
+use crate::parser::types::{Name, NameExpr, Operator, UnaryOperator};
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -9,8 +9,11 @@ pub enum Expression {
     StringLiteral(String),
     IntegerLiteral(i32),
     LongLiteral(i64),
+    #[deprecated]
     VariableName(Name),
+    #[deprecated]
     FunctionCall(Name, ExpressionNodes),
+    Name(NameExpr),
     BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),

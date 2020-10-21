@@ -42,18 +42,21 @@ pub fn bare_name<T: BufRead + 'static>(
 pub const MAX_LENGTH: usize = 40;
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-fn any_word<R>() -> Box<dyn Fn(R) -> ReaderResult<R, String, QError>>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    source_and_then_some(any_identifier(), |reader: R, s| {
-        if s.len() > MAX_LENGTH {
-            Err((reader, QError::IdentifierTooLong))
-        } else {
-            match Keyword::from_str(&s) {
-                Ok(_) => Ok((reader.undo(s), None)),
-                Err(_) => Ok((reader, Some(s))),
-            }
+fn any_word<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, String, QError>> {
+    source_and_then_some(any_identifier_with_dot(), map_word)
+}
+
+fn map_word<T: BufRead + 'static>(
+    reader: EolReader<T>,
+    s: String,
+) -> ReaderResult<EolReader<T>, String, QError> {
+    if s.len() > MAX_LENGTH {
+        Err((reader, QError::IdentifierTooLong))
+    } else {
+        match Keyword::from_str(&s) {
+            Ok(_) => Ok((reader.undo(s), None)),
+            Err(_) => Ok((reader, Some(s))),
         }
-    })
+    }
 }

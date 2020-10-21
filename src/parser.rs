@@ -12,6 +12,7 @@ mod for_loop;
 mod if_block;
 mod implementation;
 mod name;
+mod name_expr;
 mod param_name;
 mod parser;
 mod pc;
@@ -20,13 +21,14 @@ mod select_case;
 pub mod statement;
 pub mod statements;
 pub mod sub_call;
-#[cfg(test)]
-mod test_utils;
 mod top_level_token;
 mod type_qualifier;
 mod types;
 mod user_defined_type;
 mod while_wend;
+
+#[cfg(test)]
+mod test_utils;
 
 pub use self::parser::*;
 pub use self::types::*;

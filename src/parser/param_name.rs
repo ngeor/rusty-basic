@@ -62,7 +62,7 @@ fn type_definition_extended<T: BufRead + 'static>(
 fn extended_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamType, QError>> {
     and_then(
-        with_pos(any_identifier()),
+        with_pos(any_identifier_with_dot()),
         |Locatable { element: x, pos }| match Keyword::from_str(&x) {
             Ok(Keyword::Single) => Ok(ParamType::Extended(TypeQualifier::BangSingle)),
             Ok(Keyword::Double) => Ok(ParamType::Extended(TypeQualifier::HashDouble)),

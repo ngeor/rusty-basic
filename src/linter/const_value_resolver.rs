@@ -50,6 +50,7 @@ pub trait ConstValueResolver {
                 },
             },
             Expression::FunctionCall(_, _) => Err(QError::InvalidConstant).with_err_no_pos(),
+            Expression::Name(_) => todo!(),
             Expression::BinaryExpression(op, left, right) => {
                 let Locatable { element, pos } = left.as_ref();
                 let v_left = self.resolve_const_value(element).patch_err_pos(*pos)?;

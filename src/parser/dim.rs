@@ -162,4 +162,76 @@ mod tests {
         assert_parse_dim_compact!("Z", "%", PercentInteger);
         assert_parse_dim_compact!("L1", "&", AmpersandLong);
     }
+
+    #[test]
+    fn test_parse_array_single_dimension_ubound() {
+        let input = "DIM A$(2)";
+        let p = parse(input).demand_single_statement();
+        assert_eq!(
+            p,
+            Statement::Dim(
+                DimName::new(
+                    "A".into(),
+                    DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: None,
+                            ubound: 2.as_lit_expr(1, 8)
+                        }],
+                        Box::new(DimType::Compact(TypeQualifier::DollarString))
+                    )
+                )
+                .at_rc(1, 5)
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_array_single_dimension_lbound_ubound() {
+        let input = "DIM A(1 TO 2)";
+        let p = parse(input).demand_single_statement();
+        assert_eq!(
+            p,
+            Statement::Dim(
+                DimName::new(
+                    "A".into(),
+                    DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: Some(1.as_lit_expr(1, 7)),
+                            ubound: 2.as_lit_expr(1, 12)
+                        }],
+                        Box::new(DimType::Bare)
+                    )
+                )
+                .at_rc(1, 5)
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_array_two_dimensions() {
+        let input = "DIM A(1 TO 3, 2 TO 4)";
+        let p = parse(input).demand_single_statement();
+        assert_eq!(
+            p,
+            Statement::Dim(
+                DimName::new(
+                    "A".into(),
+                    DimType::Array(
+                        vec![
+                            ArrayDimension {
+                                lbound: Some(1.as_lit_expr(1, 7)),
+                                ubound: 3.as_lit_expr(1, 12)
+                            },
+                            ArrayDimension {
+                                lbound: Some(2.as_lit_expr(1, 15)),
+                                ubound: 4.as_lit_expr(1, 20)
+                            }
+                        ],
+                        Box::new(DimType::Bare)
+                    )
+                )
+                .at_rc(1, 5)
+            )
+        );
+    }
 }

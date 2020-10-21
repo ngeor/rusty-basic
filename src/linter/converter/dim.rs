@@ -65,6 +65,7 @@ impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
                     .push_dim_user_defined(bare_name.clone(), type_name.clone());
                 DimType::UserDefined(type_name)
             }
+            parser::DimType::Array(_dimensions, _box_type) => todo!(),
         };
 
         Ok(DimName::new(bare_name, dim_type).at(pos))

@@ -360,6 +360,30 @@ pub mod common {
         })
     }
 
+    pub fn opt_seq4<R, S1, S2, S3, S4, T1, T2, T3, T4, E>(
+        first: S1,
+        second: S2,
+        third: S3,
+        fourth: S4,
+    ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, Option<T2>, Option<T3>, Option<T4>), E>>
+    where
+        R: Reader + 'static,
+        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
+        S2: Fn(R) -> ReaderResult<R, T2, E> + 'static,
+        S3: Fn(R) -> ReaderResult<R, T3, E> + 'static,
+        S4: Fn(R) -> ReaderResult<R, T4, E> + 'static,
+        T1: 'static,
+        T2: 'static,
+        T3: 'static,
+        T4: 'static,
+        E: 'static,
+    {
+        map(
+            opt_seq2(opt_seq3(first, second, third), fourth),
+            |((a, b, c), d)| (a, b, c, d),
+        )
+    }
+
     pub fn seq2<R, S1, S2, T1, T2, E>(
         first: S1,
         second: S2,

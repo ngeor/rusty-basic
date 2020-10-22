@@ -1,6 +1,5 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::name;
 use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then, map};
@@ -519,10 +518,10 @@ mod tests {
             assert_expression!(
                 "A.B",
                 Expression::Name(NameExpr {
-                    bare_name: "A".into(),
+                    bare_name: "A.B".into(),
                     qualifier: None,
                     arguments: None,
-                    elements: Some(vec!["B".into()])
+                    elements: None
                 })
             );
         }
@@ -555,7 +554,7 @@ mod tests {
                 Expression::Name(NameExpr {
                     bare_name: "choice".into(),
                     qualifier: Some(TypeQualifier::DollarString),
-                    arguments: Some(vec![1.as_lit_expr(1, 1)]),
+                    arguments: Some(vec![1.as_lit_expr(1, 15)]),
                     elements: None
                 })
             );
@@ -568,7 +567,7 @@ mod tests {
                 Expression::Name(NameExpr {
                     bare_name: "choice".into(),
                     qualifier: Some(TypeQualifier::DollarString),
-                    arguments: Some(vec![1.as_lit_expr(1, 1), 2.as_lit_expr(1, 1)]),
+                    arguments: Some(vec![1.as_lit_expr(1, 15), 2.as_lit_expr(1, 18)]),
                     elements: None
                 })
             );
@@ -581,7 +580,7 @@ mod tests {
                 Expression::Name(NameExpr {
                     bare_name: "cards".into(),
                     qualifier: None,
-                    arguments: Some(vec![1.as_lit_expr(1, 1)]),
+                    arguments: Some(vec![1.as_lit_expr(1, 13)]),
                     elements: Some(vec!["Value".into()])
                 })
             );
@@ -592,7 +591,7 @@ mod tests {
             assert_expression!(
                 "cards(lbound(cards) + 1).Value",
                 Expression::Name(NameExpr {
-                    bare_name: "choice".into(),
+                    bare_name: "cards".into(),
                     qualifier: None,
                     arguments: Some(vec![Expression::BinaryExpression(
                         Operator::Plus,
@@ -601,15 +600,15 @@ mod tests {
                                 bare_name: "lbound".into(),
                                 qualifier: None,
                                 arguments: Some(vec![
-                                    Expression::Name(NameExpr::bare("cards")).at_rc(1, 1)
+                                    Expression::Name(NameExpr::bare("cards")).at_rc(1, 20)
                                 ]),
                                 elements: None
                             })
-                            .at_rc(1, 1)
+                            .at_rc(1, 13)
                         ),
-                        Box::new(1.as_lit_expr(1, 1))
+                        Box::new(1.as_lit_expr(1, 29))
                     )
-                    .at_rc(1, 1)]),
+                    .at_rc(1, 27)]),
                     elements: Some(vec!["Value".into()])
                 })
             );

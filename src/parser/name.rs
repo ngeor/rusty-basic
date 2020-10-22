@@ -19,8 +19,8 @@ pub fn name_node<T: BufRead + 'static>(
 pub fn name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Name, QError>> {
     map(
-        opt_seq2(any_word(), type_qualifier::type_qualifier()),
-        |(l, r)| Name::new(l.into(), r),
+        opt_seq2(any_word_with_dot(), type_qualifier::type_qualifier()),
+        |(l, r)| Name::new(l, r),
     )
 }
 
@@ -33,30 +33,36 @@ pub fn bare_name_node<T: BufRead + 'static>(
 
 pub fn bare_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
-    map(
-        and(any_word(), negate(type_qualifier::type_qualifier())),
-        |(l, _)| l.into(),
-    )
+    drop_right(and(
+        any_word_with_dot(),
+        negate(type_qualifier::type_qualifier()),
+    ))
 }
 
 pub const MAX_LENGTH: usize = 40;
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-fn any_word<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, String, QError>> {
-    source_and_then_some(any_identifier_with_dot(), map_word)
+pub fn any_word_with_dot<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
+    source_and_then_some(any_identifier_with_dot(), ensure_length_and_not_keyword)
 }
 
-fn map_word<T: BufRead + 'static>(
+/// Reads any word, i.e. any identifier which is not a keyword.
+pub fn any_word_without_dot<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
+    source_and_then_some(any_identifier_without_dot(), ensure_length_and_not_keyword)
+}
+
+fn ensure_length_and_not_keyword<T: BufRead + 'static>(
     reader: EolReader<T>,
     s: String,
-) -> ReaderResult<EolReader<T>, String, QError> {
+) -> ReaderResult<EolReader<T>, BareName, QError> {
     if s.len() > MAX_LENGTH {
         Err((reader, QError::IdentifierTooLong))
     } else {
         match Keyword::from_str(&s) {
             Ok(_) => Ok((reader.undo(s), None)),
-            Err(_) => Ok((reader, Some(s))),
+            Err(_) => Ok((reader, Some(s.into()))),
         }
     }
 }

@@ -187,20 +187,24 @@ fn validate_element_type_str_len(
             // parser already covers that i is between 1..MAX_INT
             Ok(*i as u16)
         }
-        Expression::VariableName(v) => {
+        Expression::Name(name_expr) => {
             // only constants allowed
-            match v {
-                Name::Bare(b) => {
-                    // bare name constant
-                    match global_constants.get(b) {
+            if name_expr.arguments.is_some() {
+                Err(QError::InvalidConstant).with_err_at(pos)
+            } else {
+                if let Some(qualifier) = name_expr.qualifier {
+                    match global_constants.get(&name_expr.bare_name) {
                         // constant exists
                         Some(const_value) => {
                             match const_value {
                                 Variant::VInteger(i) => {
-                                    if *i >= 1 && *i <= crate::variant::MAX_INTEGER {
+                                    if qualifier == TypeQualifier::PercentInteger
+                                        && *i >= 1
+                                        && *i <= crate::variant::MAX_INTEGER
+                                    {
                                         Ok(*i as u16)
                                     } else {
-                                        // illegal string length
+                                        // illegal string length or using wrong qualifier to reference the int constant
                                         Err(QError::InvalidConstant).with_err_at(pos)
                                     }
                                 }
@@ -213,23 +217,17 @@ fn validate_element_type_str_len(
                         // constant does not exist
                         None => Err(QError::InvalidConstant).with_err_at(pos),
                     }
-                }
-                Name::Qualified(QualifiedName {
-                    bare_name,
-                    qualifier,
-                }) => {
-                    match global_constants.get(bare_name) {
+                } else {
+                    // bare name constant
+                    match global_constants.get(&name_expr.bare_name) {
                         // constant exists
                         Some(const_value) => {
                             match const_value {
                                 Variant::VInteger(i) => {
-                                    if *qualifier == TypeQualifier::PercentInteger
-                                        && *i >= 1
-                                        && *i <= crate::variant::MAX_INTEGER
-                                    {
+                                    if *i >= 1 && *i <= crate::variant::MAX_INTEGER {
                                         Ok(*i as u16)
                                     } else {
-                                        // illegal string length or using wrong qualifier to reference the int constant
+                                        // illegal string length
                                         Err(QError::InvalidConstant).with_err_at(pos)
                                     }
                                 }

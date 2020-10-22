@@ -1,5 +1,5 @@
 use crate::common::{AtLocation, HasLocation, Locatable, Location};
-use crate::parser::types::{Name, NameExpr, Operator, UnaryOperator};
+use crate::parser::types::{NameExpr, Operator, UnaryOperator};
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -9,10 +9,6 @@ pub enum Expression {
     StringLiteral(String),
     IntegerLiteral(i32),
     LongLiteral(i64),
-    #[deprecated]
-    VariableName(Name),
-    #[deprecated]
-    FunctionCall(Name, ExpressionNodes),
     Name(NameExpr),
     BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
@@ -106,12 +102,16 @@ impl Expression {
                 let x: ExpressionNode = *child;
                 Self::Parenthesis(Box::new(x.simplify_unary_minus_literals()))
             }
-            Self::FunctionCall(name, args) => Self::FunctionCall(
-                name,
-                args.into_iter()
-                    .map(|x| x.simplify_unary_minus_literals())
-                    .collect(),
-            ),
+            Self::Name(name_expr) => Self::Name(NameExpr {
+                bare_name: name_expr.bare_name,
+                qualifier: name_expr.qualifier,
+                arguments: name_expr.arguments.map(|x| {
+                    x.into_iter()
+                        .map(|a| a.simplify_unary_minus_literals())
+                        .collect()
+                }),
+                elements: name_expr.elements,
+            }),
             _ => self,
         }
     }

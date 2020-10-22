@@ -1,7 +1,5 @@
 use crate::common::*;
-use crate::parser::{
-    Expression, ExpressionNode, Name, Operator, QualifiedName, TypeQualifier, UnaryOperator,
-};
+use crate::parser::{Expression, ExpressionNode, Operator, TypeQualifier, UnaryOperator};
 use crate::variant::Variant;
 use std::cmp::Ordering;
 
@@ -20,37 +18,40 @@ pub trait ConstValueResolver {
             Expression::StringLiteral(s) => Ok(Variant::VString(s.clone())),
             Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
             Expression::LongLiteral(l) => Ok(Variant::VLong(*l)),
-            Expression::VariableName(name) => match name {
-                Name::Bare(name) => match self.get_resolved_constant(name) {
-                    Some(v) => Ok(v.clone()),
-                    None => Err(QError::InvalidConstant).with_err_no_pos(),
-                },
-                Name::Qualified(QualifiedName {
-                    bare_name,
-                    qualifier,
-                }) => match self.get_resolved_constant(bare_name) {
-                    Some(v) => {
-                        let v_q = match v {
-                            Variant::VDouble(_) => TypeQualifier::HashDouble,
-                            Variant::VSingle(_) => TypeQualifier::BangSingle,
-                            Variant::VInteger(_) => TypeQualifier::PercentInteger,
-                            Variant::VLong(_) => TypeQualifier::AmpersandLong,
-                            Variant::VString(_) => TypeQualifier::DollarString,
-                            _ => panic!(
-                                "should not have been possible to store a constant of this type"
-                            ),
-                        };
-                        if v_q == *qualifier {
-                            Ok(v.clone())
-                        } else {
-                            Err(QError::TypeMismatch).with_err_no_pos()
+            Expression::Name(name_expr) => {
+                if name_expr.arguments.is_some() {
+                    // a function call or an array element
+                    Err(QError::InvalidConstant).with_err_no_pos()
+                } else {
+                    if let Some(qualifier) = name_expr.qualifier {
+                        match self.get_resolved_constant(&name_expr.bare_name) {
+                            Some(v) => {
+                                let v_q = match v {
+                                    Variant::VDouble(_) => TypeQualifier::HashDouble,
+                                    Variant::VSingle(_) => TypeQualifier::BangSingle,
+                                    Variant::VInteger(_) => TypeQualifier::PercentInteger,
+                                    Variant::VLong(_) => TypeQualifier::AmpersandLong,
+                                    Variant::VString(_) => TypeQualifier::DollarString,
+                                    _ => panic!(
+                                        "should not have been possible to store a constant of this type"
+                                    ),
+                                };
+                                if v_q == qualifier {
+                                    Ok(v.clone())
+                                } else {
+                                    Err(QError::TypeMismatch).with_err_no_pos()
+                                }
+                            }
+                            None => Err(QError::InvalidConstant).with_err_no_pos(),
+                        }
+                    } else {
+                        match self.get_resolved_constant(&name_expr.bare_name) {
+                            Some(v) => Ok(v.clone()),
+                            None => Err(QError::InvalidConstant).with_err_no_pos(),
                         }
                     }
-                    None => Err(QError::InvalidConstant).with_err_no_pos(),
-                },
-            },
-            Expression::FunctionCall(_, _) => Err(QError::InvalidConstant).with_err_no_pos(),
-            Expression::Name(_) => todo!(),
+                }
+            }
             Expression::BinaryExpression(op, left, right) => {
                 let Locatable { element, pos } = left.as_ref();
                 let v_left = self.resolve_const_value(element).patch_err_pos(*pos)?;

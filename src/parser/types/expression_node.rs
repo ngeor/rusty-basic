@@ -1,5 +1,6 @@
 use crate::common::{AtLocation, HasLocation, Locatable, Location};
 use crate::parser::types::{NameExpr, Operator, UnaryOperator};
+use crate::parser::Name;
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -55,6 +56,28 @@ impl From<i64> for Expression {
 }
 
 impl Expression {
+    pub fn var(s: &str) -> Self {
+        let name: Name = s.into();
+        let (bare_name, qualifier) = name.into_inner();
+        Expression::Name(NameExpr {
+            bare_name,
+            qualifier,
+            arguments: None,
+            elements: None,
+        })
+    }
+
+    pub fn func(s: &str, args: ExpressionNodes) -> Self {
+        let name: Name = s.into();
+        let (bare_name, qualifier) = name.into_inner();
+        Expression::Name(NameExpr {
+            bare_name,
+            qualifier,
+            arguments: Some(args),
+            elements: None,
+        })
+    }
+
     fn unary_minus(child: ExpressionNode) -> Self {
         match child.as_ref() {
             Self::SingleLiteral(n) => Self::SingleLiteral(-n),

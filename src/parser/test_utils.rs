@@ -138,7 +138,7 @@ pub trait ExpressionNodeVariableFactory {
 
 impl ExpressionNodeVariableFactory for str {
     fn as_var_expr(&self, row: u32, col: u32) -> ExpressionNode {
-        Expression::VariableName(Name::from(self)).at_rc(row, col)
+        Expression::var(self).at_rc(row, col)
     }
 }
 

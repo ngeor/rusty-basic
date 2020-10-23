@@ -29,6 +29,16 @@ impl Name {
             Self::Qualified(qualified_name) => qualified_name.is_of_type(qualifier),
         }
     }
+
+    pub fn into_inner(self) -> (BareName, Option<TypeQualifier>) {
+        match self {
+            Self::Bare(bare_name) => (bare_name, None),
+            Self::Qualified(QualifiedName {
+                bare_name,
+                qualifier,
+            }) => (bare_name, Some(qualifier)),
+        }
+    }
 }
 
 impl AsRef<BareName> for Name {

@@ -70,11 +70,8 @@ mod tests {
                                 PrintArg::Expression("is".as_lit_expr(5, 30)),
                                 PrintArg::Comma,
                                 PrintArg::Expression(
-                                    Expression::FunctionCall(
-                                        Name::from("Fib"),
-                                        vec!["I".as_var_expr(5, 40)],
-                                    )
-                                    .at_rc(5, 36)
+                                    Expression::func("Fib", vec!["I".as_var_expr(5, 40)],)
+                                        .at_rc(5, 36)
                                 ),
                             ]
                         })
@@ -114,8 +111,8 @@ mod tests {
                                     Expression::BinaryExpression(
                                         Operator::Plus,
                                         Box::new(
-                                            Expression::FunctionCall(
-                                                Name::from("Fib"),
+                                            Expression::func(
+                                                "Fib",
                                                 vec![Expression::BinaryExpression(
                                                     Operator::Minus,
                                                     Box::new("N".as_var_expr(12, 19)),
@@ -126,8 +123,8 @@ mod tests {
                                             .at_rc(12, 15)
                                         ),
                                         Box::new(
-                                            Expression::FunctionCall(
-                                                Name::from("Fib"),
+                                            Expression::func(
+                                                "Fib",
                                                 vec![Expression::BinaryExpression(
                                                     Operator::Minus,
                                                     Box::new("N".as_var_expr(12, 32)),

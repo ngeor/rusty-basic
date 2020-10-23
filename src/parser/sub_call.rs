@@ -77,8 +77,8 @@ mod tests {
     use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
-        Expression, Name, Operator, ParamName, ParamType, PrintArg, PrintNode, Statement,
-        TopLevelToken, TypeQualifier,
+        Expression, Operator, ParamName, ParamType, PrintArg, PrintNode, Statement, TopLevelToken,
+        TypeQualifier,
     };
 
     #[test]
@@ -163,8 +163,7 @@ mod tests {
         assert_eq!(
             program,
             vec![TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::FunctionCall(Name::from("ENVIRON$"), vec!["PATH".as_lit_expr(1, 16)])
-                    .at_rc(1, 7)
+                Expression::func("ENVIRON$", vec!["PATH".as_lit_expr(1, 16)]).at_rc(1, 7)
             )))]
         );
     }

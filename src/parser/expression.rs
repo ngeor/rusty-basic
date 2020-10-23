@@ -489,7 +489,7 @@ pub fn relational_operator<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Expression, Name, Operator, Statement, UnaryOperator};
+    use crate::parser::{Expression, Operator, Statement, UnaryOperator};
     use crate::{assert_expression, assert_literal_expression, assert_sub_call};
 
     #[test]
@@ -638,7 +638,7 @@ mod tests {
         fn test_function_call_expression_one_arg() {
             assert_expression!(
                 "IsValid(42)",
-                Expression::FunctionCall(Name::from("IsValid"), vec![42.as_lit_expr(1, 15)])
+                Expression::func("IsValid", vec![42.as_lit_expr(1, 15)])
             );
         }
 
@@ -646,8 +646,8 @@ mod tests {
         fn test_function_call_expression_two_args() {
             assert_expression!(
                 "CheckProperty(42, \"age\")",
-                Expression::FunctionCall(
-                    Name::from("CheckProperty"),
+                Expression::func(
+                    "CheckProperty",
                     vec![42.as_lit_expr(1, 21), "age".as_lit_expr(1, 25)]
                 )
             );
@@ -657,16 +657,11 @@ mod tests {
         fn test_function_call_in_function_call() {
             assert_expression!(
                 "CheckProperty(LookupName(\"age\"), Confirm(1))",
-                Expression::FunctionCall(
-                    Name::from("CheckProperty"),
+                Expression::func(
+                    "CheckProperty",
                     vec![
-                        Expression::FunctionCall(
-                            Name::from("LookupName"),
-                            vec!["age".as_lit_expr(1, 32)]
-                        )
-                        .at_rc(1, 21),
-                        Expression::FunctionCall(Name::from("Confirm"), vec![1.as_lit_expr(1, 48)])
-                            .at_rc(1, 40)
+                        Expression::func("LookupName", vec!["age".as_lit_expr(1, 32)]).at_rc(1, 21),
+                        Expression::func("Confirm", vec![1.as_lit_expr(1, 48)]).at_rc(1, 40)
                     ]
                 )
             );
@@ -818,11 +813,7 @@ mod tests {
                         Expression::UnaryExpression(
                             UnaryOperator::Not,
                             Box::new(
-                                Expression::FunctionCall(
-                                    Name::from("EOF"),
-                                    vec![1.as_lit_expr(1, 15)]
-                                )
-                                .at_rc(1, 11)
+                                Expression::func("EOF", vec![1.as_lit_expr(1, 15)]).at_rc(1, 11)
                             )
                         )
                         .at_rc(1, 7)
@@ -943,8 +934,8 @@ mod tests {
             Expression::BinaryExpression(
                 Operator::Plus,
                 Box::new(
-                    Expression::FunctionCall(
-                        Name::from("Fib"),
+                    Expression::func(
+                        "Fib",
                         vec![Expression::BinaryExpression(
                             Operator::Minus,
                             Box::new("N".as_var_expr(1, 11)),
@@ -955,8 +946,8 @@ mod tests {
                     .at_rc(1, 7)
                 ),
                 Box::new(
-                    Expression::FunctionCall(
-                        Name::from("Fib"),
+                    Expression::func(
+                        "Fib",
                         vec![Expression::BinaryExpression(
                             Operator::Minus,
                             Box::new("N".as_var_expr(1, 24)),
@@ -977,8 +968,8 @@ mod tests {
             Expression::UnaryExpression(
                 UnaryOperator::Minus,
                 Box::new(
-                    Expression::FunctionCall(
-                        Name::from("Fib"),
+                    Expression::func(
+                        "Fib",
                         vec![Expression::UnaryExpression(
                             UnaryOperator::Minus,
                             Box::new("N".as_var_expr(1, 13)),

@@ -7,7 +7,7 @@ use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, Expression};
 use crate::parser;
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
 impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
@@ -21,7 +21,7 @@ impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
             return Err(QError::DuplicateDefinition).with_err_at(pos);
         }
         let dim_type: DimType = self
-            .convert_dim_type(&bare_name, dim_type, true)
+            .convert_dim_type(&bare_name, dim_type)
             .patch_err_pos(pos)?;
         Ok(DimName::new(bare_name, dim_type).at(pos))
     }
@@ -32,41 +32,33 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         bare_name: &BareName,
         dim_type: parser::DimType,
-        store_in_context: bool,
     ) -> Result<DimType, QErrorNode> {
         match dim_type {
-            parser::DimType::Bare => self
-                .convert_dim_type_bare(bare_name, store_in_context)
-                .with_err_no_pos(),
+            parser::DimType::Bare => self.convert_dim_type_bare(bare_name).with_err_no_pos(),
             parser::DimType::Compact(q) => self
-                .convert_dim_type_compact(bare_name, q, store_in_context)
+                .convert_dim_type_compact(bare_name, q)
                 .with_err_no_pos(),
             parser::DimType::FixedLengthString(len_expr) => {
-                self.convert_dim_type_fixed_length_string(bare_name, len_expr, store_in_context)
+                self.convert_dim_type_fixed_length_string(bare_name, len_expr)
             }
             parser::DimType::Extended(q) => self
-                .convert_dim_type_extended(bare_name, q, store_in_context)
+                .convert_dim_type_extended(bare_name, q)
                 .with_err_no_pos(),
-            parser::DimType::UserDefined(user_defined_type_node) => self
-                .convert_dim_type_user_defined(bare_name, user_defined_type_node, store_in_context),
+            parser::DimType::UserDefined(user_defined_type_node) => {
+                self.convert_dim_type_user_defined(bare_name, user_defined_type_node)
+            }
             parser::DimType::Array(dimensions, box_type) => {
-                self.convert_dim_type_array(bare_name, dimensions, *box_type, store_in_context)
+                self.convert_dim_type_array(bare_name, dimensions, *box_type)
             }
         }
     }
 
-    fn convert_dim_type_bare(
-        &mut self,
-        bare_name: &BareName,
-        store_in_context: bool,
-    ) -> Result<DimType, QError> {
+    fn convert_dim_type_bare(&mut self, bare_name: &BareName) -> Result<DimType, QError> {
         let q = self.resolver.resolve(&bare_name);
         if self.context.contains_compact(&bare_name, q) {
             return Err(QError::DuplicateDefinition);
         }
-        if store_in_context {
-            self.context.push_dim_compact(bare_name.clone(), q);
-        }
+        self.context.push_dim_compact(bare_name.clone(), q);
         Ok(DimType::BuiltIn(q))
     }
 
@@ -74,14 +66,11 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         bare_name: &BareName,
         q: TypeQualifier,
-        store_in_context: bool,
     ) -> Result<DimType, QError> {
         if self.context.contains_compact(&bare_name, q) {
             return Err(QError::DuplicateDefinition);
         }
-        if store_in_context {
-            self.context.push_dim_compact(bare_name.clone(), q);
-        }
+        self.context.push_dim_compact(bare_name.clone(), q);
         Ok(DimType::BuiltIn(q))
     }
 
@@ -89,7 +78,6 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         bare_name: &BareName,
         len_expr: parser::ExpressionNode,
-        store_in_context: bool,
     ) -> Result<DimType, QErrorNode> {
         if self.context.contains_any(&bare_name) {
             return Err(QError::DuplicateDefinition).with_err_no_pos();
@@ -100,9 +88,7 @@ impl<'a> ConverterImpl<'a> {
                 return Err(QError::ArgumentTypeMismatch).with_err_at(&len_expr);
             }
         };
-        if store_in_context {
-            self.context.push_dim_string(bare_name.clone(), len);
-        }
+        self.context.push_dim_string(bare_name.clone(), len);
         Ok(DimType::FixedLengthString(len))
     }
 
@@ -110,14 +96,11 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         bare_name: &BareName,
         q: TypeQualifier,
-        store_in_context: bool,
     ) -> Result<DimType, QError> {
         if self.context.contains_any(&bare_name) {
             return Err(QError::DuplicateDefinition);
         }
-        if store_in_context {
-            self.context.push_dim_extended(bare_name.clone(), q);
-        }
+        self.context.push_dim_extended(bare_name.clone(), q);
         Ok(DimType::BuiltIn(q))
     }
 
@@ -125,7 +108,6 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         bare_name: &BareName,
         user_defined_type: parser::BareNameNode,
-        store_in_context: bool,
     ) -> Result<DimType, QErrorNode> {
         if self.context.contains_any(&bare_name) {
             return Err(QError::DuplicateDefinition).with_err_no_pos();
@@ -137,10 +119,8 @@ impl<'a> ConverterImpl<'a> {
         if !self.user_defined_types.contains_key(&type_name) {
             return Err(QError::TypeNotDefined).with_err_at(pos);
         }
-        if store_in_context {
-            self.context
-                .push_dim_user_defined(bare_name.clone(), type_name.clone());
-        }
+        self.context
+            .push_dim_user_defined(bare_name.clone(), type_name.clone());
         Ok(DimType::UserDefined(type_name))
     }
 
@@ -149,14 +129,23 @@ impl<'a> ConverterImpl<'a> {
         bare_name: &BareName,
         array_dimensions: parser::ArrayDimensions,
         element_type: parser::DimType,
-        store_in_context: bool,
     ) -> Result<DimType, QErrorNode> {
-        let converted_element_type = self.convert_dim_type(bare_name, element_type, false)?;
+        // re-construct declared name
+        let declared_name: Name = match &element_type {
+            parser::DimType::Compact(q) => {
+                Name::Qualified(QualifiedName::new(bare_name.clone(), *q))
+            }
+            _ => Name::Bare(bare_name.clone()),
+        };
+
+        let converted_element_type = self.convert_dim_type(bare_name, element_type)?;
         let converted_array_dimensions = self.convert(array_dimensions)?;
-        let dim_type = DimType::Array(converted_array_dimensions, Box::new(converted_element_type));
-        if store_in_context {
-            todo!()
-        }
+        let dim_type = DimType::Array(
+            converted_array_dimensions.clone(),
+            Box::new(converted_element_type),
+        );
+        self.context
+            .register_array_dimensions(declared_name, converted_array_dimensions);
         Ok(dim_type)
     }
 }

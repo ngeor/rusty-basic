@@ -50,7 +50,7 @@ impl DimType {
                 Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
             }
             Self::Many(_, _) => panic!("not possible to declare a variable of type Many"),
-            Self::Array(_, _) => todo!(),
+            Self::Array(_, _) => panic!("not possible to evaluate a default value for an array"),
         }
     }
 }

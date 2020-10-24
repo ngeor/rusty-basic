@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{DimName, ParamName};
+use crate::linter::{DimName, DimType, ParamName};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
@@ -83,6 +83,8 @@ pub enum Instruction {
     /// Cast the contents of A into the given type
     Cast(TypeQualifier),
     FixLength(u16),
+
+    AllocateArray(DimType),
 }
 
 pub type InstructionNode = Locatable<Instruction>;

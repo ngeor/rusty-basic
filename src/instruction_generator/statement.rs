@@ -40,8 +40,8 @@ impl InstructionGenerator {
                 self.push(Instruction::UnresolvedJump(name.clone()), pos);
             }
             Statement::Comment(_) => {}
-            Statement::Dim(Locatable { element, pos }) => {
-                self.push(Instruction::Dim(element), pos);
+            Statement::Dim(d) => {
+                self.generate_dim_instructions(d);
             }
         }
     }

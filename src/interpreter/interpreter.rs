@@ -12,9 +12,9 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
-use crate::linter::{DimName, UserDefinedTypes};
+use crate::linter::{DimName, DimType, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
-use crate::variant::Variant;
+use crate::variant::{VArray, Variant};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
@@ -397,6 +397,43 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);
+            }
+            Instruction::AllocateArray(element_type) => {
+                let parameter_count = self.context().parameter_count();
+                let r_args: Result<Vec<i32>, QError> = (0..parameter_count)
+                    .map(|i| self.context().get(i).unwrap().clone())
+                    .map(|v| i32::try_from(v))
+                    .collect();
+                let args = r_args.with_err_at(pos)?;
+                let mut dimensions: Vec<(i32, i32)> = vec![];
+                let mut i: usize = 0;
+                let mut elements: Vec<Box<Variant>> = vec![];
+                while i < parameter_count {
+                    let lbound = args[i];
+                    i += 1;
+                    let ubound = args[i];
+                    if ubound < lbound {
+                        return Err(QError::SubscriptOutOfRange).with_err_at(pos);
+                    }
+                    i += 1;
+                    dimensions.push((lbound, ubound));
+                    for _i in lbound..ubound + 1 {
+                        elements.push(Box::new(
+                            element_type.default_variant(self.user_defined_types()),
+                        ));
+                    }
+                }
+                let array = Variant::VArray(VArray {
+                    dimensions,
+                    elements,
+                });
+                self.context_mut().set_variable(
+                    DimName::new(
+                        "_AllocateArray".into(),
+                        DimType::BuiltIn(TypeQualifier::PercentInteger),
+                    ),
+                    array,
+                );
             }
         }
         Ok(())

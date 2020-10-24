@@ -7,6 +7,7 @@ use crate::linter::types::{
     DimName, DimType, ElementType, Expression, Members, UserDefinedName, UserDefinedType,
     UserDefinedTypes,
 };
+use crate::linter::ArrayDimensions;
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
@@ -56,6 +57,7 @@ enum ContextState<'a> {
 pub struct Context<'a> {
     names: HashMap<BareName, BareNameTypes>,
     const_values: HashMap<BareName, Variant>,
+    array_dimensions: HashMap<Name, ArrayDimensions>,
     state: ContextState<'a>,
 }
 
@@ -64,6 +66,7 @@ impl<'a> Context<'a> {
         Self {
             names: HashMap::new(),
             const_values: HashMap::new(),
+            array_dimensions: HashMap::new(),
             state: ContextState::Root {
                 user_defined_types,
                 names_without_dot: HashSet::new(),
@@ -346,13 +349,17 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn take_names_without_dot(self) -> HashSet<BareName> {
+    pub fn names_without_dot(self) -> HashSet<BareName> {
         match self.state {
             ContextState::Root {
                 names_without_dot, ..
             } => names_without_dot,
             _ => panic!("Expected root context"),
         }
+    }
+
+    pub fn register_array_dimensions(&mut self, declared_name: Name, dimensions: ArrayDimensions) {
+        self.array_dimensions.insert(declared_name, dimensions);
     }
 }
 
@@ -384,6 +391,7 @@ mod context_management {
             Self {
                 names: HashMap::new(),
                 const_values: HashMap::new(),
+                array_dimensions: HashMap::new(),
                 state: ContextState::Child {
                     param_names: HashSet::new(),
                     parent: Box::new(self),
@@ -398,6 +406,7 @@ mod context_management {
             Self {
                 names: HashMap::new(),
                 const_values: HashMap::new(),
+                array_dimensions: HashMap::new(),
                 state: ContextState::Child {
                     param_names: HashSet::new(),
                     parent: Box::new(self),

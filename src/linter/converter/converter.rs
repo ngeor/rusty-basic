@@ -96,6 +96,6 @@ impl<'a> ConverterImpl<'a> {
     }
 
     pub fn consume(self) -> HashSet<BareName> {
-        self.context.take_names_without_dot()
+        self.context.names_without_dot()
     }
 }

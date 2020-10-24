@@ -1,5 +1,5 @@
 use crate::common::{CanCastTo, Locatable, StringUtils};
-use crate::linter::{ElementType, ExpressionType, HasExpressionType, UserDefinedTypes};
+use crate::linter::{ElementType, Expression, ExpressionType, HasExpressionType, UserDefinedTypes};
 use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
 #[cfg(test)]
@@ -29,6 +29,16 @@ pub enum DimType {
 
     // C.Suit, Name.Address, Name.Address.PostCode
     Many(BareName, Members),
+
+    Array(ArrayDimensions, Box<DimType>),
+}
+
+pub type ArrayDimensions = Vec<ArrayDimension>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArrayDimension {
+    pub lbound: Expression,
+    pub ubound: Expression,
 }
 
 impl DimType {
@@ -40,6 +50,7 @@ impl DimType {
                 Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
             }
             Self::Many(_, _) => panic!("not possible to declare a variable of type Many"),
+            Self::Array(_, _) => todo!(),
         }
     }
 }
@@ -148,6 +159,7 @@ impl DimName {
                 bare_name,
                 DimType::Many(user_defined_name, existing_members.append(members)),
             ),
+            DimType::Array(_, _) => todo!(),
         }
     }
 }
@@ -170,6 +182,7 @@ impl HasExpressionType for DimType {
             Self::FixedLengthString(len) => ExpressionType::FixedLengthString(*len),
             Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
             Self::Many(_, members) => members.expression_type(),
+            Self::Array(_, element_type) => element_type.expression_type(),
         }
     }
 }

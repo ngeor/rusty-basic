@@ -122,6 +122,7 @@ impl Context {
             DimType::Many(_, members) => {
                 self.set_variable_member(bare_name, members, value);
             }
+            DimType::Array(_, _) => todo!(),
         }
     }
 
@@ -191,6 +192,7 @@ impl Context {
                     _ => None,
                 }
             }
+            DimType::Array(_, _) => todo!(),
         }
     }
 

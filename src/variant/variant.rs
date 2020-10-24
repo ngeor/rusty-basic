@@ -16,6 +16,13 @@ pub enum Variant {
     VInteger(i32),
     VLong(i64),
     VUserDefined(Box<UserDefinedTypeValue>),
+    VArray(VArray),
+}
+
+#[derive(Clone, Debug)]
+pub struct VArray {
+    pub dimensions: Vec<(i32, i32)>,
+    pub elements: Vec<Box<Variant>>,
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
@@ -134,7 +141,7 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => other.cmp(self).map(|x| x.reverse()),
             },
-            Variant::VUserDefined(_) => Err(QError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         }
     }
 
@@ -160,7 +167,7 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => Err(QError::TypeMismatch),
             },
-            Variant::VUserDefined(_) => Err(QError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         }
     }
 

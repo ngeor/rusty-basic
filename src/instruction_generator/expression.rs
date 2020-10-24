@@ -91,6 +91,16 @@ impl InstructionGenerator {
             Expression::Parenthesis(child) => {
                 self.generate_expression_instructions(*child);
             }
+            Expression::ArrayElement(array_name, array_dimensions) => {
+                self.push(Instruction::BeginCollectArguments, pos);
+
+                for array_dimension in array_dimensions {
+                    self.generate_expression_instructions(array_dimension);
+                    self.push(Instruction::PushUnnamed, pos);
+                }
+
+                self.push(Instruction::ArrayElement(array_name), pos);
+            }
         }
     }
 }

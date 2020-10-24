@@ -85,6 +85,7 @@ pub enum Instruction {
     FixLength(u16),
 
     AllocateArray(DimType),
+    ArrayElement(DimName),
 }
 
 pub type InstructionNode = Locatable<Instruction>;

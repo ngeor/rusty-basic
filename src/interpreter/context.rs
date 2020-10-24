@@ -122,7 +122,11 @@ impl Context {
             DimType::Many(_, members) => {
                 self.set_variable_member(bare_name, members, value);
             }
-            DimType::Array(_, _) => todo!(),
+            DimType::Array(_, box_element_type) => {
+                let element_type = *box_element_type;
+                let array_name = DimName::new(bare_name, element_type);
+                self.set_variable(array_name, value);
+            }
         }
     }
 

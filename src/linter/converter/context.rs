@@ -99,6 +99,10 @@ impl<'a> Context<'a> {
         }
     }
 
+    pub fn is_array(&self, name: &Name) -> bool {
+        self.array_dimensions.contains_key(name)
+    }
+
     pub fn push_const(&mut self, b: BareName, q: TypeQualifier, v: Variant) {
         if self
             .names

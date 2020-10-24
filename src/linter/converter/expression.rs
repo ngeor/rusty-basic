@@ -23,10 +23,21 @@ impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
                         (&n).try_into().with_err_no_pos()?;
                     match opt_built_in {
                         Some(b) => Ok(Expression::BuiltInFunctionCall(b, converted_args)),
-                        None => Ok(Expression::FunctionCall(
-                            self.resolver.resolve_name(&n),
-                            converted_args,
-                        )),
+                        None => {
+                            // is it a function or an array element?
+                            if self.context.is_array(&n) {
+                                let dim_name = self
+                                    .context
+                                    .resolve_name_in_assignment(&n, &self.resolver)
+                                    .with_err_no_pos()?;
+                                Ok(Expression::ArrayElement(dim_name, converted_args))
+                            } else {
+                                Ok(Expression::FunctionCall(
+                                    self.resolver.resolve_name(&n),
+                                    converted_args,
+                                ))
+                            }
+                        }
                     }
                 } else {
                     self.resolve_name_in_expression(&n).with_err_no_pos()

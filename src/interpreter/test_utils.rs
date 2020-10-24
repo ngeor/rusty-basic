@@ -65,9 +65,7 @@ where
     F: FnMut(&mut MockInterpreter) -> (),
 {
     let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-    // for i in instructions.iter() {
-    //     println!("{:?}", i.as_ref());
-    // }
+    // println!("{:#?}", instructions);
     let mut interpreter = mock_interpreter(user_defined_types);
     initializer(&mut interpreter);
     interpreter
@@ -81,6 +79,7 @@ where
     T: AsRef<[u8]> + 'static,
 {
     let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    // println!("{:#?}", instructions);
     let mut interpreter = mock_interpreter(user_defined_types);
     interpreter.interpret(instructions).unwrap_err()
 }

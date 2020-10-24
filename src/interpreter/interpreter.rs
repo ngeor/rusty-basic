@@ -12,7 +12,7 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
-use crate::linter::{DimName, DimType, UserDefinedTypes};
+use crate::linter::{DimName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::{VArray, Variant};
 use std::cmp::Ordering;
@@ -399,16 +399,19 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 return Err(interpreter_error.clone()).with_err_at(pos);
             }
             Instruction::AllocateArray(element_type) => {
-                let parameter_count = self.context().parameter_count();
-                let r_args: Result<Vec<i32>, QError> = (0..parameter_count)
-                    .map(|i| self.context().get(i).unwrap().clone())
+                let r_args: Result<Vec<i32>, QError> = self
+                    .context_mut()
+                    .arguments_stack()
+                    .pop()
+                    .into_iter()
+                    .map(|(_, v)| v)
                     .map(|v| i32::try_from(v))
                     .collect();
                 let args = r_args.with_err_at(pos)?;
                 let mut dimensions: Vec<(i32, i32)> = vec![];
                 let mut i: usize = 0;
                 let mut elements: Vec<Box<Variant>> = vec![];
-                while i < parameter_count {
+                while i < args.len() {
                     let lbound = args[i];
                     i += 1;
                     let ubound = args[i];
@@ -427,13 +430,46 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     dimensions,
                     elements,
                 });
-                self.context_mut().set_variable(
-                    DimName::new(
-                        "_AllocateArray".into(),
-                        DimType::BuiltIn(TypeQualifier::PercentInteger),
-                    ),
-                    array,
-                );
+                self.set_a(array);
+            }
+            Instruction::ArrayElement(dim_name) => {
+                let r_args: Result<Vec<i32>, QError> = self
+                    .context_mut()
+                    .arguments_stack()
+                    .pop()
+                    .into_iter()
+                    .map(|(_, v)| v)
+                    .map(|v| i32::try_from(v))
+                    .collect();
+                let args = r_args.with_err_at(pos)?;
+                match self.context().get_r_value(dim_name) {
+                    Some(v) => match v {
+                        Variant::VArray(v_arr) => {
+                            let mut index: i32 = 0;
+                            let mut i: i32 = args.len() as i32 - 1;
+                            let mut multiplier: i32 = 1;
+                            while i >= 0 {
+                                let arg = args[i as usize];
+                                let (lbound, ubound) = v_arr.dimensions[i as usize];
+                                if arg < lbound || arg > ubound {
+                                    return Err(QError::SubscriptOutOfRange).with_err_at(pos);
+                                }
+
+                                index += (arg - lbound) * multiplier;
+                                multiplier = multiplier * (ubound - lbound + 1);
+                                i -= 1;
+                            }
+                            let b = *v_arr.elements.get(index as usize).unwrap().clone();
+                            self.set_a(b);
+                        }
+                        _ => {
+                            return Err(QError::TypeMismatch).with_err_at(pos);
+                        }
+                    },
+                    _ => {
+                        return Err(QError::ArrayNotDefined).with_err_at(pos);
+                    }
+                }
             }
         }
         Ok(())

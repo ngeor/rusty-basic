@@ -13,6 +13,7 @@ pub enum Expression {
     Constant(QualifiedName),
     Variable(DimName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
+    ArrayElement(DimName, Vec<ExpressionNode>),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(
         Operator,
@@ -65,6 +66,7 @@ impl HasExpressionType for Expression {
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
             Self::BinaryExpression(_, _, _, type_definition) => type_definition.clone(),
             Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().expression_type(),
+            Self::ArrayElement(array_name, _) => array_name.expression_type(),
         }
     }
 }

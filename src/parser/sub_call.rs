@@ -2,8 +2,8 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::common::{and, map_default_to_not_found, or_vec};
-use crate::parser::pc::map::map;
+use crate::parser::pc::common::{and, drop_left, map_default_to_not_found, opt_seq2, or_vec};
+use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::ws::{is_eol, one_or_more_leading, zero_or_more_leading};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{csv_zero_or_more, in_parenthesis};
@@ -14,29 +14,75 @@ use std::io::BufRead;
 // SubCallNoArgs            ::= BareName [eof | eol | ' | <ws+>: ]
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
-pub fn sub_call<T: BufRead + 'static>(
+pub fn sub_call_or_assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
+    and_then(
         and(
-            name::bare_name(),
+            name::name(),
             or_vec(vec![
                 // e.g. PRINT("hello", "world")
-                map_default_to_not_found(in_parenthesis(csv_zero_or_more(
-                    expression::expression_node(),
-                ))),
+                opt_seq2(
+                    map_default_to_not_found(in_parenthesis(csv_zero_or_more(
+                        expression::expression_node(),
+                    ))),
+                    drop_left(and(
+                        ws::zero_or_more_around(read('=')),
+                        expression::expression_node(),
+                    )),
+                ),
                 // e.g. PRINT "hello", "world"
-                zero_or_more_leading(map_default_to_not_found(csv_zero_or_more(
-                    expression::expression_node(),
-                ))),
+                map(
+                    zero_or_more_leading(map_default_to_not_found(csv_zero_or_more(
+                        expression::expression_node(),
+                    ))),
+                    |x| (x, None),
+                ),
+                // assignment
+                map(
+                    drop_left(and(
+                        ws::zero_or_more_around(read('=')),
+                        expression::expression_node(),
+                    )),
+                    |x| (vec![], Some(x)),
+                ),
                 // prevent against e.g. A = "oops"
-                one_or_more_leading(zero_args_assignment_and_label_guard(
-                    statement_terminator_after_whitespace,
-                )),
+                map(
+                    one_or_more_leading(zero_args_assignment_and_label_guard(
+                        statement_terminator_after_whitespace,
+                    )),
+                    |x| (x, None),
+                ),
                 // prevent against e.g. A: or A="oops"
-                zero_args_assignment_and_label_guard(statement_terminator),
+                map(
+                    zero_args_assignment_and_label_guard(statement_terminator),
+                    |x| (x, None),
+                ),
             ]),
         ),
-        |(n, r)| Statement::SubCall(n, r),
+        |(n, (args, opt_assignment_r_value))| {
+            match opt_assignment_r_value {
+                Some(assignment_r_value) => {
+                    // assignment
+                    if args.is_empty() {
+                        Ok(Statement::Assignment(
+                            Expression::VariableName(n),
+                            assignment_r_value,
+                        ))
+                    } else {
+                        todo!()
+                    }
+                }
+                None => {
+                    // sub call
+                    match n {
+                        Name::Bare(bare_name) => Ok(Statement::SubCall(bare_name, args)),
+                        Name::Qualified(_) => {
+                            Err(QError::syntax_error("Sub name cannot be qualified"))
+                        }
+                    }
+                }
+            }
+        },
     )
 }
 

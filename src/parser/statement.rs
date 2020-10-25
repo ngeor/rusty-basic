@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::assignment;
 use crate::parser::built_ins;
 use crate::parser::char_reader::*;
 use crate::parser::comment;
@@ -30,8 +29,7 @@ pub fn statement<T: BufRead + 'static>(
         constant::constant(),
         comment::comment(),
         built_ins::parse_built_in(),
-        sub_call::sub_call(),
-        assignment::assignment(),
+        sub_call::sub_call_or_assignment(),
         statement_label(),
         if_block::if_block(),
         for_loop::for_loop(),
@@ -51,8 +49,7 @@ pub fn single_line_non_comment_statement<T: BufRead + 'static>(
         dim::dim(),
         constant::constant(),
         built_ins::parse_built_in(),
-        sub_call::sub_call(),
-        assignment::assignment(),
+        sub_call::sub_call_or_assignment(),
         statement_go_to(),
         statement_on_error_go_to(),
     ])
@@ -67,8 +64,7 @@ pub fn single_line_statement<T: BufRead + 'static>(
         dim::dim(),
         constant::constant(),
         built_ins::parse_built_in(),
-        sub_call::sub_call(),
-        assignment::assignment(),
+        sub_call::sub_call_or_assignment(),
         statement_go_to(),
         statement_on_error_go_to(),
     ])

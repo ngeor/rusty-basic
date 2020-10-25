@@ -12,24 +12,23 @@ use std::collections::HashMap;
 #[test]
 fn bare() {
     let program = r#"
-            DIM A
-            A = 42
-            PRINT A
-            "#;
+    DIM A
+    A = 42
+    PRINT A
+    "#;
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").at_rc(2, 17)))
-                .at_rc(2, 13),
+            TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").at_rc(2, 9))).at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::var("A!"),
-                Expression::IntegerLiteral(42).at_rc(3, 17)
+                Expression::IntegerLiteral(42).at_rc(3, 9)
             ))
-            .at_rc(3, 13),
+            .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::Variable(DimName::parse("A!")).at_rc(4, 19)
+                Expression::Variable(DimName::parse("A!")).at_rc(4, 11)
             )))
-            .at_rc(4, 13)
+            .at_rc(4, 5)
         ]
     );
 }
@@ -37,24 +36,23 @@ fn bare() {
 #[test]
 fn compact_string() {
     let program = r#"
-            DIM A$
-            A$ = "hello"
-            PRINT A$
-            "#;
+    DIM A$
+    A$ = "hello"
+    PRINT A$
+    "#;
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 17)))
-                .at_rc(2, 13),
+            TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 9))).at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::var("A$"),
-                Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
+                Expression::StringLiteral("hello".to_string()).at_rc(3, 10)
             ))
-            .at_rc(3, 13),
+            .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::Variable(DimName::parse("A$")).at_rc(4, 19)
+                Expression::Variable(DimName::parse("A$")).at_rc(4, 11)
             )))
-            .at_rc(4, 13)
+            .at_rc(4, 5)
         ]
     );
 }
@@ -62,24 +60,23 @@ fn compact_string() {
 #[test]
 fn extended_string() {
     let program = r#"
-            DIM A AS STRING
-            A = "hello"
-            PRINT A
-            "#;
+    DIM A AS STRING
+    A = "hello"
+    PRINT A
+    "#;
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 17)))
-                .at_rc(2, 13),
+            TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 9))).at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::var("A$"),
-                Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
+                Expression::StringLiteral("hello".to_string()).at_rc(3, 9)
             ))
-            .at_rc(3, 13),
+            .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::Variable(DimName::parse("A$")).at_rc(4, 19)
+                Expression::Variable(DimName::parse("A$")).at_rc(4, 11)
             )))
-            .at_rc(4, 13)
+            .at_rc(4, 5)
         ]
     );
 }
@@ -87,14 +84,14 @@ fn extended_string() {
 #[test]
 fn user_defined_type() {
     let input = r#"
-            TYPE Card
-                Value AS INTEGER
-                Suit AS STRING * 9
-            END TYPE
-            DIM A AS Card
-            DIM B AS Card
-            A = B
-            "#;
+    TYPE Card
+        Value AS INTEGER
+        Suit AS STRING * 9
+    END TYPE
+    DIM A AS Card
+    DIM B AS Card
+    A = B
+    "#;
     let (program, user_defined_types) = linter_ok_with_types(input);
     assert_eq!(
         program,
@@ -135,14 +132,14 @@ fn user_defined_type() {
 #[test]
 fn user_defined_type_integer_element() {
     let input = r#"
-            TYPE Card
-                Value AS INTEGER
-                Suit AS STRING * 9
-            END TYPE
-            DIM A AS Card
-            A.Value = 42
-            PRINT A.Value
-            "#;
+    TYPE Card
+        Value AS INTEGER
+        Suit AS STRING * 9
+    END TYPE
+    DIM A AS Card
+    A.Value = 42
+    PRINT A.Value
+    "#;
     assert_eq!(
         linter_ok(input),
         vec![
@@ -186,14 +183,14 @@ fn user_defined_type_integer_element() {
 #[test]
 fn user_defined_type_string_element() {
     let input = r#"
-            TYPE Card
-                Value AS INTEGER
-                Suit AS STRING * 9
-            END TYPE
-            DIM A AS Card
-            A.Suit = "diamonds"
-            PRINT A.Suit
-            "#;
+    TYPE Card
+        Value AS INTEGER
+        Suit AS STRING * 9
+    END TYPE
+    DIM A AS Card
+    A.Suit = "diamonds"
+    PRINT A.Suit
+    "#;
     assert_eq!(
         linter_ok(input),
         vec![
@@ -237,11 +234,11 @@ fn user_defined_type_string_element() {
 #[test]
 fn element_type_qualified_wrong_type() {
     let program = r#"
-            TYPE Card
-                Value AS INTEGER
-            END TYPE
-            DIM c AS Card
-            c.Value! = 3
-            "#;
-    assert_linter_err!(program, QError::TypeMismatch, 6, 13);
+    TYPE Card
+        Value AS INTEGER
+    END TYPE
+    DIM c AS Card
+    c.Value! = 3
+    "#;
+    assert_linter_err!(program, QError::TypeMismatch, 6, 5);
 }

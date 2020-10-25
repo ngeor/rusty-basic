@@ -73,7 +73,7 @@ mod tests {
             program,
             vec![
                 TopLevelToken::Statement(Statement::Assignment(
-                    "ANSWER".into(),
+                    Expression::var("ANSWER"),
                     42.as_lit_expr(1, 10)
                 ))
                 .at_rc(1, 1),

@@ -39,7 +39,7 @@ fn element_using_container_type_throws_type_not_defined() {
 fn dim_using_undefined_type() {
     let input = "DIM X AS Card";
     // TODO QBasic actually positions the error on the "AS" keyword
-    assert_linter_err!(input, QError::TypeNotDefined, 1, 5);
+    assert_linter_err!(input, QError::TypeNotDefined, 1, 10);
 }
 
 #[test]

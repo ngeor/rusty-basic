@@ -444,13 +444,15 @@ end if"#;
                         Box::new(0.as_lit_expr(1, 9))
                     )
                     .at_rc(1, 7),
-                    statements: vec![
-                        Statement::Assignment("A$".into(), "B$".as_var_expr(1, 21)).at_rc(1, 16)
-                    ]
+                    statements: vec![Statement::Assignment(
+                        Expression::var("A$"),
+                        "B$".as_var_expr(1, 21)
+                    )
+                    .at_rc(1, 16)]
                 },
                 else_if_blocks: vec![],
                 else_block: Some(vec![Statement::Assignment(
-                    "A$".into(),
+                    Expression::var("A$"),
                     "C$".as_var_expr(1, 34)
                 )
                 .at_rc(1, 29)])

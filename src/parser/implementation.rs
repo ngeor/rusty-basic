@@ -91,7 +91,7 @@ mod tests {
                     ParamName::new("B".into(), ParamType::Bare).at_rc(2, 25)
                 ],
                 vec![Statement::Assignment(
-                    "Add".into(),
+                    Expression::var("Add"),
                     Expression::BinaryExpression(
                         Operator::Plus,
                         Box::new("A".as_var_expr(3, 19)),
@@ -122,7 +122,7 @@ mod tests {
                     ParamName::new("b".into(), ParamType::Bare).at_rc(2, 25)
                 ],
                 vec![Statement::Assignment(
-                    "add".into(),
+                    Expression::var("add"),
                     Expression::BinaryExpression(
                         Operator::Plus,
                         Box::new("a".as_var_expr(3, 19)),

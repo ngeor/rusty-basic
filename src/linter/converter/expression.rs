@@ -15,32 +15,30 @@ impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
             parser::Expression::StringLiteral(f) => Ok(Expression::StringLiteral(f)),
             parser::Expression::IntegerLiteral(f) => Ok(Expression::IntegerLiteral(f)),
             parser::Expression::LongLiteral(f) => Ok(Expression::LongLiteral(f)),
-            parser::Expression::Name(name_expr) => {
-                let n = Name::new(name_expr.bare_name, name_expr.qualifier);
-                if name_expr.arguments.is_some() {
-                    let converted_args = self.convert(name_expr.arguments.unwrap())?;
-                    let opt_built_in: Option<BuiltInFunction> =
-                        (&n).try_into().with_err_no_pos()?;
-                    match opt_built_in {
-                        Some(b) => Ok(Expression::BuiltInFunctionCall(b, converted_args)),
-                        None => {
-                            // is it a function or an array element?
-                            if self.context.is_array(&n) {
-                                let dim_name = self
-                                    .context
-                                    .resolve_name_in_assignment(&n, &self.resolver)
-                                    .with_err_no_pos()?;
-                                Ok(Expression::ArrayElement(dim_name, converted_args))
-                            } else {
-                                Ok(Expression::FunctionCall(
-                                    self.resolver.resolve_name(&n),
-                                    converted_args,
-                                ))
-                            }
+            parser::Expression::VariableName(name_expr) => self
+                .resolve_name_in_expression(&name_expr)
+                .with_err_no_pos(),
+            parser::Expression::FunctionCall(name_expr, args) => {
+                let n = name_expr.clone();
+                let converted_args = self.convert(args)?;
+                let opt_built_in: Option<BuiltInFunction> = (&n).try_into().with_err_no_pos()?;
+                match opt_built_in {
+                    Some(b) => Ok(Expression::BuiltInFunctionCall(b, converted_args)),
+                    None => {
+                        // is it a function or an array element?
+                        if self.context.is_array(&n) {
+                            let dim_name = self
+                                .context
+                                .resolve_name_in_assignment(&n, &self.resolver)
+                                .with_err_no_pos()?;
+                            Ok(Expression::ArrayElement(dim_name, converted_args))
+                        } else {
+                            Ok(Expression::FunctionCall(
+                                self.resolver.resolve_name(&n),
+                                converted_args,
+                            ))
                         }
                     }
-                } else {
-                    self.resolve_name_in_expression(&n).with_err_no_pos()
                 }
             }
             parser::Expression::BinaryExpression(op, l, r) => {

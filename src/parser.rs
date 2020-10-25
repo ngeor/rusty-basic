@@ -12,7 +12,6 @@ mod for_loop;
 mod if_block;
 mod implementation;
 mod name;
-mod name_expr;
 mod param_name;
 mod parser;
 mod pc;

@@ -39,6 +39,13 @@ impl Name {
             }) => (bare_name, Some(qualifier)),
         }
     }
+
+    pub fn qualifier(&self) -> Option<TypeQualifier> {
+        match self {
+            Self::Bare(_) => None,
+            Self::Qualified(QualifiedName { qualifier, .. }) => Some(*qualifier),
+        }
+    }
 }
 
 impl AsRef<BareName> for Name {

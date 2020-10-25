@@ -393,11 +393,23 @@ mod number_literal {
 
 mod word {
     use super::*;
-    use crate::parser::name_expr::name_expr;
+    use crate::parser::name::{any_word_with_dot, any_word_without_dot};
+    use crate::parser::type_qualifier::type_qualifier;
 
     pub fn word<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
-        map(name_expr(), |n| Expression::Name(n))
+        map(
+            opt_seq4(
+                any_word_with_dot(),
+                type_qualifier(),
+                in_parenthesis(csv_zero_or_more(lazy(expression_node))),
+                map_default_to_not_found(many(drop_left(and(read('.'), any_word_without_dot())))),
+            ),
+            |(name, qualifier, arguments, elements)| match arguments {
+                Some(arguments) => Expression::FunctionCall(Name::new(name, qualifier), arguments),
+                _ => Expression::VariableName(Name::new(name, qualifier)),
+            },
+        )
     }
 }
 
@@ -506,57 +518,32 @@ mod tests {
 
     mod variable_expressions {
         use super::*;
-        use crate::parser::{NameExpr, TypeQualifier};
 
         #[test]
         fn test_bare_name() {
-            assert_expression!("A", Expression::Name(NameExpr::bare("A")));
+            assert_expression!("A", Expression::var("A"));
         }
 
         #[test]
         fn test_bare_name_with_elements() {
-            assert_expression!(
-                "A.B",
-                Expression::Name(NameExpr {
-                    bare_name: "A.B".into(),
-                    qualifier: None,
-                    arguments: None,
-                    elements: None
-                })
-            );
+            assert_expression!("A.B", Expression::var("A.B"));
         }
 
         #[test]
         fn test_qualified_name() {
-            assert_expression!(
-                "A%",
-                Expression::Name(NameExpr::qualified("A", TypeQualifier::PercentInteger))
-            );
+            assert_expression!("A%", Expression::var("A%"));
         }
 
         #[test]
         fn test_array() {
-            assert_expression!(
-                "choice$()",
-                Expression::Name(NameExpr {
-                    bare_name: "choice".into(),
-                    qualifier: Some(TypeQualifier::DollarString),
-                    arguments: Some(vec![]),
-                    elements: None
-                })
-            );
+            assert_expression!("choice$()", Expression::func("choice$", vec![]));
         }
 
         #[test]
         fn test_array_element_single_dimension() {
             assert_expression!(
                 "choice$(1)",
-                Expression::Name(NameExpr {
-                    bare_name: "choice".into(),
-                    qualifier: Some(TypeQualifier::DollarString),
-                    arguments: Some(vec![1.as_lit_expr(1, 15)]),
-                    elements: None
-                })
+                Expression::func("choice$", vec![1.as_lit_expr(1, 15)])
             );
         }
 
@@ -564,12 +551,7 @@ mod tests {
         fn test_array_element_two_dimensions() {
             assert_expression!(
                 "choice$(1, 2)",
-                Expression::Name(NameExpr {
-                    bare_name: "choice".into(),
-                    qualifier: Some(TypeQualifier::DollarString),
-                    arguments: Some(vec![1.as_lit_expr(1, 15), 2.as_lit_expr(1, 18)]),
-                    elements: None
-                })
+                Expression::func("choice$", vec![1.as_lit_expr(1, 15), 2.as_lit_expr(1, 18)])
             );
         }
 
@@ -577,12 +559,7 @@ mod tests {
         fn test_array_element_user_defined_type() {
             assert_expression!(
                 "cards(1).Value",
-                Expression::Name(NameExpr {
-                    bare_name: "cards".into(),
-                    qualifier: None,
-                    arguments: Some(vec![1.as_lit_expr(1, 13)]),
-                    elements: Some(vec!["Value".into()])
-                })
+                Expression::func("choice$", vec![1.as_lit_expr(1, 15)])
             );
         }
 
@@ -590,27 +567,7 @@ mod tests {
         fn test_array_element_function_call_as_dimension() {
             assert_expression!(
                 "cards(lbound(cards) + 1).Value",
-                Expression::Name(NameExpr {
-                    bare_name: "cards".into(),
-                    qualifier: None,
-                    arguments: Some(vec![Expression::BinaryExpression(
-                        Operator::Plus,
-                        Box::new(
-                            Expression::Name(NameExpr {
-                                bare_name: "lbound".into(),
-                                qualifier: None,
-                                arguments: Some(vec![
-                                    Expression::Name(NameExpr::bare("cards")).at_rc(1, 20)
-                                ]),
-                                elements: None
-                            })
-                            .at_rc(1, 13)
-                        ),
-                        Box::new(1.as_lit_expr(1, 29))
-                    )
-                    .at_rc(1, 27)]),
-                    elements: Some(vec!["Value".into()])
-                })
+                Expression::func("choice$", vec![1.as_lit_expr(1, 15)])
             );
         }
     }

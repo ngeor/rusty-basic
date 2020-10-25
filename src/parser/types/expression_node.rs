@@ -1,6 +1,5 @@
 use crate::common::{AtLocation, HasLocation, Locatable, Location};
-use crate::parser::types::{NameExpr, Operator, UnaryOperator};
-use crate::parser::Name;
+use crate::parser::types::{Name, Operator, UnaryOperator};
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -10,7 +9,8 @@ pub enum Expression {
     StringLiteral(String),
     IntegerLiteral(i32),
     LongLiteral(i64),
-    Name(NameExpr),
+    VariableName(Name),
+    FunctionCall(Name, ExpressionNodes),
     BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
@@ -58,24 +58,12 @@ impl From<i64> for Expression {
 impl Expression {
     pub fn var(s: &str) -> Self {
         let name: Name = s.into();
-        let (bare_name, qualifier) = name.into_inner();
-        Expression::Name(NameExpr {
-            bare_name,
-            qualifier,
-            arguments: None,
-            elements: None,
-        })
+        Expression::VariableName(name)
     }
 
     pub fn func(s: &str, args: ExpressionNodes) -> Self {
         let name: Name = s.into();
-        let (bare_name, qualifier) = name.into_inner();
-        Expression::Name(NameExpr {
-            bare_name,
-            qualifier,
-            arguments: Some(args),
-            elements: None,
-        })
+        Expression::FunctionCall(name, args)
     }
 
     fn unary_minus(child: ExpressionNode) -> Self {
@@ -125,16 +113,12 @@ impl Expression {
                 let x: ExpressionNode = *child;
                 Self::Parenthesis(Box::new(x.simplify_unary_minus_literals()))
             }
-            Self::Name(name_expr) => Self::Name(NameExpr {
-                bare_name: name_expr.bare_name,
-                qualifier: name_expr.qualifier,
-                arguments: name_expr.arguments.map(|x| {
-                    x.into_iter()
-                        .map(|a| a.simplify_unary_minus_literals())
-                        .collect()
-                }),
-                elements: name_expr.elements,
-            }),
+            Self::FunctionCall(name, args) => Self::FunctionCall(
+                name,
+                args.into_iter()
+                    .map(|a| a.map(|x| x.simplify_unary_minus_literals()))
+                    .collect(),
+            ),
             _ => self,
         }
     }

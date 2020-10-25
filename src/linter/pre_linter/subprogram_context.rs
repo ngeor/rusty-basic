@@ -187,59 +187,55 @@ fn validate_element_type_str_len(
             // parser already covers that i is between 1..MAX_INT
             Ok(*i as u16)
         }
-        Expression::Name(name_expr) => {
+        Expression::VariableName(name_expr) => {
             // only constants allowed
-            if name_expr.arguments.is_some() {
-                Err(QError::InvalidConstant).with_err_at(pos)
+            if let Some(qualifier) = name_expr.qualifier() {
+                match global_constants.get(name_expr.as_ref()) {
+                    // constant exists
+                    Some(const_value) => {
+                        match const_value {
+                            Variant::VInteger(i) => {
+                                if qualifier == TypeQualifier::PercentInteger
+                                    && *i >= 1
+                                    && *i <= crate::variant::MAX_INTEGER
+                                {
+                                    Ok(*i as u16)
+                                } else {
+                                    // illegal string length or using wrong qualifier to reference the int constant
+                                    Err(QError::InvalidConstant).with_err_at(pos)
+                                }
+                            }
+                            _ => {
+                                // only integer constants allowed
+                                Err(QError::InvalidConstant).with_err_at(pos)
+                            }
+                        }
+                    }
+                    // constant does not exist
+                    None => Err(QError::InvalidConstant).with_err_at(pos),
+                }
             } else {
-                if let Some(qualifier) = name_expr.qualifier {
-                    match global_constants.get(&name_expr.bare_name) {
-                        // constant exists
-                        Some(const_value) => {
-                            match const_value {
-                                Variant::VInteger(i) => {
-                                    if qualifier == TypeQualifier::PercentInteger
-                                        && *i >= 1
-                                        && *i <= crate::variant::MAX_INTEGER
-                                    {
-                                        Ok(*i as u16)
-                                    } else {
-                                        // illegal string length or using wrong qualifier to reference the int constant
-                                        Err(QError::InvalidConstant).with_err_at(pos)
-                                    }
-                                }
-                                _ => {
-                                    // only integer constants allowed
+                // bare name constant
+                match global_constants.get(name_expr.as_ref()) {
+                    // constant exists
+                    Some(const_value) => {
+                        match const_value {
+                            Variant::VInteger(i) => {
+                                if *i >= 1 && *i <= crate::variant::MAX_INTEGER {
+                                    Ok(*i as u16)
+                                } else {
+                                    // illegal string length
                                     Err(QError::InvalidConstant).with_err_at(pos)
                                 }
                             }
-                        }
-                        // constant does not exist
-                        None => Err(QError::InvalidConstant).with_err_at(pos),
-                    }
-                } else {
-                    // bare name constant
-                    match global_constants.get(&name_expr.bare_name) {
-                        // constant exists
-                        Some(const_value) => {
-                            match const_value {
-                                Variant::VInteger(i) => {
-                                    if *i >= 1 && *i <= crate::variant::MAX_INTEGER {
-                                        Ok(*i as u16)
-                                    } else {
-                                        // illegal string length
-                                        Err(QError::InvalidConstant).with_err_at(pos)
-                                    }
-                                }
-                                _ => {
-                                    // only integer constants allowed
-                                    Err(QError::InvalidConstant).with_err_at(pos)
-                                }
+                            _ => {
+                                // only integer constants allowed
+                                Err(QError::InvalidConstant).with_err_at(pos)
                             }
                         }
-                        // constant does not exist
-                        None => Err(QError::InvalidConstant).with_err_at(pos),
                     }
+                    // constant does not exist
+                    None => Err(QError::InvalidConstant).with_err_at(pos),
                 }
             }
         }

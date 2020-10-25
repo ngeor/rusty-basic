@@ -67,7 +67,7 @@ fn test_parameter() {
 }
 
 #[test]
-fn test_modify_element_is_sub() {
+fn test_modify_element_in_sub() {
     let input = r#"
     DIM choice$(1 TO 3)
     choice$(1) = "Red"

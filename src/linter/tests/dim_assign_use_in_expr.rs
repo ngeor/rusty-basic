@@ -22,7 +22,7 @@ fn bare() {
             TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").at_rc(2, 17)))
                 .at_rc(2, 13),
             TopLevelToken::Statement(Statement::Assignment(
-                DimName::parse("A!"),
+                Expression::var("A!"),
                 Expression::IntegerLiteral(42).at_rc(3, 17)
             ))
             .at_rc(3, 13),
@@ -47,7 +47,7 @@ fn compact_string() {
             TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 17)))
                 .at_rc(2, 13),
             TopLevelToken::Statement(Statement::Assignment(
-                DimName::parse("A$"),
+                Expression::var("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 18)
             ))
             .at_rc(3, 13),
@@ -72,7 +72,7 @@ fn extended_string() {
             TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 17)))
                 .at_rc(2, 13),
             TopLevelToken::Statement(Statement::Assignment(
-                DimName::parse("A$"),
+                Expression::var("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 17)
             ))
             .at_rc(3, 13),
@@ -108,7 +108,7 @@ fn user_defined_type() {
             ))
             .at_rc(7, 13),
             TopLevelToken::Statement(Statement::Assignment(
-                DimName::user_defined("A", "Card"),
+                Expression::var("A.Card"), // TODO WAS                DimName::user_defined("A", "Card"),
                 Expression::Variable(DimName::user_defined("B", "Card")).at_rc(8, 17)
             ))
             .at_rc(8, 13)
@@ -151,16 +151,17 @@ fn user_defined_type_integer_element() {
             ))
             .at_rc(6, 13),
             TopLevelToken::Statement(Statement::Assignment(
-                DimName::new(
-                    "A".into(),
-                    DimType::Many(
-                        "Card".into(),
-                        Members::Leaf {
-                            name: "Value".into(),
-                            element_type: ElementType::Integer
-                        }
-                    )
-                ),
+                Expression::var("A.Card.Value"), /*
+                                                 DimName::new(
+                                                     "A".into(),
+                                                     DimType::Many(
+                                                         "Card".into(),
+                                                         Members::Leaf {
+                                                             name: "Value".into(),
+                                                             element_type: ElementType::Integer
+                                                         }
+                                                     )
+                                                 )*/
                 Expression::IntegerLiteral(42).at_rc(7, 23)
             ))
             .at_rc(7, 13),
@@ -201,16 +202,17 @@ fn user_defined_type_string_element() {
             ))
             .at_rc(6, 13),
             TopLevelToken::Statement(Statement::Assignment(
-                DimName::new(
-                    "A".into(),
-                    DimType::Many(
-                        "Card".into(),
-                        Members::Leaf {
-                            name: "Suit".into(),
-                            element_type: ElementType::FixedLengthString(9)
-                        }
-                    )
-                ),
+                Expression::var("A"), /*
+                                      DimName::new(
+                                          "A".into(),
+                                          DimType::Many(
+                                              "Card".into(),
+                                              Members::Leaf {
+                                                  name: "Suit".into(),
+                                                  element_type: ElementType::FixedLengthString(9)
+                                              }
+                                          )
+                                      ),*/
                 Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
             ))
             .at_rc(7, 13),

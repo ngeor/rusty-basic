@@ -241,13 +241,31 @@ impl InstructionGenerator {
 
     pub fn generate_assignment_instructions(
         &mut self,
-        l: DimName,
+        l: Expression,
         r: ExpressionNode,
         pos: Location,
     ) {
         let left_type = l.expression_type();
         self.generate_expression_instructions_casting(r, left_type);
-        self.push(Instruction::Store(l), pos);
+        self.generate_store_instructions(l, pos);
+    }
+
+    pub fn generate_store_instructions(&mut self, l: Expression, pos: Location) {
+        match l {
+            Expression::Variable(var_name) => {
+                self.push(Instruction::Store(var_name), pos);
+            }
+            _ => todo!(),
+        }
+    }
+
+    pub fn generate_load_instructions(&mut self, l: Expression, pos: Location) {
+        match l {
+            Expression::Variable(var_name) => {
+                self.push(Instruction::CopyVarToA(var_name), pos);
+            }
+            _ => todo!(),
+        }
     }
 }
 

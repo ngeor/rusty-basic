@@ -2,13 +2,13 @@ use crate::common::{
     CanCastTo, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
 };
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::{DimName, DimType, ExpressionNode, Statement};
+use crate::linter::{DimName, DimType, Expression, ExpressionNode, Statement};
 use crate::parser::{BareName, Name, TypeQualifier};
 
 impl<'a> ConverterImpl<'a> {
     pub fn assignment(
         &mut self,
-        name: Name,
+        name: crate::parser::Expression,
         expression_node: crate::parser::ExpressionNode,
     ) -> Result<Statement, QErrorNode> {
         let dim_name = self.assignment_name(name).with_err_no_pos()?;
@@ -20,19 +20,29 @@ impl<'a> ConverterImpl<'a> {
         }
     }
 
-    pub fn assignment_name(&mut self, name: Name) -> Result<DimName, QError> {
-        let bare_name: &BareName = name.as_ref();
-        if self.context.is_function_context(bare_name) {
-            self.assign_to_function(name)
-        } else if self.subs.contains_key(bare_name)
-            // it is possible to have a param name shadowing a function name (but not a sub name...)
-            || (!self.context.is_param(&name, &self.resolver) && self.functions.contains_key(bare_name))
-            || self.context.contains_const(bare_name)
-        {
-            Err(QError::DuplicateDefinition)
-        } else {
-            self.context
-                .resolve_name_in_assignment(&name, &self.resolver)
+    pub fn assignment_name(
+        &mut self,
+        name: crate::parser::Expression,
+    ) -> Result<Expression, QError> {
+        match name {
+            crate::parser::Expression::VariableName(name) => {
+                let bare_name: &BareName = name.as_ref();
+                if self.context.is_function_context(bare_name) {
+                    self.assign_to_function(name)
+                        .map(|dim_name| Expression::Variable(dim_name))
+                } else if self.subs.contains_key(bare_name)
+                    // it is possible to have a param name shadowing a function name (but not a sub name...)
+                    || (!self.context.is_param(&name, &self.resolver) && self.functions.contains_key(bare_name))
+                    || self.context.contains_const(bare_name)
+                {
+                    Err(QError::DuplicateDefinition)
+                } else {
+                    self.context
+                        .resolve_name_in_assignment(&name, &self.resolver)
+                        .map(|dim_name| Expression::Variable(dim_name))
+                }
+            }
+            _ => unimplemented!(),
         }
     }
 

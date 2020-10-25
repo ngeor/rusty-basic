@@ -1,7 +1,7 @@
 use crate::assert_linter_err;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
-use crate::linter::{DimName, Expression, ExpressionType, Statement, TopLevelToken};
+use crate::linter::{Expression, ExpressionType, Statement, TopLevelToken};
 use crate::parser::{Operator, TypeQualifier};
 
 #[test]
@@ -63,7 +63,7 @@ fn test_assign_binary_plus() {
     assert_eq!(
         linter_ok("X% = 1 + 2.1"),
         vec![TopLevelToken::Statement(Statement::Assignment(
-            DimName::parse("X%"),
+            Expression::var("X%"),
             Expression::BinaryExpression(
                 Operator::Plus,
                 Box::new(Expression::IntegerLiteral(1).at_rc(1, 6),),

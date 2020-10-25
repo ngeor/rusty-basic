@@ -48,6 +48,11 @@ impl Expression {
             None => Err(QError::TypeMismatch).with_err_at(&right),
         }
     }
+
+    #[cfg(test)]
+    pub fn var(name: &str) -> Self {
+        Expression::Variable(DimName::parse(name))
+    }
 }
 
 impl HasExpressionType for Expression {

@@ -102,7 +102,7 @@ pub trait PostConversionLinter {
         self.visit_expressions(args)
     }
 
-    fn visit_assignment(&self, _name: &DimName, v: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn visit_assignment(&self, _name: &Expression, v: &ExpressionNode) -> Result<(), QErrorNode> {
         self.visit_expression(v)
     }
 

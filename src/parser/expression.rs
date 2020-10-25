@@ -405,7 +405,7 @@ mod word {
                 in_parenthesis(csv_zero_or_more(lazy(expression_node))),
                 map_default_to_not_found(many(drop_left(and(read('.'), any_word_without_dot())))),
             ),
-            |(name, qualifier, arguments, elements)| match arguments {
+            |(name, qualifier, arguments, _elements)| match arguments {
                 Some(arguments) => Expression::FunctionCall(Name::new(name, qualifier), arguments),
                 _ => Expression::VariableName(Name::new(name, qualifier)),
             },

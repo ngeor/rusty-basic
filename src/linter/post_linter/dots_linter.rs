@@ -151,14 +151,14 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         self.ensure_no_dots(d)
     }
 
-    fn visit_assignment(&self, name: &DimName, v: &ExpressionNode) -> Result<(), QErrorNode> {
-        self.ensure_no_dots(name).with_err_no_pos()?;
+    fn visit_assignment(&self, name: &Expression, v: &ExpressionNode) -> Result<(), QErrorNode> {
+        self.ensure_no_dots(name)?;
         self.visit_expression(v)
     }
 
     fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
         // no need to test f.next_counter, as it is the same as variable_name if it exists
-        self.ensure_no_dots(&f.variable_name).with_err_no_pos()?;
+        self.ensure_no_dots(&f.variable_name)?;
         self.visit_expression(&f.lower_bound)?;
         self.visit_expression(&f.upper_bound)?;
         match &f.step {

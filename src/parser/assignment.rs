@@ -11,7 +11,9 @@ use std::io::BufRead;
 
 pub fn assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(assignment_tuple(), |(l, r)| Statement::Assignment(l, r))
+    map(assignment_tuple(), |(l, r)| {
+        Statement::Assignment(Expression::VariableName(l), r)
+    })
 }
 
 /// Parses `<name> <ws*> = <ws*> <expression-node>`.
@@ -38,13 +40,13 @@ pub fn assignment_tuple<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use super::*;
-    use crate::parser::{Expression, Name, TopLevelToken};
+    use crate::parser::{Expression, TopLevelToken};
 
     macro_rules! assert_top_level_assignment {
         ($input:expr, $name:expr, $value:expr) => {
             match parse($input).demand_single_statement() {
                 Statement::Assignment(n, crate::common::Locatable { element: v, .. }) => {
-                    assert_eq!(n, Name::from($name));
+                    assert_eq!(n, Expression::var($name));
                     assert_eq!(v, Expression::IntegerLiteral($value));
                 }
                 _ => panic!("Expected: assignment"),
@@ -127,7 +129,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(Name::Bare("A".into()), 1.as_lit_expr(1, 1))
+            Statement::Assignment(Expression::var("A"), 1.as_lit_expr(1, 1))
         );
     }
 
@@ -137,7 +139,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(Name::Bare("A".into()), 1.as_lit_expr(1, 1))
+            Statement::Assignment(Expression::var("A"), 1.as_lit_expr(1, 1))
         );
     }
 
@@ -147,7 +149,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(Name::Bare("A".into()), 1.as_lit_expr(1, 1))
+            Statement::Assignment(Expression::var("A"), 1.as_lit_expr(1, 1))
         );
     }
 }

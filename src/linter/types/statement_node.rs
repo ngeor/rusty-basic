@@ -1,17 +1,17 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{FileHandle, Locatable};
-use crate::linter::types::{DimName, DimNameNode, ExpressionNode};
+use crate::linter::types::{DimNameNode, Expression, ExpressionNode};
 use crate::parser::{BareName, Operator, QualifiedNameNode};
 use crate::variant::Variant;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
-    pub variable_name: DimName,
+    pub variable_name: ExpressionNode,
     pub lower_bound: ExpressionNode,
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<DimNameNode>,
+    pub next_counter: Option<ExpressionNode>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -52,7 +52,7 @@ pub enum CaseExpression {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
-    Assignment(DimName, ExpressionNode),
+    Assignment(Expression, ExpressionNode),
     Const(QualifiedNameNode, Variant),
     SubCall(BareName, Vec<ExpressionNode>),
     BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),

@@ -1,5 +1,6 @@
 use super::{
-    BareName, DimNameNode, ExpressionNode, ExpressionNodes, Name, NameNode, Operator, PrintNode,
+    BareName, DimNameNode, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator,
+    PrintNode,
 };
 use crate::common::*;
 
@@ -11,7 +12,7 @@ pub enum Statement {
     // A = 42
     // A.Hello = 42 at the parser state it is not known if this is a member variable or not
     // A$ = "hello"
-    Assignment(Name, ExpressionNode),
+    Assignment(Expression, ExpressionNode),
 
     Const(NameNode, ExpressionNode),
 
@@ -42,12 +43,12 @@ pub enum Statement {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForLoopNode {
-    pub variable_name: NameNode,
+    pub variable_name: ExpressionNode,
     pub lower_bound: ExpressionNode,
     pub upper_bound: ExpressionNode,
     pub step: Option<ExpressionNode>,
     pub statements: StatementNodes,
-    pub next_counter: Option<NameNode>,
+    pub next_counter: Option<ExpressionNode>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

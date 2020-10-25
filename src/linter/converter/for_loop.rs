@@ -1,8 +1,7 @@
-use crate::common::{AtLocation, Locatable, QErrorNode, ToLocatableError};
+use crate::common::{AtLocation, Locatable, QErrorNode, ToLocatableError, ToLocatableOk};
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::{DimName, DimNameNode, ForLoopNode};
+use crate::linter::{ExpressionNode, ForLoopNode};
 use crate::parser;
-use crate::parser::NameNode;
 
 impl<'a> Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
     fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
@@ -18,15 +17,20 @@ impl<'a> Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
 }
 
 impl<'a> ConverterImpl<'a> {
-    fn for_loop_variable_name(&mut self, name_node: NameNode) -> Result<DimName, QErrorNode> {
+    fn for_loop_variable_name(
+        &mut self,
+        name_node: parser::ExpressionNode,
+    ) -> Result<ExpressionNode, QErrorNode> {
         let Locatable { element, pos } = name_node;
-        self.assignment_name(element).with_err_at(pos)
+        self.assignment_name(element)
+            .with_ok_pos(pos)
+            .with_err_at(pos)
     }
 
     fn for_loop_next_counter(
         &mut self,
-        opt_name_node: Option<NameNode>,
-    ) -> Result<Option<DimNameNode>, QErrorNode> {
+        opt_name_node: Option<parser::ExpressionNode>,
+    ) -> Result<Option<ExpressionNode>, QErrorNode> {
         match opt_name_node {
             Some(name_node) => {
                 let Locatable { element, pos } = name_node;

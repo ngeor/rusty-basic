@@ -91,7 +91,10 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(Expression::var("A"), 1.as_lit_expr(1, 1))
+            Statement::Assignment(
+                Expression::func("A", vec![2.as_lit_expr(1, 3)]),
+                1.as_lit_expr(1, 8)
+            )
         );
     }
 
@@ -101,7 +104,23 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(Expression::var("A"), 1.as_lit_expr(1, 1))
+            Statement::Assignment(
+                Expression::func("A", vec![1.as_lit_expr(1, 3), 2.as_lit_expr(1, 6)]),
+                3.as_lit_expr(1, 11)
+            )
+        );
+    }
+
+    #[test]
+    fn test_array_qualified() {
+        let input = "A$(N!) = 1";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(
+                Expression::func("A$", vec!["N!".as_var_expr(1, 4)]),
+                1.as_lit_expr(1, 10)
+            )
         );
     }
 
@@ -111,7 +130,29 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(Expression::var("A"), 1.as_lit_expr(1, 1))
+            Statement::Assignment(
+                Expression::Property(
+                    Box::new(Expression::func("A", vec![1.as_lit_expr(1, 3)])),
+                    "Height".into()
+                ),
+                2.as_lit_expr(1, 15)
+            )
+        );
+    }
+
+    #[test]
+    fn test_unqualified_user_defined_type_element() {
+        let input = "A.B = 2";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(
+                Expression::Property(
+                    Box::new(Expression::var("A")),
+                    "B".into()
+                ),
+                2.as_lit_expr(1, 7)
+            )
         );
     }
 }

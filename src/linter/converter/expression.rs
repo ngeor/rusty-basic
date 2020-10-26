@@ -41,6 +41,7 @@ impl<'a> Converter<parser::Expression, Expression> for ConverterImpl<'a> {
                     }
                 }
             }
+            parser::Expression::Property(_, _) => todo!(),
             parser::Expression::BinaryExpression(op, l, r) => {
                 // unbox them
                 let unboxed_left = *l;

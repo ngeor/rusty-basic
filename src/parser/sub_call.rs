@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::common::{and, drop_left, map_default_to_not_found, opt_seq2, or_vec};
+use crate::parser::pc::common::{and, drop_left, many, map_default_to_not_found, opt_seq3, or_vec};
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::ws::{is_eol, one_or_more_leading, zero_or_more_leading};
 use crate::parser::pc::*;
@@ -21,10 +21,14 @@ pub fn sub_call_or_assignment<T: BufRead + 'static>(
             name::name(),
             or_vec(vec![
                 // e.g. PRINT("hello", "world")
-                opt_seq2(
+                opt_seq3(
                     map_default_to_not_found(in_parenthesis(csv_zero_or_more(
                         expression::expression_node(),
                     ))),
+                    map_default_to_not_found(many(drop_left(and(
+                        read('.'),
+                        name::any_word_without_dot(),
+                    )))),
                     drop_left(and(
                         ws::zero_or_more_around(read('=')),
                         expression::expression_node(),
@@ -35,7 +39,7 @@ pub fn sub_call_or_assignment<T: BufRead + 'static>(
                     zero_or_more_leading(map_default_to_not_found(csv_zero_or_more(
                         expression::expression_node(),
                     ))),
-                    |x| (x, None),
+                    |x| (x, None, None),
                 ),
                 // assignment
                 map(
@@ -43,41 +47,48 @@ pub fn sub_call_or_assignment<T: BufRead + 'static>(
                         ws::zero_or_more_around(read('=')),
                         expression::expression_node(),
                     )),
-                    |x| (vec![], Some(x)),
+                    |x| (vec![], None, Some(x)),
                 ),
                 // prevent against e.g. A = "oops"
                 map(
                     one_or_more_leading(zero_args_assignment_and_label_guard(
                         statement_terminator_after_whitespace,
                     )),
-                    |x| (x, None),
+                    |x| (x, None, None),
                 ),
                 // prevent against e.g. A: or A="oops"
                 map(
                     zero_args_assignment_and_label_guard(statement_terminator),
-                    |x| (x, None),
+                    |x| (x, None, None),
                 ),
             ]),
         ),
-        |(n, (args, opt_assignment_r_value))| {
+        |(n, (args, opt_elements, opt_assignment_r_value))| {
             match opt_assignment_r_value {
                 Some(assignment_r_value) => {
                     // assignment
-                    if args.is_empty() {
-                        Ok(Statement::Assignment(
-                            Expression::VariableName(n),
-                            assignment_r_value,
-                        ))
+                    let mut name_expr: Expression = if args.is_empty() {
+                        Expression::VariableName(n)
                     } else {
-                        todo!()
+                        Expression::FunctionCall(n, args)
+                    };
+                    if let Some(elements) = opt_elements {
+                        for element in elements {
+                            name_expr = Expression::Property(Box::new(name_expr), element);
+                        }
                     }
+                    Ok(Statement::Assignment(name_expr, assignment_r_value))
                 }
                 None => {
-                    // sub call
-                    match n {
-                        Name::Bare(bare_name) => Ok(Statement::SubCall(bare_name, args)),
-                        Name::Qualified(_) => {
-                            Err(QError::syntax_error("Sub name cannot be qualified"))
+                    if opt_elements.is_some() {
+                        Err(QError::syntax_error("Sub cannot have properties"))
+                    } else {
+                        // sub call
+                        match n {
+                            Name::Bare(bare_name) => Ok(Statement::SubCall(bare_name, args)),
+                            Name::Qualified(_) => {
+                                Err(QError::syntax_error("Sub name cannot be qualified"))
+                            }
                         }
                     }
                 }

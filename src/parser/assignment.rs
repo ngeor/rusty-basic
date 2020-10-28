@@ -147,10 +147,7 @@ mod tests {
         assert_eq!(
             program,
             Statement::Assignment(
-                Expression::Property(
-                    Box::new(Expression::var("A")),
-                    "B".into()
-                ),
+                Expression::Property(Box::new(Expression::var("A")), "B".into()),
                 2.as_lit_expr(1, 7)
             )
         );

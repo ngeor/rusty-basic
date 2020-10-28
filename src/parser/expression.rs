@@ -393,23 +393,59 @@ mod number_literal {
 
 mod word {
     use super::*;
-    use crate::parser::name::{any_word_with_dot, any_word_without_dot};
-    use crate::parser::type_qualifier::type_qualifier;
+    use crate::parser::name::{any_word_without_dot, name};
 
     pub fn word<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
-        map(
-            opt_seq4(
-                any_word_with_dot(),
-                type_qualifier(),
-                in_parenthesis(csv_zero_or_more(lazy(expression_node))),
-                map_default_to_not_found(many(drop_left(and(read('.'), any_word_without_dot())))),
-            ),
-            |(name, qualifier, arguments, _elements)| match arguments {
-                Some(arguments) => Expression::FunctionCall(Name::new(name, qualifier), arguments),
-                _ => Expression::VariableName(Name::new(name, qualifier)),
-            },
-        )
+        Box::new(move |r| match name()(r) {
+            Ok((r, Some(name))) => {
+                let args_res = in_parenthesis(csv_zero_or_more(lazy(expression_node)))(r);
+                match args_res {
+                    Ok((r, opt_args)) => {
+                        let has_consecutive_or_trailing_dots =
+                            has_consecutive_or_trailing_dots(&name);
+                        let is_qualified = match &name {
+                            Name::Qualified(_) => true,
+                            _ => false,
+                        };
+                        let can_have_properties =
+                            !is_qualified && !has_consecutive_or_trailing_dots;
+                        let first_expr = match opt_args {
+                            Some(args) => Expression::FunctionCall(name, args),
+                            None => Expression::VariableName(name),
+                        };
+                        if can_have_properties {
+                            property(r, first_expr)
+                        } else {
+                            Ok((r, Some(first_expr)))
+                        }
+                    }
+                    Err((r, err)) => Err((r, err)),
+                }
+            }
+            Ok((r, None)) => Ok((r, None)),
+            Err((r, err)) => Err((r, err)),
+        })
+    }
+
+    fn has_consecutive_or_trailing_dots(name: &Name) -> bool {
+        let bare_name: &CaseInsensitiveString = name.as_ref();
+        let x: &str = bare_name.as_ref();
+        x.ends_with('.') || x.contains("..")
+    }
+
+    fn property<T: BufRead + 'static>(
+        r: EolReader<T>,
+        expr: Expression,
+    ) -> ReaderResult<EolReader<T>, Expression, QError> {
+        match drop_left(and(read('.'), any_word_without_dot()))(r) {
+            Ok((r, Some(property_name))) => {
+                let new_expr = Expression::Property(Box::new(expr), property_name);
+                property(r, new_expr)
+            }
+            Ok((r, None)) => Ok((r, Some(expr))),
+            Err((r, err)) => Err((r, err)),
+        }
     }
 }
 
@@ -559,7 +595,10 @@ mod tests {
         fn test_array_element_user_defined_type() {
             assert_expression!(
                 "cards(1).Value",
-                Expression::func("choice$", vec![1.as_lit_expr(1, 15)])
+                Expression::Property(
+                    Box::new(Expression::func("cards", vec![1.as_lit_expr(1, 13)])),
+                    "Value".into()
+                )
             );
         }
 
@@ -567,7 +606,21 @@ mod tests {
         fn test_array_element_function_call_as_dimension() {
             assert_expression!(
                 "cards(lbound(cards) + 1).Value",
-                Expression::func("choice$", vec![1.as_lit_expr(1, 15)])
+                Expression::Property(
+                    Box::new(Expression::func(
+                        "cards",
+                        vec![Expression::BinaryExpression(
+                            Operator::Plus,
+                            Box::new(
+                                Expression::func("lbound", vec!["cards".as_var_expr(1, 20)])
+                                    .at_rc(1, 13)
+                            ),
+                            Box::new(1.as_lit_expr(1, 29))
+                        )
+                        .at_rc(1, 27)]
+                    )),
+                    "Value".into()
+                )
             );
         }
     }

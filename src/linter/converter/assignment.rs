@@ -11,7 +11,7 @@ impl<'a> ConverterImpl<'a> {
         name: crate::parser::Expression,
         expression_node: crate::parser::ExpressionNode,
     ) -> Result<Statement, QErrorNode> {
-        let dim_name = self.assignment_name(name).with_err_no_pos()?;
+        let dim_name = self.assignment_name(name)?;
         let converted_expr: ExpressionNode = self.convert(expression_node)?;
         if converted_expr.can_cast_to(&dim_name) {
             Ok(Statement::Assignment(dim_name, converted_expr))
@@ -23,24 +23,30 @@ impl<'a> ConverterImpl<'a> {
     pub fn assignment_name(
         &mut self,
         name: crate::parser::Expression,
-    ) -> Result<Expression, QError> {
+    ) -> Result<Expression, QErrorNode> {
         match name {
             crate::parser::Expression::VariableName(name) => {
                 let bare_name: &BareName = name.as_ref();
                 if self.context.is_function_context(bare_name) {
                     self.assign_to_function(name)
                         .map(|dim_name| Expression::Variable(dim_name))
+                        .with_err_no_pos()
                 } else if self.subs.contains_key(bare_name)
                     // it is possible to have a param name shadowing a function name (but not a sub name...)
                     || (!self.context.is_param(&name, &self.resolver) && self.functions.contains_key(bare_name))
                     || self.context.contains_const(bare_name)
                 {
-                    Err(QError::DuplicateDefinition)
+                    Err(QError::DuplicateDefinition).with_err_no_pos()
                 } else {
                     self.context
                         .resolve_name_in_assignment(&name, &self.resolver)
                         .map(|dim_name| Expression::Variable(dim_name))
+                        .with_err_no_pos()
                 }
+            }
+            crate::parser::Expression::FunctionCall(_, _) => {
+                // TODO check if name is an array
+                self.convert(name)
             }
             _ => unimplemented!(),
         }

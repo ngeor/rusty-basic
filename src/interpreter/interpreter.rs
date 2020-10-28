@@ -13,12 +13,18 @@ use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::linter::{DimName, UserDefinedTypes};
-use crate::parser::{QualifiedName, TypeQualifier};
+use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::{VArray, Variant};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::rc::Rc;
+
+enum NamePtr {
+    Root(DimName),
+    ArrayElement(Box<NamePtr>, Vec<Variant>),
+    Property(Box<NamePtr>, BareName),
+}
 
 pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
     stdlib: TStdlib,
@@ -31,6 +37,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     stdin: TStdIn,
     stdout: TStdOut,
     lpt1: TLpt1,
+    name_ptr: Option<NamePtr>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -115,6 +122,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             stacktrace: vec![],
             file_manager: FileManager::new(),
             user_defined_types: Rc::clone(&rc_user_defined_types),
+            name_ptr: None,
         };
         result.register_stack.push_back(Registers::new());
         result
@@ -181,9 +189,19 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::Dim(dim_name) => {
                 self.set_default_value(dim_name);
             }
-            Instruction::Store(n) => {
-                let v = self.get_a();
-                self.context.set_variable(n.clone(), v);
+            Instruction::Store(dim_name) => {
+                self.name_ptr = Some(NamePtr::Root(dim_name.clone()));
+            }
+            Instruction::StoreIndex => {
+                let index_value = self.get_a();
+                let new_name_ptr = match self.name_ptr.take() {
+                    Some(NamePtr::Root(r)) => {
+                        NamePtr::ArrayElement(Box::new(NamePtr::Root(r)), vec![index_value])
+                    }
+                    Some(NamePtr::ArrayElement(_parent, _indices)) => todo!(),
+                    _ => panic!("unexpected NamePtr"),
+                };
+                self.name_ptr = Some(new_name_ptr);
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
@@ -410,7 +428,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let args = r_args.with_err_at(pos)?;
                 let mut dimensions: Vec<(i32, i32)> = vec![];
                 let mut i: usize = 0;
-                let mut elements: Vec<Box<Variant>> = vec![];
+                let mut elements: Vec<Variant> = vec![];
                 while i < args.len() {
                     let lbound = args[i];
                     i += 1;
@@ -421,18 +439,16 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     i += 1;
                     dimensions.push((lbound, ubound));
                     for _i in lbound..ubound + 1 {
-                        elements.push(Box::new(
-                            element_type.default_variant(self.user_defined_types()),
-                        ));
+                        elements.push(element_type.default_variant(self.user_defined_types()));
                     }
                 }
-                let array = Variant::VArray(VArray {
+                let array = Variant::VArray(Box::new(VArray {
                     dimensions,
                     elements,
-                });
+                }));
                 self.set_a(array);
             }
-            Instruction::ArrayElement(dim_name) => {
+            Instruction::ArrayElementToA(dim_name) => {
                 let r_args: Result<Vec<i32>, QError> = self
                     .context_mut()
                     .arguments_stack()
@@ -445,21 +461,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 match self.context().get_r_value(dim_name) {
                     Some(v) => match v {
                         Variant::VArray(v_arr) => {
-                            let mut index: i32 = 0;
-                            let mut i: i32 = args.len() as i32 - 1;
-                            let mut multiplier: i32 = 1;
-                            while i >= 0 {
-                                let arg = args[i as usize];
-                                let (lbound, ubound) = v_arr.dimensions[i as usize];
-                                if arg < lbound || arg > ubound {
-                                    return Err(QError::SubscriptOutOfRange).with_err_at(pos);
-                                }
-
-                                index += (arg - lbound) * multiplier;
-                                multiplier = multiplier * (ubound - lbound + 1);
-                                i -= 1;
-                            }
-                            let b = *v_arr.elements.get(index as usize).unwrap().clone();
+                            let b = v_arr.get_element(args).with_err_at(pos)?.clone();
                             self.set_a(b);
                         }
                         _ => {
@@ -471,8 +473,46 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     }
                 }
             }
+            Instruction::CopyAToPointer => {
+                // get value to copy into name_ptr
+                let a = self.get_a();
+                // copy
+                let v = self.resolve_name_ptr().with_err_at(pos)?;
+                *v = a;
+            }
         }
         Ok(())
+    }
+
+    fn resolve_name_ptr(&mut self) -> Result<&mut Variant, QError> {
+        match self.name_ptr.take() {
+            Some(n) => self.resolve_some_name_ptr(n),
+            _ => panic!("Root name_ptr was None"),
+        }
+    }
+
+    fn resolve_some_name_ptr(&mut self, name_ptr: NamePtr) -> Result<&mut Variant, QError> {
+        match name_ptr {
+            NamePtr::Root(dim_name) => Ok(self
+                .context_mut()
+                .get_or_create_by_name_mut(dim_name.clone())),
+            NamePtr::ArrayElement(parent_name_ptr, indices) => {
+                let parent_variant = self.resolve_some_name_ptr(*parent_name_ptr)?;
+                Self::resolve_array(parent_variant, indices)
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn resolve_array(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Variant, QError> {
+        match v {
+            Variant::VArray(v_array) => {
+                let int_indices: Result<Vec<i32>, QError> =
+                    indices.into_iter().map(|v| i32::try_from(v)).collect();
+                v_array.get_element_mut(int_indices?)
+            }
+            _ => panic!("Expected array, found {:?}", v),
+        }
     }
 
     pub fn interpret(&mut self, instructions: Vec<InstructionNode>) -> Result<(), QErrorNode> {

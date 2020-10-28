@@ -7,6 +7,18 @@ use crate::interpreter::interpreter_trait::InterpreterTrait;
 fn test_usage_on_global_scope() {
     let input = r#"
     DIM A(3)
+    FOR I% = 0 TO 3
+        A(I%) = I%
+        PRINT A(I%)
+    NEXT
+    "#;
+    assert_prints!(input, "0", "1", "2", "3");
+}
+
+#[test]
+fn test_usage_on_global_scope_casting_float_indices_to_int() {
+    let input = r#"
+    DIM A(3)
     FOR I = 0 TO 3
         A(I) = I
         PRINT A(I)

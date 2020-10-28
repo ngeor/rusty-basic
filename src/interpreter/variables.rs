@@ -42,7 +42,7 @@ impl Variables {
         }
     }
 
-    fn insert(&mut self, name: Name, value: Variant) {
+    pub fn insert(&mut self, name: Name, value: Variant) {
         match self.name_to_index.get(&name) {
             Some(idx) => {
                 self.values[*idx] = value;
@@ -74,7 +74,7 @@ impl Variables {
         self.name_to_index.get(name).and_then(|idx| self.get(*idx))
     }
 
-    fn get_by_name_mut(&mut self, name: &Name) -> Option<&mut Variant> {
+    pub fn get_by_name_mut(&mut self, name: &Name) -> Option<&mut Variant> {
         match self.name_to_index.get(name) {
             Some(idx) => self.values.get_mut(*idx),
             None => None,

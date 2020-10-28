@@ -99,7 +99,7 @@ impl InstructionGenerator {
                     self.push(Instruction::PushUnnamed, pos);
                 }
 
-                self.push(Instruction::ArrayElement(array_name), pos);
+                self.push(Instruction::ArrayElementToA(array_name), pos);
             }
         }
     }

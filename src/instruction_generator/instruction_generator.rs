@@ -254,6 +254,18 @@ impl InstructionGenerator {
         match l {
             Expression::Variable(var_name) => {
                 self.push(Instruction::Store(var_name), pos);
+                self.push(Instruction::CopyAToPointer, pos);
+            }
+            Expression::FunctionCall(_name, _args) => {
+                panic!("Linter should have converted this to ArrayElement")
+            }
+            Expression::ArrayElement(var_name, args) => {
+                self.push(Instruction::Store(var_name), pos);
+                for arg in args {
+                    self.generate_expression_instructions(arg);
+                    self.push(Instruction::StoreIndex, pos);
+                }
+                self.push(Instruction::CopyAToPointer, pos);
             }
             _ => todo!(),
         }
@@ -298,6 +310,7 @@ mod tests {
             [
                 Instruction::Load(Variant::VInteger(1)),
                 Instruction::Store(DimName::parse("X%")),
+                Instruction::CopyAToPointer,
                 Instruction::Halt
             ]
         );

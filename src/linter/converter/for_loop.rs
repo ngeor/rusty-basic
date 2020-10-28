@@ -1,4 +1,4 @@
-use crate::common::{AtLocation, Locatable, QErrorNode, ToLocatableError, ToLocatableOk};
+use crate::common::{AtLocation, Locatable, PatchErrPos, QErrorNode, ToLocatableOk};
 use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::{ExpressionNode, ForLoopNode};
 use crate::parser;
@@ -24,7 +24,7 @@ impl<'a> ConverterImpl<'a> {
         let Locatable { element, pos } = name_node;
         self.assignment_name(element)
             .with_ok_pos(pos)
-            .with_err_at(pos)
+            .patch_err_pos(pos)
     }
 
     fn for_loop_next_counter(
@@ -34,7 +34,7 @@ impl<'a> ConverterImpl<'a> {
         match opt_name_node {
             Some(name_node) => {
                 let Locatable { element, pos } = name_node;
-                let dim_name = self.assignment_name(element).with_err_at(pos)?;
+                let dim_name = self.assignment_name(element).patch_err_pos(pos)?;
                 Ok(Some(dim_name.at(pos)))
             }
             None => Ok(None),

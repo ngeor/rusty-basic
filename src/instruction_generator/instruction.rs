@@ -7,12 +7,18 @@ use crate::variant::Variant;
 #[derive(Debug, PartialEq)]
 pub enum Instruction {
     Dim(DimName),
+
     /// Loads a value into register A
     Load(Variant),
+
     /// Stores a value from register A
     Store(DimName),
+
     /// Stores a value from register A into a constant
     StoreConst(QualifiedName),
+
+    CopyAToPointer,
+
     CopyAToB,
     CopyAToC,
     CopyAToD,
@@ -85,7 +91,9 @@ pub enum Instruction {
     FixLength(u16),
 
     AllocateArray(DimType),
-    ArrayElement(DimName),
+    ArrayElementToA(DimName),
+
+    StoreIndex,
 }
 
 pub type InstructionNode = Locatable<Instruction>;

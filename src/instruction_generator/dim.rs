@@ -4,8 +4,11 @@ use crate::linter::{ArrayDimension, DimNameNode, DimType};
 
 impl InstructionGenerator {
     pub fn generate_dim_instructions(&mut self, dim_name_node: DimNameNode) {
-        let Locatable { element, pos } = dim_name_node;
-        match element.dim_type() {
+        let Locatable {
+            element: dim_name,
+            pos,
+        } = dim_name_node;
+        match dim_name.dim_type() {
             DimType::Array(array_dimensions, box_element_type) => {
                 self.push(Instruction::BeginCollectArguments, pos);
 
@@ -17,9 +20,10 @@ impl InstructionGenerator {
                 }
                 let element_type = box_element_type.as_ref().clone();
                 self.push(Instruction::AllocateArray(element_type), pos);
-                self.push(Instruction::Store(element), pos);
+                self.push(Instruction::Store(dim_name), pos);
+                self.push(Instruction::CopyAToPointer, pos);
             }
-            _ => self.push(Instruction::Dim(element), pos),
+            _ => self.push(Instruction::Dim(dim_name), pos),
         }
     }
 }

@@ -3,7 +3,7 @@ use super::UserDefinedTypeValue;
 use crate::common::{FileHandle, QError};
 use crate::parser::TypeQualifier;
 use crate::variant::casting::QBNumberCast;
-use crate::variant::{qb_and, qb_or};
+use crate::variant::{qb_and, qb_or, VArray};
 use std::cmp::Ordering;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
@@ -16,13 +16,7 @@ pub enum Variant {
     VInteger(i32),
     VLong(i64),
     VUserDefined(Box<UserDefinedTypeValue>),
-    VArray(VArray),
-}
-
-#[derive(Clone, Debug)]
-pub struct VArray {
-    pub dimensions: Vec<(i32, i32)>,
-    pub elements: Vec<Box<Variant>>,
+    VArray(Box<VArray>),
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);

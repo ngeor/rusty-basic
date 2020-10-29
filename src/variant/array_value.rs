@@ -10,12 +10,18 @@ pub struct VArray {
 impl VArray {
     pub fn get_element(&self, indices: Vec<i32>) -> Result<&Variant, QError> {
         let index = self.abs_index(indices)?;
-        Ok(self.elements.get(index).unwrap())
+        match self.elements.get(index) {
+            Some(v) => Ok(v),
+            _ => Err(QError::SubscriptOutOfRange)
+        }
     }
 
     pub fn get_element_mut(&mut self, indices: Vec<i32>) -> Result<&mut Variant, QError> {
         let index = self.abs_index(indices)?;
-        Ok(self.elements.get_mut(index).unwrap())
+        match self.elements.get_mut(index) {
+            Some(v) => Ok(v),
+            _ => Err(QError::SubscriptOutOfRange)
+        }
     }
 
     fn abs_index(&self, indices: Vec<i32>) -> Result<usize, QError> {

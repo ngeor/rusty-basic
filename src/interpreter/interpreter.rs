@@ -13,18 +13,12 @@ use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::linter::{DimName, UserDefinedTypes};
-use crate::parser::{BareName, QualifiedName, TypeQualifier};
-use crate::variant::{VArray, Variant};
+use crate::parser::{QualifiedName, TypeQualifier};
+use crate::variant::{Path, VArray, Variant};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::rc::Rc;
-
-enum NamePtr {
-    Root(DimName),
-    ArrayElement(Box<NamePtr>, Vec<Variant>),
-    Property(Box<NamePtr>, BareName),
-}
 
 pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
     stdlib: TStdlib,
@@ -37,7 +31,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     stdin: TStdIn,
     stdout: TStdOut,
     lpt1: TLpt1,
-    name_ptr: Option<NamePtr>,
+    name_ptr: Option<Path>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -190,18 +184,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.set_default_value(dim_name);
             }
             Instruction::Store(dim_name) => {
-                self.name_ptr = Some(NamePtr::Root(dim_name.clone()));
+                self.name_ptr = Some(Path::Root(dim_name.clone()));
             }
             Instruction::StoreIndex => {
                 let index_value = self.get_a();
-                let new_name_ptr = match self.name_ptr.take() {
-                    Some(NamePtr::Root(r)) => {
-                        NamePtr::ArrayElement(Box::new(NamePtr::Root(r)), vec![index_value])
-                    }
-                    Some(NamePtr::ArrayElement(_parent, _indices)) => todo!(),
-                    _ => panic!("unexpected NamePtr"),
-                };
-                self.name_ptr = Some(new_name_ptr);
+                let old_name_ptr = self.name_ptr.take().expect("Should have name_ptr");
+                self.name_ptr = Some(old_name_ptr.append_array_element(index_value));
             }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
@@ -491,12 +479,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         }
     }
 
-    fn resolve_some_name_ptr(&mut self, name_ptr: NamePtr) -> Result<&mut Variant, QError> {
+    fn resolve_some_name_ptr(&mut self, name_ptr: Path) -> Result<&mut Variant, QError> {
         match name_ptr {
-            NamePtr::Root(dim_name) => Ok(self
+            Path::Root(dim_name) => Ok(self
                 .context_mut()
                 .get_or_create_by_name_mut(dim_name.clone())),
-            NamePtr::ArrayElement(parent_name_ptr, indices) => {
+            Path::ArrayElement(parent_name_ptr, indices) => {
                 let parent_variant = self.resolve_some_name_ptr(*parent_name_ptr)?;
                 Self::resolve_array(parent_variant, indices)
             }

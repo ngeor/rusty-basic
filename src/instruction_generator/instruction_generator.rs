@@ -1,7 +1,7 @@
 use super::instruction::*;
 use crate::common::*;
 use crate::linter::*;
-use crate::parser::{BareName, QualifiedName};
+use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
@@ -262,7 +262,10 @@ impl InstructionGenerator {
             Expression::ArrayElement(var_name, args) => {
                 self.push(Instruction::Store(var_name), pos);
                 for arg in args {
-                    self.generate_expression_instructions(arg);
+                    self.generate_expression_instructions_casting(
+                        arg,
+                        ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
+                    );
                     self.push(Instruction::StoreIndex, pos);
                 }
                 self.push(Instruction::CopyAToPointer, pos);

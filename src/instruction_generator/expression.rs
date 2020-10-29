@@ -1,7 +1,7 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
 use crate::linter::*;
-use crate::parser::{Operator, UnaryOperator};
+use crate::parser::{Operator, TypeQualifier, UnaryOperator};
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(
@@ -95,7 +95,10 @@ impl InstructionGenerator {
                 self.push(Instruction::BeginCollectArguments, pos);
 
                 for array_dimension in array_dimensions {
-                    self.generate_expression_instructions(array_dimension);
+                    self.generate_expression_instructions_casting(
+                        array_dimension,
+                        ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
+                    );
                     self.push(Instruction::PushUnnamed, pos);
                 }
 

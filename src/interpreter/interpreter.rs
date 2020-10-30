@@ -63,18 +63,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     type TStdOut = TStdOut;
     type TLpt1 = TLpt1;
 
-    fn context(&self) -> &Context {
-        &self.context
-    }
-
-    fn context_mut(&mut self) -> &mut Context {
-        &mut self.context
-    }
-
-    fn file_manager(&mut self) -> &mut FileManager {
-        &mut self.file_manager
-    }
-
     fn stdlib(&self) -> &TStdlib {
         &self.stdlib
     }
@@ -83,8 +71,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
         &mut self.stdlib
     }
 
-    fn user_defined_types(&self) -> &UserDefinedTypes {
-        self.user_defined_types.as_ref()
+    fn file_manager(&mut self) -> &mut FileManager {
+        &mut self.file_manager
     }
 
     fn stdin(&mut self) -> &mut Self::TStdIn {
@@ -97,6 +85,18 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
 
     fn lpt1(&mut self) -> &mut Self::TLpt1 {
         &mut self.lpt1
+    }
+
+    fn user_defined_types(&self) -> &UserDefinedTypes {
+        self.user_defined_types.as_ref()
+    }
+
+    fn context(&self) -> &Context {
+        &self.context
+    }
+
+    fn context_mut(&mut self) -> &mut Context {
+        &mut self.context
     }
 
     fn registers(&self) -> &Registers {

@@ -1,7 +1,4 @@
-use crate::common::{
-    AtLocation, Locatable, PatchErrPos, QError, QErrorNode, StripLocation, ToErrorEnvelopeNoPos,
-    ToLocatableError,
-};
+use crate::common::{AtLocation, Locatable, PatchErrPos, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError, HasLocation};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::type_resolver::TypeResolver;
@@ -158,16 +155,16 @@ impl<'a> Converter<parser::ArrayDimension, ArrayDimension> for ConverterImpl<'a>
         let parser::ArrayDimension { lbound, ubound } = array_dimension;
         match lbound {
             Some(lbound) => {
-                let converted_lbound = self.convert(lbound)?.strip_location();
-                let converted_ubound = self.convert(ubound)?.strip_location();
+                let converted_lbound = self.convert(lbound)?;
+                let converted_ubound = self.convert(ubound)?;
                 Ok(ArrayDimension {
                     lbound: converted_lbound,
                     ubound: converted_ubound,
                 })
             }
             None => {
-                let converted_lbound = Expression::IntegerLiteral(0);
-                let converted_ubound = self.convert(ubound)?.strip_location();
+                let converted_lbound = Expression::IntegerLiteral(0).at(ubound.pos());
+                let converted_ubound = self.convert(ubound)?;
                 Ok(ArrayDimension {
                     lbound: converted_lbound,
                     ubound: converted_ubound,

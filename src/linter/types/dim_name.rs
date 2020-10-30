@@ -1,5 +1,5 @@
 use crate::common::{CanCastTo, Locatable, StringUtils};
-use crate::linter::{ElementType, Expression, ExpressionType, HasExpressionType, UserDefinedTypes};
+use crate::linter::{ElementType, ExpressionType, HasExpressionType, UserDefinedTypes, ExpressionNode};
 use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
 #[cfg(test)]
@@ -37,8 +37,8 @@ pub type ArrayDimensions = Vec<ArrayDimension>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArrayDimension {
-    pub lbound: Expression,
-    pub ubound: Expression,
+    pub lbound: ExpressionNode,
+    pub ubound: ExpressionNode,
 }
 
 impl DimType {

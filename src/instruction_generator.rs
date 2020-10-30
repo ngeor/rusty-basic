@@ -17,6 +17,8 @@ mod while_wend;
 
 #[cfg(test)]
 pub mod test_utils;
+#[cfg(test)]
+mod tests;
 
 pub use self::instruction::*;
 pub use self::instruction_generator::*;

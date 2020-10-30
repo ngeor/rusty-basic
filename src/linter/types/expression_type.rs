@@ -1,14 +1,14 @@
-use crate::common::CanCastTo;
+use crate::common::{CanCastTo, StringUtils};
 use crate::parser::{BareName, Operator, TypeQualifier};
+use crate::linter::UserDefinedTypes;
+use crate::variant::{Variant, UserDefinedTypeValue};
 
 /// The resolved type of an expression.
-/// It's similar to `DimType`, but it includes `FileHandle` and holds only the leaf type of a member expression.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ExpressionType {
     BuiltIn(TypeQualifier),
     FixedLengthString(u16),
     UserDefined(BareName),
-    FileHandle,
 }
 
 impl ExpressionType {
@@ -33,6 +33,16 @@ impl ExpressionType {
             _ => None,
         }
     }
+
+    pub fn default_variant(&self, types: &UserDefinedTypes) -> Variant {
+        match self {
+            Self::BuiltIn(q) => Variant::from(*q),
+            Self::FixedLengthString(len) => String::new().fix_length(*len as usize).into(),
+            Self::UserDefined(type_name) => {
+                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
+            }
+        }
+    }
 }
 
 impl CanCastTo<&ExpressionType> for ExpressionType {
@@ -51,7 +61,6 @@ impl CanCastTo<&ExpressionType> for ExpressionType {
                 Self::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
-            Self::FileHandle => false,
         }
     }
 }

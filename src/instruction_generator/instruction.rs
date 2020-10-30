@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{DimName, DimType, ParamName};
+use crate::linter::{DimName, ParamName, ExpressionType};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
@@ -90,10 +90,15 @@ pub enum Instruction {
     Cast(TypeQualifier),
     FixLength(u16),
 
-    AllocateArray(DimType),
     ArrayElementToA(DimName),
 
     StoreIndex,
+
+    // array allocation
+
+    /// Allocates an array of the given type. The dimensions need to have been
+    /// first pushed with `PushUnnamed`.
+    AllocateArray(ExpressionType),
 }
 
 pub type InstructionNode = Locatable<Instruction>;

@@ -12,7 +12,7 @@ impl VArray {
         let index = self.abs_index(indices)?;
         match self.elements.get(index) {
             Some(v) => Ok(v),
-            _ => Err(QError::SubscriptOutOfRange)
+            _ => Err(QError::SubscriptOutOfRange),
         }
     }
 
@@ -20,7 +20,7 @@ impl VArray {
         let index = self.abs_index(indices)?;
         match self.elements.get_mut(index) {
             Some(v) => Ok(v),
-            _ => Err(QError::SubscriptOutOfRange)
+            _ => Err(QError::SubscriptOutOfRange),
         }
     }
 

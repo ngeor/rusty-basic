@@ -4,6 +4,7 @@ mod built_ins;
 pub mod context;
 mod default_stdlib;
 mod input;
+mod instruction_handlers;
 pub mod interpreter;
 mod interpreter_trait;
 mod io;

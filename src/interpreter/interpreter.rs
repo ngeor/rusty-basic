@@ -1,6 +1,5 @@
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
-use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;
 use crate::interpreter::input::Input;
@@ -12,6 +11,7 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
+use crate::interpreter::{built_ins, instruction_handlers};
 use crate::linter::{DimName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
 use crate::variant::{Path, VArray, Variant};
@@ -21,16 +21,37 @@ use std::convert::TryFrom;
 use std::rc::Rc;
 
 pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
+    /// Offers system calls
     stdlib: TStdlib,
-    context: Context,
-    register_stack: RegisterStack,
-    return_stack: Vec<usize>,
-    stacktrace: Vec<Location>,
+
+    /// Offers file I/O
     file_manager: FileManager,
-    user_defined_types: Rc<UserDefinedTypes>,
+
+    /// Abstracts the standard input
     stdin: TStdIn,
+
+    /// Abstracts the standard output
     stdout: TStdOut,
+
+    /// Abstracts the LPT1 printer
     lpt1: TLpt1,
+
+    /// Holds the definition of user defined types
+    user_defined_types: Rc<UserDefinedTypes>,
+
+    /// Contains variables and constants, collects function/sub arguments.
+    context: Context,
+
+    /// Holds the "registers" of the CPU
+    register_stack: RegisterStack,
+
+    /// Holds addresses to jump back to
+    return_stack: Vec<usize>,
+
+    /// Holds the current call stack
+    stacktrace: Vec<Location>,
+
+    /// Holds a path to a variable
     name_ptr: Option<Path>,
 }
 
@@ -77,6 +98,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     fn lpt1(&mut self) -> &mut Self::TLpt1 {
         &mut self.lpt1
     }
+
+    fn registers(&self) -> &Registers {
+        self.register_stack.back().unwrap()
+    }
+
+    fn registers_mut(&mut self) -> &mut Registers {
+        self.register_stack.back_mut().unwrap()
+    }
 }
 
 pub type DefaultInterpreter = Interpreter<
@@ -122,20 +151,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         result
     }
 
-    fn registers_ref(&self) -> &Registers {
-        self.register_stack.back().unwrap()
-    }
-
-    fn registers_mut(&mut self) -> &mut Registers {
-        self.register_stack.back_mut().unwrap()
-    }
-
     fn get_a(&self) -> Variant {
-        self.registers_ref().get_a()
+        self.registers().get_a()
     }
 
     fn get_b(&self) -> Variant {
-        self.registers_ref().get_b()
+        self.registers().get_b()
     }
 
     fn set_a(&mut self, v: Variant) {
@@ -217,28 +238,16 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.registers_mut().swap_a_with_b();
             }
             Instruction::Plus => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let c = a.plus(b).with_err_at(pos)?;
-                self.set_a(c);
+                instruction_handlers::math::plus(self).with_err_at(pos)?;
             }
             Instruction::Minus => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let c = a.minus(b).with_err_at(pos)?;
-                self.set_a(c);
+                instruction_handlers::math::minus(self).with_err_at(pos)?;
             }
             Instruction::Multiply => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let c = a.multiply(b).with_err_at(pos)?;
-                self.set_a(c);
+                instruction_handlers::math::multiply(self).with_err_at(pos)?;
             }
             Instruction::Divide => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let c = a.divide(b).with_err_at(pos)?;
-                self.set_a(c);
+                instruction_handlers::math::divide(self).with_err_at(pos)?;
             }
             Instruction::NegateA => {
                 let a = self.get_a();
@@ -300,26 +309,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.set_a(is_true.into());
             }
             Instruction::And => {
-                let a = self
-                    .get_a()
-                    .cast(TypeQualifier::PercentInteger)
-                    .with_err_at(pos)?;
-                let b = self
-                    .get_b()
-                    .cast(TypeQualifier::PercentInteger)
-                    .with_err_at(pos)?;
-                self.set_a(a.and(b).with_err_at(pos)?);
+                instruction_handlers::logical::and(self).with_err_at(pos)?;
             }
             Instruction::Or => {
-                let a = self
-                    .get_a()
-                    .cast(TypeQualifier::PercentInteger)
-                    .with_err_at(pos)?;
-                let b = self
-                    .get_b()
-                    .cast(TypeQualifier::PercentInteger)
-                    .with_err_at(pos)?;
-                self.set_a(a.or(b).with_err_at(pos)?);
+                instruction_handlers::logical::or(self).with_err_at(pos)?;
             }
             Instruction::JumpIfFalse(resolved_idx) => {
                 let a = self.get_a();

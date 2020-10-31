@@ -44,7 +44,8 @@ impl InstructionGenerator {
                 self.push_load(s, pos);
             }
             Expression::Variable(dim_name) => {
-                self.push(Instruction::CopyVarToA(dim_name), pos);
+                self.push(Instruction::VarPathName(dim_name.into()), pos);
+                self.push(Instruction::CopyVarPathToA, pos);
             }
             Expression::Constant(qualified_name) => {
                 self.push(Instruction::CopyVarToA(qualified_name.into()), pos);

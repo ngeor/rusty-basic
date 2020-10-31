@@ -255,34 +255,7 @@ impl Context {
         self.variables.get_mut(idx)
     }
 
-    pub fn get_by_name_mut(&mut self, dim_name: DimName) -> Option<&mut Variant> {
-        let var_name = Self::dim_name_to_var_name(dim_name);
-        self.variables.get_by_name_mut(&var_name)
-    }
-
-    pub fn get_or_create_by_name_mut(&mut self, dim_name: DimName) -> &mut Variant {
-        let var_name = Self::dim_name_to_var_name(dim_name);
-        if let None = self.variables.get_by_name_mut(&var_name) {
-            self.variables.insert(var_name.clone(), V_FALSE);
-        }
-        self.variables
-            .get_by_name_mut(&var_name)
-            .expect("Should have variable now")
-    }
-
-    fn dim_name_to_var_name(dim_name: DimName) -> Name {
-        let (bare_name, dim_type) = dim_name.into_inner();
-        match dim_type {
-            DimType::BuiltIn(qualifier) => Name::new(bare_name, Some(qualifier)),
-            DimType::FixedLengthString(_len) => {
-                Name::new(bare_name, Some(TypeQualifier::DollarString))
-            }
-            DimType::UserDefined(_) | DimType::Many(_, _) => Name::new(bare_name, None),
-            DimType::Array(_, box_element_type) => {
-                let element_type = *box_element_type;
-                let array_name = DimName::new(bare_name, element_type);
-                Self::dim_name_to_var_name(array_name)
-            }
-        }
+    pub fn get_or_create(&mut self, var_name: Name) -> &mut Variant {
+        self.variables.get_or_create(var_name)
     }
 }

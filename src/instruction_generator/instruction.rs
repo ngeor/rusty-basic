@@ -22,12 +22,17 @@ pub enum Instruction {
     /// Copies the value of register A into the variable path
     CopyAToVarPath,
 
+    /// Copies the value of register A into the variable path
+    CopyVarPathToA,
+
+    #[deprecated]
     Dim(DimName),
 
     /// Loads a value into register A
     Load(Variant),
 
     /// Stores a value from register A
+    #[deprecated]
     Store(DimName),
 
     /// Stores a value from register A into a constant
@@ -60,6 +65,8 @@ pub enum Instruction {
     Label(CaseInsensitiveString),
     UnresolvedJump(CaseInsensitiveString),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
+
+    #[deprecated]
     CopyVarToA(DimName),
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
@@ -93,6 +100,7 @@ pub enum Instruction {
     /// The second item in the tuple is the name of the variable in the parent context.
     ///
     /// Called just before the child context is popped.
+    #[deprecated]
     CopyToParent(usize, DimName),
 
     Throw(QError),
@@ -102,10 +110,14 @@ pub enum Instruction {
 
     /// Cast the contents of A into the given type
     Cast(TypeQualifier),
+
+    #[deprecated]
     FixLength(u16),
 
+    #[deprecated]
     ArrayElementToA(DimName),
 
+    #[deprecated]
     StoreIndex,
 
     // allocating variables

@@ -205,7 +205,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.set_default_value(dim_name);
             }
             Instruction::Store(dim_name) => {
-                self.name_ptr = Some(Path::Root(dim_name.clone()));
+                self.name_ptr = Some(Path::Root(dim_name.clone().into()));
             }
             Instruction::StoreIndex => {
                 let index_value = self.get_a();
@@ -440,7 +440,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     }
                 }
             }
-            Instruction::VarPathName(_name) => todo!(),
+            Instruction::VarPathName(name) => match &self.name_ptr {
+                Some(x) => panic!("name_ptr already has value {:?}", x),
+                _ => {
+                    self.name_ptr = Some(Path::Root(name.clone()));
+                }
+            },
             Instruction::VarPathIndex(_index) => todo!(),
             Instruction::VarPathProperty(_property_name) => todo!(),
             Instruction::CopyAToVarPath => {
@@ -449,6 +454,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 // copy
                 let v = self.resolve_name_ptr().with_err_at(pos)?;
                 *v = a;
+            }
+            Instruction::CopyVarPathToA => {
+                let v = self.resolve_name_ptr().with_err_at(pos)?;
+                let v_copy = v.clone();
+                self.set_a(v_copy);
             }
         }
         Ok(())
@@ -463,9 +473,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
 
     fn resolve_some_name_ptr(&mut self, name_ptr: Path) -> Result<&mut Variant, QError> {
         match name_ptr {
-            Path::Root(dim_name) => Ok(self
-                .context_mut()
-                .get_or_create_by_name_mut(dim_name.clone())),
+            Path::Root(var_name) => Ok(self.context_mut().get_or_create(var_name)),
             Path::ArrayElement(parent_name_ptr, indices) => {
                 let parent_variant = self.resolve_some_name_ptr(*parent_name_ptr)?;
                 Self::resolve_array(parent_variant, indices)

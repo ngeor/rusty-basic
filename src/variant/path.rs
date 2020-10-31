@@ -1,9 +1,9 @@
-use crate::linter::DimName;
-use crate::parser::BareName;
+use crate::parser::{BareName, Name};
 use crate::variant::Variant;
 
+#[derive(Debug)]
 pub enum Path {
-    Root(DimName),
+    Root(Name),
     ArrayElement(Box<Path>, Vec<Variant>),
     Property(Box<Path>, BareName),
 }

@@ -1,6 +1,6 @@
 use crate::linter::{ParamName, ParamType};
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
-use crate::variant::Variant;
+use crate::variant::{Variant, V_FALSE};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -50,6 +50,17 @@ impl Variables {
             None => {
                 self.name_to_index.insert(name, self.values.len());
                 self.values.push(value);
+            }
+        }
+    }
+
+    pub fn get_or_create(&mut self, name: Name) -> &mut Variant {
+        match self.name_to_index.get(&name) {
+            Some(idx) => self.values.get_mut(*idx).expect("Should have variable"),
+            _ => {
+                self.name_to_index.insert(name, self.values.len());
+                self.values.push(V_FALSE);
+                self.values.last_mut().expect("Should have variable")
             }
         }
     }

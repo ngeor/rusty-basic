@@ -9,6 +9,11 @@ fn test_assignment() {
     assert_eq!(
         generate_instructions_str("X = 1"),
         [
+            // implicit dim
+            Instruction::AllocateBuiltIn(TypeQualifier::BangSingle).at_rc(1, 1),
+            Instruction::VarPathName("X!".into()).at_rc(1, 1),
+            Instruction::CopyAToVarPath.at_rc(1, 1),
+            // assignment with casting
             Instruction::Load(Variant::VInteger(1)).at_rc(1, 5),
             Instruction::Cast(TypeQualifier::BangSingle).at_rc(1, 5),
             Instruction::VarPathName("X!".into()).at_rc(1, 1),
@@ -89,6 +94,11 @@ fn test_assignment_binary_plus() {
     assert_eq!(
         generate_instructions_str("X% = 1 + 2.1").strip_location(),
         [
+            // implicit dim
+            Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
+            // evaluation of binary expression
             Instruction::PushRegisters,
             Instruction::Load(Variant::VInteger(1)),
             Instruction::CopyAToB,
@@ -96,6 +106,7 @@ fn test_assignment_binary_plus() {
             Instruction::SwapAWithB,
             Instruction::Plus,
             Instruction::PopRegisters,
+            // assignment with casting
             Instruction::Cast(TypeQualifier::PercentInteger),
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,

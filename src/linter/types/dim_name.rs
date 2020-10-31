@@ -1,10 +1,9 @@
-use crate::common::{CanCastTo, Locatable, StringUtils};
+use crate::common::{CanCastTo, Locatable, QError, StringUtils};
 use crate::linter::{
     ElementType, ExpressionNode, ExpressionType, HasExpressionType, UserDefinedTypes,
 };
 use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
-#[cfg(test)]
 use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -115,6 +114,21 @@ impl From<QualifiedName> for DimName {
             qualifier,
         } = qualified_name;
         Self::new(bare_name, DimType::BuiltIn(qualifier))
+    }
+}
+
+impl TryFrom<DimName> for QualifiedName {
+    type Error = QError;
+
+    fn try_from(value: DimName) -> Result<Self, Self::Error> {
+        let (bare_name, dim_type) = value.into_inner();
+        match dim_type {
+            DimType::BuiltIn(q) => Ok(QualifiedName::new(bare_name, q)),
+            DimType::FixedLengthString(_) => {
+                Ok(QualifiedName::new(bare_name, TypeQualifier::DollarString))
+            }
+            _ => Err(QError::TypeMismatch),
+        }
     }
 }
 

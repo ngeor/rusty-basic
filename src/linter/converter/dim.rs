@@ -3,15 +3,18 @@ use crate::common::{
     ToLocatableError,
 };
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::converter::{Converter, ConverterImpl};
+use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, Expression};
 use crate::parser;
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, QualifiedName, QualifiedNameNode, TypeQualifier};
 use crate::variant::Variant;
 
-impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
-    fn convert(&mut self, dim_name_node: parser::DimNameNode) -> Result<DimNameNode, QErrorNode> {
+impl<'a> ConverterWithImplicitVariables<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
+    fn convert_and_collect_implicit_variables(
+        &mut self,
+        dim_name_node: parser::DimNameNode,
+    ) -> Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
         let Locatable { element, pos } = dim_name_node;
         let (bare_name, dim_type) = element.into_inner();
         if self.subs.contains_key(&bare_name)
@@ -20,10 +23,13 @@ impl<'a> Converter<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
         {
             return Err(QError::DuplicateDefinition).with_err_at(pos);
         }
-        let dim_type: DimType = self
+        let (dim_type, implicit_variables) = self
             .convert_dim_type(&bare_name, dim_type)
             .patch_err_pos(pos)?;
-        Ok(DimName::new(bare_name, dim_type).at(pos))
+        Ok((
+            DimName::new(bare_name, dim_type).at(pos),
+            implicit_variables,
+        ))
     }
 }
 
@@ -32,21 +38,26 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         bare_name: &BareName,
         dim_type: parser::DimType,
-    ) -> Result<DimType, QErrorNode> {
+    ) -> Result<(DimType, Vec<QualifiedNameNode>), QErrorNode> {
         match dim_type {
-            parser::DimType::Bare => self.convert_dim_type_bare(bare_name).with_err_no_pos(),
+            parser::DimType::Bare => self
+                .convert_dim_type_bare(bare_name)
+                .map(|dim_type| (dim_type, vec![]))
+                .with_err_no_pos(),
             parser::DimType::Compact(q) => self
                 .convert_dim_type_compact(bare_name, q)
+                .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
-            parser::DimType::FixedLengthString(len_expr) => {
-                self.convert_dim_type_fixed_length_string(bare_name, len_expr)
-            }
+            parser::DimType::FixedLengthString(len_expr) => self
+                .convert_dim_type_fixed_length_string(bare_name, len_expr)
+                .map(|dim_type| (dim_type, vec![])),
             parser::DimType::Extended(q) => self
                 .convert_dim_type_extended(bare_name, q)
+                .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
-            parser::DimType::UserDefined(user_defined_type_node) => {
-                self.convert_dim_type_user_defined(bare_name, user_defined_type_node)
-            }
+            parser::DimType::UserDefined(user_defined_type_node) => self
+                .convert_dim_type_user_defined(bare_name, user_defined_type_node)
+                .map(|dim_type| (dim_type, vec![])),
             parser::DimType::Array(dimensions, box_type) => {
                 self.convert_dim_type_array(bare_name, dimensions, *box_type)
             }
@@ -129,7 +140,7 @@ impl<'a> ConverterImpl<'a> {
         bare_name: &BareName,
         array_dimensions: parser::ArrayDimensions,
         element_type: parser::DimType,
-    ) -> Result<DimType, QErrorNode> {
+    ) -> Result<(DimType, Vec<QualifiedNameNode>), QErrorNode> {
         // re-construct declared name
         let declared_name: Name = match &element_type {
             parser::DimType::Compact(q) => {
@@ -138,40 +149,54 @@ impl<'a> ConverterImpl<'a> {
             _ => Name::Bare(bare_name.clone()),
         };
 
-        let converted_element_type = self.convert_dim_type(bare_name, element_type)?;
-        let converted_array_dimensions = self.convert(array_dimensions)?;
+        // not possible to have an array type within an array type, we can ignore the implicit_variables on converting the element type
+        let (converted_element_type, _) = self.convert_dim_type(bare_name, element_type)?;
+        let (converted_array_dimensions, implicit_variables) =
+            self.convert_and_collect_implicit_variables(array_dimensions)?;
         let dim_type = DimType::Array(
             converted_array_dimensions.clone(),
             Box::new(converted_element_type),
         );
         self.context
             .register_array_dimensions(declared_name, converted_array_dimensions);
-        Ok(dim_type)
+        Ok((dim_type, implicit_variables))
     }
 }
 
-impl<'a> Converter<parser::ArrayDimension, ArrayDimension> for ConverterImpl<'a> {
-    fn convert(
+impl<'a> ConverterWithImplicitVariables<parser::ArrayDimension, ArrayDimension>
+    for ConverterImpl<'a>
+{
+    fn convert_and_collect_implicit_variables(
         &mut self,
         array_dimension: parser::ArrayDimension,
-    ) -> Result<ArrayDimension, QErrorNode> {
+    ) -> Result<(ArrayDimension, Vec<QualifiedNameNode>), QErrorNode> {
         let parser::ArrayDimension { lbound, ubound } = array_dimension;
         match lbound {
             Some(lbound) => {
-                let converted_lbound = self.convert(lbound)?;
-                let converted_ubound = self.convert(ubound)?;
-                Ok(ArrayDimension {
-                    lbound: converted_lbound,
-                    ubound: converted_ubound,
-                })
+                let (converted_lbound, mut lbound_implicit_variables) =
+                    self.convert_and_collect_implicit_variables(lbound)?;
+                let (converted_ubound, mut ubound_implicit_variables) =
+                    self.convert_and_collect_implicit_variables(ubound)?;
+                lbound_implicit_variables.append(&mut ubound_implicit_variables);
+                Ok((
+                    ArrayDimension {
+                        lbound: converted_lbound,
+                        ubound: converted_ubound,
+                    },
+                    lbound_implicit_variables,
+                ))
             }
             None => {
                 let converted_lbound = Expression::IntegerLiteral(0).at(ubound.pos());
-                let converted_ubound = self.convert(ubound)?;
-                Ok(ArrayDimension {
-                    lbound: converted_lbound,
-                    ubound: converted_ubound,
-                })
+                let (converted_ubound, implicit_variables) =
+                    self.convert_and_collect_implicit_variables(ubound)?;
+                Ok((
+                    ArrayDimension {
+                        lbound: converted_lbound,
+                        ubound: converted_ubound,
+                    },
+                    implicit_variables,
+                ))
             }
         }
     }

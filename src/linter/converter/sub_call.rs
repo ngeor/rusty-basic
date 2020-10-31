@@ -1,20 +1,30 @@
 use crate::built_ins::BuiltInSub;
-use crate::common::QErrorNode;
-use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::Statement;
-use crate::parser::{BareName, ExpressionNodes};
+use crate::common::{AtLocation, Locatable, QErrorNode};
+use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
+use crate::linter::{Statement, StatementNode};
+use crate::parser::{BareNameNode, ExpressionNodes, QualifiedNameNode};
 
 impl<'a> ConverterImpl<'a> {
     pub fn sub_call(
         &mut self,
-        sub_name: BareName,
+        sub_name_node: BareNameNode,
         args: ExpressionNodes,
-    ) -> Result<Statement, QErrorNode> {
-        let converted_args = self.convert(args)?;
+    ) -> Result<(StatementNode, Vec<QualifiedNameNode>), QErrorNode> {
+        let (converted_args, implicit_vars) = self.convert_and_collect_implicit_variables(args)?;
+        let Locatable {
+            element: sub_name,
+            pos,
+        } = sub_name_node;
         let opt_built_in: Option<BuiltInSub> = (&sub_name).into();
         match opt_built_in {
-            Some(b) => Ok(Statement::BuiltInSubCall(b, converted_args)),
-            None => Ok(Statement::SubCall(sub_name, converted_args)),
+            Some(b) => Ok((
+                Statement::BuiltInSubCall(b, converted_args).at(pos),
+                implicit_vars,
+            )),
+            None => Ok((
+                Statement::SubCall(sub_name, converted_args).at(pos),
+                implicit_vars,
+            )),
         }
     }
 }

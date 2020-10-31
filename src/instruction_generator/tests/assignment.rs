@@ -19,11 +19,64 @@ fn test_assignment() {
 }
 
 #[test]
-fn test_assignment_no_cast() {
+fn test_assignment_no_cast_implicit_variable() {
     assert_eq!(
         generate_instructions_str("X% = 1").strip_location(),
         [
+            // implicit dim
+            Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
+            // assign
             Instruction::Load(Variant::VInteger(1)),
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
+            Instruction::Halt
+        ]
+    );
+}
+
+#[test]
+fn test_assignment_no_cast_explicit_variable() {
+    let input = r#"
+    DIM X%
+    X% = 1
+    "#;
+    assert_eq!(
+        generate_instructions_str(input).strip_location(),
+        [
+            // dim
+            Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
+            // assign
+            Instruction::Load(Variant::VInteger(1)),
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
+            Instruction::Halt
+        ]
+    );
+}
+
+#[test]
+fn test_assignment_no_cast_implicit_variable_implicit_dim_is_only_once() {
+    let input = r#"
+    X% = 1
+    X% = 2
+    "#;
+    assert_eq!(
+        generate_instructions_str(input).strip_location(),
+        [
+            // implicit dim
+            Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
+            // assign
+            Instruction::Load(Variant::VInteger(1)),
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
+            // assign
+            Instruction::Load(Variant::VInteger(2)),
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             Instruction::Halt

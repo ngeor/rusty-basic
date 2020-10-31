@@ -27,6 +27,7 @@ pub enum Expression {
 }
 
 pub type ExpressionNode = Locatable<Expression>;
+pub type ExpressionNodes = Vec<ExpressionNode>;
 
 impl Expression {
     pub fn binary(

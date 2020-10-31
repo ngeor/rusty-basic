@@ -191,12 +191,14 @@ impl<'a> Context<'a> {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<DimName, QError> {
+    ) -> Result<(DimName, bool), QError> {
         match self.resolve_expression(name, resolver)? {
-            Some(Expression::Variable(dim_name)) => Ok(dim_name),
+            Some(Expression::Variable(dim_name)) => Ok((dim_name, false)),
             // cannot re-assign a constant
             Some(Expression::Constant(_)) => Err(QError::DuplicateDefinition),
-            None => self.resolve_missing_name_in_assignment(name, resolver),
+            None => self
+                .resolve_missing_name_in_assignment(name, resolver)
+                .map(|dim_name| (dim_name, true)),
             _ => panic!("Unexpected result from resolving name expression"),
         }
     }
@@ -270,7 +272,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn resolve_missing_name_in_assignment<T: TypeResolver>(
+    pub fn resolve_missing_name_in_assignment<T: TypeResolver>(
         &mut self,
         name: &Name,
         resolver: &T,
@@ -281,15 +283,6 @@ impl<'a> Context<'a> {
         } = resolver.resolve_name(name);
         self.push_dim_compact(bare_name.clone(), qualifier);
         Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
-    }
-
-    pub fn resolve_missing_name_in_expression<T: TypeResolver>(
-        &mut self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<Expression, QError> {
-        let dim_name = self.resolve_missing_name_in_assignment(name, resolver)?;
-        Ok(Expression::Variable(dim_name))
     }
 
     pub fn resolve_expression<T: TypeResolver>(

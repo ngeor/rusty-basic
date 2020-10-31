@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::linter::converter::context::Context;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::types::*;
-use crate::parser::BareName;
+use crate::parser::{BareName, QualifiedNameNode};
 use std::collections::HashSet;
 
 //
@@ -44,6 +44,74 @@ where
     fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, QErrorNode> {
         let Locatable { element, pos } = a;
         self.convert(element).with_ok_pos(pos).patch_err_pos(pos)
+    }
+}
+
+//
+// ConverterWithImplicitVariables
+//
+
+pub trait ConverterWithImplicitVariables<A, B> {
+    fn convert_and_collect_implicit_variables(
+        &mut self,
+        a: A,
+    ) -> Result<(B, Vec<QualifiedNameNode>), QErrorNode>;
+}
+
+// blanket for Option
+
+impl<T, A, B> ConverterWithImplicitVariables<Option<A>, Option<B>> for T
+where
+    T: ConverterWithImplicitVariables<A, B>,
+{
+    fn convert_and_collect_implicit_variables(
+        &mut self,
+        a: Option<A>,
+    ) -> Result<(Option<B>, Vec<QualifiedNameNode>), QErrorNode> {
+        match a {
+            Some(a) => self
+                .convert_and_collect_implicit_variables(a)
+                .map(|(a, implicit_variables)| (Some(a), implicit_variables)),
+            None => Ok((None, vec![])),
+        }
+    }
+}
+
+// blanket for Box
+
+impl<T, A, B> ConverterWithImplicitVariables<Box<A>, Box<B>> for T
+where
+    T: ConverterWithImplicitVariables<A, B>,
+{
+    fn convert_and_collect_implicit_variables(
+        &mut self,
+        a: Box<A>,
+    ) -> Result<(Box<B>, Vec<QualifiedNameNode>), QErrorNode> {
+        let unboxed: A = *a;
+        let (converted, implicit_variables) =
+            self.convert_and_collect_implicit_variables(unboxed)?;
+        Ok((Box::new(converted), implicit_variables))
+    }
+}
+
+// blanket for Vec
+
+impl<T, A, B> ConverterWithImplicitVariables<Vec<A>, Vec<B>> for T
+where
+    T: ConverterWithImplicitVariables<A, B>,
+{
+    fn convert_and_collect_implicit_variables(
+        &mut self,
+        a: Vec<A>,
+    ) -> Result<(Vec<B>, Vec<QualifiedNameNode>), QErrorNode> {
+        let mut result: Vec<B> = vec![];
+        let mut total_implicit: Vec<QualifiedNameNode> = vec![];
+        for i in a {
+            let (b, mut implicit) = self.convert_and_collect_implicit_variables(i)?;
+            result.push(b);
+            total_implicit.append(&mut implicit);
+        }
+        Ok((result, total_implicit))
     }
 }
 
@@ -97,5 +165,13 @@ impl<'a> ConverterImpl<'a> {
 
     pub fn consume(self) -> HashSet<BareName> {
         self.context.names_without_dot()
+    }
+
+    pub fn merge_implicit_vars(lists: Vec<Vec<QualifiedNameNode>>) -> Vec<QualifiedNameNode> {
+        let mut result: Vec<QualifiedNameNode> = vec![];
+        for mut list in lists {
+            result.append(&mut list);
+        }
+        result
     }
 }

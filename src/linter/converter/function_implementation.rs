@@ -11,7 +11,7 @@ impl<'a> ConverterImpl<'a> {
         function_name_node: NameNode,
         params: parser::ParamNameNodes,
         block: parser::StatementNodes,
-    ) -> Result<Option<TopLevelToken>, QErrorNode> {
+    ) -> Result<TopLevelToken, QErrorNode> {
         let Locatable {
             element: unresolved_function_name,
             pos,
@@ -26,6 +26,6 @@ impl<'a> ConverterImpl<'a> {
             body: self.convert(block)?,
         });
         self.pop_context();
-        Ok(Some(mapped))
+        Ok(mapped)
     }
 }

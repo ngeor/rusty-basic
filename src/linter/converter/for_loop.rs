@@ -1,43 +1,45 @@
-use crate::common::{AtLocation, Locatable, PatchErrPos, QErrorNode, ToLocatableOk};
-use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::{ExpressionNode, ForLoopNode};
+use crate::common::QErrorNode;
+use crate::linter::converter::converter::{
+    Converter, ConverterImpl, ConverterWithImplicitVariables,
+};
+use crate::linter::ForLoopNode;
 use crate::parser;
+use crate::parser::QualifiedNameNode;
 
-impl<'a> Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
-    fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
-        Ok(ForLoopNode {
-            variable_name: self.for_loop_variable_name(a.variable_name)?,
-            lower_bound: self.convert(a.lower_bound)?,
-            upper_bound: self.convert(a.upper_bound)?,
-            step: self.convert(a.step)?,
-            statements: self.convert(a.statements)?,
-            next_counter: self.for_loop_next_counter(a.next_counter)?,
-        })
-    }
-}
-
-impl<'a> ConverterImpl<'a> {
-    fn for_loop_variable_name(
+impl<'a> ConverterWithImplicitVariables<parser::ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
+    fn convert_and_collect_implicit_variables(
         &mut self,
-        name_node: parser::ExpressionNode,
-    ) -> Result<ExpressionNode, QErrorNode> {
-        let Locatable { element, pos } = name_node;
-        self.assignment_name(element)
-            .with_ok_pos(pos)
-            .patch_err_pos(pos)
-    }
+        a: parser::ForLoopNode,
+    ) -> Result<(ForLoopNode, Vec<QualifiedNameNode>), QErrorNode> {
+        let (variable_name, implicit_variables_variable_name) =
+            self.convert_and_collect_implicit_variables(a.variable_name)?;
+        let (lower_bound, implicit_variables_lower_bound) =
+            self.convert_and_collect_implicit_variables(a.lower_bound)?;
+        let (upper_bound, implicit_variables_upper_bound) =
+            self.convert_and_collect_implicit_variables(a.upper_bound)?;
+        let (step, implicit_variables_step) =
+            self.convert_and_collect_implicit_variables(a.step)?;
+        let (next_counter, implicit_variables_next_counter) =
+            self.convert_and_collect_implicit_variables(a.next_counter)?;
 
-    fn for_loop_next_counter(
-        &mut self,
-        opt_name_node: Option<parser::ExpressionNode>,
-    ) -> Result<Option<ExpressionNode>, QErrorNode> {
-        match opt_name_node {
-            Some(name_node) => {
-                let Locatable { element, pos } = name_node;
-                let dim_name = self.assignment_name(element).patch_err_pos(pos)?;
-                Ok(Some(dim_name.at(pos)))
-            }
-            None => Ok(None),
-        }
+        let implicit_vars = Self::merge_implicit_vars(vec![
+            implicit_variables_variable_name,
+            implicit_variables_lower_bound,
+            implicit_variables_upper_bound,
+            implicit_variables_step,
+            implicit_variables_next_counter,
+        ]);
+
+        Ok((
+            ForLoopNode {
+                variable_name,
+                lower_bound,
+                upper_bound,
+                step,
+                statements: self.convert(a.statements)?,
+                next_counter,
+            },
+            implicit_vars,
+        ))
     }
 }

@@ -10,7 +10,7 @@ impl<'a> ConverterImpl<'a> {
         sub_name_node: BareNameNode,
         params: parser::ParamNameNodes,
         block: parser::StatementNodes,
-    ) -> Result<Option<TopLevelToken>, QErrorNode> {
+    ) -> Result<TopLevelToken, QErrorNode> {
         let sub_name: &BareName = sub_name_node.as_ref();
         self.push_sub_context(sub_name.clone());
         let mapped_params = self.resolve_params(params, None)?;
@@ -20,6 +20,6 @@ impl<'a> ConverterImpl<'a> {
             body: self.convert(block)?,
         });
         self.pop_context();
-        Ok(Some(mapped))
+        Ok(mapped)
     }
 }

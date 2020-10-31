@@ -13,6 +13,7 @@ pub enum Variant {
     VSingle(f32),
     VDouble(f64),
     VString(String),
+    VFixedLengthString(String),
     VInteger(i32),
     VLong(i64),
     VUserDefined(Box<UserDefinedTypeValue>),
@@ -124,7 +125,12 @@ impl Variant {
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
+                Variant::VFixedLengthString(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(QError::TypeMismatch),
+            },
+            Variant::VFixedLengthString(s_left) => match other {
+                Variant::VFixedLengthString(s_right) => Ok(s_left.cmp(s_right)),
+                _ => other.cmp(self).map(Ordering::reverse),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
@@ -151,6 +157,10 @@ impl Variant {
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
+                _ => Err(QError::TypeMismatch),
+            },
+            Variant::VFixedLengthString(s_left) => match other {
+                Variant::VFixedLengthString(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(QError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
@@ -213,8 +223,10 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VDouble(d_left + l_right as f64)),
                 _ => other.plus(self),
             },
-            Variant::VString(s_left) => match other {
-                Variant::VString(s_right) => Ok(Variant::VString(format!("{}{}", s_left, s_right))),
+            Variant::VString(s_left) | Variant::VFixedLengthString(s_left) => match other {
+                Variant::VString(s_right) | Variant::VFixedLengthString(s_right) => {
+                    Ok(Variant::VString(format!("{}{}", s_left, s_right)))
+                }
                 _ => Err(QError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {

@@ -1,7 +1,7 @@
-use crate::common::{AtRowCol};
+use crate::common::AtRowCol;
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::Instruction;
-use crate::linter::{DimName, ExpressionType};
+use crate::linter::ExpressionType;
 use crate::parser::TypeQualifier;
 use crate::variant::Variant;
 
@@ -28,10 +28,11 @@ fn test_declaration() {
             Instruction::Load(Variant::VInteger(4)).at_rc(2, 24),
             Instruction::PushUnnamed.at_rc(2, 24),
             // allocate array into A
-            Instruction::AllocateArray(ExpressionType::BuiltIn(TypeQualifier::BangSingle)).at_rc(2, 9),
+            Instruction::AllocateArray(ExpressionType::BuiltIn(TypeQualifier::BangSingle))
+                .at_rc(2, 9),
             // store allocated array value into variable
-            Instruction::Store(DimName::parse("X!")).at_rc(2, 9),
-            Instruction::CopyAToPointer.at_rc(2, 5),
+            Instruction::VarPathName("X!".into()).at_rc(2, 9),
+            Instruction::CopyAToVarPath.at_rc(2, 9),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]
     );

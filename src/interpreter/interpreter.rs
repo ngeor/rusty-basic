@@ -14,7 +14,7 @@ use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::{built_ins, instruction_handlers};
 use crate::linter::{DimName, UserDefinedTypes};
 use crate::parser::{QualifiedName, TypeQualifier};
-use crate::variant::{Path, VArray, Variant};
+use crate::variant::{Path, Variant};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
@@ -397,37 +397,23 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);
             }
+            Instruction::AllocateBuiltIn(q) => {
+                instruction_handlers::allocation::allocate_built_in(self, *q).with_err_at(pos)?;
+            }
+            Instruction::AllocateFixedLengthString(len) => {
+                instruction_handlers::allocation::allocate_fixed_length_string(self, *len)
+                    .with_err_at(pos)?;
+            }
             Instruction::AllocateArray(element_type) => {
-                let r_args: Result<Vec<i32>, QError> = self
-                    .context_mut()
-                    .arguments_stack()
-                    .pop()
-                    .into_iter()
-                    .map(|(_, v)| v)
-                    .map(|v| i32::try_from(v))
-                    .collect();
-                let args = r_args.with_err_at(pos)?;
-                let mut dimensions: Vec<(i32, i32)> = vec![];
-                let mut i: usize = 0;
-                let mut elements: Vec<Variant> = vec![];
-                while i < args.len() {
-                    let lbound = args[i];
-                    i += 1;
-                    let ubound = args[i];
-                    if ubound < lbound {
-                        return Err(QError::SubscriptOutOfRange).with_err_at(pos);
-                    }
-                    i += 1;
-                    dimensions.push((lbound, ubound));
-                    for _i in lbound..ubound + 1 {
-                        elements.push(element_type.default_variant(self.user_defined_types()));
-                    }
-                }
-                let array = Variant::VArray(Box::new(VArray {
-                    dimensions,
-                    elements,
-                }));
-                self.set_a(array);
+                instruction_handlers::allocation::allocate_array(self, element_type)
+                    .with_err_at(pos)?;
+            }
+            Instruction::AllocateUserDefined(user_defined_type_name) => {
+                instruction_handlers::allocation::allocate_user_defined_type(
+                    self,
+                    user_defined_type_name,
+                )
+                .with_err_at(pos)?;
             }
             Instruction::ArrayElementToA(dim_name) => {
                 let r_args: Result<Vec<i32>, QError> = self
@@ -454,7 +440,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     }
                 }
             }
-            Instruction::CopyAToPointer => {
+            Instruction::VarPathName(_name) => todo!(),
+            Instruction::VarPathIndex(_index) => todo!(),
+            Instruction::VarPathProperty(_property_name) => todo!(),
+            Instruction::CopyAToVarPath => {
                 // get value to copy into name_ptr
                 let a = self.get_a();
                 // copy

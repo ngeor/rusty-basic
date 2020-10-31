@@ -57,7 +57,9 @@ impl ElementType {
         match self {
             Self::Single => Variant::from(TypeQualifier::BangSingle),
             Self::Double => Variant::from(TypeQualifier::HashDouble),
-            Self::FixedLengthString(len) => String::new().fix_length(*len as usize).into(),
+            Self::FixedLengthString(len) => {
+                Variant::VFixedLengthString(String::new().fix_length(*len as usize))
+            }
             Self::Integer => Variant::from(TypeQualifier::PercentInteger),
             Self::Long => Variant::from(TypeQualifier::AmpersandLong),
             Self::UserDefined(type_name) => {

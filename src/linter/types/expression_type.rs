@@ -1,7 +1,7 @@
 use crate::common::{CanCastTo, StringUtils};
-use crate::parser::{BareName, Operator, TypeQualifier};
 use crate::linter::UserDefinedTypes;
-use crate::variant::{Variant, UserDefinedTypeValue};
+use crate::parser::{BareName, Operator, TypeQualifier};
+use crate::variant::{UserDefinedTypeValue, Variant};
 
 /// The resolved type of an expression.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

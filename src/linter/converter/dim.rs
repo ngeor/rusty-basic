@@ -1,4 +1,7 @@
-use crate::common::{AtLocation, Locatable, PatchErrPos, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError, HasLocation};
+use crate::common::{
+    AtLocation, HasLocation, Locatable, PatchErrPos, QError, QErrorNode, ToErrorEnvelopeNoPos,
+    ToLocatableError,
+};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::type_resolver::TypeResolver;

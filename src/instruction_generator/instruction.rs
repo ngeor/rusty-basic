@@ -1,11 +1,27 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{DimName, ParamName, ExpressionType};
-use crate::parser::{QualifiedName, TypeQualifier};
+use crate::linter::{DimName, ExpressionType, ParamName};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
 pub enum Instruction {
+    // Storing into variables is done in two steps:
+    // the first step is to evaluate the variable path.
+    // For a simple variable, that's just the variable name,
+    // which can be unqualified for user defined types and
+    // qualified for built-in types.
+    // The second step is to write the register A into the variant that the
+    // variable path references.
+    VarPathName(Name),
+
+    VarPathIndex(Variant),
+
+    VarPathProperty(BareName),
+
+    /// Copies the value of register A into the variable path
+    CopyAToVarPath,
+
     Dim(DimName),
 
     /// Loads a value into register A
@@ -16,8 +32,6 @@ pub enum Instruction {
 
     /// Stores a value from register A into a constant
     StoreConst(QualifiedName),
-
-    CopyAToPointer,
 
     CopyAToB,
     CopyAToC,
@@ -94,11 +108,16 @@ pub enum Instruction {
 
     StoreIndex,
 
-    // array allocation
+    // allocating variables
+    AllocateBuiltIn(TypeQualifier),
+
+    AllocateFixedLengthString(u16),
 
     /// Allocates an array of the given type. The dimensions need to have been
     /// first pushed with `PushUnnamed`.
     AllocateArray(ExpressionType),
+
+    AllocateUserDefined(BareName),
 }
 
 pub type InstructionNode = Locatable<Instruction>;

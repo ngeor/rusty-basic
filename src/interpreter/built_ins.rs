@@ -696,7 +696,7 @@ mod len {
         let len: i32 = match v {
             Variant::VSingle(_) => 4,
             Variant::VDouble(_) => 8,
-            Variant::VString(v) => v.len().try_into().unwrap(),
+            Variant::VString(v) | Variant::VFixedLengthString(v) => v.len().try_into().unwrap(),
             Variant::VInteger(_) => 2,
             Variant::VLong(_) => 4,
             Variant::VUserDefined(user_defined_value) => {
@@ -740,9 +740,19 @@ mod len {
     mod tests {
         use crate::assert_prints;
         use crate::interpreter::interpreter_trait::InterpreterTrait;
+
         #[test]
-        fn test_len_string() {
+        fn test_len_string_literal() {
             let program = r#"PRINT LEN("hello")"#;
+            assert_prints!(program, "5");
+        }
+
+        #[test]
+        fn test_len_string_variable() {
+            let program = r#"
+            A$ = "hello"
+            PRINT LEN(A$)
+            "#;
             assert_prints!(program, "5");
         }
 

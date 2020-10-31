@@ -1,7 +1,6 @@
 use crate::common::{AtRowCol, StripLocation};
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::Instruction;
-use crate::linter::DimName;
 use crate::parser::TypeQualifier;
 use crate::variant::Variant;
 
@@ -12,8 +11,8 @@ fn test_assignment() {
         [
             Instruction::Load(Variant::VInteger(1)).at_rc(1, 5),
             Instruction::Cast(TypeQualifier::BangSingle).at_rc(1, 5),
-            Instruction::Store(DimName::parse("X!")).at_rc(1, 1),
-            Instruction::CopyAToPointer.at_rc(1, 1),
+            Instruction::VarPathName("X!".into()).at_rc(1, 1),
+            Instruction::CopyAToVarPath.at_rc(1, 1),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]
     );
@@ -25,8 +24,8 @@ fn test_assignment_no_cast() {
         generate_instructions_str("X% = 1").strip_location(),
         [
             Instruction::Load(Variant::VInteger(1)),
-            Instruction::Store(DimName::parse("X%")),
-            Instruction::CopyAToPointer,
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
             Instruction::Halt
         ]
     );
@@ -45,8 +44,8 @@ fn test_assignment_binary_plus() {
             Instruction::Plus,
             Instruction::PopRegisters,
             Instruction::Cast(TypeQualifier::PercentInteger),
-            Instruction::Store(DimName::parse("X%")),
-            Instruction::CopyAToPointer,
+            Instruction::VarPathName("X%".into()),
+            Instruction::CopyAToVarPath,
             Instruction::Halt
         ]
     );

@@ -1,7 +1,7 @@
 use super::instruction::*;
 use crate::common::*;
 use crate::linter::*;
-use crate::parser::{BareName, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
@@ -252,9 +252,15 @@ impl InstructionGenerator {
 
     pub fn generate_store_instructions(&mut self, l: Expression, pos: Location) {
         match l {
-            Expression::Variable(var_name) => {
-                self.push(Instruction::Store(var_name), pos);
-                self.push(Instruction::CopyAToPointer, pos);
+            Expression::Variable(dim_name) => {
+                let (bare_name, dim_type) = dim_name.into_inner();
+                match dim_type {
+                    DimType::BuiltIn(q) => {
+                        self.push(Instruction::VarPathName(Name::new(bare_name, Some(q))), pos);
+                        self.push(Instruction::CopyAToVarPath, pos);
+                    }
+                    _ => todo!(),
+                }
             }
             Expression::FunctionCall(_name, _args) => {
                 panic!("Linter should have converted this to ArrayElement")
@@ -268,7 +274,7 @@ impl InstructionGenerator {
                     );
                     self.push(Instruction::StoreIndex, pos);
                 }
-                self.push(Instruction::CopyAToPointer, pos);
+                self.push(Instruction::CopyAToVarPath, pos);
             }
             _ => todo!(),
         }

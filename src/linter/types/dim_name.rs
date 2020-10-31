@@ -1,5 +1,7 @@
 use crate::common::{CanCastTo, Locatable, StringUtils};
-use crate::linter::{ElementType, ExpressionType, HasExpressionType, UserDefinedTypes, ExpressionNode};
+use crate::linter::{
+    ElementType, ExpressionNode, ExpressionType, HasExpressionType, UserDefinedTypes,
+};
 use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
 #[cfg(test)]
@@ -7,8 +9,8 @@ use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DimName {
-    bare_name: BareName,
-    dim_type: DimType,
+    pub bare_name: BareName,
+    pub dim_type: DimType,
 }
 
 pub type DimNameNode = Locatable<DimName>;

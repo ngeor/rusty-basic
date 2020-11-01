@@ -7,8 +7,8 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::linter;
-use crate::linter::{DimName, UserDefinedTypes};
-use crate::parser::parse_main_file;
+use crate::linter::UserDefinedTypes;
+use crate::parser::{parse_main_file, Name};
 use crate::variant::Variant;
 use std::collections::HashMap;
 use std::fs::File;
@@ -203,8 +203,8 @@ impl Stdlib for MockStdlib {
 
 impl MockInterpreter {
     pub fn get_variable_str(&self, name: &str) -> Variant {
-        let dim_name = DimName::parse(name);
-        self.context().get_r_value(&dim_name).unwrap().clone()
+        let name = Name::from(name);
+        self.context().get_r_value_by_name(&name).unwrap().clone()
     }
 }
 

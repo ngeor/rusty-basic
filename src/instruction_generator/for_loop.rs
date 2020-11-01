@@ -8,7 +8,7 @@ impl InstructionGenerator {
     }
 
     fn load_counter(&mut self, counter_var: &Expression, pos: Location) {
-        self.generate_load_instructions(counter_var.clone(), pos);
+        self.generate_expression_instructions(counter_var.clone().at(pos));
     }
 
     pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) {

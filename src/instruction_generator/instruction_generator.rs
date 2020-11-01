@@ -266,24 +266,15 @@ impl InstructionGenerator {
                 panic!("Linter should have converted this to ArrayElement")
             }
             Expression::ArrayElement(var_name, args) => {
-                self.push(Instruction::Store(var_name), pos);
+                self.push(Instruction::VarPathName(var_name.into()), pos);
                 for arg in args {
                     self.generate_expression_instructions_casting(
                         arg,
                         ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
                     );
-                    self.push(Instruction::StoreIndex, pos);
+                    self.push(Instruction::VarPathIndex, pos);
                 }
                 self.push(Instruction::CopyAToVarPath, pos);
-            }
-            _ => todo!(),
-        }
-    }
-
-    pub fn generate_load_instructions(&mut self, l: Expression, pos: Location) {
-        match l {
-            Expression::Variable(var_name) => {
-                self.push(Instruction::CopyVarToA(var_name), pos);
             }
             _ => todo!(),
         }

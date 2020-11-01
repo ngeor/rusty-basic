@@ -6,7 +6,7 @@ use crate::linter::{
     DimName, DimType, ExpressionType, HasExpressionType, Members, UserDefinedTypes,
 };
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
-use crate::variant::{Variant, V_FALSE};
+use crate::variant::Variant;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -161,6 +161,29 @@ impl Context {
         &mut self.arguments_stack
     }
 
+    pub fn get_r_value_by_name(&self, name: &Name) -> Option<&Variant> {
+        // get a constant or a local thing or a parent constant
+        let bare_name: &BareName = name.as_ref();
+        match name.qualifier() {
+            Some(qualifier) => {
+                // constant or variable or global constant
+                let qualified_name = QualifiedName::new(bare_name.clone(), qualifier);
+                if let Some(v) = self.constants.get(&qualified_name) {
+                    Some(v)
+                } else if let Some(v) = self.variables.get_built_in(bare_name, qualifier) {
+                    Some(v)
+                } else {
+                    self.get_root_const(&qualified_name)
+                }
+            }
+            None => {
+                // can only be user defined type or array of user defined types
+                self.variables.get_user_defined(bare_name)
+            }
+        }
+    }
+
+    #[deprecated]
     pub fn get_r_value(&self, name: &DimName) -> Option<&Variant> {
         // get a constant or a local thing or a parent constant
         let bare_name: &BareName = name.as_ref();

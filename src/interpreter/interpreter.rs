@@ -12,8 +12,8 @@ use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::{built_ins, instruction_handlers};
-use crate::linter::{DimName, UserDefinedTypes};
-use crate::parser::{QualifiedName, TypeQualifier};
+use crate::linter::UserDefinedTypes;
+use crate::parser::{Name, QualifiedName, TypeQualifier};
 use crate::variant::{Path, Variant};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -201,17 +201,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     _ => casted,
                 });
             }
-            Instruction::Dim(dim_name) => {
-                self.set_default_value(dim_name);
-            }
-            Instruction::Store(dim_name) => {
-                self.name_ptr = Some(Path::Root(dim_name.clone().into()));
-            }
-            Instruction::StoreIndex => {
-                let index_value = self.get_a();
-                let old_name_ptr = self.name_ptr.take().expect("Should have name_ptr");
-                self.name_ptr = Some(old_name_ptr.append_array_element(index_value));
-            }
             Instruction::StoreConst(n) => {
                 let v = self.get_a();
                 self.context.set_constant(n.clone(), v);
@@ -258,13 +247,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let a = self.get_a();
                 let c = a.unary_not().with_err_at(pos)?;
                 self.set_a(c);
-            }
-            Instruction::CopyVarToA(var_name) => {
-                let v = match self.context.get_r_value(var_name) {
-                    Some(v) => v.clone(),
-                    None => self.set_default_value(var_name),
-                };
-                self.set_a(v);
             }
             Instruction::Equal => {
                 let a = self.get_a();
@@ -335,8 +317,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 // get the function result
                 let function_result: Option<Variant> = match opt_function_name {
                     Some(function_name) => {
-                        let r: DimName = function_name.clone().into();
-                        match self.context.get_r_value(&r) {
+                        let r: Name = function_name.clone().into();
+                        match self.context.get_r_value_by_name(&r) {
                             Some(v) => Some(v.clone()),
                             None => {
                                 // it was a function, but the implementation did not set a result
@@ -446,13 +428,17 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     self.name_ptr = Some(Path::Root(name.clone()));
                 }
             },
-            Instruction::VarPathIndex(_index) => todo!(),
+            Instruction::VarPathIndex => {
+                let index_value = self.get_a();
+                let old_name_ptr = self.name_ptr.take().expect("Should have name_ptr");
+                self.name_ptr = Some(old_name_ptr.append_array_element(index_value));
+            }
             Instruction::VarPathProperty(_property_name) => todo!(),
             Instruction::CopyAToVarPath => {
                 // get value to copy into name_ptr
                 let a = self.get_a();
                 // copy
-                let v = self.resolve_name_ptr().with_err_at(pos)?;
+                let v = self.resolve_name_ptr_mut().with_err_at(pos)?;
                 *v = a;
             }
             Instruction::CopyVarPathToA => {
@@ -464,25 +450,57 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         Ok(())
     }
 
-    fn resolve_name_ptr(&mut self) -> Result<&mut Variant, QError> {
+    fn resolve_name_ptr(&mut self) -> Result<&Variant, QError> {
         match self.name_ptr.take() {
-            Some(n) => self.resolve_some_name_ptr(n),
+            Some(path) => self.resolve_some_name_ptr(path),
             _ => panic!("Root name_ptr was None"),
         }
     }
 
-    fn resolve_some_name_ptr(&mut self, name_ptr: Path) -> Result<&mut Variant, QError> {
-        match name_ptr {
-            Path::Root(var_name) => Ok(self.context_mut().get_or_create(var_name)),
-            Path::ArrayElement(parent_name_ptr, indices) => {
-                let parent_variant = self.resolve_some_name_ptr(*parent_name_ptr)?;
+    fn resolve_some_name_ptr(&mut self, path: Path) -> Result<&Variant, QError> {
+        match path {
+            Path::Root(var_name) => self
+                .context
+                .get_r_value_by_name(&var_name)
+                .ok_or(QError::InternalError("Variable not found".to_string())),
+            Path::ArrayElement(parent_path, indices) => {
+                let parent_variant = self.resolve_some_name_ptr(*parent_path)?;
                 Self::resolve_array(parent_variant, indices)
             }
             _ => todo!(),
         }
     }
 
-    fn resolve_array(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Variant, QError> {
+    fn resolve_array(v: &Variant, indices: Vec<Variant>) -> Result<&Variant, QError> {
+        match v {
+            Variant::VArray(v_array) => {
+                let int_indices: Result<Vec<i32>, QError> =
+                    indices.into_iter().map(|v| i32::try_from(v)).collect();
+                v_array.get_element(int_indices?)
+            }
+            _ => panic!("Expected array, found {:?}", v),
+        }
+    }
+
+    fn resolve_name_ptr_mut(&mut self) -> Result<&mut Variant, QError> {
+        match self.name_ptr.take() {
+            Some(n) => self.resolve_some_name_ptr_mut(n),
+            _ => panic!("Root name_ptr was None"),
+        }
+    }
+
+    fn resolve_some_name_ptr_mut(&mut self, name_ptr: Path) -> Result<&mut Variant, QError> {
+        match name_ptr {
+            Path::Root(var_name) => Ok(self.context_mut().get_or_create(var_name)),
+            Path::ArrayElement(parent_name_ptr, indices) => {
+                let parent_variant = self.resolve_some_name_ptr_mut(*parent_name_ptr)?;
+                Self::resolve_array_mut(parent_variant, indices)
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn resolve_array_mut(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Variant, QError> {
         match v {
             Variant::VArray(v_array) => {
                 let int_indices: Result<Vec<i32>, QError> =
@@ -536,14 +554,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
     fn pop_context(&mut self) {
         let current_context = self.take_context();
         self.set_context(current_context.pop());
-    }
-
-    fn set_default_value(&mut self, dim_name: &DimName) -> Variant {
-        let v = dim_name
-            .dim_type()
-            .default_variant(self.user_defined_types.as_ref());
-        self.context.set_variable(dim_name.clone(), v.clone());
-        v
     }
 }
 

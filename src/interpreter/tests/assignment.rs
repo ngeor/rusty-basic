@@ -8,9 +8,9 @@ use crate::interpreter::test_utils::*;
 macro_rules! assert_assign_ok {
     ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
         let interpreter = interpret($program);
-        let dim_name = crate::linter::DimName::parse($expected_variable_name);
+        let name = crate::parser::Name::from($expected_variable_name);
         assert_eq!(
-            interpreter.context().get_r_value(&dim_name).unwrap(),
+            interpreter.context().get_r_value_by_name(&name).unwrap(),
             &crate::variant::Variant::from($expected_value)
         );
     };

@@ -15,7 +15,7 @@ pub enum Instruction {
     // variable path references.
     VarPathName(Name),
 
-    VarPathIndex(Variant),
+    VarPathIndex,
 
     VarPathProperty(BareName),
 
@@ -25,15 +25,8 @@ pub enum Instruction {
     /// Copies the value of register A into the variable path
     CopyVarPathToA,
 
-    #[deprecated]
-    Dim(DimName),
-
     /// Loads a value into register A
     Load(Variant),
-
-    /// Stores a value from register A
-    #[deprecated]
-    Store(DimName),
 
     /// Stores a value from register A into a constant
     StoreConst(QualifiedName),
@@ -66,8 +59,6 @@ pub enum Instruction {
     UnresolvedJump(CaseInsensitiveString),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
 
-    #[deprecated]
-    CopyVarToA(DimName),
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
     Halt,
@@ -116,9 +107,6 @@ pub enum Instruction {
 
     #[deprecated]
     ArrayElementToA(DimName),
-
-    #[deprecated]
-    StoreIndex,
 
     // allocating variables
     AllocateBuiltIn(TypeQualifier),

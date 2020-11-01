@@ -65,13 +65,7 @@ impl InstructionGenerator {
                 self.push(Instruction::VarPathName(Name::new(bare_name, None)), pos);
                 self.push(Instruction::CopyAToVarPath, pos);
             }
-            _ => self.push(
-                Instruction::Dim(DimName {
-                    bare_name,
-                    dim_type,
-                }),
-                pos,
-            ),
+            _ => panic!("Unsupported DIM {} {:?}", bare_name, dim_type),
         }
     }
 }

@@ -48,7 +48,8 @@ impl InstructionGenerator {
                 self.push(Instruction::CopyVarPathToA, pos);
             }
             Expression::Constant(qualified_name) => {
-                self.push(Instruction::CopyVarToA(qualified_name.into()), pos);
+                self.push(Instruction::VarPathName(qualified_name.into()), pos);
+                self.push(Instruction::CopyVarPathToA, pos);
             }
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);

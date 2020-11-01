@@ -268,11 +268,14 @@ impl InstructionGenerator {
             Expression::ArrayElement(var_name, args) => {
                 self.push(Instruction::VarPathName(var_name.into()), pos);
                 for arg in args {
+                    let arg_pos = arg.pos();
+                    self.push(Instruction::PushRegisters, arg_pos);
                     self.generate_expression_instructions_casting(
                         arg,
                         ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
                     );
-                    self.push(Instruction::VarPathIndex, pos);
+                    self.push(Instruction::VarPathIndex, arg_pos);
+                    self.push(Instruction::PopRegisters, arg_pos);
                 }
                 self.push(Instruction::CopyAToVarPath, pos);
             }

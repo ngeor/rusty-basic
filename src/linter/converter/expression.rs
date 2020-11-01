@@ -53,8 +53,11 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                                 .context
                                 .resolve_name_in_assignment(&n, &self.resolver)
                                 .with_err_at(pos)?;
+                            let element_type = dim_name.expression_type();
+                            let array_name: Name = dim_name.into();
                             Ok((
-                                Expression::ArrayElement(dim_name, converted_args).at(pos),
+                                Expression::ArrayElement(array_name, converted_args, element_type)
+                                    .at(pos),
                                 implicit_variables,
                             ))
                         } else {

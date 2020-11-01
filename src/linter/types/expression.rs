@@ -1,7 +1,7 @@
 use super::{DimName, ExpressionType, HasExpressionType};
 use crate::built_ins::BuiltInFunction;
 use crate::common::{CanCastTo, Locatable, QError, QErrorNode, ToLocatableError};
-use crate::parser::{Operator, QualifiedName, TypeQualifier, UnaryOperator};
+use crate::parser::{Name, Operator, QualifiedName, TypeQualifier, UnaryOperator};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -13,7 +13,14 @@ pub enum Expression {
     Constant(QualifiedName),
     Variable(DimName),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
-    ArrayElement(DimName, Vec<ExpressionNode>),
+    ArrayElement(
+        // the name of the array (unqualified only for user defined types)
+        Name,
+        // the array indices
+        Vec<ExpressionNode>,
+        // the type of the elements
+        ExpressionType,
+    ),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(
         Operator,
@@ -72,7 +79,7 @@ impl HasExpressionType for Expression {
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
             Self::BinaryExpression(_, _, _, type_definition) => type_definition.clone(),
             Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().expression_type(),
-            Self::ArrayElement(array_name, _) => array_name.expression_type(),
+            Self::ArrayElement(_, _, element_type) => element_type.clone(),
         }
     }
 }

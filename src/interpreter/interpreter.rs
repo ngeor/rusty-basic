@@ -397,31 +397,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 )
                 .with_err_at(pos)?;
             }
-            Instruction::ArrayElementToA(dim_name) => {
-                let r_args: Result<Vec<i32>, QError> = self
-                    .context_mut()
-                    .arguments_stack()
-                    .pop()
-                    .into_iter()
-                    .map(|(_, v)| v)
-                    .map(|v| i32::try_from(v))
-                    .collect();
-                let args = r_args.with_err_at(pos)?;
-                match self.context().get_r_value(dim_name) {
-                    Some(v) => match v {
-                        Variant::VArray(v_arr) => {
-                            let b = v_arr.get_element(args).with_err_at(pos)?.clone();
-                            self.set_a(b);
-                        }
-                        _ => {
-                            return Err(QError::TypeMismatch).with_err_at(pos);
-                        }
-                    },
-                    _ => {
-                        return Err(QError::ArrayNotDefined).with_err_at(pos);
-                    }
-                }
-            }
             Instruction::VarPathName(name) => match &self.name_ptr {
                 Some(x) => panic!("name_ptr already has value {:?}", x),
                 _ => {

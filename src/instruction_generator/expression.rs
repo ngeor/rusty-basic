@@ -43,14 +43,9 @@ impl InstructionGenerator {
             Expression::LongLiteral(s) => {
                 self.push_load(s, pos);
             }
-            Expression::Variable(dim_name) => {
-                self.push(Instruction::VarPathName(dim_name.into()), pos);
-                self.push(Instruction::CopyVarPathToA, pos);
-            }
-            Expression::Constant(qualified_name) => {
-                self.push(Instruction::VarPathName(qualified_name.into()), pos);
-                self.push(Instruction::CopyVarPathToA, pos);
-            }
+            Expression::Variable(_)
+            | Expression::Constant(_)
+            | Expression::ArrayElement(_, _, _) => self.generate_load_instructions(e, pos),
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);
                 self.generate_function_call_instructions(name_node, args);
@@ -93,19 +88,33 @@ impl InstructionGenerator {
             Expression::Parenthesis(child) => {
                 self.generate_expression_instructions(*child);
             }
-            Expression::ArrayElement(array_name, array_dimensions) => {
-                self.push(Instruction::BeginCollectArguments, pos);
+        }
+    }
 
-                for array_dimension in array_dimensions {
+    pub fn generate_path_instructions(&mut self, expr_node: ExpressionNode) {
+        let Locatable { element: expr, pos } = expr_node;
+
+        match expr {
+            Expression::Constant(const_name) => {
+                self.push(Instruction::VarPathName(const_name.into()), pos);
+            }
+            Expression::Variable(dim_name) => {
+                self.push(Instruction::VarPathName(dim_name.into()), pos);
+            }
+            Expression::ArrayElement(array_name, indices, _element_type) => {
+                self.push(Instruction::VarPathName(array_name), pos);
+                for arg in indices {
+                    let arg_pos = arg.pos();
+                    self.push(Instruction::PushRegisters, arg_pos);
                     self.generate_expression_instructions_casting(
-                        array_dimension,
+                        arg,
                         ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
                     );
-                    self.push(Instruction::PushUnnamed, pos);
+                    self.push(Instruction::VarPathIndex, arg_pos);
+                    self.push(Instruction::PopRegisters, arg_pos);
                 }
-
-                self.push(Instruction::ArrayElementToA(array_name), pos);
             }
+            _ => panic!("Not a name expression"),
         }
     }
 }

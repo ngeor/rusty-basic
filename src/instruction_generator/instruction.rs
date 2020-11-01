@@ -105,9 +105,6 @@ pub enum Instruction {
     #[deprecated]
     FixLength(u16),
 
-    #[deprecated]
-    ArrayElementToA(DimName),
-
     // allocating variables
     AllocateBuiltIn(TypeQualifier),
 

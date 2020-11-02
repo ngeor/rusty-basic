@@ -68,3 +68,19 @@ fn qualified_const_usage_wrong_type() {
             ";
     assert_linter_err!(program, QError::DuplicateDefinition, 3, 19);
 }
+
+#[test]
+fn test_function_call_expression_no_args() {
+    assert_linter_err!(
+        "PRINT IsValid()",
+        QError::syntax_error("Cannot have function call without arguments")
+    );
+}
+
+#[test]
+fn test_function_call_qualified_expression_no_args() {
+    assert_linter_err!(
+        "PRINT IsValid%()",
+        QError::syntax_error("Cannot have function call without arguments")
+    );
+}

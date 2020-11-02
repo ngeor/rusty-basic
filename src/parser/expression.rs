@@ -629,22 +629,6 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_function_call_expression_no_args() {
-            assert_eq!(
-                parse_err("PRINT IsValid()"),
-                QError::syntax_error("Cannot have function call without arguments")
-            );
-        }
-
-        #[test]
-        fn test_function_call_qualified_expression_no_args() {
-            assert_eq!(
-                parse_err("PRINT IsValid%()"),
-                QError::syntax_error("Cannot have function call without arguments")
-            );
-        }
-
-        #[test]
         fn test_function_call_expression_one_arg() {
             assert_expression!(
                 "IsValid(42)",

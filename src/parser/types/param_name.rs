@@ -14,6 +14,7 @@ pub enum ParamType {
     Compact(TypeQualifier),
     Extended(TypeQualifier),
     UserDefined(BareNameNode),
+    Array(Box<ParamType>),
 }
 
 pub type ParamNameNode = Locatable<ParamName>;

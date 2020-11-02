@@ -55,6 +55,7 @@ impl<'a> ConverterImpl<'a> {
             parser::ParamType::UserDefined(u) => {
                 self.resolve_param_user_defined(bare_name, u, opt_function_name)
             }
+            parser::ParamType::Array(_) => todo!()
         }
     }
 

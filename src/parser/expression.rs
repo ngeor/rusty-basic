@@ -409,34 +409,6 @@ mod word {
                 Ok((r, None)) => Ok((r, None)),
                 Err(e) => Err(e),
             }
-
-            // Ok((r, Some(name))) => {
-            //     let args_res = in_parenthesis(csv_zero_or_more(lazy(expression_node)))(r);
-            //     match args_res {
-            //         Ok((r, opt_args)) => {
-            //             let has_consecutive_or_trailing_dots =
-            //                 has_consecutive_or_trailing_dots(&name);
-            //             let is_qualified = match &name {
-            //                 Name::Qualified(_) => true,
-            //                 _ => false,
-            //             };
-            //             let can_have_properties =
-            //                 !is_qualified && !has_consecutive_or_trailing_dots;
-            //             let first_expr = match opt_args {
-            //                 Some(args) => Expression::FunctionCall(name, args),
-            //                 None => Expression::VariableName(name),
-            //             };
-            //             if can_have_properties {
-            //                 property(r, first_expr)
-            //             } else {
-            //                 Ok((r, Some(first_expr)))
-            //             }
-            //         }
-            //         Err((r, err)) => Err((r, err)),
-            //     }
-            // }
-            // Ok((r, None)) => Ok((r, None)),
-            // Err((r, err)) => Err((r, err)),
         }
     }
 
@@ -506,15 +478,27 @@ mod word {
                             } else {
                                 // encountered two consecutive periods for the first time,
                                 // fold expression into a single name and append two dots
-                                let folded_name = fold_name(base_expr) + '.' + '.';
-                                continue_after_bare_name_dot(
-                                    r,
-                                    Expression::VariableName(Name::Bare(folded_name)),
-                                    true,
-                                )
+                                if let Name::Bare(folded_name) = fold_name(base_expr) {
+                                    continue_after_bare_name_dot(
+                                        r,
+                                        Expression::VariableName(Name::Bare(
+                                            folded_name + '.' + '.',
+                                        )),
+                                        true,
+                                    )
+                                } else {
+                                    panic!("Expected bare name")
+                                }
                             }
                         } else if let Ok(q) = TypeQualifier::try_from(ch) {
-                            continue_after_qualified_name(r, qualify(base_expr, q))
+                            if has_consecutive_dots {
+                                continue_after_qualified_name(r, qualify(base_expr, q))
+                            } else {
+                                continue_after_qualified_name(
+                                    r,
+                                    qualify(concat_name(base_expr, '.'), q),
+                                )
+                            }
                         } else if ch == '(' {
                             continue_after_bare_name_parenthesis(r.undo(ch), fold_expr(base_expr))
                         } else {
@@ -548,18 +532,33 @@ mod word {
         }
     }
 
-    fn fold_name(base_expr: Expression) -> BareName {
+    fn fold_name(base_expr: Expression) -> Name {
         match base_expr {
-            Expression::VariableName(Name::Bare(bare_name)) => bare_name,
-            Expression::Property(left, Name::Bare(property_name)) => {
-                fold_name(*left) + '.' + property_name
+            Expression::VariableName(name) => name,
+            Expression::Property(left, property_name) => {
+                let left_name = fold_name(*left);
+                match left_name {
+                    Name::Bare(bare_left_name) => match property_name {
+                        Name::Bare(bare_property_name) => {
+                            Name::Bare(bare_left_name + '.' + bare_property_name)
+                        }
+                        Name::Qualified(QualifiedName {
+                            bare_name: bare_property_name,
+                            qualifier,
+                        }) => Name::Qualified(QualifiedName::new(
+                            bare_left_name + '.' + bare_property_name,
+                            qualifier,
+                        )),
+                    },
+                    _ => panic!("Left name already qualified, cannot append to it!"),
+                }
             }
             _ => panic!("Unexpected expression"),
         }
     }
 
     fn fold_expr(base_expr: Expression) -> Expression {
-        Expression::VariableName(Name::Bare(fold_name(base_expr)))
+        Expression::VariableName(fold_name(base_expr))
     }
 
     fn concat_name<X>(base_expr: Expression, x: X) -> Expression
@@ -642,8 +641,20 @@ mod word {
                 if ch == '.' {
                     continue_after_bare_name_args_dot(r, base_expr) // recursion
                 } else if let Ok(q) = TypeQualifier::try_from(ch) {
-                    // e.g. A(1).Name$
-                    todo!()
+                    // e.g. A(1).First$ or A(1).First.Second$
+                    let result = qualify(base_expr, q);
+                    // pre-emptive strike to see if there is a dot or a type qualifier after this
+                    match any_symbol()(r) {
+                        Ok((r, Some(ch))) => {
+                            if ch == '.' || TypeQualifier::try_from(ch).is_ok() {
+                                Err((r, QError::syntax_error("Expected: end of name expr")))
+                            } else {
+                                Ok((r.undo(ch), Some(result)))
+                            }
+                        }
+                        Ok((r, None)) => Ok((r, Some(result))),
+                        Err((r, err)) => Err((r, err)),
+                    }
                 } else {
                     Ok((r.undo(ch), Some(base_expr)))
                 }
@@ -653,17 +664,59 @@ mod word {
         }
     }
 
-    fn continue_after_qualified_name<T: BufRead>(
+    fn continue_after_qualified_name<T: BufRead + 'static>(
         r: EolReader<T>,
         base_expr: Expression,
     ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        todo!()
+        // might be A$ followed by '(' (if '.' or type qualifier again it is an error)
+        match any_symbol()(r) {
+            Ok((r, Some(ch))) => {
+                if ch == '(' {
+                    // we might be after A$, A.$, A.B$, etc
+                    // we need to fold the base_expr as properties cannot have arrays
+                    continue_after_qualified_name_parenthesis(r.undo(ch), fold_expr(base_expr))
+                } else if let Ok(_) = TypeQualifier::try_from(ch) {
+                    Err((r, QError::syntax_error("Expected: end of name expr")))
+                } else if ch == '.' {
+                    Err((r, QError::syntax_error("Expected: end of name expr")))
+                } else {
+                    // something else
+                    Ok((r.undo(ch), Some(base_expr)))
+                }
+            }
+            Ok((r, None)) => Ok((r, Some(base_expr))),
+            Err((r, err)) => Err((r, err)),
+        }
     }
 
-    fn has_consecutive_or_trailing_dots(name: &Name) -> bool {
-        let bare_name: &CaseInsensitiveString = name.as_ref();
-        let x: &str = bare_name.as_ref();
-        x.ends_with('.') || x.contains("..")
+    fn continue_after_qualified_name_parenthesis<T: BufRead + 'static>(
+        r: EolReader<T>,
+        base_expr: Expression,
+    ) -> ReaderResult<EolReader<T>, Expression, QError> {
+        match in_parenthesis(csv_zero_or_more(lazy(expression_node)))(r) {
+            Ok((r, Some(args))) => match any_symbol()(r) {
+                Ok((r, Some(ch))) => {
+                    if ch == '.' || TypeQualifier::try_from(ch).is_ok() {
+                        Err((r, QError::syntax_error("Expected: end of name expression")))
+                    } else {
+                        Ok((
+                            r.undo(ch),
+                            Some(Expression::FunctionCall(get_expr_name(base_expr), args)),
+                        ))
+                    }
+                }
+                Ok((r, None)) => Ok((
+                    r,
+                    Some(Expression::FunctionCall(get_expr_name(base_expr), args)),
+                )),
+                Err((r, err)) => Err((r, err)),
+            },
+            Ok((r, None)) => {
+                // not possible because we peeked '('
+                panic!("Should have read parenthesis")
+            }
+            Err((r, err)) => Err((r, err)),
+        }
     }
 
     #[cfg(test)]
@@ -671,155 +724,263 @@ mod word {
         use super::*;
         use crate::parser::test_utils::ExpressionNodeLiteralFactory;
 
-        #[test]
-        fn test_any_word_without_dot() {
-            let input = "abc";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(result, Some(Expression::var(input)));
+        mod unqualified {
+            use super::*;
+
+            mod no_dots {
+                use super::*;
+
+                #[test]
+                fn test_any_word_without_dot() {
+                    let input = "abc";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(result, Some(Expression::var(input)));
+                }
+
+                #[test]
+                fn test_array_or_function_no_dot_no_qualifier() {
+                    let input = "A(1)";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(
+                        result,
+                        Some(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)]))
+                    );
+                }
+            }
+
+            mod dots {
+                use super::*;
+
+                #[test]
+                fn test_trailing_dot() {
+                    let input = "abc.";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(result, Some(Expression::var(input)));
+                }
+
+                #[test]
+                fn test_two_consecutive_trailing_dots() {
+                    let input = "abc..";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(result, Some(Expression::var(input)));
+                }
+
+                #[test]
+                fn test_possible_property() {
+                    let input = "a.b.c";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(
+                        result,
+                        Some(Expression::Property(
+                            Box::new(Expression::Property(
+                                Box::new(Expression::var("a")),
+                                "b".into()
+                            )),
+                            "c".into()
+                        ))
+                    );
+                }
+
+                #[test]
+                fn test_possible_variable() {
+                    let input = "a.b.c.";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(result, Some(Expression::var("a.b.c.")));
+                }
+
+                #[test]
+                fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
+                    let input = "A(1).O..ops";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    assert_eq!(
+                        err,
+                        QError::syntax_error("Expected: property name after period")
+                    );
+                }
+
+                #[test]
+                fn test_bare_array_bare_property() {
+                    let input = "A(1).Suit";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(
+                        result,
+                        Some(Expression::Property(
+                            Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
+                            Name::Bare("Suit".into())
+                        ))
+                    );
+                }
+            }
         }
 
-        #[test]
-        fn test_qualified_var_without_dot() {
-            let input = "abc$";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(result, Some(Expression::var(input)));
-        }
+        mod qualified {
+            use super::*;
 
-        #[test]
-        fn test_trailing_dot() {
-            let input = "abc.";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(result, Some(Expression::var(input)));
-        }
+            mod no_dots {
+                use super::*;
 
-        #[test]
-        fn test_two_consecutive_trailing_dots() {
-            let input = "abc..";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(result, Some(Expression::var(input)));
-        }
+                #[test]
+                fn test_qualified_var_without_dot() {
+                    let input = "abc$";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(result, Some(Expression::var(input)));
+                }
 
-        #[test]
-        fn test_qualified_var_with_dot() {
-            let input = "abc.$";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(result, Some(Expression::var(input)));
-        }
+                #[test]
+                fn test_duplicate_qualifier_is_error() {
+                    let input = "abc$%";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
+                }
 
-        #[test]
-        fn test_dot_after_qualifier_is_error() {
-            let input = "abc$.";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, err) = parser(eol_reader).expect_err("Should not parse");
-            assert_eq!(err, QError::syntax_error("whatever"));
-        }
+                #[test]
+                fn test_array_or_function_no_dot_qualified() {
+                    let input = "A$(1)";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(
+                        result,
+                        Some(Expression::func("A$".into(), vec![1.as_lit_expr(1, 4)]))
+                    );
+                }
+            }
 
-        #[test]
-        fn test_possible_property() {
-            let input = "a.b.c";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(
-                result,
-                Some(Expression::Property(
-                    Box::new(Expression::Property(
-                        Box::new(Expression::var("a")),
-                        "b".into()
-                    )),
-                    "c".into()
-                ))
-            );
-        }
+            mod dots {
+                use super::*;
 
-        #[test]
-        fn test_possible_variable() {
-            let input = "a.b.c.";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(result, Some(Expression::var("a.b.c.")));
-        }
+                #[test]
+                fn test_possible_qualified_property() {
+                    let input = "a.b$";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(
+                        result,
+                        Some(Expression::Property(
+                            Box::new(Expression::var("a".into())),
+                            "b$".into()
+                        ))
+                    );
+                }
 
-        #[test]
-        fn test_array_or_function_no_dot_no_qualifier() {
-            let input = "A(1)";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(
-                result,
-                Some(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)]))
-            );
-        }
+                #[test]
+                fn test_possible_qualified_property_reverts_to_array() {
+                    let input = "a.b$(1)";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(
+                        result,
+                        Some(Expression::func("a.b$".into(), vec![1.as_lit_expr(1, 6)]))
+                    );
+                }
 
-        #[test]
-        fn test_qualified_array_cannot_have_properties() {
-            let input = "A$(1).Oops";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, err) = parser(eol_reader).expect_err("Should not parse");
-            assert_eq!(err, QError::syntax_error("whatever"));
-        }
+                #[test]
+                fn test_qualified_var_with_dot() {
+                    let input = "abc.$";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(result, Some(Expression::var(input)));
+                }
 
-        #[test]
-        fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
-            let input = "A(1).O..ops";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, err) = parser(eol_reader).expect_err("Should not parse");
-            assert_eq!(
-                err,
-                QError::syntax_error("Expected: property name after period")
-            );
-        }
+                #[test]
+                fn test_qualified_var_with_two_dots() {
+                    let input = "abc..$";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(result, Some(Expression::var(input)));
+                }
 
-        #[test]
-        fn test_bare_array_bare_property() {
-            let input = "A(1).Suit";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(
-                result,
-                Some(Expression::Property(
-                    Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
-                    Name::Bare("Suit".into())
-                ))
-            );
-        }
+                #[test]
+                fn test_dot_after_qualifier_is_error() {
+                    let input = "abc$.";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
+                }
 
-        #[test]
-        fn test_bare_array_qualified_property() {
-            // TODO add linter err test for type mismatch
-            let input = "A(1).Suit$";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, result) = parser(eol_reader).expect("Should parse");
-            assert_eq!(
-                result,
-                Some(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)]))
-            );
-        }
+                #[test]
+                fn test_array_or_function_dotted_qualified() {
+                    let input = "A.B$(1)";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(
+                        result,
+                        Some(Expression::func("A.B$".into(), vec![1.as_lit_expr(1, 6)]))
+                    );
+                }
 
-        #[test]
-        fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
-            let input = "A(1).Suit$.";
-            let eol_reader = EolReader::from(input);
-            let parser = word();
-            let (_, err) = parser(eol_reader).expect_err("Should not parse");
-            assert_eq!(err, QError::syntax_error("whatever"));
+                #[test]
+                fn test_qualified_array_cannot_have_properties() {
+                    let input = "A$(1).Oops";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    assert_eq!(
+                        err,
+                        QError::syntax_error("Expected: end of name expression")
+                    );
+                }
+
+                #[test]
+                fn test_bare_array_qualified_property() {
+                    // TODO add linter err test for type mismatch
+                    let input = "A(1).Suit$";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    assert_eq!(
+                        result,
+                        Some(Expression::Property(
+                            Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
+                            "Suit$".into()
+                        ))
+                    );
+                }
+
+                #[test]
+                fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
+                    let input = "A(1).Suit$.";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
+                }
+
+                #[test]
+                fn test_bare_array_qualified_property_extra_qualifier_is_error() {
+                    let input = "A(1).Suit$%";
+                    let eol_reader = EolReader::from(input);
+                    let parser = word();
+                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
+                }
+            }
         }
     }
 }

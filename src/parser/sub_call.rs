@@ -74,7 +74,8 @@ pub fn sub_call_or_assignment<T: BufRead + 'static>(
                     };
                     if let Some(elements) = opt_elements {
                         for element in elements {
-                            name_expr = Expression::Property(Box::new(name_expr), element);
+                            name_expr =
+                                Expression::Property(Box::new(name_expr), Name::Bare(element));
                         }
                     }
                     Ok(Statement::Assignment(name_expr, assignment_r_value))

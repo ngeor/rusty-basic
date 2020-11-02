@@ -121,7 +121,7 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
-pub fn any_symbol<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
+pub fn any_symbol<R, E>() -> impl Fn(R) -> ReaderResult<R, char, E>
 where
     R: Reader<Item = char, Err = E> + 'static,
 {

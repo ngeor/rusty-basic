@@ -1,4 +1,4 @@
-use crate::common::{AtLocation, CaseInsensitiveString, HasLocation, Locatable, Location};
+use crate::common::{AtLocation, HasLocation, Locatable, Location};
 use crate::parser::types::{Name, Operator, UnaryOperator};
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
@@ -25,7 +25,7 @@ pub enum Expression {
     /// - A.B (A left, B right)
     /// - A(1).B ( A(1) left, B right)
     /// - A.B.C (A.B left, C right)
-    Property(Box<Expression>, CaseInsensitiveString),
+    Property(Box<Expression>, Name),
 }
 
 pub type ExpressionNode = Locatable<Expression>;

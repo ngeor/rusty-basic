@@ -43,13 +43,13 @@ pub const MAX_LENGTH: usize = 40;
 
 /// Reads any word, i.e. any identifier which is not a keyword.
 pub fn any_word_with_dot<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
+) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError> {
     source_and_then_some(any_identifier_with_dot(), ensure_length_and_not_keyword)
 }
 
 /// Reads any word, i.e. any identifier which is not a keyword.
 pub fn any_word_without_dot<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
+) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError> {
     source_and_then_some(any_identifier_without_dot(), ensure_length_and_not_keyword)
 }
 
@@ -63,6 +63,39 @@ fn ensure_length_and_not_keyword<T: BufRead + 'static>(
         match Keyword::from_str(&s) {
             Ok(_) => Ok((reader.undo(s), None)),
             Err(_) => Ok((reader, Some(s.into()))),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_any_word_without_dot() {
+        let inputs = ["abc", "abc1", "abc.def", "a$"];
+        let expected_outputs = ["abc", "abc1", "abc", "a"];
+        for i in 0..inputs.len() {
+            let input = inputs[i];
+            let expected_output = expected_outputs[i];
+            let eol_reader = EolReader::from(input);
+            let parser = any_word_without_dot();
+            let (_, result) = parser(eol_reader).expect("Should succeed");
+            assert_eq!(result, Some(BareName::from(expected_output)));
+        }
+    }
+
+    #[test]
+    fn test_any_word_with_dot() {
+        let inputs = ["abc", "abc1", "abc.def"];
+        let expected_outputs = ["abc", "abc1", "abc.def"];
+        for i in 0..inputs.len() {
+            let input = inputs[i];
+            let expected_output = expected_outputs[i];
+            let eol_reader = EolReader::from(input);
+            let parser = any_word_with_dot();
+            let (_, result) = parser(eol_reader).expect("Should succeed");
+            assert_eq!(result, Some(BareName::from(expected_output)));
         }
     }
 }

@@ -209,6 +209,15 @@ impl std::ops::Add<char> for CaseInsensitiveString {
     }
 }
 
+impl std::ops::Add<CaseInsensitiveString> for CaseInsensitiveString {
+    type Output = Self;
+    fn add(self, other: CaseInsensitiveString) -> Self {
+        let mut s: String = self.into();
+        s.push_str(&other.inner);
+        s.into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

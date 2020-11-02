@@ -299,7 +299,7 @@ impl<T> SubProgramContext<T> {
                     Err(QError::TypeNotDefined).with_err_at(pos)
                 }
             }
-            parser::ParamType::Array(_) => todo!()
+            parser::ParamType::Array(_) => todo!(),
         }
     }
 }

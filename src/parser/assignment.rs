@@ -5,6 +5,14 @@ mod tests {
     use crate::parser::types::*;
 
     macro_rules! assert_top_level_assignment {
+        ($input:expr, $name_expr:expr) => {
+            match parse($input).demand_single_statement() {
+                Statement::Assignment(n, _) => {
+                    assert_eq!(n, $name_expr);
+                }
+                _ => panic!("Expected: assignment"),
+            }
+        };
         ($input:expr, $name:expr, $value:expr) => {
             match parse($input).demand_single_statement() {
                 Statement::Assignment(n, crate::common::Locatable { element: v, .. }) => {
@@ -16,13 +24,121 @@ mod tests {
         };
     }
 
+    mod unqualified {
+        use super::*;
+
+        mod no_dots {
+            use super::*;
+
+            #[test]
+            fn test_assign_unqualified_variable_no_dots() {
+                let input = "A = 42";
+                assert_top_level_assignment!(input, Expression::var("A"));
+            }
+
+            #[test]
+            fn test_whitespace_around_equals_is_optional() {
+                let var_name = "A";
+                let value = 42;
+                assert_top_level_assignment!(format!("{} = {}", var_name, value), var_name, value);
+                assert_top_level_assignment!(format!("{}={}", var_name, value), var_name, value);
+                assert_top_level_assignment!(format!("{}= {}", var_name, value), var_name, value);
+                assert_top_level_assignment!(format!("{} ={}", var_name, value), var_name, value);
+            }
+
+            #[test]
+            fn test_assign_unqualified_variable_no_dots_array() {
+                let input = "A(1) = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::FunctionCall("A".into(), vec![1.as_lit_expr(1, 3)])
+                );
+            }
+        }
+
+        mod dots {
+            use super::*;
+
+            #[test]
+            fn test_potential_property() {
+                let input = "A.B = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::Property(Box::new(Expression::var("A")), "B".into())
+                );
+            }
+
+            #[test]
+            fn test_not_property_due_to_consecutive_dots() {
+                let input = "A..B = 42";
+                assert_top_level_assignment!(input, Expression::var("A..B"));
+            }
+
+            #[test]
+            fn test_assign_array_property() {
+                let input = "A(1).Value = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::Property(
+                        Box::new(Expression::FunctionCall(
+                            "A".into(),
+                            vec![1.as_lit_expr(1, 3)]
+                        )),
+                        "Value".into()
+                    )
+                );
+            }
+        }
+    }
+
+    mod qualified {
+        use super::*;
+
+        mod no_dots {
+            use super::*;
+
+            #[test]
+            fn test_assign_qualified_variable_no_dots() {
+                let input = "A% = 42";
+                assert_top_level_assignment!(input, Expression::var("A%"));
+            }
+
+            #[test]
+            fn test_assign_qualified_variable_no_dots_array() {
+                let input = "A%(1) = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::FunctionCall("A%".into(), vec![1.as_lit_expr(1, 4)])
+                );
+            }
+        }
+
+        mod dots {
+            use super::*;
+
+            #[test]
+            fn test_assign_array_property() {
+                let input = "A(1).Value% = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::Property(
+                        Box::new(Expression::FunctionCall(
+                            "A".into(),
+                            vec![1.as_lit_expr(1, 3)]
+                        )),
+                        "Value%".into()
+                    )
+                );
+            }
+        }
+    }
+
     #[test]
     fn test_numeric_assignment() {
         let names = [
             "A",
             "BC",
             "A%",
-            "A.B",
             "A..B",
             "A.B.",
             "C.%",

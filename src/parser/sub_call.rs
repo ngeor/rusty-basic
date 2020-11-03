@@ -1,12 +1,10 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
-use crate::parser::name;
-use crate::parser::pc::common::{and, drop_left, many, map_default_to_not_found, opt_seq3, or_vec};
-use crate::parser::pc::map::{and_then, map};
-use crate::parser::pc::ws::{is_eol, one_or_more_leading, zero_or_more_leading};
+use crate::parser::pc::common::{drop_left, many, many_looking_back, seq2};
+use crate::parser::pc::map::map;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{csv_zero_or_more, in_parenthesis};
+use crate::parser::pc_specific::csv_zero_or_more;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -16,117 +14,92 @@ use std::io::BufRead;
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 pub fn sub_call_or_assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    and_then(
-        and(
-            name::name(),
-            or_vec(vec![
-                // e.g. PRINT("hello", "world")
-                opt_seq3(
-                    map_default_to_not_found(in_parenthesis(csv_zero_or_more(
-                        expression::expression_node(),
-                    ))),
-                    map_default_to_not_found(many(drop_left(and(
-                        read('.'),
-                        name::any_word_without_dot(),
-                    )))),
-                    drop_left(and(
-                        ws::zero_or_more_around(read('=')),
-                        expression::expression_node(),
-                    )),
-                ),
-                // e.g. PRINT "hello", "world"
-                map(
-                    zero_or_more_leading(map_default_to_not_found(csv_zero_or_more(
-                        expression::expression_node(),
-                    ))),
-                    |x| (x, None, None),
-                ),
-                // assignment
-                map(
-                    drop_left(and(
-                        ws::zero_or_more_around(read('=')),
-                        expression::expression_node(),
-                    )),
-                    |x| (vec![], None, Some(x)),
-                ),
-                // prevent against e.g. A = "oops"
-                map(
-                    one_or_more_leading(zero_args_assignment_and_label_guard(
-                        statement_terminator_after_whitespace,
-                    )),
-                    |x| (x, None, None),
-                ),
-                // prevent against e.g. A: or A="oops"
-                map(
-                    zero_args_assignment_and_label_guard(statement_terminator),
-                    |x| (x, None, None),
-                ),
-            ]),
-        ),
-        |(n, (args, opt_elements, opt_assignment_r_value))| {
-            match opt_assignment_r_value {
-                Some(assignment_r_value) => {
-                    // assignment
-                    let mut name_expr: Expression = if args.is_empty() {
-                        Expression::VariableName(n)
-                    } else {
-                        Expression::FunctionCall(n, args)
-                    };
-                    if let Some(elements) = opt_elements {
-                        for element in elements {
-                            name_expr =
-                                Expression::Property(Box::new(name_expr), Name::Bare(element));
-                        }
-                    }
-                    Ok(Statement::Assignment(name_expr, assignment_r_value))
-                }
-                None => {
-                    if opt_elements.is_some() {
-                        Err(QError::syntax_error("Sub cannot have properties"))
-                    } else {
-                        // sub call
-                        match n {
-                            Name::Bare(bare_name) => Ok(Statement::SubCall(bare_name, args)),
-                            Name::Qualified(_) => {
-                                Err(QError::syntax_error("Sub name cannot be qualified"))
-                            }
-                        }
-                    }
+    Box::new(move |r| {
+        match expression::word::word()(r) {
+            Ok((r, Some(name_expr))) => {
+                // is there an equal sign following?
+                match ws::zero_or_more_around(read('='))(r) {
+                    Ok((r, Some(_))) => assignment(r, name_expr),
+                    Ok((r, None)) => sub_call(r, name_expr),
+                    Err((r, err)) => Err((r, err)),
                 }
             }
+            Ok((r, None)) => Ok((r, None)),
+            Err((r, err)) => Err((r, err)),
+        }
+    })
+}
+
+fn assignment<T: BufRead + 'static>(
+    r: EolReader<T>,
+    name_expr: Expression,
+) -> ReaderResult<EolReader<T>, Statement, QError> {
+    match expression::demand_expression_node()(r) {
+        Ok((r, Some(right_expr_node))) => {
+            Ok((r, Some(Statement::Assignment(name_expr, right_expr_node))))
+        }
+        Ok((r, None)) => panic!("Got None from demand_expression_node, should not happen"),
+        Err((r, err)) => Err((r, err)),
+    }
+}
+
+fn sub_call<T: BufRead + 'static>(
+    r: EolReader<T>,
+    name_expr: Expression,
+) -> ReaderResult<EolReader<T>, Statement, QError> {
+    match name_expr {
+        // A(1, 2) or A$(1, 2)
+        Expression::FunctionCall(name, args) => {
+            match name {
+                Name::Bare(bare_name) => {
+                    // this one is easy, convert it to a sub
+                    Ok((r, Some(Statement::SubCall(bare_name, args))))
+                }
+                _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
+            }
+        }
+        Expression::VariableName(name) => {
+            // A or A$ (might have arguments after space)
+            match name {
+                Name::Bare(bare_name) => {
+                    // are there any args after the space?
+                    match sub_call_args_after_space()(r) {
+                        Ok((r, opt_args)) => Ok((
+                            r,
+                            Some(Statement::SubCall(bare_name, opt_args.unwrap_or_default())),
+                        )),
+                        Err((r, err)) => Err((r, err)),
+                    }
+                }
+                _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
+            }
+        }
+        Expression::Property(left_name_expr, property_name) => {
+            // only possible if A.B is a sub, if left_name_expr contains a Function, abort
+            todo!()
+        }
+        _ => panic!("Unexpected name expression"),
+    }
+}
+
+fn sub_call_args_after_space<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNodes, QError>> {
+    map(
+        seq2(
+            // first expression after sub name
+            expression::guarded_expression_node(),
+            many(drop_left(seq2(
+                // read comma after previous expression
+                ws::zero_or_more_around(read(',')),
+                // must have expression after comma
+                expression::demand_expression_node(),
+            ))),
+        ),
+        |(first_expr, mut remaining_expr)| {
+            remaining_expr.insert(0, first_expr);
+            remaining_expr
         },
     )
-}
-
-fn statement_terminator(ch: char) -> bool {
-    ch == '\'' || is_eol(ch)
-}
-
-fn statement_terminator_after_whitespace(ch: char) -> bool {
-    statement_terminator(ch) || ch == ':'
-}
-
-fn zero_args_assignment_and_label_guard<T: BufRead + 'static>(
-    is_statement_terminator: fn(char) -> bool,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNodes, QError>> {
-    Box::new(move |reader| {
-        reader.read().and_then(|(reader, opt_res)| match opt_res {
-            Some(ch) => {
-                let res: Option<ExpressionNodes> = if is_statement_terminator(ch) {
-                    // found statement terminator
-                    Some(vec![])
-                } else {
-                    // found something else
-                    None
-                };
-                Ok((reader.undo(ch), res))
-            }
-            None => {
-                // EOF e.g. PRINT followed by EOF
-                Ok((reader, Some(vec![])))
-            }
-        })
-    })
 }
 
 #[cfg(test)]

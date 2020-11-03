@@ -391,7 +391,7 @@ mod number_literal {
     }
 }
 
-mod word {
+pub mod word {
     use super::*;
     use crate::parser::name::any_word_without_dot;
     use std::convert::TryFrom;
@@ -607,7 +607,7 @@ mod word {
                 )),
                 Err((r, err)) => Err((r, err)),
             },
-            Ok((r, None)) => {
+            Ok((_r, None)) => {
                 // not possible because we peeked '('
                 panic!("Should have read parenthesis")
             }
@@ -711,7 +711,7 @@ mod word {
                 )),
                 Err((r, err)) => Err((r, err)),
             },
-            Ok((r, None)) => {
+            Ok((_r, None)) => {
                 // not possible because we peeked '('
                 panic!("Should have read parenthesis")
             }

@@ -31,7 +31,7 @@ pub enum DimType {
     // C.Suit, Name.Address, Name.Address.PostCode
     Many(BareName, Members),
 
-    Array(ArrayDimensions, Box<DimType>),
+    Array(ArrayDimensions, Box<ExpressionType>),
 }
 
 pub type ArrayDimensions = Vec<ArrayDimension>;
@@ -143,8 +143,13 @@ impl From<DimName> for Name {
             DimType::UserDefined(_) | DimType::Many(_, _) => Name::new(bare_name, None),
             DimType::Array(_, box_element_type) => {
                 let element_type = *box_element_type;
-                let array_name = DimName::new(bare_name, element_type);
-                Name::from(array_name)
+                match element_type {
+                    ExpressionType::BuiltIn(q) => Name::new(bare_name, Some(q)),
+                    ExpressionType::FixedLengthString(_) => {
+                        Name::new(bare_name, Some(TypeQualifier::DollarString))
+                    }
+                    _ => Name::new(bare_name, None),
+                }
             }
         }
     }
@@ -216,7 +221,7 @@ impl HasExpressionType for DimType {
             Self::FixedLengthString(len) => ExpressionType::FixedLengthString(*len),
             Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
             Self::Many(_, members) => members.expression_type(),
-            Self::Array(_, element_type) => element_type.expression_type(),
+            Self::Array(_, element_type) => element_type.as_ref().clone(),
         }
     }
 }

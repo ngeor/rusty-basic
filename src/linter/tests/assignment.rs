@@ -1,7 +1,7 @@
 use crate::assert_linter_err;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
-use crate::linter::{Expression, ExpressionType, Statement, TopLevelToken};
+use crate::linter::{DimName, DimType, Expression, ExpressionType, Statement, TopLevelToken};
 use crate::parser::{Operator, TypeQualifier};
 
 #[test]
@@ -66,12 +66,30 @@ fn test_assign_binary_plus() {
             Expression::var("X%"),
             Expression::BinaryExpression(
                 Operator::Plus,
-                Box::new(Expression::IntegerLiteral(1).at_rc(1, 6),),
+                Box::new(Expression::IntegerLiteral(1).at_rc(1, 6)),
                 Box::new(Expression::SingleLiteral(2.1).at_rc(1, 10)),
-                ExpressionType::BuiltIn(TypeQualifier::BangSingle)
+                ExpressionType::BuiltIn(TypeQualifier::BangSingle),
             )
-            .at_rc(1, 8)
+            .at_rc(1, 8),
         ))
         .at_rc(1, 1)]
+    );
+}
+
+#[test]
+fn test_possible_property_folded_back_to_variable() {
+    assert_eq!(
+        linter_ok("A.B = 12"),
+        vec![
+            TopLevelToken::Statement(Statement::Dim(
+                DimName::new("A.B".into(), DimType::BuiltIn(TypeQualifier::BangSingle)).at_rc(1, 1)
+            ))
+            .at_rc(1, 1),
+            TopLevelToken::Statement(Statement::Assignment(
+                Expression::var("A.B!".into()),
+                Expression::IntegerLiteral(12).at_rc(1, 7),
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }

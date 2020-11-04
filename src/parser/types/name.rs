@@ -1,8 +1,9 @@
 use crate::common::Locatable;
 use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
+use std::ops::Add;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub enum Name {
     Bare(BareName),
     Qualified(QualifiedName),
@@ -89,6 +90,58 @@ impl From<BareName> for Name {
 impl From<QualifiedName> for Name {
     fn from(qualified_name: QualifiedName) -> Self {
         Self::Qualified(qualified_name)
+    }
+}
+
+impl std::ops::Add<char> for Name {
+    type Output = Name;
+
+    fn add(self, rhs: char) -> Self::Output {
+        match self {
+            Name::Bare(bare_name) => Name::Bare(bare_name + rhs),
+            Name::Qualified(QualifiedName {
+                bare_name,
+                qualifier,
+            }) => Name::Qualified(QualifiedName {
+                bare_name: bare_name + rhs,
+                qualifier,
+            }),
+        }
+    }
+}
+
+impl std::ops::Add<Name> for Name {
+    type Output = Name;
+
+    fn add(self, rhs: Name) -> Self::Output {
+        match self {
+            Name::Bare(left) => match rhs {
+                Name::Bare(right) => Name::Bare(left + right),
+                Name::Qualified(QualifiedName {
+                    bare_name: right,
+                    qualifier,
+                }) => Name::Qualified(QualifiedName {
+                    bare_name: left + right,
+                    qualifier,
+                }),
+            },
+            _ => panic!("Cannot append to qualified name {}", self),
+        }
+    }
+}
+
+impl std::fmt::Debug for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Bare(bare_name) => bare_name.fmt(f),
+            Self::Qualified(qualified_name) => qualified_name.fmt(f),
+        }
+    }
+}
+
+impl std::fmt::Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
     }
 }
 

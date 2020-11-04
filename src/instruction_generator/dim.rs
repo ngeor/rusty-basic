@@ -28,7 +28,7 @@ impl InstructionGenerator {
                     self.push(Instruction::PushUnnamed, ubound_pos);
                 }
 
-                let element_type = box_element_type.expression_type();
+                let element_type = *box_element_type;
 
                 let opt_q = match &element_type {
                     ExpressionType::BuiltIn(q) => Some(*q),

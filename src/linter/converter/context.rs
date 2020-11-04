@@ -198,7 +198,7 @@ impl<'a> Context<'a> {
             Some(Expression::Constant(_)) => Err(QError::DuplicateDefinition),
             None => self
                 .resolve_missing_name_in_assignment(name, resolver)
-                .map(|dim_name| (dim_name, true)),
+                .map(|qualified_name| (qualified_name.into(), true)),
             _ => panic!("Unexpected result from resolving name expression"),
         }
     }
@@ -276,13 +276,13 @@ impl<'a> Context<'a> {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<DimName, QError> {
+    ) -> Result<QualifiedName, QError> {
         let QualifiedName {
             bare_name,
             qualifier,
         } = resolver.resolve_name(name);
         self.push_dim_compact(bare_name.clone(), qualifier);
-        Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
+        Ok(QualifiedName::new(bare_name, qualifier))
     }
 
     pub fn resolve_expression<T: TypeResolver>(

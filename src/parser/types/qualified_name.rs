@@ -2,7 +2,7 @@ use crate::common::{Locatable, QError};
 use crate::parser::types::{BareName, TypeQualifier};
 use std::convert::TryFrom;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct QualifiedName {
     pub bare_name: BareName,
     pub qualifier: TypeQualifier,
@@ -45,6 +45,19 @@ impl TryFrom<&str> for QualifiedName {
         let mut buf = s.to_owned();
         let last_ch: char = buf.pop().unwrap();
         TypeQualifier::try_from(last_ch).map(|q| QualifiedName::new(BareName::new(buf), q))
+    }
+}
+
+impl std::fmt::Debug for QualifiedName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.bare_name, f)?;
+        std::fmt::Debug::fmt(&self.qualifier, f)
+    }
+}
+
+impl std::fmt::Display for QualifiedName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
     }
 }
 

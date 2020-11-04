@@ -126,11 +126,13 @@ impl<'a> ConverterImpl<'a> {
             None => match self.resolve_name_as_subprogram(name)? {
                 Some(x) => Ok((x.at(pos), vec![])),
                 None => {
-                    let dim_name = self
+                    let q_name = self
                         .context
                         .resolve_missing_name_in_assignment(name, &self.resolver)?;
-                    let q_name: QualifiedName = dim_name.clone().try_into()?;
-                    Ok((Expression::Variable(dim_name).at(pos), vec![q_name.at(pos)]))
+                    Ok((
+                        Expression::Variable(q_name.clone().into()).at(pos),
+                        vec![q_name.at(pos)],
+                    ))
                 }
             },
         }

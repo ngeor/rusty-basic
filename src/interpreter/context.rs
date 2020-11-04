@@ -124,8 +124,15 @@ impl Context {
             }
             DimType::Array(_, box_element_type) => {
                 let element_type = *box_element_type;
-                let array_name = DimName::new(bare_name, element_type);
-                self.set_variable(array_name, value);
+                match element_type {
+                    ExpressionType::BuiltIn(q) => {
+                        self.set_variable_built_in(bare_name, q, value);
+                    }
+                    ExpressionType::FixedLengthString(_) => {
+                        self.set_variable_built_in(bare_name, TypeQualifier::DollarString, value);
+                    }
+                    _ => self.set_variable_user_defined(bare_name, value),
+                }
             }
         }
     }

@@ -88,6 +88,17 @@ mod tests {
                     )
                 );
             }
+
+            #[test]
+            fn test_max_length() {
+                assert_top_level_assignment!(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM = 42",
+                    Expression::Property(
+                        Box::new(Expression::var("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+                        "ABCDEFGHIJKLM".into()
+                    )
+                );
+            }
         }
     }
 
@@ -130,21 +141,23 @@ mod tests {
                     )
                 );
             }
+
+            #[test]
+            fn test_max_length() {
+                assert_top_level_assignment!(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM% = 42",
+                    Expression::Property(
+                        Box::new(Expression::var("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+                        "ABCDEFGHIJKLM%".into()
+                    )
+                );
+            }
         }
     }
 
     #[test]
     fn test_numeric_assignment() {
-        let names = [
-            "A",
-            "BC",
-            "A%",
-            "A..B",
-            "A.B.",
-            "C.%",
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM", // longest identifier is 40 characters
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM%",
-        ];
+        let names = ["A", "BC", "A%", "A..B", "A.B.", "C.%"];
         let values = [1, -1, 0, 42];
         for name in &names {
             for value in &values {

@@ -393,7 +393,7 @@ mod number_literal {
 
 pub mod word {
     use super::*;
-    use crate::parser::name::any_word_without_dot;
+    use crate::parser::name::{any_word_without_dot, MAX_LENGTH};
     use std::convert::TryFrom;
 
     pub fn word<T: BufRead + 'static>(
@@ -401,21 +401,37 @@ pub mod word {
         move |r| {
             // read name
             match any_word_without_dot()(r) {
-                Ok((r, Some(bare_name_without_dot))) => continue_after_bare_name(
-                    r,
-                    Expression::VariableName(Name::Bare(bare_name_without_dot)),
-                    false,
-                ),
+                Ok((r, Some(bare_name_without_dot))) => {
+                    validate_name_expr_after_parsing(continue_after_bare_name(
+                        r,
+                        Expression::VariableName(Name::Bare(bare_name_without_dot)),
+                        false,
+                    ))
+                }
                 Ok((r, None)) => Ok((r, None)),
                 Err(e) => Err(e),
             }
         }
     }
 
+    fn validate_name_expr_after_parsing<T: BufRead>(
+        result: ReaderResult<EolReader<T>, Expression, QError>,
+    ) -> ReaderResult<EolReader<T>, Expression, QError> {
+        if let Ok((r, Some(expr))) = result {
+            if ensure_identifier_max_length(&expr) {
+                Ok((r, Some(expr)))
+            } else {
+                Err((r, QError::IdentifierTooLong))
+            }
+        } else {
+            result
+        }
+    }
+
     fn continue_after_bare_name<T: BufRead + 'static>(
         r: EolReader<T>,
         base_expr: Expression,
-        has_consecutive_dots: bool,
+        already_folded: bool,
     ) -> ReaderResult<EolReader<T>, Expression, QError> {
         // we have read so far A or A.B or A..B
         // might encounter: '(', TypeQualifier, or dot
@@ -423,15 +439,7 @@ pub mod word {
         match any_symbol()(r) {
             Ok((r, Some(ch))) => {
                 if ch == '.' {
-                    if has_consecutive_dots {
-                        continue_after_bare_name_dot(
-                            r,
-                            concat_name(base_expr, '.'),
-                            has_consecutive_dots,
-                        )
-                    } else {
-                        continue_after_bare_name_dot(r, base_expr, has_consecutive_dots)
-                    }
+                    continue_after_bare_name_dot(r, base_expr, already_folded)
                 } else if let Ok(q) = TypeQualifier::try_from(ch) {
                     continue_after_qualified_name(r, qualify(base_expr, q))
                 } else if ch == '(' {
@@ -451,68 +459,39 @@ pub mod word {
     fn continue_after_bare_name_dot<T: BufRead + 'static>(
         r: EolReader<T>,
         base_expr: Expression,
-        has_consecutive_dots: bool,
+        already_folded: bool,
     ) -> ReaderResult<EolReader<T>, Expression, QError> {
         // might be a name or a dot or a type qualifier or parenthesis...
         // e.g. A.[B | . | $ | (]
         match any_word_without_dot()(r) {
             Ok((r, Some(bare_name))) => {
-                let expr = if has_consecutive_dots {
-                    concat_name(base_expr, bare_name)
+                let expr = if already_folded {
+                    concat_name(concat_name(base_expr, '.'), bare_name)
                 } else {
                     Expression::Property(Box::new(base_expr), Name::Bare(bare_name))
                 };
-                continue_after_bare_name(r, expr, has_consecutive_dots) // recursion
+                continue_after_bare_name(r, expr, already_folded) // recursion
             }
             Ok((r, None)) => {
                 // we could not find a name, let's try a symbol
+                let next_expr: Expression = if already_folded {
+                    concat_name(base_expr, '.')
+                } else {
+                    concat_name(fold_expr(base_expr), '.')
+                };
                 match any_symbol()(r) {
                     Ok((r, Some(ch))) => {
                         if ch == '.' {
-                            if has_consecutive_dots {
-                                continue_after_bare_name_dot(
-                                    r,
-                                    concat_name(base_expr, '.'),
-                                    has_consecutive_dots,
-                                )
-                            } else {
-                                // encountered two consecutive periods for the first time,
-                                // fold expression into a single name and append two dots
-                                if let Name::Bare(folded_name) = fold_name(base_expr) {
-                                    continue_after_bare_name_dot(
-                                        r,
-                                        Expression::VariableName(Name::Bare(
-                                            folded_name + '.' + '.',
-                                        )),
-                                        true,
-                                    )
-                                } else {
-                                    panic!("Expected bare name")
-                                }
-                            }
+                            continue_after_bare_name_dot(r, next_expr, true)
                         } else if let Ok(q) = TypeQualifier::try_from(ch) {
-                            if has_consecutive_dots {
-                                continue_after_qualified_name(r, qualify(base_expr, q))
-                            } else {
-                                continue_after_qualified_name(
-                                    r,
-                                    qualify(concat_name(base_expr, '.'), q),
-                                )
-                            }
+                            continue_after_qualified_name(r, qualify(next_expr, q))
                         } else if ch == '(' {
-                            continue_after_bare_name_parenthesis(r.undo(ch), fold_expr(base_expr))
+                            continue_after_bare_name_parenthesis(r.undo(ch), next_expr)
                         } else {
-                            Ok((r.undo(ch), Some(base_expr)))
+                            Ok((r.undo(ch), Some(next_expr)))
                         }
                     }
-                    Ok((r, None)) => {
-                        // nothing at all, which means we have a trailing dot, which means we need to fold up
-                        if has_consecutive_dots {
-                            Ok((r, Some(base_expr)))
-                        } else {
-                            Ok((r, Some(concat_name(fold_expr(base_expr), '.'))))
-                        }
-                    }
+                    Ok((r, None)) => Ok((r, Some(next_expr))),
                     Err((r, err)) => Err((r, err)),
                 }
             }
@@ -716,6 +695,38 @@ pub mod word {
                 panic!("Should have read parenthesis")
             }
             Err((r, err)) => Err((r, err)),
+        }
+    }
+
+    fn ensure_identifier_max_length(expr: &Expression) -> bool {
+        match expr {
+            Expression::VariableName(name) | Expression::FunctionCall(name, _) => {
+                name_length(name) <= MAX_LENGTH
+            }
+            Expression::Property(left_side, property_name) => {
+                ensure_identifier_max_length(left_side)
+                    && name_length(property_name) <= MAX_LENGTH
+                    && folded_property_length(expr).unwrap_or_default() <= MAX_LENGTH
+            }
+            _ => true,
+        }
+    }
+
+    fn name_length(name: &Name) -> usize {
+        match name {
+            Name::Bare(bare_name) | Name::Qualified(QualifiedName { bare_name, .. }) => {
+                bare_name.len()
+            }
+        }
+    }
+
+    fn folded_property_length(expr: &Expression) -> Option<usize> {
+        match expr {
+            Expression::Property(left_side, property_name) => {
+                folded_property_length(left_side).map(|l| l + 1 + name_length(property_name))
+            }
+            Expression::VariableName(name) => Some(name_length(name)),
+            _ => None,
         }
     }
 

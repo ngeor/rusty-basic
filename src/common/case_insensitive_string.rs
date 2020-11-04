@@ -77,6 +77,10 @@ impl CaseInsensitiveString {
             None
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 impl From<CaseInsensitiveString> for String {

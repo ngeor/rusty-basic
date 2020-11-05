@@ -73,11 +73,34 @@ fn sub_call<T: BufRead + 'static>(
                 _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
             }
         }
-        Expression::Property(left_name_expr, property_name) => {
+        Expression::Property(_, _) => {
             // only possible if A.B is a sub, if left_name_expr contains a Function, abort
-            todo!()
+            match fold_to_bare_name(name_expr) {
+                Ok(bare_name) => {
+                    // are there any args after the space?
+                    match sub_call_args_after_space()(r) {
+                        Ok((r, opt_args)) => Ok((
+                            r,
+                            Some(Statement::SubCall(bare_name, opt_args.unwrap_or_default())),
+                        )),
+                        Err((r, err)) => Err((r, err)),
+                    }
+                }
+                Err(err) => Err((r, err)),
+            }
         }
         _ => panic!("Unexpected name expression"),
+    }
+}
+
+fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
+    match expr {
+        Expression::VariableName(Name::Bare(bare_name)) => Ok(bare_name),
+        Expression::Property(boxed_left_side, Name::Bare(bare_name)) => {
+            let left_side_name = fold_to_bare_name(*boxed_left_side)?;
+            Ok(left_side_name + '.' + bare_name)
+        }
+        _ => Err(QError::syntax_error("Illegal sub name")),
     }
 }
 

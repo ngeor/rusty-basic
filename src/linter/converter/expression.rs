@@ -220,23 +220,12 @@ impl<'a> ConverterImpl<'a> {
                             if let DimType::UserDefined(user_defined_type_name) =
                                 converted_var_name.dim_type()
                             {
-                                match self.user_defined_types.get(user_defined_type_name) {
-                                    Some(user_defined_type) => {
-                                        let element_type = user_defined_type
-                                            .demand_element_by_name(&property_name)
-                                            .with_err_at(pos)?;
-                                        Ok((
-                                            Expression::Property(
-                                                Box::new(Expression::Variable(converted_var_name)),
-                                                property_name.into(),
-                                                element_type.clone().expression_type(),
-                                            )
-                                            .at(pos),
-                                            vec![],
-                                        ))
-                                    }
-                                    None => todo!(),
-                                }
+                                self.resolve_property(
+                                    Expression::Variable(converted_var_name.clone()),
+                                    user_defined_type_name,
+                                    property_name,
+                                    pos,
+                                )
                             } else {
                                 todo!()
                             }
@@ -259,8 +248,62 @@ impl<'a> ConverterImpl<'a> {
                 }
             }
             crate::parser::Expression::FunctionCall(left_side_name, args) => todo!(),
-            crate::parser::Expression::Property(new_left_side, new_property_name) => todo!(),
+            crate::parser::Expression::Property(new_boxed_left_side, new_property_name) => {
+                let new_left_side = *new_boxed_left_side;
+                let (
+                    Locatable {
+                        element: converted_expr,
+                        ..
+                    },
+                    implicit_variables,
+                ) = self.convert_property(new_left_side, new_property_name, pos)?;
+                if implicit_variables.is_empty() {
+                    // the property was resolved without the need for an implicit variable
+                    let resolved_expression_type = converted_expr.expression_type();
+                    if let ExpressionType::UserDefined(user_defined_type_name) =
+                        resolved_expression_type
+                    {
+                        self.resolve_property(
+                            converted_expr,
+                            &user_defined_type_name,
+                            property_name,
+                            pos,
+                        )
+                    } else {
+                        Err(QError::ElementNotDefined).with_err_at(pos)
+                    }
+                } else {
+                    // implicit variables, probably we had to fold back to a single variable
+                    todo!()
+                }
+            }
             _ => unimplemented!(),
+        }
+    }
+
+    fn resolve_property(
+        &self,
+        base_expr: Expression,
+        user_defined_type_name: &BareName,
+        property_name: Name,
+        pos: Location,
+    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+        match self.user_defined_types.get(user_defined_type_name) {
+            Some(user_defined_type) => {
+                let element_type = user_defined_type
+                    .demand_element_by_name(&property_name)
+                    .with_err_at(pos)?;
+                Ok((
+                    Expression::Property(
+                        Box::new(base_expr),
+                        property_name.into(),
+                        element_type.clone().expression_type(),
+                    )
+                    .at(pos),
+                    vec![],
+                ))
+            }
+            None => todo!(),
         }
     }
 }

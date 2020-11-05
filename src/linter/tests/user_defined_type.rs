@@ -160,6 +160,6 @@ fn cannot_use_in_unary_expression() {
                     b = {}A",
             op
         );
-        assert_linter_err!(input, QError::TypeMismatch, 9, 25);
+        assert_linter_err!(input, QError::TypeMismatch, 9, 26);
     }
 }

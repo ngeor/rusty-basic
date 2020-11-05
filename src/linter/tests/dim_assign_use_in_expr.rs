@@ -99,18 +99,18 @@ fn user_defined_type() {
         program,
         vec![
             TopLevelToken::Statement(Statement::Dim(
-                DimName::user_defined("A", "Card").at_rc(6, 17)
+                DimName::user_defined("A", "Card").at_rc(6, 9)
             ))
-            .at_rc(6, 13),
+            .at_rc(6, 5),
             TopLevelToken::Statement(Statement::Dim(
-                DimName::user_defined("B", "Card").at_rc(7, 17)
+                DimName::user_defined("B", "Card").at_rc(7, 9)
             ))
-            .at_rc(7, 13),
+            .at_rc(7, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::user_defined("A", "Card"),
-                Expression::user_defined("B", "Card").at_rc(8, 17)
+                Expression::user_defined("B", "Card").at_rc(8, 9)
             ))
-            .at_rc(8, 13)
+            .at_rc(8, 5)
         ]
     );
     assert_eq!(
@@ -175,43 +175,25 @@ fn user_defined_type_string_element() {
     A.Suit = "diamonds"
     PRINT A.Suit
     "#;
-    assert_eq!(
-        linter_ok(input),
-        vec![
-            TopLevelToken::Statement(Statement::Dim(
-                DimName::user_defined("A", "Card").at_rc(6, 17)
-            ))
-            .at_rc(6, 13),
-            TopLevelToken::Statement(Statement::Assignment(
-                Expression::var("A"), /*
-                                      DimName::new(
-                                          "A".into(),
-                                          DimType::Many(
-                                              "Card".into(),
-                                              Members::Leaf {
-                                                  name: "Suit".into(),
-                                                  element_type: ElementType::FixedLengthString(9)
-                                              }
-                                          )
-                                      ),*/
-                Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 22)
-            ))
-            .at_rc(7, 13),
-            TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::Variable(DimName::new(
-                    "A".into(),
-                    DimType::Many(
-                        "Card".into(),
-                        Members::Leaf {
-                            name: "Suit".into(),
-                            element_type: ElementType::FixedLengthString(9)
-                        }
-                    )
-                ))
-                .at_rc(8, 19)
-            )))
-            .at_rc(8, 13)
-        ]
+    assert_linter_ok_top_level_statements!(
+        input,
+        Statement::Dim(DimName::user_defined("A", "Card").at_rc(6, 9)),
+        Statement::Assignment(
+            Expression::Property(
+                Box::new(Expression::user_defined("A", "Card")),
+                "Suit".into(),
+                ExpressionType::FixedLengthString(9)
+            ),
+            Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 14)
+        ),
+        Statement::Print(PrintNode::one(
+            Expression::Property(
+                Box::new(Expression::user_defined("A", "Card")),
+                "Suit".into(),
+                ExpressionType::FixedLengthString(9)
+            )
+            .at_rc(8, 11)
+        ))
     );
 }
 

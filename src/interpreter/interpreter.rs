@@ -13,7 +13,7 @@ use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::{built_ins, instruction_handlers};
 use crate::linter::UserDefinedTypes;
-use crate::parser::{Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::{Path, Variant};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -408,7 +408,13 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let old_name_ptr = self.name_ptr.take().expect("Should have name_ptr");
                 self.name_ptr = Some(old_name_ptr.append_array_element(index_value));
             }
-            Instruction::VarPathProperty(_property_name) => todo!(),
+            Instruction::VarPathProperty(property_name) => {
+                let old_name_ptr = self.name_ptr.take().expect("Should have name_ptr");
+                self.name_ptr = Some(Path::Property(
+                    Box::new(old_name_ptr),
+                    property_name.clone(),
+                ));
+            }
             Instruction::CopyAToVarPath => {
                 // get value to copy into name_ptr
                 let a = self.get_a();
@@ -442,7 +448,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let parent_variant = self.resolve_some_name_ptr(*parent_path)?;
                 Self::resolve_array(parent_variant, indices)
             }
-            _ => todo!(),
+            Path::Property(left_side, property_name) => {
+                let parent_variant = self.resolve_some_name_ptr(*left_side)?;
+                Ok(Self::resolve_property(parent_variant, &property_name))
+            }
         }
     }
 
@@ -454,6 +463,15 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 v_array.get_element(int_indices?)
             }
             _ => panic!("Expected array, found {:?}", v),
+        }
+    }
+
+    fn resolve_property<'a>(v: &'a Variant, property_name: &BareName) -> &'a Variant {
+        match v {
+            Variant::VUserDefined(boxed_user_defined_value) => boxed_user_defined_value
+                .get(property_name)
+                .expect("Property not defined, linter should have caught this"),
+            _ => panic!("Expected user defined type, found {:?}", v),
         }
     }
 
@@ -471,7 +489,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let parent_variant = self.resolve_some_name_ptr_mut(*parent_name_ptr)?;
                 Self::resolve_array_mut(parent_variant, indices)
             }
-            _ => todo!(),
+            Path::Property(parent_name_ptr, property_name) => {
+                let parent_variant = self.resolve_some_name_ptr_mut(*parent_name_ptr)?;
+                Ok(Self::resolve_property_mut(parent_variant, &property_name))
+            }
         }
     }
 
@@ -483,6 +504,15 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 v_array.get_element_mut(int_indices?)
             }
             _ => panic!("Expected array, found {:?}", v),
+        }
+    }
+
+    fn resolve_property_mut<'a>(v: &'a mut Variant, property_name: &BareName) -> &'a mut Variant {
+        match v {
+            Variant::VUserDefined(boxed_user_defined_value) => boxed_user_defined_value
+                .get_mut(property_name)
+                .expect("Property not defined, linter should have caught this"),
+            _ => panic!("Expected user defined type, found {:?}", v),
         }
     }
 

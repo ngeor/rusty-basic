@@ -1,7 +1,7 @@
 use super::{DimName, ExpressionType, HasExpressionType};
 use crate::built_ins::BuiltInFunction;
 use crate::common::{CanCastTo, Locatable, QError, QErrorNode, ToLocatableError};
-use crate::parser::{Name, Operator, QualifiedName, TypeQualifier, UnaryOperator};
+use crate::parser::{BareName, Name, Operator, QualifiedName, TypeQualifier, UnaryOperator};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -31,6 +31,14 @@ pub enum Expression {
     ),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
+    Property(
+        // the left side of the property, before the dot
+        Box<Expression>,
+        // the property name (converted to BareName)
+        BareName,
+        // the resolved type of the property
+        ExpressionType,
+    ),
 }
 
 pub type ExpressionNode = Locatable<Expression>;
@@ -61,6 +69,11 @@ impl Expression {
     pub fn var(name: &str) -> Self {
         Expression::Variable(DimName::parse(name))
     }
+
+    #[cfg(test)]
+    pub fn user_defined(name: &str, type_name: &str) -> Self {
+        Expression::Variable(DimName::user_defined(name, type_name))
+    }
 }
 
 impl HasExpressionType for Expression {
@@ -79,7 +92,9 @@ impl HasExpressionType for Expression {
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
             Self::BinaryExpression(_, _, _, type_definition) => type_definition.clone(),
             Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().expression_type(),
-            Self::ArrayElement(_, _, element_type) => element_type.clone(),
+            Self::Property(_, _, element_type) | Self::ArrayElement(_, _, element_type) => {
+                element_type.clone()
+            }
         }
     }
 }

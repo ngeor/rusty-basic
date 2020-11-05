@@ -1,7 +1,6 @@
 use crate::common::Locatable;
 use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
-use std::ops::Add;
 
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub enum Name {

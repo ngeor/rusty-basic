@@ -1,7 +1,7 @@
 use crate::assert_linter_err;
+use crate::assert_linter_ok_top_level_statements;
 use crate::common::{AtRowCol, QError};
-use crate::linter::test_utils::linter_ok;
-use crate::linter::{DimName, DimType, Expression, ExpressionType, Statement, TopLevelToken};
+use crate::linter::{DimName, DimType, Expression, ExpressionType, Statement};
 use crate::parser::{Operator, TypeQualifier};
 
 #[test]
@@ -60,9 +60,12 @@ fn assign_integer_to_extended_string() {
 
 #[test]
 fn test_assign_binary_plus() {
-    assert_eq!(
-        linter_ok("X% = 1 + 2.1"),
-        vec![TopLevelToken::Statement(Statement::Assignment(
+    assert_linter_ok_top_level_statements!(
+        "X% = 1 + 2.1",
+        Statement::Dim(
+            DimName::new("X".into(), DimType::BuiltIn(TypeQualifier::PercentInteger)).at_rc(1, 1)
+        ),
+        Statement::Assignment(
             Expression::var("X%"),
             Expression::BinaryExpression(
                 Operator::Plus,
@@ -70,26 +73,21 @@ fn test_assign_binary_plus() {
                 Box::new(Expression::SingleLiteral(2.1).at_rc(1, 10)),
                 ExpressionType::BuiltIn(TypeQualifier::BangSingle),
             )
-            .at_rc(1, 8),
-        ))
-        .at_rc(1, 1)]
+            .at_rc(1, 8)
+        )
     );
 }
 
 #[test]
 fn test_possible_property_folded_back_to_variable() {
-    assert_eq!(
-        linter_ok("A.B = 12"),
-        vec![
-            TopLevelToken::Statement(Statement::Dim(
-                DimName::new("A.B".into(), DimType::BuiltIn(TypeQualifier::BangSingle)).at_rc(1, 1)
-            ))
-            .at_rc(1, 1),
-            TopLevelToken::Statement(Statement::Assignment(
-                Expression::var("A.B!".into()),
-                Expression::IntegerLiteral(12).at_rc(1, 7),
-            ))
-            .at_rc(1, 1)
-        ]
+    assert_linter_ok_top_level_statements!(
+        "A.B = 12",
+        Statement::Dim(
+            DimName::new("A.B".into(), DimType::BuiltIn(TypeQualifier::BangSingle)).at_rc(1, 1)
+        ),
+        Statement::Assignment(
+            Expression::var("A.B!".into()),
+            Expression::IntegerLiteral(12).at_rc(1, 7),
+        )
     );
 }

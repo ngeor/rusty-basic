@@ -1,7 +1,9 @@
 use crate::assert_linter_err;
+use crate::assert_linter_ok_top_level_statements;
 use crate::common::*;
 use crate::linter::test_utils::*;
 use crate::linter::*;
+use crate::parser::TypeQualifier;
 use std::collections::HashMap;
 
 /// Three step tests:
@@ -105,8 +107,8 @@ fn user_defined_type() {
             ))
             .at_rc(7, 13),
             TopLevelToken::Statement(Statement::Assignment(
-                Expression::var("A.Card"), // TODO WAS                DimName::user_defined("A", "Card"),
-                Expression::Variable(DimName::user_defined("B", "Card")).at_rc(8, 17)
+                Expression::user_defined("A", "Card"),
+                Expression::user_defined("B", "Card").at_rc(8, 17)
             ))
             .at_rc(8, 13)
         ]
@@ -140,43 +142,25 @@ fn user_defined_type_integer_element() {
     A.Value = 42
     PRINT A.Value
     "#;
-    assert_eq!(
-        linter_ok(input),
-        vec![
-            TopLevelToken::Statement(Statement::Dim(
-                DimName::user_defined("A", "Card").at_rc(6, 17)
-            ))
-            .at_rc(6, 13),
-            TopLevelToken::Statement(Statement::Assignment(
-                Expression::var("A.Card.Value"), /*
-                                                 DimName::new(
-                                                     "A".into(),
-                                                     DimType::Many(
-                                                         "Card".into(),
-                                                         Members::Leaf {
-                                                             name: "Value".into(),
-                                                             element_type: ElementType::Integer
-                                                         }
-                                                     )
-                                                 )*/
-                Expression::IntegerLiteral(42).at_rc(7, 23)
-            ))
-            .at_rc(7, 13),
-            TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::Variable(DimName::new(
-                    "A".into(),
-                    DimType::Many(
-                        "Card".into(),
-                        Members::Leaf {
-                            name: "Value".into(),
-                            element_type: ElementType::Integer
-                        }
-                    )
-                ))
-                .at_rc(8, 19)
-            )))
-            .at_rc(8, 13)
-        ]
+    assert_linter_ok_top_level_statements!(
+        input,
+        Statement::Dim(DimName::user_defined("A", "Card").at_rc(6, 9)),
+        Statement::Assignment(
+            Expression::Property(
+                Box::new(Expression::user_defined("A", "Card")),
+                "Value".into(),
+                ExpressionType::BuiltIn(TypeQualifier::PercentInteger)
+            ),
+            Expression::IntegerLiteral(42).at_rc(7, 15)
+        ),
+        Statement::Print(PrintNode::one(
+            Expression::Property(
+                Box::new(Expression::user_defined("A", "Card")),
+                "Value".into(),
+                ExpressionType::BuiltIn(TypeQualifier::PercentInteger)
+            )
+            .at_rc(8, 11)
+        ))
     );
 }
 

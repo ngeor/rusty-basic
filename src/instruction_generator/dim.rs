@@ -1,8 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{
-    ArrayDimension, DimName, DimNameNode, DimType, ExpressionType, HasExpressionType,
-};
+use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, ExpressionType};
 use crate::parser::{Name, TypeQualifier};
 
 impl InstructionGenerator {

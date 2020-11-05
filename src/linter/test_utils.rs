@@ -65,3 +65,17 @@ macro_rules! assert_linter_err {
         }
     };
 }
+
+#[macro_export]
+macro_rules! assert_linter_ok_top_level_statements {
+    ($program:expr, $($statement: expr),+) => {
+        let top_level_token_nodes: Vec<crate::linter::TopLevelTokenNode> = crate::linter::test_utils::linter_ok($program);
+        let top_level_statements: Vec<crate::linter::Statement> = top_level_token_nodes.into_iter()
+            .map(|crate::common::Locatable { element, .. }| match element {
+                crate::linter::TopLevelToken::Statement(s) => s,
+                _ => {panic!("Expected only top level statements, found {:?}", element);}
+            } )
+            .collect();
+        assert_eq!(top_level_statements, vec![$($statement),+]);
+    };
+}

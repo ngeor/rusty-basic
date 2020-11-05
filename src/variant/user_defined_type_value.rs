@@ -31,11 +31,11 @@ impl UserDefinedTypeValue {
         &self.type_name
     }
 
-    fn get(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
+    pub fn get(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
         self.map.get(name)
     }
 
-    fn get_mut(&mut self, name: &CaseInsensitiveString) -> Option<&mut Variant> {
+    pub fn get_mut(&mut self, name: &CaseInsensitiveString) -> Option<&mut Variant> {
         self.map.get_mut(name)
     }
 

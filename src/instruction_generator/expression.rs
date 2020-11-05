@@ -45,7 +45,8 @@ impl InstructionGenerator {
             }
             Expression::Variable(_)
             | Expression::Constant(_)
-            | Expression::ArrayElement(_, _, _) => self.generate_load_instructions(e, pos),
+            | Expression::ArrayElement(_, _, _)
+            | Expression::Property(_, _, _) => self.generate_load_instructions(e, pos),
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);
                 self.generate_function_call_instructions(name_node, args);
@@ -113,6 +114,11 @@ impl InstructionGenerator {
                     self.push(Instruction::VarPathIndex, arg_pos);
                     self.push(Instruction::PopRegisters, arg_pos);
                 }
+            }
+            Expression::Property(box_left_side, property_name, _element_type) => {
+                let left_side = *box_left_side;
+                self.generate_path_instructions(left_side.at(pos));
+                self.push(Instruction::VarPathProperty(property_name), pos);
             }
             _ => panic!("Not a name expression"),
         }

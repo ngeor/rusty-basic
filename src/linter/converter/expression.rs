@@ -1,8 +1,10 @@
 use crate::built_ins::BuiltInFunction;
-use crate::common::{AtLocation, HasLocation, Locatable, QError, QErrorNode, ToLocatableError};
+use crate::common::{
+    AtLocation, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
+};
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::{Expression, ExpressionNode, ExpressionType, HasExpressionType};
+use crate::linter::{DimType, Expression, ExpressionNode, ExpressionType, HasExpressionType};
 use crate::parser;
 use crate::parser::{BareName, Name, NameNode, QualifiedName, QualifiedNameNode, TypeQualifier};
 use std::convert::TryInto;
@@ -73,7 +75,9 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                     }
                 }
             }
-            parser::Expression::Property(_, _) => todo!(),
+            parser::Expression::Property(box_left_side, property_name) => {
+                self.convert_property(*box_left_side, property_name, pos)
+            }
             parser::Expression::BinaryExpression(op, l, r) => {
                 // unbox them
                 let unboxed_left = *l;
@@ -187,6 +191,76 @@ impl<'a> ConverterImpl<'a> {
             }
         } else {
             Ok(None)
+        }
+    }
+
+    pub fn convert_property(
+        &mut self,
+        left_side: crate::parser::Expression,
+        property_name: Name,
+        pos: Location,
+    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+        // A.B$
+        // A.B.C
+        // if A is a known user defined type, proceed
+        // if A is known, error
+        // if A is unknown, fold into A.B.C and add new implicit variable
+
+        // A(1).Test.Toast -> only allowed if A exists and is array of user defined type
+
+        match left_side {
+            crate::parser::Expression::VariableName(left_side_name) => {
+                match self
+                    .context
+                    .resolve_expression(&left_side_name, &self.resolver)
+                    .with_err_at(pos)?
+                {
+                    Some(converted_left_expr) => match converted_left_expr {
+                        Expression::Variable(converted_var_name) => {
+                            if let DimType::UserDefined(user_defined_type_name) =
+                                converted_var_name.dim_type()
+                            {
+                                match self.user_defined_types.get(user_defined_type_name) {
+                                    Some(user_defined_type) => {
+                                        let element_type = user_defined_type
+                                            .demand_element_by_name(&property_name)
+                                            .with_err_at(pos)?;
+                                        Ok((
+                                            Expression::Property(
+                                                Box::new(Expression::Variable(converted_var_name)),
+                                                property_name.into(),
+                                                element_type.clone().expression_type(),
+                                            )
+                                            .at(pos),
+                                            vec![],
+                                        ))
+                                    }
+                                    None => todo!(),
+                                }
+                            } else {
+                                todo!()
+                            }
+                        }
+                        _ => todo!(),
+                    },
+                    None => {
+                        // The left_side_name is not known as a variable.
+                        // Fold it back and register it as an implicit variable.
+                        let folded_name = left_side_name + '.' + property_name;
+                        let qualified_name = self
+                            .context
+                            .resolve_missing_name_in_assignment(&folded_name, &self.resolver)
+                            .with_err_at(pos)?;
+                        Ok((
+                            Expression::Variable(qualified_name.clone().into()).at(pos),
+                            vec![qualified_name.at(pos)],
+                        ))
+                    }
+                }
+            }
+            crate::parser::Expression::FunctionCall(left_side_name, args) => todo!(),
+            crate::parser::Expression::Property(new_left_side, new_property_name) => todo!(),
+            _ => unimplemented!(),
         }
     }
 }

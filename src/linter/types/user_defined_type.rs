@@ -1,6 +1,6 @@
 use super::{ExpressionType, HasExpressionType};
 use crate::common::{QError, StringUtils};
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -24,6 +24,19 @@ impl UserDefinedType {
 
     pub fn elements(&self) -> std::collections::hash_map::Iter<BareName, ElementType> {
         self.elements.iter()
+    }
+
+    pub fn demand_element_by_name(&self, element_name: &Name) -> Result<&ElementType, QError> {
+        match self.find_element(element_name.as_ref()) {
+            Some(element_type) => {
+                if element_type.can_be_referenced_by_property_name(element_name) {
+                    Ok(element_type)
+                } else {
+                    Err(QError::TypeMismatch)
+                }
+            }
+            _ => Err(QError::ElementNotDefined),
+        }
     }
 }
 
@@ -65,6 +78,20 @@ impl ElementType {
             Self::UserDefined(type_name) => {
                 Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
             }
+        }
+    }
+
+    pub fn can_be_referenced_by_property_name(&self, name: &Name) -> bool {
+        match name {
+            Name::Bare(_) => true,
+            Name::Qualified(QualifiedName { qualifier, .. }) => match self {
+                Self::Integer => *qualifier == TypeQualifier::PercentInteger,
+                Self::Long => *qualifier == TypeQualifier::AmpersandLong,
+                Self::Single => *qualifier == TypeQualifier::BangSingle,
+                Self::Double => *qualifier == TypeQualifier::HashDouble,
+                Self::FixedLengthString(_) => *qualifier == TypeQualifier::DollarString,
+                _ => false,
+            },
         }
     }
 }

@@ -37,7 +37,7 @@ fn assignment<T: BufRead + 'static>(
         Ok((r, Some(right_expr_node))) => {
             Ok((r, Some(Statement::Assignment(name_expr, right_expr_node))))
         }
-        Ok((r, None)) => panic!("Got None from demand_expression_node, should not happen"),
+        Ok((_r, None)) => panic!("Got None from demand_expression_node, should not happen"),
         Err((r, err)) => Err((r, err)),
     }
 }

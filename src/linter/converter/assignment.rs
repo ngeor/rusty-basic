@@ -92,41 +92,7 @@ impl<'a> ConverterImpl<'a> {
         property_name: Name,
         pos: Location,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        // A.B$
-        // A.B.C
-        // if A is a known user defined type, proceed
-        // if A is known, error
-        // if A is unknown, fold into A.B.C and add new implicit variable
-
-        // A(1).Test.Toast -> only allowed if A exists and is array of user defined type
-
-        match left_side {
-            crate::parser::Expression::VariableName(left_side_name) => {
-                match self
-                    .context
-                    .resolve_expression(&left_side_name, &self.resolver)
-                    .with_err_at(pos)?
-                {
-                    Some(left_expr) => todo!(),
-                    None => {
-                        // The left_side_name is not known as a variable.
-                        // Fold it back and register it as an implicit variable.
-                        let folded_name = left_side_name + '.' + property_name;
-                        let qualified_name = self
-                            .context
-                            .resolve_missing_name_in_assignment(&folded_name, &self.resolver)
-                            .with_err_at(pos)?;
-                        Ok((
-                            Expression::Variable(qualified_name.clone().into()).at(pos),
-                            vec![qualified_name.at(pos)],
-                        ))
-                    }
-                }
-            }
-            crate::parser::Expression::FunctionCall(left_side_name, args) => todo!(),
-            crate::parser::Expression::Property(new_left_side, new_property_name) => todo!(),
-            _ => unimplemented!(),
-        }
+        self.convert_property(left_side, property_name, pos)
     }
 
     fn assign_to_function(&self, name: Name) -> Result<DimName, QError> {

@@ -131,14 +131,12 @@ mod input {
         }
 
         for i in starting_index..args.len() {
-            if let Locatable {
-                element: Expression::Variable(_),
-                ..
-            } = args[i]
-            {
-                // ok
-            } else {
-                return Err(QError::VariableRequired).with_err_at(&args[i]);
+            let Locatable { element, .. } = &args[i];
+            match element {
+                Expression::Variable(_) | Expression::Property(_, _, _) => {}
+                _ => {
+                    return Err(QError::VariableRequired).with_err_at(&args[i]);
+                }
             }
         }
 
@@ -319,7 +317,7 @@ mod len {
         } else {
             let arg: &Expression = args[0].as_ref();
             match arg {
-                Expression::Variable(_) => Ok(()),
+                Expression::Variable(_) | Expression::Property(_, _, _) => Ok(()),
                 _ => {
                     if !args[0].can_cast_to(TypeQualifier::DollarString) {
                         Err(QError::VariableRequired).with_err_at(&args[0])

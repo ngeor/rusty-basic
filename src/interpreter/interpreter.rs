@@ -398,7 +398,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 .with_err_at(pos)?;
             }
             Instruction::VarPathName(name) => match &self.name_ptr {
-                Some(x) => panic!("name_ptr already had value {:?} when attempted to push {}", x, name),
+                Some(x) => panic!(
+                    "name_ptr already had value {:?} when attempted to push {}",
+                    x, name
+                ),
                 _ => {
                     self.name_ptr = Some(Path::Root(name.clone()));
                 }

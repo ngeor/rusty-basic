@@ -141,10 +141,13 @@ impl PrintVal {
             Self::Value(v) => match v {
                 Variant::VSingle(f) => print_number(printer, f, *f >= 0.0),
                 Variant::VDouble(d) => print_number(printer, d, *d >= 0.0),
-                Variant::VString(s) => printer.print(s),
+                Variant::VFixedLengthString(s) | Variant::VString(s) => printer.print(s),
                 Variant::VInteger(i) => print_number(printer, i, *i >= 0),
                 Variant::VLong(l) => print_number(printer, l, *l >= 0),
-                _ => panic!("Cannot print user defined type, linter should have caught this"),
+                Variant::VArray(_) | Variant::VUserDefined(_) => panic!(
+                    "Cannot print user defined type {:?}, linter should have caught this",
+                    v
+                ),
             },
         }
     }

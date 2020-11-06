@@ -236,14 +236,11 @@ impl<'a> ConverterImpl<'a> {
                         // The left_side_name is not known as a variable.
                         // Fold it back and register it as an implicit variable.
                         let folded_name = left_side_name + '.' + property_name;
-                        let qualified_name = self
-                            .context
-                            .resolve_missing_name_in_assignment(&folded_name, &self.resolver)
-                            .with_err_at(pos)?;
-                        Ok((
-                            Expression::Variable(qualified_name.clone().into()).at(pos),
-                            vec![qualified_name.at(pos)],
-                        ))
+                        self.context.resolve_expression_or_add_implicit_variable(
+                            &folded_name,
+                            &self.resolver,
+                            pos,
+                        )
                     }
                 }
             }

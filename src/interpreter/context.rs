@@ -2,9 +2,7 @@ use crate::common::StringUtils;
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::arguments_stack::ArgumentsStack;
 use crate::interpreter::variables::Variables;
-use crate::linter::{
-    DimName, DimType, ExpressionType, HasExpressionType, Members, UserDefinedTypes,
-};
+use crate::linter::{DimName, DimType, ExpressionType, HasExpressionType, UserDefinedTypes};
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
@@ -119,9 +117,6 @@ impl Context {
             DimType::UserDefined(_) => {
                 self.set_variable_user_defined(bare_name, value);
             }
-            DimType::Many(_, members) => {
-                self.set_variable_member(bare_name, members, value);
-            }
             DimType::Array(_, box_element_type) => {
                 let element_type = *box_element_type;
                 match element_type {
@@ -148,16 +143,6 @@ impl Context {
 
     fn set_variable_user_defined(&mut self, bare_name: BareName, value: Variant) {
         self.variables.insert_user_defined(bare_name, value);
-    }
-
-    fn set_variable_member(&mut self, bare_name: BareName, members: Members, value: Variant) {
-        match self.variables.get_user_defined_mut(&bare_name) {
-            Some(Variant::VUserDefined(box_user_defined_type_value)) => {
-                let name_path = members.name_path();
-                box_user_defined_type_value.insert_path(&name_path, value);
-            }
-            _ => panic!("Expected member variable {} {:?}", bare_name, members),
-        }
     }
 
     // ========================================================
@@ -216,16 +201,6 @@ impl Context {
                 .variables
                 .get_built_in(bare_name, TypeQualifier::DollarString),
             DimType::UserDefined(_) => self.variables.get_user_defined(bare_name),
-            DimType::Many(_, members) => {
-                // is it a variable
-                match self.variables.get_user_defined(bare_name) {
-                    Some(Variant::VUserDefined(box_user_defined_type_value)) => {
-                        let name_path = members.name_path();
-                        box_user_defined_type_value.get_path(&name_path)
-                    }
-                    _ => None,
-                }
-            }
             DimType::Array(_, _) => todo!(),
         }
     }

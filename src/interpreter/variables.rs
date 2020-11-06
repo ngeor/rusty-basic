@@ -77,19 +77,8 @@ impl Variables {
         self.get_by_name(&bare_name.clone().into())
     }
 
-    pub fn get_user_defined_mut(&mut self, bare_name: &BareName) -> Option<&mut Variant> {
-        self.get_by_name_mut(&bare_name.clone().into())
-    }
-
     fn get_by_name(&self, name: &Name) -> Option<&Variant> {
         self.name_to_index.get(name).and_then(|idx| self.get(*idx))
-    }
-
-    pub fn get_by_name_mut(&mut self, name: &Name) -> Option<&mut Variant> {
-        match self.name_to_index.get(name) {
-            Some(idx) => self.values.get_mut(*idx),
-            None => None,
-        }
     }
 
     pub fn get(&self, idx: usize) -> Option<&Variant> {

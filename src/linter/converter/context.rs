@@ -5,15 +5,11 @@ use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::types::{
-    DimName, DimType, ElementType, Expression, Members, UserDefinedName, UserDefinedType,
-    UserDefinedTypes,
-};
+use crate::linter::types::{DimName, DimType, Expression, UserDefinedTypes};
 use crate::linter::{ArrayDimensions, ExpressionNode};
 use crate::parser::{BareName, Name, QualifiedName, QualifiedNameNode, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
-use std::convert::TryInto;
 
 /*
 
@@ -268,9 +264,7 @@ impl<'a> Context<'a> {
                     }
                 }
             },
-            None => {
-                Ok(resolve_members::resolve_member(self, name)?.map(|n| Expression::Variable(n)))
-            }
+            None => Ok(None),
         }
     }
 
@@ -441,109 +435,6 @@ mod context_management {
                 ContextState::Child { parent, .. } => *parent,
                 _ => panic!("Stack underflow!"),
             }
-        }
-    }
-}
-
-mod resolve_members {
-    use super::*;
-
-    pub fn resolve_member(context: &Context, name: &Name) -> Result<Option<DimName>, QError> {
-        let (bare_name, opt_qualifier) = match name {
-            Name::Bare(bare_name) => (bare_name, None),
-            Name::Qualified(QualifiedName {
-                bare_name,
-                qualifier,
-            }) => (bare_name, Some(*qualifier)),
-        };
-        let s: String = bare_name.clone().into();
-        let mut v: Vec<BareName> = s.split('.').map(|s| s.into()).collect();
-        let first: BareName = v.remove(0);
-        if v.is_empty() {
-            return Ok(None);
-        }
-        match context.names.get(&first) {
-            Some(BareNameTypes::UserDefined(type_name)) => {
-                let dim_type = DimType::Many(
-                    type_name.clone(),
-                    resolve_members(&context.state, type_name, &v[..], opt_qualifier)?,
-                );
-                Ok(Some(DimName::new(first.clone(), dim_type)))
-            }
-            _ => Ok(None),
-        }
-    }
-
-    fn resolve_members(
-        state: &ContextState,
-        type_name: &BareName,
-        names: &[BareName],
-        opt_qualifier: Option<TypeQualifier>,
-    ) -> Result<Members, QError> {
-        let (first, rest) = names.split_first().expect("Empty names!");
-        let user_defined_type = get_user_defined_type(state, type_name).expect("Type not found!");
-        match user_defined_type.find_element(first) {
-            Some(element_type) => match element_type {
-                ElementType::Integer
-                | ElementType::Long
-                | ElementType::Single
-                | ElementType::Double
-                | ElementType::FixedLengthString(_) => {
-                    if rest.is_empty() {
-                        let is_correct_type = match opt_qualifier {
-                            Some(q) => {
-                                let element_q: TypeQualifier = element_type.try_into().unwrap();
-                                q == element_q
-                            }
-                            None => true,
-                        };
-                        if is_correct_type {
-                            Ok(Members::Leaf {
-                                name: first.clone(),
-                                element_type: element_type.clone(),
-                            })
-                        } else {
-                            Err(QError::TypeMismatch)
-                        }
-                    } else {
-                        Err(QError::syntax_error("Cannot navigate after built-in type"))
-                    }
-                }
-                ElementType::UserDefined(u) => {
-                    if rest.is_empty() {
-                        if opt_qualifier.is_none() {
-                            Ok(Members::Leaf {
-                                name: first.clone(),
-                                element_type: element_type.clone(),
-                            })
-                        } else {
-                            // e.g. c.Address$ where c.Address is nested user defined
-                            Err(QError::TypeMismatch)
-                        }
-                    } else {
-                        Ok(Members::Node(
-                            UserDefinedName {
-                                name: first.clone(),
-                                type_name: u.clone(),
-                            },
-                            Box::new(resolve_members(state, u, rest, opt_qualifier)?),
-                        ))
-                    }
-                }
-            },
-            None => Err(QError::ElementNotDefined),
-        }
-    }
-
-    fn get_user_defined_type<'a>(
-        state: &'a ContextState,
-        type_name: &'a BareName,
-    ) -> Option<&'a UserDefinedType> {
-        match state {
-            ContextState::Child { parent, .. } => get_user_defined_type(&parent.state, type_name),
-            ContextState::Root {
-                user_defined_types, ..
-            } => user_defined_types.get(type_name),
         }
     }
 }

@@ -150,16 +150,16 @@ fn cannot_use_in_unary_expression() {
     for op in &ops {
         let input = format!(
             "
-                    TYPE Card
-                        Value AS INTEGER
-                    END TYPE
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
 
-                    DIM a AS CARD
-                    DIM b AS CARD
+            DIM a AS CARD
+            DIM b AS CARD
 
-                    b = {}A",
+            b = {}A",
             op
         );
-        assert_linter_err!(input, QError::TypeMismatch, 9, 26);
+        assert_linter_err!(input, QError::TypeMismatch);
     }
 }

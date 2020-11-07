@@ -22,14 +22,11 @@ pub enum Instruction {
     /// Copies the value of register A into the variable path
     CopyAToVarPath,
 
-    /// Copies the value of register A into the variable path
+    /// Copies the value of the variable path into register A
     CopyVarPathToA,
 
     /// Loads a value into register A
     Load(Variant),
-
-    /// Stores a value from register A into a constant
-    StoreConst(QualifiedName),
 
     CopyAToB,
     CopyAToC,

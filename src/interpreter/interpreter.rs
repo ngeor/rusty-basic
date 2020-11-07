@@ -52,7 +52,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     stacktrace: Vec<Location>,
 
     /// Holds a path to a variable
-    name_ptr: Option<Path>,
+    var_path_stack: VecDeque<Path>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -145,7 +145,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             stacktrace: vec![],
             file_manager: FileManager::new(),
             user_defined_types: Rc::clone(&rc_user_defined_types),
-            name_ptr: None,
+            var_path_stack: VecDeque::new(),
         };
         result.register_stack.push_back(Registers::new());
         result
@@ -200,10 +200,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     }
                     _ => casted,
                 });
-            }
-            Instruction::StoreConst(n) => {
-                let v = self.get_a();
-                self.context.set_constant(n.clone(), v);
             }
             Instruction::CopyAToB => {
                 self.registers_mut().copy_a_to_b();
@@ -397,23 +393,24 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 )
                 .with_err_at(pos)?;
             }
-            Instruction::VarPathName(name) => match &self.name_ptr {
-                Some(x) => panic!(
-                    "name_ptr already had value {:?} when attempted to push {}",
-                    x, name
-                ),
-                _ => {
-                    self.name_ptr = Some(Path::Root(name.clone()));
-                }
-            },
+            Instruction::VarPathName(name) => {
+                self.var_path_stack.push_back(Path::Root(name.clone()));
+            }
             Instruction::VarPathIndex => {
                 let index_value = self.get_a();
-                let old_name_ptr = self.name_ptr.take().expect("Should have name_ptr");
-                self.name_ptr = Some(old_name_ptr.append_array_element(index_value));
+                let old_name_ptr = self
+                    .var_path_stack
+                    .pop_back()
+                    .expect("Should have name_ptr");
+                self.var_path_stack
+                    .push_back(old_name_ptr.append_array_element(index_value));
             }
             Instruction::VarPathProperty(property_name) => {
-                let old_name_ptr = self.name_ptr.take().expect("Should have name_ptr");
-                self.name_ptr = Some(Path::Property(
+                let old_name_ptr = self
+                    .var_path_stack
+                    .pop_back()
+                    .expect("Should have name_ptr");
+                self.var_path_stack.push_back(Path::Property(
                     Box::new(old_name_ptr),
                     property_name.clone(),
                 ));
@@ -426,7 +423,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *v = a;
             }
             Instruction::CopyVarPathToA => {
-                let v = self.resolve_name_ptr().with_err_at(pos)?;
+                let v = self.resolve_name_ptr_mut().with_err_at(pos)?;
                 let v_copy = v.clone();
                 self.set_a(v_copy);
             }
@@ -434,52 +431,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         Ok(())
     }
 
-    fn resolve_name_ptr(&mut self) -> Result<&Variant, QError> {
-        match self.name_ptr.take() {
-            Some(path) => self.resolve_some_name_ptr(path),
-            _ => panic!("Root name_ptr was None"),
-        }
-    }
-
-    fn resolve_some_name_ptr(&mut self, path: Path) -> Result<&Variant, QError> {
-        match path {
-            Path::Root(var_name) => self
-                .context
-                .get_r_value_by_name(&var_name)
-                .ok_or(QError::InternalError("Variable not found".to_string())),
-            Path::ArrayElement(parent_path, indices) => {
-                let parent_variant = self.resolve_some_name_ptr(*parent_path)?;
-                Self::resolve_array(parent_variant, indices)
-            }
-            Path::Property(left_side, property_name) => {
-                let parent_variant = self.resolve_some_name_ptr(*left_side)?;
-                Ok(Self::resolve_property(parent_variant, &property_name))
-            }
-        }
-    }
-
-    fn resolve_array(v: &Variant, indices: Vec<Variant>) -> Result<&Variant, QError> {
-        match v {
-            Variant::VArray(v_array) => {
-                let int_indices: Result<Vec<i32>, QError> =
-                    indices.into_iter().map(|v| i32::try_from(v)).collect();
-                v_array.get_element(int_indices?)
-            }
-            _ => panic!("Expected array, found {:?}", v),
-        }
-    }
-
-    fn resolve_property<'a>(v: &'a Variant, property_name: &BareName) -> &'a Variant {
-        match v {
-            Variant::VUserDefined(boxed_user_defined_value) => boxed_user_defined_value
-                .get(property_name)
-                .expect("Property not defined, linter should have caught this"),
-            _ => panic!("Expected user defined type, found {:?}", v),
-        }
-    }
-
     fn resolve_name_ptr_mut(&mut self) -> Result<&mut Variant, QError> {
-        match self.name_ptr.take() {
+        match self.var_path_stack.pop_back() {
             Some(n) => self.resolve_some_name_ptr_mut(n),
             _ => panic!("Root name_ptr was None"),
         }

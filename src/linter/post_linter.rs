@@ -1,4 +1,5 @@
 pub mod built_in_linter;
+pub mod const_reducer;
 pub mod dots_linter;
 pub mod expression_reducer;
 pub mod for_next_counter_match_linter;
@@ -25,7 +26,9 @@ pub fn post_linter(
     // lint
     apply_linters(&result, functions, subs, names_without_dot)?;
     // reduce
-    let reducer = undefined_function_reducer::UndefinedFunctionReducer { functions };
+    let mut reducer = const_reducer::ConstReducer::new();
+    let result = reducer.visit_program(result)?;
+    let mut reducer = undefined_function_reducer::UndefinedFunctionReducer { functions };
     reducer.visit_program(result)
 }
 

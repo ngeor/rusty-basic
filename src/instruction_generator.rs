@@ -1,7 +1,6 @@
 mod args;
 mod built_in_functions;
 mod built_in_subs;
-mod constant;
 mod dim;
 mod expression;
 mod for_loop;

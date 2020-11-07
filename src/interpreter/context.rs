@@ -3,9 +3,8 @@ use crate::interpreter::arguments::Arguments;
 use crate::interpreter::arguments_stack::ArgumentsStack;
 use crate::interpreter::variables::Variables;
 use crate::linter::{DimName, DimType, ExpressionType, HasExpressionType, UserDefinedTypes};
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, TypeQualifier};
 use crate::variant::Variant;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 /*
@@ -52,7 +51,6 @@ Example 2:
 pub struct Context {
     parent: Option<Box<Context>>,
     user_defined_types: Rc<UserDefinedTypes>,
-    constants: HashMap<QualifiedName, Variant>,
     variables: Variables,
 
     /// Preparing arguments for the next call
@@ -67,7 +65,6 @@ impl Context {
         Self {
             parent: None,
             user_defined_types,
-            constants: HashMap::new(),
             variables: Variables::new(),
             arguments_stack: ArgumentsStack::new(),
             parameter_count: 0, // root context, no parameters
@@ -93,16 +90,11 @@ impl Context {
         let parameter_count = variables.len();
         Self {
             user_defined_types: Rc::clone(&self.user_defined_types),
-            constants: HashMap::new(),
             variables,
             parameter_count,
             arguments_stack: ArgumentsStack::new(),
             parent: Some(Box::new(self)),
         }
-    }
-
-    pub fn set_constant(&mut self, qualified_name: QualifiedName, value: Variant) {
-        self.constants.insert(qualified_name, value);
     }
 
     pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
@@ -154,20 +146,9 @@ impl Context {
     }
 
     pub fn get_r_value_by_name(&self, name: &Name) -> Option<&Variant> {
-        // get a constant or a local thing or a parent constant
         let bare_name: &BareName = name.as_ref();
         match name.qualifier() {
-            Some(qualifier) => {
-                // constant or variable or global constant
-                let qualified_name = QualifiedName::new(bare_name.clone(), qualifier);
-                if let Some(v) = self.constants.get(&qualified_name) {
-                    Some(v)
-                } else if let Some(v) = self.variables.get_built_in(bare_name, qualifier) {
-                    Some(v)
-                } else {
-                    self.get_root_const(&qualified_name)
-                }
-            }
+            Some(qualifier) => self.variables.get_built_in(bare_name, qualifier),
             None => {
                 // can only be user defined type or array of user defined types
                 self.variables.get_user_defined(bare_name)
@@ -180,51 +161,12 @@ impl Context {
         // get a constant or a local thing or a parent constant
         let bare_name: &BareName = name.as_ref();
         match name.dim_type() {
-            DimType::BuiltIn(qualifier) => {
-                // is it a constant
-                let qualified_name = &QualifiedName::new(bare_name.clone(), *qualifier);
-                match self.constants.get(qualified_name) {
-                    Some(v) => Some(v),
-                    None => {
-                        // is it a variable
-                        match self.variables.get_built_in(bare_name, *qualifier) {
-                            Some(v) => Some(v),
-                            None => {
-                                // is it a root constant
-                                self.get_root_const(qualified_name)
-                            }
-                        }
-                    }
-                }
-            }
+            DimType::BuiltIn(qualifier) => self.variables.get_built_in(bare_name, *qualifier),
             DimType::FixedLengthString(_len) => self
                 .variables
                 .get_built_in(bare_name, TypeQualifier::DollarString),
             DimType::UserDefined(_) => self.variables.get_user_defined(bare_name),
             DimType::Array(_, _) => todo!(),
-        }
-    }
-
-    fn get_root_const(&self, name: &QualifiedName) -> Option<&Variant> {
-        match &self.parent {
-            Some(p) => {
-                let mut context: &Self = p.as_ref();
-                loop {
-                    match &context.parent {
-                        Some(p) => {
-                            context = p;
-                        }
-                        None => {
-                            break;
-                        }
-                    }
-                }
-                context.constants.get(name)
-            }
-            None => {
-                // already at root context, therefore already checked
-                None
-            }
         }
     }
 

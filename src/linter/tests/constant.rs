@@ -1,5 +1,13 @@
 use crate::assert_linter_err;
-use crate::common::QError;
+use crate::assert_linter_ok_top_level_statements;
+use crate::common::{AtRowCol, QError};
+use crate::linter::test_utils::linter_ok;
+use crate::linter::{
+    Expression, ParamName, ParamType, PrintNode, Statement, SubImplementation, TopLevelToken,
+};
+use crate::parser::{BareName, TypeQualifier};
+use crate::variant::Variant;
+use std::convert::TryFrom;
 
 #[test]
 fn function_call_not_allowed() {
@@ -92,4 +100,49 @@ fn test_forward_const_not_allowed() {
             CONST A = B + 1
             CONST B = 42";
     assert_linter_err!(input, QError::InvalidConstant, 2, 23);
+}
+
+#[test]
+fn test_constant_definition_and_usage_in_print() {
+    let program = r#"
+    CONST X = "hello"
+    PRINT X
+    "#;
+    assert_linter_ok_top_level_statements!(
+        program,
+        Statement::Print(PrintNode::one(
+            Expression::StringLiteral("hello".to_owned()).at_rc(3, 11)
+        ))
+    );
+}
+
+#[test]
+fn test_constant_definition_and_usage_in_sub_call_arg() {
+    let program = r#"
+    CONST X = "hello"
+    MySub X
+
+    SUB MySub(A$)
+    END SUB
+    "#;
+    assert_eq!(
+        linter_ok(program),
+        vec![
+            TopLevelToken::Statement(Statement::SubCall(
+                "MySub".into(),
+                vec![Expression::StringLiteral("hello".to_owned()).at_rc(3, 11)]
+            ))
+            .at_rc(3, 5),
+            TopLevelToken::SubImplementation(SubImplementation {
+                name: BareName::from("MySub").at_rc(5, 9),
+                params: vec![ParamName::new(
+                    "A".into(),
+                    ParamType::BuiltIn(TypeQualifier::DollarString)
+                )
+                .at_rc(5, 15)],
+                body: vec![]
+            })
+            .at_rc(5, 5)
+        ]
+    );
 }

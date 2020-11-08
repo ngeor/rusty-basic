@@ -696,7 +696,7 @@ mod len {
         let len: i32 = match v {
             Variant::VSingle(_) => 4,
             Variant::VDouble(_) => 8,
-            Variant::VString(v) | Variant::VFixedLengthString(v) => v.len().try_into().unwrap(),
+            Variant::VString(v) => v.len().try_into().unwrap(),
             Variant::VInteger(_) => 2,
             Variant::VLong(_) => 4,
             Variant::VUserDefined(user_defined_value) => {

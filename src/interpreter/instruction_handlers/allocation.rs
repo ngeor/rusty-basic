@@ -19,7 +19,7 @@ pub fn allocate_fixed_length_string<T: InterpreterTrait>(
     len: u16,
 ) -> Result<(), QError> {
     let s: String = (0..len).map(|_| ' ').collect();
-    let v = Variant::VFixedLengthString(s);
+    let v = Variant::VString(s);
     interpreter.registers_mut().set_a(v);
     Ok(())
 }

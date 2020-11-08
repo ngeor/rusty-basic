@@ -96,7 +96,6 @@ pub enum Instruction {
     /// Cast the contents of A into the given type
     Cast(TypeQualifier),
 
-    #[deprecated]
     FixLength(u16),
 
     // allocating variables

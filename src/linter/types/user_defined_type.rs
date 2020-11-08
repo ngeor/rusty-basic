@@ -71,7 +71,7 @@ impl ElementType {
             Self::Single => Variant::from(TypeQualifier::BangSingle),
             Self::Double => Variant::from(TypeQualifier::HashDouble),
             Self::FixedLengthString(len) => {
-                Variant::VFixedLengthString(String::new().fix_length(*len as usize))
+                Variant::VString(String::new().fix_length(*len as usize))
             }
             Self::Integer => Variant::from(TypeQualifier::PercentInteger),
             Self::Long => Variant::from(TypeQualifier::AmpersandLong),

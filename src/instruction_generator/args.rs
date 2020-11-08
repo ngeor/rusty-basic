@@ -1,6 +1,6 @@
 use crate::common::{AtLocation, Locatable, Location};
 use crate::instruction_generator::{Instruction, InstructionGenerator};
-use crate::linter::{Expression, ExpressionNode, HasExpressionType, ParamName};
+use crate::linter::{Expression, ExpressionNode, ExpressionType, HasExpressionType, ParamName};
 use crate::parser::QualifiedName;
 
 impl InstructionGenerator {
@@ -56,6 +56,7 @@ impl InstructionGenerator {
                 | Expression::Property(_, _, _)
                 | Expression::ArrayElement(_, _, _) => {
                     self.push(Instruction::DequeueFromReturnStack, *pos);
+                    self.generate_fix_string_length(arg, *pos);
                     self.generate_store_instructions(arg.clone(), *pos);
                 }
                 _ => {}
@@ -73,5 +74,11 @@ impl InstructionGenerator {
 
     pub fn generate_un_stash_function_return_value(&mut self, pos: Location) {
         self.push(Instruction::UnStashFunctionReturnValue, pos);
+    }
+
+    fn generate_fix_string_length(&mut self, arg: &Expression, pos: Location) {
+        if let ExpressionType::FixedLengthString(l) = arg.expression_type() {
+            self.push(Instruction::FixLength(l), pos);
+        }
     }
 }

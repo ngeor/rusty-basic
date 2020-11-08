@@ -58,6 +58,8 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     by_ref_stack: VecDeque<Variant>,
 
     function_result: Option<Variant>,
+
+    value_stack: Vec<Variant>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -105,11 +107,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     }
 
     fn registers(&self) -> &Registers {
-        self.register_stack.back().unwrap()
+        self.register_stack.last().unwrap()
     }
 
     fn registers_mut(&mut self) -> &mut Registers {
-        self.register_stack.back_mut().unwrap()
+        self.register_stack.last_mut().unwrap()
     }
 }
 
@@ -139,23 +141,22 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         user_defined_types: UserDefinedTypes,
     ) -> Self {
         let rc_user_defined_types = Rc::new(user_defined_types);
-        let mut result = Interpreter {
+        Interpreter {
             stdlib,
             stdin,
             stdout,
             lpt1,
             context: Context::new(Rc::clone(&rc_user_defined_types)),
             return_address_stack: vec![],
-            register_stack: VecDeque::new(),
+            register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
             user_defined_types: Rc::clone(&rc_user_defined_types),
             var_path_stack: VecDeque::new(),
             by_ref_stack: VecDeque::new(),
             function_result: None,
-        };
-        result.register_stack.push_back(Registers::new());
-        result
+            value_stack: vec![],
+        }
     }
 
     fn get_a(&self) -> Variant {
@@ -183,13 +184,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *error_handler = Some(*idx);
             }
             Instruction::PushRegisters => {
-                self.register_stack.push_back(Registers::new());
+                self.register_stack.push(Registers::new());
             }
             Instruction::PopRegisters => {
-                let old_registers = self.register_stack.pop_back();
-                self.set_a(old_registers.unwrap().get_a());
+                self.register_stack.pop();
             }
-            Instruction::Load(v) => {
+            Instruction::LoadIntoA(v) => {
                 self.set_a(v.clone());
             }
             Instruction::Cast(q) => {
@@ -225,9 +225,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::CopyDToB => {
                 self.registers_mut().copy_d_to_b();
-            }
-            Instruction::SwapAWithB => {
-                self.registers_mut().swap_a_with_b();
             }
             Instruction::Plus => {
                 instruction_handlers::math::plus(self).with_err_at(pos)?;
@@ -343,7 +340,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     .expect("Should have function result");
                 self.registers_mut().set_a(v);
             }
-            Instruction::PushUnnamed => {
+            Instruction::PushAToUnnamedArg => {
                 let v = self.get_a();
                 self.context.arguments_stack().push_unnamed(v);
             }
@@ -387,7 +384,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 instruction_handlers::allocation::allocate_fixed_length_string(self, *len)
                     .with_err_at(pos)?;
             }
-            Instruction::AllocateArray(element_type) => {
+            Instruction::AllocateArrayIntoA(element_type) => {
                 instruction_handlers::allocation::allocate_array(self, element_type)
                     .with_err_at(pos)?;
             }
@@ -431,6 +428,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let v = self.resolve_name_ptr_mut().with_err_at(pos)?;
                 let v_copy = v.clone();
                 self.set_a(v_copy);
+            }
+            Instruction::PushAToValueStack => {
+                let v = self.registers().get_a();
+                self.value_stack.push(v);
+            }
+            Instruction::PopValueStackIntoA => {
+                let v = self.value_stack.pop().expect("value_stack underflow!");
+                self.registers_mut().set_a(v);
             }
         }
         Ok(())

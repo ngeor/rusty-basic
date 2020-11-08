@@ -26,7 +26,7 @@ pub enum Instruction {
     CopyVarPathToA,
 
     /// Loads a value into register A
-    Load(Variant),
+    LoadIntoA(Variant),
 
     CopyAToB,
     CopyAToC,
@@ -34,7 +34,6 @@ pub enum Instruction {
     CopyCToB,
     CopyDToA,
     CopyDToB,
-    SwapAWithB,
     /// Adds registers A and B and stores the results into register A
     Plus,
     Minus,
@@ -63,6 +62,9 @@ pub enum Instruction {
     PushRegisters,
     PopRegisters,
 
+    PushAToValueStack,
+    PopValueStackIntoA,
+
     PushRet(usize),
     PopRet,
 
@@ -77,7 +79,7 @@ pub enum Instruction {
 
     /// Pushes the value of register A as an unnamed parameter to a child context.
     /// Unnamed parameters are used by built-in functions/subs.
-    PushUnnamed,
+    PushAToUnnamedArg,
 
     PushStack,
     PopStack,
@@ -105,7 +107,7 @@ pub enum Instruction {
 
     /// Allocates an array of the given type. The dimensions need to have been
     /// first pushed with `PushUnnamed`.
-    AllocateArray(ExpressionType),
+    AllocateArrayIntoA(ExpressionType),
 
     AllocateUserDefined(BareName),
 }

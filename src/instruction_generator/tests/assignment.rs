@@ -14,7 +14,7 @@ fn test_assignment() {
             Instruction::VarPathName("X!".into()).at_rc(1, 1),
             Instruction::CopyAToVarPath.at_rc(1, 1),
             // assignment with casting
-            Instruction::Load(Variant::VInteger(1)).at_rc(1, 5),
+            Instruction::LoadIntoA(Variant::VInteger(1)).at_rc(1, 5),
             Instruction::Cast(TypeQualifier::BangSingle).at_rc(1, 5),
             Instruction::VarPathName("X!".into()).at_rc(1, 1),
             Instruction::CopyAToVarPath.at_rc(1, 1),
@@ -33,7 +33,7 @@ fn test_assignment_no_cast_implicit_variable() {
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             // assign
-            Instruction::Load(Variant::VInteger(1)),
+            Instruction::LoadIntoA(Variant::VInteger(1)),
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             Instruction::Halt
@@ -55,7 +55,7 @@ fn test_assignment_no_cast_explicit_variable() {
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             // assign
-            Instruction::Load(Variant::VInteger(1)),
+            Instruction::LoadIntoA(Variant::VInteger(1)),
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             Instruction::Halt
@@ -77,11 +77,11 @@ fn test_assignment_no_cast_implicit_variable_implicit_dim_is_only_once() {
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             // assign
-            Instruction::Load(Variant::VInteger(1)),
+            Instruction::LoadIntoA(Variant::VInteger(1)),
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             // assign
-            Instruction::Load(Variant::VInteger(2)),
+            Instruction::LoadIntoA(Variant::VInteger(2)),
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             Instruction::Halt
@@ -99,13 +99,12 @@ fn test_assignment_binary_plus() {
             Instruction::VarPathName("X%".into()),
             Instruction::CopyAToVarPath,
             // evaluation of binary expression
-            Instruction::PushRegisters,
-            Instruction::Load(Variant::VInteger(1)),
+            Instruction::LoadIntoA(Variant::VInteger(1)),
+            Instruction::PushAToValueStack,
+            Instruction::LoadIntoA(Variant::VSingle(2.1)),
             Instruction::CopyAToB,
-            Instruction::Load(Variant::VSingle(2.1)),
-            Instruction::SwapAWithB,
+            Instruction::PopValueStackIntoA,
             Instruction::Plus,
-            Instruction::PopRegisters,
             // assignment with casting
             Instruction::Cast(TypeQualifier::PercentInteger),
             Instruction::VarPathName("X%".into()),

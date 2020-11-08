@@ -28,7 +28,7 @@ impl InstructionGenerator {
         self.push(Instruction::BeginCollectArguments, pos);
         for Locatable { element: arg, pos } in args {
             self.generate_expression_instructions(arg.clone().at(pos));
-            self.push(Instruction::PushUnnamed, *pos);
+            self.push(Instruction::PushAToUnnamedArg, *pos);
         }
     }
 

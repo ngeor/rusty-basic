@@ -147,7 +147,7 @@ impl InstructionGenerator {
             Some(format_string) => {
                 self.push_load_unnamed_arg(true, pos);
                 self.generate_expression_instructions(format_string.clone());
-                self.push(Instruction::PushUnnamed, pos);
+                self.push(Instruction::PushAToUnnamedArg, pos);
             }
             None => {
                 self.push_load_unnamed_arg(false, pos);
@@ -160,7 +160,7 @@ impl InstructionGenerator {
             PrintArg::Expression(Locatable { element: arg, pos }) => {
                 self.push_load_unnamed_arg(PrintArgType::Expression, pos);
                 self.generate_expression_instructions(arg.at(pos));
-                self.push(Instruction::PushUnnamed, pos);
+                self.push(Instruction::PushAToUnnamedArg, pos);
             }
             PrintArg::Comma => {
                 self.push_load_unnamed_arg(PrintArgType::Comma, pos);

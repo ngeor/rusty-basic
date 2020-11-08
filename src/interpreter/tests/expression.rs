@@ -111,6 +111,26 @@ mod multiply {
     fn test_multiply() {
         assert_prints!("PRINT 6 * 7", "42");
     }
+
+    #[test]
+    fn test_multiply_variable_with_literal() {
+        let input = r#"
+        DIM A
+        A = 7
+        PRINT A * 3
+        "#;
+        assert_prints!(input, "21");
+    }
+
+    #[test]
+    fn test_multiply_literal_with_variable() {
+        let input = r#"
+        DIM A
+        A = 5
+        PRINT 3 * A
+        "#;
+        assert_prints!(input, "15");
+    }
 }
 
 mod divide {

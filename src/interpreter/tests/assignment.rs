@@ -264,3 +264,14 @@ fn test_can_assign_to_parameter_hiding_name_of_function() {
     "#;
     assert_prints!(program, "42");
 }
+
+#[test]
+fn test_assign_math_expr() {
+    let program = r#"
+    R = 3
+    C = 4
+    A = R * 10 + C
+    PRINT A
+    "#;
+    assert_prints!(program, "34");
+}

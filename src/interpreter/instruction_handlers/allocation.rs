@@ -39,7 +39,6 @@ pub fn allocate_array<T: InterpreterTrait>(
     let args = r_args?;
     let mut dimensions: Vec<(i32, i32)> = vec![];
     let mut i: usize = 0;
-    let mut elements: Vec<Variant> = vec![];
     while i < args.len() {
         let lbound = args[i];
         i += 1;
@@ -49,14 +48,11 @@ pub fn allocate_array<T: InterpreterTrait>(
         }
         i += 1;
         dimensions.push((lbound, ubound));
-        for _i in lbound..ubound + 1 {
-            elements.push(element_type.default_variant(interpreter.user_defined_types()));
-        }
     }
-    let array = Variant::VArray(Box::new(VArray {
+    let array = Variant::VArray(Box::new(VArray::new(
         dimensions,
-        elements,
-    }));
+        element_type.default_variant(interpreter.user_defined_types()),
+    )));
     interpreter.registers_mut().set_a(array);
     Ok(())
 }

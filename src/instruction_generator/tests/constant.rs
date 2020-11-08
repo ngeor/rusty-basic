@@ -16,17 +16,17 @@ fn test_constant_definition_and_usage_in_print() {
             // print
             Instruction::BeginCollectArguments,
             // no file handle
-            Instruction::Load(Variant::VInteger(0)),
-            Instruction::PushUnnamed,
+            Instruction::LoadIntoA(Variant::VInteger(0)),
+            Instruction::PushAToUnnamedArg,
             // no format string
-            Instruction::Load(Variant::VInteger(0)),
-            Instruction::PushUnnamed,
+            Instruction::LoadIntoA(Variant::VInteger(0)),
+            Instruction::PushAToUnnamedArg,
             // PrintArg::Expression
-            Instruction::Load(Variant::VInteger(0)),
-            Instruction::PushUnnamed,
+            Instruction::LoadIntoA(Variant::VInteger(0)),
+            Instruction::PushAToUnnamedArg,
             // the arg itself
-            Instruction::Load(Variant::VString("hello".to_owned())),
-            Instruction::PushUnnamed,
+            Instruction::LoadIntoA(Variant::VString("hello".to_owned())),
+            Instruction::PushAToUnnamedArg,
             // push and go
             Instruction::PushStack,
             Instruction::BuiltInSub(BuiltInSub::Print),

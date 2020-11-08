@@ -4,15 +4,25 @@ use crate::common::QError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 #[test]
+fn test_assign_one_element() {
+    let input = r#"
+    DIM A(1 TO 1)
+    A(1) = 42
+    PRINT A(1)
+    "#;
+    assert_prints!(input, "42");
+}
+
+#[test]
 fn test_usage_on_global_scope() {
     let input = r#"
     DIM A(3)
     FOR I% = 0 TO 3
-        A(I%) = I%
+        A(I%) = I% + 10
         PRINT A(I%)
     NEXT
     "#;
-    assert_prints!(input, "0", "1", "2", "3");
+    assert_prints!(input, "10", "11", "12", "13");
 }
 
 #[test]

@@ -55,11 +55,11 @@ impl InstructionGenerator {
                 self.generate_built_in_function_call_instructions(n, args, pos);
             }
             Expression::BinaryExpression(op, left, right, _) => {
-                self.push(Instruction::PushRegisters, pos);
                 self.generate_expression_instructions(*left);
-                self.push(Instruction::CopyAToB, pos);
+                self.push(Instruction::PushAToValueStack, pos);
                 self.generate_expression_instructions(*right);
-                self.push(Instruction::SwapAWithB, pos);
+                self.push(Instruction::CopyAToB, pos);
+                self.push(Instruction::PopValueStackIntoA, pos);
                 match op {
                     Operator::Plus => self.push(Instruction::Plus, pos),
                     Operator::Minus => self.push(Instruction::Minus, pos),
@@ -74,7 +74,6 @@ impl InstructionGenerator {
                     Operator::And => self.push(Instruction::And, pos),
                     Operator::Or => self.push(Instruction::Or, pos),
                 }
-                self.push(Instruction::PopRegisters, pos);
             }
             Expression::UnaryExpression(op, child) => match op {
                 UnaryOperator::Not => {
@@ -103,13 +102,13 @@ impl InstructionGenerator {
                 self.push(Instruction::VarPathName(array_name), pos);
                 for arg in indices {
                     let arg_pos = arg.pos();
-                    self.push(Instruction::PushRegisters, arg_pos);
+                    self.push(Instruction::PushAToValueStack, arg_pos);
                     self.generate_expression_instructions_casting(
                         arg,
                         ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
                     );
                     self.push(Instruction::VarPathIndex, arg_pos);
-                    self.push(Instruction::PopRegisters, arg_pos);
+                    self.push(Instruction::PopValueStackIntoA, arg_pos);
                 }
             }
             Expression::Property(box_left_side, property_name, _element_type) => {

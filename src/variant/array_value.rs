@@ -3,11 +3,23 @@ use crate::variant::Variant;
 
 #[derive(Clone, Debug)]
 pub struct VArray {
-    pub dimensions: Vec<(i32, i32)>,
-    pub elements: Vec<Variant>,
+    dimensions: Vec<(i32, i32)>,
+    elements: Vec<Variant>,
 }
 
 impl VArray {
+    pub fn new(dimensions: Vec<(i32, i32)>, default_variant: Variant) -> Self {
+        let mut len: i32 = 1;
+        for (lbound, ubound) in dimensions.iter() {
+            len = len * (*ubound - *lbound + 1);
+        }
+        let elements: Vec<Variant> = (0..len).map(|_| default_variant.clone()).collect();
+        Self {
+            dimensions,
+            elements,
+        }
+    }
+
     pub fn get_element(&self, indices: Vec<i32>) -> Result<&Variant, QError> {
         let index = self.abs_index(indices)?;
         match self.elements.get(index) {

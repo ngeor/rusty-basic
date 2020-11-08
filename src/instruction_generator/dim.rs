@@ -19,11 +19,11 @@ impl InstructionGenerator {
                 for ArrayDimension { lbound, ubound } in array_dimensions {
                     let lbound_pos = lbound.pos();
                     self.generate_expression_instructions(lbound);
-                    self.push(Instruction::PushUnnamed, lbound_pos);
+                    self.push(Instruction::PushAToUnnamedArg, lbound_pos);
 
                     let ubound_pos = ubound.pos();
                     self.generate_expression_instructions(ubound);
-                    self.push(Instruction::PushUnnamed, ubound_pos);
+                    self.push(Instruction::PushAToUnnamedArg, ubound_pos);
                 }
 
                 let element_type = *box_element_type;
@@ -34,7 +34,7 @@ impl InstructionGenerator {
                     _ => None,
                 };
 
-                self.push(Instruction::AllocateArray(element_type), pos);
+                self.push(Instruction::AllocateArrayIntoA(element_type), pos);
 
                 self.push(Instruction::VarPathName(Name::new(bare_name, opt_q)), pos);
                 self.push(Instruction::CopyAToVarPath, pos);

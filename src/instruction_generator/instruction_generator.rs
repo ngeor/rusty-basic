@@ -136,7 +136,10 @@ impl InstructionGenerator {
             if let Instruction::UnresolvedJump(x) = instruction {
                 *instruction_node = Instruction::Jump(*labels.get(x).unwrap()).at(pos);
             } else if let Instruction::UnresolvedJumpIfFalse(x) = instruction {
-                *instruction_node = Instruction::JumpIfFalse(*labels.get(x).unwrap()).at(pos);
+                *instruction_node = Instruction::JumpIfFalse(
+                    *labels.get(x).expect(&format!("Label {} not found", x)),
+                )
+                .at(pos);
             } else if let Instruction::SetUnresolvedErrorHandler(x) = instruction {
                 *instruction_node = Instruction::SetErrorHandler(*labels.get(x).unwrap()).at(pos);
             }
@@ -153,7 +156,7 @@ impl InstructionGenerator {
     where
         Variant: From<T>,
     {
-        self.push(Instruction::Load(value.into()), pos);
+        self.push(Instruction::LoadIntoA(value.into()), pos);
     }
 
     /// Adds a Load instruction, converting the given value into a Variant
@@ -163,7 +166,7 @@ impl InstructionGenerator {
         Variant: From<T>,
     {
         self.push_load(value, pos);
-        self.push(Instruction::PushUnnamed, pos);
+        self.push(Instruction::PushAToUnnamedArg, pos);
     }
 
     pub fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {

@@ -20,7 +20,15 @@ impl InstructionGenerator {
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_function(bare_name, pos);
-        self.generate_copy_by_ref_to_parent(&args);
-        self.push(Instruction::PopStack(Some(qualified_name)), pos);
+        // stash by-ref variables
+        self.generate_stash_by_ref_args(&args);
+        // stash function name
+        self.generate_stash_function_return_value(qualified_name, pos);
+        // switch to parent context
+        self.push(Instruction::PopStack, pos);
+        // un-stash by-ref variables
+        self.generate_un_stash_by_ref_args(&args);
+        // un-stash function name
+        self.generate_un_stash_function_return_value(pos);
     }
 }

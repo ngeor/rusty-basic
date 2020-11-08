@@ -16,7 +16,8 @@ impl InstructionGenerator {
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_sub(name, pos);
-        self.generate_copy_by_ref_to_parent(&args);
-        self.push(Instruction::PopStack(None), pos);
+        self.generate_stash_by_ref_args(&args);
+        self.push(Instruction::PopStack, pos);
+        self.generate_un_stash_by_ref_args(&args);
     }
 }

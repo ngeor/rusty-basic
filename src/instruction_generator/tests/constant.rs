@@ -30,7 +30,7 @@ fn test_constant_definition_and_usage_in_print() {
             // push and go
             Instruction::PushStack,
             Instruction::BuiltInSub(BuiltInSub::Print),
-            Instruction::PopStack(None),
+            Instruction::PopStack,
             Instruction::Halt
         ]
     );

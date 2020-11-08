@@ -1,6 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::{DimName, ExpressionType, ParamName};
+use crate::linter::{ExpressionType, ParamName};
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
@@ -80,16 +80,13 @@ pub enum Instruction {
     PushUnnamed,
 
     PushStack,
-    PopStack(Option<QualifiedName>),
+    PopStack,
 
-    /// Copies the value of a ByRef argument back to the parent context.
-    ///
-    /// The first item in the tuple is the index of the parameter in the function/sub call.
-    /// The second item in the tuple is the name of the variable in the parent context.
-    ///
-    /// Called just before the child context is popped.
-    #[deprecated]
-    CopyToParent(usize, DimName),
+    EnqueueToReturnStack(usize),
+    DequeueFromReturnStack,
+
+    StashFunctionReturnValue(QualifiedName),
+    UnStashFunctionReturnValue,
 
     Throw(QError),
 

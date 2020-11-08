@@ -96,9 +96,6 @@ impl InstructionGenerator {
         let Locatable { element: expr, pos } = expr_node;
 
         match expr {
-            Expression::Constant(const_name) => {
-                self.push(Instruction::VarPathName(const_name.into()), pos);
-            }
             Expression::Variable(dim_name) => {
                 self.push(Instruction::VarPathName(dim_name.into()), pos);
             }

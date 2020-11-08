@@ -1,8 +1,7 @@
-use crate::common::StringUtils;
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::arguments_stack::ArgumentsStack;
 use crate::interpreter::variables::Variables;
-use crate::linter::{DimName, DimType, ExpressionType, HasExpressionType, UserDefinedTypes};
+use crate::linter::{DimName, DimType, ExpressionType, UserDefinedTypes};
 use crate::parser::{BareName, Name, TypeQualifier};
 use crate::variant::Variant;
 use std::rc::Rc;
@@ -153,40 +152,6 @@ impl Context {
                 // can only be user defined type or array of user defined types
                 self.variables.get_user_defined(bare_name)
             }
-        }
-    }
-
-    #[deprecated]
-    pub fn get_r_value(&self, name: &DimName) -> Option<&Variant> {
-        // get a constant or a local thing or a parent constant
-        let bare_name: &BareName = name.as_ref();
-        match name.dim_type() {
-            DimType::BuiltIn(qualifier) => self.variables.get_built_in(bare_name, *qualifier),
-            DimType::FixedLengthString(_len) => self
-                .variables
-                .get_built_in(bare_name, TypeQualifier::DollarString),
-            DimType::UserDefined(_) => self.variables.get_user_defined(bare_name),
-            DimType::Array(_, _) => todo!(),
-        }
-    }
-
-    pub fn copy_to_parent(&mut self, idx: usize, parent_var_name: &DimName) {
-        let v = self.variables.get(idx).expect("Index out of range");
-
-        // if the parent_var_name is fixed length string, trim the value
-        let v = match parent_var_name.dim_type().expression_type() {
-            ExpressionType::FixedLengthString(len) => match v {
-                Variant::VString(s) => Variant::VString(s.clone().fix_length(len as usize)),
-                _ => v.clone(),
-            },
-            _ => v.clone(),
-        };
-
-        match &mut self.parent {
-            Some(p) => {
-                p.set_variable(parent_var_name.clone(), v);
-            }
-            None => panic!("Stack underflow in copy_to_parent"),
         }
     }
 

@@ -58,10 +58,22 @@ impl Variables {
         match self.name_to_index.get(&name) {
             Some(idx) => self.values.get_mut(*idx).expect("Should have variable"),
             _ => {
+                let value = Self::default_value_for_name(&name);
                 self.name_to_index.insert(name, self.values.len());
-                self.values.push(V_FALSE);
+                self.values.push(value);
                 self.values.last_mut().expect("Should have variable")
             }
+        }
+    }
+
+    // This is needed only when we're setting the default value for a function
+    // that hasn't set a return value. As functions can only return built-in types,
+    // the value for unqualified names is not important.
+    fn default_value_for_name(name: &Name) -> Variant {
+        if let Some(q) = name.qualifier() {
+            Variant::from(q)
+        } else {
+            V_FALSE
         }
     }
 

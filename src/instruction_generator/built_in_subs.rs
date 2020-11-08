@@ -21,8 +21,9 @@ impl InstructionGenerator {
                 self.generate_push_unnamed_args_instructions(&args, pos);
                 self.push(Instruction::PushStack, pos);
                 self.push(Instruction::BuiltInSub(name), pos);
-                self.generate_copy_by_ref_to_parent(&args);
-                self.push(Instruction::PopStack(None), pos);
+                self.generate_stash_by_ref_args(&args);
+                self.push(Instruction::PopStack, pos);
+                self.generate_un_stash_by_ref_args(&args);
             }
         }
     }

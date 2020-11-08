@@ -6,8 +6,6 @@ use crate::linter::{
     Expression, ParamName, ParamType, PrintNode, Statement, SubImplementation, TopLevelToken,
 };
 use crate::parser::{BareName, TypeQualifier};
-use crate::variant::Variant;
-use std::convert::TryFrom;
 
 #[test]
 fn function_call_not_allowed() {

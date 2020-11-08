@@ -118,7 +118,7 @@ impl InstructionGenerator {
 
         self.push(Instruction::PushStack, pos);
         self.push(Instruction::BuiltInSub(BuiltInSub::Print), pos);
-        self.push(Instruction::PopStack(None), pos);
+        self.push(Instruction::PopStack, pos);
     }
 
     fn generate_opt_file_handle_instructions(&mut self, print_node: &PrintNode, pos: Location) {

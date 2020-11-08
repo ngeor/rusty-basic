@@ -13,7 +13,10 @@ impl InstructionGenerator {
         self.generate_push_unnamed_args_instructions(&args, pos);
         self.push(Instruction::PushStack, pos);
         self.push(Instruction::BuiltInFunction(function_name), pos);
-        self.generate_copy_by_ref_to_parent(&args);
-        self.push(Instruction::PopStack(Some(function_name.into())), pos);
+        self.generate_stash_by_ref_args(&args);
+        self.generate_stash_function_return_value(function_name.into(), pos);
+        self.push(Instruction::PopStack, pos);
+        self.generate_un_stash_by_ref_args(&args);
+        self.generate_un_stash_function_return_value(pos);
     }
 }

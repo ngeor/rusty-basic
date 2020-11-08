@@ -13,7 +13,7 @@ use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::{built_ins, instruction_handlers};
 use crate::linter::UserDefinedTypes;
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, TypeQualifier};
 use crate::variant::{Path, Variant};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -46,13 +46,18 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     register_stack: RegisterStack,
 
     /// Holds addresses to jump back to
-    return_stack: Vec<usize>,
+    return_address_stack: Vec<usize>,
 
     /// Holds the current call stack
     stacktrace: Vec<Location>,
 
     /// Holds a path to a variable
     var_path_stack: VecDeque<Path>,
+
+    /// Temporarily holds byref values that are to be copied back to the calling context
+    by_ref_stack: VecDeque<Variant>,
+
+    function_result: Option<Variant>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -140,12 +145,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             stdout,
             lpt1,
             context: Context::new(Rc::clone(&rc_user_defined_types)),
-            return_stack: vec![],
+            return_address_stack: vec![],
             register_stack: VecDeque::new(),
             stacktrace: vec![],
             file_manager: FileManager::new(),
             user_defined_types: Rc::clone(&rc_user_defined_types),
             var_path_stack: VecDeque::new(),
+            by_ref_stack: VecDeque::new(),
+            function_result: None,
         };
         result.register_stack.push_back(Registers::new());
         result
@@ -309,34 +316,32 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.push_context();
                 self.stacktrace.insert(0, pos);
             }
-            Instruction::PopStack(opt_function_name) => {
-                // get the function result
-                let function_result: Option<Variant> = match opt_function_name {
-                    Some(function_name) => {
-                        let r: Name = function_name.clone().into();
-                        match self.context.get_r_value_by_name(&r) {
-                            Some(v) => Some(v.clone()),
-                            None => {
-                                // it was a function, but the implementation did not set a result
-                                let QualifiedName { qualifier, .. } = function_name;
-                                Some(Variant::from(qualifier))
-                            }
-                        }
-                    }
-                    None => None,
-                };
+            Instruction::PopStack => {
                 self.pop_context();
                 self.stacktrace.remove(0);
-                // store function result into A now that we're in the parent context
-                match function_result {
-                    Some(v) => {
-                        self.set_a(v);
-                    }
-                    None => {}
-                }
             }
-            Instruction::CopyToParent(idx, parent_var_name) => {
-                self.context.copy_to_parent(*idx, parent_var_name);
+            Instruction::EnqueueToReturnStack(idx) => {
+                let v = self.context.get(*idx).expect("Should have value").clone();
+                self.by_ref_stack.push_back(v);
+            }
+            Instruction::DequeueFromReturnStack => {
+                let v = self
+                    .by_ref_stack
+                    .pop_front()
+                    .expect("by_ref_stack underflow");
+                self.registers_mut().set_a(v);
+            }
+            Instruction::StashFunctionReturnValue(function_name) => {
+                let name: Name = Name::Qualified(function_name.clone());
+                let v = self.context_mut().get_or_create(name).clone();
+                self.function_result = Some(v);
+            }
+            Instruction::UnStashFunctionReturnValue => {
+                let v = self
+                    .function_result
+                    .take()
+                    .expect("Should have function result");
+                self.registers_mut().set_a(v);
             }
             Instruction::PushUnnamed => {
                 let v = self.get_a();
@@ -366,10 +371,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *exit = true;
             }
             Instruction::PushRet(addr) => {
-                self.return_stack.push(*addr);
+                self.return_address_stack.push(*addr);
             }
             Instruction::PopRet => {
-                let addr = self.return_stack.pop().unwrap();
+                let addr = self.return_address_stack.pop().unwrap();
                 *i = addr - 1;
             }
             Instruction::Throw(interpreter_error) => {

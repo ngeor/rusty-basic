@@ -1,13 +1,11 @@
-use crate::common::{
-    AtLocation, CaseInsensitiveString, Location, QError, QErrorNode, ToLocatableError,
-};
+use crate::common::{CaseInsensitiveString, QError};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::types::{DimName, DimType, Expression, UserDefinedTypes};
-use crate::linter::{ArrayDimensions, ExpressionNode};
-use crate::parser::{BareName, Name, QualifiedName, QualifiedNameNode, TypeQualifier};
+use crate::linter::ArrayDimensions;
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
 
@@ -297,27 +295,6 @@ impl<'a> Context<'a> {
                 Some(x) => Ok(Some(x)),
                 None => resolve_const::resolve_parent_const_expression(self, n),
             })
-    }
-
-    pub fn resolve_expression_or_add_implicit_variable<T: TypeResolver>(
-        &mut self,
-        name: &Name,
-        resolver: &T,
-        pos: Location,
-    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        match self.resolve_expression(name, resolver).with_err_at(pos)? {
-            Some(expr) => Ok((expr.at(pos), vec![])),
-            None => {
-                let qualified_name = self
-                    .resolve_missing_name_in_assignment(name, resolver)
-                    .with_err_at(pos)?;
-                let implicit_variables = vec![qualified_name.clone().at(pos)];
-                Ok((
-                    Expression::Variable(qualified_name.into()).at(pos),
-                    implicit_variables,
-                ))
-            }
-        }
     }
 
     pub fn is_function_context(&self, bare_name: &BareName) -> bool {

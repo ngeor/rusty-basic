@@ -141,6 +141,20 @@ impl Expression {
             _ => false,
         }
     }
+
+    pub fn fold_name(self) -> Option<Name> {
+        match self {
+            Self::VariableName(n) => Some(n),
+            Self::Property(boxed_left_side, property_name) => {
+                let left_side = *boxed_left_side;
+                match left_side.fold_name() {
+                    Some(left_side_name) => left_side_name.try_concat_name(property_name),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 impl ExpressionNode {

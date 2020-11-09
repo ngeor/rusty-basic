@@ -463,8 +463,9 @@ pub mod word {
     ) -> ReaderResult<EolReader<T>, Expression, QError> {
         // might be a name or a dot or a type qualifier or parenthesis...
         // e.g. A.[B | . | $ | (]
-        match any_word_without_dot()(r) {
+        match any_identifier_without_dot()(r) {
             Ok((r, Some(bare_name))) => {
+                let bare_name = CaseInsensitiveString::from(bare_name);
                 let expr = if already_folded {
                     concat_name(concat_name(base_expr, '.'), bare_name)
                 } else {

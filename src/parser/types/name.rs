@@ -46,6 +46,22 @@ impl Name {
             Self::Qualified(QualifiedName { qualifier, .. }) => Some(*qualifier),
         }
     }
+
+    pub fn try_concat_name(self, right: Self) -> Option<Self> {
+        match self {
+            Self::Bare(left_name) => match right {
+                Self::Bare(right_bare) => Some(Name::Bare(left_name + '.' + right_bare)),
+                Self::Qualified(QualifiedName {
+                    bare_name,
+                    qualifier,
+                }) => Some(Name::Qualified(QualifiedName::new(
+                    left_name + '.' + bare_name,
+                    qualifier,
+                ))),
+            },
+            _ => None,
+        }
+    }
 }
 
 impl AsRef<BareName> for Name {
@@ -89,43 +105,6 @@ impl From<BareName> for Name {
 impl From<QualifiedName> for Name {
     fn from(qualified_name: QualifiedName) -> Self {
         Self::Qualified(qualified_name)
-    }
-}
-
-impl std::ops::Add<char> for Name {
-    type Output = Name;
-
-    fn add(self, rhs: char) -> Self::Output {
-        match self {
-            Name::Bare(bare_name) => Name::Bare(bare_name + rhs),
-            Name::Qualified(QualifiedName {
-                bare_name,
-                qualifier,
-            }) => Name::Qualified(QualifiedName {
-                bare_name: bare_name + rhs,
-                qualifier,
-            }),
-        }
-    }
-}
-
-impl std::ops::Add<Name> for Name {
-    type Output = Name;
-
-    fn add(self, rhs: Name) -> Self::Output {
-        match self {
-            Name::Bare(left) => match rhs {
-                Name::Bare(right) => Name::Bare(left + right),
-                Name::Qualified(QualifiedName {
-                    bare_name: right,
-                    qualifier,
-                }) => Name::Qualified(QualifiedName {
-                    bare_name: left + right,
-                    qualifier,
-                }),
-            },
-            _ => panic!("Cannot append to qualified name {}", self),
-        }
     }
 }
 

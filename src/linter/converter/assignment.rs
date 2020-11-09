@@ -1,5 +1,5 @@
 use crate::common::{
-    AtLocation, CanCastTo, Locatable, Location, QError, QErrorNode, ToLocatableError,
+    AtLocation, CanCastTo, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
 };
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
 use crate::linter::{DimName, DimType, Expression, ExpressionNode, Statement, StatementNode};
@@ -36,22 +36,53 @@ impl<'a> ConverterImpl<'a> {
         &mut self,
         name_expr_node: crate::parser::ExpressionNode,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let Locatable {
-            element: name_expr,
-            pos,
-        } = name_expr_node;
-        match name_expr {
-            crate::parser::Expression::VariableName(name) => {
-                self.assignment_name_variable_name(name, pos)
+        match self.assignment_subprogram(&name_expr_node)? {
+            Some(func_assignment) => Ok((func_assignment, vec![])),
+            _ => {
+                let Locatable {
+                    element: name_expr,
+                    pos,
+                } = name_expr_node;
+                match name_expr {
+                    crate::parser::Expression::VariableName(name) => {
+                        self.assignment_name_variable_name(name, pos)
+                    }
+                    crate::parser::Expression::FunctionCall(_, _) => {
+                        // TODO check if name is an array
+                        self.convert_and_collect_implicit_variables(name_expr.at(pos))
+                    }
+                    crate::parser::Expression::Property(left_side, property_name) => {
+                        self.assignment_name_property(*left_side, property_name, pos)
+                    }
+                    _ => unimplemented!(),
+                }
             }
-            crate::parser::Expression::FunctionCall(_, _) => {
-                // TODO check if name is an array
-                self.convert_and_collect_implicit_variables(name_expr.at(pos))
+        }
+    }
+
+    fn assignment_subprogram(
+        &mut self,
+        name_expr_node: &crate::parser::ExpressionNode,
+    ) -> Result<Option<ExpressionNode>, QErrorNode> {
+        let pos = name_expr_node.pos();
+        match name_expr_node.as_ref().clone().fold_name() {
+            Some(fold_name) => {
+                let bare_name: &BareName = fold_name.as_ref();
+                if self.context.is_function_context(bare_name) {
+                    self.assign_to_function(fold_name)
+                        .map(|dim_name| Some(Expression::Variable(dim_name).at(pos)))
+                        .with_err_at(name_expr_node)
+                } else if self.subs.contains_key(bare_name)
+                    // it is possible to have a param name shadowing a function name (but not a sub name...)
+                    || (!self.context.is_param(&fold_name, &self.resolver) && self.functions.contains_key(bare_name))
+                    || self.context.contains_const(bare_name)
+                {
+                    Err(QError::DuplicateDefinition).with_err_at(pos)
+                } else {
+                    Ok(None)
+                }
             }
-            crate::parser::Expression::Property(left_side, property_name) => {
-                self.assignment_name_property(*left_side, property_name, pos)
-            }
-            _ => unimplemented!(),
+            _ => Ok(None),
         }
     }
 
@@ -60,30 +91,17 @@ impl<'a> ConverterImpl<'a> {
         name: Name,
         pos: Location,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let bare_name: &BareName = name.as_ref();
-        if self.context.is_function_context(bare_name) {
-            self.assign_to_function(name)
-                .map(|dim_name| (Expression::Variable(dim_name).at(pos), vec![]))
-                .with_err_at(pos)
-        } else if self.subs.contains_key(bare_name)
-            // it is possible to have a param name shadowing a function name (but not a sub name...)
-            || (!self.context.is_param(&name, &self.resolver) && self.functions.contains_key(bare_name))
-            || self.context.contains_const(bare_name)
-        {
-            Err(QError::DuplicateDefinition).with_err_at(pos)
-        } else {
-            let (dim_name, missing) = self
-                .context
-                .resolve_name_in_assignment(&name, &self.resolver)
-                .with_err_at(pos)?;
-            let mut implicit_variables: Vec<QualifiedNameNode> = vec![];
-            if missing {
-                // dim_name must be resolved BuiltIn
-                let qualified_name: QualifiedName = dim_name.clone().try_into().with_err_at(pos)?;
-                implicit_variables.push(qualified_name.at(pos));
-            }
-            Ok((Expression::Variable(dim_name).at(pos), implicit_variables))
+        let (dim_name, missing) = self
+            .context
+            .resolve_name_in_assignment(&name, &self.resolver)
+            .with_err_at(pos)?;
+        let mut implicit_variables: Vec<QualifiedNameNode> = vec![];
+        if missing {
+            // dim_name must be resolved BuiltIn
+            let qualified_name: QualifiedName = dim_name.clone().try_into().with_err_at(pos)?;
+            implicit_variables.push(qualified_name.at(pos));
         }
+        Ok((Expression::Variable(dim_name).at(pos), implicit_variables))
     }
 
     fn assignment_name_property(

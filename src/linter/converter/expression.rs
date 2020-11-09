@@ -63,14 +63,22 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                                 implicit_variables,
                             ))
                         } else {
-                            Ok((
-                                Expression::FunctionCall(
-                                    self.resolver.resolve_name(&n),
-                                    converted_args,
-                                )
-                                .at(pos),
-                                implicit_variables,
-                            ))
+                            // function
+                            if converted_args.is_empty() {
+                                Err(QError::syntax_error(
+                                    "Cannot have function call without arguments",
+                                ))
+                                .with_err_at(pos)
+                            } else {
+                                Ok((
+                                    Expression::FunctionCall(
+                                        self.resolver.resolve_name(&n),
+                                        converted_args,
+                                    )
+                                    .at(pos),
+                                    implicit_variables,
+                                ))
+                            }
                         }
                     }
                 }
@@ -207,7 +215,6 @@ impl<'a> ConverterImpl<'a> {
         // if A is unknown, fold into A.B.C and add new implicit variable
 
         // A(1).Test.Toast -> only allowed if A exists and is array of user defined type
-
         match left_side {
             crate::parser::Expression::VariableName(left_side_name) => {
                 match self
@@ -235,12 +242,11 @@ impl<'a> ConverterImpl<'a> {
                     None => {
                         // The left_side_name is not known as a variable.
                         // Fold it back and register it as an implicit variable.
-                        let folded_name = left_side_name + '.' + property_name;
-                        self.context.resolve_expression_or_add_implicit_variable(
-                            &folded_name,
-                            &self.resolver,
-                            pos,
-                        )
+                        let folded_name = left_side_name
+                            .try_concat_name(property_name)
+                            .expect("Should be able to fold name");
+                        self.resolve_name_in_expression(&folded_name.at(pos))
+                            .with_err_at(pos)
                     }
                 }
             }

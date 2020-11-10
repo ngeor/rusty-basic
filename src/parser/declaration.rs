@@ -209,4 +209,38 @@ mod tests {
         let input = "DECLARE SUB Echo(X.Y AS Card)";
         assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
     }
+
+    #[test]
+    fn test_array_parameter() {
+        let input = r#"
+        DECLARE FUNCTION Echo(X$())
+        FUNCTION Echo(X$())
+        END FUNCTION
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::FunctionDeclaration(
+                    "Echo".as_name(2, 26),
+                    vec![ParamName::new(
+                        "X".into(),
+                        ParamType::Array(Box::new(ParamType::Compact(TypeQualifier::DollarString)))
+                    )
+                    .at_rc(2, 31)]
+                )
+                .at_rc(2, 9),
+                TopLevelToken::FunctionImplementation(
+                    "Echo".as_name(3, 18),
+                    vec![ParamName::new(
+                        "X".into(),
+                        ParamType::Array(Box::new(ParamType::Compact(TypeQualifier::DollarString)))
+                    )
+                    .at_rc(3, 23)],
+                    vec![]
+                )
+                .at_rc(3, 9),
+            ]
+        );
+    }
 }

@@ -50,6 +50,7 @@ impl HasExpressionType for ParamName {
 pub enum ParamType {
     BuiltIn(TypeQualifier),
     UserDefined(BareName),
+    Array(Box<ParamType>),
 }
 
 pub type ParamTypes = Vec<ParamType>;
@@ -66,6 +67,7 @@ impl ParamType {
                 ExpressionType::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
+            Self::Array(_) => todo!(),
         }
     }
 }
@@ -75,6 +77,7 @@ impl HasExpressionType for ParamType {
         match self {
             Self::BuiltIn(qualifier) => ExpressionType::BuiltIn(*qualifier),
             Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
+            Self::Array(_) => todo!(),
         }
     }
 }

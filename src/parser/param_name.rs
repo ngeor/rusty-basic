@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::name;
+use crate::parser::expression;
+use crate::parser::name::MAX_LENGTH;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::and_then;
 use crate::parser::pc::*;
@@ -18,20 +19,26 @@ use std::str::FromStr;
 pub fn param_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNameNode, QError>> {
     and_then(
-        opt_seq2(with_pos(name::name()), type_definition_extended()),
-        |(Locatable { element: name, pos }, opt_type_definition)| match name {
+        opt_seq2(with_pos(param_name()), type_definition_extended()),
+        |(
+            Locatable {
+                element: (name, is_array),
+                pos,
+            },
+            opt_type_definition,
+        )| match name {
             Name::Bare(b) => match opt_type_definition {
                 Some(param_type) => match param_type {
                     ParamType::UserDefined(_) => {
                         if b.contains('.') {
                             Err(QError::IdentifierCannotIncludePeriod)
                         } else {
-                            Ok(ParamName::new(b, param_type).at(pos))
+                            Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos))
                         }
                     }
-                    _ => Ok(ParamName::new(b, param_type).at(pos)),
+                    _ => Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos)),
                 },
-                None => Ok(ParamName::new(b, ParamType::Bare).at(pos)),
+                None => Ok(ParamName::new(b, final_param_type(ParamType::Bare, is_array)).at(pos)),
             },
             Name::Qualified(QualifiedName {
                 bare_name,
@@ -40,10 +47,44 @@ pub fn param_name_node<T: BufRead + 'static>(
                 Some(_) => Err(QError::syntax_error(
                     "Identifier cannot end with %, &, !, #, or $",
                 )),
-                None => Ok(ParamName::new(bare_name, ParamType::Compact(qualifier)).at(pos)),
+                None => Ok(ParamName::new(
+                    bare_name,
+                    final_param_type(ParamType::Compact(qualifier), is_array),
+                )
+                .at(pos)),
             },
         },
     )
+}
+
+fn param_name<T: BufRead + 'static>(
+) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Name, bool), QError>> {
+    and_then(expression::word::word(), |name_expr| match name_expr {
+        Expression::VariableName(var_name) => Ok((var_name, false)),
+        Expression::Property(_, _) => {
+            // only allowed if we can fold it back into a single name
+            name_expr
+                .fold_name()
+                .ok_or(QError::syntax_error("Invalid parameter name"))
+                .map(|x| (x, false))
+        }
+        Expression::FunctionCall(var_name, args) => {
+            if args.is_empty() {
+                Ok((var_name, true))
+            } else {
+                Err(QError::syntax_error("Invalid parameter name"))
+            }
+        }
+        _ => Err(QError::syntax_error("Invalid parameter name")),
+    })
+}
+
+fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
+    if is_array {
+        ParamType::Array(Box::new(param_type))
+    } else {
+        param_type
+    }
 }
 
 fn type_definition_extended<T: BufRead + 'static>(
@@ -73,7 +114,7 @@ fn extended_type<T: BufRead + 'static>(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
             )),
             Err(_) => {
-                if x.len() > name::MAX_LENGTH {
+                if x.len() > MAX_LENGTH {
                     Err(QError::IdentifierTooLong)
                 } else {
                     let type_name: BareName = x.into();

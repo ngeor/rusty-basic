@@ -299,7 +299,14 @@ impl<T> SubProgramContext<T> {
                     Err(QError::TypeNotDefined).with_err_at(pos)
                 }
             }
-            parser::ParamType::Array(_) => todo!(),
+            parser::ParamType::Array(element_type) => {
+                let dummy_element_param =
+                    parser::ParamName::new(bare_name.clone(), element_type.as_ref().clone())
+                        .at(pos);
+                let element_param_type =
+                    self.parameter(&dummy_element_param, resolver, user_defined_types)?;
+                Ok(ParamType::Array(Box::new(element_param_type)))
+            }
         }
     }
 }

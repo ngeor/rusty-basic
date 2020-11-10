@@ -39,6 +39,7 @@ impl Variables {
         match param_type {
             ParamType::BuiltIn(q) => self.insert_built_in(bare_name, q, value),
             ParamType::UserDefined(_) => self.insert_user_defined(bare_name, value),
+            ParamType::Array(_) => todo!(),
         }
     }
 

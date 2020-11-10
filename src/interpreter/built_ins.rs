@@ -17,9 +17,11 @@ pub fn run_function<S: InterpreterTrait>(
         BuiltInFunction::Environ => environ_fn::run(interpreter),
         BuiltInFunction::Eof => eof::run(interpreter).with_err_no_pos(),
         BuiltInFunction::InStr => instr::run(interpreter),
+        BuiltInFunction::LBound => todo!(),
         BuiltInFunction::Len => len::run(interpreter),
         BuiltInFunction::Mid => mid::run(interpreter),
         BuiltInFunction::Str => str_fn::run(interpreter),
+        BuiltInFunction::UBound => todo!(),
         BuiltInFunction::Val => val::run(interpreter),
     }
 }

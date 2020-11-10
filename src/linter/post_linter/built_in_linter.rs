@@ -55,9 +55,11 @@ fn lint(built_in: &BuiltInFunction, args: &Vec<ExpressionNode>) -> Result<(), QE
         BuiltInFunction::Environ => environ_fn::lint(args),
         BuiltInFunction::Eof => eof::lint(args),
         BuiltInFunction::InStr => instr::lint(args),
+        BuiltInFunction::LBound => todo!(),
         BuiltInFunction::Len => len::lint(args),
         BuiltInFunction::Mid => mid::lint(args),
         BuiltInFunction::Str => str_fn::lint(args),
+        BuiltInFunction::UBound => todo!(),
         BuiltInFunction::Val => val::lint(args),
     }
 }

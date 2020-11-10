@@ -17,29 +17,36 @@ pub enum BuiltInFunction {
     Eof,
     /// INSTR
     InStr,
+    /// LBOUND
+    LBound,
     /// LEN
     Len,
     /// MID$
     Mid,
     /// STR$
     Str,
+    /// UBOUND
+    UBound,
     /// VAL
     Val,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 8] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 10] = [
     BuiltInFunction::Chr,
     BuiltInFunction::Environ,
     BuiltInFunction::Eof,
     BuiltInFunction::InStr,
+    BuiltInFunction::LBound,
     BuiltInFunction::Len,
     BuiltInFunction::Mid,
     BuiltInFunction::Str,
+    BuiltInFunction::UBound,
     BuiltInFunction::Val,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 8] =
-    ["Chr", "Environ", "Eof", "InStr", "Len", "Mid", "Str", "Val"];
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 10] = [
+    "Chr", "Environ", "Eof", "InStr", "LBound", "Len", "Mid", "Str", "UBound", "Val",
+];
 
 // BuiltInFunction -> &str
 
@@ -81,9 +88,11 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::Environ => TypeQualifier::DollarString,
             BuiltInFunction::Eof => TypeQualifier::PercentInteger,
             BuiltInFunction::InStr => TypeQualifier::PercentInteger,
+            BuiltInFunction::LBound => TypeQualifier::PercentInteger,
             BuiltInFunction::Len => TypeQualifier::PercentInteger,
             BuiltInFunction::Mid => TypeQualifier::DollarString,
             BuiltInFunction::Str => TypeQualifier::DollarString,
+            BuiltInFunction::UBound => TypeQualifier::PercentInteger,
             BuiltInFunction::Val => TypeQualifier::BangSingle,
         }
     }
@@ -132,6 +141,8 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 BuiltInFunction::Eof
                 | BuiltInFunction::InStr
                 | BuiltInFunction::Len
+                | BuiltInFunction::LBound
+                | BuiltInFunction::UBound
                 | BuiltInFunction::Val => demand_unqualified(b, n),
                 BuiltInFunction::Environ | BuiltInFunction::Mid => {
                     // ENVIRON$ must be qualified

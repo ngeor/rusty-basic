@@ -9,6 +9,7 @@ pub enum ExpressionType {
     BuiltIn(TypeQualifier),
     FixedLengthString(u16),
     UserDefined(BareName),
+    Array(Box<ExpressionType>),
 }
 
 impl ExpressionType {
@@ -41,6 +42,7 @@ impl ExpressionType {
             Self::UserDefined(type_name) => {
                 Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
             }
+            _ => todo!(),
         }
     }
 }
@@ -61,6 +63,7 @@ impl CanCastTo<&ExpressionType> for ExpressionType {
                 Self::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
+            Self::Array(_) => false,
         }
     }
 }

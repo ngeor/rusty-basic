@@ -28,6 +28,10 @@ impl ParamName {
     pub fn into_inner(self) -> (BareName, ParamType) {
         (self.bare_name, self.param_type)
     }
+
+    pub fn new_array(self) -> Self {
+        Self::new(self.bare_name, ParamType::Array(Box::new(self.param_type)))
+    }
 }
 
 impl AsRef<BareName> for ParamName {
@@ -67,7 +71,10 @@ impl ParamType {
                 ExpressionType::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
-            Self::Array(_) => todo!(),
+            Self::Array(boxed_element_type) => match type_definition {
+                ExpressionType::Array(boxed_type) => boxed_element_type.accepts_by_ref(boxed_type),
+                _ => false,
+            },
         }
     }
 }

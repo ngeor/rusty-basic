@@ -120,6 +120,13 @@ impl DimName {
         (self.bare_name, self.dim_type)
     }
 
+    pub fn new_array(self) -> Self {
+        Self::new(
+            self.bare_name,
+            DimType::Array(vec![], Box::new(self.dim_type.expression_type())),
+        )
+    }
+
     #[cfg(test)]
     pub fn parse(s: &str) -> Self {
         let qualified_name = QualifiedName::try_from(s).unwrap();
@@ -149,7 +156,7 @@ impl HasExpressionType for DimType {
             Self::BuiltIn(qualifier) => ExpressionType::BuiltIn(*qualifier),
             Self::FixedLengthString(len) => ExpressionType::FixedLengthString(*len),
             Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
-            Self::Array(_, element_type) => element_type.as_ref().clone(),
+            Self::Array(_, element_type) => ExpressionType::Array(element_type.clone()),
         }
     }
 }

@@ -946,11 +946,15 @@ mod line_input {
 
         #[test]
         fn test_line_input_string_from_file_eof() {
-            std::fs::remove_file("test1.txt").unwrap_or_default();
-            std::fs::write("test1.txt", "Hello\r\nWorld\r\n").unwrap();
+            std::fs::remove_file("test_line_input_string_from_file_eof.txt").unwrap_or_default();
+            std::fs::write(
+                "test_line_input_string_from_file_eof.txt",
+                "Hello\r\nWorld\r\n",
+            )
+            .unwrap();
 
             let input = r#"
-            OPEN "test1.txt" FOR INPUT AS #1
+            OPEN "test_line_input_string_from_file_eof.txt" FOR INPUT AS #1
             LINE INPUT #1, A$
             LINE INPUT #1, A$
             LINE INPUT #1, A$ ' should EOF here
@@ -958,7 +962,7 @@ mod line_input {
             "#;
 
             assert_interpreter_err!(input, QError::InputPastEndOfFile, 5, 13);
-            std::fs::remove_file("test1.txt").unwrap_or_default();
+            std::fs::remove_file("test_line_input_string_from_file_eof.txt").unwrap_or_default();
         }
     }
 }

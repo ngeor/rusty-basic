@@ -55,7 +55,11 @@ impl<'a> ConverterImpl<'a> {
             parser::ParamType::UserDefined(u) => {
                 self.resolve_param_user_defined(bare_name, u, opt_function_name)
             }
-            parser::ParamType::Array(_) => todo!(),
+            parser::ParamType::Array(boxed_element_type) => {
+                let dummy_element_param = parser::ParamName::new(bare_name, *boxed_element_type);
+                let resolved = self.resolve_param(dummy_element_param, opt_function_name)?;
+                Ok(resolved.new_array())
+            }
         }
     }
 

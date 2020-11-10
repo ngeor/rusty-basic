@@ -55,13 +55,26 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                                 .context
                                 .resolve_name_in_assignment(&n, &self.resolver)
                                 .with_err_at(pos)?;
-                            let element_type = dim_name.expression_type();
-                            let array_name: Name = dim_name.into();
-                            Ok((
-                                Expression::ArrayElement(array_name, converted_args, element_type)
+                            if converted_args.is_empty() {
+                                // entire array
+                                Ok((
+                                    Expression::Variable(dim_name.new_array()).at(pos),
+                                    implicit_variables,
+                                ))
+                            } else {
+                                // array element
+                                let element_type = dim_name.expression_type();
+                                let array_name: Name = dim_name.into();
+                                Ok((
+                                    Expression::ArrayElement(
+                                        array_name,
+                                        converted_args,
+                                        element_type,
+                                    )
                                     .at(pos),
-                                implicit_variables,
-                            ))
+                                    implicit_variables,
+                                ))
+                            }
                         } else {
                             // function
                             if converted_args.is_empty() {
@@ -105,6 +118,7 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                     self.convert_and_collect_implicit_variables(c)?;
                 match converted_child.expression_type() {
                     ExpressionType::BuiltIn(TypeQualifier::DollarString)
+                    | ExpressionType::Array(_)
                     | ExpressionType::FixedLengthString(_)
                     | ExpressionType::UserDefined(_) => {
                         Err(QError::TypeMismatch).with_err_at(converted_child.pos())

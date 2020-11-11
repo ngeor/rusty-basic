@@ -174,25 +174,3 @@ impl<T> StripLocation<Vec<T>> for Vec<Locatable<T>> {
         self.into_iter().map(|x| x.strip_location()).collect()
     }
 }
-
-//
-// result.with_ok_pos(pos)
-//
-
-pub trait ToLocatableOk<TLocation, TResult> {
-    fn with_ok_pos(self, p: TLocation) -> TResult;
-}
-
-impl<TLocation: HasLocation, T, E> ToLocatableOk<&TLocation, Result<Locatable<T>, E>>
-    for Result<T, E>
-{
-    fn with_ok_pos(self, p: &TLocation) -> Result<Locatable<T>, E> {
-        self.map(|e| e.at(p.pos()))
-    }
-}
-
-impl<T, E> ToLocatableOk<Location, Result<Locatable<T>, E>> for Result<T, E> {
-    fn with_ok_pos(self, pos: Location) -> Result<Locatable<T>, E> {
-        self.map(|e| e.at(pos))
-    }
-}

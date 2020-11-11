@@ -1,15 +1,14 @@
-use crate::built_ins::BuiltInFunction;
 use crate::common::{
     AtLocation, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
 };
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
-use crate::linter::type_resolver::TypeResolver;
-use crate::linter::{DimType, Expression, ExpressionNode, ExpressionType, HasExpressionType};
+use crate::linter::{Expression, ExpressionNode, ExpressionType, HasExpressionType};
 use crate::parser;
-use crate::parser::{BareName, Name, NameNode, QualifiedName, QualifiedNameNode, TypeQualifier};
-use std::convert::TryInto;
+use crate::parser::{QualifiedNameNode, TypeQualifier};
 
 // Convert expression into an expression + a collection of implicitly declared variables
+
+type ExprResult = Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode>;
 
 impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, ExpressionNode>
     for ConverterImpl<'a>
@@ -17,87 +16,22 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
     fn convert_and_collect_implicit_variables(
         &mut self,
         expression_node: crate::parser::ExpressionNode,
-    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> ExprResult {
         let Locatable { element, pos } = expression_node;
-
         match element {
-            parser::Expression::SingleLiteral(f) => {
-                Ok((Expression::SingleLiteral(f).at(pos), vec![]))
+            parser::Expression::SingleLiteral(f) => f.into_expr_result(pos),
+            parser::Expression::DoubleLiteral(d) => d.into_expr_result(pos),
+            parser::Expression::StringLiteral(s) => s.into_expr_result(pos),
+            parser::Expression::IntegerLiteral(i) => i.into_expr_result(pos),
+            parser::Expression::LongLiteral(l) => l.into_expr_result(pos),
+            parser::Expression::VariableName(var_name) => {
+                var_name::into_expr_result(self, var_name, pos)
             }
-            parser::Expression::DoubleLiteral(f) => {
-                Ok((Expression::DoubleLiteral(f).at(pos), vec![]))
-            }
-            parser::Expression::StringLiteral(f) => {
-                Ok((Expression::StringLiteral(f).at(pos), vec![]))
-            }
-            parser::Expression::IntegerLiteral(f) => {
-                Ok((Expression::IntegerLiteral(f).at(pos), vec![]))
-            }
-            parser::Expression::LongLiteral(f) => Ok((Expression::LongLiteral(f).at(pos), vec![])),
-            parser::Expression::VariableName(var_name) => self
-                .resolve_name_in_expression(&var_name.at(pos))
-                .with_err_at(pos),
             parser::Expression::FunctionCall(name_expr, args) => {
-                let n = name_expr.clone();
-                let (converted_args, implicit_variables) =
-                    self.convert_and_collect_implicit_variables(args)?;
-                let opt_built_in: Option<BuiltInFunction> = (&n).try_into().with_err_at(pos)?;
-                match opt_built_in {
-                    Some(b) => Ok((
-                        Expression::BuiltInFunctionCall(b, converted_args).at(pos),
-                        implicit_variables,
-                    )),
-                    None => {
-                        // is it a function or an array element?
-                        if self.context.is_array(&n) {
-                            // we can ignore `missing` as we already confirmed we know it is an array
-                            let (dim_name, _) = self
-                                .context
-                                .resolve_name_in_assignment(&n, &self.resolver)
-                                .with_err_at(pos)?;
-                            if converted_args.is_empty() {
-                                // entire array
-                                Ok((
-                                    Expression::Variable(dim_name.new_array()).at(pos),
-                                    implicit_variables,
-                                ))
-                            } else {
-                                // array element
-                                let element_type = dim_name.expression_type();
-                                let array_name: Name = dim_name.into();
-                                Ok((
-                                    Expression::ArrayElement(
-                                        array_name,
-                                        converted_args,
-                                        element_type,
-                                    )
-                                    .at(pos),
-                                    implicit_variables,
-                                ))
-                            }
-                        } else {
-                            // function
-                            if converted_args.is_empty() {
-                                Err(QError::syntax_error(
-                                    "Cannot have function call without arguments",
-                                ))
-                                .with_err_at(pos)
-                            } else {
-                                Ok((
-                                    Expression::FunctionCall(
-                                        self.resolver.resolve_name(&n),
-                                        converted_args,
-                                    )
-                                    .at(pos),
-                                    implicit_variables,
-                                ))
-                            }
-                        }
-                    }
-                }
+                function_call::into_expr_result(self, name_expr, args, pos)
             }
             parser::Expression::Property(box_left_side, property_name) => {
-                self.convert_property(*box_left_side, property_name, pos)
+                property::into_expr_result(self, *box_left_side, property_name, pos)
             }
             parser::Expression::BinaryExpression(op, l, r) => {
                 // unbox them
@@ -141,20 +75,66 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
     }
 }
 
-impl<'a> ConverterImpl<'a> {
-    fn resolve_name_in_expression(
-        &mut self,
-        n: &NameNode,
-    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QError> {
-        let Locatable { element: name, pos } = n;
-        match self.context.resolve_expression(name, &self.resolver)? {
+trait ToExprResult {
+    fn into_expr_result(self, pos: Location) -> ExprResult;
+}
+
+impl ToExprResult for f32 {
+    fn into_expr_result(self, pos: Location) -> ExprResult {
+        Ok((Expression::SingleLiteral(self).at(pos), vec![]))
+    }
+}
+
+impl ToExprResult for f64 {
+    fn into_expr_result(self, pos: Location) -> ExprResult {
+        Ok((Expression::DoubleLiteral(self).at(pos), vec![]))
+    }
+}
+
+impl ToExprResult for String {
+    fn into_expr_result(self, pos: Location) -> ExprResult {
+        Ok((Expression::StringLiteral(self).at(pos), vec![]))
+    }
+}
+
+impl ToExprResult for i32 {
+    fn into_expr_result(self, pos: Location) -> ExprResult {
+        Ok((Expression::IntegerLiteral(self).at(pos), vec![]))
+    }
+}
+
+impl ToExprResult for i64 {
+    fn into_expr_result(self, pos: Location) -> ExprResult {
+        Ok((Expression::LongLiteral(self).at(pos), vec![]))
+    }
+}
+
+/// Handles the conversion of `VariableName` expression
+pub mod var_name {
+    use crate::common::{AtLocation, Locatable, Location, QError, ToLocatableError};
+    use crate::linter::converter::converter::ConverterImpl;
+    use crate::linter::converter::expression::ExprResult;
+    use crate::linter::Expression;
+    use crate::parser::{BareName, Name, QualifiedName};
+
+    pub fn into_expr_result(
+        converter: &mut ConverterImpl,
+        name: Name,
+        pos: Location,
+    ) -> ExprResult {
+        match converter
+            .context
+            .resolve_expression(&name, &converter.resolver)
+            .with_err_at(pos)?
+        {
             Some(x) => Ok((x.at(pos), vec![])),
-            None => match self.resolve_name_as_subprogram(name)? {
+            None => match resolve_name_as_subprogram(converter, &name).with_err_at(pos)? {
                 Some(x) => Ok((x.at(pos), vec![])),
                 None => {
-                    let q_name = self
+                    let q_name = converter
                         .context
-                        .resolve_missing_name_in_assignment(name, &self.resolver)?;
+                        .resolve_missing_name_in_assignment(&name, &converter.resolver)
+                        .with_err_at(pos)?;
                     Ok((
                         Expression::Variable(q_name.clone().into()).at(pos),
                         vec![q_name.at(pos)],
@@ -164,20 +144,23 @@ impl<'a> ConverterImpl<'a> {
         }
     }
 
-    fn resolve_name_as_subprogram(&mut self, name: &Name) -> Result<Option<Expression>, QError> {
+    fn resolve_name_as_subprogram(
+        converter: &mut ConverterImpl,
+        name: &Name,
+    ) -> Result<Option<Expression>, QError> {
         let bare_name: &BareName = name.as_ref();
-        if self.subs.contains_key(bare_name) {
+        if converter.subs.contains_key(bare_name) {
             // using the name of a sub as a variable expression
             Err(QError::DuplicateDefinition)
-        } else if self.functions.contains_key(bare_name) {
+        } else if converter.functions.contains_key(bare_name) {
             // if the function expects arguments, argument count mismatch
             let Locatable {
                 element: (f_type, f_args),
                 ..
-            } = self.functions.get(bare_name).unwrap();
+            } = converter.functions.get(bare_name).unwrap();
             if !f_args.is_empty() {
                 Err(QError::ArgumentCountMismatch)
-            } else if self.context.is_function_context(bare_name) {
+            } else if converter.context.is_function_context(bare_name) {
                 // We are inside a function that takes no args, and we're using again
                 // the name of that function as an expression.
                 // This can only work as a variable, otherwise we'll get infinite recursive call.
@@ -215,13 +198,97 @@ impl<'a> ConverterImpl<'a> {
             Ok(None)
         }
     }
+}
 
-    pub fn convert_property(
-        &mut self,
+/// Handles the conversion of `FunctionCall` expression
+pub mod function_call {
+    use crate::built_ins::BuiltInFunction;
+    use crate::common::{AtLocation, Location, QError, ToLocatableError};
+    use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
+    use crate::linter::converter::expression::ExprResult;
+    use crate::linter::type_resolver::TypeResolver;
+    use crate::linter::{Expression, HasExpressionType};
+    use crate::parser;
+    use crate::parser::Name;
+    use std::convert::TryInto;
+
+    pub fn into_expr_result(
+        converter: &mut ConverterImpl,
+        name_expr: Name,
+        args: parser::ExpressionNodes,
+        pos: Location,
+    ) -> ExprResult {
+        let n = name_expr.clone();
+        let (converted_args, implicit_variables) =
+            converter.convert_and_collect_implicit_variables(args)?;
+        let opt_built_in: Option<BuiltInFunction> = (&n).try_into().with_err_at(pos)?;
+        match opt_built_in {
+            Some(b) => Ok((
+                Expression::BuiltInFunctionCall(b, converted_args).at(pos),
+                implicit_variables,
+            )),
+            None => {
+                // is it a function or an array element?
+                if converter.context.is_array(&n) {
+                    // we can ignore `missing` as we already confirmed we know it is an array
+                    let (dim_name, _) = converter
+                        .context
+                        .resolve_name_in_assignment(&n, &converter.resolver)
+                        .with_err_at(pos)?;
+                    if converted_args.is_empty() {
+                        // entire array
+                        Ok((
+                            Expression::Variable(dim_name.new_array()).at(pos),
+                            implicit_variables,
+                        ))
+                    } else {
+                        // array element
+                        let element_type = dim_name.expression_type();
+                        let array_name: Name = dim_name.into();
+                        Ok((
+                            Expression::ArrayElement(array_name, converted_args, element_type)
+                                .at(pos),
+                            implicit_variables,
+                        ))
+                    }
+                } else {
+                    // function
+                    if converted_args.is_empty() {
+                        Err(QError::syntax_error(
+                            "Cannot have function call without arguments",
+                        ))
+                        .with_err_at(pos)
+                    } else {
+                        Ok((
+                            Expression::FunctionCall(
+                                converter.resolver.resolve_name(&n),
+                                converted_args,
+                            )
+                            .at(pos),
+                            implicit_variables,
+                        ))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Handles the conversion of `Property` expression
+pub mod property {
+    use super::var_name;
+    use crate::common::{AtLocation, Locatable, Location, QError, ToLocatableError};
+    use crate::linter::converter::converter::ConverterImpl;
+    use crate::linter::converter::expression::ExprResult;
+    use crate::linter::{DimType, Expression, ExpressionType, HasExpressionType};
+    use crate::parser::{BareName, Name};
+
+    pub fn into_expr_result(
+        converter: &mut ConverterImpl,
         left_side: crate::parser::Expression,
         property_name: Name,
         pos: Location,
-    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> ExprResult {
         // A.B$
         // A.B.C
         // if A is a known user defined type, proceed
@@ -231,9 +298,9 @@ impl<'a> ConverterImpl<'a> {
         // A(1).Test.Toast -> only allowed if A exists and is array of user defined type
         match left_side {
             crate::parser::Expression::VariableName(left_side_name) => {
-                match self
+                match converter
                     .context
-                    .resolve_expression(&left_side_name, &self.resolver)
+                    .resolve_expression(&left_side_name, &converter.resolver)
                     .with_err_at(pos)?
                 {
                     Some(converted_left_expr) => match converted_left_expr {
@@ -241,7 +308,8 @@ impl<'a> ConverterImpl<'a> {
                             if let DimType::UserDefined(user_defined_type_name) =
                                 converted_var_name.dim_type()
                             {
-                                self.resolve_property(
+                                resolve_property(
+                                    converter,
                                     Expression::Variable(converted_var_name.clone()),
                                     user_defined_type_name,
                                     property_name,
@@ -259,8 +327,7 @@ impl<'a> ConverterImpl<'a> {
                         let folded_name = left_side_name
                             .try_concat_name(property_name)
                             .expect("Should be able to fold name");
-                        self.resolve_name_in_expression(&folded_name.at(pos))
-                            .with_err_at(pos)
+                        var_name::into_expr_result(converter, folded_name, pos)
                     }
                 }
             }
@@ -273,14 +340,15 @@ impl<'a> ConverterImpl<'a> {
                         ..
                     },
                     implicit_variables,
-                ) = self.convert_property(new_left_side, new_property_name, pos)?;
+                ) = into_expr_result(converter, new_left_side, new_property_name, pos)?;
                 if implicit_variables.is_empty() {
                     // the property was resolved without the need for an implicit variable
                     let resolved_expression_type = converted_expr.expression_type();
                     if let ExpressionType::UserDefined(user_defined_type_name) =
                         resolved_expression_type
                     {
-                        self.resolve_property(
+                        resolve_property(
+                            converter,
                             converted_expr,
                             &user_defined_type_name,
                             property_name,
@@ -299,13 +367,13 @@ impl<'a> ConverterImpl<'a> {
     }
 
     fn resolve_property(
-        &self,
+        converter: &mut ConverterImpl,
         base_expr: Expression,
         user_defined_type_name: &BareName,
         property_name: Name,
         pos: Location,
-    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        match self.user_defined_types.get(user_defined_type_name) {
+    ) -> ExprResult {
+        match converter.user_defined_types.get(user_defined_type_name) {
             Some(user_defined_type) => {
                 let element_type = user_defined_type
                     .demand_element_by_name(&property_name)

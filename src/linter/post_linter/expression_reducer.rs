@@ -257,7 +257,7 @@ pub trait ExpressionReducer {
     ) -> Result<ExpressionNode, QErrorNode> {
         let Locatable { element: expr, pos } = expr_node;
         self.visit_expression(expr)
-            .with_ok_pos(pos)
+            .map(|x| x.at(pos))
             .patch_err_pos(pos)
     }
 

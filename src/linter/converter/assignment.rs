@@ -110,7 +110,7 @@ impl<'a> ConverterImpl<'a> {
         property_name: Name,
         pos: Location,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        self.convert_property(left_side, property_name, pos)
+        super::expression::property::into_expr_result(self, left_side, property_name, pos)
     }
 
     fn assign_to_function(&self, name: Name) -> Result<DimName, QError> {

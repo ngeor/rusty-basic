@@ -43,7 +43,7 @@ where
 {
     fn convert(&mut self, a: Locatable<A>) -> Result<Locatable<B>, QErrorNode> {
         let Locatable { element, pos } = a;
-        self.convert(element).with_ok_pos(pos).patch_err_pos(pos)
+        self.convert(element).map(|x| x.at(pos)).patch_err_pos(pos)
     }
 }
 

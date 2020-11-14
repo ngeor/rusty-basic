@@ -1,7 +1,7 @@
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::arguments_stack::ArgumentsStack;
 use crate::interpreter::variables::Variables;
-use crate::linter::{DimName, DimType, ExpressionType, UserDefinedTypes};
+use crate::linter::{DimName, DimType, ExpressionType, HasExpressionType, UserDefinedTypes};
 use crate::parser::{BareName, Name, TypeQualifier};
 use crate::variant::Variant;
 use std::rc::Rc;
@@ -109,7 +109,7 @@ impl Context {
                 self.set_variable_user_defined(bare_name, value);
             }
             DimType::Array(_, box_element_type) => {
-                let element_type = *box_element_type;
+                let element_type = box_element_type.expression_type();
                 match element_type {
                     ExpressionType::BuiltIn(q) => {
                         self.set_variable_built_in(bare_name, q, value);

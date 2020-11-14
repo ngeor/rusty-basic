@@ -5,7 +5,7 @@ use crate::linter::{
     ArrayDimension, DimName, DimType, Expression, ExpressionType, ParamName, ParamType, Statement,
     SubImplementation, TopLevelToken,
 };
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
 
 #[test]
 fn test_passing_array_parameter_without_parenthesis() {
@@ -37,7 +37,10 @@ fn test_dim_array() {
                         lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
                         ubound: Expression::IntegerLiteral(3).at_rc(2, 22)
                     }],
-                    Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString))
+                    Box::new(DimType::BuiltIn(
+                        TypeQualifier::DollarString,
+                        BuiltInStyle::Compact
+                    ))
                 )
             )
             .at_rc(2, 9)
@@ -90,7 +93,10 @@ fn test_passing_array_parameter_with_parenthesis() {
                             lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
                             ubound: Expression::IntegerLiteral(3).at_rc(2, 22)
                         }],
-                        Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString))
+                        Box::new(DimType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        ))
                     )
                 )
                 .at_rc(2, 9)

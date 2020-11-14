@@ -19,7 +19,7 @@ pub enum DimType {
     /// DIM X AS STRING * 1
     FixedLengthString(ExpressionNode, u16),
 
-    Array(ArrayDimensions, Box<ExpressionType>),
+    Array(ArrayDimensions, Box<DimType>),
 }
 
 impl DimType {
@@ -41,7 +41,9 @@ impl HasExpressionType for DimType {
             Self::BuiltIn(qualifier, _) => ExpressionType::BuiltIn(*qualifier),
             Self::FixedLengthString(_, len) => ExpressionType::FixedLengthString(*len),
             Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.element.clone()),
-            Self::Array(_, element_type) => ExpressionType::Array(element_type.clone()),
+            Self::Array(_, element_type) => {
+                ExpressionType::Array(Box::new(element_type.expression_type()))
+            }
             Self::Bare => panic!("Unresolved type"),
         }
     }

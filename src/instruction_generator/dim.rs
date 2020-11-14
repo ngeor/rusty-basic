@@ -1,6 +1,8 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, ExpressionType};
+use crate::linter::{
+    ArrayDimension, DimName, DimNameNode, DimType, ExpressionType, HasExpressionType,
+};
 use crate::parser::{Name, TypeQualifier};
 
 impl InstructionGenerator {
@@ -30,7 +32,7 @@ impl InstructionGenerator {
                     self.push(Instruction::PushAToUnnamedArg, ubound_pos);
                 }
 
-                let element_type = *box_element_type;
+                let element_type = box_element_type.expression_type();
 
                 let opt_q = match &element_type {
                     ExpressionType::BuiltIn(q) => Some(*q),

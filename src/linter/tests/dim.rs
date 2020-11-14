@@ -1,9 +1,7 @@
 use crate::assert_linter_err;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
-use crate::linter::{
-    ArrayDimension, DimName, DimType, Expression, ExpressionType, Statement, TopLevelToken,
-};
+use crate::linter::{ArrayDimension, DimName, DimType, Expression, Statement, TopLevelToken};
 use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
 
 #[test]
@@ -238,7 +236,10 @@ fn test_dim_array_bare() {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
                     }],
-                    Box::new(ExpressionType::BuiltIn(TypeQualifier::BangSingle))
+                    Box::new(DimType::BuiltIn(
+                        TypeQualifier::BangSingle,
+                        BuiltInStyle::Compact
+                    ))
                 )
             )
             .at_rc(1, 5)
@@ -259,7 +260,10 @@ fn test_dim_array_qualified() {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 8)
                     }],
-                    Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString))
+                    Box::new(DimType::BuiltIn(
+                        TypeQualifier::DollarString,
+                        BuiltInStyle::Compact
+                    ))
                 )
             )
             .at_rc(1, 5)
@@ -280,7 +284,10 @@ fn test_dim_array_extended_built_in() {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
                     }],
-                    Box::new(ExpressionType::BuiltIn(TypeQualifier::PercentInteger))
+                    Box::new(DimType::BuiltIn(
+                        TypeQualifier::PercentInteger,
+                        BuiltInStyle::Extended
+                    ))
                 )
             )
             .at_rc(1, 5)
@@ -301,7 +308,10 @@ fn test_dim_array_extended_fixed_length_string() {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
                     }],
-                    Box::new(ExpressionType::FixedLengthString(3))
+                    Box::new(DimType::FixedLengthString(
+                        Expression::IntegerLiteral(3).at_rc(1, 22),
+                        3
+                    ))
                 )
             )
             .at_rc(1, 5)
@@ -328,7 +338,7 @@ fn test_dim_array_extended_user_defined() {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(5, 11)
                     }],
-                    Box::new(ExpressionType::UserDefined("Card".into()))
+                    Box::new(DimType::UserDefined(BareName::from("Card").at_rc(5, 17)))
                 )
             )
             .at_rc(5, 9)

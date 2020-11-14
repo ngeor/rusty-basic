@@ -109,7 +109,7 @@ fn extended_type<T: BufRead + 'static>(
                         expression::demand_expression_node(),
                     ))(reader);
                 match expr_res {
-                    Ok((reader, Some(e))) => Ok((reader, Some(DimType::FixedLengthString(e)))),
+                    Ok((reader, Some(e))) => Ok((reader, Some(DimType::FixedLengthString(e, 0)))),
                     Ok((reader, None)) => Ok((
                         reader,
                         Some(DimType::BuiltIn(

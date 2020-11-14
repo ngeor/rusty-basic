@@ -102,7 +102,7 @@ impl Context {
             DimType::BuiltIn(qualifier, _) => {
                 self.set_variable_built_in(bare_name, qualifier, value);
             }
-            DimType::FixedLengthString(_len) => {
+            DimType::FixedLengthString(_, _) => {
                 self.set_variable_built_in(bare_name, TypeQualifier::DollarString, value);
             }
             DimType::UserDefined(_) => {

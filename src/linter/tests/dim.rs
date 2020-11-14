@@ -195,7 +195,11 @@ fn test_dim_extended_fixed_length_string() {
     assert_eq!(
         linter_ok("DIM A AS STRING * 5"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new("A".into(), DimType::FixedLengthString(5)).at_rc(1, 5)
+            DimName::new(
+                "A".into(),
+                DimType::FixedLengthString(Expression::IntegerLiteral(5).at_rc(1, 19), 5)
+            )
+            .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );

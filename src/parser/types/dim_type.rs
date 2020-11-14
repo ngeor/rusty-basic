@@ -4,7 +4,7 @@ use crate::parser::{ArrayDimensions, BareNameNode, BuiltInStyle, ExpressionNode,
 pub enum DimType {
     Bare,
     BuiltIn(TypeQualifier, BuiltInStyle),
-    FixedLengthString(ExpressionNode),
+    FixedLengthString(ExpressionNode, u16),
     UserDefined(BareNameNode),
     Array(ArrayDimensions, Box<DimType>),
 }

@@ -4,7 +4,7 @@ use crate::common::{
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, HasExpressionType};
+use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, Expression, HasExpressionType};
 use crate::parser;
 use crate::parser::{
     BareName, BuiltInStyle, Name, QualifiedName, QualifiedNameNode, TypeQualifier,
@@ -49,7 +49,7 @@ impl<'a> ConverterImpl<'a> {
                 .convert_dim_type_compact(bare_name, q)
                 .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
-            parser::DimType::FixedLengthString(len_expr) => self
+            parser::DimType::FixedLengthString(len_expr, _) => self
                 .convert_dim_type_fixed_length_string(bare_name, len_expr)
                 .map(|dim_type| (dim_type, vec![])),
             parser::DimType::BuiltIn(q, BuiltInStyle::Extended) => self
@@ -101,7 +101,10 @@ impl<'a> ConverterImpl<'a> {
             }
         };
         self.context.push_dim_string(bare_name.clone(), len);
-        Ok(DimType::FixedLengthString(len))
+        Ok(DimType::FixedLengthString(
+            Expression::IntegerLiteral(len as i32).at(len_expr.pos),
+            len,
+        ))
     }
 
     fn convert_dim_type_extended(

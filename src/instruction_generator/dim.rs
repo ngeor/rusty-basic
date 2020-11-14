@@ -48,7 +48,7 @@ impl InstructionGenerator {
                 self.push(Instruction::VarPathName(Name::new(bare_name, Some(q))), pos);
                 self.push(Instruction::CopyAToVarPath, pos);
             }
-            DimType::FixedLengthString(len) => {
+            DimType::FixedLengthString(_, len) => {
                 self.push(Instruction::AllocateFixedLengthString(len), pos);
                 self.push(
                     Instruction::VarPathName(Name::new(

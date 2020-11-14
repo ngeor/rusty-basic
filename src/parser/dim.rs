@@ -40,7 +40,10 @@ mod tests {
                 crate::parser::Statement::Dim(
                     crate::parser::DimName::new(
                         $name.into(),
-                        crate::parser::DimType::Extended(TypeQualifier::$qualifier)
+                        crate::parser::DimType::BuiltIn(
+                            TypeQualifier::$qualifier,
+                            crate::parser::BuiltInStyle::Extended
+                        )
                     )
                     .at_rc(1, 5)
                 )
@@ -142,8 +145,11 @@ mod tests {
             assert_eq!(
                 p,
                 Statement::Dim(
-                    DimName::new($name.into(), DimType::Compact(TypeQualifier::$qualifier))
-                        .at_rc(1, 5)
+                    DimName::new(
+                        $name.into(),
+                        DimType::BuiltIn(TypeQualifier::$qualifier, BuiltInStyle::Compact)
+                    )
+                    .at_rc(1, 5)
                 )
             );
         };
@@ -177,7 +183,10 @@ mod tests {
                             lbound: None,
                             ubound: 2.as_lit_expr(1, 8)
                         }],
-                        Box::new(DimType::Compact(TypeQualifier::DollarString))
+                        Box::new(DimType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        ))
                     )
                 )
                 .at_rc(1, 5)

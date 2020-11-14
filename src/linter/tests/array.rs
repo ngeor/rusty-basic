@@ -34,7 +34,7 @@ fn test_dim_array() {
                 "choice".into(),
                 DimType::Array(
                     vec![ArrayDimension {
-                        lbound: Expression::IntegerLiteral(1).at_rc(2, 17),
+                        lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
                         ubound: Expression::IntegerLiteral(3).at_rc(2, 22)
                     }],
                     Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString))
@@ -87,7 +87,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                     "choice".into(),
                     DimType::Array(
                         vec![ArrayDimension {
-                            lbound: Expression::IntegerLiteral(1).at_rc(2, 17),
+                            lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
                             ubound: Expression::IntegerLiteral(3).at_rc(2, 22)
                         }],
                         Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString))

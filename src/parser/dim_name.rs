@@ -88,8 +88,20 @@ fn extended_type<T: BufRead + 'static>(
     source_and_then_some(
         with_pos(any_identifier_with_dot()),
         |reader, Locatable { element: x, pos }| match Keyword::from_str(&x) {
-            Ok(Keyword::Single) => Ok((reader, Some(DimType::Extended(TypeQualifier::BangSingle)))),
-            Ok(Keyword::Double) => Ok((reader, Some(DimType::Extended(TypeQualifier::HashDouble)))),
+            Ok(Keyword::Single) => Ok((
+                reader,
+                Some(DimType::BuiltIn(
+                    TypeQualifier::BangSingle,
+                    BuiltInStyle::Extended,
+                )),
+            )),
+            Ok(Keyword::Double) => Ok((
+                reader,
+                Some(DimType::BuiltIn(
+                    TypeQualifier::HashDouble,
+                    BuiltInStyle::Extended,
+                )),
+            )),
             Ok(Keyword::String_) => {
                 let expr_res: ReaderResult<EolReader<T>, ExpressionNode, QError> =
                     drop_left(seq2(
@@ -98,19 +110,29 @@ fn extended_type<T: BufRead + 'static>(
                     ))(reader);
                 match expr_res {
                     Ok((reader, Some(e))) => Ok((reader, Some(DimType::FixedLengthString(e)))),
-                    Ok((reader, None)) => {
-                        Ok((reader, Some(DimType::Extended(TypeQualifier::DollarString))))
-                    }
+                    Ok((reader, None)) => Ok((
+                        reader,
+                        Some(DimType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Extended,
+                        )),
+                    )),
                     Err(err) => Err(err),
                 }
             }
             Ok(Keyword::Integer) => Ok((
                 reader,
-                Some(DimType::Extended(TypeQualifier::PercentInteger)),
+                Some(DimType::BuiltIn(
+                    TypeQualifier::PercentInteger,
+                    BuiltInStyle::Extended,
+                )),
             )),
             Ok(Keyword::Long) => Ok((
                 reader,
-                Some(DimType::Extended(TypeQualifier::AmpersandLong)),
+                Some(DimType::BuiltIn(
+                    TypeQualifier::AmpersandLong,
+                    BuiltInStyle::Extended,
+                )),
             )),
             Ok(_) => Err((
                 reader,
@@ -182,6 +204,6 @@ fn map_qualified_name_opt_extended_type_definition(
         ))
     } else {
         let QualifiedName { qualifier, .. } = qualified_name;
-        Ok(DimType::Compact(*qualifier))
+        Ok(DimType::BuiltIn(*qualifier, BuiltInStyle::Compact))
     }
 }

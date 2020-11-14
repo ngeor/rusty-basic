@@ -1,13 +1,14 @@
 use crate::common::{
-    AtLocation, HasLocation, Locatable, PatchErrPos, QError, QErrorNode, ToErrorEnvelopeNoPos,
-    ToLocatableError,
+    AtLocation, Locatable, PatchErrPos, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
 };
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, Expression, HasExpressionType};
+use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, HasExpressionType};
 use crate::parser;
-use crate::parser::{BareName, Name, QualifiedName, QualifiedNameNode, TypeQualifier};
+use crate::parser::{
+    BareName, BuiltInStyle, Name, QualifiedName, QualifiedNameNode, TypeQualifier,
+};
 use crate::variant::Variant;
 
 impl<'a> ConverterWithImplicitVariables<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
@@ -44,14 +45,14 @@ impl<'a> ConverterImpl<'a> {
                 .convert_dim_type_bare(bare_name)
                 .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
-            parser::DimType::Compact(q) => self
+            parser::DimType::BuiltIn(q, BuiltInStyle::Compact) => self
                 .convert_dim_type_compact(bare_name, q)
                 .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
             parser::DimType::FixedLengthString(len_expr) => self
                 .convert_dim_type_fixed_length_string(bare_name, len_expr)
                 .map(|dim_type| (dim_type, vec![])),
-            parser::DimType::Extended(q) => self
+            parser::DimType::BuiltIn(q, BuiltInStyle::Extended) => self
                 .convert_dim_type_extended(bare_name, q)
                 .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
@@ -70,7 +71,7 @@ impl<'a> ConverterImpl<'a> {
             return Err(QError::DuplicateDefinition);
         }
         self.context.push_dim_compact(bare_name.clone(), q);
-        Ok(DimType::BuiltIn(q))
+        Ok(DimType::BuiltIn(q, BuiltInStyle::Compact))
     }
 
     fn convert_dim_type_compact(
@@ -82,7 +83,7 @@ impl<'a> ConverterImpl<'a> {
             return Err(QError::DuplicateDefinition);
         }
         self.context.push_dim_compact(bare_name.clone(), q);
-        Ok(DimType::BuiltIn(q))
+        Ok(DimType::BuiltIn(q, BuiltInStyle::Compact))
     }
 
     fn convert_dim_type_fixed_length_string(
@@ -112,7 +113,7 @@ impl<'a> ConverterImpl<'a> {
             return Err(QError::DuplicateDefinition);
         }
         self.context.push_dim_extended(bare_name.clone(), q);
-        Ok(DimType::BuiltIn(q))
+        Ok(DimType::BuiltIn(q, BuiltInStyle::Extended))
     }
 
     fn convert_dim_type_user_defined(
@@ -143,7 +144,7 @@ impl<'a> ConverterImpl<'a> {
     ) -> Result<(DimType, Vec<QualifiedNameNode>), QErrorNode> {
         // re-construct declared name
         let declared_name: Name = match &element_type {
-            parser::DimType::Compact(q) => {
+            parser::DimType::BuiltIn(q, _) => {
                 Name::Qualified(QualifiedName::new(bare_name.clone(), *q))
             }
             _ => Name::Bare(bare_name.clone()),
@@ -180,19 +181,18 @@ impl<'a> ConverterWithImplicitVariables<parser::ArrayDimension, ArrayDimension>
                 lbound_implicit_variables.append(&mut ubound_implicit_variables);
                 Ok((
                     ArrayDimension {
-                        lbound: converted_lbound,
+                        lbound: Some(converted_lbound),
                         ubound: converted_ubound,
                     },
                     lbound_implicit_variables,
                 ))
             }
             None => {
-                let converted_lbound = Expression::IntegerLiteral(0).at(ubound.pos());
                 let (converted_ubound, implicit_variables) =
                     self.convert_and_collect_implicit_variables(ubound)?;
                 Ok((
                     ArrayDimension {
-                        lbound: converted_lbound,
+                        lbound: None,
                         ubound: converted_ubound,
                     },
                     implicit_variables,

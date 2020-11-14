@@ -99,7 +99,7 @@ impl Context {
     pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
         let (bare_name, dim_type) = dim_name.into_inner();
         match dim_type {
-            DimType::BuiltIn(qualifier) => {
+            DimType::BuiltIn(qualifier, _) => {
                 self.set_variable_built_in(bare_name, qualifier, value);
             }
             DimType::FixedLengthString(_len) => {
@@ -120,6 +120,7 @@ impl Context {
                     _ => self.set_variable_user_defined(bare_name, value),
                 }
             }
+            DimType::Bare => panic!("Unresolved type"),
         }
     }
 

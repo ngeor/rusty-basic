@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::linter::{DimName, DimType};
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, BuiltInStyle, Name, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
 // ========================================================
@@ -113,7 +113,10 @@ impl From<BuiltInFunction> for DimName {
     fn from(built_in_function: BuiltInFunction) -> Self {
         let qualifier: TypeQualifier = (&built_in_function).into();
         let bare_name: BareName = built_in_function.into();
-        Self::new(bare_name, DimType::BuiltIn(qualifier))
+        Self::new(
+            bare_name,
+            DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
+        )
     }
 }
 

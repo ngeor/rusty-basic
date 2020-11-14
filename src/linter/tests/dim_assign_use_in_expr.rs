@@ -3,7 +3,7 @@ use crate::assert_linter_ok_top_level_statements;
 use crate::common::*;
 use crate::linter::test_utils::*;
 use crate::linter::*;
-use crate::parser::TypeQualifier;
+use crate::parser::{BuiltInStyle, TypeQualifier};
 use std::collections::HashMap;
 
 /// Three step tests:
@@ -69,7 +69,14 @@ fn extended_string() {
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 9))).at_rc(2, 5),
+            TopLevelToken::Statement(Statement::Dim(
+                DimName::new(
+                    "A".into(),
+                    DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended)
+                )
+                .at_rc(2, 9)
+            ))
+            .at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::var("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 9)

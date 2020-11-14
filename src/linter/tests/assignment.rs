@@ -2,7 +2,7 @@ use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
 use crate::common::{AtRowCol, QError};
 use crate::linter::{DimName, DimType, Expression, ExpressionType, Statement};
-use crate::parser::{Operator, TypeQualifier};
+use crate::parser::{BuiltInStyle, Operator, TypeQualifier};
 
 #[test]
 fn name_clashes_with_other_sub_name() {
@@ -63,7 +63,11 @@ fn test_assign_binary_plus() {
     assert_linter_ok_top_level_statements!(
         "X% = 1 + 2.1",
         Statement::Dim(
-            DimName::new("X".into(), DimType::BuiltIn(TypeQualifier::PercentInteger)).at_rc(1, 1)
+            DimName::new(
+                "X".into(),
+                DimType::BuiltIn(TypeQualifier::PercentInteger, BuiltInStyle::Compact)
+            )
+            .at_rc(1, 1)
         ),
         Statement::Assignment(
             Expression::var("X%"),
@@ -83,7 +87,11 @@ fn test_possible_property_folded_back_to_variable() {
     assert_linter_ok_top_level_statements!(
         "A.B = 12",
         Statement::Dim(
-            DimName::new("A.B".into(), DimType::BuiltIn(TypeQualifier::BangSingle)).at_rc(1, 1)
+            DimName::new(
+                "A.B".into(),
+                DimType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
+            )
+            .at_rc(1, 1)
         ),
         Statement::Assignment(
             Expression::var("A.B!".into()),

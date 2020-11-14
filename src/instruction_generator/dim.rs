@@ -17,9 +17,13 @@ impl InstructionGenerator {
                 self.push(Instruction::BeginCollectArguments, pos);
 
                 for ArrayDimension { lbound, ubound } in array_dimensions {
-                    let lbound_pos = lbound.pos();
-                    self.generate_expression_instructions(lbound);
-                    self.push(Instruction::PushAToUnnamedArg, lbound_pos);
+                    if let Some(lbound) = lbound {
+                        let lbound_pos = lbound.pos();
+                        self.generate_expression_instructions(lbound);
+                        self.push(Instruction::PushAToUnnamedArg, lbound_pos);
+                    } else {
+                        self.push_load_unnamed_arg(0, pos);
+                    }
 
                     let ubound_pos = ubound.pos();
                     self.generate_expression_instructions(ubound);
@@ -39,7 +43,7 @@ impl InstructionGenerator {
                 self.push(Instruction::VarPathName(Name::new(bare_name, opt_q)), pos);
                 self.push(Instruction::CopyAToVarPath, pos);
             }
-            DimType::BuiltIn(q) => {
+            DimType::BuiltIn(q, _) => {
                 self.push(Instruction::AllocateBuiltIn(q), pos);
                 self.push(Instruction::VarPathName(Name::new(bare_name, Some(q))), pos);
                 self.push(Instruction::CopyAToVarPath, pos);
@@ -63,6 +67,7 @@ impl InstructionGenerator {
                 self.push(Instruction::VarPathName(Name::new(bare_name, None)), pos);
                 self.push(Instruction::CopyAToVarPath, pos);
             }
+            DimType::Bare => panic!("Unresolved type"),
         }
     }
 }

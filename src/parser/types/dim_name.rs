@@ -7,25 +7,8 @@ pub struct DimName {
     dim_type: DimType,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum DimType {
-    Bare,
-    Compact(TypeQualifier),
-    Extended(TypeQualifier),
-    FixedLengthString(ExpressionNode),
-    UserDefined(BareNameNode),
-    Array(ArrayDimensions, Box<DimType>),
-}
-
-pub type ArrayDimensions = Vec<ArrayDimension>;
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ArrayDimension {
-    pub lbound: Option<ExpressionNode>,
-    pub ubound: ExpressionNode,
-}
-
 pub type DimNameNode = Locatable<DimName>;
+pub type DimNameNodes = Vec<DimNameNode>;
 
 impl DimName {
     pub fn new(bare_name: BareName, dim_type: DimType) -> Self {

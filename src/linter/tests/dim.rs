@@ -4,7 +4,7 @@ use crate::linter::test_utils::linter_ok;
 use crate::linter::{
     ArrayDimension, DimName, DimType, Expression, ExpressionType, Statement, TopLevelToken,
 };
-use crate::parser::TypeQualifier;
+use crate::parser::{BuiltInStyle, TypeQualifier};
 
 #[test]
 fn test_dim_duplicate_definition_same_builtin_type() {
@@ -150,7 +150,11 @@ fn test_dim_bare() {
     assert_eq!(
         linter_ok("DIM A"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new("A".into(), DimType::BuiltIn(TypeQualifier::BangSingle)).at_rc(1, 5)
+            DimName::new(
+                "A".into(),
+                DimType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
+            )
+            .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -161,7 +165,11 @@ fn test_dim_qualified() {
     assert_eq!(
         linter_ok("DIM A$"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new("A".into(), DimType::BuiltIn(TypeQualifier::DollarString)).at_rc(1, 5)
+            DimName::new(
+                "A".into(),
+                DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+            )
+            .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -172,7 +180,11 @@ fn test_dim_extended_built_in() {
     assert_eq!(
         linter_ok("DIM A AS LONG"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new("A".into(), DimType::BuiltIn(TypeQualifier::AmpersandLong)).at_rc(1, 5)
+            DimName::new(
+                "A".into(),
+                DimType::BuiltIn(TypeQualifier::AmpersandLong, BuiltInStyle::Extended)
+            )
+            .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -215,7 +227,7 @@ fn test_dim_array_bare() {
                 "A".into(),
                 DimType::Array(
                     vec![ArrayDimension {
-                        lbound: Expression::IntegerLiteral(0).at_rc(1, 7),
+                        lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
                     }],
                     Box::new(ExpressionType::BuiltIn(TypeQualifier::BangSingle))
@@ -236,7 +248,7 @@ fn test_dim_array_qualified() {
                 "A".into(),
                 DimType::Array(
                     vec![ArrayDimension {
-                        lbound: Expression::IntegerLiteral(0).at_rc(1, 8),
+                        lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 8)
                     }],
                     Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString))
@@ -257,7 +269,7 @@ fn test_dim_array_extended_built_in() {
                 "A".into(),
                 DimType::Array(
                     vec![ArrayDimension {
-                        lbound: Expression::IntegerLiteral(0).at_rc(1, 7),
+                        lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
                     }],
                     Box::new(ExpressionType::BuiltIn(TypeQualifier::PercentInteger))
@@ -278,7 +290,7 @@ fn test_dim_array_extended_fixed_length_string() {
                 "A".into(),
                 DimType::Array(
                     vec![ArrayDimension {
-                        lbound: Expression::IntegerLiteral(0).at_rc(1, 7),
+                        lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
                     }],
                     Box::new(ExpressionType::FixedLengthString(3))
@@ -305,7 +317,7 @@ fn test_dim_array_extended_user_defined() {
                 "A".into(),
                 DimType::Array(
                     vec![ArrayDimension {
-                        lbound: Expression::IntegerLiteral(0).at_rc(5, 11),
+                        lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(5, 11)
                     }],
                     Box::new(ExpressionType::UserDefined("Card".into()))

@@ -133,7 +133,7 @@ impl<'a> ConverterImpl<'a> {
         }
         self.context
             .push_dim_user_defined(bare_name.clone(), type_name.clone());
-        Ok(DimType::UserDefined(type_name))
+        Ok(DimType::UserDefined(type_name.at(pos)))
     }
 
     fn convert_dim_type_array(

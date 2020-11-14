@@ -4,7 +4,7 @@ use crate::linter::test_utils::linter_ok;
 use crate::linter::{
     ArrayDimension, DimName, DimType, Expression, ExpressionType, Statement, TopLevelToken,
 };
-use crate::parser::{BuiltInStyle, TypeQualifier};
+use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
 
 #[test]
 fn test_dim_duplicate_definition_same_builtin_type() {
@@ -212,7 +212,11 @@ fn test_dim_extended_user_defined() {
     assert_eq!(
         linter_ok(input),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new("A".into(), DimType::UserDefined("Card".into())).at_rc(5, 9)
+            DimName::new(
+                "A".into(),
+                DimType::UserDefined(BareName::from("Card").at_rc(5, 14))
+            )
+            .at_rc(5, 9)
         ))
         .at_rc(5, 5)]
     );

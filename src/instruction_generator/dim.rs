@@ -59,7 +59,10 @@ impl InstructionGenerator {
                 );
                 self.push(Instruction::CopyAToVarPath, pos);
             }
-            DimType::UserDefined(user_defined_type_name) => {
+            DimType::UserDefined(Locatable {
+                element: user_defined_type_name,
+                ..
+            }) => {
                 self.push(
                     Instruction::AllocateUserDefined(user_defined_type_name),
                     pos,

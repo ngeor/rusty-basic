@@ -1,6 +1,6 @@
 use crate::common::StringUtils;
 use crate::linter::{ArrayDimensions, ExpressionType, HasExpressionType, UserDefinedTypes};
-use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
+use crate::parser::{BareNameNode, BuiltInStyle, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -12,7 +12,7 @@ pub enum DimType {
     BuiltIn(TypeQualifier, BuiltInStyle),
 
     // DIM C AS Card
-    UserDefined(BareName),
+    UserDefined(BareNameNode),
 
     /// DIM X AS STRING * 1
     FixedLengthString(u16),
@@ -25,9 +25,9 @@ impl DimType {
         match self {
             Self::BuiltIn(q, _) => Variant::from(*q),
             Self::FixedLengthString(len) => String::new().fix_length(*len as usize).into(),
-            Self::UserDefined(type_name) => {
-                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
-            }
+            Self::UserDefined(type_name) => Variant::VUserDefined(Box::new(
+                UserDefinedTypeValue::new(type_name.as_ref(), types),
+            )),
             _ => unimplemented!(),
         }
     }
@@ -38,7 +38,7 @@ impl HasExpressionType for DimType {
         match self {
             Self::BuiltIn(qualifier, _) => ExpressionType::BuiltIn(*qualifier),
             Self::FixedLengthString(len) => ExpressionType::FixedLengthString(*len),
-            Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
+            Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.element.clone()),
             Self::Array(_, element_type) => ExpressionType::Array(element_type.clone()),
             Self::Bare => panic!("Unresolved type"),
         }

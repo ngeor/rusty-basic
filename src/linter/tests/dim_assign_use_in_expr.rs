@@ -3,7 +3,7 @@ use crate::assert_linter_ok_top_level_statements;
 use crate::common::*;
 use crate::linter::test_utils::*;
 use crate::linter::*;
-use crate::parser::{BuiltInStyle, TypeQualifier};
+use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
 use std::collections::HashMap;
 
 /// Three step tests:
@@ -106,11 +106,19 @@ fn user_defined_type() {
         program,
         vec![
             TopLevelToken::Statement(Statement::Dim(
-                DimName::user_defined("A", "Card").at_rc(6, 9)
+                DimName::new(
+                    "A".into(),
+                    DimType::UserDefined(BareName::from("Card").at_rc(6, 14))
+                )
+                .at_rc(6, 9)
             ))
             .at_rc(6, 5),
             TopLevelToken::Statement(Statement::Dim(
-                DimName::user_defined("B", "Card").at_rc(7, 9)
+                DimName::new(
+                    "B".into(),
+                    DimType::UserDefined(BareName::from("Card").at_rc(7, 14))
+                )
+                .at_rc(7, 9)
             ))
             .at_rc(7, 5),
             TopLevelToken::Statement(Statement::Assignment(
@@ -151,7 +159,13 @@ fn user_defined_type_integer_element() {
     "#;
     assert_linter_ok_top_level_statements!(
         input,
-        Statement::Dim(DimName::user_defined("A", "Card").at_rc(6, 9)),
+        Statement::Dim(
+            DimName::new(
+                "A".into(),
+                DimType::UserDefined(BareName::from("Card").at_rc(6, 14))
+            )
+            .at_rc(6, 9)
+        ),
         Statement::Assignment(
             Expression::Property(
                 Box::new(Expression::user_defined("A", "Card")),
@@ -184,7 +198,13 @@ fn user_defined_type_string_element() {
     "#;
     assert_linter_ok_top_level_statements!(
         input,
-        Statement::Dim(DimName::user_defined("A", "Card").at_rc(6, 9)),
+        Statement::Dim(
+            DimName::new(
+                "A".into(),
+                DimType::UserDefined(BareName::from("Card").at_rc(6, 14))
+            )
+            .at_rc(6, 9)
+        ),
         Statement::Assignment(
             Expression::Property(
                 Box::new(Expression::user_defined("A", "Card")),

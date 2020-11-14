@@ -1,10 +1,13 @@
 use crate::common::*;
 use crate::parser::types::*;
 
+#[cfg(test)]
+use std::convert::TryFrom;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct DimName {
-    bare_name: BareName,
-    dim_type: DimType,
+    pub bare_name: BareName,
+    pub dim_type: DimType,
 }
 
 pub type DimNameNode = Locatable<DimName>;
@@ -18,16 +21,31 @@ impl DimName {
         }
     }
 
-    pub fn into_inner(self) -> (BareName, DimType) {
-        let Self {
-            bare_name,
-            dim_type,
-        } = self;
-        (bare_name, dim_type)
-    }
-
     pub fn dim_type(&self) -> &DimType {
         &self.dim_type
+    }
+
+    pub fn into_inner(self) -> (BareName, DimType) {
+        (self.bare_name, self.dim_type)
+    }
+
+    #[cfg(test)]
+    pub fn parse(s: &str) -> Self {
+        let qualified_name = QualifiedName::try_from(s).unwrap();
+        Self::from(qualified_name)
+    }
+}
+
+impl From<QualifiedName> for DimName {
+    fn from(qualified_name: QualifiedName) -> Self {
+        let QualifiedName {
+            bare_name,
+            qualifier,
+        } = qualified_name;
+        Self::new(
+            bare_name,
+            DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
+        )
     }
 }
 

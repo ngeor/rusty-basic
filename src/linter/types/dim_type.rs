@@ -1,9 +1,5 @@
-use crate::common::StringUtils;
-use crate::linter::{
-    ArrayDimensions, ExpressionNode, ExpressionType, HasExpressionType, UserDefinedTypes,
-};
+use crate::linter::{ArrayDimensions, ExpressionNode, ExpressionType, HasExpressionType};
 use crate::parser::{BareNameNode, BuiltInStyle, TypeQualifier};
-use crate::variant::{UserDefinedTypeValue, Variant};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DimType {
@@ -20,19 +16,6 @@ pub enum DimType {
     FixedLengthString(ExpressionNode, u16),
 
     Array(ArrayDimensions, Box<DimType>),
-}
-
-impl DimType {
-    pub fn default_variant(&self, types: &UserDefinedTypes) -> Variant {
-        match self {
-            Self::BuiltIn(q, _) => Variant::from(*q),
-            Self::FixedLengthString(_, len) => String::new().fix_length(*len as usize).into(),
-            Self::UserDefined(type_name) => Variant::VUserDefined(Box::new(
-                UserDefinedTypeValue::new(type_name.as_ref(), types),
-            )),
-            _ => unimplemented!(),
-        }
-    }
 }
 
 impl HasExpressionType for DimType {

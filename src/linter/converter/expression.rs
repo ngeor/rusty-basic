@@ -27,6 +27,7 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
             parser::Expression::VariableName(var_name) => {
                 var_name::into_expr_result(self, var_name, pos)
             }
+            parser::Expression::Constant(_) => panic!("Constant is only a linter thing"),
             parser::Expression::FunctionCall(name_expr, args) => {
                 function_call::into_expr_result(self, name_expr, args, pos)
             }

@@ -47,6 +47,7 @@ pub trait ConstValueResolver {
                     }
                 }
             }
+            Expression::Constant(_q_name) => panic!("Constant expression is only a linter thing"),
             Expression::Property(_, _) | Expression::FunctionCall(_, _) => {
                 Err(QError::InvalidConstant).with_err_no_pos()
             }

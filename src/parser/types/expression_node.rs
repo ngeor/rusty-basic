@@ -1,5 +1,6 @@
 use crate::common::{AtLocation, HasLocation, Locatable, Location};
 use crate::parser::types::{Name, Operator, UnaryOperator};
+use crate::parser::QualifiedName;
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -9,6 +10,7 @@ pub enum Expression {
     StringLiteral(String),
     IntegerLiteral(i32),
     LongLiteral(i64),
+    Constant(QualifiedName),
     VariableName(Name),
     FunctionCall(Name, ExpressionNodes),
     BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
@@ -78,19 +80,23 @@ impl Expression {
         Expression::FunctionCall(name, args)
     }
 
-    fn unary_minus(child: ExpressionNode) -> Self {
-        match child.as_ref() {
+    fn unary_minus(child_node: ExpressionNode) -> Self {
+        let Locatable {
+            element: child,
+            pos,
+        } = child_node;
+        match child {
             Self::SingleLiteral(n) => Self::SingleLiteral(-n),
             Self::DoubleLiteral(n) => Self::DoubleLiteral(-n),
             Self::IntegerLiteral(n) => {
-                if *n <= MIN_INTEGER {
+                if n <= MIN_INTEGER {
                     Self::LongLiteral(-n as i64)
                 } else {
                     Self::IntegerLiteral(-n)
                 }
             }
             Self::LongLiteral(n) => {
-                if *n <= MIN_LONG {
+                if n <= MIN_LONG {
                     Self::DoubleLiteral(-n as f64)
                 } else {
                     Self::LongLiteral(-n)
@@ -98,7 +104,7 @@ impl Expression {
             }
             _ => Self::UnaryExpression(
                 UnaryOperator::Minus,
-                Box::new(child.simplify_unary_minus_literals()),
+                Box::new(child.at(pos).simplify_unary_minus_literals()),
             ),
         }
     }

@@ -43,14 +43,14 @@ impl<'a> ConverterImpl<'a> {
                     pos,
                 } = name_expr_node;
                 match name_expr {
-                    crate::parser::Expression::VariableName(name) => {
+                    crate::parser::Expression::Variable(name, _) => {
                         self.assignment_name_variable_name(name, pos)
                     }
                     crate::parser::Expression::FunctionCall(_, _) => {
                         // TODO check if name is an array
                         self.convert_and_collect_implicit_variables(name_expr.at(pos))
                     }
-                    crate::parser::Expression::Property(left_side, property_name) => {
+                    crate::parser::Expression::Property(left_side, property_name, _) => {
                         self.assignment_name_property(*left_side, property_name, pos)
                     }
                     _ => unimplemented!(),

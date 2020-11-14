@@ -1,7 +1,7 @@
 use super::{ExpressionType, HasExpressionType};
 use crate::built_ins::BuiltInFunction;
 use crate::common::{CanCastTo, Locatable, QError, QErrorNode, ToLocatableError};
-use crate::parser::{BareName, Name, Operator, QualifiedName, TypeQualifier, UnaryOperator};
+use crate::parser::{Name, Operator, QualifiedName, TypeQualifier, UnaryOperator};
 
 #[cfg(test)]
 use std::convert::TryFrom;
@@ -15,7 +15,7 @@ pub enum Expression {
     LongLiteral(i64),
     Constant(QualifiedName),
     Variable(Name, ExpressionType),
-    FunctionCall(QualifiedName, Vec<ExpressionNode>),
+    FunctionCall(Name, Vec<ExpressionNode>),
     ArrayElement(
         // the name of the array (unqualified only for user defined types)
         Name,
@@ -38,7 +38,7 @@ pub enum Expression {
         // the left side of the property, before the dot
         Box<Expression>,
         // the property name (converted to BareName)
-        BareName,
+        Name,
         // the resolved type of the property
         ExpressionType,
     ),
@@ -93,11 +93,12 @@ impl HasExpressionType for Expression {
             | Self::BinaryExpression(_, _, _, expression_type)
             | Self::ArrayElement(_, _, expression_type) => expression_type.clone(),
             Self::Constant(QualifiedName { qualifier, .. })
-            | Self::FunctionCall(QualifiedName { qualifier, .. }, _) => {
+            | Self::FunctionCall(Name::Qualified(QualifiedName { qualifier, .. }), _) => {
                 ExpressionType::BuiltIn(*qualifier)
             }
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
             Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().expression_type(),
+            Self::FunctionCall(Name::Bare(_), _) => ExpressionType::Unresolved,
         }
     }
 }

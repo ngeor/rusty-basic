@@ -114,7 +114,10 @@ impl InstructionGenerator {
             Expression::Property(box_left_side, property_name, _element_type) => {
                 let left_side = *box_left_side;
                 self.generate_path_instructions(left_side.at(pos));
-                self.push(Instruction::VarPathProperty(property_name), pos);
+                self.push(
+                    Instruction::VarPathProperty(property_name.demand_bare()),
+                    pos,
+                );
             }
             _ => panic!("Not a name expression"),
         }

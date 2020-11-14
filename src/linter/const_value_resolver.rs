@@ -18,7 +18,7 @@ pub trait ConstValueResolver {
             Expression::StringLiteral(s) => Ok(Variant::VString(s.clone())),
             Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
             Expression::LongLiteral(l) => Ok(Variant::VLong(*l)),
-            Expression::VariableName(name_expr) => {
+            Expression::Variable(name_expr, _) => {
                 if let Some(qualifier) = name_expr.qualifier() {
                     match self.get_resolved_constant(name_expr.as_ref()) {
                         Some(v) => {
@@ -48,10 +48,10 @@ pub trait ConstValueResolver {
                 }
             }
             Expression::Constant(_q_name) => panic!("Constant expression is only a linter thing"),
-            Expression::Property(_, _) | Expression::FunctionCall(_, _) => {
+            Expression::Property(_, _, _) | Expression::FunctionCall(_, _) => {
                 Err(QError::InvalidConstant).with_err_no_pos()
             }
-            Expression::BinaryExpression(op, left, right) => {
+            Expression::BinaryExpression(op, left, right, _) => {
                 let Locatable { element, pos } = left.as_ref();
                 let v_left = self.resolve_const_value(element).patch_err_pos(*pos)?;
                 let Locatable { element, pos } = right.as_ref();
@@ -101,6 +101,8 @@ pub trait ConstValueResolver {
                 let Locatable { element, pos } = child.as_ref();
                 self.resolve_const_value(element).patch_err_pos(*pos)
             }
+            Expression::ArrayElement(_, _, _) => unimplemented!(),
+            Expression::BuiltInFunctionCall(_, _) => unimplemented!(),
         }
     }
 }

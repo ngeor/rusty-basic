@@ -6,6 +6,7 @@ use crate::variant::{UserDefinedTypeValue, Variant};
 /// The resolved type of an expression.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ExpressionType {
+    Unresolved,
     BuiltIn(TypeQualifier),
     FixedLengthString(u16),
     UserDefined(BareName),
@@ -67,7 +68,7 @@ impl CanCastTo<&ExpressionType> for ExpressionType {
                 Self::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
-            Self::Array(_) => false,
+            Self::Unresolved | Self::Array(_) => false,
         }
     }
 }

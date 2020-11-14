@@ -187,7 +187,7 @@ fn validate_element_type_str_len(
             // parser already covers that i is between 1..MAX_INT
             Ok(*i as u16)
         }
-        Expression::VariableName(name_expr) => {
+        Expression::Variable(name_expr, _) => {
             // only constants allowed
             if let Some(qualifier) = name_expr.qualifier() {
                 match global_constants.get(name_expr.as_ref()) {

@@ -64,7 +64,11 @@ mod tests {
                 let input = "A.B = 42";
                 assert_top_level_assignment!(
                     input,
-                    Expression::Property(Box::new(Expression::var("A")), "B".into())
+                    Expression::Property(
+                        Box::new(Expression::var("A")),
+                        "B".into(),
+                        ExpressionType::Unresolved
+                    )
                 );
             }
 
@@ -84,7 +88,8 @@ mod tests {
                             "A".into(),
                             vec![1.as_lit_expr(1, 3)]
                         )),
-                        "Value".into()
+                        "Value".into(),
+                        ExpressionType::Unresolved
                     )
                 );
             }
@@ -95,7 +100,8 @@ mod tests {
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM = 42",
                     Expression::Property(
                         Box::new(Expression::var("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
-                        "ABCDEFGHIJKLM".into()
+                        "ABCDEFGHIJKLM".into(),
+                        ExpressionType::Unresolved
                     )
                 );
             }
@@ -137,7 +143,8 @@ mod tests {
                             "A".into(),
                             vec![1.as_lit_expr(1, 3)]
                         )),
-                        "Value%".into()
+                        "Value%".into(),
+                        ExpressionType::Unresolved
                     )
                 );
             }
@@ -148,7 +155,8 @@ mod tests {
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM% = 42",
                     Expression::Property(
                         Box::new(Expression::var("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
-                        "ABCDEFGHIJKLM%".into()
+                        "ABCDEFGHIJKLM%".into(),
+                        ExpressionType::Unresolved
                     )
                 );
             }
@@ -262,7 +270,8 @@ mod tests {
             Statement::Assignment(
                 Expression::Property(
                     Box::new(Expression::func("A", vec![1.as_lit_expr(1, 3)])),
-                    "Height".into()
+                    "Height".into(),
+                    ExpressionType::Unresolved
                 ),
                 2.as_lit_expr(1, 15)
             )
@@ -276,7 +285,11 @@ mod tests {
         assert_eq!(
             program,
             Statement::Assignment(
-                Expression::Property(Box::new(Expression::var("A")), "B".into()),
+                Expression::Property(
+                    Box::new(Expression::var("A")),
+                    "B".into(),
+                    ExpressionType::Unresolved
+                ),
                 2.as_lit_expr(1, 7)
             )
         );

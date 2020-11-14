@@ -28,12 +28,14 @@ pub fn for_loop<T: BufRead + 'static>(
         ),
         |(((variable_name, lower_bound, upper_bound), opt_step), statements, next_counter)| {
             Statement::ForLoop(ForLoopNode {
-                variable_name: variable_name.map(|x| Expression::VariableName(x)),
+                variable_name: variable_name
+                    .map(|x| Expression::Variable(x, ExpressionType::Unresolved)),
                 lower_bound,
                 upper_bound,
                 step: opt_step,
                 statements,
-                next_counter: next_counter.map(|x| x.map(|y| Expression::VariableName(y))),
+                next_counter: next_counter
+                    .map(|x| x.map(|y| Expression::Variable(y, ExpressionType::Unresolved))),
             })
         },
     )

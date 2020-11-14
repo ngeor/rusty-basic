@@ -95,7 +95,8 @@ mod tests {
                     Expression::BinaryExpression(
                         Operator::Plus,
                         Box::new("A".as_var_expr(3, 19)),
-                        Box::new("B".as_var_expr(3, 23))
+                        Box::new("B".as_var_expr(3, 23)),
+                        ExpressionType::Unresolved
                     )
                     .at(Location::new(3, 21))
                 )
@@ -126,7 +127,8 @@ mod tests {
                     Expression::BinaryExpression(
                         Operator::Plus,
                         Box::new("a".as_var_expr(3, 19)),
-                        Box::new("b".as_var_expr(3, 23))
+                        Box::new("b".as_var_expr(3, 23)),
+                        ExpressionType::Unresolved
                     )
                     .at_rc(3, 21)
                 )

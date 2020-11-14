@@ -404,7 +404,10 @@ pub mod word {
                 Ok((r, Some(bare_name_without_dot))) => {
                     validate_name_expr_after_parsing(continue_after_bare_name(
                         r,
-                        Expression::VariableName(Name::Bare(bare_name_without_dot)),
+                        Expression::Variable(
+                            Name::Bare(bare_name_without_dot),
+                            ExpressionType::Unresolved,
+                        ),
                         false,
                     ))
                 }
@@ -469,7 +472,11 @@ pub mod word {
                 let expr = if already_folded {
                     concat_name(concat_name(base_expr, '.'), bare_name)
                 } else {
-                    Expression::Property(Box::new(base_expr), Name::Bare(bare_name))
+                    Expression::Property(
+                        Box::new(base_expr),
+                        Name::Bare(bare_name),
+                        ExpressionType::Unresolved,
+                    )
                 };
                 continue_after_bare_name(r, expr, already_folded) // recursion
             }
@@ -502,11 +509,16 @@ pub mod word {
 
     fn qualify(base_expr: Expression, q: TypeQualifier) -> Expression {
         match base_expr {
-            Expression::VariableName(Name::Bare(bare_name)) => {
-                Expression::VariableName(Name::Qualified(QualifiedName::new(bare_name, q)))
-            }
-            Expression::Property(left, Name::Bare(bare_name)) => {
-                Expression::Property(left, Name::Qualified(QualifiedName::new(bare_name, q)))
+            Expression::Variable(Name::Bare(bare_name), expression_type) => Expression::Variable(
+                Name::Qualified(QualifiedName::new(bare_name, q)),
+                expression_type,
+            ),
+            Expression::Property(left, Name::Bare(bare_name), expression_type) => {
+                Expression::Property(
+                    left,
+                    Name::Qualified(QualifiedName::new(bare_name, q)),
+                    expression_type,
+                )
             }
             _ => panic!("Unexpected expression"),
         }
@@ -514,8 +526,8 @@ pub mod word {
 
     fn fold_name(base_expr: Expression) -> Name {
         match base_expr {
-            Expression::VariableName(name) => name,
-            Expression::Property(left, property_name) => {
+            Expression::Variable(name, _) => name,
+            Expression::Property(left, property_name, _) => {
                 let left_name = fold_name(*left);
                 match left_name {
                     Name::Bare(bare_left_name) => match property_name {
@@ -538,7 +550,7 @@ pub mod word {
     }
 
     fn fold_expr(base_expr: Expression) -> Expression {
-        Expression::VariableName(fold_name(base_expr))
+        Expression::Variable(fold_name(base_expr), ExpressionType::Unresolved)
     }
 
     fn concat_name<X>(base_expr: Expression, x: X) -> Expression
@@ -546,8 +558,8 @@ pub mod word {
         BareName: std::ops::Add<X, Output = BareName>,
     {
         match base_expr {
-            Expression::VariableName(Name::Bare(bare_name)) => {
-                Expression::VariableName(Name::Bare(bare_name + x))
+            Expression::Variable(Name::Bare(bare_name), expression_type) => {
+                Expression::Variable(Name::Bare(bare_name + x), expression_type)
             }
             _ => panic!("Unsupported expression"),
         }
@@ -555,7 +567,7 @@ pub mod word {
 
     fn get_expr_name(base_expr: Expression) -> Name {
         match base_expr {
-            Expression::VariableName(name) => name,
+            Expression::Variable(name, _) => name,
             _ => panic!("Unsupported expression"),
         }
     }
@@ -602,7 +614,11 @@ pub mod word {
         match any_word_without_dot()(r) {
             Ok((r, Some(bare_property_name))) => continue_after_bare_name_args_dot_bare_name(
                 r,
-                Expression::Property(Box::new(base_expr), Name::Bare(bare_property_name)),
+                Expression::Property(
+                    Box::new(base_expr),
+                    Name::Bare(bare_property_name),
+                    ExpressionType::Unresolved,
+                ),
             ),
             Ok((r, None)) => Err((
                 r,
@@ -701,10 +717,10 @@ pub mod word {
 
     fn ensure_identifier_max_length(expr: &Expression) -> bool {
         match expr {
-            Expression::VariableName(name) | Expression::FunctionCall(name, _) => {
+            Expression::Variable(name, _) | Expression::FunctionCall(name, _) => {
                 name_length(name) <= MAX_LENGTH
             }
-            Expression::Property(left_side, property_name) => {
+            Expression::Property(left_side, property_name, _) => {
                 ensure_identifier_max_length(left_side)
                     && name_length(property_name) <= MAX_LENGTH
                     && folded_property_length(expr).unwrap_or_default() <= MAX_LENGTH
@@ -723,10 +739,10 @@ pub mod word {
 
     fn folded_property_length(expr: &Expression) -> Option<usize> {
         match expr {
-            Expression::Property(left_side, property_name) => {
+            Expression::Property(left_side, property_name, _) => {
                 folded_property_length(left_side).map(|l| l + 1 + name_length(property_name))
             }
-            Expression::VariableName(name) => Some(name_length(name)),
+            Expression::Variable(name, _) => Some(name_length(name)),
             _ => None,
         }
     }
@@ -796,9 +812,11 @@ pub mod word {
                         Some(Expression::Property(
                             Box::new(Expression::Property(
                                 Box::new(Expression::var("a")),
-                                "b".into()
+                                "b".into(),
+                                ExpressionType::Unresolved
                             )),
-                            "c".into()
+                            "c".into(),
+                            ExpressionType::Unresolved
                         ))
                     );
                 }
@@ -834,7 +852,8 @@ pub mod word {
                         result,
                         Some(Expression::Property(
                             Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
-                            Name::Bare("Suit".into())
+                            Name::Bare("Suit".into()),
+                            ExpressionType::Unresolved
                         ))
                     );
                 }
@@ -891,7 +910,8 @@ pub mod word {
                         result,
                         Some(Expression::Property(
                             Box::new(Expression::var("a".into())),
-                            "b$".into()
+                            "b$".into(),
+                            ExpressionType::Unresolved
                         ))
                     );
                 }
@@ -970,7 +990,8 @@ pub mod word {
                         result,
                         Some(Expression::Property(
                             Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
-                            "Suit$".into()
+                            "Suit$".into(),
+                            ExpressionType::Unresolved
                         ))
                     );
                 }
@@ -1085,7 +1106,7 @@ pub fn relational_operator<T: BufRead + 'static>(
 mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
-    use crate::parser::{Expression, Operator, Statement, UnaryOperator};
+    use crate::parser::{Expression, ExpressionType, Operator, Statement, UnaryOperator};
     use crate::{assert_expression, assert_literal_expression, assert_sub_call};
 
     #[test]
@@ -1112,7 +1133,11 @@ mod tests {
         fn test_bare_name_with_elements() {
             assert_expression!(
                 "A.B",
-                Expression::Property(Box::new(Expression::var("A")), "B".into())
+                Expression::Property(
+                    Box::new(Expression::var("A")),
+                    "B".into(),
+                    ExpressionType::Unresolved
+                )
             );
         }
 
@@ -1148,7 +1173,8 @@ mod tests {
                 "cards(1).Value",
                 Expression::Property(
                     Box::new(Expression::func("cards", vec![1.as_lit_expr(1, 13)])),
-                    "Value".into()
+                    "Value".into(),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1166,11 +1192,13 @@ mod tests {
                                 Expression::func("lbound", vec!["cards".as_var_expr(1, 20)])
                                     .at_rc(1, 13)
                             ),
-                            Box::new(1.as_lit_expr(1, 29))
+                            Box::new(1.as_lit_expr(1, 29)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 27)]
                     )),
-                    "Value".into()
+                    "Value".into(),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1221,6 +1249,7 @@ mod tests {
                 Operator::LessOrEqual,
                 Box::new("N".as_var_expr(1, 7)),
                 Box::new(1.as_lit_expr(1, 12)),
+                ExpressionType::Unresolved
             )
         );
     }
@@ -1233,6 +1262,7 @@ mod tests {
                 Operator::Less,
                 Box::new("A".as_var_expr(1, 7)),
                 Box::new("B".as_var_expr(1, 11)),
+                ExpressionType::Unresolved
             )
         );
     }
@@ -1250,11 +1280,13 @@ mod tests {
                         Expression::BinaryExpression(
                             Operator::Plus,
                             Box::new("A".as_var_expr(1, 7)),
-                            Box::new("B".as_var_expr(1, 11))
+                            Box::new("B".as_var_expr(1, 11)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 9)
                     ),
-                    Box::new("C".as_var_expr(1, 15))
+                    Box::new("C".as_var_expr(1, 15)),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1271,12 +1303,14 @@ mod tests {
                             Expression::BinaryExpression(
                                 Operator::Less,
                                 Box::new("B".as_var_expr(1, 12)),
-                                Box::new("C".as_var_expr(1, 16))
+                                Box::new("C".as_var_expr(1, 16)),
+                                ExpressionType::Unresolved
                             )
                             .at_rc(1, 14)
                         ))
                         .at_rc(1, 11)
-                    )
+                    ),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1292,10 +1326,12 @@ mod tests {
                         Expression::BinaryExpression(
                             Operator::Plus,
                             Box::new("B".as_var_expr(1, 11)),
-                            Box::new("C".as_var_expr(1, 15))
+                            Box::new("C".as_var_expr(1, 15)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 13)
-                    )
+                    ),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1311,13 +1347,15 @@ mod tests {
                             Expression::BinaryExpression(
                                 Operator::Less,
                                 Box::new("A".as_var_expr(1, 8)),
-                                Box::new("B".as_var_expr(1, 12))
+                                Box::new("B".as_var_expr(1, 12)),
+                                ExpressionType::Unresolved
                             )
                             .at_rc(1, 10)
                         ))
                         .at_rc(1, 7)
                     ),
                     Box::new("C".as_var_expr(1, 17)),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1333,6 +1371,7 @@ mod tests {
                             Operator::Greater,
                             Box::new("A".as_var_expr(1, 7)),
                             Box::new(0.as_lit_expr(1, 11)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 9)
                     ),
@@ -1341,9 +1380,11 @@ mod tests {
                             Operator::Less,
                             Box::new("B".as_var_expr(1, 17)),
                             Box::new(1.as_lit_expr(1, 21)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 19)
-                    )
+                    ),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1367,10 +1408,12 @@ mod tests {
                         Expression::BinaryExpression(
                             Operator::Greater,
                             Box::new("ID".as_var_expr(1, 22)),
-                            Box::new(0.as_lit_expr(1, 27))
+                            Box::new(0.as_lit_expr(1, 27)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 25)
-                    )
+                    ),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1382,7 +1425,8 @@ mod tests {
                 Expression::BinaryExpression(
                     Operator::And,
                     Box::new((-5_i32).as_lit_expr(1, 7)),
-                    Box::new(2.as_lit_expr(1, 14))
+                    Box::new(2.as_lit_expr(1, 14)),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1394,7 +1438,8 @@ mod tests {
                 Expression::BinaryExpression(
                     Operator::Plus,
                     Box::new((-5_i32).as_lit_expr(1, 7)),
-                    Box::new(2.as_lit_expr(1, 12))
+                    Box::new(2.as_lit_expr(1, 12)),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1406,7 +1451,8 @@ mod tests {
                 Expression::BinaryExpression(
                     Operator::Less,
                     Box::new((-5_i32).as_lit_expr(1, 7)),
-                    Box::new(2.as_lit_expr(1, 12))
+                    Box::new(2.as_lit_expr(1, 12)),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1423,6 +1469,7 @@ mod tests {
                     Operator::Plus,
                     Box::new("N".as_var_expr(1, 7)),
                     Box::new(1.as_lit_expr(1, 11)),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1438,10 +1485,12 @@ mod tests {
                         Expression::BinaryExpression(
                             Operator::Plus,
                             Box::new(1.as_lit_expr(1, 11)),
-                            Box::new(2.as_lit_expr(1, 15))
+                            Box::new(2.as_lit_expr(1, 15)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 13)
-                    )
+                    ),
+                    ExpressionType::Unresolved
                 )
             );
         }
@@ -1455,6 +1504,7 @@ mod tests {
                 Operator::Minus,
                 Box::new("N".as_var_expr(1, 7)),
                 Box::new(2.as_lit_expr(1, 11)),
+                ExpressionType::Unresolved
             )
         );
     }
@@ -1485,6 +1535,7 @@ mod tests {
                             Operator::Minus,
                             Box::new("N".as_var_expr(1, 11)),
                             Box::new(1.as_lit_expr(1, 15)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 13)],
                     )
@@ -1497,11 +1548,13 @@ mod tests {
                             Operator::Minus,
                             Box::new("N".as_var_expr(1, 24)),
                             Box::new(2.as_lit_expr(1, 28)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 26)],
                     )
                     .at_rc(1, 20)
                 ),
+                ExpressionType::Unresolved
             )
         );
     }
@@ -1534,7 +1587,8 @@ mod tests {
             Expression::BinaryExpression(
                 Operator::And,
                 Box::new(1.as_lit_expr(1, 7)),
-                Box::new(2.as_lit_expr(1, 13))
+                Box::new(2.as_lit_expr(1, 13)),
+                ExpressionType::Unresolved
             )
         );
         assert_eq!(
@@ -1550,13 +1604,15 @@ mod tests {
                         Expression::BinaryExpression(
                             Operator::Or,
                             Box::new(1.as_lit_expr(1, 8)),
-                            Box::new(2.as_lit_expr(1, 13))
+                            Box::new(2.as_lit_expr(1, 13)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 10)
                     ))
                     .at_rc(1, 7)
                 ),
-                Box::new(3.as_lit_expr(1, 19))
+                Box::new(3.as_lit_expr(1, 19)),
+                ExpressionType::Unresolved
             )
         );
         assert_expression!(
@@ -1564,7 +1620,8 @@ mod tests {
             Expression::BinaryExpression(
                 Operator::Or,
                 Box::new(1.as_lit_expr(1, 7)),
-                Box::new(2.as_lit_expr(1, 12))
+                Box::new(2.as_lit_expr(1, 12)),
+                ExpressionType::Unresolved
             )
         );
         assert_eq!(
@@ -1580,13 +1637,15 @@ mod tests {
                         Expression::BinaryExpression(
                             Operator::And,
                             Box::new(1.as_lit_expr(1, 8)),
-                            Box::new(2.as_lit_expr(1, 14))
+                            Box::new(2.as_lit_expr(1, 14)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 10)
                     ))
                     .at_rc(1, 7)
                 ),
-                Box::new(3.as_lit_expr(1, 19))
+                Box::new(3.as_lit_expr(1, 19)),
+                ExpressionType::Unresolved
             )
         );
     }

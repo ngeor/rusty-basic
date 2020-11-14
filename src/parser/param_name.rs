@@ -60,8 +60,8 @@ pub fn param_name_node<T: BufRead + 'static>(
 fn param_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Name, bool), QError>> {
     and_then(expression::word::word(), |name_expr| match name_expr {
-        Expression::VariableName(var_name) => Ok((var_name, false)),
-        Expression::Property(_, _) => {
+        Expression::Variable(var_name, _) => Ok((var_name, false)),
+        Expression::Property(_, _, _) => {
             // only allowed if we can fold it back into a single name
             name_expr
                 .fold_name()

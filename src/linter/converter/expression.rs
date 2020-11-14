@@ -24,17 +24,17 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
             parser::Expression::StringLiteral(s) => s.into_expr_result(pos),
             parser::Expression::IntegerLiteral(i) => i.into_expr_result(pos),
             parser::Expression::LongLiteral(l) => l.into_expr_result(pos),
-            parser::Expression::VariableName(var_name) => {
+            parser::Expression::Variable(var_name, _) => {
                 var_name::into_expr_result(self, var_name, pos)
             }
             parser::Expression::Constant(_) => panic!("Constant is only a linter thing"),
             parser::Expression::FunctionCall(name_expr, args) => {
                 function_call::into_expr_result(self, name_expr, args, pos)
             }
-            parser::Expression::Property(box_left_side, property_name) => {
+            parser::Expression::Property(box_left_side, property_name, _) => {
                 property::into_expr_result(self, *box_left_side, property_name, pos)
             }
-            parser::Expression::BinaryExpression(op, l, r) => {
+            parser::Expression::BinaryExpression(op, l, r, _) => {
                 // unbox them
                 let unboxed_left = *l;
                 let unboxed_right = *r;
@@ -55,7 +55,8 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                     ExpressionType::BuiltIn(TypeQualifier::DollarString)
                     | ExpressionType::Array(_)
                     | ExpressionType::FixedLengthString(_)
-                    | ExpressionType::UserDefined(_) => {
+                    | ExpressionType::UserDefined(_)
+                    | ExpressionType::Unresolved => {
                         Err(QError::TypeMismatch).with_err_at(converted_child.pos())
                     }
                     ExpressionType::BuiltIn(_) => Ok((
@@ -72,6 +73,8 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                     implicit_variables,
                 ))
             }
+            parser::Expression::ArrayElement(_, _, _) => unimplemented!(),
+            parser::Expression::BuiltInFunctionCall(_, _) => unimplemented!(),
         }
     }
 }
@@ -176,7 +179,7 @@ pub mod var_name {
             } else {
                 match name {
                     Name::Bare(b) => Ok(Some(Expression::FunctionCall(
-                        QualifiedName::new(b.clone(), *f_type),
+                        Name::new(b.clone(), Some(*f_type)),
                         vec![],
                     ))),
                     Name::Qualified(QualifiedName {
@@ -188,7 +191,7 @@ pub mod var_name {
                             Err(QError::DuplicateDefinition)
                         } else {
                             Ok(Some(Expression::FunctionCall(
-                                QualifiedName::new(bare_name.clone(), *f_type),
+                                Name::new(bare_name.clone(), Some(*f_type)),
                                 vec![],
                             )))
                         }
@@ -260,7 +263,7 @@ pub mod function_call {
                     } else {
                         Ok((
                             Expression::FunctionCall(
-                                converter.resolver.resolve_name(&n),
+                                converter.resolver.resolve_name(&n).into(),
                                 converted_args,
                             )
                             .at(pos),
@@ -296,7 +299,7 @@ pub mod property {
 
         // A(1).Test.Toast -> only allowed if A exists and is array of user defined type
         match left_side {
-            crate::parser::Expression::VariableName(left_side_name) => {
+            crate::parser::Expression::Variable(left_side_name, _) => {
                 match converter
                     .context
                     .resolve_expression(&left_side_name, &converter.resolver)
@@ -331,7 +334,7 @@ pub mod property {
                 }
             }
             crate::parser::Expression::FunctionCall(_left_side_name, _args) => todo!(),
-            crate::parser::Expression::Property(new_boxed_left_side, new_property_name) => {
+            crate::parser::Expression::Property(new_boxed_left_side, new_property_name, _) => {
                 let new_left_side = *new_boxed_left_side;
                 let (
                     Locatable {
@@ -380,7 +383,7 @@ pub mod property {
                 Ok((
                     Expression::Property(
                         Box::new(base_expr),
-                        property_name.into(),
+                        property_name.un_qualify(),
                         element_type.clone().expression_type(),
                     )
                     .at(pos),

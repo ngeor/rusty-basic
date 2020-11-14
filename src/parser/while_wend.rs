@@ -42,7 +42,8 @@ mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
-        BareName, ConditionalBlockNode, Expression, Operator, Statement, TopLevelToken,
+        BareName, ConditionalBlockNode, Expression, ExpressionType, Operator, Statement,
+        TopLevelToken,
     };
 
     #[test]
@@ -59,7 +60,8 @@ mod tests {
                 condition: Expression::BinaryExpression(
                     Operator::Less,
                     Box::new("A".as_var_expr(2, 15)),
-                    Box::new(5.as_lit_expr(2, 19))
+                    Box::new(5.as_lit_expr(2, 19)),
+                    ExpressionType::Unresolved
                 )
                 .at_rc(2, 17),
                 statements: vec![Statement::SubCall(BareName::from("SYSTEM"), vec![]).at_rc(3, 13)]
@@ -76,7 +78,8 @@ mod tests {
                 condition: Expression::BinaryExpression(
                     Operator::Less,
                     Box::new("A".as_var_expr(1, 7)),
-                    Box::new(5.as_lit_expr(1, 11))
+                    Box::new(5.as_lit_expr(1, 11)),
+                    ExpressionType::Unresolved
                 )
                 .at_rc(1, 9),
                 statements: vec![
@@ -85,7 +88,8 @@ mod tests {
                         Expression::BinaryExpression(
                             Operator::Plus,
                             Box::new("A".as_var_expr(1, 18)),
-                            Box::new(1.as_lit_expr(1, 22))
+                            Box::new(1.as_lit_expr(1, 22)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(1, 20)
                     )
@@ -152,7 +156,8 @@ mod tests {
                     Expression::BinaryExpression(
                         Operator::Greater,
                         Box::new("X".as_var_expr(2, 15)),
-                        Box::new(0.as_lit_expr(2, 19))
+                        Box::new(0.as_lit_expr(2, 19)),
+                        ExpressionType::Unresolved
                     )
                     .at_rc(2, 17)
                 ))
@@ -194,7 +199,8 @@ mod tests {
                 condition: Expression::BinaryExpression(
                     Operator::Less,
                     Box::new("A".as_var_expr(2, 15)),
-                    Box::new(5.as_lit_expr(2, 19))
+                    Box::new(5.as_lit_expr(2, 19)),
+                    ExpressionType::Unresolved
                 )
                 .at_rc(2, 17),
                 statements: vec![
@@ -203,7 +209,8 @@ mod tests {
                         Expression::BinaryExpression(
                             Operator::Plus,
                             Box::new("A".as_var_expr(3, 17)),
-                            Box::new(1.as_lit_expr(3, 21))
+                            Box::new(1.as_lit_expr(3, 21)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(3, 19)
                     )

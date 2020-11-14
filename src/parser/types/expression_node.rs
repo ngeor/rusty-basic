@@ -1,6 +1,7 @@
+use crate::built_ins::BuiltInFunction;
 use crate::common::{AtLocation, HasLocation, Locatable, Location};
 use crate::parser::types::{Name, Operator, UnaryOperator};
-use crate::parser::QualifiedName;
+use crate::parser::{ExpressionType, QualifiedName};
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -11,9 +12,23 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Constant(QualifiedName),
-    VariableName(Name),
+    Variable(Name, ExpressionType),
     FunctionCall(Name, ExpressionNodes),
-    BinaryExpression(Operator, Box<ExpressionNode>, Box<ExpressionNode>),
+    ArrayElement(
+        // the name of the array (unqualified only for user defined types)
+        Name,
+        // the array indices
+        Vec<ExpressionNode>,
+        // the type of the elements
+        ExpressionType,
+    ),
+    BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
+    BinaryExpression(
+        Operator,
+        Box<ExpressionNode>,
+        Box<ExpressionNode>,
+        ExpressionType,
+    ),
     UnaryExpression(UnaryOperator, Box<ExpressionNode>),
     Parenthesis(Box<ExpressionNode>),
 
@@ -27,7 +42,7 @@ pub enum Expression {
     /// - A.B (A left, B right)
     /// - A(1).B ( A(1) left, B right)
     /// - A.B.C (A.B left, C right)
-    Property(Box<Expression>, Name),
+    Property(Box<Expression>, Name, ExpressionType),
 }
 
 pub type ExpressionNode = Locatable<Expression>;
@@ -72,7 +87,7 @@ impl From<i64> for Expression {
 impl Expression {
     pub fn var(s: &str) -> Self {
         let name: Name = s.into();
-        Expression::VariableName(name)
+        Expression::Variable(name, ExpressionType::Unresolved)
     }
 
     pub fn func(s: &str, args: ExpressionNodes) -> Self {
@@ -118,13 +133,14 @@ impl Expression {
                     _ => Self::UnaryExpression(op, Box::new(x.simplify_unary_minus_literals())),
                 }
             }
-            Self::BinaryExpression(op, left, right) => {
+            Self::BinaryExpression(op, left, right, old_expression_type) => {
                 let x: ExpressionNode = *left;
                 let y: ExpressionNode = *right;
                 Self::BinaryExpression(
                     op,
                     Box::new(x.simplify_unary_minus_literals()),
                     Box::new(y.simplify_unary_minus_literals()),
+                    old_expression_type,
                 )
             }
             Self::Parenthesis(child) => {
@@ -150,8 +166,8 @@ impl Expression {
 
     pub fn fold_name(self) -> Option<Name> {
         match self {
-            Self::VariableName(n) => Some(n),
-            Self::Property(boxed_left_side, property_name) => {
+            Self::Variable(n, _) => Some(n),
+            Self::Property(boxed_left_side, property_name, _) => {
                 let left_side = *boxed_left_side;
                 match left_side.fold_name() {
                     Some(left_side_name) => left_side_name.try_concat_name(property_name),
@@ -179,7 +195,7 @@ impl ExpressionNode {
         pos: Location,
     ) -> ExpressionNode {
         match right_side.as_ref() {
-            Expression::BinaryExpression(r_op, r_left, r_right) => {
+            Expression::BinaryExpression(r_op, r_left, r_right, _) => {
                 let should_flip = op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
                     || op.is_relational() && r_op.is_binary()
                     || op == Operator::And && *r_op == Operator::Or
@@ -189,29 +205,48 @@ impl ExpressionNode {
                     Expression::BinaryExpression(
                         *r_op,
                         Box::new(
-                            Expression::BinaryExpression(op, Box::new(self), r_left.clone())
-                                .at(pos),
+                            Expression::BinaryExpression(
+                                op,
+                                Box::new(self),
+                                r_left.clone(),
+                                ExpressionType::Unresolved,
+                            )
+                            .at(pos),
                         ),
                         r_right.clone(),
+                        ExpressionType::Unresolved,
                     )
                     .at(right_side.pos())
                 } else {
-                    Expression::BinaryExpression(op, Box::new(self), Box::new(right_side)).at(pos)
+                    Expression::BinaryExpression(
+                        op,
+                        Box::new(self),
+                        Box::new(right_side),
+                        ExpressionType::Unresolved,
+                    )
+                    .at(pos)
                 }
             }
-            _ => Expression::BinaryExpression(op, Box::new(self), Box::new(right_side)).at(pos),
+            _ => Expression::BinaryExpression(
+                op,
+                Box::new(self),
+                Box::new(right_side),
+                ExpressionType::Unresolved,
+            )
+            .at(pos),
         }
     }
 
     pub fn apply_unary_priority_order(self, op: UnaryOperator, pos: Location) -> ExpressionNode {
         match self.as_ref() {
-            Expression::BinaryExpression(r_op, r_left, r_right) => {
+            Expression::BinaryExpression(r_op, r_left, r_right, old_expression_type) => {
                 let should_flip = op == UnaryOperator::Minus || r_op.is_binary();
                 if should_flip {
                     Expression::BinaryExpression(
                         *r_op,
                         Box::new(Expression::UnaryExpression(op, r_left.clone()).at(pos)),
                         r_right.clone(),
+                        old_expression_type.clone(),
                     )
                     .at(self.pos())
                 } else {

@@ -177,7 +177,7 @@ fn demand_string_length<T: BufRead + 'static>(
                     Err(QError::syntax_error("Illegal number"))
                 }
             }
-            Expression::VariableName(_) => {
+            Expression::Variable(_, _) => {
                 // allow it, in case it is a CONST
                 Ok(Locatable::new(element, pos))
             }

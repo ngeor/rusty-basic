@@ -91,7 +91,8 @@ mod tests {
                                 condition: Expression::BinaryExpression(
                                     Operator::LessOrEqual,
                                     Box::new("N".as_var_expr(9, 8)),
-                                    Box::new(1.as_lit_expr(9, 13))
+                                    Box::new(1.as_lit_expr(9, 13)),
+                                    ExpressionType::Unresolved
                                 )
                                 .at_rc(9, 10),
                                 statements: vec![
@@ -117,6 +118,7 @@ mod tests {
                                                     Operator::Minus,
                                                     Box::new("N".as_var_expr(12, 19)),
                                                     Box::new(1.as_lit_expr(12, 23)),
+                                                    ExpressionType::Unresolved
                                                 )
                                                 .at_rc(12, 21)]
                                             )
@@ -129,11 +131,13 @@ mod tests {
                                                     Operator::Minus,
                                                     Box::new("N".as_var_expr(12, 32)),
                                                     Box::new(2.as_lit_expr(12, 36)),
+                                                    ExpressionType::Unresolved
                                                 )
                                                 .at_rc(12, 34)]
                                             )
                                             .at_rc(12, 28)
-                                        )
+                                        ),
+                                        ExpressionType::Unresolved
                                     )
                                     .at_rc(12, 26)
                                 )

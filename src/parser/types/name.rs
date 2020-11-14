@@ -67,6 +67,27 @@ impl Name {
         let bare_name: &BareName = self.as_ref();
         Self::new(bare_name.clone(), Some(qualifier))
     }
+
+    pub fn un_qualify(self) -> Self {
+        match self {
+            Self::Qualified(QualifiedName { bare_name, .. }) => Self::Bare(bare_name),
+            _ => self,
+        }
+    }
+
+    pub fn demand_bare(self) -> BareName {
+        match self {
+            Self::Bare(bare_name) => bare_name,
+            _ => panic!("{:?} was not bare", self),
+        }
+    }
+
+    pub fn demand_qualified(self) -> QualifiedName {
+        match self {
+            Self::Qualified(qualified_name) => qualified_name,
+            _ => panic!("{:?} was not qualified", self),
+        }
+    }
 }
 
 impl AsRef<BareName> for Name {

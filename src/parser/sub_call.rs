@@ -57,7 +57,7 @@ fn sub_call<T: BufRead + 'static>(
                 _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
             }
         }
-        Expression::VariableName(name) => {
+        Expression::Variable(name, _) => {
             // A or A$ (might have arguments after space)
             match name {
                 Name::Bare(bare_name) => {
@@ -73,7 +73,7 @@ fn sub_call<T: BufRead + 'static>(
                 _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
             }
         }
-        Expression::Property(_, _) => {
+        Expression::Property(_, _, _) => {
             // only possible if A.B is a sub, if left_name_expr contains a Function, abort
             match fold_to_bare_name(name_expr) {
                 Ok(bare_name) => {
@@ -95,8 +95,8 @@ fn sub_call<T: BufRead + 'static>(
 
 fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
     match expr {
-        Expression::VariableName(Name::Bare(bare_name)) => Ok(bare_name),
-        Expression::Property(boxed_left_side, Name::Bare(bare_name)) => {
+        Expression::Variable(Name::Bare(bare_name), _) => Ok(bare_name),
+        Expression::Property(boxed_left_side, Name::Bare(bare_name), _) => {
             let left_side_name = fold_to_bare_name(*boxed_left_side)?;
             Ok(left_side_name + '.' + bare_name)
         }
@@ -130,8 +130,8 @@ mod tests {
     use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
-        Expression, Operator, ParamName, ParamType, PrintArg, PrintNode, Statement, TopLevelToken,
-        TypeQualifier,
+        Expression, ExpressionType, Operator, ParamName, ParamType, PrintArg, PrintNode, Statement,
+        TopLevelToken, TypeQualifier,
     };
 
     #[test]
@@ -297,10 +297,12 @@ mod tests {
                                 Expression::BinaryExpression(
                                     Operator::Plus,
                                     Box::new("=".as_lit_expr(5, 26)),
-                                    Box::new("V$".as_var_expr(5, 32))
+                                    Box::new("V$".as_var_expr(5, 32)),
+                                    ExpressionType::Unresolved
                                 )
                                 .at_rc(5, 30)
-                            )
+                            ),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(5, 24)]
                     )

@@ -1,18 +1,16 @@
 use crate::common::Locatable;
 use crate::instruction_generator::{Instruction, InstructionGenerator};
 use crate::linter::ExpressionNode;
-use crate::parser::{BareName, QualifiedNameNode};
+use crate::parser::{BareName, NameNode};
 
 impl InstructionGenerator {
     pub fn generate_function_call_instructions(
         &mut self,
-        function_name: QualifiedNameNode,
+        function_name: NameNode,
         args: Vec<ExpressionNode>,
     ) {
-        let Locatable {
-            element: qualified_name,
-            pos,
-        } = function_name;
+        let Locatable { element: name, pos } = function_name;
+        let qualified_name = name.demand_qualified();
         let bare_name: &BareName = qualified_name.as_ref();
         let function_parameters = self.function_context.get(bare_name).unwrap().clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);

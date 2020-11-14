@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
 use crate::linter::types::*;
-use crate::parser::{QualifiedName, TypeQualifier};
+use crate::parser::{Name, QualifiedName, TypeQualifier};
 
 pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,
@@ -39,27 +39,27 @@ pub fn lint_call_args(
 }
 
 impl<'a> UserDefinedFunctionLinter<'a> {
-    fn visit_function(
-        &self,
-        name: &QualifiedName,
-        args: &Vec<ExpressionNode>,
-    ) -> Result<(), QErrorNode> {
-        let QualifiedName {
-            bare_name,
-            qualifier,
-        } = name;
-        match self.functions.get(bare_name) {
-            Some(Locatable {
-                element: (return_type, param_types),
-                ..
-            }) => {
-                if return_type != qualifier {
-                    err_no_pos(QError::TypeMismatch)
-                } else {
-                    lint_call_args(args, param_types)
+    fn visit_function(&self, name: &Name, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        if let Name::Qualified(qualified_name) = name {
+            let QualifiedName {
+                bare_name,
+                qualifier,
+            } = qualified_name;
+            match self.functions.get(bare_name) {
+                Some(Locatable {
+                    element: (return_type, param_types),
+                    ..
+                }) => {
+                    if return_type != qualifier {
+                        err_no_pos(QError::TypeMismatch)
+                    } else {
+                        lint_call_args(args, param_types)
+                    }
                 }
+                None => self.handle_undefined_function(args),
             }
-            None => self.handle_undefined_function(args),
+        } else {
+            panic!("Unresolved function {:?}", name)
         }
     }
 

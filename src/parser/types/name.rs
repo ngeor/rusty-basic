@@ -62,6 +62,11 @@ impl Name {
             _ => None,
         }
     }
+
+    pub fn qualify(&self, qualifier: TypeQualifier) -> Self {
+        let bare_name: &BareName = self.as_ref();
+        Self::new(bare_name.clone(), Some(qualifier))
+    }
 }
 
 impl AsRef<BareName> for Name {

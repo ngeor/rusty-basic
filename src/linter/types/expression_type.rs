@@ -45,6 +45,10 @@ impl ExpressionType {
             _ => todo!(),
         }
     }
+
+    pub fn new_array(self) -> Self {
+        Self::Array(Box::new(self))
+    }
 }
 
 impl CanCastTo<&ExpressionType> for ExpressionType {

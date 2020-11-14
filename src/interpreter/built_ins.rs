@@ -1229,6 +1229,7 @@ mod open {
 
         #[test]
         fn test_can_read_file_until_eof() {
+            std::fs::remove_file("TEST3.TXT").unwrap_or(());
             let input = r#"
             OPEN "TEST3.TXT" FOR APPEND AS #1
             PRINT #1, "Hello, world"

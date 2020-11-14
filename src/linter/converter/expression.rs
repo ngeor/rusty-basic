@@ -136,7 +136,7 @@ pub mod var_name {
                         .resolve_missing_name_in_assignment(&name, &converter.resolver)
                         .with_err_at(pos)?;
                     Ok((
-                        Expression::Variable(q_name.clone().into()).at(pos),
+                        Expression::from(q_name.clone()).at(pos),
                         vec![q_name.at(pos)],
                     ))
                 }
@@ -207,7 +207,7 @@ pub mod function_call {
     use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
     use crate::linter::converter::expression::ExprResult;
     use crate::linter::type_resolver::TypeResolver;
-    use crate::linter::{Expression, HasExpressionType};
+    use crate::linter::Expression;
     use crate::parser;
     use crate::parser::Name;
     use std::convert::TryInto;
@@ -231,22 +231,20 @@ pub mod function_call {
                 // is it a function or an array element?
                 if converter.context.is_array(&n) {
                     // we can ignore `missing` as we already confirmed we know it is an array
-                    let (dim_name, _) = converter
+                    let (var_name, expression_type, _) = converter
                         .context
                         .resolve_name_in_assignment(&n, &converter.resolver)
                         .with_err_at(pos)?;
                     if converted_args.is_empty() {
                         // entire array
                         Ok((
-                            Expression::Variable(dim_name.new_array()).at(pos),
+                            Expression::Variable(var_name, expression_type.new_array()).at(pos),
                             implicit_variables,
                         ))
                     } else {
                         // array element
-                        let element_type = dim_name.expression_type();
-                        let array_name: Name = dim_name.into();
                         Ok((
-                            Expression::ArrayElement(array_name, converted_args, element_type)
+                            Expression::ArrayElement(var_name, converted_args, expression_type)
                                 .at(pos),
                             implicit_variables,
                         ))
@@ -280,7 +278,7 @@ pub mod property {
     use crate::common::{AtLocation, Locatable, Location, QError, ToLocatableError};
     use crate::linter::converter::converter::ConverterImpl;
     use crate::linter::converter::expression::ExprResult;
-    use crate::linter::{DimType, Expression, ExpressionType, HasExpressionType};
+    use crate::linter::{Expression, ExpressionType, HasExpressionType};
     use crate::parser::{BareName, Name};
 
     pub fn into_expr_result(
@@ -304,14 +302,14 @@ pub mod property {
                     .with_err_at(pos)?
                 {
                     Some(converted_left_expr) => match converted_left_expr {
-                        Expression::Variable(converted_var_name) => {
-                            if let DimType::UserDefined(user_defined_type_name) =
-                                converted_var_name.dim_type()
+                        Expression::Variable(converted_var_name, left_type) => {
+                            if let ExpressionType::UserDefined(user_defined_type_name) =
+                                left_type.clone()
                             {
                                 resolve_property(
                                     converter,
-                                    Expression::Variable(converted_var_name.clone()),
-                                    user_defined_type_name,
+                                    Expression::Variable(converted_var_name.clone(), left_type),
+                                    &user_defined_type_name,
                                     property_name,
                                     pos,
                                 )

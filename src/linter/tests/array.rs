@@ -98,13 +98,12 @@ fn test_passing_array_parameter_with_parenthesis() {
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::SubCall(
                 "Menu".into(),
-                vec![Expression::Variable(DimName::new(
-                    "choice".into(),
-                    DimType::Array(
-                        vec![],
-                        Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString))
-                    )
-                ))
+                vec![Expression::Variable(
+                    "choice$".into(),
+                    ExpressionType::Array(Box::new(ExpressionType::BuiltIn(
+                        TypeQualifier::DollarString
+                    )))
+                )
                 .at_rc(4, 10)]
             ))
             .at_rc(4, 5),

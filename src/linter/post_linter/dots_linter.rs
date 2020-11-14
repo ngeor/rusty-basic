@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
 use crate::linter::types::*;
-use crate::parser::{BareName, BareNameNode, QualifiedName, QualifiedNameNode};
+use crate::parser::{BareName, BareNameNode, Name, QualifiedName, QualifiedNameNode};
 use crate::variant::Variant;
 use std::collections::HashSet;
 
@@ -58,6 +58,16 @@ impl<'a> NoDotNamesCheck<DimName, QError> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &DimName) -> Result<(), QError> {
         let bare_name: &BareName = x.as_ref();
         self.ensure_no_dots(bare_name)
+    }
+}
+
+impl<'a> NoDotNamesCheck<Name, QError> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &Name) -> Result<(), QError> {
+        match x {
+            Name::Bare(bare_name) | Name::Qualified(QualifiedName { bare_name, .. }) => {
+                self.ensure_no_dots(bare_name)
+            }
+        }
     }
 }
 
@@ -118,7 +128,11 @@ impl<'a> NoDotNamesCheck<Expression, QErrorNode> for DotsLinter<'a> {
             Expression::Constant(qualified_name) => {
                 self.ensure_no_dots(qualified_name).with_err_no_pos()
             }
-            Expression::Variable(dim_name) => self.ensure_no_dots(dim_name).with_err_no_pos(),
+            Expression::Variable(var_name, _) => self.ensure_no_dots(var_name).with_err_no_pos(),
+            Expression::ArrayElement(var_name, indices, _) => {
+                self.ensure_no_dots(var_name).with_err_no_pos()?;
+                self.ensure_no_dots(indices)
+            }
             Expression::FunctionCall(name, args) => {
                 self.ensure_no_dots(name).with_err_no_pos()?;
                 self.ensure_no_dots(args)

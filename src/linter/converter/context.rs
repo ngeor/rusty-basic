@@ -3,8 +3,8 @@ use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::types::{DimName, DimType, Expression, UserDefinedTypes};
-use crate::linter::ArrayDimensions;
+use crate::linter::types::{Expression, UserDefinedTypes};
+use crate::linter::{ArrayDimensions, ExpressionType};
 use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
@@ -187,14 +187,25 @@ impl<'a> Context<'a> {
         &mut self,
         name: &Name,
         resolver: &T,
-    ) -> Result<(DimName, bool), QError> {
+    ) -> Result<(Name, ExpressionType, /* is missing */ bool), QError> {
         match self.resolve_expression(name, resolver)? {
-            Some(Expression::Variable(dim_name)) => Ok((dim_name, false)),
+            Some(Expression::Variable(var_name, expression_type)) => {
+                Ok((var_name, expression_type, false))
+            }
             // cannot re-assign a constant
             Some(Expression::Constant(_)) => Err(QError::DuplicateDefinition),
-            None => self
-                .resolve_missing_name_in_assignment(name, resolver)
-                .map(|qualified_name| (qualified_name.into(), true)),
+            None => self.resolve_missing_name_in_assignment(name, resolver).map(
+                |QualifiedName {
+                     bare_name,
+                     qualifier,
+                 }| {
+                    (
+                        Name::Qualified(QualifiedName::new(bare_name, qualifier)),
+                        ExpressionType::BuiltIn(qualifier),
+                        true,
+                    )
+                },
+            ),
             _ => panic!("Unexpected result from resolving name expression"),
         }
     }
@@ -213,10 +224,10 @@ impl<'a> Context<'a> {
                         Name::Qualified(QualifiedName { qualifier, .. }) => *qualifier,
                     };
                     if existing_set.contains(&q) {
-                        Ok(Some(Expression::Variable(DimName::new(
-                            bare_name.clone(),
-                            DimType::BuiltIn(q),
-                        ))))
+                        Ok(Some(Expression::Variable(
+                            name.qualify(q),
+                            ExpressionType::BuiltIn(q),
+                        )))
                     } else {
                         Ok(None)
                     }
@@ -233,30 +244,30 @@ impl<'a> Context<'a> {
                 }
                 BareNameTypes::Extended(q) => {
                     if name.is_bare_or_of_type(*q) {
-                        Ok(Some(Expression::Variable(DimName::new(
-                            bare_name.clone(),
-                            DimType::BuiltIn(*q),
-                        ))))
+                        Ok(Some(Expression::Variable(
+                            name.qualify(*q),
+                            ExpressionType::BuiltIn(*q),
+                        )))
                     } else {
                         Err(QError::DuplicateDefinition)
                     }
                 }
                 BareNameTypes::FixedLengthString(len) => {
                     if name.is_bare_or_of_type(TypeQualifier::DollarString) {
-                        Ok(Some(Expression::Variable(DimName::new(
-                            bare_name.clone(),
-                            DimType::FixedLengthString(*len),
-                        ))))
+                        Ok(Some(Expression::Variable(
+                            name.qualify(TypeQualifier::DollarString),
+                            ExpressionType::FixedLengthString(*len),
+                        )))
                     } else {
                         Err(QError::DuplicateDefinition)
                     }
                 }
                 BareNameTypes::UserDefined(u) => {
                     if name.is_bare() {
-                        Ok(Some(Expression::Variable(DimName::new(
-                            bare_name.clone(),
-                            DimType::UserDefined(u.clone()),
-                        ))))
+                        Ok(Some(Expression::Variable(
+                            bare_name.clone().into(),
+                            ExpressionType::UserDefined(u.clone()),
+                        )))
                     } else {
                         Err(QError::DuplicateDefinition)
                     }

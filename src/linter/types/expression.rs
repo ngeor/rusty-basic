@@ -1,7 +1,10 @@
-use super::{DimName, ExpressionType, HasExpressionType};
+use super::{ExpressionType, HasExpressionType};
 use crate::built_ins::BuiltInFunction;
 use crate::common::{CanCastTo, Locatable, QError, QErrorNode, ToLocatableError};
 use crate::parser::{BareName, Name, Operator, QualifiedName, TypeQualifier, UnaryOperator};
+
+#[cfg(test)]
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -11,7 +14,7 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Constant(QualifiedName),
-    Variable(DimName),
+    Variable(Name, ExpressionType),
     FunctionCall(QualifiedName, Vec<ExpressionNode>),
     ArrayElement(
         // the name of the array (unqualified only for user defined types)
@@ -67,12 +70,13 @@ impl Expression {
 
     #[cfg(test)]
     pub fn var(name: &str) -> Self {
-        Expression::Variable(DimName::parse(name))
+        let q_name = QualifiedName::try_from(name).unwrap();
+        Expression::from(q_name)
     }
 
     #[cfg(test)]
     pub fn user_defined(name: &str, type_name: &str) -> Self {
-        Expression::Variable(DimName::user_defined(name, type_name))
+        Expression::Variable(name.into(), ExpressionType::UserDefined(type_name.into()))
     }
 }
 
@@ -84,17 +88,16 @@ impl HasExpressionType for Expression {
             Self::StringLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::DollarString),
             Self::IntegerLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
             Self::LongLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::AmpersandLong),
-            Self::Variable(name) => name.expression_type(),
+            Self::Variable(_, expression_type)
+            | Self::Property(_, _, expression_type)
+            | Self::BinaryExpression(_, _, _, expression_type)
+            | Self::ArrayElement(_, _, expression_type) => expression_type.clone(),
             Self::Constant(QualifiedName { qualifier, .. })
             | Self::FunctionCall(QualifiedName { qualifier, .. }, _) => {
                 ExpressionType::BuiltIn(*qualifier)
             }
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
-            Self::BinaryExpression(_, _, _, type_definition) => type_definition.clone(),
             Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().expression_type(),
-            Self::Property(_, _, element_type) | Self::ArrayElement(_, _, element_type) => {
-                element_type.clone()
-            }
         }
     }
 }
@@ -109,5 +112,12 @@ impl<T: HasExpressionType> CanCastTo<&T> for Expression {
     fn can_cast_to(&self, other: &T) -> bool {
         let other_type_definition = other.expression_type();
         self.expression_type().can_cast_to(&other_type_definition)
+    }
+}
+
+impl From<QualifiedName> for Expression {
+    fn from(var_name: QualifiedName) -> Self {
+        let q = var_name.qualifier;
+        Self::Variable(var_name.into(), ExpressionType::BuiltIn(q))
     }
 }

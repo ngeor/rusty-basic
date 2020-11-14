@@ -18,7 +18,7 @@ pub fn lint_call_args(
     for (arg_node, param_type) in args.iter().zip(param_types.iter()) {
         let arg = arg_node.as_ref();
         match arg {
-            Expression::Variable(_)
+            Expression::Variable(_, _)
             | Expression::ArrayElement(_, _, _)
             | Expression::Property(_, _, _) => {
                 // it's by ref, it needs to match exactly

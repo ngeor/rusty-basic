@@ -36,7 +36,7 @@ impl InstructionGenerator {
         let mut idx: usize = 0;
         for Locatable { element: arg, pos } in args {
             match arg {
-                Expression::Variable(_)
+                Expression::Variable(_, _)
                 | Expression::Property(_, _, _)
                 | Expression::ArrayElement(_, _, _) => {
                     // by ref
@@ -52,7 +52,7 @@ impl InstructionGenerator {
     pub fn generate_un_stash_by_ref_args(&mut self, args: &Vec<ExpressionNode>) {
         for Locatable { element: arg, pos } in args {
             match arg {
-                Expression::Variable(_)
+                Expression::Variable(_, _)
                 | Expression::Property(_, _, _)
                 | Expression::ArrayElement(_, _, _) => {
                     self.push(Instruction::DequeueFromReturnStack, *pos);

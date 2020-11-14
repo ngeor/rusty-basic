@@ -43,7 +43,7 @@ impl InstructionGenerator {
             Expression::LongLiteral(s) => {
                 self.push_load(s, pos);
             }
-            Expression::Variable(_)
+            Expression::Variable(_, _)
             | Expression::Constant(_)
             | Expression::ArrayElement(_, _, _)
             | Expression::Property(_, _, _) => self.generate_load_instructions(e, pos),
@@ -95,8 +95,8 @@ impl InstructionGenerator {
         let Locatable { element: expr, pos } = expr_node;
 
         match expr {
-            Expression::Variable(dim_name) => {
-                self.push(Instruction::VarPathName(dim_name.into()), pos);
+            Expression::Variable(var_name, _) => {
+                self.push(Instruction::VarPathName(var_name), pos);
             }
             Expression::ArrayElement(array_name, indices, _element_type) => {
                 self.push(Instruction::VarPathName(array_name), pos);

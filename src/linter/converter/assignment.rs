@@ -2,9 +2,8 @@ use crate::common::{
     AtLocation, CanCastTo, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
 };
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
-use crate::linter::{DimName, DimType, Expression, ExpressionNode, Statement, StatementNode};
-use crate::parser::{BareName, Name, QualifiedName, QualifiedNameNode, TypeQualifier};
-use std::convert::TryInto;
+use crate::linter::{Expression, ExpressionNode, ExpressionType, Statement, StatementNode};
+use crate::parser::{BareName, Name, QualifiedNameNode, TypeQualifier};
 
 impl<'a> ConverterImpl<'a> {
     pub fn assignment(
@@ -70,7 +69,9 @@ impl<'a> ConverterImpl<'a> {
                 let bare_name: &BareName = fold_name.as_ref();
                 if self.context.is_function_context(bare_name) {
                     self.assign_to_function(fold_name)
-                        .map(|dim_name| Some(Expression::Variable(dim_name).at(pos)))
+                        .map(|(var_name, func_expression_type)| {
+                            Some(Expression::Variable(var_name, func_expression_type).at(pos))
+                        })
                         .with_err_at(name_expr_node)
                 } else if self.subs.contains_key(bare_name)
                     // it is possible to have a param name shadowing a function name (but not a sub name...)
@@ -91,17 +92,23 @@ impl<'a> ConverterImpl<'a> {
         name: Name,
         pos: Location,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let (dim_name, missing) = self
+        let (var_name, expr_type, missing) = self
             .context
             .resolve_name_in_assignment(&name, &self.resolver)
             .with_err_at(pos)?;
         let mut implicit_variables: Vec<QualifiedNameNode> = vec![];
         if missing {
-            // dim_name must be resolved BuiltIn
-            let qualified_name: QualifiedName = dim_name.clone().try_into().with_err_at(pos)?;
-            implicit_variables.push(qualified_name.at(pos));
+            // var_name must be Qualified because it was missing
+            if let Name::Qualified(qualified_name) = var_name.clone() {
+                implicit_variables.push(qualified_name.at(pos));
+            } else {
+                panic!("missing name was not qualified");
+            }
         }
-        Ok((Expression::Variable(dim_name).at(pos), implicit_variables))
+        Ok((
+            Expression::Variable(var_name, expr_type).at(pos),
+            implicit_variables,
+        ))
     }
 
     fn assignment_name_property(
@@ -113,10 +120,13 @@ impl<'a> ConverterImpl<'a> {
         super::expression::property::into_expr_result(self, left_side, property_name, pos)
     }
 
-    fn assign_to_function(&self, name: Name) -> Result<DimName, QError> {
+    fn assign_to_function(&self, name: Name) -> Result<(Name, ExpressionType), QError> {
         let function_type: TypeQualifier = self.demand_function_type(&name);
         if name.is_bare_or_of_type(function_type) {
-            Ok(DimName::new(name.into(), DimType::BuiltIn(function_type)))
+            Ok((
+                name.qualify(function_type),
+                ExpressionType::BuiltIn(function_type),
+            ))
         } else {
             // trying to assign to the function with an explicit wrong type
             Err(QError::DuplicateDefinition)

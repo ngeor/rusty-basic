@@ -11,16 +11,13 @@ impl ForNextCounterMatch {
             element: var_expr, ..
         } = &f.variable_name;
         match var_expr {
-            Expression::Variable(dim_name) => {
-                let var_type: ExpressionType = dim_name.expression_type();
-                match var_type {
-                    ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
-                        Err(QError::TypeMismatch).with_err_no_pos()
-                    }
-                    ExpressionType::BuiltIn(_) => Ok(()),
-                    _ => Err(QError::TypeMismatch).with_err_no_pos(),
+            Expression::Variable(_, var_type) => match var_type {
+                ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
+                    Err(QError::TypeMismatch).with_err_no_pos()
                 }
-            }
+                ExpressionType::BuiltIn(_) => Ok(()),
+                _ => Err(QError::TypeMismatch).with_err_no_pos(),
+            },
             _ => unimplemented!(),
         }
     }
@@ -35,8 +32,8 @@ impl ForNextCounterMatch {
         }) = &f.next_counter
         {
             match var_expr {
-                Expression::Variable(var_name) => match next_var_expr {
-                    Expression::Variable(next_var_name) => {
+                Expression::Variable(var_name, _) => match next_var_expr {
+                    Expression::Variable(next_var_name, _) => {
                         if var_name == next_var_name {
                             Ok(())
                         } else {

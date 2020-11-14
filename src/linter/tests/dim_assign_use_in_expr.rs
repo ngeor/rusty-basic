@@ -28,7 +28,7 @@ fn bare() {
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::Variable(DimName::parse("A!")).at_rc(4, 11)
+                Expression::var("A!").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]
@@ -52,7 +52,7 @@ fn compact_string() {
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::Variable(DimName::parse("A$")).at_rc(4, 11)
+                Expression::var("A$").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]
@@ -76,7 +76,7 @@ fn extended_string() {
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::Variable(DimName::parse("A$")).at_rc(4, 11)
+                Expression::var("A$").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]

@@ -135,7 +135,7 @@ mod input {
         for i in starting_index..args.len() {
             let Locatable { element, .. } = &args[i];
             match element {
-                Expression::Variable(_) | Expression::Property(_, _, _) => {}
+                Expression::Variable(_, _) | Expression::Property(_, _, _) => {}
                 _ => {
                     return Err(QError::VariableRequired).with_err_at(&args[i]);
                 }
@@ -228,7 +228,7 @@ mod line_input {
             pos,
         } = &args[starting_index];
         match var_arg {
-            Expression::Variable(dim_name) => match dim_name.dim_type().expression_type() {
+            Expression::Variable(_, expression_type) => match expression_type {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString)
                 | ExpressionType::FixedLengthString(_) => {}
                 _ => return Err(QError::TypeMismatch).with_err_at(*pos),
@@ -319,7 +319,7 @@ mod len {
         } else {
             let arg: &Expression = args[0].as_ref();
             match arg {
-                Expression::Variable(_) | Expression::Property(_, _, _) => Ok(()),
+                Expression::Variable(_, _) | Expression::Property(_, _, _) => Ok(()),
                 _ => {
                     if !args[0].can_cast_to(TypeQualifier::DollarString) {
                         Err(QError::VariableRequired).with_err_at(&args[0])

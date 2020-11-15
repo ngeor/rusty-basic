@@ -62,7 +62,10 @@ fn test_sub_with_array_parameter() {
             name: BareName::from("Menu").at_rc(2, 9),
             params: vec![ParamName::new(
                 "choice".into(),
-                ParamType::Array(Box::new(ParamType::BuiltIn(TypeQualifier::DollarString)))
+                ParamType::Array(Box::new(ParamType::BuiltIn(
+                    TypeQualifier::DollarString,
+                    BuiltInStyle::Compact
+                )))
             )
             .at_rc(2, 14)],
             body: vec![]
@@ -117,7 +120,10 @@ fn test_passing_array_parameter_with_parenthesis() {
                 name: BareName::from("Menu").at_rc(6, 9),
                 params: vec![ParamName::new(
                     "choice".into(),
-                    ParamType::Array(Box::new(ParamType::BuiltIn(TypeQualifier::DollarString)))
+                    ParamType::Array(Box::new(ParamType::BuiltIn(
+                        TypeQualifier::DollarString,
+                        BuiltInStyle::Compact
+                    )))
                 )
                 .at_rc(6, 14)],
                 body: vec![]

@@ -1,13 +1,13 @@
 use super::{ExpressionType, HasExpressionType};
 use crate::common::Locatable;
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, BareNameNode, BuiltInStyle, TypeQualifier};
 use std::collections::HashMap;
 
 // ========================================================
 // ParamName
 // ========================================================
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ParamName {
     bare_name: BareName,
     param_type: ParamType,
@@ -50,10 +50,11 @@ impl HasExpressionType for ParamName {
 // ParamType
 // ========================================================
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum ParamType {
-    BuiltIn(TypeQualifier),
-    UserDefined(BareName),
+    Bare,
+    BuiltIn(TypeQualifier, BuiltInStyle),
+    UserDefined(BareNameNode),
     Array(Box<ParamType>),
 }
 
@@ -62,7 +63,8 @@ pub type ParamTypes = Vec<ParamType>;
 impl ParamType {
     pub fn accepts_by_ref(&self, type_definition: &ExpressionType) -> bool {
         match self {
-            Self::BuiltIn(q_left) => match type_definition {
+            Self::Bare => false,
+            Self::BuiltIn(q_left, _) => match type_definition {
                 ExpressionType::BuiltIn(q_right) => q_left == q_right,
                 ExpressionType::FixedLengthString(_) => *q_left == TypeQualifier::DollarString,
                 _ => false,
@@ -79,12 +81,55 @@ impl ParamType {
     }
 }
 
+// Custom implementation of PartialEq because we want to compare the parameter types are equal,
+// regardless of the location of the UserDefinedName node. This is used in subprogram_context (pre-linter).
+impl PartialEq<ParamType> for ParamType {
+    fn eq(&self, other: &ParamType) -> bool {
+        match self {
+            Self::Bare => {
+                if let Self::Bare = other {
+                    true
+                } else {
+                    false
+                }
+            }
+            Self::BuiltIn(q, _) => {
+                if let Self::BuiltIn(q_other, _) = other {
+                    q == q_other
+                } else {
+                    false
+                }
+            }
+            Self::UserDefined(Locatable { element, .. }) => {
+                if let Self::UserDefined(Locatable {
+                    element: other_name,
+                    ..
+                }) = other
+                {
+                    element == other_name
+                } else {
+                    false
+                }
+            }
+            Self::Array(boxed) => {
+                if let Self::Array(boxed_other) = other {
+                    boxed.as_ref() == boxed_other.as_ref()
+                } else {
+                    false
+                }
+            }
+        }
+    }
+}
+
 impl HasExpressionType for ParamType {
     fn expression_type(&self) -> ExpressionType {
         match self {
-            Self::BuiltIn(qualifier) => ExpressionType::BuiltIn(*qualifier),
-            Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.clone()),
-            Self::Array(_) => todo!(),
+            Self::BuiltIn(qualifier, _) => ExpressionType::BuiltIn(*qualifier),
+            Self::UserDefined(Locatable { element, .. }) => {
+                ExpressionType::UserDefined(element.clone())
+            }
+            _ => ExpressionType::Unresolved,
         }
     }
 }

@@ -5,7 +5,7 @@ use crate::linter::converter::converter::ConverterImpl;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::{ParamName, ParamType};
 use crate::parser;
-use crate::parser::{BareName, BareNameNode, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, BareNameNode, BuiltInStyle, QualifiedName, TypeQualifier};
 
 impl<'a> ConverterImpl<'a> {
     pub fn resolve_params(
@@ -46,10 +46,10 @@ impl<'a> ConverterImpl<'a> {
         }
         match param_type {
             parser::ParamType::Bare => self.resolve_param_bare(bare_name, opt_function_name),
-            parser::ParamType::Compact(q) => {
+            parser::ParamType::BuiltIn(q, BuiltInStyle::Compact) => {
                 self.resolve_param_compact(bare_name, q, opt_function_name)
             }
-            parser::ParamType::Extended(q) => {
+            parser::ParamType::BuiltIn(q, BuiltInStyle::Extended) => {
                 self.resolve_param_extended(bare_name, q, opt_function_name)
             }
             parser::ParamType::UserDefined(u) => {
@@ -99,7 +99,10 @@ impl<'a> ConverterImpl<'a> {
         self.context
             .push_compact_param(QualifiedName::new(bare_name.clone(), q));
         self.context.push_dim_compact(bare_name.clone(), q);
-        Ok(ParamName::new(bare_name, ParamType::BuiltIn(q)))
+        Ok(ParamName::new(
+            bare_name,
+            ParamType::BuiltIn(q, BuiltInStyle::Compact),
+        ))
     }
 
     fn resolve_param_extended(
@@ -125,17 +128,23 @@ impl<'a> ConverterImpl<'a> {
         }
         self.context.push_extended_param(bare_name.clone());
         self.context.push_dim_extended(bare_name.clone(), q);
-        Ok(ParamName::new(bare_name, ParamType::BuiltIn(q)))
+        Ok(ParamName::new(
+            bare_name,
+            ParamType::BuiltIn(q, BuiltInStyle::Extended),
+        ))
     }
 
     fn resolve_param_user_defined(
         &mut self,
         bare_name: BareName,
-        u: BareNameNode,
+        user_defined_type_name_node: BareNameNode,
         opt_function_name: Option<&QualifiedName>,
     ) -> Result<ParamName, QErrorNode> {
-        if !self.user_defined_types.contains_key(u.as_ref()) {
-            return Err(QError::TypeNotDefined).with_err_at(&u);
+        if !self
+            .user_defined_types
+            .contains_key(user_defined_type_name_node.as_ref())
+        {
+            return Err(QError::TypeNotDefined).with_err_at(&user_defined_type_name_node);
         }
         // not possible to have a param name clashing with the function name for extended types
         match opt_function_name {
@@ -150,11 +159,15 @@ impl<'a> ConverterImpl<'a> {
             None => {}
         }
         let Locatable {
-            element: type_name, ..
-        } = u;
+            element: type_name,
+            pos,
+        } = user_defined_type_name_node;
         self.context.push_extended_param(bare_name.clone());
         self.context
             .push_dim_user_defined(bare_name.clone(), type_name.clone());
-        Ok(ParamName::new(bare_name, ParamType::UserDefined(type_name)))
+        Ok(ParamName::new(
+            bare_name,
+            ParamType::UserDefined(type_name.at(pos)),
+        ))
     }
 }

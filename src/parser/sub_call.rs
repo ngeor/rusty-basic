@@ -130,8 +130,8 @@ mod tests {
     use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
-        Expression, ExpressionType, Operator, ParamName, ParamType, PrintArg, PrintNode, Statement,
-        TopLevelToken, TypeQualifier,
+        BuiltInStyle, Expression, ExpressionType, Operator, ParamName, ParamType, PrintArg,
+        PrintNode, Statement, TopLevelToken, TypeQualifier,
     };
 
     #[test]
@@ -268,10 +268,16 @@ mod tests {
                 TopLevelToken::SubDeclaration(
                     "Hello".as_bare_name(2, 21),
                     vec![
-                        ParamName::new("N".into(), ParamType::Compact(TypeQualifier::DollarString))
-                            .at_rc(2, 27),
-                        ParamName::new("V".into(), ParamType::Compact(TypeQualifier::DollarString))
-                            .at_rc(2, 31)
+                        ParamName::new(
+                            "N".into(),
+                            ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                        )
+                        .at_rc(2, 27),
+                        ParamName::new(
+                            "V".into(),
+                            ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                        )
+                        .at_rc(2, 31)
                     ],
                 ),
                 // Hello
@@ -283,10 +289,16 @@ mod tests {
                 TopLevelToken::SubImplementation(
                     "Hello".as_bare_name(4, 13),
                     vec![
-                        ParamName::new("N".into(), ParamType::Compact(TypeQualifier::DollarString))
-                            .at_rc(4, 19),
-                        ParamName::new("V".into(), ParamType::Compact(TypeQualifier::DollarString))
-                            .at_rc(4, 23)
+                        ParamName::new(
+                            "N".into(),
+                            ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                        )
+                        .at_rc(4, 19),
+                        ParamName::new(
+                            "V".into(),
+                            ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                        )
+                        .at_rc(4, 23)
                     ],
                     vec![Statement::SubCall(
                         "ENVIRON".into(),

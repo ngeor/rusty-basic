@@ -5,7 +5,7 @@ use crate::linter::test_utils::linter_ok;
 use crate::linter::{
     Expression, ParamName, ParamType, PrintNode, Statement, SubImplementation, TopLevelToken,
 };
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
 
 #[test]
 fn function_call_not_allowed() {
@@ -135,7 +135,7 @@ fn test_constant_definition_and_usage_in_sub_call_arg() {
                 name: BareName::from("MySub").at_rc(5, 9),
                 params: vec![ParamName::new(
                     "A".into(),
-                    ParamType::BuiltIn(TypeQualifier::DollarString)
+                    ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
                 )
                 .at_rc(5, 15)],
                 body: vec![]

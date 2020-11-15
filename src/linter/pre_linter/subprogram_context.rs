@@ -12,8 +12,8 @@ use crate::linter::types::{
 };
 use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, Expression, ExpressionNode, Name, NameNode, ProgramNode, QualifiedName,
-    Statement, TopLevelToken, TypeQualifier,
+    BareName, BareNameNode, BuiltInStyle, Expression, ExpressionNode, Name, NameNode, ProgramNode,
+    QualifiedName, Statement, TopLevelToken, TypeQualifier,
 };
 use crate::variant::Variant;
 use std::collections::HashMap;
@@ -286,15 +286,15 @@ impl<T> SubProgramContext<T> {
         match param.param_type() {
             parser::ParamType::Bare => {
                 let q: TypeQualifier = resolver.resolve(bare_name);
-                Ok(ParamType::BuiltIn(q))
+                Ok(ParamType::BuiltIn(q, BuiltInStyle::Compact))
             }
-            parser::ParamType::Compact(q) | parser::ParamType::Extended(q) => {
-                Ok(ParamType::BuiltIn(*q))
+            parser::ParamType::BuiltIn(q, built_in_style) => {
+                Ok(ParamType::BuiltIn(*q, *built_in_style))
             }
             parser::ParamType::UserDefined(u) => {
                 let type_name: &BareName = u.as_ref();
                 if user_defined_types.contains_key(type_name) {
-                    Ok(ParamType::UserDefined(type_name.clone()))
+                    Ok(ParamType::UserDefined(u.clone()))
                 } else {
                     Err(QError::TypeNotDefined).with_err_at(pos)
                 }
@@ -322,17 +322,18 @@ impl FunctionContext {
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<(), QErrorNode> {
-        let Locatable { element: name, .. } = name_node;
+        let Locatable { element: name, pos } = name_node;
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
         let q_params: ParamTypes = self.parameters(params, resolver, user_defined_types)?;
         let q_name: TypeQualifier = resolver.resolve_name(name).qualifier;
         let bare_name: &BareName = name.as_ref();
-        self.check_implementation_type(bare_name, &q_name, &q_params)?;
+        self.check_implementation_type(bare_name, &q_name, &q_params)
+            .with_err_at(pos)?;
         match self.declarations.get(bare_name) {
             Some(_) => self
                 .check_declaration_type(bare_name, &q_name, &q_params)
-                .with_err_no_pos(),
+                .with_err_at(pos),
             None => {
                 self.declarations
                     .insert(bare_name.clone(), (q_name, q_params).at(declaration_pos));
@@ -349,7 +350,7 @@ impl FunctionContext {
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<(), QErrorNode> {
-        let Locatable { element: name, .. } = name_node;
+        let Locatable { element: name, pos } = name_node;
 
         // type must match declaration
         // param count must match declaration
@@ -359,10 +360,10 @@ impl FunctionContext {
         let q_name: TypeQualifier = resolver.resolve_name(name).qualifier;
         let bare_name: &BareName = name.as_ref();
         match self.implementations.get(bare_name) {
-            Some(_) => Err(QError::DuplicateDefinition).with_err_no_pos(),
+            Some(_) => Err(QError::DuplicateDefinition).with_err_at(pos),
             None => {
                 self.check_declaration_type(bare_name, &q_name, &q_params)
-                    .with_err_no_pos()?;
+                    .with_err_at(pos)?;
                 self.implementations
                     .insert(bare_name.clone(), (q_name, q_params).at(implementation_pos));
                 Ok(())
@@ -395,14 +396,14 @@ impl FunctionContext {
         name: &CaseInsensitiveString,
         q_name: &TypeQualifier,
         q_params: &ParamTypes,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<(), QError> {
         match self.implementations.get(name) {
             Some(Locatable {
                 element: (e_name, e_params),
                 ..
             }) => {
                 if e_name != q_name || e_params != q_params {
-                    return Err(QError::TypeMismatch).with_err_no_pos();
+                    return Err(QError::TypeMismatch);
                 }
             }
             None => (),
@@ -439,16 +440,16 @@ impl SubContext {
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<(), QErrorNode> {
-        let Locatable { element: name, .. } = bare_name_node;
+        let Locatable { element: name, pos } = bare_name_node;
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
         let q_params: ParamTypes = self.parameters(params, resolver, user_defined_types)?;
         self.check_implementation_type(name, &q_params)
-            .with_err_no_pos()?;
+            .with_err_at(pos)?;
         match self.declarations.get(name) {
             Some(_) => self
                 .check_declaration_type(name, &q_params)
-                .with_err_no_pos(),
+                .with_err_at(pos),
             None => {
                 self.declarations
                     .insert(name.clone(), q_params.at(declaration_pos));
@@ -465,16 +466,16 @@ impl SubContext {
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<(), QErrorNode> {
-        let Locatable { element: name, .. } = bare_name_node;
+        let Locatable { element: name, pos } = bare_name_node;
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
         let q_params: ParamTypes = self.parameters(params, resolver, user_defined_types)?;
         match self.implementations.get(name) {
-            Some(_) => Err(QError::DuplicateDefinition).with_err_no_pos(),
+            Some(_) => Err(QError::DuplicateDefinition).with_err_at(pos),
             None => {
                 self.check_declaration_type(name, &q_params)
-                    .with_err_no_pos()?;
+                    .with_err_at(pos)?;
                 self.implementations
                     .insert(name.clone(), q_params.at(implementation_pos));
                 Ok(())

@@ -37,9 +37,9 @@ impl Variables {
     pub fn insert_param(&mut self, param_name: ParamName, value: Variant) {
         let (bare_name, param_type) = param_name.into_inner();
         match param_type {
-            ParamType::BuiltIn(q) => self.insert_built_in(bare_name, q, value),
+            ParamType::BuiltIn(q, _) => self.insert_built_in(bare_name, q, value),
             ParamType::UserDefined(_) => self.insert_user_defined(bare_name, value),
-            ParamType::Array(_) => todo!(),
+            _ => todo!(),
         }
     }
 

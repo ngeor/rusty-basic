@@ -99,7 +99,9 @@ fn opt_declaration_parameters<T: BufRead + 'static>(
 mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
-    use crate::parser::{Name, ParamName, ParamType, Statement, TopLevelToken, TypeQualifier};
+    use crate::parser::{
+        BuiltInStyle, Name, ParamName, ParamType, Statement, TopLevelToken, TypeQualifier,
+    };
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
@@ -133,7 +135,7 @@ mod tests {
             Name::from("Fib!"),
             vec![ParamName::new(
                 "N".into(),
-                ParamType::Compact(TypeQualifier::BangSingle)
+                ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
             )]
         );
     }
@@ -145,7 +147,7 @@ mod tests {
             Name::from("echo$"),
             vec![ParamName::new(
                 "msg".into(),
-                ParamType::Compact(TypeQualifier::DollarString)
+                ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
             )]
         );
     }
@@ -225,7 +227,10 @@ mod tests {
                     "Echo".as_name(2, 26),
                     vec![ParamName::new(
                         "X".into(),
-                        ParamType::Array(Box::new(ParamType::Compact(TypeQualifier::DollarString)))
+                        ParamType::Array(Box::new(ParamType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        )))
                     )
                     .at_rc(2, 31)]
                 )
@@ -234,7 +239,10 @@ mod tests {
                     "Echo".as_name(3, 18),
                     vec![ParamName::new(
                         "X".into(),
-                        ParamType::Array(Box::new(ParamType::Compact(TypeQualifier::DollarString)))
+                        ParamType::Array(Box::new(ParamType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        )))
                     )
                     .at_rc(3, 23)],
                     vec![]

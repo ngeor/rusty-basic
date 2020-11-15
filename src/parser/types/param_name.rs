@@ -11,8 +11,7 @@ pub struct ParamName {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParamType {
     Bare,
-    Compact(TypeQualifier),
-    Extended(TypeQualifier),
+    BuiltIn(TypeQualifier, BuiltInStyle),
     UserDefined(BareNameNode),
     Array(Box<ParamType>),
 }

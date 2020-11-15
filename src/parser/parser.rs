@@ -33,10 +33,11 @@ mod tests {
                 // DECLARE FUNCTION Fib! (N!)
                 TopLevelToken::FunctionDeclaration(
                     "Fib!".as_name(1, 18),
-                    vec![
-                        ParamName::new("N".into(), ParamType::Compact(TypeQualifier::BangSingle))
-                            .at_rc(1, 24)
-                    ],
+                    vec![ParamName::new(
+                        "N".into(),
+                        ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
+                    )
+                    .at_rc(1, 24)],
                 ),
                 // PRINT "Enter the number of fibonacci to calculate"
                 TopLevelToken::Statement(Statement::Print(PrintNode::one(

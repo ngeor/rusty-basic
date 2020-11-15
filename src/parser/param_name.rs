@@ -49,7 +49,10 @@ pub fn param_name_node<T: BufRead + 'static>(
                 )),
                 None => Ok(ParamName::new(
                     bare_name,
-                    final_param_type(ParamType::Compact(qualifier), is_array),
+                    final_param_type(
+                        ParamType::BuiltIn(qualifier, BuiltInStyle::Compact),
+                        is_array,
+                    ),
                 )
                 .at(pos)),
             },
@@ -105,11 +108,26 @@ fn extended_type<T: BufRead + 'static>(
     and_then(
         with_pos(any_identifier_with_dot()),
         |Locatable { element: x, pos }| match Keyword::from_str(&x) {
-            Ok(Keyword::Single) => Ok(ParamType::Extended(TypeQualifier::BangSingle)),
-            Ok(Keyword::Double) => Ok(ParamType::Extended(TypeQualifier::HashDouble)),
-            Ok(Keyword::String_) => Ok(ParamType::Extended(TypeQualifier::DollarString)),
-            Ok(Keyword::Integer) => Ok(ParamType::Extended(TypeQualifier::PercentInteger)),
-            Ok(Keyword::Long) => Ok(ParamType::Extended(TypeQualifier::AmpersandLong)),
+            Ok(Keyword::Single) => Ok(ParamType::BuiltIn(
+                TypeQualifier::BangSingle,
+                BuiltInStyle::Extended,
+            )),
+            Ok(Keyword::Double) => Ok(ParamType::BuiltIn(
+                TypeQualifier::HashDouble,
+                BuiltInStyle::Extended,
+            )),
+            Ok(Keyword::String_) => Ok(ParamType::BuiltIn(
+                TypeQualifier::DollarString,
+                BuiltInStyle::Extended,
+            )),
+            Ok(Keyword::Integer) => Ok(ParamType::BuiltIn(
+                TypeQualifier::PercentInteger,
+                BuiltInStyle::Extended,
+            )),
+            Ok(Keyword::Long) => Ok(ParamType::BuiltIn(
+                TypeQualifier::AmpersandLong,
+                BuiltInStyle::Extended,
+            )),
             Ok(_) => Err(QError::syntax_error(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
             )),

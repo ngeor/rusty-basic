@@ -89,6 +89,7 @@ impl InstructionGenerator {
                 }
                 TopLevelToken::FunctionImplementation(f) => functions.push((f, pos)),
                 TopLevelToken::SubImplementation(s) => subs.push((s, pos)),
+                _ => {}
             }
         }
 

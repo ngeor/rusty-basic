@@ -28,6 +28,7 @@ pub trait PostConversionLinter {
             TopLevelToken::FunctionImplementation(f) => self.visit_function_implementation(f),
             TopLevelToken::SubImplementation(s) => self.visit_sub_implementation(s),
             TopLevelToken::Statement(s) => self.visit_statement(s),
+            _ => Ok(()),
         }
     }
 

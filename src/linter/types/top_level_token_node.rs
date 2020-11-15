@@ -1,6 +1,7 @@
 use crate::common::Locatable;
 use crate::linter::types::{ParamName, Statement, StatementNodes};
-use crate::parser::{BareNameNode, QualifiedNameNode};
+use crate::linter::UserDefinedType;
+use crate::parser::{BareNameNode, DefType, NameNode, QualifiedNameNode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionImplementation {
@@ -18,14 +19,22 @@ pub struct SubImplementation {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TopLevelToken {
+    DefType(DefType),
+
+    FunctionDeclaration(NameNode, Vec<Locatable<ParamName>>),
+
     /// A function implementation
     FunctionImplementation(FunctionImplementation),
 
     /// A simple or compound statement
     Statement(Statement),
 
+    SubDeclaration(BareNameNode, Vec<Locatable<ParamName>>),
+
     /// A sub implementation
     SubImplementation(SubImplementation),
+
+    UserDefinedType(UserDefinedType),
 }
 
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;

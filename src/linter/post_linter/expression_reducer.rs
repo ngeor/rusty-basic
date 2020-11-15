@@ -46,6 +46,7 @@ pub trait ExpressionReducer {
             TopLevelToken::Statement(s) => self
                 .visit_filter_statement(s)
                 .map(|opt_statement| opt_statement.map(|x| TopLevelToken::Statement(x))),
+            _ => Ok(None),
         }
     }
 

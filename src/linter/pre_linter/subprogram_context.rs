@@ -135,19 +135,19 @@ fn user_defined_type(
     global_constants: &HashMap<BareName, Variant>,
     user_defined_type: &parser::UserDefinedType,
 ) -> Result<(), QErrorNode> {
-    let type_name: &BareName = user_defined_type.name.as_ref();
+    let type_name: &BareName = user_defined_type.as_ref();
     if user_defined_types.contains_key(type_name) {
         // duplicate type definition
         Err(QError::DuplicateDefinition).with_err_no_pos()
     } else {
         let mut resolved_elements: HashMap<BareName, ElementType> = HashMap::new();
-        for Locatable { element, pos } in user_defined_type.elements.iter() {
-            let element_name: &BareName = &element.name;
+        for Locatable { element, pos } in user_defined_type.elements() {
+            let element_name: &BareName = element.as_ref();
             if resolved_elements.contains_key(element_name) {
                 // duplicate element name within type
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let resolved_element_type = match &element.element_type {
+            let resolved_element_type = match element.element_type() {
                 parser::ElementType::Integer => ElementType::Integer,
                 parser::ElementType::Long => ElementType::Long,
                 parser::ElementType::Single => ElementType::Single,

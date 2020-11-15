@@ -75,11 +75,7 @@ pub fn user_defined_type<T: BufRead + 'static>(
             demand_keyword(Keyword::End),
             demand_guarded_keyword(Keyword::Type),
         ),
-        |((_, name), comments, elements, _, _)| UserDefinedType {
-            name,
-            comments,
-            elements,
-        },
+        |((_, name), comments, elements, _, _)| UserDefinedType::new(name, comments, elements),
     )
 }
 
@@ -129,14 +125,7 @@ fn element_node<T: BufRead + 'static>(
             comment::comments(),
         ),
         |(Locatable { element, pos }, _, _, element_type, comments)| {
-            Locatable::new(
-                Element {
-                    name: element,
-                    element_type,
-                    comments,
-                },
-                pos,
-            )
+            Locatable::new(Element::new(element, element_type, comments), pos)
         },
     )(reader)
 }
@@ -203,24 +192,19 @@ mod tests {
         ";
         assert_eq!(
             parse(input).demand_single(),
-            TopLevelToken::UserDefinedType(UserDefinedType {
-                name: BareName::from("Card").at_rc(2, 14),
-                comments: vec![],
-                elements: vec![
-                    Element {
-                        name: "Suit".into(),
-                        element_type: ElementType::FixedLengthString(9.as_lit_expr(3, 30), 0),
-                        comments: vec![],
-                    }
+            TopLevelToken::UserDefinedType(UserDefinedType::new(
+                BareName::from("Card").at_rc(2, 14),
+                vec![],
+                vec![
+                    Element::new(
+                        "Suit".into(),
+                        ElementType::FixedLengthString(9.as_lit_expr(3, 30), 0),
+                        vec![],
+                    )
                     .at_rc(3, 13),
-                    Element {
-                        name: "Value".into(),
-                        element_type: ElementType::Integer,
-                        comments: vec![]
-                    }
-                    .at_rc(4, 13)
+                    Element::new("Value".into(), ElementType::Integer, vec![]).at_rc(4, 13)
                 ]
-            })
+            ))
             .at_rc(2, 9)
         );
     }
@@ -235,24 +219,24 @@ mod tests {
         ";
         assert_eq!(
             parse(input).demand_single(),
-            TopLevelToken::UserDefinedType(UserDefinedType {
-                name: BareName::from("Card").at_rc(2, 14),
-                comments: vec![String::from(" A card").at_rc(2, 19)],
-                elements: vec![
-                    Element {
-                        name: "Suit".into(),
-                        element_type: ElementType::FixedLengthString(9.as_lit_expr(3, 30), 0),
-                        comments: vec![String::from(" The suit of the card").at_rc(3, 32)],
-                    }
+            TopLevelToken::UserDefinedType(UserDefinedType::new(
+                BareName::from("Card").at_rc(2, 14),
+                vec![String::from(" A card").at_rc(2, 19)],
+                vec![
+                    Element::new(
+                        "Suit".into(),
+                        ElementType::FixedLengthString(9.as_lit_expr(3, 30), 0),
+                        vec![String::from(" The suit of the card").at_rc(3, 32)],
+                    )
                     .at_rc(3, 13),
-                    Element {
-                        name: "Value".into(),
-                        element_type: ElementType::Integer,
-                        comments: vec![String::from(" The value of the card").at_rc(4, 32)]
-                    }
+                    Element::new(
+                        "Value".into(),
+                        ElementType::Integer,
+                        vec![String::from(" The value of the card").at_rc(4, 32)]
+                    )
                     .at_rc(4, 13)
                 ]
-            })
+            ))
             .at_rc(2, 9)
         );
     }

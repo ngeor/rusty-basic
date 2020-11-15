@@ -1,14 +1,39 @@
 use crate::common::Locatable;
 use crate::parser::types::{BareName, BareNameNode, ExpressionNode};
+use std::slice::Iter;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedType {
     /// The name of the type
-    pub name: BareNameNode,
+    name_node: BareNameNode,
     /// Comments between the type name and the first element
-    pub comments: Vec<Locatable<String>>,
+    comments: Vec<Locatable<String>>,
     /// The elements
-    pub elements: Vec<ElementNode>,
+    elements: Vec<ElementNode>,
+}
+
+impl UserDefinedType {
+    pub fn new(
+        name_node: BareNameNode,
+        comments: Vec<Locatable<String>>,
+        elements: Vec<ElementNode>,
+    ) -> Self {
+        Self {
+            name_node,
+            comments,
+            elements,
+        }
+    }
+
+    pub fn elements(&self) -> Iter<'_, ElementNode> {
+        self.elements.iter()
+    }
+}
+
+impl AsRef<BareName> for UserDefinedType {
+    fn as_ref(&self) -> &BareName {
+        self.name_node.as_ref()
+    }
 }
 
 pub type ElementNode = Locatable<Element>;
@@ -16,11 +41,35 @@ pub type ElementNode = Locatable<Element>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Element {
     /// The name of the element
-    pub name: BareName,
+    name: BareName,
     /// The element type
-    pub element_type: ElementType,
+    element_type: ElementType,
     /// Comments between the end of this element and the next one
-    pub comments: Vec<Locatable<String>>,
+    comments: Vec<Locatable<String>>,
+}
+
+impl Element {
+    pub fn new(
+        name: BareName,
+        element_type: ElementType,
+        comments: Vec<Locatable<String>>,
+    ) -> Self {
+        Self {
+            name,
+            element_type,
+            comments,
+        }
+    }
+
+    pub fn element_type(&self) -> &ElementType {
+        &self.element_type
+    }
+}
+
+impl AsRef<BareName> for Element {
+    fn as_ref(&self) -> &BareName {
+        &self.name
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

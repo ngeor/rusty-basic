@@ -100,7 +100,8 @@ mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
-        BuiltInStyle, Name, ParamName, ParamType, Statement, TopLevelToken, TypeQualifier,
+        BuiltInStyle, FunctionImplementation, Name, ParamName, ParamType, Statement, TopLevelToken,
+        TypeQualifier,
     };
 
     macro_rules! assert_function_declaration {
@@ -170,11 +171,13 @@ mod tests {
                 .at_rc(2, 9),
                 TopLevelToken::Statement(Statement::Comment(" Echoes stuff back".to_string()))
                     .at_rc(2, 34),
-                TopLevelToken::FunctionImplementation(
-                    "Echo".as_name(3, 18),
-                    vec![ParamName::new("X".into(), ParamType::Bare).at_rc(3, 23)],
-                    vec![Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)]
-                )
+                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                    name: "Echo".as_name(3, 18),
+                    params: vec![ParamName::new("X".into(), ParamType::Bare).at_rc(3, 23)],
+                    body: vec![
+                        Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)
+                    ]
+                })
                 .at_rc(3, 9),
                 TopLevelToken::Statement(Statement::Comment(" End of implementation".to_string()))
                     .at_rc(4, 22),
@@ -235,9 +238,9 @@ mod tests {
                     .at_rc(2, 31)]
                 )
                 .at_rc(2, 9),
-                TopLevelToken::FunctionImplementation(
-                    "Echo".as_name(3, 18),
-                    vec![ParamName::new(
+                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                    name: "Echo".as_name(3, 18),
+                    params: vec![ParamName::new(
                         "X".into(),
                         ParamType::Array(Box::new(ParamType::BuiltIn(
                             TypeQualifier::DollarString,
@@ -245,8 +248,8 @@ mod tests {
                         )))
                     )
                     .at_rc(3, 23)],
-                    vec![]
-                )
+                    body: vec![]
+                })
                 .at_rc(3, 9),
             ]
         );

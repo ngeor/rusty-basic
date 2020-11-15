@@ -81,10 +81,10 @@ mod tests {
                     next_counter: None,
                 })),
                 // FUNCTION Fib (N)
-                TopLevelToken::FunctionImplementation(
-                    Name::from("Fib").at_rc(8, 10),
-                    vec![ParamName::new("N".into(), ParamType::Bare).at_rc(8, 15)],
-                    vec![
+                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                    name: Name::from("Fib").at_rc(8, 10),
+                    params: vec![ParamName::new("N".into(), ParamType::Bare).at_rc(8, 15)],
+                    body: vec![
                         // IF N <= 1 THEN
                         Statement::IfBlock(IfBlockNode {
                             if_block: ConditionalBlockNode {
@@ -146,8 +146,8 @@ mod tests {
                             ])
                         })
                         .at_rc(9, 5)
-                    ],
-                ),
+                    ]
+                }),
             ],
         );
     }

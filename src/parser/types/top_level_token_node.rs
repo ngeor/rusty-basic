@@ -16,7 +16,7 @@ pub enum TopLevelToken {
     FunctionDeclaration(NameNode, ParamNameNodes),
 
     /// A function implementation
-    FunctionImplementation(NameNode, ParamNameNodes, StatementNodes),
+    FunctionImplementation(FunctionImplementation),
 
     /// A simple or compound statement
     Statement(Statement),
@@ -40,6 +40,13 @@ impl From<Statement> for TopLevelToken {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubImplementation {
     pub name: BareNameNode,
+    pub params: Vec<Locatable<ParamName>>,
+    pub body: StatementNodes,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FunctionImplementation {
+    pub name: NameNode,
     pub params: Vec<Locatable<ParamName>>,
     pub body: StatementNodes,
 }

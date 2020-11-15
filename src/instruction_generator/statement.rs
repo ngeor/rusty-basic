@@ -18,7 +18,9 @@ impl InstructionGenerator {
             Statement::Assignment(left_side, right_side) => {
                 self.generate_assignment_instructions(left_side, right_side, pos)
             }
-            Statement::Const(_, _) => panic!("Constants should have been reduced by const_reducer"),
+            Statement::Const(_, _, _) => {
+                panic!("Constants should have been reduced by const_reducer")
+            }
             Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at(pos), args),
             Statement::BuiltInSubCall(n, args) => {
                 self.generate_built_in_sub_call_instructions(n, args, pos)

@@ -71,7 +71,7 @@ impl<'a> ConverterWithImplicitVariables<parser::StatementNode, StatementNode>
         match statement {
             parser::Statement::Comment(c) => Ok((Statement::Comment(c).at(pos), vec![])),
             parser::Statement::Assignment(n, e) => self.assignment(n.at(pos), e),
-            parser::Statement::Const(n, e) => self
+            parser::Statement::Const(n, e, _) => self
                 .constant(n, e)
                 .map(|statement| (statement.at(pos), vec![])),
             parser::Statement::SubCall(n, args) => self.sub_call(n.at(pos), args),

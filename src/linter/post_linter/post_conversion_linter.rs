@@ -1,7 +1,7 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::linter::types::*;
-use crate::parser::QualifiedNameNode;
+use crate::parser::NameNode;
 use crate::variant::Variant;
 
 /// Invoked after the conversion to fully typed program.
@@ -51,7 +51,7 @@ pub trait PostConversionLinter {
     fn visit_statement(&self, s: &Statement) -> Result<(), QErrorNode> {
         match s {
             Statement::Assignment(left, right) => self.visit_assignment(left, right),
-            Statement::Const(left, right) => self.visit_const(left, right),
+            Statement::Const(left, _, right) => self.visit_const(left, right),
             Statement::SubCall(b, e) => self.visit_sub_call(b, e),
             Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, e),
             Statement::IfBlock(i) => self.visit_if_block(i),
@@ -156,7 +156,7 @@ pub trait PostConversionLinter {
         self.visit_statement_nodes(&c.statements)
     }
 
-    fn visit_const(&self, _left: &QualifiedNameNode, _right: &Variant) -> Result<(), QErrorNode> {
+    fn visit_const(&self, _left: &NameNode, _right: &Variant) -> Result<(), QErrorNode> {
         Ok(())
     }
 

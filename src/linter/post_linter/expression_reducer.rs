@@ -1,7 +1,7 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::linter::types::*;
-use crate::parser::QualifiedNameNode;
+use crate::parser::NameNode;
 use crate::variant::Variant;
 
 /// Visits the converted program and transforms it into a different program.
@@ -108,9 +108,12 @@ pub trait ExpressionReducer {
                         Statement::Assignment(reduced_left, reduced_right)
                     })
             }
-            Statement::Const(left, right) => self
-                .visit_const(left, right)
-                .map(|(reduced_left, reduced_right)| Statement::Const(reduced_left, reduced_right)),
+            Statement::Const(left, e, right) => {
+                self.visit_const(left, right)
+                    .map(|(reduced_left, reduced_right)| {
+                        Statement::Const(reduced_left, e, reduced_right)
+                    })
+            }
             Statement::SubCall(b, e) => self
                 .visit_sub_call(b, e)
                 .map(|(reduced_name, reduced_expr)| Statement::SubCall(reduced_name, reduced_expr)),
@@ -209,6 +212,7 @@ pub trait ExpressionReducer {
             expr: self.visit_expression_node(s.expr)?,
             case_blocks,
             else_block,
+            inline_comments: s.inline_comments,
         })
     }
 
@@ -246,9 +250,9 @@ pub trait ExpressionReducer {
 
     fn visit_const(
         &mut self,
-        left: QualifiedNameNode,
+        left: NameNode,
         right: Variant,
-    ) -> Result<(QualifiedNameNode, Variant), QErrorNode> {
+    ) -> Result<(NameNode, Variant), QErrorNode> {
         Ok((left, right))
     }
 

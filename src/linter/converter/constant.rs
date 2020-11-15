@@ -1,8 +1,9 @@
 use crate::common::{AtLocation, Locatable, QError, QErrorNode, ToLocatableError};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::converter::ConverterImpl;
-use crate::linter::Statement;
+use crate::linter::{Expression, Statement};
 use crate::parser::{BareName, Name, NameNode, QualifiedName, TypeQualifier};
+use crate::variant::Variant;
 use std::convert::TryInto;
 
 impl<'a> ConverterImpl<'a> {
@@ -26,7 +27,11 @@ impl<'a> ConverterImpl<'a> {
                     // type comes from the right side, not the resolver
                     let q: TypeQualifier = (&v).try_into().with_err_at(right)?;
                     self.context.push_const(b.clone(), q, v.clone());
-                    Ok(Statement::Const(QualifiedName::new(b, q).at(pos), v))
+                    Ok(Statement::Const(
+                        Name::new(b, Some(q)).at(pos),
+                        variant_to_expression(v.clone()).at(pos),
+                        v,
+                    ))
                 }
                 Name::Qualified(QualifiedName {
                     bare_name: name,
@@ -37,11 +42,23 @@ impl<'a> ConverterImpl<'a> {
                     self.context
                         .push_const(name.clone(), qualifier, casted_v.clone());
                     Ok(Statement::Const(
-                        QualifiedName::new(name, qualifier).at(pos),
+                        Name::new(name, Some(qualifier)).at(pos),
+                        variant_to_expression(casted_v.clone()).at(pos),
                         casted_v,
                     ))
                 }
             }
         }
+    }
+}
+
+fn variant_to_expression(v: Variant) -> Expression {
+    match v {
+        Variant::VSingle(f) => Expression::SingleLiteral(f),
+        Variant::VDouble(d) => Expression::DoubleLiteral(d),
+        Variant::VString(s) => Expression::StringLiteral(s),
+        Variant::VInteger(i) => Expression::IntegerLiteral(i),
+        Variant::VLong(l) => Expression::LongLiteral(l),
+        _ => unimplemented!(),
     }
 }

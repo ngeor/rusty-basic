@@ -1,7 +1,7 @@
 use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
 use crate::linter::post_linter::expression_reducer::ExpressionReducer;
 use crate::linter::{Expression, FunctionImplementation, Statement, SubImplementation};
-use crate::parser::{QualifiedName, QualifiedNameNode};
+use crate::parser::{Name, NameNode, QualifiedName};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
@@ -22,27 +22,61 @@ impl ConstReducer {
 }
 
 impl ExpressionReducer for ConstReducer {
+    fn visit_function_implementation(
+        &mut self,
+        f: FunctionImplementation,
+    ) -> Result<FunctionImplementation, QErrorNode> {
+        self.local_constants = HashMap::new();
+        self.in_sub_program = true;
+        let result = FunctionImplementation {
+            name: f.name,
+            params: f.params,
+            body: self.visit_statement_nodes(f.body)?,
+        };
+        self.in_sub_program = false;
+        Ok(result)
+    }
+
+    fn visit_sub_implementation(
+        &mut self,
+        s: SubImplementation,
+    ) -> Result<SubImplementation, QErrorNode> {
+        self.local_constants = HashMap::new();
+        self.in_sub_program = true;
+        let result = SubImplementation {
+            name: s.name,
+            params: s.params,
+            body: self.visit_statement_nodes(s.body)?,
+        };
+        self.in_sub_program = false;
+        Ok(result)
+    }
+
     fn visit_filter_statement(&mut self, s: Statement) -> Result<Option<Statement>, QErrorNode> {
         let reduced = self.visit_map_statement(s)?;
         match reduced {
-            Statement::Const(_, _) => Ok(None),
+            Statement::Const(_, _, _) => Ok(None),
             _ => Ok(Some(reduced)),
         }
     }
 
     fn visit_const(
         &mut self,
-        left: QualifiedNameNode,
+        left: NameNode,
         right: Variant,
-    ) -> Result<(QualifiedNameNode, Variant), QErrorNode> {
-        if self.in_sub_program {
-            self.local_constants
-                .insert(left.element.clone(), right.clone());
+    ) -> Result<(NameNode, Variant), QErrorNode> {
+        if let Name::Qualified(qualified_name) = left.as_ref() {
+            if self.in_sub_program {
+                self.local_constants
+                    .insert(qualified_name.clone(), right.clone());
+            } else {
+                self.global_constants
+                    .insert(qualified_name.clone(), right.clone());
+            }
+            Ok((left, right))
         } else {
-            self.global_constants
-                .insert(left.element.clone(), right.clone());
+            panic!("Unexpected bare constant {:?}", left)
         }
-        Ok((left, right))
     }
 
     fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorNode> {
@@ -75,35 +109,5 @@ impl ExpressionReducer for ConstReducer {
             }
             _ => Ok(expression),
         }
-    }
-
-    fn visit_function_implementation(
-        &mut self,
-        f: FunctionImplementation,
-    ) -> Result<FunctionImplementation, QErrorNode> {
-        self.local_constants = HashMap::new();
-        self.in_sub_program = true;
-        let result = FunctionImplementation {
-            name: f.name,
-            params: f.params,
-            body: self.visit_statement_nodes(f.body)?,
-        };
-        self.in_sub_program = false;
-        Ok(result)
-    }
-
-    fn visit_sub_implementation(
-        &mut self,
-        s: SubImplementation,
-    ) -> Result<SubImplementation, QErrorNode> {
-        self.local_constants = HashMap::new();
-        self.in_sub_program = true;
-        let result = SubImplementation {
-            name: s.name,
-            params: s.params,
-            body: self.visit_statement_nodes(s.body)?,
-        };
-        self.in_sub_program = false;
-        Ok(result)
     }
 }

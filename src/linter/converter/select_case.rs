@@ -22,6 +22,7 @@ impl<'a> ConverterWithImplicitVariables<parser::SelectCaseNode, SelectCaseNode>
                 expr,
                 case_blocks,
                 else_block: self.convert(a.else_block)?,
+                inline_comments: a.inline_comments,
             },
             implicit_vars_expr,
         ))

@@ -3,6 +3,7 @@ use super::{
     PrintNode,
 };
 use crate::common::*;
+use crate::variant::Variant;
 
 pub type StatementNodes = Vec<StatementNode>;
 pub type StatementNode = Locatable<Statement>;
@@ -14,7 +15,7 @@ pub enum Statement {
     // A$ = "hello"
     Assignment(Expression, ExpressionNode),
 
-    Const(NameNode, ExpressionNode),
+    Const(NameNode, ExpressionNode, Variant),
 
     /// DIM A (Bare)
     /// DIM A$ (Compact)

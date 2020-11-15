@@ -1,7 +1,7 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{FileHandle, Locatable};
 use crate::linter::types::{DimNameNode, Expression, ExpressionNode};
-use crate::parser::{BareName, Operator, QualifiedNameNode};
+use crate::parser::{BareName, NameNode, Operator};
 use crate::variant::Variant;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -35,6 +35,7 @@ pub struct SelectCaseNode {
     pub case_blocks: Vec<CaseBlockNode>,
     /// An optional CASE ELSE block
     pub else_block: Option<StatementNodes>,
+    pub inline_comments: Vec<Locatable<String>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -53,7 +54,9 @@ pub enum CaseExpression {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
     Assignment(Expression, ExpressionNode),
-    Const(QualifiedNameNode, Variant),
+    Const(NameNode, ExpressionNode, Variant),
+    Dim(DimNameNode),
+
     SubCall(BareName, Vec<ExpressionNode>),
     BuiltInSubCall(BuiltInSub, Vec<ExpressionNode>),
 
@@ -68,7 +71,6 @@ pub enum Statement {
     GoTo(BareName),
 
     Comment(String),
-    Dim(DimNameNode),
     Print(PrintNode),
 }
 

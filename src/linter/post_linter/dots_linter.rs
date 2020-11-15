@@ -189,7 +189,7 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         self.visit_statement_nodes(&f.statements)
     }
 
-    fn visit_const(&self, left: &QualifiedNameNode, _right: &Variant) -> Result<(), QErrorNode> {
+    fn visit_const(&self, left: &NameNode, _right: &Variant) -> Result<(), QErrorNode> {
         self.ensure_no_dots(left)
     }
 

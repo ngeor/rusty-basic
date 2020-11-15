@@ -3,7 +3,7 @@ use crate::linter::converter::converter::{Converter, ConverterImpl};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::{FunctionImplementation, TopLevelToken};
 use crate::parser;
-use crate::parser::{BareName, NameNode, QualifiedName};
+use crate::parser::{BareName, Name, NameNode, QualifiedName};
 
 impl<'a> ConverterImpl<'a> {
     pub fn convert_function_implementation(
@@ -21,7 +21,7 @@ impl<'a> ConverterImpl<'a> {
         let function_name: QualifiedName = self.resolver.resolve_name(&unresolved_function_name);
         let mapped_params = self.resolve_params(params, Some(&function_name))?;
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
-            name: function_name.at(pos),
+            name: Name::Qualified(function_name).at(pos),
             params: mapped_params,
             body: self.convert(block)?,
         });

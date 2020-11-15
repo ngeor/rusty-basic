@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
 use crate::linter::types::*;
-use crate::parser::{BareName, BareNameNode, Name, QualifiedName, QualifiedNameNode};
+use crate::parser::{BareName, BareNameNode, Name, NameNode, QualifiedName, QualifiedNameNode};
 use crate::variant::Variant;
 use std::collections::HashSet;
 
@@ -58,6 +58,13 @@ impl<'a> NoDotNamesCheck<DimName, QError> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &DimName) -> Result<(), QError> {
         let bare_name: &BareName = x.as_ref();
         self.ensure_no_dots(bare_name)
+    }
+}
+
+impl<'a> NoDotNamesCheck<NameNode, QErrorNode> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &NameNode) -> Result<(), QErrorNode> {
+        let name = x.as_ref();
+        self.ensure_no_dots(name).with_err_at(x)
     }
 }
 

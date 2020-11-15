@@ -1,11 +1,11 @@
 use crate::common::Locatable;
 use crate::linter::types::{ParamName, Statement, StatementNodes};
 use crate::linter::UserDefinedType;
-use crate::parser::{BareNameNode, DefType, NameNode, QualifiedNameNode};
+use crate::parser::{BareNameNode, DefType, NameNode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionImplementation {
-    pub name: QualifiedNameNode,
+    pub name: NameNode,
     pub params: Vec<Locatable<ParamName>>,
     pub body: StatementNodes,
 }

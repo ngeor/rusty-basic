@@ -1,7 +1,7 @@
 use super::instruction::*;
 use crate::common::*;
 use crate::linter::*;
-use crate::parser::{BareName, QualifiedName};
+use crate::parser::{BareName, Name, QualifiedName};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
@@ -102,19 +102,23 @@ impl InstructionGenerator {
         // functions
         for (f, pos) in functions {
             let Locatable {
-                element:
-                    QualifiedName {
-                        bare_name,
-                        qualifier,
-                    },
+                element: function_name,
                 ..
             } = f.name;
-            let block = f.body;
-            self.function_label(&bare_name, pos);
-            // set default value
-            self.push_load(qualifier, pos);
-            self.generate_block_instructions(block);
-            self.push(Instruction::PopRet, pos);
+            if let Name::Qualified(QualifiedName {
+                bare_name,
+                qualifier,
+            }) = function_name
+            {
+                let block = f.body;
+                self.function_label(&bare_name, pos);
+                // set default value
+                self.push_load(qualifier, pos);
+                self.generate_block_instructions(block);
+                self.push(Instruction::PopRet, pos);
+            } else {
+                panic!("Unexpected bare function name {:?}", function_name);
+            }
         }
 
         // subs

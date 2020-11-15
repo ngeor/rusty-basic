@@ -6,15 +6,12 @@ use crate::common::{
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::types::{
-    ElementType, FunctionMap, FunctionSignature, ParamType, ParamTypes, SubMap, SubSignature,
-    UserDefinedType, UserDefinedTypes,
-};
-use crate::parser;
 use crate::parser::{
-    BareName, BareNameNode, BuiltInStyle, Expression, ExpressionNode, FunctionImplementation, Name,
-    NameNode, ProgramNode, QualifiedName, Statement, SubImplementation, TopLevelToken,
-    TypeQualifier,
+    BareName, BareNameNode, BuiltInStyle, Element, ElementNode, ElementType, Expression,
+    ExpressionNode, FunctionImplementation, FunctionMap, FunctionSignature, Name, NameNode,
+    ParamName, ParamNameNode, ParamNameNodes, ParamType, ParamTypes, ProgramNode, QualifiedName,
+    Statement, SubImplementation, SubMap, SubSignature, TopLevelToken, TypeQualifier,
+    UserDefinedType, UserDefinedTypes,
 };
 use crate::variant::Variant;
 use std::collections::HashMap;
@@ -84,7 +81,7 @@ pub fn parse_subprograms_and_types(
                 _ => {}
             },
             TopLevelToken::UserDefinedType(u) => {
-                user_defined_type(&mut user_defined_types, &global_constants, u)
+                user_defined_type(&mut user_defined_types, &global_constants, u, *pos)
                     .patch_err_pos(*pos)?;
             }
         }
@@ -142,7 +139,8 @@ impl ConstValueResolver for HashMap<CaseInsensitiveString, Variant> {
 fn user_defined_type(
     user_defined_types: &mut UserDefinedTypes,
     global_constants: &HashMap<BareName, Variant>,
-    user_defined_type: &parser::UserDefinedType,
+    user_defined_type: &UserDefinedType,
+    pos: Location,
 ) -> Result<(), QErrorNode> {
     let type_name: &BareName = user_defined_type.as_ref();
     if user_defined_types.contains_key(type_name) {
@@ -157,20 +155,19 @@ fn user_defined_type(
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
             let resolved_element_type = match element.element_type() {
-                parser::ElementType::Integer => ElementType::Integer,
-                parser::ElementType::Long => ElementType::Long,
-                parser::ElementType::Single => ElementType::Single,
-                parser::ElementType::Double => ElementType::Double,
-                parser::ElementType::FixedLengthString(str_len_expression_node, _) => {
+                ElementType::Integer => ElementType::Integer,
+                ElementType::Long => ElementType::Long,
+                ElementType::Single => ElementType::Single,
+                ElementType::Double => ElementType::Double,
+                ElementType::FixedLengthString(str_len_expression_node, _) => {
                     let l: u16 =
                         validate_element_type_str_len(global_constants, str_len_expression_node)?;
                     ElementType::FixedLengthString(
-                        crate::linter::Expression::IntegerLiteral(l as i32)
-                            .at(str_len_expression_node),
+                        Expression::IntegerLiteral(l as i32).at(str_len_expression_node),
                         l,
                     )
                 }
-                parser::ElementType::UserDefined(Locatable {
+                ElementType::UserDefined(Locatable {
                     element: referred_name,
                     pos,
                 }) => {
@@ -182,7 +179,17 @@ fn user_defined_type(
             };
             resolved_elements.insert(element_name.clone(), resolved_element_type);
         }
-        user_defined_types.insert(type_name.clone(), UserDefinedType::new(resolved_elements));
+        let mut elements: Vec<ElementNode> = vec![];
+        for Locatable { element, pos } in user_defined_type.elements() {
+            let converted_element_type = resolved_elements.remove(element.as_ref()).unwrap();
+            elements.push(
+                Element::new(element.as_ref().clone(), converted_element_type, vec![]).at(pos),
+            );
+        }
+        user_defined_types.insert(
+            type_name.clone(),
+            UserDefinedType::new(type_name.clone().at(pos), vec![], elements),
+        );
         Ok(())
     }
 }
@@ -275,7 +282,7 @@ impl<T> SubProgramContext<T> {
 
     fn parameters(
         &self,
-        params: &parser::ParamNameNodes,
+        params: &ParamNameNodes,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<Vec<ParamType>, QErrorNode> {
@@ -287,7 +294,7 @@ impl<T> SubProgramContext<T> {
 
     fn parameter(
         &self,
-        param: &parser::ParamNameNode,
+        param: &ParamNameNode,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
     ) -> Result<ParamType, QErrorNode> {
@@ -297,14 +304,12 @@ impl<T> SubProgramContext<T> {
         } = param;
         let bare_name: &BareName = param.as_ref();
         match param.param_type() {
-            parser::ParamType::Bare => {
+            ParamType::Bare => {
                 let q: TypeQualifier = resolver.resolve(bare_name);
                 Ok(ParamType::BuiltIn(q, BuiltInStyle::Compact))
             }
-            parser::ParamType::BuiltIn(q, built_in_style) => {
-                Ok(ParamType::BuiltIn(*q, *built_in_style))
-            }
-            parser::ParamType::UserDefined(u) => {
+            ParamType::BuiltIn(q, built_in_style) => Ok(ParamType::BuiltIn(*q, *built_in_style)),
+            ParamType::UserDefined(u) => {
                 let type_name: &BareName = u.as_ref();
                 if user_defined_types.contains_key(type_name) {
                     Ok(ParamType::UserDefined(u.clone()))
@@ -312,10 +317,9 @@ impl<T> SubProgramContext<T> {
                     Err(QError::TypeNotDefined).with_err_at(pos)
                 }
             }
-            parser::ParamType::Array(element_type) => {
+            ParamType::Array(element_type) => {
                 let dummy_element_param =
-                    parser::ParamName::new(bare_name.clone(), element_type.as_ref().clone())
-                        .at(pos);
+                    ParamName::new(bare_name.clone(), element_type.as_ref().clone()).at(pos);
                 let element_param_type =
                     self.parameter(&dummy_element_param, resolver, user_defined_types)?;
                 Ok(ParamType::Array(Box::new(element_param_type)))
@@ -330,7 +334,7 @@ impl FunctionContext {
     pub fn add_declaration(
         &mut self,
         name_node: &NameNode,
-        params: &parser::ParamNameNodes,
+        params: &ParamNameNodes,
         declaration_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -358,7 +362,7 @@ impl FunctionContext {
     pub fn add_implementation(
         &mut self,
         name_node: &NameNode,
-        params: &parser::ParamNameNodes,
+        params: &ParamNameNodes,
         implementation_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -448,7 +452,7 @@ impl SubContext {
     pub fn add_declaration(
         &mut self,
         bare_name_node: &BareNameNode,
-        params: &parser::ParamNameNodes,
+        params: &ParamNameNodes,
         declaration_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,
@@ -474,7 +478,7 @@ impl SubContext {
     pub fn add_implementation(
         &mut self,
         bare_name_node: &BareNameNode,
-        params: &parser::ParamNameNodes,
+        params: &ParamNameNodes,
         implementation_pos: Location,
         resolver: &TypeResolverImpl,
         user_defined_types: &UserDefinedTypes,

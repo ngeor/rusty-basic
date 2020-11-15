@@ -1,8 +1,10 @@
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::arguments_stack::ArgumentsStack;
 use crate::interpreter::variables::Variables;
-use crate::linter::{DimName, DimType, ExpressionType, HasExpressionType, UserDefinedTypes};
-use crate::parser::{BareName, Name, TypeQualifier};
+use crate::parser::{
+    BareName, DimName, DimType, ExpressionType, HasExpressionType, Name, TypeQualifier,
+    UserDefinedTypes,
+};
 use crate::variant::Variant;
 use std::rc::Rc;
 

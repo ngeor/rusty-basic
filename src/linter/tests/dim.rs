@@ -1,8 +1,10 @@
 use crate::assert_linter_err;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
-use crate::linter::{ArrayDimension, DimName, DimType, Expression, Statement, TopLevelToken};
-use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
+use crate::parser::{
+    ArrayDimension, BareName, BuiltInStyle, DimName, DimType, Expression, Statement, TopLevelToken,
+    TypeQualifier,
+};
 
 #[test]
 fn test_dim_duplicate_definition_same_builtin_type() {

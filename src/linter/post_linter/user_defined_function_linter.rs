@@ -1,7 +1,9 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
-use crate::linter::types::*;
-use crate::parser::{Name, QualifiedName, TypeQualifier};
+use crate::parser::{
+    Expression, ExpressionNode, ExpressionType, FunctionMap, HasExpressionType, Name, ParamTypes,
+    QualifiedName, TypeQualifier,
+};
 
 pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,

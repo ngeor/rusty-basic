@@ -1,10 +1,9 @@
 use crate::common::QErrorNode;
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::{ProgramNode, TopLevelTokenNode};
-use crate::parser;
+use crate::parser::{ProgramNode, TopLevelTokenNode};
 
-impl<'a> Converter<parser::ProgramNode, ProgramNode> for ConverterImpl<'a> {
-    fn convert(&mut self, program: parser::ProgramNode) -> Result<ProgramNode, QErrorNode> {
+impl<'a> Converter<ProgramNode, ProgramNode> for ConverterImpl<'a> {
+    fn convert(&mut self, program: ProgramNode) -> Result<ProgramNode, QErrorNode> {
         let mut result: Vec<TopLevelTokenNode> = vec![];
         for top_level_token_node in program.into_iter() {
             let mut converted_top_level_token_nodes: Vec<TopLevelTokenNode> =

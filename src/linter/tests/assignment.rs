@@ -1,8 +1,9 @@
 use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
 use crate::common::{AtRowCol, QError};
-use crate::linter::{DimName, DimType, Expression, ExpressionType, Statement};
-use crate::parser::{BuiltInStyle, Operator, TypeQualifier};
+use crate::parser::{
+    BuiltInStyle, DimName, DimType, Expression, ExpressionType, Operator, Statement, TypeQualifier,
+};
 
 #[test]
 fn name_clashes_with_other_sub_name() {
@@ -70,7 +71,7 @@ fn test_assign_binary_plus() {
             .at_rc(1, 1)
         ),
         Statement::Assignment(
-            Expression::var("X%"),
+            Expression::var_linted("X%"),
             Expression::BinaryExpression(
                 Operator::Plus,
                 Box::new(Expression::IntegerLiteral(1).at_rc(1, 6)),
@@ -94,7 +95,7 @@ fn test_possible_property_folded_back_to_variable() {
             .at_rc(1, 1)
         ),
         Statement::Assignment(
-            Expression::var("A.B!".into()),
+            Expression::var_linted("A.B!".into()),
             Expression::IntegerLiteral(12).at_rc(1, 7),
         )
     );

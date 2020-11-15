@@ -1,11 +1,10 @@
 use crate::assert_linter_err;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
-use crate::linter::{
-    ArrayDimension, DimName, DimType, Expression, ExpressionType, ParamName, ParamType, Statement,
-    SubImplementation, TopLevelToken,
+use crate::parser::{
+    ArrayDimension, BareName, BuiltInStyle, DimName, DimType, Expression, ExpressionType,
+    ParamName, ParamType, Statement, SubImplementation, TopLevelToken, TypeQualifier,
 };
-use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
 
 #[test]
 fn test_passing_array_parameter_without_parenthesis() {

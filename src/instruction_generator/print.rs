@@ -1,7 +1,7 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Locatable, Location, QError};
 use crate::instruction_generator::{Instruction, InstructionGenerator};
-use crate::linter::{PrintArg, PrintNode};
+use crate::parser::{PrintArg, PrintNode};
 use crate::variant::Variant;
 use std::convert::TryFrom;
 

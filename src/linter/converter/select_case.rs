@@ -2,16 +2,12 @@ use crate::common::QErrorNode;
 use crate::linter::converter::converter::{
     Converter, ConverterImpl, ConverterWithImplicitVariables,
 };
-use crate::linter::{CaseBlockNode, CaseExpression, SelectCaseNode};
-use crate::parser;
-use crate::parser::QualifiedNameNode;
+use crate::parser::{CaseBlockNode, CaseExpression, QualifiedNameNode, SelectCaseNode};
 
-impl<'a> ConverterWithImplicitVariables<parser::SelectCaseNode, SelectCaseNode>
-    for ConverterImpl<'a>
-{
+impl<'a> ConverterWithImplicitVariables<SelectCaseNode, SelectCaseNode> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        a: parser::SelectCaseNode,
+        a: SelectCaseNode,
     ) -> Result<(SelectCaseNode, Vec<QualifiedNameNode>), QErrorNode> {
         let (expr, mut implicit_vars_expr) = self.convert_and_collect_implicit_variables(a.expr)?;
         let (case_blocks, mut implicit_vars_case_blocks) =
@@ -29,12 +25,10 @@ impl<'a> ConverterWithImplicitVariables<parser::SelectCaseNode, SelectCaseNode>
     }
 }
 
-impl<'a> ConverterWithImplicitVariables<parser::CaseBlockNode, CaseBlockNode>
-    for ConverterImpl<'a>
-{
+impl<'a> ConverterWithImplicitVariables<CaseBlockNode, CaseBlockNode> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        a: parser::CaseBlockNode,
+        a: CaseBlockNode,
     ) -> Result<(CaseBlockNode, Vec<QualifiedNameNode>), QErrorNode> {
         let (expr, implicit_vars_expr) = self.convert_and_collect_implicit_variables(a.expr)?;
         Ok((
@@ -47,21 +41,19 @@ impl<'a> ConverterWithImplicitVariables<parser::CaseBlockNode, CaseBlockNode>
     }
 }
 
-impl<'a> ConverterWithImplicitVariables<parser::CaseExpression, CaseExpression>
-    for ConverterImpl<'a>
-{
+impl<'a> ConverterWithImplicitVariables<CaseExpression, CaseExpression> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        a: parser::CaseExpression,
+        a: CaseExpression,
     ) -> Result<(CaseExpression, Vec<QualifiedNameNode>), QErrorNode> {
         match a {
-            parser::CaseExpression::Simple(e) => self
+            CaseExpression::Simple(e) => self
                 .convert_and_collect_implicit_variables(e)
                 .map(|(expr, implicit_vars)| (CaseExpression::Simple(expr), implicit_vars)),
-            parser::CaseExpression::Is(op, e) => self
+            CaseExpression::Is(op, e) => self
                 .convert_and_collect_implicit_variables(e)
                 .map(|(expr, implicit_vars)| (CaseExpression::Is(op, expr), implicit_vars)),
-            parser::CaseExpression::Range(from, to) => {
+            CaseExpression::Range(from, to) => {
                 let (from, mut implicit_vars_from) =
                     self.convert_and_collect_implicit_variables(from)?;
                 let (to, mut implicit_vars_to) = self.convert_and_collect_implicit_variables(to)?;

@@ -1,5 +1,4 @@
-use crate::linter::{ParamName, ParamType};
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, ParamName, ParamType, QualifiedName, TypeQualifier};
 use crate::variant::{Variant, V_FALSE};
 use std::collections::HashMap;
 

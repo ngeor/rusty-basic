@@ -2,10 +2,10 @@ use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
-use crate::linter::{
-    Expression, ParamName, ParamType, PrintNode, Statement, SubImplementation, TopLevelToken,
+use crate::parser::{
+    BareName, BuiltInStyle, Expression, ParamName, ParamType, PrintNode, Statement,
+    SubImplementation, TopLevelToken, TypeQualifier,
 };
-use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
 
 #[test]
 fn function_call_not_allowed() {

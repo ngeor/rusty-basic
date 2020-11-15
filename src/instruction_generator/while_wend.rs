@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::ConditionalBlockNode;
+use crate::parser::ConditionalBlockNode;
 
 impl InstructionGenerator {
     pub fn generate_while_instructions(&mut self, w: ConditionalBlockNode, pos: Location) {

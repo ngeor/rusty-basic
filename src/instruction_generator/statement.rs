@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{Statement, StatementNode, StatementNodes};
+use crate::parser::{Statement, StatementNode, StatementNodes};
 
 impl InstructionGenerator {
     pub fn generate_block_instructions(&mut self, block: StatementNodes) {

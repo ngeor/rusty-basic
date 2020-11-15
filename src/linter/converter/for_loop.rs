@@ -2,14 +2,12 @@ use crate::common::QErrorNode;
 use crate::linter::converter::converter::{
     Converter, ConverterImpl, ConverterWithImplicitVariables,
 };
-use crate::linter::ForLoopNode;
-use crate::parser;
-use crate::parser::QualifiedNameNode;
+use crate::parser::{ForLoopNode, QualifiedNameNode};
 
-impl<'a> ConverterWithImplicitVariables<parser::ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
+impl<'a> ConverterWithImplicitVariables<ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        a: parser::ForLoopNode,
+        a: ForLoopNode,
     ) -> Result<(ForLoopNode, Vec<QualifiedNameNode>), QErrorNode> {
         let (variable_name, implicit_variables_variable_name) =
             self.convert_and_collect_implicit_variables(a.variable_name)?;

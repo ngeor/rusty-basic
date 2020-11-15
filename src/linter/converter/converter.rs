@@ -1,8 +1,7 @@
 use crate::common::*;
 use crate::linter::converter::context::Context;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::types::*;
-use crate::parser::{BareName, QualifiedNameNode};
+use crate::parser::{BareName, FunctionMap, QualifiedNameNode, SubMap, UserDefinedTypes};
 use std::collections::HashSet;
 
 //

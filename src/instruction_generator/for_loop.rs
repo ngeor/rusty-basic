@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{Expression, ForLoopNode, HasExpressionType, StatementNodes};
+use crate::parser::{Expression, ForLoopNode, HasExpressionType, StatementNodes};
 
 impl InstructionGenerator {
     fn store_counter(&mut self, counter_var: &Expression, pos: Location) {

@@ -2,8 +2,7 @@ use crate::built_ins::BuiltInSub;
 use crate::common::{AtRowCol, StripLocation};
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::Instruction;
-use crate::linter::ExpressionType;
-use crate::parser::TypeQualifier;
+use crate::parser::{ExpressionType, TypeQualifier};
 use crate::variant::Variant;
 
 #[test]

@@ -1,5 +1,6 @@
 use crate::common::Locatable;
 use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
+use crate::parser::{ExpressionType, HasExpressionType};
 use std::convert::TryFrom;
 
 #[derive(Clone, Eq, Hash, PartialEq)]
@@ -146,6 +147,15 @@ impl std::fmt::Debug for Name {
 impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl HasExpressionType for Name {
+    fn expression_type(&self) -> ExpressionType {
+        match self {
+            Self::Bare(_) => ExpressionType::Unresolved,
+            Self::Qualified(QualifiedName { qualifier, .. }) => ExpressionType::BuiltIn(*qualifier),
+        }
     }
 }
 

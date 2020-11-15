@@ -3,8 +3,7 @@ use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErro
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::print;
 use crate::interpreter::stdlib::Stdlib;
-use crate::linter::{ElementType, UserDefinedType, UserDefinedTypes};
-use crate::parser::TypeQualifier;
+use crate::parser::{ElementType, TypeQualifier, UserDefinedType, UserDefinedTypes};
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
 use std::convert::TryInto;
 
@@ -724,8 +723,8 @@ mod len {
         types: &UserDefinedTypes,
     ) -> u32 {
         let mut sum: u32 = 0;
-        for (_, element_type) in user_defined_type.elements() {
-            sum += match element_type {
+        for Locatable { element, .. } in user_defined_type.elements() {
+            sum += match element.element_type() {
                 ElementType::Single => 4,
                 ElementType::Double => 8,
                 ElementType::Integer => 2,

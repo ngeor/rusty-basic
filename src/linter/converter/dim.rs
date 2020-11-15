@@ -4,17 +4,16 @@ use crate::common::{
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::{ArrayDimension, DimName, DimNameNode, DimType, Expression};
-use crate::parser;
 use crate::parser::{
-    BareName, BuiltInStyle, Name, QualifiedName, QualifiedNameNode, TypeQualifier,
+    ArrayDimension, ArrayDimensions, BareName, BareNameNode, BuiltInStyle, DimName, DimNameNode,
+    DimType, Expression, ExpressionNode, Name, QualifiedName, QualifiedNameNode, TypeQualifier,
 };
 use crate::variant::Variant;
 
-impl<'a> ConverterWithImplicitVariables<parser::DimNameNode, DimNameNode> for ConverterImpl<'a> {
+impl<'a> ConverterWithImplicitVariables<DimNameNode, DimNameNode> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        dim_name_node: parser::DimNameNode,
+        dim_name_node: DimNameNode,
     ) -> Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
         let Locatable { element, pos } = dim_name_node;
         let (bare_name, dim_type) = element.into_inner();
@@ -38,28 +37,28 @@ impl<'a> ConverterImpl<'a> {
     fn convert_dim_type(
         &mut self,
         bare_name: &BareName,
-        dim_type: parser::DimType,
+        dim_type: DimType,
     ) -> Result<(DimType, Vec<QualifiedNameNode>), QErrorNode> {
         match dim_type {
-            parser::DimType::Bare => self
+            DimType::Bare => self
                 .convert_dim_type_bare(bare_name)
                 .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
-            parser::DimType::BuiltIn(q, BuiltInStyle::Compact) => self
+            DimType::BuiltIn(q, BuiltInStyle::Compact) => self
                 .convert_dim_type_compact(bare_name, q)
                 .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
-            parser::DimType::FixedLengthString(len_expr, _) => self
+            DimType::FixedLengthString(len_expr, _) => self
                 .convert_dim_type_fixed_length_string(bare_name, len_expr)
                 .map(|dim_type| (dim_type, vec![])),
-            parser::DimType::BuiltIn(q, BuiltInStyle::Extended) => self
+            DimType::BuiltIn(q, BuiltInStyle::Extended) => self
                 .convert_dim_type_extended(bare_name, q)
                 .map(|dim_type| (dim_type, vec![]))
                 .with_err_no_pos(),
-            parser::DimType::UserDefined(user_defined_type_node) => self
+            DimType::UserDefined(user_defined_type_node) => self
                 .convert_dim_type_user_defined(bare_name, user_defined_type_node)
                 .map(|dim_type| (dim_type, vec![])),
-            parser::DimType::Array(dimensions, box_type) => {
+            DimType::Array(dimensions, box_type) => {
                 self.convert_dim_type_array(bare_name, dimensions, *box_type)
             }
         }
@@ -89,7 +88,7 @@ impl<'a> ConverterImpl<'a> {
     fn convert_dim_type_fixed_length_string(
         &mut self,
         bare_name: &BareName,
-        len_expr: parser::ExpressionNode,
+        len_expr: ExpressionNode,
     ) -> Result<DimType, QErrorNode> {
         if self.context.contains_any(&bare_name) {
             return Err(QError::DuplicateDefinition).with_err_no_pos();
@@ -122,7 +121,7 @@ impl<'a> ConverterImpl<'a> {
     fn convert_dim_type_user_defined(
         &mut self,
         bare_name: &BareName,
-        user_defined_type: parser::BareNameNode,
+        user_defined_type: BareNameNode,
     ) -> Result<DimType, QErrorNode> {
         if self.context.contains_any(&bare_name) {
             return Err(QError::DuplicateDefinition).with_err_no_pos();
@@ -142,14 +141,12 @@ impl<'a> ConverterImpl<'a> {
     fn convert_dim_type_array(
         &mut self,
         bare_name: &BareName,
-        array_dimensions: parser::ArrayDimensions,
-        element_type: parser::DimType,
+        array_dimensions: ArrayDimensions,
+        element_type: DimType,
     ) -> Result<(DimType, Vec<QualifiedNameNode>), QErrorNode> {
         // re-construct declared name
         let declared_name: Name = match &element_type {
-            parser::DimType::BuiltIn(q, _) => {
-                Name::Qualified(QualifiedName::new(bare_name.clone(), *q))
-            }
+            DimType::BuiltIn(q, _) => Name::Qualified(QualifiedName::new(bare_name.clone(), *q)),
             _ => Name::Bare(bare_name.clone()),
         };
 
@@ -167,14 +164,12 @@ impl<'a> ConverterImpl<'a> {
     }
 }
 
-impl<'a> ConverterWithImplicitVariables<parser::ArrayDimension, ArrayDimension>
-    for ConverterImpl<'a>
-{
+impl<'a> ConverterWithImplicitVariables<ArrayDimension, ArrayDimension> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        array_dimension: parser::ArrayDimension,
+        array_dimension: ArrayDimension,
     ) -> Result<(ArrayDimension, Vec<QualifiedNameNode>), QErrorNode> {
-        let parser::ArrayDimension { lbound, ubound } = array_dimension;
+        let ArrayDimension { lbound, ubound } = array_dimension;
         match lbound {
             Some(lbound) => {
                 let (converted_lbound, mut lbound_implicit_variables) =

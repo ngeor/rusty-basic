@@ -1,13 +1,11 @@
 use super::converter::{ConverterImpl, ConverterWithImplicitVariables};
 use crate::common::*;
-use crate::linter::{PrintArg, PrintNode};
-use crate::parser;
-use crate::parser::QualifiedNameNode;
+use crate::parser::{PrintArg, PrintNode, QualifiedNameNode};
 
-impl<'a> ConverterWithImplicitVariables<parser::PrintNode, PrintNode> for ConverterImpl<'a> {
+impl<'a> ConverterWithImplicitVariables<PrintNode, PrintNode> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        a: parser::PrintNode,
+        a: PrintNode,
     ) -> Result<(PrintNode, Vec<QualifiedNameNode>), QErrorNode> {
         let (format_string, mut implicit_vars_format_string) =
             self.convert_and_collect_implicit_variables(a.format_string)?;
@@ -27,15 +25,15 @@ impl<'a> ConverterWithImplicitVariables<parser::PrintNode, PrintNode> for Conver
     }
 }
 
-impl<'a> ConverterWithImplicitVariables<parser::PrintArg, PrintArg> for ConverterImpl<'a> {
+impl<'a> ConverterWithImplicitVariables<PrintArg, PrintArg> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        a: parser::PrintArg,
+        a: PrintArg,
     ) -> Result<(PrintArg, Vec<QualifiedNameNode>), QErrorNode> {
         match a {
-            parser::PrintArg::Comma => Ok((PrintArg::Comma, vec![])),
-            parser::PrintArg::Semicolon => Ok((PrintArg::Semicolon, vec![])),
-            parser::PrintArg::Expression(e) => self
+            PrintArg::Comma => Ok((PrintArg::Comma, vec![])),
+            PrintArg::Semicolon => Ok((PrintArg::Semicolon, vec![])),
+            PrintArg::Expression(e) => self
                 .convert_and_collect_implicit_variables(e)
                 .map(|(e, vars)| (PrintArg::Expression(e), vars)),
         }

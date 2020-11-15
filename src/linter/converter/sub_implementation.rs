@@ -1,15 +1,15 @@
 use crate::common::QErrorNode;
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::{SubImplementation, TopLevelToken};
-use crate::parser;
-use crate::parser::{BareName, BareNameNode};
+use crate::parser::{
+    BareName, BareNameNode, ParamNameNodes, StatementNodes, SubImplementation, TopLevelToken,
+};
 
 impl<'a> ConverterImpl<'a> {
     pub fn convert_sub_implementation(
         &mut self,
         sub_name_node: BareNameNode,
-        params: parser::ParamNameNodes,
-        block: parser::StatementNodes,
+        params: ParamNameNodes,
+        block: StatementNodes,
     ) -> Result<TopLevelToken, QErrorNode> {
         let sub_name: &BareName = sub_name_node.as_ref();
         self.push_sub_context(sub_name.clone());

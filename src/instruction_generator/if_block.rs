@@ -1,6 +1,6 @@
 use super::InstructionGenerator;
 use crate::common::*;
-use crate::linter::IfBlockNode;
+use crate::parser::IfBlockNode;
 
 impl InstructionGenerator {
     pub fn generate_if_block_instructions(

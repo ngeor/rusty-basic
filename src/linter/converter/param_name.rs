@@ -3,14 +3,15 @@ use crate::common::{
 };
 use crate::linter::converter::converter::ConverterImpl;
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::{ParamName, ParamType};
-use crate::parser;
-use crate::parser::{BareName, BareNameNode, BuiltInStyle, QualifiedName, TypeQualifier};
+use crate::parser::{
+    BareName, BareNameNode, BuiltInStyle, ParamName, ParamNameNode, ParamType, QualifiedName,
+    TypeQualifier,
+};
 
 impl<'a> ConverterImpl<'a> {
     pub fn resolve_params(
         &mut self,
-        params: Vec<parser::ParamNameNode>,
+        params: Vec<ParamNameNode>,
         opt_function_name: Option<&QualifiedName>,
     ) -> Result<Vec<Locatable<ParamName>>, QErrorNode> {
         params
@@ -21,7 +22,7 @@ impl<'a> ConverterImpl<'a> {
 
     fn resolve_param_node(
         &mut self,
-        param_node: parser::ParamNameNode,
+        param_node: ParamNameNode,
         opt_function_name: Option<&QualifiedName>,
     ) -> Result<Locatable<ParamName>, QErrorNode> {
         let Locatable {
@@ -35,7 +36,7 @@ impl<'a> ConverterImpl<'a> {
 
     fn resolve_param(
         &mut self,
-        param: parser::ParamName,
+        param: ParamName,
         opt_function_name: Option<&QualifiedName>,
     ) -> Result<ParamName, QErrorNode> {
         let (bare_name, param_type) = param.into_inner();
@@ -45,18 +46,18 @@ impl<'a> ConverterImpl<'a> {
             return Err(QError::DuplicateDefinition).with_err_no_pos();
         }
         match param_type {
-            parser::ParamType::Bare => self.resolve_param_bare(bare_name, opt_function_name),
-            parser::ParamType::BuiltIn(q, BuiltInStyle::Compact) => {
+            ParamType::Bare => self.resolve_param_bare(bare_name, opt_function_name),
+            ParamType::BuiltIn(q, BuiltInStyle::Compact) => {
                 self.resolve_param_compact(bare_name, q, opt_function_name)
             }
-            parser::ParamType::BuiltIn(q, BuiltInStyle::Extended) => {
+            ParamType::BuiltIn(q, BuiltInStyle::Extended) => {
                 self.resolve_param_extended(bare_name, q, opt_function_name)
             }
-            parser::ParamType::UserDefined(u) => {
+            ParamType::UserDefined(u) => {
                 self.resolve_param_user_defined(bare_name, u, opt_function_name)
             }
-            parser::ParamType::Array(boxed_element_type) => {
-                let dummy_element_param = parser::ParamName::new(bare_name, *boxed_element_type);
+            ParamType::Array(boxed_element_type) => {
+                let dummy_element_param = ParamName::new(bare_name, *boxed_element_type);
                 let resolved = self.resolve_param(dummy_element_param, opt_function_name)?;
                 Ok(resolved.new_array())
             }

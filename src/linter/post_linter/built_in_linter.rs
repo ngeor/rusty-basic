@@ -1,8 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::types::{Expression, ExpressionNode, ExpressionType, HasExpressionType};
-use crate::parser::TypeQualifier;
+use crate::parser::{Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier};
 
 /// Lints built-in functions and subs.
 pub struct BuiltInLinter;
@@ -183,6 +182,7 @@ mod kill {
 mod line_input {
     use super::*;
     use crate::common::ToErrorEnvelopeNoPos;
+    use crate::parser::ExpressionType;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // the first one or two arguments stand for the file number

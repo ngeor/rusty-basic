@@ -1,8 +1,9 @@
 use crate::common::{AtLocation, Locatable, QError, QErrorNode, ToLocatableError};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::converter::ConverterImpl;
-use crate::linter::{Expression, Statement};
-use crate::parser::{BareName, Name, NameNode, QualifiedName, TypeQualifier};
+use crate::parser::{
+    BareName, Expression, ExpressionNode, Name, NameNode, QualifiedName, Statement, TypeQualifier,
+};
 use crate::variant::Variant;
 use std::convert::TryInto;
 
@@ -10,7 +11,7 @@ impl<'a> ConverterImpl<'a> {
     pub fn constant(
         &mut self,
         left: NameNode,
-        right: crate::parser::ExpressionNode,
+        right: ExpressionNode,
     ) -> Result<Statement, QErrorNode> {
         let Locatable { element: name, pos } = left;
         let bare_name: &BareName = name.as_ref();

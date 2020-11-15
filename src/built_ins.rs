@@ -1,6 +1,5 @@
 use crate::common::*;
-use crate::linter::{DimName, DimType};
-use crate::parser::{BareName, BuiltInStyle, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, BuiltInStyle, DimName, DimType, Name, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
 // ========================================================

@@ -1,6 +1,6 @@
 use super::Variant;
-use crate::common::CaseInsensitiveString;
-use crate::linter::UserDefinedTypes;
+use crate::common::{CaseInsensitiveString, Locatable};
+use crate::parser::UserDefinedTypes;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -13,9 +13,9 @@ impl UserDefinedTypeValue {
     pub fn new(type_name: &CaseInsensitiveString, types: &UserDefinedTypes) -> Self {
         let user_defined_type = types.get(type_name).expect("could not find type");
         let mut map: HashMap<CaseInsensitiveString, Variant> = HashMap::new();
-        for (name, element_type) in user_defined_type.elements() {
-            let def_value: Variant = element_type.default_variant(types);
-            map.insert(name.clone(), def_value);
+        for Locatable { element, .. } in user_defined_type.elements() {
+            let def_value: Variant = element.element_type().default_variant(types);
+            map.insert(element.as_ref().clone(), def_value);
         }
 
         Self {

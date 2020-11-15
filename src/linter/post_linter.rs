@@ -14,7 +14,7 @@ pub mod user_defined_sub_linter;
 use crate::common::{CaseInsensitiveString, QErrorNode};
 use crate::linter::post_linter::expression_reducer::ExpressionReducer;
 use crate::linter::post_linter::post_conversion_linter::PostConversionLinter;
-use crate::linter::types::{FunctionMap, ProgramNode, SubMap};
+use crate::parser::{FunctionMap, ProgramNode, SubMap};
 use std::collections::HashSet;
 
 pub fn post_linter(

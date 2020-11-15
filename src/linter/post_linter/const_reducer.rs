@@ -1,7 +1,8 @@
 use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
 use crate::linter::post_linter::expression_reducer::ExpressionReducer;
-use crate::linter::{Expression, FunctionImplementation, Statement, SubImplementation};
-use crate::parser::{Name, NameNode, QualifiedName};
+use crate::parser::{
+    Expression, FunctionImplementation, Name, NameNode, QualifiedName, Statement, SubImplementation,
+};
 use crate::variant::Variant;
 use std::collections::HashMap;
 

@@ -3,9 +3,10 @@ use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::types::{Expression, UserDefinedTypes};
-use crate::linter::{ArrayDimensions, ExpressionType};
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{
+    ArrayDimensions, BareName, Expression, ExpressionType, Name, QualifiedName, TypeQualifier,
+    UserDefinedTypes,
+};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
 

@@ -1,6 +1,6 @@
 use super::expression_reducer::*;
 use crate::common::*;
-use crate::linter::types::*;
+use crate::parser::{Expression, FunctionMap};
 
 /// Finds undefined functions and converts them to zeroes.
 pub struct UndefinedFunctionReducer<'a> {

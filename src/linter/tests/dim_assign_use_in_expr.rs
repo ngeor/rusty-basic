@@ -2,9 +2,10 @@ use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
 use crate::common::*;
 use crate::linter::test_utils::*;
-use crate::linter::*;
-use crate::parser::{BareName, BuiltInStyle, TypeQualifier};
-use std::collections::HashMap;
+use crate::parser::{
+    BareName, BuiltInStyle, DimName, DimType, Element, ElementType, Expression, ExpressionType,
+    PrintNode, Statement, TopLevelToken, TypeQualifier,
+};
 
 /// Three step tests:
 /// 1. DIM a new variable
@@ -23,12 +24,12 @@ fn bare() {
         vec![
             TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").at_rc(2, 9))).at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
-                Expression::var("A!"),
+                Expression::var_linted("A!"),
                 Expression::IntegerLiteral(42).at_rc(3, 9)
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::var("A!").at_rc(4, 11)
+                Expression::var_linted("A!").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]
@@ -47,12 +48,12 @@ fn compact_string() {
         vec![
             TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 9))).at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
-                Expression::var("A$"),
+                Expression::var_linted("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 10)
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::var("A$").at_rc(4, 11)
+                Expression::var_linted("A$").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]
@@ -78,12 +79,12 @@ fn extended_string() {
             ))
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
-                Expression::var("A$"),
+                Expression::var_linted("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 9)
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::var("A$").at_rc(4, 11)
+                Expression::var_linted("A$").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]
@@ -101,7 +102,7 @@ fn user_defined_type() {
     DIM B AS Card
     A = B
     "#;
-    let (program, user_defined_types) = linter_ok_with_types(input);
+    let (program, mut user_defined_types) = linter_ok_with_types(input);
     assert_eq!(
         program,
         vec![
@@ -137,15 +138,22 @@ fn user_defined_type() {
         user_defined_types.contains_key(&"Card".into()),
         "Expected to contain the `Card` type"
     );
-    let mut m: HashMap<CaseInsensitiveString, ElementType> = HashMap::new();
-    m.insert("Value".into(), ElementType::Integer);
-    m.insert(
-        "Suit".into(),
-        ElementType::FixedLengthString(Expression::IntegerLiteral(9).at_rc(4, 26), 9),
-    );
+    let user_defined_type = user_defined_types.remove(&"Card".into()).unwrap();
+    assert_eq!(user_defined_type.as_ref(), &BareName::from("Card"));
+    let elements: Vec<Element> = user_defined_type
+        .elements()
+        .map(|x| x.as_ref().clone())
+        .collect();
     assert_eq!(
-        *user_defined_types.get(&"Card".into()).unwrap(),
-        UserDefinedType::new(m)
+        elements,
+        vec![
+            Element::new("Value".into(), ElementType::Integer, vec![]),
+            Element::new(
+                "Suit".into(),
+                ElementType::FixedLengthString(Expression::IntegerLiteral(9).at_rc(4, 26), 9),
+                vec![]
+            )
+        ]
     );
 }
 

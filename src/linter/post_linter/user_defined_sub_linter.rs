@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
 use crate::common::*;
-use crate::linter::types::*;
+use crate::parser::{ExpressionNode, SubMap};
 
 pub struct UserDefinedSubLinter<'a> {
     pub subs: &'a SubMap,

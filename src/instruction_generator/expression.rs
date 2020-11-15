@@ -1,7 +1,9 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::*;
-use crate::parser::{Operator, TypeQualifier, UnaryOperator};
+use crate::parser::{
+    Expression, ExpressionNode, ExpressionType, HasExpressionType, Operator, TypeQualifier,
+    UnaryOperator,
+};
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(

@@ -1,7 +1,11 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::linter::types::*;
-use crate::parser::NameNode;
+use crate::parser::{
+    CaseExpression, ConditionalBlockNode, DimNameNode, Expression, ExpressionNode, ForLoopNode,
+    FunctionImplementation, IfBlockNode, NameNode, PrintArg, PrintNode, ProgramNode,
+    SelectCaseNode, Statement, StatementNode, StatementNodes, SubImplementation, TopLevelToken,
+    TopLevelTokenNode,
+};
 use crate::variant::Variant;
 
 /// Invoked after the conversion to fully typed program.

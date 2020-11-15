@@ -1,7 +1,9 @@
 use crate::built_ins::BuiltInFunction;
-use crate::common::{AtLocation, HasLocation, Locatable, Location};
+use crate::common::{
+    AtLocation, CanCastTo, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
+};
 use crate::parser::types::{Name, Operator, UnaryOperator};
-use crate::parser::{ExpressionType, QualifiedName};
+use crate::parser::{ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
 use crate::variant::{MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -85,9 +87,17 @@ impl From<i64> for Expression {
 }
 
 impl Expression {
+    #[cfg(test)]
     pub fn var(s: &str) -> Self {
         let name: Name = s.into();
         Expression::Variable(name, ExpressionType::Unresolved)
+    }
+
+    #[cfg(test)]
+    pub fn var_linted(s: &str) -> Self {
+        let name: Name = s.into();
+        let expression_type = name.expression_type();
+        Expression::Variable(name, expression_type)
     }
 
     pub fn func(s: &str, args: ExpressionNodes) -> Self {
@@ -177,6 +187,31 @@ impl Expression {
             _ => None,
         }
     }
+
+    pub fn binary(
+        left: ExpressionNode,
+        right: ExpressionNode,
+        op: Operator,
+    ) -> Result<Self, QErrorNode> {
+        // get the types
+        let t_left = left.expression_type();
+        let t_right = right.expression_type();
+        // get the cast type
+        match t_left.cast_binary_op(t_right, op) {
+            Some(type_definition) => Ok(Expression::BinaryExpression(
+                op,
+                Box::new(left),
+                Box::new(right),
+                type_definition,
+            )),
+            None => Err(QError::TypeMismatch).with_err_at(&right),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn user_defined(name: &str, type_name: &str) -> Self {
+        Expression::Variable(name.into(), ExpressionType::UserDefined(type_name.into()))
+    }
 }
 
 impl ExpressionNode {
@@ -255,5 +290,48 @@ impl ExpressionNode {
             }
             _ => Expression::UnaryExpression(op, Box::new(self)).at(pos),
         }
+    }
+}
+
+impl HasExpressionType for Expression {
+    fn expression_type(&self) -> ExpressionType {
+        match self {
+            Self::SingleLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::BangSingle),
+            Self::DoubleLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::HashDouble),
+            Self::StringLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::DollarString),
+            Self::IntegerLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
+            Self::LongLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::AmpersandLong),
+            Self::Variable(_, expression_type)
+            | Self::Property(_, _, expression_type)
+            | Self::BinaryExpression(_, _, _, expression_type)
+            | Self::ArrayElement(_, _, expression_type) => expression_type.clone(),
+            Self::Constant(QualifiedName { qualifier, .. })
+            | Self::FunctionCall(Name::Qualified(QualifiedName { qualifier, .. }), _) => {
+                ExpressionType::BuiltIn(*qualifier)
+            }
+            Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
+            Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().expression_type(),
+            Self::FunctionCall(Name::Bare(_), _) => ExpressionType::Unresolved,
+        }
+    }
+}
+
+impl CanCastTo<TypeQualifier> for Expression {
+    fn can_cast_to(&self, other: TypeQualifier) -> bool {
+        self.expression_type().can_cast_to(other)
+    }
+}
+
+impl<T: HasExpressionType> CanCastTo<&T> for Expression {
+    fn can_cast_to(&self, other: &T) -> bool {
+        let other_type_definition = other.expression_type();
+        self.expression_type().can_cast_to(&other_type_definition)
+    }
+}
+
+impl From<QualifiedName> for Expression {
+    fn from(var_name: QualifiedName) -> Self {
+        let q = var_name.qualifier;
+        Self::Variable(var_name.into(), ExpressionType::BuiltIn(q))
     }
 }

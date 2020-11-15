@@ -4,7 +4,7 @@ use crate::interpreter::io::FileManager;
 use crate::interpreter::printer::Printer;
 use crate::interpreter::registers::Registers;
 use crate::interpreter::stdlib::Stdlib;
-use crate::linter::UserDefinedTypes;
+use crate::parser::UserDefinedTypes;
 
 pub trait InterpreterTrait {
     type TStdlib: Stdlib;

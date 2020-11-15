@@ -1,7 +1,6 @@
 use crate::common::QError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::linter::ExpressionType;
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, ExpressionType, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, VArray, Variant};
 use std::convert::TryFrom;
 

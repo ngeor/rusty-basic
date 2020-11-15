@@ -1,7 +1,6 @@
 use crate::common::Locatable;
 use crate::instruction_generator::{Instruction, InstructionGenerator};
-use crate::linter::ExpressionNode;
-use crate::parser::{BareName, NameNode};
+use crate::parser::{BareName, ExpressionNode, NameNode};
 
 impl InstructionGenerator {
     pub fn generate_function_call_instructions(

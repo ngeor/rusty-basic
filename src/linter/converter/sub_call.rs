@@ -1,8 +1,7 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Locatable, QErrorNode};
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
-use crate::linter::{Statement, StatementNode};
-use crate::parser::{BareNameNode, ExpressionNodes, QualifiedNameNode};
+use crate::parser::{BareNameNode, ExpressionNodes, QualifiedNameNode, Statement, StatementNode};
 
 impl<'a> ConverterImpl<'a> {
     pub fn sub_call(

@@ -2,11 +2,12 @@ use super::{
     BareName, DimNameNode, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator,
     PrintNode,
 };
+use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::variant::Variant;
 
-pub type StatementNodes = Vec<StatementNode>;
 pub type StatementNode = Locatable<Statement>;
+pub type StatementNodes = Vec<StatementNode>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
@@ -26,7 +27,7 @@ pub enum Statement {
     Dim(DimNameNode),
 
     SubCall(BareName, ExpressionNodes),
-
+    BuiltInSubCall(BuiltInSub, ExpressionNodes),
     IfBlock(IfBlockNode),
     SelectCase(SelectCaseNode),
 

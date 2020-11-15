@@ -1,7 +1,10 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
-use crate::linter::types::*;
-use crate::parser::{BareName, BareNameNode, Name, NameNode, QualifiedName, QualifiedNameNode};
+use crate::parser::{
+    BareName, BareNameNode, DimName, DimNameNode, Expression, ExpressionNode, ForLoopNode,
+    FunctionImplementation, Name, NameNode, ParamName, QualifiedName, QualifiedNameNode,
+    SubImplementation,
+};
 use crate::variant::Variant;
 use std::collections::HashSet;
 

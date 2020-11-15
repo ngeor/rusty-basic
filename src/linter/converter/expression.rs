@@ -2,39 +2,35 @@ use crate::common::{
     AtLocation, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
 };
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
-use crate::linter::{Expression, ExpressionNode, ExpressionType, HasExpressionType};
-use crate::parser;
-use crate::parser::{QualifiedNameNode, TypeQualifier};
+use crate::parser::{
+    Expression, ExpressionNode, ExpressionType, HasExpressionType, QualifiedNameNode, TypeQualifier,
+};
 
 // Convert expression into an expression + a collection of implicitly declared variables
 
 type ExprResult = Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode>;
 
-impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, ExpressionNode>
-    for ConverterImpl<'a>
-{
+impl<'a> ConverterWithImplicitVariables<ExpressionNode, ExpressionNode> for ConverterImpl<'a> {
     fn convert_and_collect_implicit_variables(
         &mut self,
-        expression_node: crate::parser::ExpressionNode,
+        expression_node: ExpressionNode,
     ) -> ExprResult {
         let Locatable { element, pos } = expression_node;
         match element {
-            parser::Expression::SingleLiteral(f) => f.into_expr_result(pos),
-            parser::Expression::DoubleLiteral(d) => d.into_expr_result(pos),
-            parser::Expression::StringLiteral(s) => s.into_expr_result(pos),
-            parser::Expression::IntegerLiteral(i) => i.into_expr_result(pos),
-            parser::Expression::LongLiteral(l) => l.into_expr_result(pos),
-            parser::Expression::Variable(var_name, _) => {
-                var_name::into_expr_result(self, var_name, pos)
-            }
-            parser::Expression::Constant(_) => panic!("Constant is only a linter thing"),
-            parser::Expression::FunctionCall(name_expr, args) => {
+            Expression::SingleLiteral(f) => f.into_expr_result(pos),
+            Expression::DoubleLiteral(d) => d.into_expr_result(pos),
+            Expression::StringLiteral(s) => s.into_expr_result(pos),
+            Expression::IntegerLiteral(i) => i.into_expr_result(pos),
+            Expression::LongLiteral(l) => l.into_expr_result(pos),
+            Expression::Variable(var_name, _) => var_name::into_expr_result(self, var_name, pos),
+            Expression::Constant(_) => panic!("Constant is only a linter thing"),
+            Expression::FunctionCall(name_expr, args) => {
                 function_call::into_expr_result(self, name_expr, args, pos)
             }
-            parser::Expression::Property(box_left_side, property_name, _) => {
+            Expression::Property(box_left_side, property_name, _) => {
                 property::into_expr_result(self, *box_left_side, property_name, pos)
             }
-            parser::Expression::BinaryExpression(op, l, r, _) => {
+            Expression::BinaryExpression(op, l, r, _) => {
                 // unbox them
                 let unboxed_left = *l;
                 let unboxed_right = *r;
@@ -48,7 +44,7 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                 Expression::binary(converted_left, converted_right, op)
                     .map(|bin_expr| (bin_expr.at(pos), implicit_variables_left))
             }
-            parser::Expression::UnaryExpression(op, c) => {
+            Expression::UnaryExpression(op, c) => {
                 let (converted_child, implicit_variables) =
                     self.convert_and_collect_implicit_variables(c)?;
                 match converted_child.expression_type() {
@@ -65,7 +61,7 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                     )),
                 }
             }
-            parser::Expression::Parenthesis(c) => {
+            Expression::Parenthesis(c) => {
                 let (converted_child, implicit_variables) =
                     self.convert_and_collect_implicit_variables(c)?;
                 Ok((
@@ -73,8 +69,8 @@ impl<'a> ConverterWithImplicitVariables<crate::parser::ExpressionNode, Expressio
                     implicit_variables,
                 ))
             }
-            parser::Expression::ArrayElement(_, _, _) => unimplemented!(),
-            parser::Expression::BuiltInFunctionCall(_, _) => unimplemented!(),
+            Expression::ArrayElement(_, _, _) => unimplemented!(),
+            Expression::BuiltInFunctionCall(_, _) => unimplemented!(),
         }
     }
 }
@@ -118,8 +114,7 @@ pub mod var_name {
     use crate::common::{AtLocation, Locatable, Location, QError, ToLocatableError};
     use crate::linter::converter::converter::ConverterImpl;
     use crate::linter::converter::expression::ExprResult;
-    use crate::linter::Expression;
-    use crate::parser::{BareName, Name, QualifiedName};
+    use crate::parser::{BareName, Expression, Name, QualifiedName};
 
     pub fn into_expr_result(
         converter: &mut ConverterImpl,
@@ -211,15 +206,13 @@ pub mod function_call {
     use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
     use crate::linter::converter::expression::ExprResult;
     use crate::linter::type_resolver::TypeResolver;
-    use crate::linter::Expression;
-    use crate::parser;
-    use crate::parser::Name;
+    use crate::parser::{Expression, ExpressionNodes, Name};
     use std::convert::TryInto;
 
     pub fn into_expr_result(
         converter: &mut ConverterImpl,
         name_expr: Name,
-        args: parser::ExpressionNodes,
+        args: ExpressionNodes,
         pos: Location,
     ) -> ExprResult {
         let n = name_expr.clone();
@@ -282,12 +275,11 @@ pub mod property {
     use crate::common::{AtLocation, Locatable, Location, QError, ToLocatableError};
     use crate::linter::converter::converter::ConverterImpl;
     use crate::linter::converter::expression::ExprResult;
-    use crate::linter::{Expression, ExpressionType, HasExpressionType};
-    use crate::parser::{BareName, Name};
+    use crate::parser::{BareName, Expression, ExpressionType, HasExpressionType, Name};
 
     pub fn into_expr_result(
         converter: &mut ConverterImpl,
-        left_side: crate::parser::Expression,
+        left_side: Expression,
         property_name: Name,
         pos: Location,
     ) -> ExprResult {
@@ -299,7 +291,7 @@ pub mod property {
 
         // A(1).Test.Toast -> only allowed if A exists and is array of user defined type
         match left_side {
-            crate::parser::Expression::Variable(left_side_name, _) => {
+            Expression::Variable(left_side_name, _) => {
                 match converter
                     .context
                     .resolve_expression(&left_side_name, &converter.resolver)
@@ -333,8 +325,8 @@ pub mod property {
                     }
                 }
             }
-            crate::parser::Expression::FunctionCall(_left_side_name, _args) => todo!(),
-            crate::parser::Expression::Property(new_boxed_left_side, new_property_name, _) => {
+            Expression::FunctionCall(_left_side_name, _args) => todo!(),
+            Expression::Property(new_boxed_left_side, new_property_name, _) => {
                 let new_left_side = *new_boxed_left_side;
                 let (
                     Locatable {

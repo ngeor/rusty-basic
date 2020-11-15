@@ -1,7 +1,9 @@
 use super::instruction::*;
 use crate::common::*;
-use crate::linter::*;
-use crate::parser::{BareName, Name, QualifiedName};
+use crate::parser::{
+    BareName, Expression, ExpressionNode, FunctionImplementation, HasExpressionType, Name,
+    ParamName, ProgramNode, QualifiedName, SubImplementation, TopLevelToken,
+};
 use crate::variant::Variant;
 use std::collections::HashMap;
 

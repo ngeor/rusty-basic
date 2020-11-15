@@ -2,14 +2,16 @@ use crate::common::{
     AtLocation, CanCastTo, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
 };
 use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
-use crate::linter::{Expression, ExpressionNode, ExpressionType, Statement, StatementNode};
-use crate::parser::{BareName, Name, QualifiedNameNode, TypeQualifier};
+use crate::parser::{
+    BareName, Expression, ExpressionNode, ExpressionType, Name, QualifiedNameNode, Statement,
+    StatementNode, TypeQualifier,
+};
 
 impl<'a> ConverterImpl<'a> {
     pub fn assignment(
         &mut self,
-        name_expr_node: crate::parser::ExpressionNode,
-        expression_node: crate::parser::ExpressionNode,
+        name_expr_node: ExpressionNode,
+        expression_node: ExpressionNode,
     ) -> Result<(StatementNode, Vec<QualifiedNameNode>), QErrorNode> {
         let (
             Locatable {
@@ -33,7 +35,7 @@ impl<'a> ConverterImpl<'a> {
 
     pub fn assignment_name(
         &mut self,
-        name_expr_node: crate::parser::ExpressionNode,
+        name_expr_node: ExpressionNode,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
         match self.assignment_subprogram(&name_expr_node)? {
             Some(func_assignment) => Ok((func_assignment, vec![])),
@@ -43,14 +45,12 @@ impl<'a> ConverterImpl<'a> {
                     pos,
                 } = name_expr_node;
                 match name_expr {
-                    crate::parser::Expression::Variable(name, _) => {
-                        self.assignment_name_variable_name(name, pos)
-                    }
-                    crate::parser::Expression::FunctionCall(_, _) => {
+                    Expression::Variable(name, _) => self.assignment_name_variable_name(name, pos),
+                    Expression::FunctionCall(_, _) => {
                         // TODO check if name is an array
                         self.convert_and_collect_implicit_variables(name_expr.at(pos))
                     }
-                    crate::parser::Expression::Property(left_side, property_name, _) => {
+                    Expression::Property(left_side, property_name, _) => {
                         self.assignment_name_property(*left_side, property_name, pos)
                     }
                     _ => unimplemented!(),
@@ -61,7 +61,7 @@ impl<'a> ConverterImpl<'a> {
 
     fn assignment_subprogram(
         &mut self,
-        name_expr_node: &crate::parser::ExpressionNode,
+        name_expr_node: &ExpressionNode,
     ) -> Result<Option<ExpressionNode>, QErrorNode> {
         let pos = name_expr_node.pos();
         match name_expr_node.as_ref().clone().fold_name() {
@@ -113,7 +113,7 @@ impl<'a> ConverterImpl<'a> {
 
     fn assignment_name_property(
         &mut self,
-        left_side: crate::parser::Expression,
+        left_side: Expression,
         property_name: Name,
         pos: Location,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {

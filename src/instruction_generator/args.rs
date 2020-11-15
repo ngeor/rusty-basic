@@ -1,7 +1,8 @@
 use crate::common::{AtLocation, Locatable, Location};
 use crate::instruction_generator::{Instruction, InstructionGenerator};
-use crate::linter::{Expression, ExpressionNode, ExpressionType, HasExpressionType, ParamName};
-use crate::parser::QualifiedName;
+use crate::parser::{
+    Expression, ExpressionNode, ExpressionType, HasExpressionType, ParamName, QualifiedName,
+};
 
 impl InstructionGenerator {
     pub fn generate_push_named_args_instructions(

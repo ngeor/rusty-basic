@@ -1,7 +1,6 @@
 use super::post_conversion_linter::*;
 use crate::common::*;
-use crate::linter::types::*;
-use crate::parser::TypeQualifier;
+use crate::parser::{Expression, ExpressionType, ForLoopNode, TypeQualifier};
 
 pub struct ForNextCounterMatch;
 

@@ -13,7 +13,7 @@ use crate::linter::types::{
 use crate::parser;
 use crate::parser::{
     BareName, BareNameNode, BuiltInStyle, Expression, ExpressionNode, Name, NameNode, ProgramNode,
-    QualifiedName, Statement, TopLevelToken, TypeQualifier,
+    QualifiedName, Statement, SubImplementation, TopLevelToken, TypeQualifier,
 };
 use crate::variant::Variant;
 use std::collections::HashMap;
@@ -59,7 +59,11 @@ pub fn parse_subprograms_and_types(
                     &user_defined_types,
                 )?;
             }
-            TopLevelToken::SubImplementation(bare_name_node, params, _) => {
+            TopLevelToken::SubImplementation(SubImplementation {
+                name: bare_name_node,
+                params,
+                ..
+            }) => {
                 sub_context.add_implementation(
                     bare_name_node,
                     params,

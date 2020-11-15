@@ -131,7 +131,7 @@ mod tests {
     use crate::common::*;
     use crate::parser::{
         BuiltInStyle, Expression, ExpressionType, Operator, ParamName, ParamType, PrintArg,
-        PrintNode, Statement, TopLevelToken, TypeQualifier,
+        PrintNode, Statement, SubImplementation, TopLevelToken, TypeQualifier,
     };
 
     #[test]
@@ -239,14 +239,15 @@ mod tests {
                 // Hello
                 TopLevelToken::Statement(Statement::SubCall("Hello".into(), vec![])),
                 // SUB Hello
-                TopLevelToken::SubImplementation(
-                    "Hello".as_bare_name(4, 13),
-                    vec![],
-                    vec![
-                        Statement::SubCall("ENVIRON".into(), vec!["FOO=BAR".as_lit_expr(5, 21)])
-                            .at_rc(5, 13)
-                    ],
-                )
+                TopLevelToken::SubImplementation(SubImplementation {
+                    name: "Hello".as_bare_name(4, 13),
+                    params: vec![],
+                    body: vec![Statement::SubCall(
+                        "ENVIRON".into(),
+                        vec!["FOO=BAR".as_lit_expr(5, 21)]
+                    )
+                    .at_rc(5, 13)]
+                },)
             ]
         );
     }
@@ -286,9 +287,9 @@ mod tests {
                     vec!["FOO".as_lit_expr(3, 15), "BAR".as_lit_expr(3, 22)]
                 )),
                 // SUB Hello
-                TopLevelToken::SubImplementation(
-                    "Hello".as_bare_name(4, 13),
-                    vec![
+                TopLevelToken::SubImplementation(SubImplementation {
+                    name: "Hello".as_bare_name(4, 13),
+                    params: vec![
                         ParamName::new(
                             "N".into(),
                             ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
@@ -300,7 +301,7 @@ mod tests {
                         )
                         .at_rc(4, 23)
                     ],
-                    vec![Statement::SubCall(
+                    body: vec![Statement::SubCall(
                         "ENVIRON".into(),
                         vec![Expression::BinaryExpression(
                             Operator::Plus,
@@ -318,8 +319,8 @@ mod tests {
                         )
                         .at_rc(5, 24)]
                     )
-                    .at_rc(5, 13)],
-                )
+                    .at_rc(5, 13)]
+                })
             ]
         );
     }

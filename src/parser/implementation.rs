@@ -65,7 +65,9 @@ pub fn sub_implementation<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected: SUB after END"),
             ),
         ),
-        |((n, p), body, _, _, _)| TopLevelToken::SubImplementation(n, p, body),
+        |((name, params), body, _, _, _)| {
+            TopLevelToken::SubImplementation(SubImplementation { name, params, body })
+        },
     )
 }
 

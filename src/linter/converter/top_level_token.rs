@@ -25,8 +25,12 @@ impl<'a> Converter<parser::TopLevelTokenNode, Vec<TopLevelTokenNode>> for Conver
             parser::TopLevelToken::FunctionImplementation(n, params, block) => self
                 .convert_function_implementation(n, params, block)
                 .map(|top_level_token| vec![top_level_token.at(pos)]),
-            parser::TopLevelToken::SubImplementation(n, params, block) => self
-                .convert_sub_implementation(n, params, block)
+            parser::TopLevelToken::SubImplementation(parser::SubImplementation {
+                name,
+                params,
+                body,
+            }) => self
+                .convert_sub_implementation(name, params, body)
                 .map(|top_level_token| vec![top_level_token.at(pos)]),
             parser::TopLevelToken::Statement(statement) => {
                 let statement_node = statement.at(pos);

@@ -157,7 +157,7 @@ fn element_type<T: BufRead + 'static>(
                 ),
                 demand_string_length(),
             ),
-            |(_, _, e)| ElementType::FixedLengthString(e),
+            |(_, _, e)| ElementType::FixedLengthString(e, 0),
         ),
         map(with_pos(bare_name_without_dot()), |n| {
             ElementType::UserDefined(n)
@@ -209,7 +209,7 @@ mod tests {
                 elements: vec![
                     Element {
                         name: "Suit".into(),
-                        element_type: ElementType::FixedLengthString(9.as_lit_expr(3, 30)),
+                        element_type: ElementType::FixedLengthString(9.as_lit_expr(3, 30), 0),
                         comments: vec![],
                     }
                     .at_rc(3, 13),
@@ -241,7 +241,7 @@ mod tests {
                 elements: vec![
                     Element {
                         name: "Suit".into(),
-                        element_type: ElementType::FixedLengthString(9.as_lit_expr(3, 30)),
+                        element_type: ElementType::FixedLengthString(9.as_lit_expr(3, 30), 0),
                         comments: vec![String::from(" The suit of the card").at_rc(3, 32)],
                     }
                     .at_rc(3, 13),

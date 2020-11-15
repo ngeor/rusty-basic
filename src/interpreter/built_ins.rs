@@ -692,6 +692,7 @@ mod len {
     // LEN(str_expr$) -> number of characters in string
     // LEN(variable) -> number of bytes required to store a variable
     use super::*;
+    use crate::common::Locatable;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         let v: &Variant = interpreter.context().get(0).unwrap();
@@ -729,8 +730,10 @@ mod len {
                 ElementType::Double => 8,
                 ElementType::Integer => 2,
                 ElementType::Long => 4,
-                ElementType::FixedLengthString(l) => *l as u32,
-                ElementType::UserDefined(type_name) => {
+                ElementType::FixedLengthString(_, l) => *l as u32,
+                ElementType::UserDefined(Locatable {
+                    element: type_name, ..
+                }) => {
                     len_of_user_defined_type(types.get(type_name).expect("type not found"), types)
                 }
             };
@@ -1357,13 +1360,13 @@ mod val {
     fn val(s: &String) -> Result<Variant, QError> {
         let mut is_positive = true;
         let mut value: f64 = 0.0;
-        let mut frac_power: i32 = 0;
+        let mut fraction_power: i32 = 0;
 
         const STATE_INITIAL: u8 = 0;
         const STATE_SIGN: u8 = 1;
         const STATE_INT: u8 = 2;
         const STATE_DOT: u8 = 3;
-        const STATE_FRAC: u8 = 4;
+        const STATE_FRACTION: u8 = 4;
         let mut state: u8 = STATE_INITIAL;
 
         for c in s.chars() {
@@ -1371,23 +1374,24 @@ mod val {
                 if state == STATE_INITIAL || state == STATE_SIGN {
                     state = STATE_INT;
                 } else if state == STATE_DOT {
-                    state = STATE_FRAC;
+                    state = STATE_FRACTION;
                 }
                 if state == STATE_INT {
                     value = value * 10.0 + ((c as u8) - ('0' as u8)) as f64;
                 } else {
-                    if frac_power <= MAX_INTEGER {
-                        frac_power += 1;
+                    if fraction_power <= MAX_INTEGER {
+                        fraction_power += 1;
                     } else {
                         return Err(QError::Overflow);
                     }
-                    value = (value * 10.0_f64.powi(frac_power) + ((c as u8) - ('0' as u8)) as f64)
-                        / 10.0_f64.powi(frac_power);
+                    value = (value * 10.0_f64.powi(fraction_power)
+                        + ((c as u8) - ('0' as u8)) as f64)
+                        / 10.0_f64.powi(fraction_power);
                 }
             } else if c == ' ' {
                 // ignore spaces apparently
             } else if c == '.' {
-                if state == STATE_DOT || state == STATE_FRAC {
+                if state == STATE_DOT || state == STATE_FRACTION {
                     break;
                 } else {
                     state = STATE_DOT;

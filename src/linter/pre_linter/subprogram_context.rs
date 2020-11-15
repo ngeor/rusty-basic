@@ -152,10 +152,14 @@ fn user_defined_type(
                 parser::ElementType::Long => ElementType::Long,
                 parser::ElementType::Single => ElementType::Single,
                 parser::ElementType::Double => ElementType::Double,
-                parser::ElementType::FixedLengthString(str_len_expression_node) => {
+                parser::ElementType::FixedLengthString(str_len_expression_node, _) => {
                     let l: u16 =
                         validate_element_type_str_len(global_constants, str_len_expression_node)?;
-                    ElementType::FixedLengthString(l)
+                    ElementType::FixedLengthString(
+                        crate::linter::Expression::IntegerLiteral(l as i32)
+                            .at(str_len_expression_node),
+                        l,
+                    )
                 }
                 parser::ElementType::UserDefined(Locatable {
                     element: referred_name,
@@ -164,7 +168,7 @@ fn user_defined_type(
                     if !user_defined_types.contains_key(referred_name) {
                         return Err(QError::TypeNotDefined).with_err_at(pos);
                     }
-                    ElementType::UserDefined(referred_name.clone())
+                    ElementType::UserDefined(referred_name.clone().at(pos))
                 }
             };
             resolved_elements.insert(element_name.clone(), resolved_element_type);

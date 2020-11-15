@@ -139,7 +139,10 @@ fn user_defined_type() {
     );
     let mut m: HashMap<CaseInsensitiveString, ElementType> = HashMap::new();
     m.insert("Value".into(), ElementType::Integer);
-    m.insert("Suit".into(), ElementType::FixedLengthString(9));
+    m.insert(
+        "Suit".into(),
+        ElementType::FixedLengthString(Expression::IntegerLiteral(9).at_rc(4, 26), 9),
+    );
     assert_eq!(
         *user_defined_types.get(&"Card".into()).unwrap(),
         UserDefinedType::new(m)

@@ -4,8 +4,7 @@ use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::TypeResolver;
 use crate::parser::{
-    ArrayDimensions, BareName, Expression, ExpressionType, Name, QualifiedName, TypeQualifier,
-    UserDefinedTypes,
+    BareName, Expression, ExpressionType, Name, QualifiedName, TypeQualifier, UserDefinedTypes,
 };
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
@@ -54,8 +53,8 @@ enum ContextState<'a> {
 pub struct Context<'a> {
     names: HashMap<BareName, BareNameTypes>,
     const_values: HashMap<BareName, Variant>,
-    array_dimensions: HashMap<Name, ArrayDimensions>,
     state: ContextState<'a>,
+    expression_types: HashMap<Name, ExpressionType>,
 }
 
 impl<'a> Context<'a> {
@@ -63,11 +62,11 @@ impl<'a> Context<'a> {
         Self {
             names: HashMap::new(),
             const_values: HashMap::new(),
-            array_dimensions: HashMap::new(),
             state: ContextState::Root {
                 user_defined_types,
                 names_without_dot: HashSet::new(),
             },
+            expression_types: HashMap::new(),
         }
     }
 
@@ -97,7 +96,11 @@ impl<'a> Context<'a> {
     }
 
     pub fn is_array(&self, name: &Name) -> bool {
-        self.array_dimensions.contains_key(name)
+        if let Some(ExpressionType::Array(_)) = self.expression_types.get(name) {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn push_const(&mut self, b: BareName, q: TypeQualifier, v: Variant) {
@@ -361,8 +364,9 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn register_array_dimensions(&mut self, declared_name: Name, dimensions: ArrayDimensions) {
-        self.array_dimensions.insert(declared_name, dimensions);
+    pub fn register_array_dimensions(&mut self, declared_name: Name, element_type: ExpressionType) {
+        self.expression_types
+            .insert(declared_name, ExpressionType::Array(Box::new(element_type)));
     }
 }
 
@@ -394,7 +398,7 @@ mod context_management {
             Self {
                 names: HashMap::new(),
                 const_values: HashMap::new(),
-                array_dimensions: HashMap::new(),
+                expression_types: HashMap::new(),
                 state: ContextState::Child {
                     param_names: HashSet::new(),
                     parent: Box::new(self),
@@ -409,7 +413,7 @@ mod context_management {
             Self {
                 names: HashMap::new(),
                 const_values: HashMap::new(),
-                array_dimensions: HashMap::new(),
+                expression_types: HashMap::new(),
                 state: ContextState::Child {
                     param_names: HashSet::new(),
                     parent: Box::new(self),

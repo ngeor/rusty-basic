@@ -34,10 +34,18 @@ impl Variables {
     }
 
     pub fn insert_param(&mut self, param_name: ParamName, value: Variant) {
+        self.insert(Self::param_to_name(param_name), value);
+    }
+
+    fn param_to_name(param_name: ParamName) -> Name {
         let (bare_name, param_type) = param_name.into_inner();
         match param_type {
-            ParamType::BuiltIn(q, _) => self.insert_built_in(bare_name, q, value),
-            ParamType::UserDefined(_) => self.insert_user_defined(bare_name, value),
+            ParamType::BuiltIn(q, _) => Name::new(bare_name, Some(q)),
+            ParamType::UserDefined(_) => Name::new(bare_name, None),
+            ParamType::Array(boxed_param_type) => {
+                let dummy_param = ParamName::new(bare_name, *boxed_param_type);
+                Self::param_to_name(dummy_param)
+            }
             _ => todo!(),
         }
     }

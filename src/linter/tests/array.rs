@@ -1,6 +1,7 @@
 use crate::assert_linter_err;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
+use crate::parser::test_utils::ExpressionNodeLiteralFactory;
 use crate::parser::{
     ArrayDimension, BareName, BuiltInStyle, DimName, DimType, Expression, ExpressionType,
     ParamName, ParamType, Statement, SubImplementation, TopLevelToken, TypeQualifier,
@@ -81,6 +82,7 @@ fn test_passing_array_parameter_with_parenthesis() {
     Menu choice$()
 
     SUB Menu(choice$())
+        X$ = choice$(1)
     END SUB
     "#;
 
@@ -125,7 +127,26 @@ fn test_passing_array_parameter_with_parenthesis() {
                     )))
                 )
                 .at_rc(6, 14)],
-                body: vec![]
+                body: vec![
+                    Statement::Dim(
+                        DimName::new(
+                            "X".into(),
+                            DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                        )
+                        .at_rc(7, 9)
+                    )
+                    .at_rc(7, 9),
+                    Statement::Assignment(
+                        Expression::var_linted("X$"),
+                        Expression::ArrayElement(
+                            "choice$".into(),
+                            vec![1.as_lit_expr(7, 22)],
+                            ExpressionType::BuiltIn(TypeQualifier::DollarString)
+                        )
+                        .at_rc(7, 14)
+                    )
+                    .at_rc(7, 9)
+                ]
             })
             .at_rc(6, 5)
         ]

@@ -39,6 +39,18 @@ impl ParamName {
     pub fn new_array(self) -> Self {
         Self::new(self.bare_name, ParamType::Array(Box::new(self.param_type)))
     }
+
+    pub fn to_name(&self) -> Name {
+        Self::make_name(self.bare_name.clone(), self.param_type.clone())
+    }
+
+    fn make_name(bare_name: BareName, param_type: ParamType) -> Name {
+        match param_type {
+            ParamType::Bare | ParamType::UserDefined(_) => Name::new(bare_name, None),
+            ParamType::BuiltIn(q, _) => Name::new(bare_name, Some(q)),
+            ParamType::Array(boxed_element_type) => Self::make_name(bare_name, *boxed_element_type),
+        }
+    }
 }
 
 impl AsRef<BareName> for ParamName {
@@ -123,6 +135,9 @@ impl HasExpressionType for ParamType {
             Self::BuiltIn(qualifier, _) => ExpressionType::BuiltIn(*qualifier),
             Self::UserDefined(Locatable { element, .. }) => {
                 ExpressionType::UserDefined(element.clone())
+            }
+            Self::Array(boxed_element_type) => {
+                ExpressionType::Array(Box::new(boxed_element_type.expression_type()))
             }
             _ => ExpressionType::Unresolved,
         }

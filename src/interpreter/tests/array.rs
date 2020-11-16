@@ -77,6 +77,25 @@ fn test_parameter() {
     choice$(2) = "Green"
     choice$(3) = "Blue"
 
+    Menu choice$(), 1, 3
+
+    SUB Menu(choice$(), start%, stop%)
+        FOR I% = start% TO stop%
+            PRINT choice$(I%)
+        NEXT
+    END SUB
+    "#;
+    assert_prints!(input, "Red", "Green", "Blue");
+}
+
+#[test]
+fn test_parameter_with_lbound_ubound() {
+    let input = r#"
+    DIM choice$(1 TO 3)
+    choice$(1) = "Red"
+    choice$(2) = "Green"
+    choice$(3) = "Blue"
+
     Menu choice$()
 
     SUB Menu(choice$())

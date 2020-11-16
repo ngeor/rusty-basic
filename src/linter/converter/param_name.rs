@@ -4,8 +4,8 @@ use crate::common::{
 use crate::linter::converter::converter::ConverterImpl;
 use crate::linter::type_resolver::TypeResolver;
 use crate::parser::{
-    BareName, BareNameNode, BuiltInStyle, ParamName, ParamNameNode, ParamType, QualifiedName,
-    TypeQualifier,
+    BareName, BareNameNode, BuiltInStyle, HasExpressionType, Name, ParamName, ParamNameNode,
+    ParamType, QualifiedName, TypeQualifier,
 };
 
 impl<'a> ConverterImpl<'a> {
@@ -59,6 +59,9 @@ impl<'a> ConverterImpl<'a> {
             ParamType::Array(boxed_element_type) => {
                 let dummy_element_param = ParamName::new(bare_name, *boxed_element_type);
                 let resolved = self.resolve_param(dummy_element_param, opt_function_name)?;
+                let name: Name = resolved.to_name();
+                self.context
+                    .register_array_dimensions(name, resolved.expression_type());
                 Ok(resolved.new_array())
             }
         }

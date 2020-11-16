@@ -22,7 +22,7 @@ impl InstructionGenerator {
                 ExpressionType::FixedLengthString(l) => {
                     self.push(Instruction::FixLength(l), pos);
                 }
-                _ => panic!("Cannot cast user defined type"),
+                _ => panic!("Cannot cast {:?} into {:?}", expression_type, target_type),
             }
         }
     }

@@ -6,7 +6,8 @@ use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVa
 use crate::linter::type_resolver::TypeResolver;
 use crate::parser::{
     ArrayDimension, ArrayDimensions, BareName, BareNameNode, BuiltInStyle, DimName, DimNameNode,
-    DimType, Expression, ExpressionNode, Name, QualifiedName, QualifiedNameNode, TypeQualifier,
+    DimType, Expression, ExpressionNode, HasExpressionType, Name, QualifiedName, QualifiedNameNode,
+    TypeQualifier,
 };
 use crate::variant::Variant;
 
@@ -156,10 +157,10 @@ impl<'a> ConverterImpl<'a> {
             self.convert_and_collect_implicit_variables(array_dimensions)?;
         let dim_type = DimType::Array(
             converted_array_dimensions.clone(),
-            Box::new(converted_element_type),
+            Box::new(converted_element_type.clone()),
         );
         self.context
-            .register_array_dimensions(declared_name, converted_array_dimensions);
+            .register_array_dimensions(declared_name, converted_element_type.expression_type());
         Ok((dim_type, implicit_variables))
     }
 }

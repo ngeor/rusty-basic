@@ -27,7 +27,7 @@ mod user_defined_type;
 mod while_wend;
 
 #[cfg(test)]
-mod test_utils;
+pub mod test_utils;
 
 pub use self::parser::*;
 pub use self::types::*;

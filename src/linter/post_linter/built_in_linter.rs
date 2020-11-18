@@ -54,11 +54,10 @@ fn lint(built_in: &BuiltInFunction, args: &Vec<ExpressionNode>) -> Result<(), QE
         BuiltInFunction::Environ => environ_fn::lint(args),
         BuiltInFunction::Eof => eof::lint(args),
         BuiltInFunction::InStr => instr::lint(args),
-        BuiltInFunction::LBound => todo!(),
+        BuiltInFunction::LBound | BuiltInFunction::UBound => lbound::lint(args),
         BuiltInFunction::Len => len::lint(args),
         BuiltInFunction::Mid => mid::lint(args),
         BuiltInFunction::Str => str_fn::lint(args),
-        BuiltInFunction::UBound => todo!(),
         BuiltInFunction::Val => val::lint(args),
     }
 }
@@ -176,6 +175,36 @@ mod kill {
     use super::*;
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_string_argument(args)
+    }
+}
+
+mod lbound {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        if args.is_empty() || args.len() > 2 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+
+        // Can have at one or two arguments. First must be the array name, without parenthesis.
+        // Second, optional, is an integer specifying the array dimension >=1 (default is 1).
+        let Locatable {
+            element: first,
+            pos: first_pos,
+        } = args.get(0).unwrap();
+        if let ExpressionType::Array(_, false) = first.expression_type() {
+            if args.len() == 2 {
+                if args[1].can_cast_to(TypeQualifier::PercentInteger) {
+                    Ok(())
+                } else {
+                    Err(QError::ArgumentTypeMismatch).with_err_at(args[1].pos())
+                }
+            } else {
+                Ok(())
+            }
+        } else {
+            Err(QError::ArgumentTypeMismatch).with_err_at(first_pos)
+        }
     }
 }
 

@@ -19,7 +19,7 @@ impl HasExpressionType for DimType {
             Self::FixedLengthString(_, len) => ExpressionType::FixedLengthString(*len),
             Self::UserDefined(type_name) => ExpressionType::UserDefined(type_name.element.clone()),
             Self::Array(_, element_type) => {
-                ExpressionType::Array(Box::new(element_type.expression_type()))
+                ExpressionType::Array(Box::new(element_type.expression_type()), true)
             }
             Self::Bare => panic!("Unresolved type"),
         }

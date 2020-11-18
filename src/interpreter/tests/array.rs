@@ -4,11 +4,21 @@ use crate::common::QError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 #[test]
-fn test_assign_one_element() {
+fn test_assign_one_element_bare() {
     let input = r#"
     DIM A(1 TO 1)
     A(1) = 42
     PRINT A(1)
+    "#;
+    assert_prints!(input, "42");
+}
+
+#[test]
+fn test_assign_one_element_qualified() {
+    let input = r#"
+    DIM A%(1 TO 1)
+    A%(1) = 42
+    PRINT A%(1)
     "#;
     assert_prints!(input, "42");
 }

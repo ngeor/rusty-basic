@@ -50,11 +50,52 @@ enum ContextState<'a> {
 }
 
 #[derive(Debug)]
+struct ExpressionTypes {
+    map: HashMap<Name, ExpressionType>,
+}
+
+impl ExpressionTypes {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+
+    pub fn get<T: TypeResolver>(
+        &self,
+        name: &Name,
+        resolver: &T,
+    ) -> Option<(&ExpressionType, Option<TypeQualifier>)> {
+        // try with the name as-is
+        match self.map.get(name) {
+            Some(expr_type) => Some((expr_type, None)),
+            _ => {
+                // if the name is bare, try to qualify with the resolver
+                if let Name::Bare(bare_name) = name {
+                    let qualifier = resolver.resolve(bare_name);
+                    let qualified_name = Name::new(bare_name.clone(), Some(qualifier));
+                    match self.map.get(&qualified_name) {
+                        Some(expr_type) => Some((expr_type, Some(qualifier))),
+                        None => None,
+                    }
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    pub fn insert(&mut self, resolved_name: Name, expr_type: ExpressionType) {
+        self.map.insert(resolved_name, expr_type);
+    }
+}
+
+#[derive(Debug)]
 pub struct Context<'a> {
     names: HashMap<BareName, BareNameTypes>,
     const_values: HashMap<BareName, Variant>,
     state: ContextState<'a>,
-    expression_types: HashMap<Name, ExpressionType>,
+    expression_types: ExpressionTypes,
 }
 
 impl<'a> Context<'a> {
@@ -66,7 +107,7 @@ impl<'a> Context<'a> {
                 user_defined_types,
                 names_without_dot: HashSet::new(),
             },
-            expression_types: HashMap::new(),
+            expression_types: ExpressionTypes::new(),
         }
     }
 
@@ -95,8 +136,8 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn is_array(&self, name: &Name) -> bool {
-        if let Some(ExpressionType::Array(_)) = self.expression_types.get(name) {
+    pub fn is_array<T: TypeResolver>(&self, name: &Name, resolver: &T) -> bool {
+        if let Some((ExpressionType::Array(_, _), _)) = self.expression_types.get(name, resolver) {
             true
         } else {
             false
@@ -277,7 +318,25 @@ impl<'a> Context<'a> {
                     }
                 }
             },
-            None => Ok(None),
+            None => {
+                if let Some((expr_type, opt_qualifier)) = self.expression_types.get(name, resolver)
+                {
+                    let new_name = match opt_qualifier {
+                        Some(q) => name.qualify(q),
+                        _ => name.clone(),
+                    };
+                    let result_expr_type = match expr_type {
+                        // this is the case where we use the array's name without parenthesis, only allowed as parameter to LBound/UBound
+                        ExpressionType::Array(element_type, _) => {
+                            ExpressionType::Array(element_type.clone(), false)
+                        }
+                        _ => expr_type.clone(),
+                    };
+                    Ok(Some(Expression::Variable(new_name, result_expr_type)))
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
 
@@ -364,9 +423,16 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn register_array_dimensions(&mut self, declared_name: Name, element_type: ExpressionType) {
-        self.expression_types
-            .insert(declared_name, ExpressionType::Array(Box::new(element_type)));
+    pub fn register_array_dimensions(
+        &mut self,
+        resolved_name: Name,
+        element_type: ExpressionType,
+        with_parenthesis: bool,
+    ) {
+        self.expression_types.insert(
+            resolved_name,
+            ExpressionType::Array(Box::new(element_type), with_parenthesis),
+        );
     }
 }
 
@@ -398,7 +464,7 @@ mod context_management {
             Self {
                 names: HashMap::new(),
                 const_values: HashMap::new(),
-                expression_types: HashMap::new(),
+                expression_types: ExpressionTypes::new(),
                 state: ContextState::Child {
                     param_names: HashSet::new(),
                     parent: Box::new(self),
@@ -413,7 +479,7 @@ mod context_management {
             Self {
                 names: HashMap::new(),
                 const_values: HashMap::new(),
-                expression_types: HashMap::new(),
+                expression_types: ExpressionTypes::new(),
                 state: ContextState::Child {
                     param_names: HashSet::new(),
                     parent: Box::new(self),

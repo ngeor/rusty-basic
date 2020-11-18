@@ -49,7 +49,7 @@ impl<'a> ConverterWithImplicitVariables<ExpressionNode, ExpressionNode> for Conv
                     self.convert_and_collect_implicit_variables(c)?;
                 match converted_child.expression_type() {
                     ExpressionType::BuiltIn(TypeQualifier::DollarString)
-                    | ExpressionType::Array(_)
+                    | ExpressionType::Array(_, _)
                     | ExpressionType::FixedLengthString(_)
                     | ExpressionType::UserDefined(_)
                     | ExpressionType::Unresolved => {
@@ -206,7 +206,7 @@ pub mod function_call {
     use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
     use crate::linter::converter::expression::ExprResult;
     use crate::linter::type_resolver::TypeResolver;
-    use crate::parser::{Expression, ExpressionNodes, Name};
+    use crate::parser::{Expression, ExpressionNodes, ExpressionType, Name};
     use std::convert::TryInto;
 
     pub fn into_expr_result(
@@ -226,25 +226,40 @@ pub mod function_call {
             )),
             None => {
                 // is it a function or an array element?
-                if converter.context.is_array(&n) {
+                if converter.context.is_array(&n, &converter.resolver) {
                     // we can ignore `missing` as we already confirmed we know it is an array
                     let (var_name, expression_type, _) = converter
                         .context
                         .resolve_name_in_assignment(&n, &converter.resolver)
                         .with_err_at(pos)?;
-                    if converted_args.is_empty() {
-                        // entire array
-                        Ok((
-                            Expression::Variable(var_name, expression_type.new_array()).at(pos),
-                            implicit_variables,
-                        ))
-                    } else {
-                        // array element
-                        Ok((
-                            Expression::ArrayElement(var_name, converted_args, expression_type)
+                    if let ExpressionType::Array(boxed_element_type, false) = expression_type {
+                        if converted_args.is_empty() {
+                            // entire array
+                            Ok((
+                                Expression::Variable(
+                                    var_name,
+                                    ExpressionType::Array(boxed_element_type, true),
+                                )
                                 .at(pos),
-                            implicit_variables,
-                        ))
+                                implicit_variables,
+                            ))
+                        } else {
+                            // array element
+                            Ok((
+                                Expression::ArrayElement(
+                                    var_name,
+                                    converted_args,
+                                    *boxed_element_type,
+                                )
+                                .at(pos),
+                                implicit_variables,
+                            ))
+                        }
+                    } else {
+                        panic!(
+                            "Unexpected result from converter {:?} {:?} {:?}",
+                            expression_type, n, pos
+                        );
                     }
                 } else {
                     // function

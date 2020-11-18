@@ -16,11 +16,11 @@ pub fn run_function<S: InterpreterTrait>(
         BuiltInFunction::Environ => environ_fn::run(interpreter),
         BuiltInFunction::Eof => eof::run(interpreter).with_err_no_pos(),
         BuiltInFunction::InStr => instr::run(interpreter),
-        BuiltInFunction::LBound => todo!(),
+        BuiltInFunction::LBound => lbound::run(interpreter),
         BuiltInFunction::Len => len::run(interpreter),
         BuiltInFunction::Mid => mid::run(interpreter),
         BuiltInFunction::Str => str_fn::run(interpreter),
-        BuiltInFunction::UBound => todo!(),
+        BuiltInFunction::UBound => ubound::run(interpreter),
         BuiltInFunction::Val => val::run(interpreter),
     }
 }
@@ -687,6 +687,41 @@ mod kill {
     }
 }
 
+mod lbound {
+    use super::*;
+
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
+        let v: Variant = interpreter.context().get(0).unwrap().clone();
+        match v {
+            Variant::VArray(a) => match a.get_dimensions(0) {
+                Some((lower, _)) => {
+                    interpreter
+                        .context_mut()
+                        .set_variable(BuiltInFunction::LBound.into(), Variant::VInteger(*lower));
+                    Ok(())
+                }
+                _ => Err(QError::SubscriptOutOfRange).with_err_no_pos(),
+            },
+            _ => Err(QError::ArgumentTypeMismatch).with_err_no_pos(),
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_prints;
+
+        #[test]
+        fn test_explicit_lbound() {
+            let input = r#"
+            DIM choice$(1 TO 3)
+            PRINT LBOUND(choice$)
+            "#;
+            assert_prints!(input, "1");
+        }
+    }
+}
+
 mod len {
     // LEN(str_expr$) -> number of characters in string
     // LEN(variable) -> number of bytes required to store a variable
@@ -1333,6 +1368,41 @@ mod system {
         #[test]
         fn test_sub_call_system_no_args_allowed() {
             assert_linter_err!("SYSTEM 42", QError::ArgumentCountMismatch, 1, 1);
+        }
+    }
+}
+
+mod ubound {
+    use super::*;
+
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
+        let v: Variant = interpreter.context().get(0).unwrap().clone();
+        match v {
+            Variant::VArray(a) => match a.get_dimensions(0) {
+                Some((_, upper)) => {
+                    interpreter
+                        .context_mut()
+                        .set_variable(BuiltInFunction::UBound.into(), Variant::VInteger(*upper));
+                    Ok(())
+                }
+                _ => Err(QError::SubscriptOutOfRange).with_err_no_pos(),
+            },
+            _ => Err(QError::ArgumentTypeMismatch).with_err_no_pos(),
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_prints;
+
+        #[test]
+        fn test_explicit_lbound() {
+            let input = r#"
+            DIM choice$(1 TO 3)
+            PRINT UBOUND(choice$)
+            "#;
+            assert_prints!(input, "3");
         }
     }
 }

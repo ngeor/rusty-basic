@@ -121,7 +121,7 @@ impl InstructionGenerator {
                     pos,
                 );
             }
-            _ => panic!("Not a name expression"),
+            _ => panic!("Not a name expression {:?}", expr),
         }
     }
 }

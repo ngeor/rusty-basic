@@ -1,4 +1,5 @@
 use crate::assert_linter_err;
+use crate::built_ins::BuiltInFunction;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
 use crate::parser::test_utils::ExpressionNodeLiteralFactory;
@@ -110,9 +111,10 @@ fn test_passing_array_parameter_with_parenthesis() {
                 "Menu".into(),
                 vec![Expression::Variable(
                     "choice$".into(),
-                    ExpressionType::Array(Box::new(ExpressionType::BuiltIn(
-                        TypeQualifier::DollarString
-                    )))
+                    ExpressionType::Array(
+                        Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString)),
+                        true
+                    )
                 )
                 .at_rc(4, 10)]
             ))
@@ -149,6 +151,63 @@ fn test_passing_array_parameter_with_parenthesis() {
                 ]
             })
             .at_rc(6, 5)
+        ]
+    );
+}
+
+#[test]
+fn test_passing_array_without_parenthesis() {
+    let input = r#"
+    DIM choice$(1 TO 3)
+    X = LBound(choice$)
+    "#;
+    assert_eq!(
+        linter_ok(input),
+        vec![
+            TopLevelToken::Statement(Statement::Dim(
+                DimName::new(
+                    "choice".into(),
+                    DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: Some(1.as_lit_expr(2, 17)),
+                            ubound: 3.as_lit_expr(2, 22)
+                        }],
+                        Box::new(DimType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        ))
+                    )
+                )
+                .at_rc(2, 9)
+            ))
+            .at_rc(2, 5),
+            TopLevelToken::Statement(Statement::Dim(
+                DimName::new(
+                    "X".into(),
+                    DimType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
+                )
+                .at_rc(3, 5)
+            ))
+            .at_rc(3, 5),
+            TopLevelToken::Statement(Statement::Assignment(
+                Expression::Variable(
+                    "X!".into(),
+                    ExpressionType::BuiltIn(TypeQualifier::BangSingle)
+                ),
+                Expression::BuiltInFunctionCall(
+                    BuiltInFunction::LBound,
+                    vec![Expression::Variable(
+                        "choice$".into(),
+                        ExpressionType::Array(
+                            Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString)),
+                            false
+                        )
+                    )
+                    .at_rc(3, 16)]
+                )
+                .at_rc(3, 9)
+            ))
+            .at_rc(3, 5)
         ]
     );
 }

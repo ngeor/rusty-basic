@@ -6,8 +6,7 @@ use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVa
 use crate::linter::type_resolver::TypeResolver;
 use crate::parser::{
     ArrayDimension, ArrayDimensions, BareName, BareNameNode, BuiltInStyle, DimName, DimNameNode,
-    DimType, Expression, ExpressionNode, HasExpressionType, Name, QualifiedName, QualifiedNameNode,
-    TypeQualifier,
+    DimType, Expression, ExpressionNode, HasExpressionType, Name, QualifiedNameNode, TypeQualifier,
 };
 use crate::variant::Variant;
 
@@ -94,17 +93,19 @@ impl<'a> ConverterImpl<'a> {
         if self.context.contains_any(&bare_name) {
             return Err(QError::DuplicateDefinition).with_err_no_pos();
         }
-        let len: u16 = match self.context.resolve_const_value_node(&len_expr)? {
-            Variant::VInteger(i) => i as u16,
-            _ => {
-                return Err(QError::ArgumentTypeMismatch).with_err_at(&len_expr);
-            }
-        };
+        let len: u16 = self.eval_fixed_string_length(&len_expr)?;
         self.context.push_dim_string(bare_name.clone(), len);
         Ok(DimType::FixedLengthString(
             Expression::IntegerLiteral(len as i32).at(len_expr.pos),
             len,
         ))
+    }
+
+    fn eval_fixed_string_length(&self, len_expr: &ExpressionNode) -> Result<u16, QErrorNode> {
+        match self.context.resolve_const_value_node(len_expr)? {
+            Variant::VInteger(i) => Ok(i as u16),
+            _ => Err(QError::ArgumentTypeMismatch).with_err_at(len_expr),
+        }
     }
 
     fn convert_dim_type_extended(
@@ -146,21 +147,36 @@ impl<'a> ConverterImpl<'a> {
         element_type: DimType,
     ) -> Result<(DimType, Vec<QualifiedNameNode>), QErrorNode> {
         // re-construct declared name
-        let declared_name: Name = match &element_type {
-            DimType::BuiltIn(q, _) => Name::Qualified(QualifiedName::new(bare_name.clone(), *q)),
+        let resolved_name: Name = match &element_type {
+            DimType::Bare => Name::new(bare_name.clone(), Some(self.resolver.resolve(bare_name))),
+            DimType::BuiltIn(q, _) => Name::new(bare_name.clone(), Some(*q)),
             _ => Name::Bare(bare_name.clone()),
         };
-
-        // not possible to have an array type within an array type, we can ignore the implicit_variables on converting the element type
-        let (converted_element_type, _) = self.convert_dim_type(bare_name, element_type)?;
+        let converted_element_type: DimType = match element_type {
+            DimType::Bare => {
+                DimType::BuiltIn(resolved_name.qualifier().unwrap(), BuiltInStyle::Compact)
+            }
+            DimType::FixedLengthString(len_expr, _) => {
+                let len = self.eval_fixed_string_length(&len_expr)?;
+                DimType::FixedLengthString(
+                    Expression::IntegerLiteral(len as i32).at(&len_expr),
+                    len,
+                )
+            }
+            DimType::Array(_, _) => panic!("Nested array type not supported"),
+            _ => element_type,
+        };
         let (converted_array_dimensions, implicit_variables) =
             self.convert_and_collect_implicit_variables(array_dimensions)?;
         let dim_type = DimType::Array(
             converted_array_dimensions.clone(),
             Box::new(converted_element_type.clone()),
         );
-        self.context
-            .register_array_dimensions(declared_name, converted_element_type.expression_type());
+        self.context.register_array_dimensions(
+            resolved_name,
+            converted_element_type.expression_type(),
+            true,
+        );
         Ok((dim_type, implicit_variables))
     }
 }

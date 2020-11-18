@@ -4,7 +4,7 @@ use crate::common::{
 use crate::linter::converter::converter::ConverterImpl;
 use crate::linter::type_resolver::TypeResolver;
 use crate::parser::{
-    BareName, BareNameNode, BuiltInStyle, HasExpressionType, Name, ParamName, ParamNameNode,
+    BareName, BareNameNode, BuiltInStyle, ExpressionType, Name, ParamName, ParamNameNode,
     ParamType, QualifiedName, TypeQualifier,
 };
 
@@ -56,14 +56,19 @@ impl<'a> ConverterImpl<'a> {
             ParamType::UserDefined(u) => {
                 self.resolve_param_user_defined(bare_name, u, opt_function_name)
             }
-            ParamType::Array(boxed_element_type) => {
-                let dummy_element_param = ParamName::new(bare_name, *boxed_element_type);
-                let resolved = self.resolve_param(dummy_element_param, opt_function_name)?;
-                let name: Name = resolved.to_name();
-                self.context
-                    .register_array_dimensions(name, resolved.expression_type());
-                Ok(resolved.new_array())
-            }
+            ParamType::Array(boxed_element_type) => match boxed_element_type.as_ref() {
+                ParamType::BuiltIn(q, built_in_style) => {
+                    let name = Name::new(bare_name.clone(), Some(*q));
+                    let element_type = ExpressionType::BuiltIn(*q);
+                    self.context
+                        .register_array_dimensions(name, element_type, true);
+                    Ok(ParamName::new(
+                        bare_name,
+                        ParamType::Array(Box::new(ParamType::BuiltIn(*q, *built_in_style))),
+                    ))
+                }
+                _ => todo!(),
+            },
         }
     }
 

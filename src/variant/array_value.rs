@@ -56,4 +56,8 @@ impl VArray {
         }
         Ok(index as usize)
     }
+
+    pub fn get_dimensions(&self, idx: usize) -> Option<&(i32, i32)> {
+        self.dimensions.get(idx)
+    }
 }

@@ -3,13 +3,13 @@ use crate::parser::{BareName, Operator, TypeQualifier, UserDefinedTypes};
 use crate::variant::{UserDefinedTypeValue, Variant};
 
 /// The resolved type of an expression.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionType {
     Unresolved,
     BuiltIn(TypeQualifier),
     FixedLengthString(u16),
     UserDefined(BareName),
-    Array(Box<ExpressionType>),
+    Array(Box<ExpressionType>, bool),
 }
 
 pub trait HasExpressionType {
@@ -55,10 +55,6 @@ impl ExpressionType {
             _ => todo!(),
         }
     }
-
-    pub fn new_array(self) -> Self {
-        Self::Array(Box::new(self))
-    }
 }
 
 impl CanCastTo<&ExpressionType> for ExpressionType {
@@ -77,7 +73,7 @@ impl CanCastTo<&ExpressionType> for ExpressionType {
                 Self::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
-            Self::Unresolved | Self::Array(_) => false,
+            Self::Unresolved | Self::Array(_, _) => false,
         }
     }
 }

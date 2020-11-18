@@ -68,20 +68,22 @@ impl HasExpressionType for ParamName {
 pub type ParamTypes = Vec<ParamType>;
 
 impl ParamType {
-    pub fn accepts_by_ref(&self, type_definition: &ExpressionType) -> bool {
+    pub fn accepts_by_ref(&self, arg_type: &ExpressionType) -> bool {
         match self {
             Self::Bare => false,
-            Self::BuiltIn(q_left, _) => match type_definition {
+            Self::BuiltIn(q_left, _) => match arg_type {
                 ExpressionType::BuiltIn(q_right) => q_left == q_right,
                 ExpressionType::FixedLengthString(_) => *q_left == TypeQualifier::DollarString,
                 _ => false,
             },
-            Self::UserDefined(u_left) => match type_definition {
+            Self::UserDefined(u_left) => match arg_type {
                 ExpressionType::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
-            Self::Array(boxed_element_type) => match type_definition {
-                ExpressionType::Array(boxed_type) => boxed_element_type.accepts_by_ref(boxed_type),
+            Self::Array(boxed_element_type) => match arg_type {
+                ExpressionType::Array(boxed_type, true /* only with parenthesis */) => {
+                    boxed_element_type.accepts_by_ref(boxed_type)
+                }
                 _ => false,
             },
         }
@@ -137,7 +139,7 @@ impl HasExpressionType for ParamType {
                 ExpressionType::UserDefined(element.clone())
             }
             Self::Array(boxed_element_type) => {
-                ExpressionType::Array(Box::new(boxed_element_type.expression_type()))
+                ExpressionType::Array(Box::new(boxed_element_type.expression_type()), true)
             }
             _ => ExpressionType::Unresolved,
         }

@@ -16,7 +16,7 @@ impl<'a> Converter<TopLevelTokenNode, Vec<TopLevelTokenNode>> for ConverterImpl<
         } = top_level_token_node;
         match top_level_token {
             TopLevelToken::DefType(d) => {
-                self.resolver.set(&d);
+                self.resolver.borrow_mut().set(&d);
                 Ok(vec![])
             }
             TopLevelToken::FunctionDeclaration(_, _) | TopLevelToken::SubDeclaration(_, _) => {

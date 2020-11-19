@@ -123,7 +123,7 @@ pub mod var_name {
     ) -> ExprResult {
         match converter
             .context
-            .resolve_expression(&name, &converter.resolver)
+            .resolve_expression(&name)
             .with_err_at(pos)?
         {
             Some(x) => Ok((x.at(pos), vec![])),
@@ -132,7 +132,7 @@ pub mod var_name {
                 None => {
                     let q_name = converter
                         .context
-                        .resolve_missing_name_in_assignment(&name, &converter.resolver)
+                        .resolve_missing_name_in_assignment(&name)
                         .with_err_at(pos)?;
                     Ok((
                         Expression::from(q_name.clone()).at(pos),
@@ -226,11 +226,11 @@ pub mod function_call {
             )),
             None => {
                 // is it a function or an array element?
-                if converter.context.is_array(&n, &converter.resolver) {
+                if converter.context.is_array(&n) {
                     // we can ignore `missing` as we already confirmed we know it is an array
                     let (var_name, expression_type, _) = converter
                         .context
-                        .resolve_name_in_assignment(&n, &converter.resolver)
+                        .resolve_name_in_assignment(&n)
                         .with_err_at(pos)?;
                     if let ExpressionType::Array(boxed_element_type, false) = expression_type {
                         if converted_args.is_empty() {
@@ -271,7 +271,7 @@ pub mod function_call {
                     } else {
                         Ok((
                             Expression::FunctionCall(
-                                converter.resolver.resolve_name(&n).into(),
+                                converter.resolve_name(&n).into(),
                                 converted_args,
                             )
                             .at(pos),
@@ -309,7 +309,7 @@ pub mod property {
             Expression::Variable(left_side_name, _) => {
                 match converter
                     .context
-                    .resolve_expression(&left_side_name, &converter.resolver)
+                    .resolve_expression(&left_side_name)
                     .with_err_at(pos)?
                 {
                     Some(converted_left_expr) => match converted_left_expr {

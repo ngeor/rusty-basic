@@ -77,7 +77,7 @@ impl<'a> ConverterImpl<'a> {
         bare_name: BareName,
         opt_function_name: Option<&QualifiedName>,
     ) -> Result<ParamName, QErrorNode> {
-        let q: TypeQualifier = self.resolver.resolve(&bare_name);
+        let q: TypeQualifier = self.resolve(&bare_name);
         self.resolve_param_compact(bare_name, q, opt_function_name)
     }
 

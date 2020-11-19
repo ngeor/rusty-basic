@@ -75,7 +75,7 @@ impl<'a> ConverterImpl<'a> {
                         .with_err_at(name_expr_node)
                 } else if self.subs.contains_key(bare_name)
                     // it is possible to have a param name shadowing a function name (but not a sub name...)
-                    || (!self.context.is_param(&fold_name, &self.resolver) && self.functions.contains_key(bare_name))
+                    || (!self.context.is_param(&fold_name) && self.functions.contains_key(bare_name))
                     || self.context.contains_const(bare_name)
                 {
                     Err(QError::DuplicateDefinition).with_err_at(pos)
@@ -94,7 +94,7 @@ impl<'a> ConverterImpl<'a> {
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
         let (var_name, expr_type, missing) = self
             .context
-            .resolve_name_in_assignment(&name, &self.resolver)
+            .resolve_name_in_assignment(&name)
             .with_err_at(pos)?;
         let mut implicit_variables: Vec<QualifiedNameNode> = vec![];
         if missing {

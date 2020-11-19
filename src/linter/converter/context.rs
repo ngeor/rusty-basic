@@ -1,13 +1,17 @@
-use crate::common::{CaseInsensitiveString, QError};
+use crate::common::{CaseInsensitiveString, QError, QErrorNode};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::bare_name_types::BareNameTypes;
 use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser::{
-    BareName, Expression, ExpressionType, Name, QualifiedName, TypeQualifier, UserDefinedTypes,
+    BareName, Expression, ExpressionNode, ExpressionType, FunctionMap, Name, QualifiedName,
+    QualifiedNameNode, SubMap, TypeQualifier, UserDefinedTypes,
 };
 use crate::variant::Variant;
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 /*
 
@@ -29,7 +33,6 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
 
-#[derive(Debug)]
 enum ContextState<'a> {
     Root {
         user_defined_types: &'a UserDefinedTypes,
@@ -49,30 +52,27 @@ enum ContextState<'a> {
     },
 }
 
-#[derive(Debug)]
 struct ExpressionTypes {
     map: HashMap<Name, ExpressionType>,
+    resolver: Rc<RefCell<TypeResolverImpl>>,
 }
 
 impl ExpressionTypes {
-    pub fn new() -> Self {
+    pub fn new(resolver: Rc<RefCell<TypeResolverImpl>>) -> Self {
         Self {
             map: HashMap::new(),
+            resolver,
         }
     }
 
-    pub fn get<T: TypeResolver>(
-        &self,
-        name: &Name,
-        resolver: &T,
-    ) -> Option<(&ExpressionType, Option<TypeQualifier>)> {
+    pub fn get(&self, name: &Name) -> Option<(&ExpressionType, Option<TypeQualifier>)> {
         // try with the name as-is
         match self.map.get(name) {
             Some(expr_type) => Some((expr_type, None)),
             _ => {
                 // if the name is bare, try to qualify with the resolver
                 if let Name::Bare(bare_name) = name {
-                    let qualifier = resolver.resolve(bare_name);
+                    let qualifier = self.resolve(bare_name);
                     let qualified_name = Name::new(bare_name.clone(), Some(qualifier));
                     match self.map.get(&qualified_name) {
                         Some(expr_type) => Some((expr_type, Some(qualifier))),
@@ -90,16 +90,25 @@ impl ExpressionTypes {
     }
 }
 
-#[derive(Debug)]
+impl TypeResolver for ExpressionTypes {
+    fn resolve_char(&self, ch: char) -> TypeQualifier {
+        self.resolver.borrow().resolve_char(ch)
+    }
+}
+
 pub struct Context<'a> {
     names: HashMap<BareName, BareNameTypes>,
     const_values: HashMap<BareName, Variant>,
     state: ContextState<'a>,
     expression_types: ExpressionTypes,
+    resolver: Rc<RefCell<TypeResolverImpl>>,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(user_defined_types: &'a UserDefinedTypes) -> Self {
+    pub fn new(
+        user_defined_types: &'a UserDefinedTypes,
+        resolver: Rc<RefCell<TypeResolverImpl>>,
+    ) -> Self {
         Self {
             names: HashMap::new(),
             const_values: HashMap::new(),
@@ -107,7 +116,8 @@ impl<'a> Context<'a> {
                 user_defined_types,
                 names_without_dot: HashSet::new(),
             },
-            expression_types: ExpressionTypes::new(),
+            expression_types: ExpressionTypes::new(Rc::clone(&resolver)),
+            resolver,
         }
     }
 
@@ -136,8 +146,8 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn is_array<T: TypeResolver>(&self, name: &Name, resolver: &T) -> bool {
-        if let Some((ExpressionType::Array(_, _), _)) = self.expression_types.get(name, resolver) {
+    pub fn is_array(&self, name: &Name) -> bool {
+        if let Some((ExpressionType::Array(_, _), _)) = self.expression_types.get(name) {
             true
         } else {
             false
@@ -228,18 +238,17 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn resolve_name_in_assignment<T: TypeResolver>(
+    pub fn resolve_name_in_assignment(
         &mut self,
         name: &Name,
-        resolver: &T,
     ) -> Result<(Name, ExpressionType, /* is missing */ bool), QError> {
-        match self.resolve_expression(name, resolver)? {
+        match self.resolve_expression(name)? {
             Some(Expression::Variable(var_name, expression_type)) => {
                 Ok((var_name, expression_type, false))
             }
             // cannot re-assign a constant
             Some(Expression::Constant(_)) => Err(QError::DuplicateDefinition),
-            None => self.resolve_missing_name_in_assignment(name, resolver).map(
+            None => self.resolve_missing_name_in_assignment(name).map(
                 |QualifiedName {
                      bare_name,
                      qualifier,
@@ -255,17 +264,13 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn do_resolve_expression<T: TypeResolver>(
-        &self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<Option<Expression>, QError> {
+    fn do_resolve_expression(&self, name: &Name) -> Result<Option<Expression>, QError> {
         let bare_name: &BareName = name.as_ref();
         match self.names.get(bare_name) {
             Some(bare_name_types) => match bare_name_types {
                 BareNameTypes::Compact(existing_set) => {
                     let q = match name {
-                        Name::Bare(b) => resolver.resolve(b),
+                        Name::Bare(b) => self.resolve(b),
                         Name::Qualified(QualifiedName { qualifier, .. }) => *qualifier,
                     };
                     if existing_set.contains(&q) {
@@ -319,8 +324,7 @@ impl<'a> Context<'a> {
                 }
             },
             None => {
-                if let Some((expr_type, opt_qualifier)) = self.expression_types.get(name, resolver)
-                {
+                if let Some((expr_type, opt_qualifier)) = self.expression_types.get(name) {
                     let new_name = match opt_qualifier {
                         Some(q) => name.qualify(q),
                         _ => name.clone(),
@@ -340,35 +344,29 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn resolve_missing_name_in_assignment<T: TypeResolver>(
+    pub fn resolve_missing_name_in_assignment(
         &mut self,
         name: &Name,
-        resolver: &T,
     ) -> Result<QualifiedName, QError> {
         let QualifiedName {
             bare_name,
             qualifier,
-        } = resolver.resolve_name(name);
+        } = self.resolve_name(name);
         self.push_dim_compact(bare_name.clone(), qualifier);
         Ok(QualifiedName::new(bare_name, qualifier))
     }
 
-    pub fn resolve_expression<T: TypeResolver>(
-        &self,
-        n: &Name,
-        resolver: &T,
-    ) -> Result<Option<Expression>, QError> {
+    pub fn resolve_expression(&self, n: &Name) -> Result<Option<Expression>, QError> {
         // is it param
         // is it constant
         // is it variable
         // is it parent constant
         // is it a sub program?
         // it's a new implicit variable
-        self.do_resolve_expression(n, resolver)
-            .and_then(|opt| match opt {
-                Some(x) => Ok(Some(x)),
-                None => resolve_const::resolve_parent_const_expression(self, n),
-            })
+        self.do_resolve_expression(n).and_then(|opt| match opt {
+            Some(x) => Ok(Some(x)),
+            None => resolve_const::resolve_parent_const_expression(self, n),
+        })
     }
 
     pub fn is_function_context(&self, bare_name: &BareName) -> bool {
@@ -382,7 +380,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn is_param<T: TypeResolver>(&self, name: &Name, resolver: &T) -> bool {
+    pub fn is_param(&self, name: &Name) -> bool {
         match &self.state {
             ContextState::Child { param_names, .. } => {
                 let bare_name: &BareName = name.as_ref();
@@ -398,7 +396,7 @@ impl<'a> Context<'a> {
                                 Name::Bare(_) => {
                                     let n: Name = QualifiedName::new(
                                         bare_name.clone(),
-                                        resolver.resolve(bare_name),
+                                        self.resolve(bare_name),
                                     )
                                     .into();
                                     param_names.contains(&n)
@@ -461,31 +459,35 @@ mod context_management {
 
         pub fn push_function_context(self, bare_name: BareName) -> Self {
             self.demand_root_context();
+            let resolver = Rc::clone(&self.resolver);
             Self {
                 names: HashMap::new(),
                 const_values: HashMap::new(),
-                expression_types: ExpressionTypes::new(),
+                expression_types: ExpressionTypes::new(Rc::clone(&resolver)),
                 state: ContextState::Child {
                     param_names: HashSet::new(),
                     parent: Box::new(self),
                     sub_program_name: bare_name,
                     sub_program_type: SubProgramType::Function,
                 },
+                resolver: Rc::clone(&resolver),
             }
         }
 
         pub fn push_sub_context(self, bare_name: BareName) -> Self {
             self.demand_root_context();
+            let resolver = Rc::clone(&self.resolver);
             Self {
                 names: HashMap::new(),
                 const_values: HashMap::new(),
-                expression_types: ExpressionTypes::new(),
+                expression_types: ExpressionTypes::new(Rc::clone(&resolver)),
                 state: ContextState::Child {
                     param_names: HashSet::new(),
                     parent: Box::new(self),
                     sub_program_name: bare_name,
                     sub_program_type: SubProgramType::Sub,
                 },
+                resolver: Rc::clone(&resolver),
             }
         }
 
@@ -536,5 +538,27 @@ mod resolve_const {
             }
             _ => Ok(None),
         }
+    }
+}
+
+impl<'a> TypeResolver for Context<'a> {
+    fn resolve_char(&self, ch: char) -> TypeQualifier {
+        self.resolver.borrow().resolve_char(ch)
+    }
+}
+
+pub struct Context2<'a> {
+    pub functions: &'a FunctionMap,
+    pub subs: &'a SubMap,
+    pub user_defined_types: &'a UserDefinedTypes,
+    pub resolver: Rc<RefCell<TypeResolverImpl>>,
+}
+
+impl<'a> Context2<'a> {
+    pub fn resolve_expression(
+        &mut self,
+        _expr_node: ExpressionNode,
+    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+        todo!()
     }
 }

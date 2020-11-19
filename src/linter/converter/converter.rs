@@ -1,8 +1,13 @@
 use crate::common::*;
-use crate::linter::converter::context::Context;
+use crate::linter::converter::context::{Context, Context2};
+use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::parser::{BareName, FunctionMap, QualifiedNameNode, SubMap, UserDefinedTypes};
+use crate::parser::{
+    BareName, FunctionMap, QualifiedNameNode, SubMap, TypeQualifier, UserDefinedTypes,
+};
+use std::cell::RefCell;
 use std::collections::HashSet;
+use std::rc::Rc;
 
 //
 // Converter trait
@@ -118,13 +123,13 @@ where
 // Converter
 //
 
-#[derive(Debug)]
 pub struct ConverterImpl<'a> {
-    pub resolver: TypeResolverImpl,
+    pub resolver: Rc<RefCell<TypeResolverImpl>>,
     pub context: Context<'a>,
     pub functions: &'a FunctionMap,
     pub subs: &'a SubMap,
     pub user_defined_types: &'a UserDefinedTypes,
+    pub context2: Context2<'a>,
 }
 
 impl<'a> ConverterImpl<'a> {
@@ -133,17 +138,24 @@ impl<'a> ConverterImpl<'a> {
         functions: &'a FunctionMap,
         subs: &'a SubMap,
     ) -> Self {
+        let resolver = Rc::new(RefCell::new(TypeResolverImpl::new()));
         Self {
             user_defined_types,
-            resolver: TypeResolverImpl::new(),
-            context: Context::new(user_defined_types),
+            resolver: Rc::clone(&resolver),
+            context: Context::new(user_defined_types, Rc::clone(&resolver)),
             functions,
             subs,
+            context2: Context2 {
+                functions,
+                subs,
+                user_defined_types,
+                resolver: Rc::clone(&resolver),
+            },
         }
     }
 
     fn take_context(&mut self) -> Context<'a> {
-        let tmp = Context::new(&self.user_defined_types);
+        let tmp = Context::new(&self.user_defined_types, Rc::clone(&self.resolver));
         std::mem::replace(&mut self.context, tmp)
     }
 
@@ -172,5 +184,11 @@ impl<'a> ConverterImpl<'a> {
             result.append(&mut list);
         }
         result
+    }
+}
+
+impl<'a> TypeResolver for ConverterImpl<'a> {
+    fn resolve_char(&self, ch: char) -> TypeQualifier {
+        self.resolver.borrow().resolve_char(ch)
     }
 }

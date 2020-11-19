@@ -19,7 +19,7 @@ impl<'a> ConverterImpl<'a> {
         } = function_name_node;
         let bare_function_name: &BareName = unresolved_function_name.as_ref();
         self.push_function_context(bare_function_name.clone());
-        let function_name: QualifiedName = self.resolver.resolve_name(&unresolved_function_name);
+        let function_name: QualifiedName = self.resolve_name(&unresolved_function_name);
         let mapped_params = self.resolve_params(params, Some(&function_name))?;
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
             name: Name::Qualified(function_name).at(pos),

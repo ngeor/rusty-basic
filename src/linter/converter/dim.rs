@@ -65,7 +65,7 @@ impl<'a> ConverterImpl<'a> {
     }
 
     fn convert_dim_type_bare(&mut self, bare_name: &BareName) -> Result<DimType, QError> {
-        let q = self.resolver.resolve(&bare_name);
+        let q = self.resolve(&bare_name);
         if self.context.contains_compact(&bare_name, q) {
             return Err(QError::DuplicateDefinition);
         }
@@ -148,7 +148,7 @@ impl<'a> ConverterImpl<'a> {
     ) -> Result<(DimType, Vec<QualifiedNameNode>), QErrorNode> {
         // re-construct declared name
         let resolved_name: Name = match &element_type {
-            DimType::Bare => Name::new(bare_name.clone(), Some(self.resolver.resolve(bare_name))),
+            DimType::Bare => Name::new(bare_name.clone(), Some(self.resolve(bare_name))),
             DimType::BuiltIn(q, _) => Name::new(bare_name.clone(), Some(*q)),
             _ => Name::Bare(bare_name.clone()),
         };

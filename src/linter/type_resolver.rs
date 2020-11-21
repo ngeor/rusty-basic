@@ -15,4 +15,14 @@ pub trait TypeResolver {
             Name::Qualified(qualified_name) => qualified_name.clone(),
         }
     }
+
+    fn resolve_name_to_name(&self, name: Name) -> Name {
+        match name {
+            Name::Bare(bare_name) => {
+                let qualifier = self.resolve(&bare_name);
+                Name::new(bare_name, Some(qualifier))
+            }
+            _ => name,
+        }
+    }
 }

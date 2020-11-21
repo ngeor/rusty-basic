@@ -4,7 +4,8 @@ use crate::common::{
 };
 use crate::parser::types::{Name, Operator, UnaryOperator};
 use crate::parser::{ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
-use crate::variant::{MIN_INTEGER, MIN_LONG};
+use crate::variant::{MIN_INTEGER, MIN_LONG, Variant};
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -83,6 +84,21 @@ impl From<i32> for Expression {
 impl From<i64> for Expression {
     fn from(f: i64) -> Expression {
         Expression::LongLiteral(f)
+    }
+}
+
+impl TryFrom<Variant> for Expression {
+    type Error = QError;
+
+    fn try_from(value: Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VSingle(f) => Ok(f.into()),
+            Variant::VDouble(d) => Ok(d.into()),
+            Variant::VString(s) => Ok(s.into()),
+            Variant::VInteger(i) => Ok(i.into()),
+            Variant::VLong(l) => Ok(l.into()),
+            _ => Err(QError::InvalidConstant)
+        }
     }
 }
 

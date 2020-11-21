@@ -1,12 +1,12 @@
 use crate::common::*;
-use crate::linter::converter::context::{Context, Context2};
+use crate::linter::converter::context::Context;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser::{
     BareName, FunctionMap, QualifiedNameNode, SubMap, TypeQualifier, UserDefinedTypes,
 };
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::rc::Rc;
 
 //
@@ -125,11 +125,10 @@ where
 
 pub struct ConverterImpl<'a> {
     pub resolver: Rc<RefCell<TypeResolverImpl>>,
-    pub context: Context<'a>,
     pub functions: &'a FunctionMap,
     pub subs: &'a SubMap,
     pub user_defined_types: &'a UserDefinedTypes,
-    pub context2: Context2<'a>,
+    pub context: Context<'a>,
 }
 
 impl<'a> ConverterImpl<'a> {
@@ -142,36 +141,10 @@ impl<'a> ConverterImpl<'a> {
         Self {
             user_defined_types,
             resolver: Rc::clone(&resolver),
-            context: Context::new(user_defined_types, Rc::clone(&resolver)),
             functions,
             subs,
-            context2: Context2 {
-                functions,
-                subs,
-                user_defined_types,
-                resolver: Rc::clone(&resolver),
-            },
+            context: Context::new(functions, subs, user_defined_types, Rc::clone(&resolver)),
         }
-    }
-
-    fn take_context(&mut self) -> Context<'a> {
-        let tmp = Context::new(&self.user_defined_types, Rc::clone(&self.resolver));
-        std::mem::replace(&mut self.context, tmp)
-    }
-
-    pub fn push_function_context(&mut self, bare_function_name: BareName) {
-        let old = self.take_context();
-        self.context = old.push_function_context(bare_function_name);
-    }
-
-    pub fn push_sub_context(&mut self, sub_name: BareName) {
-        let old = self.take_context();
-        self.context = old.push_sub_context(sub_name);
-    }
-
-    pub fn pop_context(&mut self) {
-        let old = self.take_context();
-        self.context = old.pop_context();
     }
 
     pub fn consume(self) -> HashSet<BareName> {

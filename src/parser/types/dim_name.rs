@@ -3,6 +3,7 @@ use crate::parser::types::*;
 
 #[cfg(test)]
 use std::convert::TryFrom;
+use crate::parser::DimType::BuiltIn;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DimName {
@@ -52,5 +53,44 @@ impl From<QualifiedName> for DimName {
 impl AsRef<BareName> for DimName {
     fn as_ref(&self) -> &BareName {
         &self.bare_name
+    }
+}
+
+impl AsRef<BareName> for DimNameNode {
+    fn as_ref(&self) -> &BareName {
+        let dim_name: &DimName = self.as_ref();
+        dim_name.as_ref()
+    }
+}
+
+pub trait DimNameTrait {
+    fn is_bare(&self) -> bool;
+
+    fn is_built_in_extended(&self) -> Option<TypeQualifier>;
+}
+
+impl DimNameTrait for DimName {
+    fn is_bare(&self) -> bool {
+        self.dim_type == DimType::Bare
+    }
+
+    fn is_built_in_extended(&self) -> Option<TypeQualifier> {
+        if let DimType::BuiltIn(q, BuiltInStyle::Extended) = self.dim_type {
+            Some(q)
+        } else {
+            None
+        }
+    }
+}
+
+impl DimNameTrait for DimNameNode {
+    fn is_bare(&self) -> bool {
+        let dim_name: &DimName = self.as_ref();
+        dim_name.is_bare()
+    }
+
+    fn is_built_in_extended(&self) -> Option<TypeQualifier> {
+        let dim_name: &DimName = self.as_ref();
+        dim_name.is_built_in_extended()
     }
 }

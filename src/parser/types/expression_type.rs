@@ -9,7 +9,7 @@ pub enum ExpressionType {
     BuiltIn(TypeQualifier),
     FixedLengthString(u16),
     UserDefined(BareName),
-    Array(Box<ExpressionType>, bool),
+    Array(Box<ExpressionType>, /* with parenthesis */ bool),
 }
 
 pub trait HasExpressionType {

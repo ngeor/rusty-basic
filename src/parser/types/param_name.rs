@@ -153,3 +153,64 @@ pub type SubMap = HashMap<BareName, SubSignatureNode>;
 pub type FunctionSignature = (TypeQualifier, ParamTypes);
 pub type FunctionSignatureNode = Locatable<FunctionSignature>;
 pub type FunctionMap = HashMap<BareName, FunctionSignatureNode>;
+
+impl From<ParamType> for DimType {
+    fn from(param_type: ParamType) -> Self {
+        match param_type {
+            ParamType::Bare => DimType::Bare,
+            ParamType::BuiltIn(q, built_in_style) => DimType::BuiltIn(q, built_in_style),
+            ParamType::UserDefined(user_defined_type_name_node) => {
+                DimType::UserDefined(user_defined_type_name_node)
+            }
+            ParamType::Array(boxed_element_type) => {
+                DimType::Array(vec![], Box::new(Self::from(*boxed_element_type)))
+            }
+        }
+    }
+}
+
+impl From<DimType> for ParamType {
+    fn from(dim_type: DimType) -> Self {
+        match dim_type {
+            DimType::Bare => ParamType::Bare,
+            DimType::BuiltIn(q, built_in_style) => ParamType::BuiltIn(q, built_in_style),
+            DimType::UserDefined(user_defined_type_name_node) => {
+                ParamType::UserDefined(user_defined_type_name_node)
+            }
+            DimType::Array(_, boxed_element_type) => {
+                ParamType::Array(Box::new(Self::from(*boxed_element_type)))
+            }
+            DimType::FixedLengthString(_, _) => {
+                panic!("Fixed length string params are not supported")
+            }
+        }
+    }
+}
+
+impl From<ParamName> for DimName {
+    fn from(param_name: ParamName) -> Self {
+        let (bare_name, param_type) = param_name.into_inner();
+        let dim_type = DimType::from(param_type);
+        DimName::new(bare_name, dim_type)
+    }
+}
+
+impl From<DimName> for ParamName {
+    fn from(dim_name: DimName) -> Self {
+        let (bare_name, dim_type) = dim_name.into_inner();
+        let param_type = ParamType::from(dim_type);
+        Self::new(bare_name, param_type)
+    }
+}
+
+impl From<ParamNameNode> for DimNameNode {
+    fn from(param_name_node: ParamNameNode) -> Self {
+        param_name_node.map(DimName::from)
+    }
+}
+
+impl From<DimNameNode> for ParamNameNode {
+    fn from(dim_name_node: DimNameNode) -> Self {
+        dim_name_node.map(ParamName::from)
+    }
+}

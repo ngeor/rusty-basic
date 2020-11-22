@@ -165,6 +165,12 @@ impl HasExpressionType for Name {
 
 pub type NameNode = Locatable<Name>;
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct NameRef<'a> {
+    pub bare_name: &'a BareName,
+    pub opt_q: Option<TypeQualifier>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

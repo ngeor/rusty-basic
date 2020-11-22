@@ -1,9 +1,6 @@
 use crate::common::*;
 use crate::parser::types::*;
-
-#[cfg(test)]
 use std::convert::TryFrom;
-use crate::parser::DimType::BuiltIn;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DimName {
@@ -92,5 +89,59 @@ impl DimNameTrait for DimNameNode {
     fn is_built_in_extended(&self) -> Option<TypeQualifier> {
         let dim_name: &DimName = self.as_ref();
         dim_name.is_built_in_extended()
+    }
+}
+
+impl DimTypeTrait for DimName {
+    fn is_extended(&self) -> bool {
+        self.dim_type.is_extended()
+    }
+}
+
+impl DimTypeTrait for DimNameNode {
+    fn is_extended(&self) -> bool {
+        let dim_name: &DimName = self.as_ref();
+        dim_name.is_extended()
+    }
+}
+
+impl HasExpressionType for DimName {
+    fn expression_type(&self) -> ExpressionType {
+        self.dim_type.expression_type()
+    }
+}
+
+impl TryFrom<&DimNameNode> for TypeQualifier {
+    type Error = QErrorNode;
+
+    fn try_from(value: &DimNameNode) -> Result<Self, Self::Error> {
+        let Locatable { element, .. } = value;
+        TypeQualifier::try_from(element).with_err_at(value)
+    }
+}
+
+impl TryFrom<&DimName> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(value: &DimName) -> Result<Self, Self::Error> {
+        TypeQualifier::try_from(value.dim_type())
+    }
+}
+
+impl<'a> From<&'a DimName> for NameRef<'a> {
+    fn from(dim_name: &'a DimName) -> Self {
+        let DimName {
+            bare_name,
+            dim_type,
+        } = dim_name;
+        let opt_q: Option<TypeQualifier> = dim_type.into();
+        NameRef { bare_name, opt_q }
+    }
+}
+
+impl<'a> From<&'a DimNameNode> for NameRef<'a> {
+    fn from(dim_name_node: &'a DimNameNode) -> Self {
+        let dim_name: &DimName = dim_name_node.as_ref();
+        dim_name.into()
     }
 }

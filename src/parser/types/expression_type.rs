@@ -1,5 +1,5 @@
-use crate::common::{CanCastTo, Locatable, StringUtils};
-use crate::parser::{BareName, Operator, TypeQualifier, UserDefinedTypes};
+use crate::common::{CanCastTo, Locatable, QError, StringUtils};
+use crate::parser::{BareName, Name, Operator, QualifiedName, TypeQualifier, UserDefinedTypes};
 use crate::variant::{UserDefinedTypeValue, Variant};
 
 /// The resolved type of an expression.
@@ -10,6 +10,44 @@ pub enum ExpressionType {
     FixedLengthString(u16),
     UserDefined(BareName),
     Array(Box<ExpressionType>, /* with parenthesis */ bool),
+}
+
+impl ExpressionType {
+    /// Validates and normalizes the given name
+    pub fn qualify_name(&self, name: Name) -> Result<Name, QError> {
+        match name {
+            Name::Bare(bare_name) => match self.opt_qualifier() {
+                Some(q) => Ok(Name::new(bare_name, Some(q))),
+                _ => Ok(Name::Bare(bare_name)),
+            },
+            Name::Qualified(QualifiedName {
+                bare_name,
+                qualifier,
+            }) => {
+                match self.opt_qualifier() {
+                    Some(expr_q) => {
+                        if qualifier == expr_q {
+                            Ok(Name::new(bare_name, Some(qualifier)))
+                        } else {
+                            // trying to use the wrong qualifier
+                            Err(QError::TypeMismatch)
+                        }
+                    }
+                    // trying to use a qualifier on an ExpressionType that doesn't accept it
+                    _ => Err(QError::TypeMismatch),
+                }
+            }
+        }
+    }
+
+    fn opt_qualifier(&self) -> Option<TypeQualifier> {
+        match self {
+            ExpressionType::BuiltIn(expr_q) => Some(*expr_q),
+            ExpressionType::FixedLengthString(_) => Some(TypeQualifier::DollarString),
+            ExpressionType::Array(boxed_expr_type, _) => boxed_expr_type.opt_qualifier(),
+            _ => None,
+        }
+    }
 }
 
 pub trait HasExpressionType {

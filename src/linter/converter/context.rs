@@ -217,8 +217,8 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn names_without_dot(self) -> HashSet<BareName> {
-        HashSet::new()
+    pub fn names_without_dot(mut self) -> HashSet<BareName> {
+        self.names.extended_names.drain().map(|(k, _)| k).collect()
     }
 
     pub fn on_expression(

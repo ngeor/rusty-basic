@@ -235,7 +235,7 @@ impl<'a> Context<'a> {
         &mut self,
         expr_node: ExpressionNode,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        expr_rules::on_expression(self, expr_node)
+        expr_rules::on_expression(self, expr_node, false)
     }
 
     pub fn on_assignment(
@@ -245,7 +245,8 @@ impl<'a> Context<'a> {
     ) -> Result<(ExpressionNode, ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
         assignment_pre_conversion_validation_rules::validate(self, &left_side)?;
         let (converted_right_side, right_side_implicit_vars) = self.on_expression(right_side)?;
-        let (converted_left_side, left_side_implicit_vars) = self.on_expression(left_side)?;
+        let (converted_left_side, left_side_implicit_vars) =
+            expr_rules::on_expression(self, left_side, true)?;
         assignment_post_conversion_validation_rules::validate(
             self,
             &converted_left_side,
@@ -387,14 +388,18 @@ pub mod expr_rules {
     type ExprResult = RuleResult<I, O>;
     type Result = std::result::Result<ExprResult, QErrorNode>;
 
-    // TODO assignment to function unqualified or qualified by the function type
-
     pub fn on_expression(
         ctx: &mut Context,
         expr_node: ExpressionNode,
+        is_left_side_assignment: bool,
     ) -> std::result::Result<O, QErrorNode> {
         let conversion_rules = FnRule::new(literals)
             .chain_fn(name_clashes_with_sub)
+            .chain_fn(if is_left_side_assignment {
+                assign_to_function
+            } else {
+                always_skip
+            })
             .chain_fn(existing_extended_var)
             .chain_fn(existing_const)
             .chain_fn(existing_extended_array_with_parenthesis)
@@ -408,6 +413,40 @@ pub mod expr_rules {
             .chain_fn(function_call_must_have_args)
             .chain_fn(function_call);
         conversion_rules.demand(ctx, expr_node)
+    }
+
+    fn always_skip(_ctx: &mut Context, input: I) -> Result {
+        Ok(RuleResult::Skip(input))
+    }
+
+    fn assign_to_function(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Variable(name, expr_type),
+            pos,
+        } = input
+        {
+            let bare_name: &BareName = name.as_ref();
+            match ctx.functions.get(bare_name) {
+                Some(Locatable {
+                    element: (function_qualifier, _),
+                    ..
+                }) => {
+                    if name.is_bare_or_of_type(*function_qualifier) {
+                        let converted_name = name.qualify(*function_qualifier);
+                        let expr_type = ExpressionType::BuiltIn(*function_qualifier);
+                        let expr = Expression::Variable(converted_name, expr_type);
+                        Ok(RuleResult::Success((expr.at(pos), vec![])))
+                    } else {
+                        Err(QError::DuplicateDefinition).with_err_at(pos)
+                    }
+                }
+                _ => Ok(RuleResult::Skip(
+                    Expression::Variable(name, expr_type).at(pos),
+                )),
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
     }
 
     fn name_clashes_with_sub(ctx: &mut Context, input: I) -> Result {

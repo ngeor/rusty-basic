@@ -96,12 +96,21 @@ impl DimTypeTrait for DimName {
     fn is_extended(&self) -> bool {
         self.dim_type.is_extended()
     }
+
+    fn is_user_defined(&self) -> Option<&BareNameNode> {
+        self.dim_type.is_user_defined()
+    }
 }
 
 impl DimTypeTrait for DimNameNode {
     fn is_extended(&self) -> bool {
         let dim_name: &DimName = self.as_ref();
         dim_name.is_extended()
+    }
+
+    fn is_user_defined(&self) -> Option<&BareNameNode> {
+        let dim_name: &DimName = self.as_ref();
+        dim_name.is_user_defined()
     }
 }
 

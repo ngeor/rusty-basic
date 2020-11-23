@@ -806,8 +806,24 @@ pub mod dim_rules {
     ) -> std::result::Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
         let rule = FnRule::new(cannot_clash_with_subprograms)
             .chain_fn(cannot_clash_with_existing_names)
+            .chain_fn(user_defined_type_must_exist)
             .chain_fn(new_var);
         rule.demand(ctx, dim_name_node)
+    }
+
+    fn user_defined_type_must_exist(ctx: &mut Context, input: I) -> Result {
+        if let Some(user_defined_type_name_node) = input.is_user_defined() {
+            if ctx
+                .user_defined_types
+                .contains_key(user_defined_type_name_node.as_ref())
+            {
+                Ok(RuleResult::Skip(input))
+            } else {
+                Err(QError::TypeNotDefined).with_err_at(user_defined_type_name_node)
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
     }
 
     fn cannot_clash_with_subprograms(ctx: &mut Context, input: I) -> Result {

@@ -16,6 +16,8 @@ pub enum DimType {
 
 pub trait DimTypeTrait {
     fn is_extended(&self) -> bool;
+
+    fn is_user_defined(&self) -> Option<&BareNameNode>;
 }
 
 impl DimTypeTrait for DimType {
@@ -26,6 +28,14 @@ impl DimTypeTrait for DimType {
             | Self::UserDefined(_) => true,
             Self::Array(_, element_type) => element_type.is_extended(),
             _ => false,
+        }
+    }
+
+    fn is_user_defined(&self) -> Option<&BareNameNode> {
+        match self {
+            Self::UserDefined(u) => Some(u),
+            Self::Array(_, element_type) => element_type.is_user_defined(),
+            _ => None,
         }
     }
 }

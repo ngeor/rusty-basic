@@ -38,6 +38,7 @@ pub struct Context<'a> {
     user_defined_types: &'a UserDefinedTypes,
     resolver: Rc<RefCell<TypeResolverImpl>>,
     names: Names,
+    names_without_dot: HashSet<BareName>,
 }
 
 struct Names {
@@ -182,6 +183,7 @@ impl<'a> Context<'a> {
             user_defined_types,
             resolver,
             names: Names::new(None),
+            names_without_dot: HashSet::new(),
         }
     }
 
@@ -208,8 +210,14 @@ impl<'a> Context<'a> {
 
     pub fn pop_context(&mut self) {
         let temp_dummy = Names::new(None);
-        let old_names = std::mem::replace(&mut self.names, temp_dummy);
-        match old_names.parent {
+        let Names {
+            parent,
+            mut extended_names,
+            ..
+        } = std::mem::replace(&mut self.names, temp_dummy);
+        self.names_without_dot
+            .extend(extended_names.drain().map(|(k, _)| k));
+        match parent {
             Some(boxed_parent) => {
                 self.names = *boxed_parent;
             }
@@ -218,7 +226,9 @@ impl<'a> Context<'a> {
     }
 
     pub fn names_without_dot(mut self) -> HashSet<BareName> {
-        self.names.extended_names.drain().map(|(k, _)| k).collect()
+        self.names_without_dot
+            .extend(self.names.extended_names.drain().map(|(k, _)| k));
+        self.names_without_dot
     }
 
     pub fn on_expression(

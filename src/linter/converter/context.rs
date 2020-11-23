@@ -262,7 +262,7 @@ impl<'a> Context<'a> {
         &mut self,
         dim_name_node: DimNameNode,
     ) -> Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
-        dim_rules::on_dim(self, dim_name_node)
+        dim_rules::on_dim(self, dim_name_node, false)
     }
 
     pub fn on_const(
@@ -288,7 +288,7 @@ impl<'a> Context<'a> {
         param_name_node: ParamNameNode,
     ) -> Result<ParamNameNode, QErrorNode> {
         let dim_name_node: DimNameNode = DimNameNode::from(param_name_node);
-        let (converted_dim_name_node, implicits) = self.on_dim(dim_name_node)?;
+        let (converted_dim_name_node, implicits) = dim_rules::on_dim(self, dim_name_node, true)?;
         if implicits.is_empty() {
             Ok(ParamNameNode::from(converted_dim_name_node))
         } else {
@@ -386,6 +386,8 @@ pub mod expr_rules {
     type O = (ExpressionNode, Vec<QualifiedNameNode>);
     type ExprResult = RuleResult<I, O>;
     type Result = std::result::Result<ExprResult, QErrorNode>;
+
+    // TODO assignment to function unqualified or qualified by the function type
 
     pub fn on_expression(
         ctx: &mut Context,
@@ -813,8 +815,14 @@ pub mod dim_rules {
     pub fn on_dim(
         ctx: &mut Context,
         dim_name_node: DimNameNode,
+        is_param: bool,
     ) -> std::result::Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let rule = FnRule::new(cannot_clash_with_subprograms)
+        let rule = FnRule::new(cannot_clash_with_subs)
+            .chain_fn(if is_param {
+                cannot_clash_with_functions_param
+            } else {
+                cannot_clash_with_functions_dim
+            })
             .chain_fn(cannot_clash_with_existing_names)
             .chain_fn(user_defined_type_must_exist)
             .chain_fn(new_var);
@@ -836,8 +844,38 @@ pub mod dim_rules {
         }
     }
 
-    fn cannot_clash_with_subprograms(ctx: &mut Context, input: I) -> Result {
-        if ctx.functions.contains_key(input.as_ref()) || ctx.subs.contains_key(input.as_ref()) {
+    fn cannot_clash_with_functions_dim(ctx: &mut Context, input: I) -> Result {
+        if ctx.functions.contains_key(input.as_ref()) {
+            Err(QError::DuplicateDefinition).with_err_at(&input)
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn cannot_clash_with_functions_param(ctx: &mut Context, input: I) -> Result {
+        match ctx.functions.get(input.as_ref()) {
+            Some(Locatable {
+                element: (func_qualifier, _),
+                ..
+            }) => {
+                if input.is_extended() {
+                    Err(QError::DuplicateDefinition).with_err_at(&input)
+                } else {
+                    let q = ctx.resolve_name_ref_to_qualifier(&input);
+                    if q == *func_qualifier {
+                        // for some reason you can have a FUNCTION Add(Add)
+                        Ok(RuleResult::Skip(input))
+                    } else {
+                        Err(QError::DuplicateDefinition).with_err_at(&input)
+                    }
+                }
+            }
+            _ => Ok(RuleResult::Skip(input)),
+        }
+    }
+
+    fn cannot_clash_with_subs(ctx: &mut Context, input: I) -> Result {
+        if ctx.subs.contains_key(input.as_ref()) {
             Err(QError::DuplicateDefinition).with_err_at(&input)
         } else {
             Ok(RuleResult::Skip(input))

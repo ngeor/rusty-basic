@@ -4,7 +4,7 @@ use crate::common::{
 };
 use crate::parser::types::{Name, Operator, UnaryOperator};
 use crate::parser::{ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
-use crate::variant::{MIN_INTEGER, MIN_LONG, Variant};
+use crate::variant::{Variant, MIN_INTEGER, MIN_LONG};
 use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -97,7 +97,7 @@ impl TryFrom<Variant> for Expression {
             Variant::VString(s) => Ok(s.into()),
             Variant::VInteger(i) => Ok(i.into()),
             Variant::VLong(l) => Ok(l.into()),
-            _ => Err(QError::InvalidConstant)
+            _ => Err(QError::InvalidConstant),
         }
     }
 }
@@ -200,6 +200,16 @@ impl Expression {
                     _ => None,
                 }
             }
+            _ => None,
+        }
+    }
+
+    pub fn left_most_name(&self) -> Option<&Name> {
+        match self {
+            Self::Variable(n, _) | Self::FunctionCall(n, _) | Self::ArrayElement(n, _, _) => {
+                Some(n)
+            }
+            Self::Property(left_side, _, _) => left_side.left_most_name(),
             _ => None,
         }
     }

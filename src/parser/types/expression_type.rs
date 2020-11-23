@@ -48,6 +48,13 @@ impl ExpressionType {
             _ => None,
         }
     }
+
+    pub fn to_element_type(&self) -> &Self {
+        match self {
+            Self::Array(boxed_element_type, _) => boxed_element_type.to_element_type(),
+            _ => self,
+        }
+    }
 }
 
 pub trait HasExpressionType {

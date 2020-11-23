@@ -367,7 +367,9 @@ impl<I, O, E> Rule<I, O, E> for FnRule<I, O, E> {
 
 pub mod expr_rules {
     use super::*;
+    use crate::built_ins::BuiltInFunction;
     use crate::common::{QError, ToLocatableError};
+    use crate::parser::{ExpressionNodes, HasExpressionType};
     use std::convert::TryFrom;
 
     type I = ExpressionNode;
@@ -383,10 +385,16 @@ pub mod expr_rules {
             .chain_fn(name_clashes_with_sub)
             .chain_fn(existing_extended_var)
             .chain_fn(existing_const)
+            .chain_fn(existing_extended_array_with_parenthesis)
+            .chain_fn(existing_compact_array_with_parenthesis)
             .chain_fn(existing_compact_name)
-            .chain_fn(binary)
+            .chain_fn(unary_expr)
+            .chain_fn(binary_expr)
             .chain_fn(implicit_var)
-            .chain_fn(fold_property_into_implicit_var);
+            .chain_fn(property_of_existing_var)
+            .chain_fn(fold_property_into_implicit_var)
+            .chain_fn(function_call_must_have_args)
+            .chain_fn(function_call);
         conversion_rules.demand(ctx, expr_node)
     }
 
@@ -442,7 +450,7 @@ pub mod expr_rules {
                     let expr = Expression::try_from(v.clone()).with_err_at(pos)?;
                     Ok(RuleResult::Success((expr.at(pos), vec![])))
                 } else {
-                    Err(QError::TypeMismatch).with_err_at(pos)
+                    Err(QError::DuplicateDefinition).with_err_at(pos)
                 }
             } else {
                 Ok(RuleResult::Skip(
@@ -488,7 +496,7 @@ pub mod expr_rules {
         }
     }
 
-    fn binary(ctx: &mut Context, input: I) -> Result {
+    fn binary_expr(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::BinaryExpression(op, left, right, _),
             pos,
@@ -501,6 +509,24 @@ pub mod expr_rules {
                 new_expr.at(pos),
                 union(left_implicit_vars, right_implicit_vars),
             )))
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn unary_expr(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::UnaryExpression(op, child),
+            pos,
+        } = input
+        {
+            let (converted_child, implicit_vars) = ctx.on_expression(*child)?;
+            if op.applies_to(&converted_child.expression_type()) {
+                let new_expr = Expression::UnaryExpression(op, Box::new(converted_child));
+                Ok(RuleResult::Success((new_expr.at(pos), implicit_vars)))
+            } else {
+                Err(QError::TypeMismatch).with_err_at(&converted_child)
+            }
         } else {
             Ok(RuleResult::Skip(input))
         }
@@ -526,6 +552,74 @@ pub mod expr_rules {
         }
     }
 
+    fn property_of_existing_var(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Property(left, right, old_expr_type),
+            pos,
+        } = input
+        {
+            // Find the most left name. If it is an existing variable, expect all to be resolved.
+            // If it is not an existing variable, skip and allow the fold rule to follow.
+            if let Some(left_most_name) = left.left_most_name() {
+                if let Some(ExpressionType::UserDefined(_)) =
+                    ctx.names.contains_extended(left_most_name.as_ref())
+                {
+                    let (
+                        Locatable {
+                            element: converted_left,
+                            ..
+                        },
+                        implicit_left,
+                    ) = ctx.on_expression((*left).at(pos))?;
+                    let converted_left_expr_type = converted_left.expression_type();
+                    let converted_left_element_type = converted_left_expr_type.to_element_type();
+                    if let ExpressionType::UserDefined(user_defined_type_name) =
+                        converted_left_element_type
+                    {
+                        if let Some(user_defined_type) =
+                            ctx.user_defined_types.get(user_defined_type_name)
+                        {
+                            if let Some(element_type) =
+                                user_defined_type.find_element(right.as_ref())
+                            {
+                                if element_type.can_be_referenced_by_property_name(&right) {
+                                    Ok(RuleResult::Success((
+                                        Expression::Property(
+                                            Box::new(converted_left),
+                                            right.un_qualify(),
+                                            element_type.expression_type(),
+                                        )
+                                        .at(pos),
+                                        implicit_left,
+                                    )))
+                                } else {
+                                    // using wrong qualifier
+                                    Err(QError::TypeMismatch).with_err_at(pos)
+                                }
+                            } else {
+                                Err(QError::ElementNotDefined).with_err_at(pos)
+                            }
+                        } else {
+                            Err(QError::TypeNotDefined).with_err_at(pos)
+                        }
+                    } else {
+                        Err(QError::TypeMismatch).with_err_at(pos)
+                    }
+                } else {
+                    Ok(RuleResult::Skip(
+                        Expression::Property(left, right, old_expr_type).at(pos),
+                    ))
+                }
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::Property(left, right, old_expr_type).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
     fn fold_property_into_implicit_var(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Property(left, right, _),
@@ -542,6 +636,149 @@ pub mod expr_rules {
                 },
                 _ => Err(QError::ElementNotDefined).with_err_at(pos),
             }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn existing_extended_array_with_parenthesis(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::FunctionCall(name, args),
+            pos,
+        } = input
+        {
+            let bare_name = name.as_ref();
+            if let Some(ExpressionType::Array(boxed_element_type, _)) =
+                ctx.names.contains_extended(bare_name)
+            {
+                // clone element type early in order to be able to use ctx as mutable later
+                let element_type = boxed_element_type.as_ref().clone();
+                // convert args
+                let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
+                let mut converted_args: ExpressionNodes = vec![];
+                for arg in args {
+                    let (converted_arg, implicits) = ctx.on_expression(arg)?;
+                    converted_args.push(converted_arg);
+                    implicit_vars = union(implicit_vars, implicits);
+                }
+                // convert name
+                let converted_name = element_type.qualify_name(name).with_err_at(pos)?;
+                // create result
+                let result_expr = if converted_args.is_empty() {
+                    // just the array itself. It is with parenthesis, as we are in a function call
+                    Expression::Variable(
+                        converted_name,
+                        ExpressionType::Array(Box::new(element_type), true),
+                    )
+                } else {
+                    Expression::ArrayElement(converted_name, converted_args, element_type)
+                };
+                Ok(RuleResult::Success((result_expr.at(pos), implicit_vars)))
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::FunctionCall(name, args).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    // TODO : merge this function with extended variation
+    fn existing_compact_array_with_parenthesis(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::FunctionCall(name, args),
+            pos,
+        } = input
+        {
+            let bare_name: &BareName = name.as_ref();
+            let qualifier: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
+            if let Some(ExpressionType::Array(boxed_element_type, _)) =
+                ctx.names.contains_compact(bare_name, qualifier)
+            {
+                // clone element type early in order to be able to use ctx as mutable later
+                let element_type = boxed_element_type.as_ref().clone();
+                // convert args
+                let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
+                let mut converted_args: ExpressionNodes = vec![];
+                for arg in args {
+                    let (converted_arg, implicits) = ctx.on_expression(arg)?;
+                    converted_args.push(converted_arg);
+                    implicit_vars = union(implicit_vars, implicits);
+                }
+                // convert name
+                let converted_name = name.qualify(qualifier);
+                // create result
+                let result_expr = if converted_args.is_empty() {
+                    // just the array itself. It is with parenthesis, as we are in a function call
+                    Expression::Variable(
+                        converted_name,
+                        ExpressionType::Array(Box::new(element_type), true),
+                    )
+                } else {
+                    Expression::ArrayElement(converted_name, converted_args, element_type)
+                };
+                Ok(RuleResult::Success((result_expr.at(pos), implicit_vars)))
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::FunctionCall(name, args).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn function_call_must_have_args(_ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::FunctionCall(_, args),
+            ..
+        } = &input
+        {
+            if args.is_empty() {
+                Err(QError::syntax_error(
+                    "Cannot have function call without arguments",
+                ))
+                .with_err_at(&input)
+            } else {
+                Ok(RuleResult::Skip(input))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn function_call(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::FunctionCall(name, args),
+            pos,
+        } = input
+        {
+            // convert args
+            let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
+            let mut converted_args: ExpressionNodes = vec![];
+            for arg in args {
+                let (converted_arg, implicits) = ctx.on_expression(arg)?;
+                converted_args.push(converted_arg);
+                implicit_vars = union(implicit_vars, implicits);
+            }
+            // is it built-in function?
+            let converted_expr =
+                match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
+                    Some(built_in_function) => {
+                        Expression::BuiltInFunctionCall(built_in_function, converted_args)
+                    }
+                    _ => {
+                        let converted_name: Name = match ctx.functions.get(name.as_ref()) {
+                            Some(Locatable {
+                                element: (q, _), ..
+                            }) => name.qualify(*q),
+                            _ => ctx.resolve_name_to_name(name),
+                        };
+                        Expression::FunctionCall(converted_name, converted_args)
+                    }
+                };
+            Ok(RuleResult::Success((converted_expr.at(pos), implicit_vars)))
         } else {
             Ok(RuleResult::Skip(input))
         }

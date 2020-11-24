@@ -205,7 +205,11 @@ impl<'a> Context<'a> {
         let temp_dummy = Names::new(None);
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)));
-        Ok((name, self.convert_param_name_nodes(params)?))
+        let converted_function_name = self.resolve_name_to_name(name);
+        Ok((
+            converted_function_name,
+            self.convert_param_name_nodes(params)?,
+        ))
     }
 
     pub fn pop_context(&mut self) {

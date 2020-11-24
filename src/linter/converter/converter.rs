@@ -6,7 +6,7 @@ use crate::parser::{
     BareName, FunctionMap, QualifiedNameNode, SubMap, TypeQualifier, UserDefinedTypes,
 };
 use std::cell::RefCell;
-use std::collections::{HashSet};
+use std::collections::HashSet;
 use std::rc::Rc;
 
 //

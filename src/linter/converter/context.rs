@@ -113,6 +113,19 @@ impl Names {
         self.constants.get(bare_name)
     }
 
+    pub fn get_const_value_recursively(&self, bare_name: &BareName) -> Option<&Variant> {
+        match self.constants.get(bare_name) {
+            Some(v) => Some(v),
+            _ => {
+                if let Some(boxed_parent) = &self.parent {
+                    boxed_parent.get_const_value_recursively(bare_name)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     pub fn contains_const_recursively(&self, bare_name: &BareName) -> bool {
         if self.contains_const(bare_name) {
             true
@@ -423,6 +436,7 @@ pub mod expr_rules {
             .chain_fn(function_call_must_have_args)
             .chain_fn(function_call)
             .chain_fn(property_of_existing_var)
+            .chain_fn(existing_parent_const)
             .chain_fn(fold_property_into_implicit_var)
             .chain_fn(implicit_var);
         conversion_rules.demand(ctx, expr_node)
@@ -501,6 +515,31 @@ pub mod expr_rules {
         } = input
         {
             if let Some(v) = ctx.names.get_const_value_no_recursion(name.as_ref()) {
+                let q: TypeQualifier = TypeQualifier::try_from(v).with_err_at(pos)?;
+                if name.is_bare_or_of_type(q) {
+                    // resolve to literal expr
+                    let expr = Expression::try_from(v.clone()).with_err_at(pos)?;
+                    Ok(RuleResult::Success((expr.at(pos), vec![])))
+                } else {
+                    Err(QError::DuplicateDefinition).with_err_at(pos)
+                }
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::Variable(name, expr_type).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn existing_parent_const(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Variable(name, expr_type),
+            pos,
+        } = input
+        {
+            if let Some(v) = ctx.names.get_const_value_recursively(name.as_ref()) {
                 let q: TypeQualifier = TypeQualifier::try_from(v).with_err_at(pos)?;
                 if name.is_bare_or_of_type(q) {
                     // resolve to literal expr

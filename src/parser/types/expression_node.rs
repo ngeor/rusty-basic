@@ -14,7 +14,6 @@ pub enum Expression {
     StringLiteral(String),
     IntegerLiteral(i32),
     LongLiteral(i64),
-    Constant(QualifiedName),
     Variable(Name, ExpressionType),
     FunctionCall(Name, ExpressionNodes),
     ArrayElement(
@@ -331,8 +330,7 @@ impl HasExpressionType for Expression {
             | Self::Property(_, _, expression_type)
             | Self::BinaryExpression(_, _, _, expression_type)
             | Self::ArrayElement(_, _, expression_type) => expression_type.clone(),
-            Self::Constant(QualifiedName { qualifier, .. })
-            | Self::FunctionCall(Name::Qualified(QualifiedName { qualifier, .. }), _) => {
+            Self::FunctionCall(Name::Qualified(QualifiedName { qualifier, .. }), _) => {
                 ExpressionType::BuiltIn(*qualifier)
             }
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),

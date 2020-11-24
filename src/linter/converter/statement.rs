@@ -25,7 +25,9 @@ impl<'a> Converter<StatementNode, StatementNodes> for ConverterImpl<'a> {
             } = implicit_var;
             result.push(Statement::Dim(DimName::from(q_name).at(pos)).at(pos));
         }
-        result.push(converted_statement_node);
+        if let Some(s) = converted_statement_node {
+            result.push(s);
+        }
         Ok(result)
     }
 }
@@ -43,54 +45,58 @@ impl<'a> Converter<StatementNodes, StatementNodes> for ConverterImpl<'a> {
                 } = implicit_var;
                 result.push(Statement::Dim(DimName::from(q_name).at(pos)).at(pos));
             }
-            result.push(converted_statement_node);
+            if let Some(s) = converted_statement_node {
+                result.push(s);
+            }
         }
         Ok(result)
     }
 }
 
-impl<'a> ConverterWithImplicitVariables<StatementNode, StatementNode> for ConverterImpl<'a> {
+impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
+    for ConverterImpl<'a>
+{
     fn convert_and_collect_implicit_variables(
         &mut self,
         statement_node: StatementNode,
-    ) -> Result<(StatementNode, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> Result<(Option<StatementNode>, Vec<QualifiedNameNode>), QErrorNode> {
         let Locatable {
             element: statement,
             pos,
         } = statement_node;
         match statement {
-            Statement::Comment(c) => Ok((Statement::Comment(c).at(pos), vec![])),
-            Statement::Assignment(n, e) => self.assignment(n.at(pos), e),
-            Statement::Const(n, e, _) => self
-                .constant(n, e)
-                .map(|statement| (statement.at(pos), vec![])),
-            Statement::SubCall(n, args) => self.sub_call(n.at(pos), args),
+            Statement::Comment(c) => Ok((Some(Statement::Comment(c).at(pos)), vec![])),
+            Statement::Assignment(n, e) => self.assignment(n.at(pos), e).map(|(x, y)| (Some(x), y)),
+            Statement::Const(n, e, _) => self.constant(n, e).map(|_| (None, vec![])),
+            Statement::SubCall(n, args) => {
+                self.sub_call(n.at(pos), args).map(|(x, y)| (Some(x), y))
+            }
             Statement::IfBlock(i) => self
                 .convert_and_collect_implicit_variables(i)
-                .map(|(i, implicit_vars)| (Statement::IfBlock(i).at(pos), implicit_vars)),
+                .map(|(i, implicit_vars)| (Some(Statement::IfBlock(i).at(pos)), implicit_vars)),
             Statement::SelectCase(s) => self
                 .convert_and_collect_implicit_variables(s)
-                .map(|(s, implicit_vars)| (Statement::SelectCase(s).at(pos), implicit_vars)),
+                .map(|(s, implicit_vars)| (Some(Statement::SelectCase(s).at(pos)), implicit_vars)),
             Statement::ForLoop(f) => self
                 .convert_and_collect_implicit_variables(f)
-                .map(|(f, implicit_vars)| (Statement::ForLoop(f).at(pos), implicit_vars)),
+                .map(|(f, implicit_vars)| (Some(Statement::ForLoop(f).at(pos)), implicit_vars)),
             Statement::While(c) => self
                 .convert_and_collect_implicit_variables(c)
-                .map(|(c, implicit_vars)| (Statement::While(c).at(pos), implicit_vars)),
-            Statement::ErrorHandler(l) => Ok((Statement::ErrorHandler(l).at(pos), vec![])),
-            Statement::Label(l) => Ok((Statement::Label(l).at(pos), vec![])),
-            Statement::GoTo(l) => Ok((Statement::GoTo(l).at(pos), vec![])),
+                .map(|(c, implicit_vars)| (Some(Statement::While(c).at(pos)), implicit_vars)),
+            Statement::ErrorHandler(l) => Ok((Some(Statement::ErrorHandler(l).at(pos)), vec![])),
+            Statement::Label(l) => Ok((Some(Statement::Label(l).at(pos)), vec![])),
+            Statement::GoTo(l) => Ok((Some(Statement::GoTo(l).at(pos)), vec![])),
             Statement::Dim(dim_name_node) => self
                 .convert_and_collect_implicit_variables(dim_name_node)
                 .map(|(dim_name_node, implicit_vars_in_array_dimensions)| {
                     (
-                        Statement::Dim(dim_name_node).at(pos),
+                        Some(Statement::Dim(dim_name_node).at(pos)),
                         implicit_vars_in_array_dimensions,
                     )
                 }),
             Statement::Print(print_node) => self
                 .convert_and_collect_implicit_variables(print_node)
-                .map(|(p, implicit_vars)| (Statement::Print(p).at(pos), implicit_vars)),
+                .map(|(p, implicit_vars)| (Some(Statement::Print(p).at(pos)), implicit_vars)),
             Statement::BuiltInSubCall(_, _) => panic!("parser should not have created this"),
         }
     }

@@ -135,9 +135,6 @@ impl<'a> NoDotNamesCheck<ExpressionNode, QErrorNode> for DotsLinter<'a> {
 impl<'a> NoDotNamesCheck<Expression, QErrorNode> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &Expression) -> Result<(), QErrorNode> {
         match x {
-            Expression::Constant(qualified_name) => {
-                self.ensure_no_dots(qualified_name).with_err_no_pos()
-            }
             Expression::Variable(var_name, _) => self.ensure_no_dots(var_name).with_err_no_pos(),
             Expression::ArrayElement(var_name, indices, _) => {
                 self.ensure_no_dots(var_name).with_err_no_pos()?;

@@ -46,7 +46,6 @@ impl InstructionGenerator {
                 self.push_load(s, pos);
             }
             Expression::Variable(_, _)
-            | Expression::Constant(_)
             | Expression::ArrayElement(_, _, _)
             | Expression::Property(_, _, _) => self.generate_load_instructions(e, pos),
             Expression::FunctionCall(n, args) => {

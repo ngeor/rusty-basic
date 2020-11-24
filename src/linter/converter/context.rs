@@ -402,7 +402,7 @@ pub mod expr_rules {
             .chain_fn(if is_left_side_assignment {
                 assign_to_function
             } else {
-                always_skip
+                variable_as_function_call
             })
             .chain_fn(existing_extended_var)
             .chain_fn(existing_const)
@@ -411,11 +411,11 @@ pub mod expr_rules {
             .chain_fn(existing_compact_name)
             .chain_fn(unary_expr)
             .chain_fn(binary_expr)
-            .chain_fn(implicit_var)
+            .chain_fn(function_call_must_have_args)
+            .chain_fn(function_call)
             .chain_fn(property_of_existing_var)
             .chain_fn(fold_property_into_implicit_var)
-            .chain_fn(function_call_must_have_args)
-            .chain_fn(function_call);
+            .chain_fn(implicit_var);
         conversion_rules.demand(ctx, expr_node)
     }
 
@@ -834,6 +834,38 @@ pub mod expr_rules {
                     }
                 };
             Ok(RuleResult::Success((converted_expr.at(pos), implicit_vars)))
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn variable_as_function_call(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Variable(name, old_expr_type),
+            pos,
+        } = input
+        {
+            // is it built-in function?
+            match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
+                Some(built_in_function) => Ok(RuleResult::Success((
+                    Expression::BuiltInFunctionCall(built_in_function, vec![]).at(pos),
+                    vec![],
+                ))),
+                _ => match ctx.functions.get(name.as_ref()) {
+                    Some(Locatable {
+                        element: (q, _), ..
+                    }) => {
+                        let converted_name = name.qualify(*q);
+                        Ok(RuleResult::Success((
+                            Expression::FunctionCall(converted_name, vec![]).at(pos),
+                            vec![],
+                        )))
+                    }
+                    _ => Ok(RuleResult::Skip(
+                        Expression::Variable(name, old_expr_type).at(pos),
+                    )),
+                },
+            }
         } else {
             Ok(RuleResult::Skip(input))
         }

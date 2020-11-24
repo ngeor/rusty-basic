@@ -438,7 +438,8 @@ pub mod expr_rules {
             .chain_fn(property_of_existing_var)
             .chain_fn(existing_parent_const)
             .chain_fn(fold_property_into_implicit_var)
-            .chain_fn(implicit_var);
+            .chain_fn(implicit_var)
+            .chain_fn(parenthesis);
         conversion_rules.demand(ctx, expr_node)
     }
 
@@ -903,6 +904,20 @@ pub mod expr_rules {
                     )),
                 },
             }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn parenthesis(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Parenthesis(child),
+            pos,
+        } = input
+        {
+            let (converted_child, implicit_vars) = ctx.on_expression(*child)?;
+            let converted_expr = Expression::Parenthesis(Box::new(converted_child));
+            Ok(RuleResult::Success((converted_expr.at(pos), implicit_vars)))
         } else {
             Ok(RuleResult::Skip(input))
         }

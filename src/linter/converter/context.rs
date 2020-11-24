@@ -300,6 +300,15 @@ impl<'a> Context<'a> {
             panic!("Should not have introduced implicit variables via parameter")
         }
     }
+
+    fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
+        match self.functions.get(bare_name) {
+            Some(Locatable {
+                element: (q, _), ..
+            }) => Some(*q),
+            _ => None,
+        }
+    }
 }
 
 enum RuleResult<I, O> {
@@ -419,10 +428,6 @@ pub mod expr_rules {
         conversion_rules.demand(ctx, expr_node)
     }
 
-    fn always_skip(_ctx: &mut Context, input: I) -> Result {
-        Ok(RuleResult::Skip(input))
-    }
-
     fn assign_to_function(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Variable(name, expr_type),
@@ -430,14 +435,11 @@ pub mod expr_rules {
         } = input
         {
             let bare_name: &BareName = name.as_ref();
-            match ctx.functions.get(bare_name) {
-                Some(Locatable {
-                    element: (function_qualifier, _),
-                    ..
-                }) => {
-                    if name.is_bare_or_of_type(*function_qualifier) {
-                        let converted_name = name.qualify(*function_qualifier);
-                        let expr_type = ExpressionType::BuiltIn(*function_qualifier);
+            match ctx.function_qualifier(bare_name) {
+                Some(function_qualifier) => {
+                    if name.is_bare_or_of_type(function_qualifier) {
+                        let converted_name = name.qualify(function_qualifier);
+                        let expr_type = ExpressionType::BuiltIn(function_qualifier);
                         let expr = Expression::Variable(converted_name, expr_type);
                         Ok(RuleResult::Success((expr.at(pos), vec![])))
                     } else {
@@ -824,10 +826,8 @@ pub mod expr_rules {
                         Expression::BuiltInFunctionCall(built_in_function, converted_args)
                     }
                     _ => {
-                        let converted_name: Name = match ctx.functions.get(name.as_ref()) {
-                            Some(Locatable {
-                                element: (q, _), ..
-                            }) => name.qualify(*q),
+                        let converted_name: Name = match ctx.function_qualifier(name.as_ref()) {
+                            Some(q) => name.qualify(q),
                             _ => ctx.resolve_name_to_name(name),
                         };
                         Expression::FunctionCall(converted_name, converted_args)
@@ -851,11 +851,9 @@ pub mod expr_rules {
                     Expression::BuiltInFunctionCall(built_in_function, vec![]).at(pos),
                     vec![],
                 ))),
-                _ => match ctx.functions.get(name.as_ref()) {
-                    Some(Locatable {
-                        element: (q, _), ..
-                    }) => {
-                        let converted_name = name.qualify(*q);
+                _ => match ctx.function_qualifier(name.as_ref()) {
+                    Some(q) => {
+                        let converted_name = name.qualify(q);
                         Ok(RuleResult::Success((
                             Expression::FunctionCall(converted_name, vec![]).at(pos),
                             vec![],
@@ -928,16 +926,13 @@ pub mod dim_rules {
     }
 
     fn cannot_clash_with_functions_param(ctx: &mut Context, input: I) -> Result {
-        match ctx.functions.get(input.as_ref()) {
-            Some(Locatable {
-                element: (func_qualifier, _),
-                ..
-            }) => {
+        match ctx.function_qualifier(input.as_ref()) {
+            Some(func_qualifier) => {
                 if input.is_extended() {
                     Err(QError::DuplicateDefinition).with_err_at(&input)
                 } else {
                     let q = ctx.resolve_name_ref_to_qualifier(&input);
-                    if q == *func_qualifier {
+                    if q == func_qualifier {
                         // for some reason you can have a FUNCTION Add(Add)
                         Ok(RuleResult::Skip(input))
                     } else {

@@ -9,7 +9,7 @@ pub enum ExpressionType {
     BuiltIn(TypeQualifier),
     FixedLengthString(u16),
     UserDefined(BareName),
-    Array(Box<ExpressionType>, /* with parenthesis */ bool),
+    Array(Box<ExpressionType>),
 }
 
 impl ExpressionType {
@@ -44,14 +44,14 @@ impl ExpressionType {
         match self {
             ExpressionType::BuiltIn(expr_q) => Some(*expr_q),
             ExpressionType::FixedLengthString(_) => Some(TypeQualifier::DollarString),
-            ExpressionType::Array(boxed_expr_type, _) => boxed_expr_type.opt_qualifier(),
+            ExpressionType::Array(boxed_expr_type) => boxed_expr_type.opt_qualifier(),
             _ => None,
         }
     }
 
     pub fn to_element_type(&self) -> &Self {
         match self {
-            Self::Array(boxed_element_type, _) => boxed_element_type.to_element_type(),
+            Self::Array(boxed_element_type) => boxed_element_type.to_element_type(),
             _ => self,
         }
     }
@@ -118,7 +118,7 @@ impl CanCastTo<&ExpressionType> for ExpressionType {
                 Self::UserDefined(u_right) => u_left == u_right,
                 _ => false,
             },
-            Self::Unresolved | Self::Array(_, _) => false,
+            Self::Unresolved | Self::Array(_) => false,
         }
     }
 }

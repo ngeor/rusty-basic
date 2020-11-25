@@ -67,29 +67,6 @@ impl HasExpressionType for ParamName {
 
 pub type ParamTypes = Vec<ParamType>;
 
-impl ParamType {
-    pub fn accepts_by_ref(&self, arg_type: &ExpressionType) -> bool {
-        match self {
-            Self::Bare => false,
-            Self::BuiltIn(q_left, _) => match arg_type {
-                ExpressionType::BuiltIn(q_right) => q_left == q_right,
-                ExpressionType::FixedLengthString(_) => *q_left == TypeQualifier::DollarString,
-                _ => false,
-            },
-            Self::UserDefined(u_left) => match arg_type {
-                ExpressionType::UserDefined(u_right) => u_left == u_right,
-                _ => false,
-            },
-            Self::Array(boxed_element_type) => match arg_type {
-                ExpressionType::Array(boxed_type, true /* only with parenthesis */) => {
-                    boxed_element_type.accepts_by_ref(boxed_type)
-                }
-                _ => false,
-            },
-        }
-    }
-}
-
 // Custom implementation of PartialEq because we want to compare the parameter types are equal,
 // regardless of the location of the UserDefinedName node. This is used in subprogram_context (pre-linter).
 impl PartialEq<ParamType> for ParamType {
@@ -139,7 +116,7 @@ impl HasExpressionType for ParamType {
                 ExpressionType::UserDefined(element.clone())
             }
             Self::Array(boxed_element_type) => {
-                ExpressionType::Array(Box::new(boxed_element_type.expression_type()), true)
+                ExpressionType::Array(Box::new(boxed_element_type.expression_type()))
             }
             _ => ExpressionType::Unresolved,
         }

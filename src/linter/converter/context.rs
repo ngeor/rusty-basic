@@ -744,7 +744,7 @@ pub mod expr_rules {
         } = input
         {
             let bare_name = name.as_ref();
-            if let Some(ExpressionType::Array(boxed_element_type, _)) =
+            if let Some(ExpressionType::Array(boxed_element_type)) =
                 ctx.names.contains_extended(bare_name)
             {
                 // clone element type early in order to be able to use ctx as mutable later
@@ -760,15 +760,8 @@ pub mod expr_rules {
                 // convert name
                 let converted_name = element_type.qualify_name(name).with_err_at(pos)?;
                 // create result
-                let result_expr = if converted_args.is_empty() {
-                    // just the array itself. It is with parenthesis, as we are in a function call
-                    Expression::Variable(
-                        converted_name,
-                        ExpressionType::Array(Box::new(element_type), true),
-                    )
-                } else {
-                    Expression::ArrayElement(converted_name, converted_args, element_type)
-                };
+                let result_expr =
+                    Expression::ArrayElement(converted_name, converted_args, element_type);
                 Ok(RuleResult::Success((result_expr.at(pos), implicit_vars)))
             } else {
                 Ok(RuleResult::Skip(
@@ -792,7 +785,7 @@ pub mod expr_rules {
         {
             let bare_name: &BareName = name.as_ref();
             let qualifier: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
-            if let Some(ExpressionType::Array(boxed_element_type, _)) =
+            if let Some(ExpressionType::Array(boxed_element_type)) =
                 ctx.names.contains_compact(bare_name, qualifier)
             {
                 // clone element type early in order to be able to use ctx as mutable later
@@ -808,15 +801,8 @@ pub mod expr_rules {
                 // convert name
                 let converted_name = name.qualify(qualifier);
                 // create result
-                let result_expr = if converted_args.is_empty() {
-                    // just the array itself. It is with parenthesis, as we are in a function call
-                    Expression::Variable(
-                        converted_name,
-                        ExpressionType::Array(Box::new(element_type), true),
-                    )
-                } else {
-                    Expression::ArrayElement(converted_name, converted_args, element_type)
-                };
+                let result_expr =
+                    Expression::ArrayElement(converted_name, converted_args, element_type);
                 Ok(RuleResult::Success((result_expr.at(pos), implicit_vars)))
             } else {
                 Ok(RuleResult::Skip(

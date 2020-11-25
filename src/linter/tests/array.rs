@@ -109,12 +109,10 @@ fn test_passing_array_parameter_with_parenthesis() {
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::SubCall(
                 "Menu".into(),
-                vec![Expression::Variable(
+                vec![Expression::ArrayElement(
                     "choice$".into(),
-                    ExpressionType::Array(
-                        Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString)),
-                        true
-                    )
+                    vec![],
+                    ExpressionType::BuiltIn(TypeQualifier::DollarString)
                 )
                 .at_rc(4, 10)]
             ))
@@ -198,10 +196,9 @@ fn test_passing_array_without_parenthesis() {
                     BuiltInFunction::LBound,
                     vec![Expression::Variable(
                         "choice$".into(),
-                        ExpressionType::Array(
-                            Box::new(ExpressionType::BuiltIn(TypeQualifier::DollarString)),
-                            false
-                        )
+                        ExpressionType::Array(Box::new(ExpressionType::BuiltIn(
+                            TypeQualifier::DollarString
+                        )))
                     )
                     .at_rc(3, 16)]
                 )

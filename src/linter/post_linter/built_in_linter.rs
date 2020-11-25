@@ -192,7 +192,7 @@ mod lbound {
             element: first,
             pos: first_pos,
         } = args.get(0).unwrap();
-        if let ExpressionType::Array(_, false) = first.expression_type() {
+        if let Expression::Variable(_, ExpressionType::Array(_)) = first {
             if args.len() == 2 {
                 if args[1].can_cast_to(TypeQualifier::PercentInteger) {
                     Ok(())

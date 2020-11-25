@@ -420,57 +420,53 @@ pub mod expr_rules {
         is_left_side_assignment: bool,
     ) -> std::result::Result<O, QErrorNode> {
         let conversion_rules = FnRule::new(literals)
-            .chain_fn(name_clashes_with_sub)
+            .chain_fn(variable_name_clashes_with_sub)
             .chain_fn(if is_left_side_assignment {
-                assign_to_function
+                variable_or_property_assign_to_function
             } else {
-                variable_as_function_call
+                variable_or_property_as_function_call
             })
-            .chain_fn(existing_extended_var)
-            .chain_fn(existing_const)
-            .chain_fn(existing_extended_array_with_parenthesis)
-            .chain_fn(existing_compact_array_with_parenthesis)
-            .chain_fn(existing_compact_name)
+            .chain_fn(variable_existing_extended_var)
+            .chain_fn(variable_existing_const)
+            .chain_fn(function_call_existing_extended_array_with_parenthesis)
+            .chain_fn(function_call_existing_compact_array_with_parenthesis)
+            .chain_fn(variable_existing_compact_name)
             .chain_fn(unary_expr)
             .chain_fn(binary_expr)
             .chain_fn(function_call_must_have_args)
             .chain_fn(function_call)
             .chain_fn(property_of_existing_var)
-            .chain_fn(existing_parent_const)
-            .chain_fn(fold_property_into_implicit_var)
-            .chain_fn(implicit_var)
+            .chain_fn(variable_existing_parent_const)
+            .chain_fn(property_fold_property_into_implicit_var)
+            .chain_fn(variable_implicit_var)
             .chain_fn(parenthesis);
         conversion_rules.demand(ctx, expr_node)
     }
 
-    fn assign_to_function(ctx: &mut Context, input: I) -> Result {
-        if let Locatable {
-            element: Expression::Variable(name, expr_type),
-            pos,
-        } = input
-        {
-            let bare_name: &BareName = name.as_ref();
-            match ctx.function_qualifier(bare_name) {
-                Some(function_qualifier) => {
-                    if name.is_bare_or_of_type(function_qualifier) {
-                        let converted_name = name.qualify(function_qualifier);
-                        let expr_type = ExpressionType::BuiltIn(function_qualifier);
-                        let expr = Expression::Variable(converted_name, expr_type);
-                        Ok(RuleResult::Success((expr.at(pos), vec![])))
-                    } else {
-                        Err(QError::DuplicateDefinition).with_err_at(pos)
+    fn variable_or_property_assign_to_function(ctx: &mut Context, input: I) -> Result {
+        let Locatable { element: expr, pos } = input;
+        match expr.fold_name() {
+            Some(name) => {
+                let bare_name: &BareName = name.as_ref();
+                match ctx.function_qualifier(bare_name) {
+                    Some(function_qualifier) => {
+                        if name.is_bare_or_of_type(function_qualifier) {
+                            let converted_name = name.qualify(function_qualifier);
+                            let expr_type = ExpressionType::BuiltIn(function_qualifier);
+                            let expr = Expression::Variable(converted_name, expr_type);
+                            Ok(RuleResult::Success((expr.at(pos), vec![])))
+                        } else {
+                            Err(QError::DuplicateDefinition).with_err_at(pos)
+                        }
                     }
+                    _ => Ok(RuleResult::Skip(expr.at(pos))),
                 }
-                _ => Ok(RuleResult::Skip(
-                    Expression::Variable(name, expr_type).at(pos),
-                )),
             }
-        } else {
-            Ok(RuleResult::Skip(input))
+            _ => Ok(RuleResult::Skip(expr.at(pos))),
         }
     }
 
-    fn name_clashes_with_sub(ctx: &mut Context, input: I) -> Result {
+    fn variable_name_clashes_with_sub(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Variable(name, _),
             pos,
@@ -486,7 +482,7 @@ pub mod expr_rules {
         }
     }
 
-    fn existing_extended_var(ctx: &mut Context, input: I) -> Result {
+    fn variable_existing_extended_var(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Variable(name, expr_type),
             pos,
@@ -509,7 +505,7 @@ pub mod expr_rules {
         }
     }
 
-    fn existing_const(ctx: &mut Context, input: I) -> Result {
+    fn variable_existing_const(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Variable(name, expr_type),
             pos,
@@ -534,7 +530,7 @@ pub mod expr_rules {
         }
     }
 
-    fn existing_parent_const(ctx: &mut Context, input: I) -> Result {
+    fn variable_existing_parent_const(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Variable(name, expr_type),
             pos,
@@ -559,7 +555,7 @@ pub mod expr_rules {
         }
     }
 
-    fn existing_compact_name(ctx: &mut Context, input: I) -> Result {
+    fn variable_existing_compact_name(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Variable(name, expr_type),
             pos,
@@ -629,7 +625,7 @@ pub mod expr_rules {
         }
     }
 
-    fn implicit_var(ctx: &mut Context, input: I) -> Result {
+    fn variable_implicit_var(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Variable(name, _),
             pos,
@@ -717,7 +713,7 @@ pub mod expr_rules {
         }
     }
 
-    fn fold_property_into_implicit_var(ctx: &mut Context, input: I) -> Result {
+    fn property_fold_property_into_implicit_var(ctx: &mut Context, input: I) -> Result {
         if let Locatable {
             element: Expression::Property(left, right, _),
             pos,
@@ -725,7 +721,7 @@ pub mod expr_rules {
         {
             match left.fold_name() {
                 Some(folded_left_name) => match folded_left_name.try_concat_name(right) {
-                    Some(folded_name) => implicit_var(
+                    Some(folded_name) => variable_implicit_var(
                         ctx,
                         Expression::Variable(folded_name, ExpressionType::Unresolved).at(pos),
                     ),
@@ -738,7 +734,10 @@ pub mod expr_rules {
         }
     }
 
-    fn existing_extended_array_with_parenthesis(ctx: &mut Context, input: I) -> Result {
+    fn function_call_existing_extended_array_with_parenthesis(
+        ctx: &mut Context,
+        input: I,
+    ) -> Result {
         if let Locatable {
             element: Expression::FunctionCall(name, args),
             pos,
@@ -782,7 +781,10 @@ pub mod expr_rules {
     }
 
     // TODO : merge this function with extended variation
-    fn existing_compact_array_with_parenthesis(ctx: &mut Context, input: I) -> Result {
+    fn function_call_existing_compact_array_with_parenthesis(
+        ctx: &mut Context,
+        input: I,
+    ) -> Result {
         if let Locatable {
             element: Expression::FunctionCall(name, args),
             pos,
@@ -879,33 +881,29 @@ pub mod expr_rules {
         }
     }
 
-    fn variable_as_function_call(ctx: &mut Context, input: I) -> Result {
-        if let Locatable {
-            element: Expression::Variable(name, old_expr_type),
-            pos,
-        } = input
-        {
-            // is it built-in function?
-            match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
-                Some(built_in_function) => Ok(RuleResult::Success((
-                    Expression::BuiltInFunctionCall(built_in_function, vec![]).at(pos),
-                    vec![],
-                ))),
-                _ => match ctx.function_qualifier(name.as_ref()) {
-                    Some(q) => {
-                        let converted_name = name.qualify(q);
-                        Ok(RuleResult::Success((
-                            Expression::FunctionCall(converted_name, vec![]).at(pos),
-                            vec![],
-                        )))
-                    }
-                    _ => Ok(RuleResult::Skip(
-                        Expression::Variable(name, old_expr_type).at(pos),
-                    )),
-                },
+    fn variable_or_property_as_function_call(ctx: &mut Context, input: I) -> Result {
+        let Locatable { element: expr, pos } = input;
+        match expr.fold_name() {
+            Some(name) => {
+                // is it built-in function?
+                match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
+                    Some(built_in_function) => Ok(RuleResult::Success((
+                        Expression::BuiltInFunctionCall(built_in_function, vec![]).at(pos),
+                        vec![],
+                    ))),
+                    _ => match ctx.function_qualifier(name.as_ref()) {
+                        Some(q) => {
+                            let converted_name = name.qualify(q);
+                            Ok(RuleResult::Success((
+                                Expression::FunctionCall(converted_name, vec![]).at(pos),
+                                vec![],
+                            )))
+                        }
+                        _ => Ok(RuleResult::Skip(expr.at(pos))),
+                    },
+                }
             }
-        } else {
-            Ok(RuleResult::Skip(input))
+            _ => Ok(RuleResult::Skip(expr.at(pos))),
         }
     }
 

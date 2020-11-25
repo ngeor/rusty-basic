@@ -189,16 +189,15 @@ impl Expression {
         }
     }
 
-    pub fn fold_name(self) -> Option<Name> {
+    /// Returns the name of this `Variable` or `Property` expression.
+    /// For properties, this is the concatenated name of all elements in the property path.
+    pub fn fold_name(&self) -> Option<Name> {
         match self {
-            Self::Variable(n, _) => Some(n),
-            Self::Property(boxed_left_side, property_name, _) => {
-                let left_side = *boxed_left_side;
-                match left_side.fold_name() {
-                    Some(left_side_name) => left_side_name.try_concat_name(property_name),
-                    _ => None,
-                }
-            }
+            Self::Variable(n, _) => Some(n.clone()),
+            Self::Property(left_side, property_name, _) => match left_side.fold_name() {
+                Some(left_side_name) => left_side_name.try_concat_name(property_name.clone()),
+                _ => None,
+            },
             _ => None,
         }
     }

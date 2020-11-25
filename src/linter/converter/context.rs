@@ -465,16 +465,16 @@ pub mod expr_rules {
     ) -> std::result::Result<O, QErrorNode> {
         let conversion_rules = FnRule::new(literals)
             .chain_fn(variable_name_clashes_with_sub)
-            .chain_fn(if expr_context != ExprContext::Default {
-                variable_or_property_assign_to_function
-            } else {
-                variable_or_property_as_function_call
-            })
             .chain_fn(variable_existing_extended_var)
             .chain_fn(variable_existing_const)
             .chain_fn(function_call_existing_extended_array_with_parenthesis)
             .chain_fn(function_call_existing_compact_array_with_parenthesis)
             .chain_fn(variable_or_property_existing_compact_name)
+            .chain_fn(if expr_context != ExprContext::Default {
+                variable_or_property_assign_to_function
+            } else {
+                variable_or_property_as_function_call
+            })
             .chain_fn(unary_expr)
             .chain_fn(binary_expr)
             .chain_fn(function_call_must_have_args)

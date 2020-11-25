@@ -474,7 +474,7 @@ pub mod expr_rules {
             .chain_fn(variable_existing_const)
             .chain_fn(function_call_existing_extended_array_with_parenthesis)
             .chain_fn(function_call_existing_compact_array_with_parenthesis)
-            .chain_fn(variable_existing_compact_name)
+            .chain_fn(variable_or_property_existing_compact_name)
             .chain_fn(unary_expr)
             .chain_fn(binary_expr)
             .chain_fn(function_call_must_have_args)
@@ -606,25 +606,21 @@ pub mod expr_rules {
         }
     }
 
-    fn variable_existing_compact_name(ctx: &mut Context, input: I) -> Result {
-        if let Locatable {
-            element: Expression::Variable(name, expr_type),
-            pos,
-        } = input
-        {
-            let bare_name: &BareName = name.as_ref();
-            let q: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
-            if let Some(expr_type) = ctx.names.contains_compact(bare_name, q) {
-                let converted_name = name.qualify(q);
-                let expr = Expression::Variable(converted_name, expr_type.clone());
-                Ok(RuleResult::Success((expr.at(pos), vec![])))
-            } else {
-                Ok(RuleResult::Skip(
-                    Expression::Variable(name, expr_type).at(pos),
-                ))
+    fn variable_or_property_existing_compact_name(ctx: &mut Context, input: I) -> Result {
+        let Locatable { element: expr, pos } = input;
+        match expr.fold_name() {
+            Some(name) => {
+                let bare_name: &BareName = name.as_ref();
+                let q: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
+                if let Some(expr_type) = ctx.names.contains_compact(bare_name, q) {
+                    let converted_name = name.qualify(q);
+                    let expr = Expression::Variable(converted_name, expr_type.clone());
+                    Ok(RuleResult::Success((expr.at(pos), vec![])))
+                } else {
+                    Ok(RuleResult::Skip(expr.at(pos)))
+                }
             }
-        } else {
-            Ok(RuleResult::Skip(input))
+            _ => Ok(RuleResult::Skip(expr.at(pos))),
         }
     }
 

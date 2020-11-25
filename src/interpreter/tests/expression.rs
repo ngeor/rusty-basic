@@ -525,7 +525,7 @@ fn test_dot_in_expression_variable_name() {
     IF LEN(my.msg$) > 0 THEN
         PRINT my.msg$
     ELSE
-        PRINT "bye"
+        PRINT "adios"
     END IF
     "#;
     assert_prints!(program, "hello");

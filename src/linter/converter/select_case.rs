@@ -1,4 +1,5 @@
 use crate::common::QErrorNode;
+use crate::linter::converter::context::ExprContext;
 use crate::linter::converter::converter::{
     Converter, ConverterImpl, ConverterWithImplicitVariables,
 };
@@ -9,7 +10,8 @@ impl<'a> ConverterWithImplicitVariables<SelectCaseNode, SelectCaseNode> for Conv
         &mut self,
         a: SelectCaseNode,
     ) -> Result<(SelectCaseNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let (expr, mut implicit_vars_expr) = self.convert_and_collect_implicit_variables(a.expr)?;
+        let (expr, mut implicit_vars_expr) =
+            self.context.on_expression(a.expr, ExprContext::Default)?;
         let (case_blocks, mut implicit_vars_case_blocks) =
             self.convert_and_collect_implicit_variables(a.case_blocks)?;
         implicit_vars_expr.append(&mut implicit_vars_case_blocks);
@@ -48,15 +50,18 @@ impl<'a> ConverterWithImplicitVariables<CaseExpression, CaseExpression> for Conv
     ) -> Result<(CaseExpression, Vec<QualifiedNameNode>), QErrorNode> {
         match a {
             CaseExpression::Simple(e) => self
-                .convert_and_collect_implicit_variables(e)
+                .context
+                .on_expression(e, ExprContext::Default)
                 .map(|(expr, implicit_vars)| (CaseExpression::Simple(expr), implicit_vars)),
             CaseExpression::Is(op, e) => self
-                .convert_and_collect_implicit_variables(e)
+                .context
+                .on_expression(e, ExprContext::Default)
                 .map(|(expr, implicit_vars)| (CaseExpression::Is(op, expr), implicit_vars)),
             CaseExpression::Range(from, to) => {
                 let (from, mut implicit_vars_from) =
-                    self.convert_and_collect_implicit_variables(from)?;
-                let (to, mut implicit_vars_to) = self.convert_and_collect_implicit_variables(to)?;
+                    self.context.on_expression(from, ExprContext::Default)?;
+                let (to, mut implicit_vars_to) =
+                    self.context.on_expression(to, ExprContext::Default)?;
                 implicit_vars_from.append(&mut implicit_vars_to);
                 Ok((CaseExpression::Range(from, to), implicit_vars_from))
             }

@@ -1,5 +1,6 @@
 use super::converter::{ConverterImpl, ConverterWithImplicitVariables};
 use crate::common::*;
+use crate::linter::converter::context::ExprContext;
 use crate::parser::{PrintArg, PrintNode, QualifiedNameNode};
 
 impl<'a> ConverterWithImplicitVariables<PrintNode, PrintNode> for ConverterImpl<'a> {
@@ -7,8 +8,9 @@ impl<'a> ConverterWithImplicitVariables<PrintNode, PrintNode> for ConverterImpl<
         &mut self,
         a: PrintNode,
     ) -> Result<(PrintNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let (format_string, mut implicit_vars_format_string) =
-            self.convert_and_collect_implicit_variables(a.format_string)?;
+        let (format_string, mut implicit_vars_format_string) = self
+            .context
+            .on_opt_expression(a.format_string, ExprContext::Default)?;
         let (args, mut implicit_vars_args) = self.convert_and_collect_implicit_variables(a.args)?;
 
         implicit_vars_format_string.append(&mut implicit_vars_args);
@@ -34,7 +36,8 @@ impl<'a> ConverterWithImplicitVariables<PrintArg, PrintArg> for ConverterImpl<'a
             PrintArg::Comma => Ok((PrintArg::Comma, vec![])),
             PrintArg::Semicolon => Ok((PrintArg::Semicolon, vec![])),
             PrintArg::Expression(e) => self
-                .convert_and_collect_implicit_variables(e)
+                .context
+                .on_expression(e, ExprContext::Default)
                 .map(|(e, vars)| (PrintArg::Expression(e), vars)),
         }
     }

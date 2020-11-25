@@ -1,6 +1,7 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Locatable, QErrorNode};
-use crate::linter::converter::converter::{ConverterImpl, ConverterWithImplicitVariables};
+use crate::linter::converter::context::ExprContext;
+use crate::linter::converter::converter::ConverterImpl;
 use crate::parser::{BareNameNode, ExpressionNodes, QualifiedNameNode, Statement, StatementNode};
 
 impl<'a> ConverterImpl<'a> {
@@ -9,7 +10,8 @@ impl<'a> ConverterImpl<'a> {
         sub_name_node: BareNameNode,
         args: ExpressionNodes,
     ) -> Result<(StatementNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let (converted_args, implicit_vars) = self.convert_and_collect_implicit_variables(args)?;
+        let (converted_args, implicit_vars) =
+            self.context.on_expressions(args, ExprContext::Parameter)?;
         let Locatable {
             element: sub_name,
             pos,

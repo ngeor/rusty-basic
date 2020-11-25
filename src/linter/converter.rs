@@ -3,7 +3,6 @@ mod constant;
 mod context;
 mod converter;
 mod dim;
-mod expression;
 mod for_loop;
 mod function_implementation;
 mod if_blocks;

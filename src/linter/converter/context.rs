@@ -3,8 +3,9 @@ use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::parser::{
-    BareName, DimNameNode, Expression, ExpressionNode, ExpressionType, FunctionMap, Name, NameNode,
-    ParamNameNode, ParamNameNodes, QualifiedNameNode, SubMap, TypeQualifier, UserDefinedTypes,
+    BareName, DimNameNode, Expression, ExpressionNode, ExpressionNodes, ExpressionType,
+    FunctionMap, Name, NameNode, ParamNameNode, ParamNameNodes, QualifiedNameNode, SubMap,
+    TypeQualifier, UserDefinedTypes,
 };
 use crate::variant::Variant;
 use std::cell::RefCell;
@@ -46,18 +47,24 @@ struct Names {
     compact_names: HashMap<Name, ExpressionType>,
     extended_names: HashMap<BareName, ExpressionType>,
     constants: HashMap<BareName, Variant>,
+    current_function_name: Option<BareName>,
     parent: Option<Box<Names>>,
 }
 
 impl Names {
-    pub fn new(parent: Option<Box<Self>>) -> Self {
+    pub fn new(parent: Option<Box<Self>>, current_function_name: Option<BareName>) -> Self {
         Self {
             compact_name_set: HashMap::new(),
             compact_names: HashMap::new(),
             extended_names: HashMap::new(),
             constants: HashMap::new(),
+            current_function_name,
             parent,
         }
+    }
+
+    pub fn new_root() -> Self {
+        Self::new(None, None)
     }
 
     pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: T) -> bool {
@@ -183,6 +190,13 @@ impl<'a> TypeResolver for Context<'a> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ExprContext {
+    Default,
+    Assignment,
+    Parameter,
+}
+
 impl<'a> Context<'a> {
     pub fn new(
         functions: &'a FunctionMap,
@@ -195,7 +209,7 @@ impl<'a> Context<'a> {
             subs,
             user_defined_types,
             resolver,
-            names: Names::new(None),
+            names: Names::new_root(),
             names_without_dot: HashSet::new(),
         }
     }
@@ -204,9 +218,9 @@ impl<'a> Context<'a> {
         &mut self,
         params: ParamNameNodes,
     ) -> Result<ParamNameNodes, QErrorNode> {
-        let temp_dummy = Names::new(None);
+        let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
-        self.names = Names::new(Some(Box::new(old_names)));
+        self.names = Names::new(Some(Box::new(old_names)), None);
         self.convert_param_name_nodes(params)
     }
 
@@ -215,9 +229,9 @@ impl<'a> Context<'a> {
         name: Name,
         params: ParamNameNodes,
     ) -> Result<(Name, ParamNameNodes), QErrorNode> {
-        let temp_dummy = Names::new(None);
+        let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
-        self.names = Names::new(Some(Box::new(old_names)));
+        self.names = Names::new(Some(Box::new(old_names)), Some(name.as_ref().clone()));
         let converted_function_name = self.resolve_name_to_name(name);
         Ok((
             converted_function_name,
@@ -226,7 +240,7 @@ impl<'a> Context<'a> {
     }
 
     pub fn pop_context(&mut self) {
-        let temp_dummy = Names::new(None);
+        let temp_dummy = Names::new_root();
         let Names {
             parent,
             mut extended_names,
@@ -251,8 +265,37 @@ impl<'a> Context<'a> {
     pub fn on_expression(
         &mut self,
         expr_node: ExpressionNode,
+        expr_context: ExprContext,
     ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
-        expr_rules::on_expression(self, expr_node, false)
+        expr_rules::on_expression(self, expr_node, expr_context)
+    }
+
+    pub fn on_opt_expression(
+        &mut self,
+        opt_expr_node: Option<ExpressionNode>,
+        expr_context: ExprContext,
+    ) -> Result<(Option<ExpressionNode>, Vec<QualifiedNameNode>), QErrorNode> {
+        match opt_expr_node {
+            Some(expr_node) => self
+                .on_expression(expr_node, expr_context)
+                .map(|(x, y)| (Some(x), y)),
+            _ => Ok((None, vec![])),
+        }
+    }
+
+    pub fn on_expressions(
+        &mut self,
+        expr_nodes: ExpressionNodes,
+        expr_context: ExprContext,
+    ) -> Result<(ExpressionNodes, Vec<QualifiedNameNode>), QErrorNode> {
+        let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
+        let mut converted_expr_nodes: ExpressionNodes = vec![];
+        for expr_node in expr_nodes {
+            let (converted_expr_node, implicits) = self.on_expression(expr_node, expr_context)?;
+            converted_expr_nodes.push(converted_expr_node);
+            implicit_vars = union(implicit_vars, implicits);
+        }
+        Ok((converted_expr_nodes, implicit_vars))
     }
 
     pub fn on_assignment(
@@ -261,9 +304,10 @@ impl<'a> Context<'a> {
         right_side: ExpressionNode,
     ) -> Result<(ExpressionNode, ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
         assignment_pre_conversion_validation_rules::validate(self, &left_side)?;
-        let (converted_right_side, right_side_implicit_vars) = self.on_expression(right_side)?;
+        let (converted_right_side, right_side_implicit_vars) =
+            self.on_expression(right_side, ExprContext::Default)?;
         let (converted_left_side, left_side_implicit_vars) =
-            expr_rules::on_expression(self, left_side, true)?;
+            expr_rules::on_expression(self, left_side, ExprContext::Assignment)?;
         assignment_post_conversion_validation_rules::validate(
             self,
             &converted_left_side,
@@ -417,11 +461,11 @@ pub mod expr_rules {
     pub fn on_expression(
         ctx: &mut Context,
         expr_node: ExpressionNode,
-        is_left_side_assignment: bool,
+        expr_context: ExprContext,
     ) -> std::result::Result<O, QErrorNode> {
         let conversion_rules = FnRule::new(literals)
             .chain_fn(variable_name_clashes_with_sub)
-            .chain_fn(if is_left_side_assignment {
+            .chain_fn(if expr_context != ExprContext::Default {
                 variable_or_property_assign_to_function
             } else {
                 variable_or_property_as_function_call
@@ -448,13 +492,20 @@ pub mod expr_rules {
         match expr.fold_name() {
             Some(name) => {
                 let bare_name: &BareName = name.as_ref();
+                // if a function of this name exists...
                 match ctx.function_qualifier(bare_name) {
                     Some(function_qualifier) => {
+                        // and the name qualifier matches...
                         if name.is_bare_or_of_type(function_qualifier) {
-                            let converted_name = name.qualify(function_qualifier);
-                            let expr_type = ExpressionType::BuiltIn(function_qualifier);
-                            let expr = Expression::Variable(converted_name, expr_type);
-                            Ok(RuleResult::Success((expr.at(pos), vec![])))
+                            // and (since we're assigning to it) it's the current function
+                            if ctx.names.current_function_name.as_ref() == Some(bare_name) {
+                                let converted_name = name.qualify(function_qualifier);
+                                let expr_type = ExpressionType::BuiltIn(function_qualifier);
+                                let expr = Expression::Variable(converted_name, expr_type);
+                                Ok(RuleResult::Success((expr.at(pos), vec![])))
+                            } else {
+                                Err(QError::DuplicateDefinition).with_err_at(pos)
+                            }
                         } else {
                             Err(QError::DuplicateDefinition).with_err_at(pos)
                         }
@@ -595,8 +646,10 @@ pub mod expr_rules {
             pos,
         } = input
         {
-            let (converted_left, left_implicit_vars) = ctx.on_expression(*left)?;
-            let (converted_right, right_implicit_vars) = ctx.on_expression(*right)?;
+            let (converted_left, left_implicit_vars) =
+                ctx.on_expression(*left, ExprContext::Default)?;
+            let (converted_right, right_implicit_vars) =
+                ctx.on_expression(*right, ExprContext::Default)?;
             let new_expr = Expression::binary(converted_left, converted_right, op)?;
             Ok(RuleResult::Success((
                 new_expr.at(pos),
@@ -613,7 +666,8 @@ pub mod expr_rules {
             pos,
         } = input
         {
-            let (converted_child, implicit_vars) = ctx.on_expression(*child)?;
+            let (converted_child, implicit_vars) =
+                ctx.on_expression(*child, ExprContext::Default)?;
             if op.applies_to(&converted_child.expression_type()) {
                 let new_expr = Expression::UnaryExpression(op, Box::new(converted_child));
                 Ok(RuleResult::Success((new_expr.at(pos), implicit_vars)))
@@ -663,7 +717,7 @@ pub mod expr_rules {
                             ..
                         },
                         implicit_left,
-                    ) = ctx.on_expression((*left).at(pos))?;
+                    ) = ctx.on_expression((*left).at(pos), ExprContext::Default)?;
                     let converted_left_expr_type = converted_left.expression_type();
                     let converted_left_element_type = converted_left_expr_type.to_element_type();
                     if let ExpressionType::UserDefined(user_defined_type_name) =
@@ -753,7 +807,8 @@ pub mod expr_rules {
                 let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
                 let mut converted_args: ExpressionNodes = vec![];
                 for arg in args {
-                    let (converted_arg, implicits) = ctx.on_expression(arg)?;
+                    let (converted_arg, implicits) =
+                        ctx.on_expression(arg, ExprContext::Default)?;
                     converted_args.push(converted_arg);
                     implicit_vars = union(implicit_vars, implicits);
                 }
@@ -794,7 +849,8 @@ pub mod expr_rules {
                 let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
                 let mut converted_args: ExpressionNodes = vec![];
                 for arg in args {
-                    let (converted_arg, implicits) = ctx.on_expression(arg)?;
+                    let (converted_arg, implicits) =
+                        ctx.on_expression(arg, ExprContext::Default)?;
                     converted_args.push(converted_arg);
                     implicit_vars = union(implicit_vars, implicits);
                 }
@@ -840,13 +896,8 @@ pub mod expr_rules {
         } = input
         {
             // convert args
-            let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
-            let mut converted_args: ExpressionNodes = vec![];
-            for arg in args {
-                let (converted_arg, implicits) = ctx.on_expression(arg)?;
-                converted_args.push(converted_arg);
-                implicit_vars = union(implicit_vars, implicits);
-            }
+            let (converted_args, implicit_vars) =
+                ctx.on_expressions(args, ExprContext::Parameter)?;
             // is it built-in function?
             let converted_expr =
                 match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
@@ -899,7 +950,8 @@ pub mod expr_rules {
             pos,
         } = input
         {
-            let (converted_child, implicit_vars) = ctx.on_expression(*child)?;
+            let (converted_child, implicit_vars) =
+                ctx.on_expression(*child, ExprContext::Default)?;
             let converted_expr = Expression::Parenthesis(Box::new(converted_child));
             Ok(RuleResult::Success((converted_expr.at(pos), implicit_vars)))
         } else {
@@ -1080,10 +1132,13 @@ pub mod dim_rules {
                         ubound,
                     } = dimension;
                     let (converted_lbound, implicit_vars_lbound) = match opt_lbound {
-                        Some(lbound) => ctx.on_expression(lbound).map(|(x, y)| (Some(x), y))?,
+                        Some(lbound) => ctx
+                            .on_expression(lbound, ExprContext::Default)
+                            .map(|(x, y)| (Some(x), y))?,
                         _ => (None, vec![]),
                     };
-                    let (converted_ubound, implicit_vars_ubound) = ctx.on_expression(ubound)?;
+                    let (converted_ubound, implicit_vars_ubound) =
+                        ctx.on_expression(ubound, ExprContext::Default)?;
                     converted_dimensions.push(ArrayDimension {
                         lbound: converted_lbound,
                         ubound: converted_ubound,

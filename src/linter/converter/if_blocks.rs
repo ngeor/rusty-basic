@@ -1,4 +1,5 @@
 use crate::common::QErrorNode;
+use crate::linter::converter::context::ExprContext;
 use crate::linter::converter::converter::{
     Converter, ConverterImpl, ConverterWithImplicitVariables,
 };
@@ -11,8 +12,9 @@ impl<'a> ConverterWithImplicitVariables<ConditionalBlockNode, ConditionalBlockNo
         &mut self,
         a: ConditionalBlockNode,
     ) -> Result<(ConditionalBlockNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let (condition, implicit_vars) =
-            self.convert_and_collect_implicit_variables(a.condition)?;
+        let (condition, implicit_vars) = self
+            .context
+            .on_expression(a.condition, ExprContext::Default)?;
         Ok((
             ConditionalBlockNode {
                 condition,

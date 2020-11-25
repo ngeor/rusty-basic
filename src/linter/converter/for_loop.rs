@@ -1,4 +1,5 @@
 use crate::common::QErrorNode;
+use crate::linter::converter::context::ExprContext;
 use crate::linter::converter::converter::{
     Converter, ConverterImpl, ConverterWithImplicitVariables,
 };
@@ -9,17 +10,21 @@ impl<'a> ConverterWithImplicitVariables<ForLoopNode, ForLoopNode> for ConverterI
         &mut self,
         a: ForLoopNode,
     ) -> Result<(ForLoopNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let (variable_name, implicit_variables_variable_name) =
-            self.convert_and_collect_implicit_variables(a.variable_name)?;
-        let (lower_bound, implicit_variables_lower_bound) =
-            self.convert_and_collect_implicit_variables(a.lower_bound)?;
-        let (upper_bound, implicit_variables_upper_bound) =
-            self.convert_and_collect_implicit_variables(a.upper_bound)?;
-        let (step, implicit_variables_step) =
-            self.convert_and_collect_implicit_variables(a.step)?;
-        let (next_counter, implicit_variables_next_counter) =
-            self.convert_and_collect_implicit_variables(a.next_counter)?;
-
+        let (variable_name, implicit_variables_variable_name) = self
+            .context
+            .on_expression(a.variable_name, ExprContext::Assignment)?;
+        let (lower_bound, implicit_variables_lower_bound) = self
+            .context
+            .on_expression(a.lower_bound, ExprContext::Default)?;
+        let (upper_bound, implicit_variables_upper_bound) = self
+            .context
+            .on_expression(a.upper_bound, ExprContext::Default)?;
+        let (step, implicit_variables_step) = self
+            .context
+            .on_opt_expression(a.step, ExprContext::Default)?;
+        let (next_counter, implicit_variables_next_counter) = self
+            .context
+            .on_opt_expression(a.next_counter, ExprContext::Assignment)?;
         let implicit_vars = Self::merge_implicit_vars(vec![
             implicit_variables_variable_name,
             implicit_variables_lower_bound,

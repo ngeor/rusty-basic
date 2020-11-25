@@ -2,7 +2,7 @@ use crate::built_ins::BuiltInSub;
 use crate::common::{AtRowCol, StripLocation};
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::Instruction;
-use crate::parser::{ExpressionType, TypeQualifier};
+use crate::parser::{BuiltInStyle, ExpressionType, ParamName, ParamType, TypeQualifier};
 use crate::variant::Variant;
 
 #[test]
@@ -127,6 +127,57 @@ fn test_assign_and_print_one_element() {
             Instruction::BuiltInSub(BuiltInSub::Print),
             Instruction::PopStack,
             Instruction::Halt,
+        ]
+    );
+}
+
+#[test]
+fn test_pass_param_to_sub() {
+    let input = r#"
+    DIM A(1 TO 1)
+    Menu A()
+
+    SUB Menu(values())
+    END SUB
+    "#;
+    assert_eq!(
+        generate_instructions_str(input).strip_location(),
+        [
+            // evaluate dimensions of array
+            Instruction::BeginCollectArguments,
+            // lbound
+            Instruction::LoadIntoA(Variant::VInteger(1)),
+            Instruction::PushAToUnnamedArg,
+            // ubound
+            Instruction::LoadIntoA(Variant::VInteger(1)),
+            Instruction::PushAToUnnamedArg,
+            // allocate array into A
+            Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::BangSingle)),
+            Instruction::VarPathName("A!".into()),
+            Instruction::CopyAToVarPath,
+            // call sub
+            Instruction::BeginCollectArguments,
+            Instruction::VarPathName("A!".into()),
+            Instruction::CopyVarPathToA,
+            Instruction::PushNamed(ParamName::new(
+                "values".into(),
+                ParamType::Array(Box::new(ParamType::BuiltIn(
+                    TypeQualifier::BangSingle,
+                    BuiltInStyle::Compact
+                )))
+            )),
+            Instruction::PushStack,
+            Instruction::PushRet(15),
+            Instruction::Jump(21),
+            Instruction::EnqueueToReturnStack(0),
+            Instruction::PopStack,
+            Instruction::DequeueFromReturnStack,
+            Instruction::VarPathName("A!".into()),
+            Instruction::CopyAToVarPath,
+            Instruction::Halt,
+            // sub implementation
+            Instruction::Label(":sub:Menu".into()),
+            Instruction::PopRet,
         ]
     );
 }

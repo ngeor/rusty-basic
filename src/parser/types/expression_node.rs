@@ -327,8 +327,16 @@ impl HasExpressionType for Expression {
             Self::LongLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::AmpersandLong),
             Self::Variable(_, expression_type)
             | Self::Property(_, _, expression_type)
-            | Self::BinaryExpression(_, _, _, expression_type)
-            | Self::ArrayElement(_, _, expression_type) => expression_type.clone(),
+            | Self::BinaryExpression(_, _, _, expression_type) => expression_type.clone(),
+            Self::ArrayElement(_, args, expression_type) => {
+                if args.is_empty() {
+                    // this is the entire array
+                    ExpressionType::Array(Box::new(expression_type.clone()))
+                } else {
+                    // an element of the array
+                    expression_type.clone()
+                }
+            }
             Self::FunctionCall(Name::Qualified(QualifiedName { qualifier, .. }), _) => {
                 ExpressionType::BuiltIn(*qualifier)
             }

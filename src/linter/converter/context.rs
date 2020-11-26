@@ -1208,18 +1208,21 @@ pub mod const_rules {
             },
             right,
         ) = input;
-        let v = ctx.names.resolve_const_value_node(&right)?;
-        let q = TypeQualifier::try_from(&v).with_err_at(&right)?;
-        if const_name.is_bare_or_of_type(q) {
-            ctx.names
-                .insert_const(const_name.as_ref().clone(), v.clone());
-            let converted_name = const_name.qualify(q).at(const_name_pos);
-            let converted_expr = Expression::try_from(v.clone()).with_err_at(&right)?;
-            let res = (converted_name, converted_expr.at(&right), v);
-            Ok(RuleResult::Success(res))
+        let value_before_casting = ctx.names.resolve_const_value_node(&right)?;
+        let value_qualifier = TypeQualifier::try_from(&value_before_casting).with_err_at(&right)?;
+        let final_value = if const_name.is_bare_or_of_type(value_qualifier) {
+            value_before_casting
         } else {
-            Err(QError::TypeMismatch).with_err_at(&right)
-        }
+            value_before_casting
+                .cast(const_name.qualifier().unwrap())
+                .with_err_at(&right)?
+        };
+        ctx.names
+            .insert_const(const_name.as_ref().clone(), final_value.clone());
+        let converted_name = const_name.qualify(value_qualifier).at(const_name_pos);
+        let converted_expr = Expression::try_from(final_value.clone()).with_err_at(&right)?;
+        let res = (converted_name, converted_expr.at(&right), final_value);
+        Ok(RuleResult::Success(res))
     }
 }
 

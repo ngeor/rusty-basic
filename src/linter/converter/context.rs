@@ -450,7 +450,7 @@ pub mod expr_rules {
     use super::*;
     use crate::built_ins::BuiltInFunction;
     use crate::common::{QError, ToLocatableError};
-    use crate::parser::{ExpressionNodes, HasExpressionType};
+    use crate::parser::HasExpressionType;
     use std::convert::TryFrom;
 
     type I = ExpressionNode;
@@ -800,14 +800,8 @@ pub mod expr_rules {
                 // clone element type early in order to be able to use ctx as mutable later
                 let element_type = boxed_element_type.as_ref().clone();
                 // convert args
-                let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
-                let mut converted_args: ExpressionNodes = vec![];
-                for arg in args {
-                    let (converted_arg, implicits) =
-                        ctx.on_expression(arg, ExprContext::Default)?;
-                    converted_args.push(converted_arg);
-                    implicit_vars = union(implicit_vars, implicits);
-                }
+                let (converted_args, implicit_vars) =
+                    ctx.on_expressions(args, ExprContext::Default)?;
                 // convert name
                 let converted_name = element_type.qualify_name(name).with_err_at(pos)?;
                 // create result
@@ -824,7 +818,6 @@ pub mod expr_rules {
         }
     }
 
-    // TODO : merge this function with extended variation
     fn function_call_existing_compact_array_with_parenthesis(
         ctx: &mut Context,
         input: I,
@@ -842,14 +835,8 @@ pub mod expr_rules {
                 // clone element type early in order to be able to use ctx as mutable later
                 let element_type = boxed_element_type.as_ref().clone();
                 // convert args
-                let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
-                let mut converted_args: ExpressionNodes = vec![];
-                for arg in args {
-                    let (converted_arg, implicits) =
-                        ctx.on_expression(arg, ExprContext::Default)?;
-                    converted_args.push(converted_arg);
-                    implicit_vars = union(implicit_vars, implicits);
-                }
+                let (converted_args, implicit_vars) =
+                    ctx.on_expressions(args, ExprContext::Default)?;
                 // convert name
                 let converted_name = name.qualify(qualifier);
                 // create result

@@ -2,6 +2,7 @@ use super::{
     BareNameNode, DefType, NameNode, ParamNameNodes, Statement, StatementNodes, UserDefinedType,
 };
 use crate::common::*;
+use crate::parser::ParamName;
 
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
@@ -15,7 +16,7 @@ pub enum TopLevelToken {
     FunctionDeclaration(NameNode, ParamNameNodes),
 
     /// A function implementation
-    FunctionImplementation(NameNode, ParamNameNodes, StatementNodes),
+    FunctionImplementation(FunctionImplementation),
 
     /// A simple or compound statement
     Statement(Statement),
@@ -24,7 +25,7 @@ pub enum TopLevelToken {
     SubDeclaration(BareNameNode, ParamNameNodes),
 
     /// A sub implementation
-    SubImplementation(BareNameNode, ParamNameNodes, StatementNodes),
+    SubImplementation(SubImplementation),
 
     /// A user defined type definition
     UserDefinedType(UserDefinedType),
@@ -34,4 +35,18 @@ impl From<Statement> for TopLevelToken {
     fn from(s: Statement) -> Self {
         TopLevelToken::Statement(s)
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SubImplementation {
+    pub name: BareNameNode,
+    pub params: Vec<Locatable<ParamName>>,
+    pub body: StatementNodes,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FunctionImplementation {
+    pub name: NameNode,
+    pub params: Vec<Locatable<ParamName>>,
+    pub body: StatementNodes,
 }

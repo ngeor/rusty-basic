@@ -1,8 +1,10 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::linter::types::*;
-use crate::parser::QualifiedNameNode;
-use crate::variant::Variant;
+use crate::parser::{
+    CaseExpression, ConditionalBlockNode, DimNameNode, Expression, ExpressionNode, ForLoopNode,
+    FunctionImplementation, IfBlockNode, PrintArg, PrintNode, ProgramNode, SelectCaseNode,
+    Statement, StatementNode, StatementNodes, SubImplementation, TopLevelToken, TopLevelTokenNode,
+};
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.
@@ -28,6 +30,7 @@ pub trait PostConversionLinter {
             TopLevelToken::FunctionImplementation(f) => self.visit_function_implementation(f),
             TopLevelToken::SubImplementation(s) => self.visit_sub_implementation(s),
             TopLevelToken::Statement(s) => self.visit_statement(s),
+            _ => Ok(()),
         }
     }
 
@@ -50,7 +53,9 @@ pub trait PostConversionLinter {
     fn visit_statement(&self, s: &Statement) -> Result<(), QErrorNode> {
         match s {
             Statement::Assignment(left, right) => self.visit_assignment(left, right),
-            Statement::Const(left, right) => self.visit_const(left, right),
+            Statement::Const(left, _) => {
+                panic!("Linter should have removed Const statements {:?}", left)
+            }
             Statement::SubCall(b, e) => self.visit_sub_call(b, e),
             Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, e),
             Statement::IfBlock(i) => self.visit_if_block(i),
@@ -102,7 +107,7 @@ pub trait PostConversionLinter {
         self.visit_expressions(args)
     }
 
-    fn visit_assignment(&self, _name: &DimName, v: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn visit_assignment(&self, _name: &Expression, v: &ExpressionNode) -> Result<(), QErrorNode> {
         self.visit_expression(v)
     }
 
@@ -153,10 +158,6 @@ pub trait PostConversionLinter {
     fn visit_conditional_block(&self, c: &ConditionalBlockNode) -> Result<(), QErrorNode> {
         self.visit_expression(&c.condition)?;
         self.visit_statement_nodes(&c.statements)
-    }
-
-    fn visit_const(&self, _left: &QualifiedNameNode, _right: &Variant) -> Result<(), QErrorNode> {
-        Ok(())
     }
 
     fn visit_expression(&self, _e: &ExpressionNode) -> Result<(), QErrorNode> {

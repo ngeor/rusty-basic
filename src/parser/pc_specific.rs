@@ -98,16 +98,20 @@ where
 // Miscellaneous
 // ========================================================
 
+fn is_digit(ch: char) -> bool {
+    ch >= '0' && ch <= '9'
+}
+
 fn is_letter(ch: char) -> bool {
     (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
 }
 
-fn is_non_leading_identifier(ch: char) -> bool {
-    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '.')
+fn is_non_leading_identifier_without_dot(ch: char) -> bool {
+    is_letter(ch) || is_digit(ch)
 }
 
-fn is_digit(ch: char) -> bool {
-    ch >= '0' && ch <= '9'
+fn is_non_leading_identifier_with_dot(ch: char) -> bool {
+    is_non_leading_identifier_without_dot(ch) || (ch == '.')
 }
 
 fn is_symbol(ch: char) -> bool {
@@ -117,7 +121,7 @@ fn is_symbol(ch: char) -> bool {
         || (ch > 'z' && ch <= '~')
 }
 
-pub fn any_symbol<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
+pub fn any_symbol<R, E>() -> impl Fn(R) -> ReaderResult<R, char, E>
 where
     R: Reader<Item = char, Err = E> + 'static,
 {
@@ -133,14 +137,25 @@ where
 
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn any_identifier<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
+pub fn any_identifier_with_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
     E: 'static,
 {
     map_default_to_not_found(zero_or_more_if_leading_remaining(
         is_letter,
-        is_non_leading_identifier,
+        is_non_leading_identifier_with_dot,
+    ))
+}
+
+pub fn any_identifier_without_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
+where
+    R: Reader<Item = char, Err = E> + 'static,
+    E: 'static,
+{
+    map_default_to_not_found(zero_or_more_if_leading_remaining(
+        is_letter,
+        is_non_leading_identifier_without_dot,
     ))
 }
 
@@ -151,8 +166,8 @@ where
 {
     map(
         and(
-            str_case_insensitive(needle.as_str()),
-            negate(read_if(is_non_leading_identifier)),
+            str_case_insensitive(needle.as_str()), // find keyword
+            negate(read_if(is_non_leading_identifier_with_dot)), // ensure it's a whole word
         ),
         move |(s, _)| (needle, s),
     )

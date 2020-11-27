@@ -144,7 +144,10 @@ impl PrintVal {
                 Variant::VString(s) => printer.print(s),
                 Variant::VInteger(i) => print_number(printer, i, *i >= 0),
                 Variant::VLong(l) => print_number(printer, l, *l >= 0),
-                _ => panic!("Cannot print user defined type, linter should have caught this"),
+                Variant::VArray(_) | Variant::VUserDefined(_) => panic!(
+                    "Cannot print user defined type {:?}, linter should have caught this",
+                    v
+                ),
             },
         }
     }
@@ -362,7 +365,7 @@ fn print_formatting_chars<T: Printer>(
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_err;
+    use crate::assert_interpreter_err;
     use crate::assert_lprints_exact;
     use crate::assert_prints;
     use crate::assert_prints_exact;
@@ -524,12 +527,12 @@ mod tests {
 
     #[test]
     fn test_print_using_empty_format_string_is_error() {
-        assert_err!("PRINT USING \"\"; 0", QError::IllegalFunctionCall, 1, 1);
+        assert_interpreter_err!("PRINT USING \"\"; 0", QError::IllegalFunctionCall, 1, 1);
     }
 
     #[test]
     fn test_print_using_without_format_specifiers_is_error() {
-        assert_err!(
+        assert_interpreter_err!(
             "PRINT USING \"oops\"; 12",
             QError::IllegalFunctionCall,
             1,
@@ -539,12 +542,12 @@ mod tests {
 
     #[test]
     fn test_print_using_numeric_format_string_with_string_arg_is_error() {
-        assert_err!("PRINT USING \"#.##\"; \"hi\"", QError::TypeMismatch, 1, 1);
+        assert_interpreter_err!("PRINT USING \"#.##\"; \"hi\"", QError::TypeMismatch, 1, 1);
     }
 
     #[test]
     fn test_print_using_integer_format_string_with_string_arg_is_error() {
-        assert_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 1);
+        assert_interpreter_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 1);
     }
 
     #[test]

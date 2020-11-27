@@ -5,8 +5,8 @@ mod comment;
 mod constant;
 mod declaration;
 mod def_type;
+mod dim;
 mod dim_name;
-mod dim_parser;
 pub mod expression;
 mod for_loop;
 mod if_block;
@@ -20,13 +20,14 @@ mod select_case;
 pub mod statement;
 pub mod statements;
 pub mod sub_call;
-#[cfg(test)]
-mod test_utils;
 mod top_level_token;
 mod type_qualifier;
 mod types;
 mod user_defined_type;
 mod while_wend;
+
+#[cfg(test)]
+pub mod test_utils;
 
 pub use self::parser::*;
 pub use self::types::*;

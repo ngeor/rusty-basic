@@ -1,7 +1,7 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Locatable, Location, QError};
 use crate::instruction_generator::{Instruction, InstructionGenerator};
-use crate::linter::{PrintArg, PrintNode};
+use crate::parser::{PrintArg, PrintNode};
 use crate::variant::Variant;
 use std::convert::TryFrom;
 
@@ -118,7 +118,7 @@ impl InstructionGenerator {
 
         self.push(Instruction::PushStack, pos);
         self.push(Instruction::BuiltInSub(BuiltInSub::Print), pos);
-        self.push(Instruction::PopStack(None), pos);
+        self.push(Instruction::PopStack, pos);
     }
 
     fn generate_opt_file_handle_instructions(&mut self, print_node: &PrintNode, pos: Location) {
@@ -147,7 +147,7 @@ impl InstructionGenerator {
             Some(format_string) => {
                 self.push_load_unnamed_arg(true, pos);
                 self.generate_expression_instructions(format_string.clone());
-                self.push(Instruction::PushUnnamed, pos);
+                self.push(Instruction::PushAToUnnamedArg, pos);
             }
             None => {
                 self.push_load_unnamed_arg(false, pos);
@@ -160,7 +160,7 @@ impl InstructionGenerator {
             PrintArg::Expression(Locatable { element: arg, pos }) => {
                 self.push_load_unnamed_arg(PrintArgType::Expression, pos);
                 self.generate_expression_instructions(arg.at(pos));
-                self.push(Instruction::PushUnnamed, pos);
+                self.push(Instruction::PushAToUnnamedArg, pos);
             }
             PrintArg::Comma => {
                 self.push_load_unnamed_arg(PrintArgType::Comma, pos);

@@ -1,16 +1,17 @@
-use crate::common::{CaseInsensitiveString, QError};
+use crate::common::{AtLocation, CaseInsensitiveString, Locatable, QErrorNode};
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::bare_name_types::BareNameTypes;
-use crate::linter::converter::sub_program_type::SubProgramType;
 use crate::linter::type_resolver::TypeResolver;
-use crate::linter::types::{
-    DimName, DimType, ElementType, Expression, Members, UserDefinedName, UserDefinedType,
-    UserDefinedTypes,
+use crate::linter::type_resolver_impl::TypeResolverImpl;
+use crate::parser::{
+    BareName, DimNameNode, Expression, ExpressionNode, ExpressionNodes, ExpressionType,
+    FunctionMap, Name, NameNode, ParamNameNode, ParamNameNodes, QualifiedNameNode, SubMap,
+    TypeQualifier, UserDefinedTypes,
 };
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::convert::TryInto;
+use std::fmt::Debug;
+use std::rc::Rc;
 
 /*
 
@@ -32,530 +33,1255 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
 
-#[derive(Debug)]
-enum ContextState<'a> {
-    Root {
-        user_defined_types: &'a UserDefinedTypes,
-
-        /// Collects names of variables and parameters whose type is a user defined type.
-        /// These names cannot exist elsewhere as a prefix of a dotted variable, constant, parameter, function or sub name,
-        /// regardless of the scope.
-        ///
-        /// This hash set exists only on the parent level.
-        names_without_dot: HashSet<BareName>,
-    },
-    Child {
-        parent: Box<Context<'a>>,
-        param_names: HashSet<Name>,
-        sub_program_name: BareName,
-        sub_program_type: SubProgramType,
-    },
-}
-
-#[derive(Debug)]
 pub struct Context<'a> {
-    names: HashMap<BareName, BareNameTypes>,
-    const_values: HashMap<BareName, Variant>,
-    state: ContextState<'a>,
+    functions: &'a FunctionMap,
+    subs: &'a SubMap,
+    user_defined_types: &'a UserDefinedTypes,
+    resolver: Rc<RefCell<TypeResolverImpl>>,
+    names: Names,
+    names_without_dot: HashSet<BareName>,
 }
 
-impl<'a> Context<'a> {
-    pub fn new(user_defined_types: &'a UserDefinedTypes) -> Self {
+struct Names {
+    compact_name_set: HashMap<BareName, HashSet<TypeQualifier>>,
+    compact_names: HashMap<Name, ExpressionType>,
+    extended_names: HashMap<BareName, ExpressionType>,
+    constants: HashMap<BareName, Variant>,
+    current_function_name: Option<BareName>,
+    parent: Option<Box<Names>>,
+}
+
+impl Names {
+    pub fn new(parent: Option<Box<Self>>, current_function_name: Option<BareName>) -> Self {
         Self {
-            names: HashMap::new(),
-            const_values: HashMap::new(),
-            state: ContextState::Root {
-                user_defined_types,
-                names_without_dot: HashSet::new(),
-            },
+            compact_name_set: HashMap::new(),
+            compact_names: HashMap::new(),
+            extended_names: HashMap::new(),
+            constants: HashMap::new(),
+            current_function_name,
+            parent,
         }
     }
 
-    pub fn contains_any(&self, bare_name: &BareName) -> bool {
-        self.names.contains_key(bare_name)
+    pub fn new_root() -> Self {
+        Self::new(None, None)
     }
 
-    pub fn contains_const(&self, name: &BareName) -> bool {
-        match self.names.get(name) {
-            Some(BareNameTypes::Constant(_)) => true,
-            _ => false,
+    pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: T) -> bool {
+        let x = bare_name.as_ref();
+        self.compact_name_set.contains_key(x)
+            || self.extended_names.contains_key(x)
+            || self.constants.contains_key(x)
+    }
+
+    pub fn can_accept_compact<T: AsRef<BareName>>(
+        &self,
+        bare_name: T,
+        qualifier: TypeQualifier,
+    ) -> bool {
+        let x = bare_name.as_ref();
+        if self.extended_names.contains_key(x) || self.constants.contains_key(x) {
+            false
+        } else {
+            match self.compact_name_set.get(x) {
+                Some(qualifiers) => !qualifiers.contains(&qualifier),
+                _ => true,
+            }
         }
     }
 
-    pub fn contains_compact(&self, name: &BareName, q: TypeQualifier) -> bool {
-        match self.names.get(name) {
-            Some(bare_name_types) => bare_name_types.has_compact(q),
-            None => false,
+    pub fn contains_compact(
+        &self,
+        bare_name: &BareName,
+        qualifier: TypeQualifier,
+    ) -> Option<&ExpressionType> {
+        match self.compact_name_set.get(bare_name) {
+            Some(qualifiers) => {
+                if qualifiers.contains(&qualifier) {
+                    let name = Name::new(bare_name.clone(), Some(qualifier));
+                    self.compact_names.get(&name)
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 
-    pub fn contains_extended(&self, name: &BareName) -> bool {
-        match self.names.get(name) {
-            Some(bare_name_types) => bare_name_types.is_extended(),
-            None => false,
+    pub fn contains_extended(&self, bare_name: &BareName) -> Option<&ExpressionType> {
+        self.extended_names.get(bare_name)
+    }
+
+    pub fn contains_const(&self, bare_name: &BareName) -> bool {
+        self.constants.contains_key(bare_name)
+    }
+
+    pub fn get_const_value_no_recursion(&self, bare_name: &BareName) -> Option<&Variant> {
+        self.constants.get(bare_name)
+    }
+
+    pub fn get_const_value_recursively(&self, bare_name: &BareName) -> Option<&Variant> {
+        match self.constants.get(bare_name) {
+            Some(v) => Some(v),
+            _ => {
+                if let Some(boxed_parent) = &self.parent {
+                    boxed_parent.get_const_value_recursively(bare_name)
+                } else {
+                    None
+                }
+            }
         }
     }
 
-    pub fn push_const(&mut self, b: BareName, q: TypeQualifier, v: Variant) {
-        if self
-            .names
-            .insert(b.clone(), BareNameTypes::Constant(q))
-            .is_some()
-        {
-            panic!("Duplicate definition");
-        }
-
-        if self.const_values.insert(b, v).is_some() {
-            panic!("Duplicate definition");
+    pub fn contains_const_recursively(&self, bare_name: &BareName) -> bool {
+        if self.contains_const(bare_name) {
+            true
+        } else if let Some(boxed_parent) = &self.parent {
+            boxed_parent.contains_const_recursively(bare_name)
+        } else {
+            false
         }
     }
 
-    pub fn push_dim_compact(&mut self, b: BareName, q: TypeQualifier) {
-        match self.names.get_mut(&b) {
-            Some(bare_name_types) => {
-                bare_name_types.add_compact(q);
+    pub fn insert_compact(
+        &mut self,
+        bare_name: BareName,
+        q: TypeQualifier,
+        expr_type: ExpressionType,
+    ) {
+        self.compact_names
+            .insert(Name::new(bare_name.clone(), Some(q)), expr_type);
+        match self.compact_name_set.get_mut(&bare_name) {
+            Some(s) => {
+                s.insert(q);
             }
             None => {
                 let mut s: HashSet<TypeQualifier> = HashSet::new();
                 s.insert(q);
-                self.names.insert(b, BareNameTypes::Compact(s));
+                self.compact_name_set.insert(bare_name, s);
             }
         }
     }
 
-    pub fn push_dim_extended(&mut self, b: BareName, q: TypeQualifier) {
-        if self.names.insert(b, BareNameTypes::Extended(q)).is_some() {
-            panic!("Duplicate definition!");
-        }
+    pub fn insert_extended(&mut self, bare_name: BareName, expr_type: ExpressionType) {
+        self.extended_names.insert(bare_name, expr_type);
     }
 
-    pub fn push_dim_string(&mut self, b: BareName, len: u16) {
-        if self
-            .names
-            .insert(b, BareNameTypes::FixedLengthString(len))
-            .is_some()
-        {
-            panic!("Duplicate definition!");
-        }
-    }
-
-    pub fn push_dim_user_defined(&mut self, b: BareName, u: BareName) {
-        self.collect_name_without_dot(b.clone());
-        if self
-            .names
-            .insert(b, BareNameTypes::UserDefined(u))
-            .is_some()
-        {
-            panic!("Duplicate definition!");
-        }
-    }
-
-    fn collect_name_without_dot(&mut self, name: BareName) {
-        match &mut self.state {
-            ContextState::Child { parent, .. } => parent.collect_name_without_dot(name),
-            ContextState::Root {
-                names_without_dot, ..
-            } => {
-                names_without_dot.insert(name);
-            }
-        }
-    }
-
-    pub fn push_compact_param(&mut self, qualified_name: QualifiedName) {
-        self.push_param(qualified_name.into());
-    }
-
-    pub fn push_extended_param(&mut self, bare_name: BareName) {
-        self.push_param(bare_name.into());
-    }
-
-    fn push_param(&mut self, name: Name) {
-        match &mut self.state {
-            ContextState::Child { param_names, .. } => {
-                if !param_names.insert(name) {
-                    panic!("Duplicate parameter");
-                }
-            }
-            _ => panic!("Root context cannot have parameters"),
-        }
-    }
-
-    pub fn resolve_name_in_assignment<T: TypeResolver>(
-        &mut self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<DimName, QError> {
-        match self.resolve_expression(name, resolver)? {
-            Some(Expression::Variable(dim_name)) => Ok(dim_name),
-            // cannot re-assign a constant
-            Some(Expression::Constant(_)) => Err(QError::DuplicateDefinition),
-            None => self.resolve_missing_name_in_assignment(name, resolver),
-            _ => panic!("Unexpected result from resolving name expression"),
-        }
-    }
-
-    fn do_resolve_expression<T: TypeResolver>(
-        &self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<Option<Expression>, QError> {
-        let bare_name: &BareName = name.as_ref();
-        match self.names.get(bare_name) {
-            Some(bare_name_types) => match bare_name_types {
-                BareNameTypes::Compact(existing_set) => {
-                    let q = match name {
-                        Name::Bare(b) => resolver.resolve(b),
-                        Name::Qualified(QualifiedName { qualifier, .. }) => *qualifier,
-                    };
-                    if existing_set.contains(&q) {
-                        Ok(Some(Expression::Variable(DimName::new(
-                            bare_name.clone(),
-                            DimType::BuiltIn(q),
-                        ))))
-                    } else {
-                        Ok(None)
-                    }
-                }
-                BareNameTypes::Constant(q) => {
-                    if name.is_bare_or_of_type(*q) {
-                        Ok(Some(Expression::Constant(QualifiedName::new(
-                            bare_name.clone(),
-                            *q,
-                        ))))
-                    } else {
-                        Err(QError::DuplicateDefinition)
-                    }
-                }
-                BareNameTypes::Extended(q) => {
-                    if name.is_bare_or_of_type(*q) {
-                        Ok(Some(Expression::Variable(DimName::new(
-                            bare_name.clone(),
-                            DimType::BuiltIn(*q),
-                        ))))
-                    } else {
-                        Err(QError::DuplicateDefinition)
-                    }
-                }
-                BareNameTypes::FixedLengthString(len) => {
-                    if name.is_bare_or_of_type(TypeQualifier::DollarString) {
-                        Ok(Some(Expression::Variable(DimName::new(
-                            bare_name.clone(),
-                            DimType::FixedLengthString(*len),
-                        ))))
-                    } else {
-                        Err(QError::DuplicateDefinition)
-                    }
-                }
-                BareNameTypes::UserDefined(u) => {
-                    if name.is_bare() {
-                        Ok(Some(Expression::Variable(DimName::new(
-                            bare_name.clone(),
-                            DimType::UserDefined(u.clone()),
-                        ))))
-                    } else {
-                        Err(QError::DuplicateDefinition)
-                    }
-                }
-            },
-            None => {
-                Ok(resolve_members::resolve_member(self, name)?.map(|n| Expression::Variable(n)))
-            }
-        }
-    }
-
-    fn resolve_missing_name_in_assignment<T: TypeResolver>(
-        &mut self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<DimName, QError> {
-        let QualifiedName {
-            bare_name,
-            qualifier,
-        } = resolver.resolve_name(name);
-        self.push_dim_compact(bare_name.clone(), qualifier);
-        Ok(DimName::new(bare_name, DimType::BuiltIn(qualifier)))
-    }
-
-    pub fn resolve_missing_name_in_expression<T: TypeResolver>(
-        &mut self,
-        name: &Name,
-        resolver: &T,
-    ) -> Result<Expression, QError> {
-        let dim_name = self.resolve_missing_name_in_assignment(name, resolver)?;
-        Ok(Expression::Variable(dim_name))
-    }
-
-    pub fn resolve_expression<T: TypeResolver>(
-        &self,
-        n: &Name,
-        resolver: &T,
-    ) -> Result<Option<Expression>, QError> {
-        // is it param
-        // is it constant
-        // is it variable
-        // is it parent constant
-        // is it a sub program?
-        // it's a new implicit variable
-        self.do_resolve_expression(n, resolver)
-            .and_then(|opt| match opt {
-                Some(x) => Ok(Some(x)),
-                None => resolve_const::resolve_parent_const_expression(self, n),
-            })
-    }
-
-    pub fn is_function_context(&self, bare_name: &BareName) -> bool {
-        match &self.state {
-            ContextState::Child {
-                sub_program_name,
-                sub_program_type: SubProgramType::Function,
-                ..
-            } => sub_program_name == bare_name,
-            _ => false,
-        }
-    }
-
-    pub fn is_param<T: TypeResolver>(&self, name: &Name, resolver: &T) -> bool {
-        match &self.state {
-            ContextState::Child { param_names, .. } => {
-                let bare_name: &BareName = name.as_ref();
-                match self.names.get(bare_name) {
-                    Some(bare_name_types) => {
-                        if bare_name_types.is_extended() {
-                            // it's an extended, so it will appear as bare inside the param_names set
-                            let n: Name = bare_name.clone().into();
-                            param_names.contains(&n)
-                        } else {
-                            // it's a compact, so it will appear as qualified inside the param_names set
-                            match name {
-                                Name::Bare(_) => {
-                                    let n: Name = QualifiedName::new(
-                                        bare_name.clone(),
-                                        resolver.resolve(bare_name),
-                                    )
-                                    .into();
-                                    param_names.contains(&n)
-                                }
-                                Name::Qualified { .. } => param_names.contains(name),
-                            }
-                        }
-                    }
-                    None => false,
-                }
-            }
-            _ => false,
-        }
-    }
-
-    pub fn take_names_without_dot(self) -> HashSet<BareName> {
-        match self.state {
-            ContextState::Root {
-                names_without_dot, ..
-            } => names_without_dot,
-            _ => panic!("Expected root context"),
-        }
+    pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
+        self.constants.insert(bare_name, v);
     }
 }
 
-impl<'a> ConstValueResolver for Context<'a> {
+impl ConstValueResolver for Names {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
-        match self.const_values.get(name) {
+        match self.constants.get(name) {
             Some(v) => Some(v),
-            None => match &self.state {
-                ContextState::Child { parent, .. } => parent.get_resolved_constant(name),
+            _ => match &self.parent {
+                Some(boxed_parent) => boxed_parent.get_resolved_constant(name),
                 _ => None,
             },
         }
     }
 }
 
-mod context_management {
-    use super::*;
+impl<'a> TypeResolver for Context<'a> {
+    fn resolve_char(&self, ch: char) -> TypeQualifier {
+        self.resolver.borrow().resolve_char(ch)
+    }
+}
 
-    impl<'a> Context<'a> {
-        fn demand_root_context(&self) {
-            match &self.state {
-                ContextState::Child { .. } => panic!("Expected root context"),
-                _ => {}
-            }
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ExprContext {
+    Default,
+    Assignment,
+    Parameter,
+}
+
+impl<'a> Context<'a> {
+    pub fn new(
+        functions: &'a FunctionMap,
+        subs: &'a SubMap,
+        user_defined_types: &'a UserDefinedTypes,
+        resolver: Rc<RefCell<TypeResolverImpl>>,
+    ) -> Self {
+        Self {
+            functions,
+            subs,
+            user_defined_types,
+            resolver,
+            names: Names::new_root(),
+            names_without_dot: HashSet::new(),
         }
+    }
 
-        pub fn push_function_context(self, bare_name: BareName) -> Self {
-            self.demand_root_context();
-            Self {
-                names: HashMap::new(),
-                const_values: HashMap::new(),
-                state: ContextState::Child {
-                    param_names: HashSet::new(),
-                    parent: Box::new(self),
-                    sub_program_name: bare_name,
-                    sub_program_type: SubProgramType::Function,
-                },
+    pub fn push_sub_context(
+        &mut self,
+        params: ParamNameNodes,
+    ) -> Result<ParamNameNodes, QErrorNode> {
+        let temp_dummy = Names::new_root();
+        let old_names = std::mem::replace(&mut self.names, temp_dummy);
+        self.names = Names::new(Some(Box::new(old_names)), None);
+        self.convert_param_name_nodes(params)
+    }
+
+    pub fn push_function_context(
+        &mut self,
+        name: Name,
+        params: ParamNameNodes,
+    ) -> Result<(Name, ParamNameNodes), QErrorNode> {
+        let temp_dummy = Names::new_root();
+        let old_names = std::mem::replace(&mut self.names, temp_dummy);
+        self.names = Names::new(Some(Box::new(old_names)), Some(name.as_ref().clone()));
+        let converted_function_name = self.resolve_name_to_name(name);
+        Ok((
+            converted_function_name,
+            self.convert_param_name_nodes(params)?,
+        ))
+    }
+
+    pub fn pop_context(&mut self) {
+        let temp_dummy = Names::new_root();
+        let Names {
+            parent,
+            mut extended_names,
+            ..
+        } = std::mem::replace(&mut self.names, temp_dummy);
+        self.names_without_dot
+            .extend(extended_names.drain().map(|(k, _)| k));
+        match parent {
+            Some(boxed_parent) => {
+                self.names = *boxed_parent;
             }
+            _ => panic!("Stack underflow"),
         }
+    }
 
-        pub fn push_sub_context(self, bare_name: BareName) -> Self {
-            self.demand_root_context();
-            Self {
-                names: HashMap::new(),
-                const_values: HashMap::new(),
-                state: ContextState::Child {
-                    param_names: HashSet::new(),
-                    parent: Box::new(self),
-                    sub_program_name: bare_name,
-                    sub_program_type: SubProgramType::Sub,
-                },
-            }
+    pub fn names_without_dot(mut self) -> HashSet<BareName> {
+        self.names_without_dot
+            .extend(self.names.extended_names.drain().map(|(k, _)| k));
+        self.names_without_dot
+    }
+
+    pub fn on_expression(
+        &mut self,
+        expr_node: ExpressionNode,
+        expr_context: ExprContext,
+    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+        expr_rules::on_expression(self, expr_node, expr_context)
+    }
+
+    pub fn on_opt_expression(
+        &mut self,
+        opt_expr_node: Option<ExpressionNode>,
+        expr_context: ExprContext,
+    ) -> Result<(Option<ExpressionNode>, Vec<QualifiedNameNode>), QErrorNode> {
+        match opt_expr_node {
+            Some(expr_node) => self
+                .on_expression(expr_node, expr_context)
+                .map(|(x, y)| (Some(x), y)),
+            _ => Ok((None, vec![])),
         }
+    }
 
-        pub fn pop_context(self) -> Self {
-            match self.state {
-                ContextState::Child { parent, .. } => *parent,
-                _ => panic!("Stack underflow!"),
-            }
+    pub fn on_expressions(
+        &mut self,
+        expr_nodes: ExpressionNodes,
+        expr_context: ExprContext,
+    ) -> Result<(ExpressionNodes, Vec<QualifiedNameNode>), QErrorNode> {
+        let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
+        let mut converted_expr_nodes: ExpressionNodes = vec![];
+        for expr_node in expr_nodes {
+            let (converted_expr_node, implicits) = self.on_expression(expr_node, expr_context)?;
+            converted_expr_nodes.push(converted_expr_node);
+            implicit_vars = union(implicit_vars, implicits);
+        }
+        Ok((converted_expr_nodes, implicit_vars))
+    }
+
+    pub fn on_assignment(
+        &mut self,
+        left_side: ExpressionNode,
+        right_side: ExpressionNode,
+    ) -> Result<(ExpressionNode, ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+        assignment_pre_conversion_validation_rules::validate(self, &left_side)?;
+        let (converted_right_side, right_side_implicit_vars) =
+            self.on_expression(right_side, ExprContext::Default)?;
+        let (converted_left_side, left_side_implicit_vars) =
+            expr_rules::on_expression(self, left_side, ExprContext::Assignment)?;
+        assignment_post_conversion_validation_rules::validate(
+            self,
+            &converted_left_side,
+            &converted_right_side,
+        )?;
+        Ok((
+            converted_left_side,
+            converted_right_side,
+            union(left_side_implicit_vars, right_side_implicit_vars),
+        ))
+    }
+
+    pub fn on_dim(
+        &mut self,
+        dim_name_node: DimNameNode,
+    ) -> Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
+        dim_rules::on_dim(self, dim_name_node, false)
+    }
+
+    pub fn on_const(
+        &mut self,
+        left_side: NameNode,
+        right_side: ExpressionNode,
+    ) -> Result<(), QErrorNode> {
+        const_rules::on_const(self, left_side, right_side)
+    }
+
+    fn convert_param_name_nodes(
+        &mut self,
+        params: ParamNameNodes,
+    ) -> Result<ParamNameNodes, QErrorNode> {
+        params
+            .into_iter()
+            .map(|x| self.convert_param_name_node(x))
+            .collect()
+    }
+
+    fn convert_param_name_node(
+        &mut self,
+        param_name_node: ParamNameNode,
+    ) -> Result<ParamNameNode, QErrorNode> {
+        let dim_name_node: DimNameNode = DimNameNode::from(param_name_node);
+        let (converted_dim_name_node, implicits) = dim_rules::on_dim(self, dim_name_node, true)?;
+        if implicits.is_empty() {
+            Ok(ParamNameNode::from(converted_dim_name_node))
+        } else {
+            panic!("Should not have introduced implicit variables via parameter")
+        }
+    }
+
+    fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
+        match self.functions.get(bare_name) {
+            Some(Locatable {
+                element: (q, _), ..
+            }) => Some(*q),
+            _ => None,
         }
     }
 }
 
-mod resolve_members {
-    use super::*;
+enum RuleResult<I, O> {
+    Success(O),
+    Skip(I),
+}
 
-    pub fn resolve_member(context: &Context, name: &Name) -> Result<Option<DimName>, QError> {
-        let (bare_name, opt_qualifier) = match name {
-            Name::Bare(bare_name) => (bare_name, None),
-            Name::Qualified(QualifiedName {
-                bare_name,
-                qualifier,
-            }) => (bare_name, Some(*qualifier)),
-        };
-        let s: String = bare_name.clone().into();
-        let mut v: Vec<BareName> = s.split('.').map(|s| s.into()).collect();
-        let first: BareName = v.remove(0);
-        if v.is_empty() {
-            return Ok(None);
-        }
-        match context.names.get(&first) {
-            Some(BareNameTypes::UserDefined(type_name)) => {
-                let dim_type = DimType::Many(
-                    type_name.clone(),
-                    resolve_members(&context.state, type_name, &v[..], opt_qualifier)?,
-                );
-                Ok(Some(DimName::new(first.clone(), dim_type)))
-            }
-            _ => Ok(None),
+trait Rule<I, O, E> {
+    fn eval(&self, ctx: &mut Context, input: I) -> Result<RuleResult<I, O>, E>;
+
+    fn chain<X: Rule<I, O, E>>(self, other: X) -> Chain<Self, X>
+    where
+        Self: Sized,
+    {
+        Chain {
+            left: self,
+            right: other,
         }
     }
 
-    fn resolve_members(
-        state: &ContextState,
-        type_name: &BareName,
-        names: &[BareName],
-        opt_qualifier: Option<TypeQualifier>,
-    ) -> Result<Members, QError> {
-        let (first, rest) = names.split_first().expect("Empty names!");
-        let user_defined_type = get_user_defined_type(state, type_name).expect("Type not found!");
-        match user_defined_type.find_element(first) {
-            Some(element_type) => match element_type {
-                ElementType::Integer
-                | ElementType::Long
-                | ElementType::Single
-                | ElementType::Double
-                | ElementType::FixedLengthString(_) => {
-                    if rest.is_empty() {
-                        let is_correct_type = match opt_qualifier {
-                            Some(q) => {
-                                let element_q: TypeQualifier = element_type.try_into().unwrap();
-                                q == element_q
+    fn chain_fn(
+        self,
+        f: fn(&mut Context, I) -> Result<RuleResult<I, O>, E>,
+    ) -> Chain<Self, FnRule<I, O, E>>
+    where
+        Self: Sized,
+    {
+        Chain {
+            left: self,
+            right: FnRule::new(f),
+        }
+    }
+
+    fn demand(&self, ctx: &mut Context, input: I) -> Result<O, E>
+    where
+        I: Debug,
+    {
+        match self.eval(ctx, input) {
+            Ok(RuleResult::Success(o)) => Ok(o),
+            Err(err) => Err(err),
+            Ok(RuleResult::Skip(input)) => panic!("Could not process {:?}", input),
+        }
+    }
+}
+
+struct Chain<A, B> {
+    pub left: A,
+    pub right: B,
+}
+
+impl<A, B, I, O, E> Rule<I, O, E> for Chain<A, B>
+where
+    A: Rule<I, O, E>,
+    B: Rule<I, O, E>,
+{
+    fn eval(&self, ctx: &mut Context, input: I) -> Result<RuleResult<I, O>, E> {
+        match self.left.eval(ctx, input) {
+            Ok(RuleResult::Success(s)) => Ok(RuleResult::Success(s)),
+            Err(e) => Err(e),
+            Ok(RuleResult::Skip(i)) => self.right.eval(ctx, i),
+        }
+    }
+}
+
+struct FnRule<I, O, E> {
+    f: fn(&mut Context, I) -> Result<RuleResult<I, O>, E>,
+}
+
+impl<I, O, E> FnRule<I, O, E> {
+    pub fn new(f: fn(&mut Context, I) -> Result<RuleResult<I, O>, E>) -> Self {
+        Self { f }
+    }
+}
+
+impl<I, O, E> Rule<I, O, E> for FnRule<I, O, E> {
+    fn eval(&self, ctx: &mut Context, input: I) -> Result<RuleResult<I, O>, E> {
+        (self.f)(ctx, input)
+    }
+}
+
+pub mod expr_rules {
+    use super::*;
+    use crate::built_ins::BuiltInFunction;
+    use crate::common::{QError, ToLocatableError};
+    use crate::parser::HasExpressionType;
+    use std::convert::TryFrom;
+
+    type I = ExpressionNode;
+    type O = (ExpressionNode, Vec<QualifiedNameNode>);
+    type ExprResult = RuleResult<I, O>;
+    type Result = std::result::Result<ExprResult, QErrorNode>;
+
+    pub fn on_expression(
+        ctx: &mut Context,
+        expr_node: ExpressionNode,
+        expr_context: ExprContext,
+    ) -> std::result::Result<O, QErrorNode> {
+        let conversion_rules = FnRule::new(literals)
+            .chain_fn(variable_name_clashes_with_sub)
+            .chain_fn(variable_existing_extended_var)
+            .chain_fn(variable_existing_const)
+            .chain_fn(function_call_existing_extended_array_with_parenthesis)
+            .chain_fn(function_call_existing_compact_array_with_parenthesis)
+            .chain_fn(variable_or_property_existing_compact_name)
+            .chain_fn(if expr_context != ExprContext::Default {
+                variable_or_property_assign_to_function
+            } else {
+                variable_or_property_as_function_call
+            })
+            .chain_fn(unary_expr)
+            .chain_fn(binary_expr)
+            .chain_fn(function_call_must_have_args)
+            .chain_fn(function_call)
+            .chain_fn(property_of_existing_var)
+            .chain_fn(variable_existing_parent_const)
+            .chain_fn(property_fold_property_into_implicit_var)
+            .chain_fn(variable_implicit_var)
+            .chain_fn(parenthesis);
+        conversion_rules.demand(ctx, expr_node)
+    }
+
+    fn variable_or_property_assign_to_function(ctx: &mut Context, input: I) -> Result {
+        let Locatable { element: expr, pos } = input;
+        match expr.fold_name() {
+            Some(name) => {
+                let bare_name: &BareName = name.as_ref();
+                // if a function of this name exists...
+                match ctx.function_qualifier(bare_name) {
+                    Some(function_qualifier) => {
+                        // and the name qualifier matches...
+                        if name.is_bare_or_of_type(function_qualifier) {
+                            // and (since we're assigning to it) it's the current function
+                            if ctx.names.current_function_name.as_ref() == Some(bare_name) {
+                                let converted_name = name.qualify(function_qualifier);
+                                let expr_type = ExpressionType::BuiltIn(function_qualifier);
+                                let expr = Expression::Variable(converted_name, expr_type);
+                                Ok(RuleResult::Success((expr.at(pos), vec![])))
+                            } else {
+                                Err(QError::DuplicateDefinition).with_err_at(pos)
                             }
-                            None => true,
-                        };
-                        if is_correct_type {
-                            Ok(Members::Leaf {
-                                name: first.clone(),
-                                element_type: element_type.clone(),
-                            })
                         } else {
-                            Err(QError::TypeMismatch)
+                            Err(QError::DuplicateDefinition).with_err_at(pos)
                         }
-                    } else {
-                        Err(QError::syntax_error("Cannot navigate after built-in type"))
                     }
+                    _ => Ok(RuleResult::Skip(expr.at(pos))),
                 }
-                ElementType::UserDefined(u) => {
-                    if rest.is_empty() {
-                        if opt_qualifier.is_none() {
-                            Ok(Members::Leaf {
-                                name: first.clone(),
-                                element_type: element_type.clone(),
-                            })
-                        } else {
-                            // e.g. c.Address$ where c.Address is nested user defined
-                            Err(QError::TypeMismatch)
-                        }
-                    } else {
-                        Ok(Members::Node(
-                            UserDefinedName {
-                                name: first.clone(),
-                                type_name: u.clone(),
-                            },
-                            Box::new(resolve_members(state, u, rest, opt_qualifier)?),
-                        ))
-                    }
-                }
-            },
-            None => Err(QError::ElementNotDefined),
+            }
+            _ => Ok(RuleResult::Skip(expr.at(pos))),
         }
     }
 
-    fn get_user_defined_type<'a>(
-        state: &'a ContextState,
-        type_name: &'a BareName,
-    ) -> Option<&'a UserDefinedType> {
-        match state {
-            ContextState::Child { parent, .. } => get_user_defined_type(&parent.state, type_name),
-            ContextState::Root {
-                user_defined_types, ..
-            } => user_defined_types.get(type_name),
+    fn variable_name_clashes_with_sub(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Variable(name, _),
+            pos,
+        } = &input
+        {
+            if ctx.subs.contains_key(name.as_ref()) {
+                Err(QError::DuplicateDefinition).with_err_at(*pos)
+            } else {
+                Ok(RuleResult::Skip(input))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn variable_existing_extended_var(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Variable(name, expr_type),
+            pos,
+        } = input
+        {
+            let bare_name = name.as_ref();
+            if let Some(expr_type) = ctx.names.contains_extended(bare_name) {
+                let converted_name = expr_type.qualify_name(name).with_err_at(pos)?;
+                Ok(RuleResult::Success((
+                    Expression::Variable(converted_name, expr_type.clone()).at(pos),
+                    vec![],
+                )))
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::Variable(name, expr_type).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn variable_existing_const(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Variable(name, expr_type),
+            pos,
+        } = input
+        {
+            if let Some(v) = ctx.names.get_const_value_no_recursion(name.as_ref()) {
+                let q: TypeQualifier = TypeQualifier::try_from(v).with_err_at(pos)?;
+                if name.is_bare_or_of_type(q) {
+                    // resolve to literal expr
+                    let expr = Expression::try_from(v.clone()).with_err_at(pos)?;
+                    Ok(RuleResult::Success((expr.at(pos), vec![])))
+                } else {
+                    Err(QError::DuplicateDefinition).with_err_at(pos)
+                }
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::Variable(name, expr_type).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn variable_existing_parent_const(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Variable(name, expr_type),
+            pos,
+        } = input
+        {
+            if let Some(v) = ctx.names.get_const_value_recursively(name.as_ref()) {
+                let q: TypeQualifier = TypeQualifier::try_from(v).with_err_at(pos)?;
+                if name.is_bare_or_of_type(q) {
+                    // resolve to literal expr
+                    let expr = Expression::try_from(v.clone()).with_err_at(pos)?;
+                    Ok(RuleResult::Success((expr.at(pos), vec![])))
+                } else {
+                    Err(QError::DuplicateDefinition).with_err_at(pos)
+                }
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::Variable(name, expr_type).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn variable_or_property_existing_compact_name(ctx: &mut Context, input: I) -> Result {
+        let Locatable { element: expr, pos } = input;
+        match expr.fold_name() {
+            Some(name) => {
+                let bare_name: &BareName = name.as_ref();
+                let q: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
+                if let Some(expr_type) = ctx.names.contains_compact(bare_name, q) {
+                    let converted_name = name.qualify(q);
+                    let expr = Expression::Variable(converted_name, expr_type.clone());
+                    Ok(RuleResult::Success((expr.at(pos), vec![])))
+                } else {
+                    Ok(RuleResult::Skip(expr.at(pos)))
+                }
+            }
+            _ => Ok(RuleResult::Skip(expr.at(pos))),
+        }
+    }
+
+    fn literals(_ctx: &mut Context, input: I) -> Result {
+        let Locatable { element, pos } = input;
+        match element {
+            Expression::SingleLiteral(_)
+            | Expression::DoubleLiteral(_)
+            | Expression::StringLiteral(_)
+            | Expression::IntegerLiteral(_)
+            | Expression::LongLiteral(_) => Ok(RuleResult::Success((element.at(pos), vec![]))),
+            _ => Ok(RuleResult::Skip(element.at(pos))),
+        }
+    }
+
+    fn binary_expr(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::BinaryExpression(op, left, right, _),
+            pos,
+        } = input
+        {
+            let (converted_left, left_implicit_vars) =
+                ctx.on_expression(*left, ExprContext::Default)?;
+            let (converted_right, right_implicit_vars) =
+                ctx.on_expression(*right, ExprContext::Default)?;
+            let new_expr = Expression::binary(converted_left, converted_right, op)?;
+            Ok(RuleResult::Success((
+                new_expr.at(pos),
+                union(left_implicit_vars, right_implicit_vars),
+            )))
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn unary_expr(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::UnaryExpression(op, child),
+            pos,
+        } = input
+        {
+            let (converted_child, implicit_vars) =
+                ctx.on_expression(*child, ExprContext::Default)?;
+            if op.applies_to(&converted_child.expression_type()) {
+                let new_expr = Expression::UnaryExpression(op, Box::new(converted_child));
+                Ok(RuleResult::Success((new_expr.at(pos), implicit_vars)))
+            } else {
+                Err(QError::TypeMismatch).with_err_at(&converted_child)
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn variable_implicit_var(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Variable(name, _),
+            pos,
+        } = input
+        {
+            let resolved_name = ctx.resolve_name_to_name(name);
+            let q_name = resolved_name.clone().demand_qualified();
+            let qualifier = q_name.qualifier;
+            let implicit_vars = vec![q_name.at(pos)];
+            let expr_type = ExpressionType::BuiltIn(qualifier);
+            ctx.names
+                .insert_compact(resolved_name.as_ref().clone(), qualifier, expr_type.clone());
+            let resoled_expr = Expression::Variable(resolved_name, expr_type).at(pos);
+            Ok(RuleResult::Success((resoled_expr, implicit_vars)))
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn property_of_existing_var(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Property(left, right, old_expr_type),
+            pos,
+        } = input
+        {
+            // Find the most left name. If it is an existing variable, expect all to be resolved.
+            // If it is not an existing variable, skip and allow the fold rule to follow.
+            if let Some(left_most_name) = left.left_most_name() {
+                if let Some(ExpressionType::UserDefined(_)) =
+                    ctx.names.contains_extended(left_most_name.as_ref())
+                {
+                    let (
+                        Locatable {
+                            element: converted_left,
+                            ..
+                        },
+                        implicit_left,
+                    ) = ctx.on_expression((*left).at(pos), ExprContext::Default)?;
+                    let converted_left_expr_type = converted_left.expression_type();
+                    let converted_left_element_type = converted_left_expr_type.to_element_type();
+                    if let ExpressionType::UserDefined(user_defined_type_name) =
+                        converted_left_element_type
+                    {
+                        if let Some(user_defined_type) =
+                            ctx.user_defined_types.get(user_defined_type_name)
+                        {
+                            if let Some(element_type) =
+                                user_defined_type.find_element(right.as_ref())
+                            {
+                                if element_type.can_be_referenced_by_property_name(&right) {
+                                    Ok(RuleResult::Success((
+                                        Expression::Property(
+                                            Box::new(converted_left),
+                                            right.un_qualify(),
+                                            element_type.expression_type(),
+                                        )
+                                        .at(pos),
+                                        implicit_left,
+                                    )))
+                                } else {
+                                    // using wrong qualifier
+                                    Err(QError::TypeMismatch).with_err_at(pos)
+                                }
+                            } else {
+                                Err(QError::ElementNotDefined).with_err_at(pos)
+                            }
+                        } else {
+                            Err(QError::TypeNotDefined).with_err_at(pos)
+                        }
+                    } else {
+                        Err(QError::TypeMismatch).with_err_at(pos)
+                    }
+                } else {
+                    Ok(RuleResult::Skip(
+                        Expression::Property(left, right, old_expr_type).at(pos),
+                    ))
+                }
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::Property(left, right, old_expr_type).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn property_fold_property_into_implicit_var(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Property(left, right, _),
+            pos,
+        } = input
+        {
+            match left.fold_name() {
+                Some(folded_left_name) => match folded_left_name.try_concat_name(right) {
+                    Some(folded_name) => variable_implicit_var(
+                        ctx,
+                        Expression::Variable(folded_name, ExpressionType::Unresolved).at(pos),
+                    ),
+                    _ => Err(QError::ElementNotDefined).with_err_at(pos),
+                },
+                _ => Err(QError::ElementNotDefined).with_err_at(pos),
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn function_call_existing_extended_array_with_parenthesis(
+        ctx: &mut Context,
+        input: I,
+    ) -> Result {
+        if let Locatable {
+            element: Expression::FunctionCall(name, args),
+            pos,
+        } = input
+        {
+            let bare_name = name.as_ref();
+            if let Some(ExpressionType::Array(boxed_element_type)) =
+                ctx.names.contains_extended(bare_name)
+            {
+                // clone element type early in order to be able to use ctx as mutable later
+                let element_type = boxed_element_type.as_ref().clone();
+                // convert args
+                let (converted_args, implicit_vars) =
+                    ctx.on_expressions(args, ExprContext::Default)?;
+                // convert name
+                let converted_name = element_type.qualify_name(name).with_err_at(pos)?;
+                // create result
+                let result_expr =
+                    Expression::ArrayElement(converted_name, converted_args, element_type);
+                Ok(RuleResult::Success((result_expr.at(pos), implicit_vars)))
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::FunctionCall(name, args).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn function_call_existing_compact_array_with_parenthesis(
+        ctx: &mut Context,
+        input: I,
+    ) -> Result {
+        if let Locatable {
+            element: Expression::FunctionCall(name, args),
+            pos,
+        } = input
+        {
+            let bare_name: &BareName = name.as_ref();
+            let qualifier: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
+            if let Some(ExpressionType::Array(boxed_element_type)) =
+                ctx.names.contains_compact(bare_name, qualifier)
+            {
+                // clone element type early in order to be able to use ctx as mutable later
+                let element_type = boxed_element_type.as_ref().clone();
+                // convert args
+                let (converted_args, implicit_vars) =
+                    ctx.on_expressions(args, ExprContext::Default)?;
+                // convert name
+                let converted_name = name.qualify(qualifier);
+                // create result
+                let result_expr =
+                    Expression::ArrayElement(converted_name, converted_args, element_type);
+                Ok(RuleResult::Success((result_expr.at(pos), implicit_vars)))
+            } else {
+                Ok(RuleResult::Skip(
+                    Expression::FunctionCall(name, args).at(pos),
+                ))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn function_call_must_have_args(_ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::FunctionCall(_, args),
+            ..
+        } = &input
+        {
+            if args.is_empty() {
+                Err(QError::syntax_error(
+                    "Cannot have function call without arguments",
+                ))
+                .with_err_at(&input)
+            } else {
+                Ok(RuleResult::Skip(input))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn function_call(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::FunctionCall(name, args),
+            pos,
+        } = input
+        {
+            // convert args
+            let (converted_args, implicit_vars) =
+                ctx.on_expressions(args, ExprContext::Parameter)?;
+            // is it built-in function?
+            let converted_expr =
+                match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
+                    Some(built_in_function) => {
+                        Expression::BuiltInFunctionCall(built_in_function, converted_args)
+                    }
+                    _ => {
+                        let converted_name: Name = match ctx.function_qualifier(name.as_ref()) {
+                            Some(q) => name.qualify(q),
+                            _ => ctx.resolve_name_to_name(name),
+                        };
+                        Expression::FunctionCall(converted_name, converted_args)
+                    }
+                };
+            Ok(RuleResult::Success((converted_expr.at(pos), implicit_vars)))
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn variable_or_property_as_function_call(ctx: &mut Context, input: I) -> Result {
+        let Locatable { element: expr, pos } = input;
+        match expr.fold_name() {
+            Some(name) => {
+                // is it built-in function?
+                match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
+                    Some(built_in_function) => Ok(RuleResult::Success((
+                        Expression::BuiltInFunctionCall(built_in_function, vec![]).at(pos),
+                        vec![],
+                    ))),
+                    _ => match ctx.function_qualifier(name.as_ref()) {
+                        Some(q) => {
+                            let converted_name = name.qualify(q);
+                            Ok(RuleResult::Success((
+                                Expression::FunctionCall(converted_name, vec![]).at(pos),
+                                vec![],
+                            )))
+                        }
+                        _ => Ok(RuleResult::Skip(expr.at(pos))),
+                    },
+                }
+            }
+            _ => Ok(RuleResult::Skip(expr.at(pos))),
+        }
+    }
+
+    fn parenthesis(ctx: &mut Context, input: I) -> Result {
+        if let Locatable {
+            element: Expression::Parenthesis(child),
+            pos,
+        } = input
+        {
+            let (converted_child, implicit_vars) =
+                ctx.on_expression(*child, ExprContext::Default)?;
+            let converted_expr = Expression::Parenthesis(Box::new(converted_child));
+            Ok(RuleResult::Success((converted_expr.at(pos), implicit_vars)))
+        } else {
+            Ok(RuleResult::Skip(input))
         }
     }
 }
 
-mod resolve_const {
+pub mod dim_rules {
     use super::*;
+    use crate::common::{QError, ToLocatableError};
+    use crate::parser::{
+        ArrayDimension, ArrayDimensions, BuiltInStyle, DimName, DimType, DimTypeTrait,
+        HasExpressionType,
+    };
+    use crate::variant::MAX_INTEGER;
+    use std::convert::TryFrom;
 
-    pub fn resolve_parent_const_expression(
-        context: &Context,
-        n: &Name,
-    ) -> Result<Option<Expression>, QError> {
-        match &context.state {
-            ContextState::Child { parent, .. } => resolve_const_expression(parent, n),
-            _ => Ok(None),
+    type I = DimNameNode;
+    type O = (DimNameNode, Vec<QualifiedNameNode>);
+    type DimResult = RuleResult<I, O>;
+    type Result = std::result::Result<DimResult, QErrorNode>;
+
+    pub fn on_dim(
+        ctx: &mut Context,
+        dim_name_node: DimNameNode,
+        is_param: bool,
+    ) -> std::result::Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
+        let rule = FnRule::new(cannot_clash_with_subs)
+            .chain_fn(if is_param {
+                cannot_clash_with_functions_param
+            } else {
+                cannot_clash_with_functions_dim
+            })
+            .chain_fn(cannot_clash_with_existing_names)
+            .chain_fn(user_defined_type_must_exist)
+            .chain_fn(new_var);
+        rule.demand(ctx, dim_name_node)
+    }
+
+    fn user_defined_type_must_exist(ctx: &mut Context, input: I) -> Result {
+        if let Some(user_defined_type_name_node) = input.is_user_defined() {
+            if ctx
+                .user_defined_types
+                .contains_key(user_defined_type_name_node.as_ref())
+            {
+                Ok(RuleResult::Skip(input))
+            } else {
+                Err(QError::TypeNotDefined).with_err_at(user_defined_type_name_node)
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
         }
     }
 
-    fn resolve_const_expression(context: &Context, n: &Name) -> Result<Option<Expression>, QError> {
-        match do_resolve_const_expression(context, n)? {
-            Some(e) => Ok(Some(e)),
-            None => resolve_parent_const_expression(context, n),
+    fn cannot_clash_with_functions_dim(ctx: &mut Context, input: I) -> Result {
+        if ctx.functions.contains_key(input.as_ref()) {
+            Err(QError::DuplicateDefinition).with_err_at(&input)
+        } else {
+            Ok(RuleResult::Skip(input))
         }
     }
 
-    fn do_resolve_const_expression(
-        context: &Context,
-        name: &Name,
-    ) -> Result<Option<Expression>, QError> {
-        let bare_name: &BareName = name.as_ref();
-        match context.names.get(bare_name) {
-            Some(BareNameTypes::Constant(q)) => {
-                if name.is_bare_or_of_type(*q) {
-                    Ok(Some(Expression::Constant(QualifiedName::new(
-                        bare_name.clone(),
-                        *q,
-                    ))))
+    fn cannot_clash_with_functions_param(ctx: &mut Context, input: I) -> Result {
+        match ctx.function_qualifier(input.as_ref()) {
+            Some(func_qualifier) => {
+                if input.is_extended() {
+                    Err(QError::DuplicateDefinition).with_err_at(&input)
                 } else {
-                    Err(QError::DuplicateDefinition)
+                    let q = ctx.resolve_name_ref_to_qualifier(&input);
+                    if q == func_qualifier {
+                        // for some reason you can have a FUNCTION Add(Add)
+                        Ok(RuleResult::Skip(input))
+                    } else {
+                        Err(QError::DuplicateDefinition).with_err_at(&input)
+                    }
                 }
             }
-            _ => Ok(None),
+            _ => Ok(RuleResult::Skip(input)),
         }
     }
+
+    fn cannot_clash_with_subs(ctx: &mut Context, input: I) -> Result {
+        if ctx.subs.contains_key(input.as_ref()) {
+            Err(QError::DuplicateDefinition).with_err_at(&input)
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn cannot_clash_with_existing_names(ctx: &mut Context, input: I) -> Result {
+        if input.is_extended() {
+            if ctx.names.contains_any(&input) {
+                Err(QError::DuplicateDefinition).with_err_at(&input)
+            } else {
+                Ok(RuleResult::Skip(input))
+            }
+        } else {
+            let qualifier = ctx.resolve_name_ref_to_qualifier(&input);
+            if ctx.names.can_accept_compact(&input, qualifier) {
+                Ok(RuleResult::Skip(input))
+            } else {
+                Err(QError::DuplicateDefinition).with_err_at(&input)
+            }
+        }
+    }
+
+    fn new_var(ctx: &mut Context, input: I) -> Result {
+        let (converted_input, implicit_vars) = new_var_not_adding_to_context(ctx, input)?;
+        // add to context
+        let bare_name: &BareName = converted_input.as_ref();
+        let expr_type = converted_input.expression_type();
+        if converted_input.is_extended() {
+            ctx.names.insert_extended(bare_name.clone(), expr_type);
+        } else {
+            let q = TypeQualifier::try_from(&converted_input)?;
+            ctx.names.insert_compact(bare_name.clone(), q, expr_type);
+        }
+        Ok(RuleResult::Success((converted_input, implicit_vars)))
+    }
+
+    fn new_var_not_adding_to_context(
+        ctx: &mut Context,
+        input: I,
+    ) -> std::result::Result<O, QErrorNode> {
+        let Locatable {
+            element: dim_name,
+            pos,
+        } = input;
+        let DimName {
+            bare_name,
+            dim_type,
+        } = dim_name;
+        match dim_type {
+            DimType::Bare => {
+                let qualifier = ctx.resolve(&bare_name);
+                let dim_type = DimType::BuiltIn(qualifier, BuiltInStyle::Compact);
+                let converted_dim_name = DimName::new(bare_name, dim_type);
+                Ok((converted_dim_name.at(pos), vec![]))
+            }
+            DimType::BuiltIn(q, built_in_style) => {
+                let result = DimName::new(bare_name, DimType::BuiltIn(q, built_in_style)).at(pos);
+                Ok((result, vec![]))
+            }
+            DimType::FixedLengthString(len_expr, _) => {
+                let v = ctx.names.resolve_const_value_node(&len_expr)?;
+                if let Variant::VInteger(len) = v {
+                    if len > 1 && len < MAX_INTEGER {
+                        let result = DimName::new(
+                            bare_name,
+                            DimType::FixedLengthString(
+                                Expression::IntegerLiteral(len).at(&len_expr),
+                                len as u16,
+                            ),
+                        )
+                        .at(pos);
+                        Ok((result, vec![]))
+                    } else {
+                        Err(QError::OutOfStringSpace).with_err_at(&len_expr)
+                    }
+                } else {
+                    Err(QError::TypeMismatch).with_err_at(&len_expr)
+                }
+            }
+            DimType::UserDefined(user_defined_type_name_node) => {
+                let result =
+                    DimName::new(bare_name, DimType::UserDefined(user_defined_type_name_node))
+                        .at(pos);
+                Ok((result, vec![]))
+            }
+            DimType::Array(dimensions, boxed_element_type) => {
+                // dimensions
+                let mut converted_dimensions: ArrayDimensions = vec![];
+                let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
+                for dimension in dimensions {
+                    let ArrayDimension {
+                        lbound: opt_lbound,
+                        ubound,
+                    } = dimension;
+                    let (converted_lbound, implicit_vars_lbound) = match opt_lbound {
+                        Some(lbound) => ctx
+                            .on_expression(lbound, ExprContext::Default)
+                            .map(|(x, y)| (Some(x), y))?,
+                        _ => (None, vec![]),
+                    };
+                    let (converted_ubound, implicit_vars_ubound) =
+                        ctx.on_expression(ubound, ExprContext::Default)?;
+                    converted_dimensions.push(ArrayDimension {
+                        lbound: converted_lbound,
+                        ubound: converted_ubound,
+                    });
+                    implicit_vars = union(implicit_vars, implicit_vars_lbound);
+                    implicit_vars = union(implicit_vars, implicit_vars_ubound);
+                }
+                // dim_type
+                let element_dim_type = *boxed_element_type;
+                let element_dim_name = DimName::new(bare_name.clone(), element_dim_type).at(pos);
+                let (
+                    Locatable {
+                        element: DimName { dim_type, .. },
+                        ..
+                    },
+                    implicits,
+                ) = new_var_not_adding_to_context(ctx, element_dim_name)?;
+                implicit_vars = union(implicit_vars, implicits);
+                let array_dim_type = DimType::Array(converted_dimensions, Box::new(dim_type));
+                Ok((
+                    DimName::new(bare_name, array_dim_type).at(pos),
+                    implicit_vars,
+                ))
+            }
+        }
+    }
+}
+
+pub mod const_rules {
+    use super::*;
+    use crate::common::{QError, ToLocatableError};
+    use std::convert::TryFrom;
+
+    type I = (NameNode, ExpressionNode);
+    type O = ();
+    type ConstResult = RuleResult<I, O>;
+    type Result = std::result::Result<ConstResult, QErrorNode>;
+
+    pub fn on_const(
+        ctx: &mut Context,
+        left_side: NameNode,
+        right_side: ExpressionNode,
+    ) -> std::result::Result<O, QErrorNode> {
+        let rule = FnRule::new(const_cannot_clash_with_existing_names).chain_fn(new_const);
+        rule.demand(ctx, (left_side, right_side))
+    }
+
+    fn const_cannot_clash_with_existing_names(ctx: &mut Context, input: I) -> Result {
+        let (
+            Locatable {
+                element: const_name,
+                pos: const_name_pos,
+            },
+            right,
+        ) = input;
+        if ctx.names.contains_any(&const_name)
+            || ctx.subs.contains_key(const_name.as_ref())
+            || ctx.functions.contains_key(const_name.as_ref())
+        {
+            Err(QError::DuplicateDefinition).with_err_at(const_name_pos)
+        } else {
+            Ok(RuleResult::Skip((const_name.at(const_name_pos), right)))
+        }
+    }
+
+    fn new_const(ctx: &mut Context, input: I) -> Result {
+        let (
+            Locatable {
+                element: const_name,
+                ..
+            },
+            right,
+        ) = input;
+        let value_before_casting = ctx.names.resolve_const_value_node(&right)?;
+        let value_qualifier = TypeQualifier::try_from(&value_before_casting).with_err_at(&right)?;
+        let final_value = if const_name.is_bare_or_of_type(value_qualifier) {
+            value_before_casting
+        } else {
+            value_before_casting
+                .cast(const_name.qualifier().unwrap())
+                .with_err_at(&right)?
+        };
+        ctx.names
+            .insert_const(const_name.as_ref().clone(), final_value.clone());
+        Ok(RuleResult::Success(()))
+    }
+}
+
+pub mod assignment_pre_conversion_validation_rules {
+    use super::*;
+    use crate::common::{QError, ToLocatableError};
+
+    type I<'a> = &'a ExpressionNode;
+    type ValidationResult<'a> = RuleResult<I<'a>, ()>;
+    type Result<'a> = std::result::Result<ValidationResult<'a>, QErrorNode>;
+
+    pub fn validate(
+        ctx: &mut Context,
+        left_side: &ExpressionNode,
+    ) -> std::result::Result<(), QErrorNode> {
+        let rule = FnRule::new(cannot_assign_to_const).chain_fn(success);
+        rule.demand(ctx, left_side)
+    }
+
+    fn cannot_assign_to_const<'a>(ctx: &mut Context, input: I<'a>) -> Result<'a> {
+        if let Locatable {
+            element: Expression::Variable(var_name, _),
+            ..
+        } = input
+        {
+            if ctx.names.contains_const_recursively(var_name.as_ref()) {
+                Err(QError::DuplicateDefinition).with_err_at(input)
+            } else {
+                Ok(RuleResult::Skip(input))
+            }
+        } else {
+            Ok(RuleResult::Skip(input))
+        }
+    }
+
+    fn success<'a>(_ctx: &mut Context, _input: I<'a>) -> Result<'a> {
+        Ok(RuleResult::Success(()))
+    }
+}
+
+pub mod assignment_post_conversion_validation_rules {
+    use super::*;
+    use crate::common::{CanCastTo, QError, ToLocatableError};
+
+    type I<'a> = (&'a ExpressionNode, &'a ExpressionNode);
+    type ValidationResult<'a> = RuleResult<I<'a>, ()>;
+    type Result<'a> = std::result::Result<ValidationResult<'a>, QErrorNode>;
+
+    pub fn validate(
+        ctx: &mut Context,
+        left_side: &ExpressionNode,
+        right_side: &ExpressionNode,
+    ) -> std::result::Result<(), QErrorNode> {
+        let rule = FnRule::new(can_cast_right_to_left).chain_fn(success);
+        rule.demand(ctx, (left_side, right_side))
+    }
+
+    fn can_cast_right_to_left<'a>(_ctx: &mut Context, input: I<'a>) -> Result<'a> {
+        let (left, right) = input;
+        if right.can_cast_to(left) {
+            Ok(RuleResult::Skip((left, right)))
+        } else {
+            Err(QError::TypeMismatch).with_err_at(right)
+        }
+    }
+
+    fn success<'a>(_ctx: &mut Context, _input: I<'a>) -> Result<'a> {
+        Ok(RuleResult::Success(()))
+    }
+}
+
+fn union(
+    mut left: Vec<QualifiedNameNode>,
+    mut right: Vec<QualifiedNameNode>,
+) -> Vec<QualifiedNameNode> {
+    left.append(&mut right);
+    left
 }

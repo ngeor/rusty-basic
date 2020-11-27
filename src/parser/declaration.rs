@@ -99,7 +99,10 @@ fn opt_declaration_parameters<T: BufRead + 'static>(
 mod tests {
     use crate::common::*;
     use crate::parser::test_utils::*;
-    use crate::parser::{Name, ParamName, ParamType, Statement, TopLevelToken, TypeQualifier};
+    use crate::parser::{
+        BuiltInStyle, FunctionImplementation, Name, ParamName, ParamType, Statement, TopLevelToken,
+        TypeQualifier,
+    };
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
@@ -133,7 +136,7 @@ mod tests {
             Name::from("Fib!"),
             vec![ParamName::new(
                 "N".into(),
-                ParamType::Compact(TypeQualifier::BangSingle)
+                ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
             )]
         );
     }
@@ -145,7 +148,7 @@ mod tests {
             Name::from("echo$"),
             vec![ParamName::new(
                 "msg".into(),
-                ParamType::Compact(TypeQualifier::DollarString)
+                ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
             )]
         );
     }
@@ -168,11 +171,13 @@ mod tests {
                 .at_rc(2, 9),
                 TopLevelToken::Statement(Statement::Comment(" Echoes stuff back".to_string()))
                     .at_rc(2, 34),
-                TopLevelToken::FunctionImplementation(
-                    "Echo".as_name(3, 18),
-                    vec![ParamName::new("X".into(), ParamType::Bare).at_rc(3, 23)],
-                    vec![Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)]
-                )
+                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                    name: "Echo".as_name(3, 18),
+                    params: vec![ParamName::new("X".into(), ParamType::Bare).at_rc(3, 23)],
+                    body: vec![
+                        Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)
+                    ]
+                })
                 .at_rc(3, 9),
                 TopLevelToken::Statement(Statement::Comment(" End of implementation".to_string()))
                     .at_rc(4, 22),
@@ -208,5 +213,45 @@ mod tests {
     fn test_user_defined_sub_param_cannot_include_period() {
         let input = "DECLARE SUB Echo(X.Y AS Card)";
         assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+    }
+
+    #[test]
+    fn test_array_parameter() {
+        let input = r#"
+        DECLARE FUNCTION Echo(X$())
+        FUNCTION Echo(X$())
+        END FUNCTION
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![
+                TopLevelToken::FunctionDeclaration(
+                    "Echo".as_name(2, 26),
+                    vec![ParamName::new(
+                        "X".into(),
+                        ParamType::Array(Box::new(ParamType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        )))
+                    )
+                    .at_rc(2, 31)]
+                )
+                .at_rc(2, 9),
+                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                    name: "Echo".as_name(3, 18),
+                    params: vec![ParamName::new(
+                        "X".into(),
+                        ParamType::Array(Box::new(ParamType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        )))
+                    )
+                    .at_rc(3, 23)],
+                    body: vec![]
+                })
+                .at_rc(3, 9),
+            ]
+        );
     }
 }

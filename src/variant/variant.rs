@@ -3,7 +3,7 @@ use super::UserDefinedTypeValue;
 use crate::common::{FileHandle, QError};
 use crate::parser::TypeQualifier;
 use crate::variant::casting::QBNumberCast;
-use crate::variant::{qb_and, qb_or};
+use crate::variant::{qb_and, qb_or, VArray};
 use std::cmp::Ordering;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
@@ -16,6 +16,7 @@ pub enum Variant {
     VInteger(i32),
     VLong(i64),
     VUserDefined(Box<UserDefinedTypeValue>),
+    VArray(Box<VArray>),
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
@@ -134,7 +135,7 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => other.cmp(self).map(|x| x.reverse()),
             },
-            Variant::VUserDefined(_) => Err(QError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         }
     }
 
@@ -160,7 +161,7 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => Err(QError::TypeMismatch),
             },
-            Variant::VUserDefined(_) => Err(QError::TypeMismatch),
+            _ => Err(QError::TypeMismatch),
         }
     }
 

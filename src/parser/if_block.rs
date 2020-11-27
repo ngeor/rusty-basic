@@ -198,7 +198,8 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{
-        ConditionalBlockNode, Expression, IfBlockNode, Operator, Statement, TopLevelToken,
+        ConditionalBlockNode, Expression, ExpressionType, IfBlockNode, Operator, Statement,
+        TopLevelToken,
     };
 
     #[test]
@@ -441,16 +442,19 @@ end if"#;
                     condition: Expression::BinaryExpression(
                         Operator::Equal,
                         Box::new("ID".as_var_expr(1, 4)),
-                        Box::new(0.as_lit_expr(1, 9))
+                        Box::new(0.as_lit_expr(1, 9)),
+                        ExpressionType::Unresolved
                     )
                     .at_rc(1, 7),
-                    statements: vec![
-                        Statement::Assignment("A$".into(), "B$".as_var_expr(1, 21)).at_rc(1, 16)
-                    ]
+                    statements: vec![Statement::Assignment(
+                        Expression::var("A$"),
+                        "B$".as_var_expr(1, 21)
+                    )
+                    .at_rc(1, 16)]
                 },
                 else_if_blocks: vec![],
                 else_block: Some(vec![Statement::Assignment(
-                    "A$".into(),
+                    Expression::var("A$"),
                     "C$".as_var_expr(1, 34)
                 )
                 .at_rc(1, 29)])
@@ -532,6 +536,7 @@ end if"#;
                             Operator::Greater,
                             Box::new("X".as_var_expr(2, 12)),
                             Box::new(0.as_lit_expr(2, 14)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(2, 13)
                     ))
@@ -548,6 +553,7 @@ end if"#;
                             Operator::Less,
                             Box::new("X".as_var_expr(4, 16)),
                             Box::new(0.as_lit_expr(4, 18)),
+                            ExpressionType::Unresolved
                         )
                         .at_rc(4, 17)
                     ))

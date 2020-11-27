@@ -1,6 +1,6 @@
 use crate::instruction_generator::{generate_instructions, InstructionNode};
-use crate::linter::{lint, UserDefinedTypes};
-use crate::parser::parse_main_str;
+use crate::linter::lint;
+use crate::parser::{parse_main_str, UserDefinedTypes};
 
 pub fn generate_instructions_str_with_types<T>(input: T) -> (Vec<InstructionNode>, UserDefinedTypes)
 where

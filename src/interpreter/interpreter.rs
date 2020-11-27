@@ -12,25 +12,53 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
-use crate::linter::{DimName, UserDefinedTypes};
-use crate::parser::{QualifiedName, TypeQualifier};
-use crate::variant::Variant;
-use std::cmp::Ordering;
+use crate::parser::UserDefinedTypes;
+use crate::variant::{Path, Variant};
+use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::rc::Rc;
 
 pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
+    /// Offers system calls
     stdlib: TStdlib,
-    context: Context,
-    register_stack: RegisterStack,
-    return_stack: Vec<usize>,
-    stacktrace: Vec<Location>,
+
+    /// Offers file I/O
     file_manager: FileManager,
-    user_defined_types: Rc<UserDefinedTypes>,
+
+    /// Abstracts the standard input
     stdin: TStdIn,
+
+    /// Abstracts the standard output
     stdout: TStdOut,
+
+    /// Abstracts the LPT1 printer
     lpt1: TLpt1,
+
+    /// Holds the definition of user defined types
+    user_defined_types: Rc<UserDefinedTypes>,
+
+    /// Contains variables and constants, collects function/sub arguments.
+    context: Context,
+
+    /// Holds the "registers" of the CPU
+    register_stack: RegisterStack,
+
+    /// Holds addresses to jump back to
+    return_address_stack: Vec<usize>,
+
+    /// Holds the current call stack
+    stacktrace: Vec<Location>,
+
+    /// Holds a path to a variable
+    var_path_stack: VecDeque<Path>,
+
+    /// Temporarily holds byref values that are to be copied back to the calling context
+    by_ref_stack: VecDeque<Variant>,
+
+    function_result: Option<Variant>,
+
+    value_stack: Vec<Variant>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -41,18 +69,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     type TStdOut = TStdOut;
     type TLpt1 = TLpt1;
 
-    fn context(&self) -> &Context {
-        &self.context
-    }
-
-    fn context_mut(&mut self) -> &mut Context {
-        &mut self.context
-    }
-
-    fn file_manager(&mut self) -> &mut FileManager {
-        &mut self.file_manager
-    }
-
     fn stdlib(&self) -> &TStdlib {
         &self.stdlib
     }
@@ -61,8 +77,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
         &mut self.stdlib
     }
 
-    fn user_defined_types(&self) -> &UserDefinedTypes {
-        self.user_defined_types.as_ref()
+    fn file_manager(&mut self) -> &mut FileManager {
+        &mut self.file_manager
     }
 
     fn stdin(&mut self) -> &mut Self::TStdIn {
@@ -75,6 +91,46 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
 
     fn lpt1(&mut self) -> &mut Self::TLpt1 {
         &mut self.lpt1
+    }
+
+    fn user_defined_types(&self) -> &UserDefinedTypes {
+        self.user_defined_types.as_ref()
+    }
+
+    fn context(&self) -> &Context {
+        &self.context
+    }
+
+    fn context_mut(&mut self) -> &mut Context {
+        &mut self.context
+    }
+
+    fn registers(&self) -> &Registers {
+        self.register_stack.last().unwrap()
+    }
+
+    fn registers_mut(&mut self) -> &mut Registers {
+        self.register_stack.last_mut().unwrap()
+    }
+
+    fn register_stack(&mut self) -> &mut RegisterStack {
+        &mut self.register_stack
+    }
+
+    fn by_ref_stack(&mut self) -> &mut VecDeque<Variant> {
+        &mut self.by_ref_stack
+    }
+
+    fn take_function_result(&mut self) -> Option<Variant> {
+        self.function_result.take()
+    }
+
+    fn set_function_result(&mut self, v: Variant) {
+        self.function_result = Some(v);
+    }
+
+    fn var_path_stack(&mut self) -> &mut VecDeque<Path> {
+        &mut self.var_path_stack
     }
 }
 
@@ -104,40 +160,22 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         user_defined_types: UserDefinedTypes,
     ) -> Self {
         let rc_user_defined_types = Rc::new(user_defined_types);
-        let mut result = Interpreter {
+        Interpreter {
             stdlib,
             stdin,
             stdout,
             lpt1,
             context: Context::new(Rc::clone(&rc_user_defined_types)),
-            return_stack: vec![],
-            register_stack: VecDeque::new(),
+            return_address_stack: vec![],
+            register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
             user_defined_types: Rc::clone(&rc_user_defined_types),
-        };
-        result.register_stack.push_back(Registers::new());
-        result
-    }
-
-    fn registers_ref(&self) -> &Registers {
-        self.register_stack.back().unwrap()
-    }
-
-    fn registers_mut(&mut self) -> &mut Registers {
-        self.register_stack.back_mut().unwrap()
-    }
-
-    fn get_a(&self) -> Variant {
-        self.registers_ref().get_a()
-    }
-
-    fn get_b(&self) -> Variant {
-        self.registers_ref().get_b()
-    }
-
-    fn set_a(&mut self, v: Variant) {
-        self.registers_mut().set_a(v);
+            var_path_stack: VecDeque::new(),
+            by_ref_stack: VecDeque::new(),
+            function_result: None,
+            value_stack: vec![],
+        }
     }
 
     fn interpret_one(
@@ -153,170 +191,82 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *error_handler = Some(*idx);
             }
             Instruction::PushRegisters => {
-                self.register_stack.push_back(Registers::new());
+                registers::push_registers(self);
             }
             Instruction::PopRegisters => {
-                let old_registers = self.register_stack.pop_back();
-                self.set_a(old_registers.unwrap().get_a());
+                registers::pop_registers(self);
             }
-            Instruction::Load(v) => {
-                self.set_a(v.clone());
+            Instruction::LoadIntoA(v) => {
+                registers::load_into_a(self, v);
             }
             Instruction::Cast(q) => {
-                let v = self.get_a();
-                let casted = v.cast(*q).with_err_at(pos)?;
-                self.set_a(casted);
+                cast::cast(self, q).with_err_at(pos)?;
             }
             Instruction::FixLength(l) => {
-                let v = self.get_a();
-                let casted = v.cast(TypeQualifier::DollarString).with_err_at(pos)?;
-                self.set_a(match casted {
-                    Variant::VString(s) => {
-                        let len: usize = *l as usize;
-                        Variant::VString(s.fix_length(len))
-                    }
-                    _ => casted,
-                });
-            }
-            Instruction::Dim(dim_name) => {
-                self.set_default_value(dim_name);
-            }
-            Instruction::Store(n) => {
-                let v = self.get_a();
-                self.context.set_variable(n.clone(), v);
-            }
-            Instruction::StoreConst(n) => {
-                let v = self.get_a();
-                self.context.set_constant(n.clone(), v);
+                cast::fix_length(self, l).with_err_at(pos)?;
             }
             Instruction::CopyAToB => {
-                self.registers_mut().copy_a_to_b();
+                registers::copy_a_to_b(self);
             }
             Instruction::CopyAToC => {
-                self.registers_mut().copy_a_to_c();
+                registers::copy_a_to_c(self);
             }
             Instruction::CopyAToD => {
-                self.registers_mut().copy_a_to_d();
+                registers::copy_a_to_d(self);
             }
             Instruction::CopyCToB => {
-                self.registers_mut().copy_c_to_b();
+                registers::copy_c_to_b(self);
             }
             Instruction::CopyDToA => {
-                self.registers_mut().copy_d_to_a();
+                registers::copy_d_to_a(self);
             }
             Instruction::CopyDToB => {
-                self.registers_mut().copy_d_to_b();
-            }
-            Instruction::SwapAWithB => {
-                self.registers_mut().swap_a_with_b();
+                registers::copy_d_to_b(self);
             }
             Instruction::Plus => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let c = a.plus(b).with_err_at(pos)?;
-                self.set_a(c);
+                math::plus(self).with_err_at(pos)?;
             }
             Instruction::Minus => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let c = a.minus(b).with_err_at(pos)?;
-                self.set_a(c);
+                math::minus(self).with_err_at(pos)?;
             }
             Instruction::Multiply => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let c = a.multiply(b).with_err_at(pos)?;
-                self.set_a(c);
+                math::multiply(self).with_err_at(pos)?;
             }
             Instruction::Divide => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let c = a.divide(b).with_err_at(pos)?;
-                self.set_a(c);
+                math::divide(self).with_err_at(pos)?;
             }
             Instruction::NegateA => {
-                let a = self.get_a();
-                let c = a.negate().with_err_at(pos)?;
-                self.set_a(c);
+                logical::negate_a(self).with_err_at(pos)?;
             }
             Instruction::NotA => {
-                let a = self.get_a();
-                let c = a.unary_not().with_err_at(pos)?;
-                self.set_a(c);
-            }
-            Instruction::CopyVarToA(var_name) => {
-                let v = match self.context.get_r_value(var_name) {
-                    Some(v) => v.clone(),
-                    None => self.set_default_value(var_name),
-                };
-                self.set_a(v);
+                logical::not_a(self).with_err_at(pos)?;
             }
             Instruction::Equal => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Equal;
-                self.set_a(is_true.into());
+                comparison::equal(self).with_err_at(pos)?;
             }
             Instruction::NotEqual => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order != Ordering::Equal;
-                self.set_a(is_true.into());
+                comparison::not_equal(self).with_err_at(pos)?;
             }
             Instruction::Less => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Less;
-                self.set_a(is_true.into());
+                comparison::less(self).with_err_at(pos)?;
             }
             Instruction::Greater => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Greater;
-                self.set_a(is_true.into());
+                comparison::greater(self).with_err_at(pos)?;
             }
             Instruction::LessOrEqual => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Less || order == Ordering::Equal;
-                self.set_a(is_true.into());
+                comparison::less_or_equal(self).with_err_at(pos)?;
             }
             Instruction::GreaterOrEqual => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Greater || order == Ordering::Equal;
-                self.set_a(is_true.into());
+                comparison::greater_or_equal(self).with_err_at(pos)?;
             }
             Instruction::And => {
-                let a = self
-                    .get_a()
-                    .cast(TypeQualifier::PercentInteger)
-                    .with_err_at(pos)?;
-                let b = self
-                    .get_b()
-                    .cast(TypeQualifier::PercentInteger)
-                    .with_err_at(pos)?;
-                self.set_a(a.and(b).with_err_at(pos)?);
+                logical::and(self).with_err_at(pos)?;
             }
             Instruction::Or => {
-                let a = self
-                    .get_a()
-                    .cast(TypeQualifier::PercentInteger)
-                    .with_err_at(pos)?;
-                let b = self
-                    .get_b()
-                    .cast(TypeQualifier::PercentInteger)
-                    .with_err_at(pos)?;
-                self.set_a(a.or(b).with_err_at(pos)?);
+                logical::or(self).with_err_at(pos)?;
             }
             Instruction::JumpIfFalse(resolved_idx) => {
-                let a = self.get_a();
+                let a = self.registers().get_a();
                 let is_true: bool = bool::try_from(a).with_err_at(pos)?;
                 if !is_true {
                     *i = resolved_idx - 1; // the +1 will happen at the end of the loop
@@ -326,50 +276,33 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *i = resolved_idx - 1;
             }
             Instruction::BeginCollectArguments => {
-                self.context.arguments_stack().begin_collect_arguments();
+                subprogram::begin_collect_arguments(self);
             }
             Instruction::PushStack => {
                 self.push_context();
                 self.stacktrace.insert(0, pos);
             }
-            Instruction::PopStack(opt_function_name) => {
-                // get the function result
-                let function_result: Option<Variant> = match opt_function_name {
-                    Some(function_name) => {
-                        let r: DimName = function_name.clone().into();
-                        match self.context.get_r_value(&r) {
-                            Some(v) => Some(v.clone()),
-                            None => {
-                                // it was a function, but the implementation did not set a result
-                                let QualifiedName { qualifier, .. } = function_name;
-                                Some(Variant::from(qualifier))
-                            }
-                        }
-                    }
-                    None => None,
-                };
+            Instruction::PopStack => {
                 self.pop_context();
                 self.stacktrace.remove(0);
-                // store function result into A now that we're in the parent context
-                match function_result {
-                    Some(v) => {
-                        self.set_a(v);
-                    }
-                    None => {}
-                }
             }
-            Instruction::CopyToParent(idx, parent_var_name) => {
-                self.context.copy_to_parent(*idx, parent_var_name);
+            Instruction::EnqueueToReturnStack(idx) => {
+                subprogram::enqueue_to_return_stack(self, idx);
             }
-            Instruction::PushUnnamed => {
-                let v = self.get_a();
-                self.context.arguments_stack().push_unnamed(v);
+            Instruction::DequeueFromReturnStack => {
+                subprogram::dequeue_from_return_stack(self);
             }
-            Instruction::PushNamed(param_q_name) => {
-                let v = self.get_a();
-                self.context
-                    .arguments_stack()
-                    .push_named(param_q_name.clone(), v);
+            Instruction::StashFunctionReturnValue(function_name) => {
+                subprogram::stash_function_return_value(self, function_name);
+            }
+            Instruction::UnStashFunctionReturnValue => {
+                subprogram::un_stash_function_return_value(self);
+            }
+            Instruction::PushAToUnnamedArg => {
+                subprogram::push_a_to_unnamed_arg(self);
+            }
+            Instruction::PushNamed(param_name) => {
+                subprogram::push_a_to_named_arg(self, param_name);
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
@@ -389,14 +322,50 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *exit = true;
             }
             Instruction::PushRet(addr) => {
-                self.return_stack.push(*addr);
+                self.return_address_stack.push(*addr);
             }
             Instruction::PopRet => {
-                let addr = self.return_stack.pop().unwrap();
+                let addr = self.return_address_stack.pop().unwrap();
                 *i = addr - 1;
             }
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);
+            }
+            Instruction::AllocateBuiltIn(q) => {
+                allocation::allocate_built_in(self, *q).with_err_at(pos)?;
+            }
+            Instruction::AllocateFixedLengthString(len) => {
+                allocation::allocate_fixed_length_string(self, *len).with_err_at(pos)?;
+            }
+            Instruction::AllocateArrayIntoA(element_type) => {
+                allocation::allocate_array(self, element_type).with_err_at(pos)?;
+            }
+            Instruction::AllocateUserDefined(user_defined_type_name) => {
+                allocation::allocate_user_defined_type(self, user_defined_type_name)
+                    .with_err_at(pos)?;
+            }
+            Instruction::VarPathName(name) => {
+                var_path::var_path_name(self, name);
+            }
+            Instruction::VarPathIndex => {
+                var_path::var_path_index(self);
+            }
+            Instruction::VarPathProperty(property_name) => {
+                var_path::var_path_property(self, property_name);
+            }
+            Instruction::CopyAToVarPath => {
+                var_path::copy_a_to_var_path(self).with_err_at(pos)?;
+            }
+            Instruction::CopyVarPathToA => {
+                var_path::copy_var_path_to_a(self).with_err_at(pos)?;
+            }
+            Instruction::PushAToValueStack => {
+                let v = self.registers().get_a();
+                self.value_stack.push(v);
+            }
+            Instruction::PopValueStackIntoA => {
+                let v = self.value_stack.pop().expect("value_stack underflow!");
+                self.registers_mut().set_a(v);
             }
         }
         Ok(())
@@ -445,14 +414,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
     fn pop_context(&mut self) {
         let current_context = self.take_context();
         self.set_context(current_context.pop());
-    }
-
-    fn set_default_value(&mut self, dim_name: &DimName) -> Variant {
-        let v = dim_name
-            .dim_type()
-            .default_variant(self.user_defined_types.as_ref());
-        self.context.set_variable(dim_name.clone(), v.clone());
-        v
     }
 }
 
@@ -520,3 +481,5 @@ mod tests {
         assert_eq!(interpreter.stdout().output_exact(), " 0 \r\n");
     }
 }
+
+mod handlers;

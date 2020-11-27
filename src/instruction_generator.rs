@@ -1,7 +1,7 @@
 mod args;
 mod built_in_functions;
 mod built_in_subs;
-mod constant;
+mod dim;
 mod expression;
 mod for_loop;
 mod function_call;
@@ -16,6 +16,8 @@ mod while_wend;
 
 #[cfg(test)]
 pub mod test_utils;
+#[cfg(test)]
+mod tests;
 
 pub use self::instruction::*;
 pub use self::instruction_generator::*;

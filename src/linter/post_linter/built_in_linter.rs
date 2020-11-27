@@ -1,8 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::linter::types::{Expression, ExpressionNode, ExpressionType, HasExpressionType};
-use crate::parser::TypeQualifier;
+use crate::parser::{Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier};
 
 /// Lints built-in functions and subs.
 pub struct BuiltInLinter;
@@ -55,6 +54,7 @@ fn lint(built_in: &BuiltInFunction, args: &Vec<ExpressionNode>) -> Result<(), QE
         BuiltInFunction::Environ => environ_fn::lint(args),
         BuiltInFunction::Eof => eof::lint(args),
         BuiltInFunction::InStr => instr::lint(args),
+        BuiltInFunction::LBound | BuiltInFunction::UBound => lbound::lint(args),
         BuiltInFunction::Len => len::lint(args),
         BuiltInFunction::Mid => mid::lint(args),
         BuiltInFunction::Str => str_fn::lint(args),
@@ -131,14 +131,12 @@ mod input {
         }
 
         for i in starting_index..args.len() {
-            if let Locatable {
-                element: Expression::Variable(_),
-                ..
-            } = args[i]
-            {
-                // ok
-            } else {
-                return Err(QError::VariableRequired).with_err_at(&args[i]);
+            let Locatable { element, .. } = &args[i];
+            match element {
+                Expression::Variable(_, _) | Expression::Property(_, _, _) => {}
+                _ => {
+                    return Err(QError::VariableRequired).with_err_at(&args[i]);
+                }
             }
         }
 
@@ -180,9 +178,40 @@ mod kill {
     }
 }
 
+mod lbound {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        if args.is_empty() || args.len() > 2 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+
+        // Can have at one or two arguments. First must be the array name, without parenthesis.
+        // Second, optional, is an integer specifying the array dimension >=1 (default is 1).
+        let Locatable {
+            element: first,
+            pos: first_pos,
+        } = args.get(0).unwrap();
+        if let Expression::Variable(_, ExpressionType::Array(_)) = first {
+            if args.len() == 2 {
+                if args[1].can_cast_to(TypeQualifier::PercentInteger) {
+                    Ok(())
+                } else {
+                    Err(QError::ArgumentTypeMismatch).with_err_at(args[1].pos())
+                }
+            } else {
+                Ok(())
+            }
+        } else {
+            Err(QError::ArgumentTypeMismatch).with_err_at(first_pos)
+        }
+    }
+}
+
 mod line_input {
     use super::*;
     use crate::common::ToErrorEnvelopeNoPos;
+    use crate::parser::ExpressionType;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // the first one or two arguments stand for the file number
@@ -228,7 +257,7 @@ mod line_input {
             pos,
         } = &args[starting_index];
         match var_arg {
-            Expression::Variable(dim_name) => match dim_name.dim_type().expression_type() {
+            Expression::Variable(_, expression_type) => match expression_type {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString)
                 | ExpressionType::FixedLengthString(_) => {}
                 _ => return Err(QError::TypeMismatch).with_err_at(*pos),
@@ -319,7 +348,7 @@ mod len {
         } else {
             let arg: &Expression = args[0].as_ref();
             match arg {
-                Expression::Variable(_) => Ok(()),
+                Expression::Variable(_, _) | Expression::Property(_, _, _) => Ok(()),
                 _ => {
                     if !args[0].can_cast_to(TypeQualifier::DollarString) {
                         Err(QError::VariableRequired).with_err_at(&args[0])

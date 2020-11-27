@@ -1,7 +1,9 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::*;
-use crate::parser::{Operator, UnaryOperator};
+use crate::parser::{
+    Expression, ExpressionNode, ExpressionType, HasExpressionType, Operator, TypeQualifier,
+    UnaryOperator,
+};
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(
@@ -20,7 +22,7 @@ impl InstructionGenerator {
                 ExpressionType::FixedLengthString(l) => {
                     self.push(Instruction::FixLength(l), pos);
                 }
-                _ => panic!("Cannot cast user defined type"),
+                _ => panic!("Cannot cast {:?} into {:?}", expression_type, target_type),
             }
         }
     }
@@ -43,12 +45,9 @@ impl InstructionGenerator {
             Expression::LongLiteral(s) => {
                 self.push_load(s, pos);
             }
-            Expression::Variable(dim_name) => {
-                self.push(Instruction::CopyVarToA(dim_name), pos);
-            }
-            Expression::Constant(qualified_name) => {
-                self.push(Instruction::CopyVarToA(qualified_name.into()), pos);
-            }
+            Expression::Variable(_, _)
+            | Expression::ArrayElement(_, _, _)
+            | Expression::Property(_, _, _) => self.generate_load_instructions(e, pos),
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);
                 self.generate_function_call_instructions(name_node, args);
@@ -57,11 +56,11 @@ impl InstructionGenerator {
                 self.generate_built_in_function_call_instructions(n, args, pos);
             }
             Expression::BinaryExpression(op, left, right, _) => {
-                self.push(Instruction::PushRegisters, pos);
                 self.generate_expression_instructions(*left);
-                self.push(Instruction::CopyAToB, pos);
+                self.push(Instruction::PushAToValueStack, pos);
                 self.generate_expression_instructions(*right);
-                self.push(Instruction::SwapAWithB, pos);
+                self.push(Instruction::CopyAToB, pos);
+                self.push(Instruction::PopValueStackIntoA, pos);
                 match op {
                     Operator::Plus => self.push(Instruction::Plus, pos),
                     Operator::Minus => self.push(Instruction::Minus, pos),
@@ -76,7 +75,6 @@ impl InstructionGenerator {
                     Operator::And => self.push(Instruction::And, pos),
                     Operator::Or => self.push(Instruction::Or, pos),
                 }
-                self.push(Instruction::PopRegisters, pos);
             }
             Expression::UnaryExpression(op, child) => match op {
                 UnaryOperator::Not => {
@@ -91,6 +89,38 @@ impl InstructionGenerator {
             Expression::Parenthesis(child) => {
                 self.generate_expression_instructions(*child);
             }
+        }
+    }
+
+    pub fn generate_path_instructions(&mut self, expr_node: ExpressionNode) {
+        let Locatable { element: expr, pos } = expr_node;
+
+        match expr {
+            Expression::Variable(var_name, _) => {
+                self.push(Instruction::VarPathName(var_name), pos);
+            }
+            Expression::ArrayElement(array_name, indices, _element_type) => {
+                self.push(Instruction::VarPathName(array_name), pos);
+                for arg in indices {
+                    let arg_pos = arg.pos();
+                    self.push(Instruction::PushAToValueStack, arg_pos);
+                    self.generate_expression_instructions_casting(
+                        arg,
+                        ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
+                    );
+                    self.push(Instruction::VarPathIndex, arg_pos);
+                    self.push(Instruction::PopValueStackIntoA, arg_pos);
+                }
+            }
+            Expression::Property(box_left_side, property_name, _element_type) => {
+                let left_side = *box_left_side;
+                self.generate_path_instructions(left_side.at(pos));
+                self.push(
+                    Instruction::VarPathProperty(property_name.demand_bare()),
+                    pos,
+                );
+            }
+            _ => panic!("Not a name expression {:?}", expr),
         }
     }
 }

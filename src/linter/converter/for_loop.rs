@@ -1,39 +1,48 @@
-use crate::common::{AtLocation, Locatable, QErrorNode, ToLocatableError};
-use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::{DimName, DimNameNode, ForLoopNode};
-use crate::parser;
-use crate::parser::NameNode;
+use crate::common::QErrorNode;
+use crate::linter::converter::context::ExprContext;
+use crate::linter::converter::converter::{
+    Converter, ConverterImpl, ConverterWithImplicitVariables,
+};
+use crate::parser::{ForLoopNode, QualifiedNameNode};
 
-impl<'a> Converter<parser::ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
-    fn convert(&mut self, a: parser::ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
-        Ok(ForLoopNode {
-            variable_name: self.for_loop_variable_name(a.variable_name)?,
-            lower_bound: self.convert(a.lower_bound)?,
-            upper_bound: self.convert(a.upper_bound)?,
-            step: self.convert(a.step)?,
-            statements: self.convert(a.statements)?,
-            next_counter: self.for_loop_next_counter(a.next_counter)?,
-        })
-    }
-}
-
-impl<'a> ConverterImpl<'a> {
-    fn for_loop_variable_name(&mut self, name_node: NameNode) -> Result<DimName, QErrorNode> {
-        let Locatable { element, pos } = name_node;
-        self.assignment_name(element).with_err_at(pos)
-    }
-
-    fn for_loop_next_counter(
+impl<'a> ConverterWithImplicitVariables<ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
+    fn convert_and_collect_implicit_variables(
         &mut self,
-        opt_name_node: Option<NameNode>,
-    ) -> Result<Option<DimNameNode>, QErrorNode> {
-        match opt_name_node {
-            Some(name_node) => {
-                let Locatable { element, pos } = name_node;
-                let dim_name = self.assignment_name(element).with_err_at(pos)?;
-                Ok(Some(dim_name.at(pos)))
-            }
-            None => Ok(None),
-        }
+        a: ForLoopNode,
+    ) -> Result<(ForLoopNode, Vec<QualifiedNameNode>), QErrorNode> {
+        let (variable_name, implicit_variables_variable_name) = self
+            .context
+            .on_expression(a.variable_name, ExprContext::Assignment)?;
+        let (lower_bound, implicit_variables_lower_bound) = self
+            .context
+            .on_expression(a.lower_bound, ExprContext::Default)?;
+        let (upper_bound, implicit_variables_upper_bound) = self
+            .context
+            .on_expression(a.upper_bound, ExprContext::Default)?;
+        let (step, implicit_variables_step) = self
+            .context
+            .on_opt_expression(a.step, ExprContext::Default)?;
+        let (next_counter, implicit_variables_next_counter) = self
+            .context
+            .on_opt_expression(a.next_counter, ExprContext::Assignment)?;
+        let implicit_vars = Self::merge_implicit_vars(vec![
+            implicit_variables_variable_name,
+            implicit_variables_lower_bound,
+            implicit_variables_upper_bound,
+            implicit_variables_step,
+            implicit_variables_next_counter,
+        ]);
+
+        Ok((
+            ForLoopNode {
+                variable_name,
+                lower_bound,
+                upper_bound,
+                step,
+                statements: self.convert(a.statements)?,
+                next_counter,
+            },
+            implicit_vars,
+        ))
     }
 }

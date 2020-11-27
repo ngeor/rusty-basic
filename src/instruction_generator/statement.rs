@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{Statement, StatementNode, StatementNodes};
+use crate::parser::{Statement, StatementNode, StatementNodes};
 
 impl InstructionGenerator {
     pub fn generate_block_instructions(&mut self, block: StatementNodes) {
@@ -18,7 +18,7 @@ impl InstructionGenerator {
             Statement::Assignment(left_side, right_side) => {
                 self.generate_assignment_instructions(left_side, right_side, pos)
             }
-            Statement::Const(n, e) => self.generate_const_instructions(n, e),
+            Statement::Const(_, _) => panic!("Constants should have been reduced by const_reducer"),
             Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at(pos), args),
             Statement::BuiltInSubCall(n, args) => {
                 self.generate_built_in_sub_call_instructions(n, args, pos)
@@ -40,8 +40,8 @@ impl InstructionGenerator {
                 self.push(Instruction::UnresolvedJump(name.clone()), pos);
             }
             Statement::Comment(_) => {}
-            Statement::Dim(Locatable { element, pos }) => {
-                self.push(Instruction::Dim(element), pos);
+            Statement::Dim(d) => {
+                self.generate_dim_instructions(d);
             }
         }
     }

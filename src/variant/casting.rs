@@ -181,10 +181,10 @@ impl QBNumberCast<i64> for Variant {
 impl Variant {
     pub fn cast(self, target_type: TypeQualifier) -> Result<Self, QError> {
         match target_type {
-            TypeQualifier::BangSingle => Ok(Self::VSingle((&self).try_cast()?)),
-            TypeQualifier::HashDouble => Ok(Self::VDouble((&self).try_cast()?)),
-            TypeQualifier::PercentInteger => Ok(Self::VInteger((&self).try_cast()?)),
-            TypeQualifier::AmpersandLong => Ok(Self::VLong((&self).try_cast()?)),
+            TypeQualifier::BangSingle => Ok(Self::VSingle(self.try_cast()?)),
+            TypeQualifier::HashDouble => Ok(Self::VDouble(self.try_cast()?)),
+            TypeQualifier::PercentInteger => Ok(Self::VInteger(self.try_cast()?)),
+            TypeQualifier::AmpersandLong => Ok(Self::VLong(self.try_cast()?)),
             TypeQualifier::DollarString => match self {
                 Self::VString(_) => Ok(self),
                 _ => Err(QError::TypeMismatch),

@@ -1,50 +1,22 @@
-use crate::common::*;
-use crate::parser::char_reader::EolReader;
-use crate::parser::expression;
-use crate::parser::name;
-use crate::parser::pc::common::{and, drop_right, seq2};
-use crate::parser::pc::map::map;
-use crate::parser::pc::ws::zero_or_more_around;
-use crate::parser::pc::{read, ReaderResult};
-use crate::parser::types::*;
-use std::io::BufRead;
-
-pub fn assignment<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(assignment_tuple(), |(l, r)| Statement::Assignment(l, r))
-}
-
-/// Parses `<name> <ws*> = <ws*> <expression-node>`.
-///
-/// If the equals sign is read, the expression must be read.
-///
-/// Examples:
-///
-/// ```basic
-/// A = 42
-/// A$ = "hello" + ", world"
-/// A%=1
-/// ```
-pub fn assignment_tuple<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Name, ExpressionNode), QError>> {
-    // not using seq3 in case it's not an assignment but a sub call
-    seq2(
-        drop_right(and(name::name(), zero_or_more_around(read('=')))),
-        expression::demand_expression_node(),
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use super::*;
-    use crate::parser::{Expression, Name, TopLevelToken};
+    use crate::common::{AtRowCol, QError};
+    use crate::parser::types::*;
 
     macro_rules! assert_top_level_assignment {
+        ($input:expr, $name_expr:expr) => {
+            match parse($input).demand_single_statement() {
+                Statement::Assignment(n, _) => {
+                    assert_eq!(n, $name_expr);
+                }
+                _ => panic!("Expected: assignment"),
+            }
+        };
         ($input:expr, $name:expr, $value:expr) => {
             match parse($input).demand_single_statement() {
                 Statement::Assignment(n, crate::common::Locatable { element: v, .. }) => {
-                    assert_eq!(n, Name::from($name));
+                    assert_eq!(n, Expression::var($name));
                     assert_eq!(v, Expression::IntegerLiteral($value));
                 }
                 _ => panic!("Expected: assignment"),
@@ -52,19 +24,148 @@ mod tests {
         };
     }
 
+    mod unqualified {
+        use super::*;
+
+        mod no_dots {
+            use super::*;
+
+            #[test]
+            fn test_assign_unqualified_variable_no_dots() {
+                let input = "A = 42";
+                assert_top_level_assignment!(input, Expression::var("A"));
+            }
+
+            #[test]
+            fn test_whitespace_around_equals_is_optional() {
+                let var_name = "A";
+                let value = 42;
+                assert_top_level_assignment!(format!("{} = {}", var_name, value), var_name, value);
+                assert_top_level_assignment!(format!("{}={}", var_name, value), var_name, value);
+                assert_top_level_assignment!(format!("{}= {}", var_name, value), var_name, value);
+                assert_top_level_assignment!(format!("{} ={}", var_name, value), var_name, value);
+            }
+
+            #[test]
+            fn test_assign_unqualified_variable_no_dots_array() {
+                let input = "A(1) = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::FunctionCall("A".into(), vec![1.as_lit_expr(1, 3)])
+                );
+            }
+        }
+
+        mod dots {
+            use super::*;
+
+            #[test]
+            fn test_potential_property() {
+                let input = "A.B = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::Property(
+                        Box::new(Expression::var("A")),
+                        "B".into(),
+                        ExpressionType::Unresolved
+                    )
+                );
+            }
+
+            #[test]
+            fn test_not_property_due_to_consecutive_dots() {
+                let input = "A..B = 42";
+                assert_top_level_assignment!(input, Expression::var("A..B"));
+            }
+
+            #[test]
+            fn test_assign_array_property() {
+                let input = "A(1).Value = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::Property(
+                        Box::new(Expression::FunctionCall(
+                            "A".into(),
+                            vec![1.as_lit_expr(1, 3)]
+                        )),
+                        "Value".into(),
+                        ExpressionType::Unresolved
+                    )
+                );
+            }
+
+            #[test]
+            fn test_max_length() {
+                assert_top_level_assignment!(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM = 42",
+                    Expression::Property(
+                        Box::new(Expression::var("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+                        "ABCDEFGHIJKLM".into(),
+                        ExpressionType::Unresolved
+                    )
+                );
+            }
+        }
+    }
+
+    mod qualified {
+        use super::*;
+
+        mod no_dots {
+            use super::*;
+
+            #[test]
+            fn test_assign_qualified_variable_no_dots() {
+                let input = "A% = 42";
+                assert_top_level_assignment!(input, Expression::var("A%"));
+            }
+
+            #[test]
+            fn test_assign_qualified_variable_no_dots_array() {
+                let input = "A%(1) = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::FunctionCall("A%".into(), vec![1.as_lit_expr(1, 4)])
+                );
+            }
+        }
+
+        mod dots {
+            use super::*;
+
+            #[test]
+            fn test_assign_array_property() {
+                let input = "A(1).Value% = 42";
+                assert_top_level_assignment!(
+                    input,
+                    Expression::Property(
+                        Box::new(Expression::FunctionCall(
+                            "A".into(),
+                            vec![1.as_lit_expr(1, 3)]
+                        )),
+                        "Value%".into(),
+                        ExpressionType::Unresolved
+                    )
+                );
+            }
+
+            #[test]
+            fn test_max_length() {
+                assert_top_level_assignment!(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM% = 42",
+                    Expression::Property(
+                        Box::new(Expression::var("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+                        "ABCDEFGHIJKLM%".into(),
+                        ExpressionType::Unresolved
+                    )
+                );
+            }
+        }
+    }
+
     #[test]
     fn test_numeric_assignment() {
-        let names = [
-            "A",
-            "BC",
-            "A%",
-            "A.B",
-            "A..B",
-            "A.B.",
-            "C.%",
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM", // longest identifier is 40 characters
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM%",
-        ];
+        let names = ["A", "BC", "A%", "A..B", "A.B.", "C.%"];
         let values = [1, -1, 0, 42];
         for name in &names {
             for value in &values {
@@ -109,7 +210,7 @@ mod tests {
             program,
             vec![
                 TopLevelToken::Statement(Statement::Assignment(
-                    "ANSWER".into(),
+                    Expression::var("ANSWER"),
                     42.as_lit_expr(1, 10)
                 ))
                 .at_rc(1, 1),
@@ -118,6 +219,79 @@ mod tests {
                 ))
                 .at_rc(1, 13)
             ]
+        );
+    }
+
+    #[test]
+    fn test_array_with_single_dimension() {
+        let input = "A(2) = 1";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(
+                Expression::func("A", vec![2.as_lit_expr(1, 3)]),
+                1.as_lit_expr(1, 8)
+            )
+        );
+    }
+
+    #[test]
+    fn test_array_with_two_dimensions() {
+        let input = "A(1, 2) = 3";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(
+                Expression::func("A", vec![1.as_lit_expr(1, 3), 2.as_lit_expr(1, 6)]),
+                3.as_lit_expr(1, 11)
+            )
+        );
+    }
+
+    #[test]
+    fn test_array_qualified() {
+        let input = "A$(N!) = 1";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(
+                Expression::func("A$", vec!["N!".as_var_expr(1, 4)]),
+                1.as_lit_expr(1, 10)
+            )
+        );
+    }
+
+    #[test]
+    fn test_array_with_user_defined_type_element() {
+        let input = "A(1).Height = 2";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(
+                Expression::Property(
+                    Box::new(Expression::func("A", vec![1.as_lit_expr(1, 3)])),
+                    "Height".into(),
+                    ExpressionType::Unresolved
+                ),
+                2.as_lit_expr(1, 15)
+            )
+        );
+    }
+
+    #[test]
+    fn test_unqualified_user_defined_type_element() {
+        let input = "A.B = 2";
+        let program = parse(input).demand_single_statement();
+        assert_eq!(
+            program,
+            Statement::Assignment(
+                Expression::Property(
+                    Box::new(Expression::var("A")),
+                    "B".into(),
+                    ExpressionType::Unresolved
+                ),
+                2.as_lit_expr(1, 7)
+            )
         );
     }
 }

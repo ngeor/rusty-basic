@@ -1,4 +1,4 @@
-use crate::linter::ParamName;
+use crate::parser::ParamName;
 use crate::variant::Variant;
 use std::vec::IntoIter;
 

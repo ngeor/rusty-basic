@@ -1,19 +1,18 @@
 use crate::common::QErrorNode;
-use crate::linter;
-use crate::linter::UserDefinedTypes;
-use crate::parser::parse_main_str;
+use crate::linter::lint;
+use crate::parser::{parse_main_str, ProgramNode, UserDefinedTypes};
 
 /// Lints the given string and returns the results.
 ///
 /// # Panics
 ///
 /// Panics if the parser or the linter have an error.
-pub fn linter_ok_with_types<T>(input: T) -> (linter::ProgramNode, UserDefinedTypes)
+pub fn linter_ok_with_types<T>(input: T) -> (ProgramNode, UserDefinedTypes)
 where
     T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).unwrap();
-    linter::lint(program).unwrap()
+    lint(program).unwrap()
 }
 
 /// Lints the given string and returns the linted program node.
@@ -21,7 +20,7 @@ where
 /// # Panics
 ///
 /// Panics if the parser or the linter have an error.
-pub fn linter_ok<T>(input: T) -> linter::ProgramNode
+pub fn linter_ok<T>(input: T) -> ProgramNode
 where
     T: AsRef<[u8]> + 'static,
 {
@@ -38,7 +37,7 @@ where
     T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).expect("Parser should succeed");
-    linter::lint(program).expect_err("Linter should fail")
+    lint(program).expect_err("Linter should fail")
 }
 
 #[macro_export]
@@ -63,5 +62,19 @@ macro_rules! assert_linter_err {
             }
             _ => panic!("Should have an error location"),
         }
+    };
+}
+
+#[macro_export]
+macro_rules! assert_linter_ok_top_level_statements {
+    ($program:expr, $($statement: expr),+) => {
+        let top_level_token_nodes: Vec<crate::parser::TopLevelTokenNode> = crate::linter::test_utils::linter_ok($program);
+        let top_level_statements: Vec<crate::parser::Statement> = top_level_token_nodes.into_iter()
+            .map(|crate::common::Locatable { element, .. }| match element {
+                crate::parser::TopLevelToken::Statement(s) => s,
+                _ => {panic!("Expected only top level statements, found {:?}", element);}
+            } )
+            .collect();
+        assert_eq!(top_level_statements, vec![$($statement),+]);
     };
 }

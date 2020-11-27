@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 // CaseInsensitiveString
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct CaseInsensitiveString {
     inner: String,
 }
@@ -77,6 +77,10 @@ impl CaseInsensitiveString {
             None
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 impl From<CaseInsensitiveString> for String {
@@ -94,6 +98,12 @@ impl From<String> for CaseInsensitiveString {
 impl From<&str> for CaseInsensitiveString {
     fn from(x: &str) -> CaseInsensitiveString {
         CaseInsensitiveString::new(x.to_owned())
+    }
+}
+
+impl std::fmt::Debug for CaseInsensitiveString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.inner.fmt(f)
     }
 }
 
@@ -199,6 +209,15 @@ impl std::ops::Add<char> for CaseInsensitiveString {
     fn add(self, other: char) -> Self {
         let mut s: String = self.into();
         s.push(other);
+        s.into()
+    }
+}
+
+impl std::ops::Add<CaseInsensitiveString> for CaseInsensitiveString {
+    type Output = Self;
+    fn add(self, other: CaseInsensitiveString) -> Self {
+        let mut s: String = self.into();
+        s.push_str(&other.inner);
         s.into()
     }
 }

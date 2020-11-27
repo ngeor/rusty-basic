@@ -1,48 +1,59 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::linter::types::*;
-use crate::parser::QualifiedNameNode;
-use crate::variant::Variant;
+use crate::parser::{
+    CaseBlockNode, CaseExpression, ConditionalBlockNode, Expression, ExpressionNode, ForLoopNode,
+    FunctionImplementation, IfBlockNode, PrintArg, PrintNode, ProgramNode, SelectCaseNode,
+    Statement, StatementNode, StatementNodes, SubImplementation, TopLevelToken, TopLevelTokenNode,
+};
 
 /// Visits the converted program and transforms it into a different program.
 ///
 /// The default implementation of the trait simply clones all visited elements.
 pub trait ExpressionReducer {
-    fn visit_program(&self, p: ProgramNode) -> Result<ProgramNode, QErrorNode> {
-        p.into_iter()
-            .map(|t| self.visit_top_level_token_node(t))
-            .collect()
+    fn visit_program(&mut self, p: ProgramNode) -> Result<ProgramNode, QErrorNode> {
+        let mut result: ProgramNode = vec![];
+        for top_level_token_node in p {
+            let x = self.visit_top_level_token_node(top_level_token_node)?;
+            if let Some(s) = x {
+                result.push(s);
+            }
+        }
+        Ok(result)
     }
 
     fn visit_top_level_token_node(
-        &self,
+        &mut self,
         t: TopLevelTokenNode,
-    ) -> Result<TopLevelTokenNode, QErrorNode> {
+    ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
         let Locatable {
             element: top_level_token,
             pos,
         } = t;
         self.visit_top_level_token(top_level_token)
-            .with_ok_pos(pos)
+            .map(|opt_top_level_token| opt_top_level_token.map(|t| t.at(pos)))
             .patch_err_pos(pos)
     }
 
-    fn visit_top_level_token(&self, t: TopLevelToken) -> Result<TopLevelToken, QErrorNode> {
+    fn visit_top_level_token(
+        &mut self,
+        t: TopLevelToken,
+    ) -> Result<Option<TopLevelToken>, QErrorNode> {
         match t {
             TopLevelToken::FunctionImplementation(f) => self
                 .visit_function_implementation(f)
-                .map(|x| TopLevelToken::FunctionImplementation(x)),
+                .map(|x| Some(TopLevelToken::FunctionImplementation(x))),
             TopLevelToken::SubImplementation(s) => self
                 .visit_sub_implementation(s)
-                .map(|x| TopLevelToken::SubImplementation(x)),
-            TopLevelToken::Statement(s) => {
-                self.visit_statement(s).map(|x| TopLevelToken::Statement(x))
-            }
+                .map(|x| Some(TopLevelToken::SubImplementation(x))),
+            TopLevelToken::Statement(s) => self
+                .visit_filter_statement(s)
+                .map(|opt_statement| opt_statement.map(|x| TopLevelToken::Statement(x))),
+            _ => Ok(None),
         }
     }
 
     fn visit_function_implementation(
-        &self,
+        &mut self,
         f: FunctionImplementation,
     ) -> Result<FunctionImplementation, QErrorNode> {
         Ok(FunctionImplementation {
@@ -53,7 +64,7 @@ pub trait ExpressionReducer {
     }
 
     fn visit_sub_implementation(
-        &self,
+        &mut self,
         s: SubImplementation,
     ) -> Result<SubImplementation, QErrorNode> {
         Ok(SubImplementation {
@@ -63,23 +74,35 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_statement_nodes(&self, s: StatementNodes) -> Result<StatementNodes, QErrorNode> {
-        s.into_iter()
-            .map(|x| self.visit_statement_node(x))
-            .collect()
+    fn visit_statement_nodes(&mut self, s: StatementNodes) -> Result<StatementNodes, QErrorNode> {
+        let mut result: StatementNodes = vec![];
+        for statement_node in s {
+            let x = self.visit_statement_node(statement_node)?;
+            if let Some(s) = x {
+                result.push(s);
+            }
+        }
+        Ok(result)
     }
 
-    fn visit_statement_node(&self, t: StatementNode) -> Result<StatementNode, QErrorNode> {
+    fn visit_statement_node(
+        &mut self,
+        t: StatementNode,
+    ) -> Result<Option<StatementNode>, QErrorNode> {
         let Locatable {
             element: statement,
             pos,
         } = t;
-        self.visit_statement(statement)
-            .with_ok_pos(pos)
+        self.visit_filter_statement(statement)
+            .map(|opt_statement| opt_statement.map(|x| x.at(pos)))
             .patch_err_pos(pos)
     }
 
-    fn visit_statement(&self, s: Statement) -> Result<Statement, QErrorNode> {
+    fn visit_filter_statement(&mut self, s: Statement) -> Result<Option<Statement>, QErrorNode> {
+        self.visit_map_statement(s).map(|s| Some(s))
+    }
+
+    fn visit_map_statement(&mut self, s: Statement) -> Result<Statement, QErrorNode> {
         match s {
             Statement::Assignment(left, right) => {
                 self.visit_assignment(left, right)
@@ -87,9 +110,7 @@ pub trait ExpressionReducer {
                         Statement::Assignment(reduced_left, reduced_right)
                     })
             }
-            Statement::Const(left, right) => self
-                .visit_const(left, right)
-                .map(|(reduced_left, reduced_right)| Statement::Const(reduced_left, reduced_right)),
+            Statement::Const(left, _) => panic!("Linter should have removed Const {:?}", left),
             Statement::SubCall(b, e) => self
                 .visit_sub_call(b, e)
                 .map(|(reduced_name, reduced_expr)| Statement::SubCall(reduced_name, reduced_expr)),
@@ -115,7 +136,7 @@ pub trait ExpressionReducer {
     }
 
     fn visit_sub_call(
-        &self,
+        &mut self,
         name: CaseInsensitiveString,
         args: Vec<ExpressionNode>,
     ) -> Result<(CaseInsensitiveString, Vec<ExpressionNode>), QErrorNode> {
@@ -123,7 +144,7 @@ pub trait ExpressionReducer {
     }
 
     fn visit_built_in_sub_call(
-        &self,
+        &mut self,
         name: BuiltInSub,
         args: Vec<ExpressionNode>,
     ) -> Result<(BuiltInSub, Vec<ExpressionNode>), QErrorNode> {
@@ -131,14 +152,14 @@ pub trait ExpressionReducer {
     }
 
     fn visit_assignment(
-        &self,
-        name: DimName,
+        &mut self,
+        name: Expression,
         v: ExpressionNode,
-    ) -> Result<(DimName, ExpressionNode), QErrorNode> {
+    ) -> Result<(Expression, ExpressionNode), QErrorNode> {
         Ok((name, self.visit_expression_node(v)?))
     }
 
-    fn visit_for_loop(&self, f: ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
+    fn visit_for_loop(&mut self, f: ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
         let lower_bound = self.visit_expression_node(f.lower_bound)?;
         let upper_bound = self.visit_expression_node(f.upper_bound)?;
         let step = match f.step {
@@ -156,7 +177,7 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_if_block(&self, i: IfBlockNode) -> Result<IfBlockNode, QErrorNode> {
+    fn visit_if_block(&mut self, i: IfBlockNode) -> Result<IfBlockNode, QErrorNode> {
         let if_block = self.visit_conditional_block(i.if_block)?;
         let else_if_blocks: Vec<ConditionalBlockNode> = i
             .else_if_blocks
@@ -174,7 +195,7 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_select_case(&self, s: SelectCaseNode) -> Result<SelectCaseNode, QErrorNode> {
+    fn visit_select_case(&mut self, s: SelectCaseNode) -> Result<SelectCaseNode, QErrorNode> {
         let else_block: Option<StatementNodes> = match s.else_block {
             Some(x) => Some(self.visit_statement_nodes(x)?),
             None => None,
@@ -188,17 +209,18 @@ pub trait ExpressionReducer {
             expr: self.visit_expression_node(s.expr)?,
             case_blocks,
             else_block,
+            inline_comments: s.inline_comments,
         })
     }
 
-    fn visit_case_block(&self, s: CaseBlockNode) -> Result<CaseBlockNode, QErrorNode> {
+    fn visit_case_block(&mut self, s: CaseBlockNode) -> Result<CaseBlockNode, QErrorNode> {
         Ok(CaseBlockNode {
             expr: self.visit_case_expression(s.expr)?,
             statements: self.visit_statement_nodes(s.statements)?,
         })
     }
 
-    fn visit_case_expression(&self, s: CaseExpression) -> Result<CaseExpression, QErrorNode> {
+    fn visit_case_expression(&mut self, s: CaseExpression) -> Result<CaseExpression, QErrorNode> {
         match s {
             CaseExpression::Simple(e) => self
                 .visit_expression_node(e)
@@ -214,7 +236,7 @@ pub trait ExpressionReducer {
     }
 
     fn visit_conditional_block(
-        &self,
+        &mut self,
         c: ConditionalBlockNode,
     ) -> Result<ConditionalBlockNode, QErrorNode> {
         Ok(ConditionalBlockNode {
@@ -223,30 +245,22 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_const(
-        &self,
-        left: QualifiedNameNode,
-        right: Variant,
-    ) -> Result<(QualifiedNameNode, Variant), QErrorNode> {
-        Ok((left, right))
-    }
-
     fn visit_expression_node(
-        &self,
+        &mut self,
         expr_node: ExpressionNode,
     ) -> Result<ExpressionNode, QErrorNode> {
         let Locatable { element: expr, pos } = expr_node;
         self.visit_expression(expr)
-            .with_ok_pos(pos)
+            .map(|x| x.at(pos))
             .patch_err_pos(pos)
     }
 
-    fn visit_expression(&self, expression: Expression) -> Result<Expression, QErrorNode> {
+    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorNode> {
         Ok(expression)
     }
 
     fn visit_expression_nodes(
-        &self,
+        &mut self,
         args: Vec<ExpressionNode>,
     ) -> Result<Vec<ExpressionNode>, QErrorNode> {
         args.into_iter()
@@ -254,7 +268,7 @@ pub trait ExpressionReducer {
             .collect::<Result<Vec<ExpressionNode>, QErrorNode>>()
     }
 
-    fn visit_print_node(&self, print_node: PrintNode) -> Result<PrintNode, QErrorNode> {
+    fn visit_print_node(&mut self, print_node: PrintNode) -> Result<PrintNode, QErrorNode> {
         Ok(PrintNode {
             file_number: print_node.file_number,
             lpt1: print_node.lpt1,
@@ -266,14 +280,14 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_print_args(&self, print_args: Vec<PrintArg>) -> Result<Vec<PrintArg>, QErrorNode> {
+    fn visit_print_args(&mut self, print_args: Vec<PrintArg>) -> Result<Vec<PrintArg>, QErrorNode> {
         print_args
             .into_iter()
             .map(|a| self.visit_print_arg(a))
             .collect::<Result<Vec<PrintArg>, QErrorNode>>()
     }
 
-    fn visit_print_arg(&self, print_arg: PrintArg) -> Result<PrintArg, QErrorNode> {
+    fn visit_print_arg(&mut self, print_arg: PrintArg) -> Result<PrintArg, QErrorNode> {
         match print_arg {
             PrintArg::Expression(e) => self
                 .visit_expression_node(e)

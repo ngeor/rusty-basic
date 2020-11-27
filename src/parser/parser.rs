@@ -33,10 +33,11 @@ mod tests {
                 // DECLARE FUNCTION Fib! (N!)
                 TopLevelToken::FunctionDeclaration(
                     "Fib!".as_name(1, 18),
-                    vec![
-                        ParamName::new("N".into(), ParamType::Compact(TypeQualifier::BangSingle))
-                            .at_rc(1, 24)
-                    ],
+                    vec![ParamName::new(
+                        "N".into(),
+                        ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
+                    )
+                    .at_rc(1, 24)],
                 ),
                 // PRINT "Enter the number of fibonacci to calculate"
                 TopLevelToken::Statement(Statement::Print(PrintNode::one(
@@ -52,7 +53,7 @@ mod tests {
                 )),
                 // FOR I = 0 TO N
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
-                    variable_name: "I".as_name(4, 5),
+                    variable_name: Expression::var("I").at_rc(4, 5),
                     lower_bound: 0.as_lit_expr(4, 9),
                     upper_bound: "N".as_var_expr(4, 14),
                     step: None,
@@ -70,11 +71,8 @@ mod tests {
                                 PrintArg::Expression("is".as_lit_expr(5, 30)),
                                 PrintArg::Comma,
                                 PrintArg::Expression(
-                                    Expression::FunctionCall(
-                                        Name::from("Fib"),
-                                        vec!["I".as_var_expr(5, 40)],
-                                    )
-                                    .at_rc(5, 36)
+                                    Expression::func("Fib", vec!["I".as_var_expr(5, 40)],)
+                                        .at_rc(5, 36)
                                 ),
                             ]
                         })
@@ -83,10 +81,10 @@ mod tests {
                     next_counter: None,
                 })),
                 // FUNCTION Fib (N)
-                TopLevelToken::FunctionImplementation(
-                    Name::from("Fib").at_rc(8, 10),
-                    vec![ParamName::new("N".into(), ParamType::Bare).at_rc(8, 15)],
-                    vec![
+                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                    name: Name::from("Fib").at_rc(8, 10),
+                    params: vec![ParamName::new("N".into(), ParamType::Bare).at_rc(8, 15)],
+                    body: vec![
                         // IF N <= 1 THEN
                         Statement::IfBlock(IfBlockNode {
                             if_block: ConditionalBlockNode {
@@ -94,13 +92,14 @@ mod tests {
                                 condition: Expression::BinaryExpression(
                                     Operator::LessOrEqual,
                                     Box::new("N".as_var_expr(9, 8)),
-                                    Box::new(1.as_lit_expr(9, 13))
+                                    Box::new(1.as_lit_expr(9, 13)),
+                                    ExpressionType::Unresolved
                                 )
                                 .at_rc(9, 10),
                                 statements: vec![
                                     // Fib = N
                                     Statement::Assignment(
-                                        Name::from("Fib"),
+                                        Expression::var("Fib"),
                                         "N".as_var_expr(10, 15)
                                     )
                                     .at_rc(10, 9)
@@ -110,33 +109,36 @@ mod tests {
                             else_block: Some(vec![
                                 // ELSE Fib = Fib(N - 1) + Fib(N - 2)
                                 Statement::Assignment(
-                                    Name::from("Fib"),
+                                    Expression::var("Fib"),
                                     Expression::BinaryExpression(
                                         Operator::Plus,
                                         Box::new(
-                                            Expression::FunctionCall(
-                                                Name::from("Fib"),
+                                            Expression::func(
+                                                "Fib",
                                                 vec![Expression::BinaryExpression(
                                                     Operator::Minus,
                                                     Box::new("N".as_var_expr(12, 19)),
                                                     Box::new(1.as_lit_expr(12, 23)),
+                                                    ExpressionType::Unresolved
                                                 )
                                                 .at_rc(12, 21)]
                                             )
                                             .at_rc(12, 15)
                                         ),
                                         Box::new(
-                                            Expression::FunctionCall(
-                                                Name::from("Fib"),
+                                            Expression::func(
+                                                "Fib",
                                                 vec![Expression::BinaryExpression(
                                                     Operator::Minus,
                                                     Box::new("N".as_var_expr(12, 32)),
                                                     Box::new(2.as_lit_expr(12, 36)),
+                                                    ExpressionType::Unresolved
                                                 )
                                                 .at_rc(12, 34)]
                                             )
                                             .at_rc(12, 28)
-                                        )
+                                        ),
+                                        ExpressionType::Unresolved
                                     )
                                     .at_rc(12, 26)
                                 )
@@ -144,8 +146,8 @@ mod tests {
                             ])
                         })
                         .at_rc(9, 5)
-                    ],
-                ),
+                    ]
+                }),
             ],
         );
     }

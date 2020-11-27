@@ -172,7 +172,7 @@ fn test_recursive_function() {
 }
 
 #[test]
-fn test_dot_in_function_name() {
+fn test_dot_in_function_name_even_if_it_is_a_keyword() {
     let program = r#"
     DECLARE FUNCTION Upper.Case$
     PRINT Upper.Case

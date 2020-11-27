@@ -39,7 +39,9 @@ pub fn function_implementation<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected: FUNCTION after END"),
             ),
         ),
-        |((n, p), body, _, _, _)| TopLevelToken::FunctionImplementation(n, p, body),
+        |((name, params), body, _, _, _)| {
+            TopLevelToken::FunctionImplementation(FunctionImplementation { name, params, body })
+        },
     )
 }
 
@@ -65,7 +67,9 @@ pub fn sub_implementation<T: BufRead + 'static>(
                 QError::syntax_error_fn("Expected: SUB after END"),
             ),
         ),
-        |((n, p), body, _, _, _)| TopLevelToken::SubImplementation(n, p, body),
+        |((name, params), body, _, _, _)| {
+            TopLevelToken::SubImplementation(SubImplementation { name, params, body })
+        },
     )
 }
 
@@ -84,23 +88,24 @@ mod tests {
         let result = parse(input).demand_single();
         assert_eq!(
             result,
-            TopLevelToken::FunctionImplementation(
-                "Add".as_name(2, 18),
-                vec![
+            TopLevelToken::FunctionImplementation(FunctionImplementation {
+                name: "Add".as_name(2, 18),
+                params: vec![
                     ParamName::new("A".into(), ParamType::Bare).at_rc(2, 22),
                     ParamName::new("B".into(), ParamType::Bare).at_rc(2, 25)
                 ],
-                vec![Statement::Assignment(
-                    "Add".into(),
+                body: vec![Statement::Assignment(
+                    Expression::var("Add"),
                     Expression::BinaryExpression(
                         Operator::Plus,
                         Box::new("A".as_var_expr(3, 19)),
-                        Box::new("B".as_var_expr(3, 23))
+                        Box::new("B".as_var_expr(3, 23)),
+                        ExpressionType::Unresolved
                     )
                     .at(Location::new(3, 21))
                 )
-                .at_rc(3, 13)],
-            )
+                .at_rc(3, 13)]
+            })
             .at_rc(2, 9)
         );
     }
@@ -115,23 +120,24 @@ mod tests {
         let result = parse(input).demand_single();
         assert_eq!(
             result,
-            TopLevelToken::FunctionImplementation(
-                "add".as_name(2, 18),
-                vec![
+            TopLevelToken::FunctionImplementation(FunctionImplementation {
+                name: "add".as_name(2, 18),
+                params: vec![
                     ParamName::new("a".into(), ParamType::Bare).at_rc(2, 22),
                     ParamName::new("b".into(), ParamType::Bare).at_rc(2, 25)
                 ],
-                vec![Statement::Assignment(
-                    "add".into(),
+                body: vec![Statement::Assignment(
+                    Expression::var("add"),
                     Expression::BinaryExpression(
                         Operator::Plus,
                         Box::new("a".as_var_expr(3, 19)),
-                        Box::new("b".as_var_expr(3, 23))
+                        Box::new("b".as_var_expr(3, 23)),
+                        ExpressionType::Unresolved
                     )
                     .at_rc(3, 21)
                 )
-                .at_rc(3, 13)],
-            )
+                .at_rc(3, 13)]
+            })
             .at_rc(2, 9)
         );
     }

@@ -1,5 +1,5 @@
-use crate::assert_err;
 use crate::assert_has_variable;
+use crate::assert_interpreter_err;
 use crate::assert_prints;
 use crate::common::QError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
@@ -8,9 +8,9 @@ use crate::interpreter::test_utils::*;
 macro_rules! assert_assign_ok {
     ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
         let interpreter = interpret($program);
-        let dim_name = crate::linter::DimName::parse($expected_variable_name);
+        let name = crate::parser::Name::from($expected_variable_name);
         assert_eq!(
-            interpreter.context().get_r_value(&dim_name).unwrap(),
+            interpreter.context().get_r_value_by_name(&name).unwrap(),
             &crate::variant::Variant::from($expected_value)
         );
     };
@@ -222,9 +222,9 @@ fn test_assign_with_def_str() {
 #[test]
 fn test_assign_integer_overflow() {
     assert_assign_ok!("A% = 32767", "A%", 32767_i32);
-    assert_err!("A% = 32768", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A% = 32768", QError::Overflow, 1, 6);
     assert_assign_ok!("A% = -32768", "A%", -32768_i32);
-    assert_err!("A% = -32769", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A% = -32769", QError::Overflow, 1, 6);
 }
 
 #[test]
@@ -235,8 +235,8 @@ fn test_assign_long_overflow_ok() {
 
 #[test]
 fn test_assign_long_overflow_err() {
-    assert_err!("A& = 2147483648", QError::Overflow, 1, 6);
-    assert_err!("A& = -2147483649", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A& = 2147483648", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A& = -2147483649", QError::Overflow, 1, 6);
 }
 
 #[test]
@@ -263,4 +263,15 @@ fn test_can_assign_to_parameter_hiding_name_of_function() {
     END SUB
     "#;
     assert_prints!(program, "42");
+}
+
+#[test]
+fn test_assign_math_expr() {
+    let program = r#"
+    R = 3
+    C = 4
+    A = R * 10 + C
+    PRINT A
+    "#;
+    assert_prints!(program, "34");
 }

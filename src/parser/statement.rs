@@ -1,10 +1,9 @@
 use crate::common::*;
-use crate::parser::assignment;
 use crate::parser::built_ins;
 use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::constant;
-use crate::parser::dim_parser;
+use crate::parser::dim;
 use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
@@ -26,13 +25,12 @@ pub fn statement_node<T: BufRead + 'static>(
 pub fn statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or_vec(vec![
-        dim_parser::dim(),
+        dim::dim(),
         constant::constant(),
         comment::comment(),
         built_ins::parse_built_in(),
-        sub_call::sub_call(),
-        assignment::assignment(),
         statement_label(),
+        sub_call::sub_call_or_assignment(),
         if_block::if_block(),
         for_loop::for_loop(),
         select_case::select_case(),
@@ -48,11 +46,10 @@ pub fn statement<T: BufRead + 'static>(
 pub fn single_line_non_comment_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or_vec(vec![
-        dim_parser::dim(),
+        dim::dim(),
         constant::constant(),
         built_ins::parse_built_in(),
-        sub_call::sub_call(),
-        assignment::assignment(),
+        sub_call::sub_call_or_assignment(),
         statement_go_to(),
         statement_on_error_go_to(),
     ])
@@ -64,11 +61,10 @@ pub fn single_line_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or_vec(vec![
         comment::comment(),
-        dim_parser::dim(),
+        dim::dim(),
         constant::constant(),
         built_ins::parse_built_in(),
-        sub_call::sub_call(),
-        assignment::assignment(),
+        sub_call::sub_call_or_assignment(),
         statement_go_to(),
         statement_on_error_go_to(),
     ])

@@ -7,8 +7,7 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::linter;
-use crate::linter::{DimName, UserDefinedTypes};
-use crate::parser::parse_main_file;
+use crate::parser::{parse_main_file, Name, UserDefinedTypes};
 use crate::variant::Variant;
 use std::collections::HashMap;
 use std::fs::File;
@@ -31,9 +30,7 @@ where
     T: AsRef<[u8]> + 'static,
 {
     let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-    // for i in instructions.iter() {
-    //     println!("{:?}", i.as_ref());
-    // }
+    // println!("{:#?}", instructions);
     let mut interpreter = mock_interpreter(user_defined_types);
     interpreter
         .interpret(instructions)
@@ -65,9 +62,7 @@ where
     F: FnMut(&mut MockInterpreter) -> (),
 {
     let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-    // for i in instructions.iter() {
-    //     println!("{:?}", i.as_ref());
-    // }
+    // println!("{:#?}", instructions);
     let mut interpreter = mock_interpreter(user_defined_types);
     initializer(&mut interpreter);
     interpreter
@@ -81,6 +76,7 @@ where
     T: AsRef<[u8]> + 'static,
 {
     let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    // println!("{:#?}", instructions);
     let mut interpreter = mock_interpreter(user_defined_types);
     interpreter.interpret(instructions).unwrap_err()
 }
@@ -206,8 +202,8 @@ impl Stdlib for MockStdlib {
 
 impl MockInterpreter {
     pub fn get_variable_str(&self, name: &str) -> Variant {
-        let dim_name = DimName::parse(name);
-        self.context().get_r_value(&dim_name).unwrap().clone()
+        let name = Name::from(name);
+        self.context().get_r_value_by_name(&name).unwrap().clone()
     }
 }
 
@@ -222,7 +218,7 @@ macro_rules! assert_has_variable {
 }
 
 #[macro_export]
-macro_rules! assert_err {
+macro_rules! assert_interpreter_err {
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             crate::interpreter::test_utils::interpret_err($program),

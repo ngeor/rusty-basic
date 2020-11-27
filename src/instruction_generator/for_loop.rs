@@ -1,19 +1,23 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::linter::{DimName, ForLoopNode, HasExpressionType, StatementNodes};
+use crate::parser::{Expression, ForLoopNode, HasExpressionType, StatementNodes};
 
 impl InstructionGenerator {
-    fn store_counter(&mut self, counter_var: &DimName, pos: Location) {
-        self.push(Instruction::Store(counter_var.clone()), pos);
+    fn store_counter(&mut self, counter_var: &Expression, pos: Location) {
+        self.generate_store_instructions(counter_var.clone(), pos);
     }
 
-    fn load_counter(&mut self, counter_var: &DimName, pos: Location) {
-        self.push(Instruction::CopyVarToA(counter_var.clone()), pos);
+    fn load_counter(&mut self, counter_var: &Expression, pos: Location) {
+        self.generate_expression_instructions(counter_var.clone().at(pos));
     }
 
     pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) {
         let ForLoopNode {
-            variable_name: counter_var_name,
+            variable_name:
+                Locatable {
+                    element: counter_var_name,
+                    ..
+                },
             lower_bound,
             upper_bound,
             step,
@@ -23,14 +27,14 @@ impl InstructionGenerator {
         // lower bound to A
         self.generate_expression_instructions_casting(
             lower_bound,
-            counter_var_name.dim_type().expression_type(),
+            counter_var_name.expression_type(),
         );
         // A to variable
         self.store_counter(&counter_var_name, pos);
         // upper bound to A
         self.generate_expression_instructions_casting(
             upper_bound,
-            counter_var_name.dim_type().expression_type(),
+            counter_var_name.expression_type(),
         );
         // A to C (upper bound to C)
         self.push(Instruction::CopyAToC, pos);
@@ -95,7 +99,7 @@ impl InstructionGenerator {
 
     fn generate_for_loop_instructions_positive_or_negative_step(
         &mut self,
-        counter_var_name: &DimName,
+        counter_var_name: &Expression,
         statements: StatementNodes,
         is_positive: bool,
         pos: Location,

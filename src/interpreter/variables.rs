@@ -1,6 +1,5 @@
-use crate::linter::{ParamName, ParamType};
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
-use crate::variant::Variant;
+use crate::parser::{BareName, Name, ParamName, ParamType, QualifiedName, TypeQualifier};
+use crate::variant::{Variant, V_FALSE};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -35,14 +34,23 @@ impl Variables {
     }
 
     pub fn insert_param(&mut self, param_name: ParamName, value: Variant) {
+        self.insert(Self::param_to_name(param_name), value);
+    }
+
+    fn param_to_name(param_name: ParamName) -> Name {
         let (bare_name, param_type) = param_name.into_inner();
         match param_type {
-            ParamType::BuiltIn(q) => self.insert_built_in(bare_name, q, value),
-            ParamType::UserDefined(_) => self.insert_user_defined(bare_name, value),
+            ParamType::Bare => panic!("Unresolved param {:?}", bare_name),
+            ParamType::BuiltIn(q, _) => Name::new(bare_name, Some(q)),
+            ParamType::UserDefined(_) => Name::new(bare_name, None),
+            ParamType::Array(boxed_param_type) => {
+                let dummy_param = ParamName::new(bare_name, *boxed_param_type);
+                Self::param_to_name(dummy_param)
+            }
         }
     }
 
-    fn insert(&mut self, name: Name, value: Variant) {
+    pub fn insert(&mut self, name: Name, value: Variant) {
         match self.name_to_index.get(&name) {
             Some(idx) => {
                 self.values[*idx] = value;
@@ -51,6 +59,29 @@ impl Variables {
                 self.name_to_index.insert(name, self.values.len());
                 self.values.push(value);
             }
+        }
+    }
+
+    pub fn get_or_create(&mut self, name: Name) -> &mut Variant {
+        match self.name_to_index.get(&name) {
+            Some(idx) => self.values.get_mut(*idx).expect("Should have variable"),
+            _ => {
+                let value = Self::default_value_for_name(&name);
+                self.name_to_index.insert(name, self.values.len());
+                self.values.push(value);
+                self.values.last_mut().expect("Should have variable")
+            }
+        }
+    }
+
+    // This is needed only when we're setting the default value for a function
+    // that hasn't set a return value. As functions can only return built-in types,
+    // the value for unqualified names is not important.
+    fn default_value_for_name(name: &Name) -> Variant {
+        if let Some(q) = name.qualifier() {
+            Variant::from(q)
+        } else {
+            V_FALSE
         }
     }
 
@@ -66,19 +97,8 @@ impl Variables {
         self.get_by_name(&bare_name.clone().into())
     }
 
-    pub fn get_user_defined_mut(&mut self, bare_name: &BareName) -> Option<&mut Variant> {
-        self.get_by_name_mut(&bare_name.clone().into())
-    }
-
     fn get_by_name(&self, name: &Name) -> Option<&Variant> {
         self.name_to_index.get(name).and_then(|idx| self.get(*idx))
-    }
-
-    fn get_by_name_mut(&mut self, name: &Name) -> Option<&mut Variant> {
-        match self.name_to_index.get(name) {
-            Some(idx) => self.values.get_mut(*idx),
-            None => None,
-        }
     }
 
     pub fn get(&self, idx: usize) -> Option<&Variant> {

@@ -1,32 +1,51 @@
 use super::post_conversion_linter::*;
 use crate::common::*;
-use crate::linter::types::*;
-use crate::parser::TypeQualifier;
+use crate::parser::{Expression, ExpressionType, ForLoopNode, TypeQualifier};
 
 pub struct ForNextCounterMatch;
 
 impl ForNextCounterMatch {
     fn ensure_numeric_variable(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
-        let var_type: ExpressionType = f.variable_name.dim_type().expression_type();
-        match var_type {
-            ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
-                Err(QError::TypeMismatch).with_err_no_pos()
-            }
-            ExpressionType::BuiltIn(_) => Ok(()),
-            _ => Err(QError::TypeMismatch).with_err_no_pos(),
+        let Locatable {
+            element: var_expr, ..
+        } = &f.variable_name;
+        match var_expr {
+            Expression::Variable(_, var_type) => match var_type {
+                ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
+                    Err(QError::TypeMismatch).with_err_no_pos()
+                }
+                ExpressionType::BuiltIn(_) => Ok(()),
+                _ => Err(QError::TypeMismatch).with_err_no_pos(),
+            },
+            _ => unimplemented!(),
         }
     }
 
     fn ensure_for_next_counter_match(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
-        match &f.next_counter {
-            Some(Locatable { element, pos }) => {
-                if *element == f.variable_name {
-                    Ok(())
-                } else {
-                    Err(QError::NextWithoutFor).with_err_at(*pos)
-                }
+        let Locatable {
+            element: var_expr, ..
+        } = &f.variable_name;
+        if let Some(Locatable {
+            element: next_var_expr,
+            pos,
+        }) = &f.next_counter
+        {
+            match var_expr {
+                Expression::Variable(var_name, _) => match next_var_expr {
+                    Expression::Variable(next_var_name, _) => {
+                        if var_name == next_var_name {
+                            Ok(())
+                        } else {
+                            Err(QError::NextWithoutFor).with_err_at(*pos)
+                        }
+                    }
+                    _ => unimplemented!(),
+                },
+                _ => unimplemented!(),
             }
-            None => Ok(()),
+        } else {
+            // does not have a NEXT variable
+            Ok(())
         }
     }
 }

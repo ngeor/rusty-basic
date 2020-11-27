@@ -1,32 +1,25 @@
 mod assignment;
-mod bare_name_types;
-mod constant;
 mod context;
 mod converter;
 mod dim;
-mod expression;
 mod for_loop;
 mod function_implementation;
 mod if_blocks;
-mod param_name;
 mod print_node;
 mod program;
 mod select_case;
 mod statement;
 mod sub_call;
 mod sub_implementation;
-mod sub_program_type;
 mod top_level_token;
 
 use crate::common::QErrorNode;
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::linter::types::{FunctionMap, ProgramNode, SubMap, UserDefinedTypes};
-use crate::parser;
-use crate::parser::BareName;
+use crate::parser::{BareName, FunctionMap, ProgramNode, SubMap, UserDefinedTypes};
 use std::collections::HashSet;
 
 pub fn convert(
-    program: parser::ProgramNode,
+    program: ProgramNode,
     f_c: &FunctionMap,
     s_c: &SubMap,
     user_defined_types: &UserDefinedTypes,

@@ -1,7 +1,9 @@
 use super::instruction::*;
 use crate::common::*;
-use crate::linter::*;
-use crate::parser::{BareName, QualifiedName};
+use crate::parser::{
+    BareName, Expression, ExpressionNode, FunctionImplementation, HasExpressionType, Name,
+    ParamName, ProgramNode, QualifiedName, SubImplementation, TopLevelToken,
+};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
@@ -89,6 +91,7 @@ impl InstructionGenerator {
                 }
                 TopLevelToken::FunctionImplementation(f) => functions.push((f, pos)),
                 TopLevelToken::SubImplementation(s) => subs.push((s, pos)),
+                _ => {}
             }
         }
 
@@ -101,19 +104,23 @@ impl InstructionGenerator {
         // functions
         for (f, pos) in functions {
             let Locatable {
-                element:
-                    QualifiedName {
-                        bare_name,
-                        qualifier,
-                    },
+                element: function_name,
                 ..
             } = f.name;
-            let block = f.body;
-            self.function_label(&bare_name, pos);
-            // set default value
-            self.push_load(qualifier, pos);
-            self.generate_block_instructions(block);
-            self.push(Instruction::PopRet, pos);
+            if let Name::Qualified(QualifiedName {
+                bare_name,
+                qualifier,
+            }) = function_name
+            {
+                let block = f.body;
+                self.function_label(&bare_name, pos);
+                // set default value
+                self.push_load(qualifier, pos);
+                self.generate_block_instructions(block);
+                self.push(Instruction::PopRet, pos);
+            } else {
+                panic!("Unexpected bare function name {:?}", function_name);
+            }
         }
 
         // subs
@@ -136,7 +143,10 @@ impl InstructionGenerator {
             if let Instruction::UnresolvedJump(x) = instruction {
                 *instruction_node = Instruction::Jump(*labels.get(x).unwrap()).at(pos);
             } else if let Instruction::UnresolvedJumpIfFalse(x) = instruction {
-                *instruction_node = Instruction::JumpIfFalse(*labels.get(x).unwrap()).at(pos);
+                *instruction_node = Instruction::JumpIfFalse(
+                    *labels.get(x).expect(&format!("Label {} not found", x)),
+                )
+                .at(pos);
             } else if let Instruction::SetUnresolvedErrorHandler(x) = instruction {
                 *instruction_node = Instruction::SetErrorHandler(*labels.get(x).unwrap()).at(pos);
             }
@@ -153,7 +163,7 @@ impl InstructionGenerator {
     where
         Variant: From<T>,
     {
-        self.push(Instruction::Load(value.into()), pos);
+        self.push(Instruction::LoadIntoA(value.into()), pos);
     }
 
     /// Adds a Load instruction, converting the given value into a Variant
@@ -163,7 +173,7 @@ impl InstructionGenerator {
         Variant: From<T>,
     {
         self.push_load(value, pos);
-        self.push(Instruction::PushUnnamed, pos);
+        self.push(Instruction::PushAToUnnamedArg, pos);
     }
 
     pub fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
@@ -241,66 +251,22 @@ impl InstructionGenerator {
 
     pub fn generate_assignment_instructions(
         &mut self,
-        l: DimName,
+        l: Expression,
         r: ExpressionNode,
         pos: Location,
     ) {
         let left_type = l.expression_type();
         self.generate_expression_instructions_casting(r, left_type);
-        self.push(Instruction::Store(l), pos);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::common::{AtRowCol, StripLocation};
-    use crate::instruction_generator::test_utils::*;
-    use crate::instruction_generator::Instruction;
-    use crate::linter::DimName;
-    use crate::parser::TypeQualifier;
-    use crate::variant::Variant;
-
-    #[test]
-    fn test_assignment() {
-        assert_eq!(
-            generate_instructions_str("X = 1"),
-            [
-                Instruction::Load(Variant::VInteger(1)).at_rc(1, 5),
-                Instruction::Cast(TypeQualifier::BangSingle).at_rc(1, 5),
-                Instruction::Store(DimName::parse("X!")).at_rc(1, 1),
-                Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
-            ]
-        );
+        self.generate_store_instructions(l, pos);
     }
 
-    #[test]
-    fn test_assignment_no_cast() {
-        assert_eq!(
-            generate_instructions_str("X% = 1").strip_location(),
-            [
-                Instruction::Load(Variant::VInteger(1)),
-                Instruction::Store(DimName::parse("X%")),
-                Instruction::Halt
-            ]
-        );
+    pub fn generate_store_instructions(&mut self, l: Expression, pos: Location) {
+        self.generate_path_instructions(l.at(pos));
+        self.push(Instruction::CopyAToVarPath, pos);
     }
 
-    #[test]
-    fn test_assignment_binary_plus() {
-        assert_eq!(
-            generate_instructions_str("X% = 1 + 2.1").strip_location(),
-            [
-                Instruction::PushRegisters,
-                Instruction::Load(Variant::VInteger(1)),
-                Instruction::CopyAToB,
-                Instruction::Load(Variant::VSingle(2.1)),
-                Instruction::SwapAWithB,
-                Instruction::Plus,
-                Instruction::PopRegisters,
-                Instruction::Cast(TypeQualifier::PercentInteger),
-                Instruction::Store(DimName::parse("X%")),
-                Instruction::Halt
-            ]
-        );
+    pub fn generate_load_instructions(&mut self, l: Expression, pos: Location) {
+        self.generate_path_instructions(l.at(pos));
+        self.push(Instruction::CopyVarPathToA, pos);
     }
 }

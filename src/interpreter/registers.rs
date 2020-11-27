@@ -1,5 +1,4 @@
 use crate::variant::Variant;
-use std::collections::VecDeque;
 
 #[derive(Debug)]
 pub struct Registers {
@@ -54,10 +53,6 @@ impl Registers {
     pub fn copy_d_to_b(&mut self) {
         self.b = self.d.clone();
     }
-
-    pub fn swap_a_with_b(&mut self) {
-        std::mem::swap(&mut self.a, &mut self.b);
-    }
 }
 
-pub type RegisterStack = VecDeque<Registers>;
+pub type RegisterStack = Vec<Registers>;

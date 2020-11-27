@@ -1,7 +1,11 @@
+mod array_dimension;
 mod bare_name;
+mod built_in_style;
 mod def_type;
 mod dim_name;
+mod dim_type;
 mod expression_node;
+mod expression_type;
 mod keyword;
 mod letter_range;
 mod name;
@@ -15,10 +19,14 @@ mod type_qualifier;
 mod unary_operator;
 mod user_defined_type;
 
+pub use self::array_dimension::*;
 pub use self::bare_name::*;
+pub use self::built_in_style::*;
 pub use self::def_type::*;
 pub use self::dim_name::*;
+pub use self::dim_type::*;
 pub use self::expression_node::*;
+pub use self::expression_type::*;
 pub use self::keyword::*;
 pub use self::letter_range::*;
 pub use self::name::*;

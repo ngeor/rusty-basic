@@ -1,5 +1,5 @@
 use crate::interpreter::arguments::Arguments;
-use crate::linter::ParamName;
+use crate::parser::ParamName;
 use crate::variant::Variant;
 use std::collections::VecDeque;
 

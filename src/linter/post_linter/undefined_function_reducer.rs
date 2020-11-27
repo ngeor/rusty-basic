@@ -1,6 +1,6 @@
 use super::expression_reducer::*;
 use crate::common::*;
-use crate::linter::types::*;
+use crate::parser::{Expression, FunctionMap};
 
 /// Finds undefined functions and converts them to zeroes.
 pub struct UndefinedFunctionReducer<'a> {
@@ -8,7 +8,7 @@ pub struct UndefinedFunctionReducer<'a> {
 }
 
 impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
-    fn visit_expression(&self, expression: Expression) -> Result<Expression, QErrorNode> {
+    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorNode> {
         match expression {
             Expression::BinaryExpression(op, left, right, _) => {
                 let mapped_left = self.visit_expression_node(*left)?;

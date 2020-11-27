@@ -1,3 +1,4 @@
+mod array;
 mod assignment;
 mod constant;
 mod dim;

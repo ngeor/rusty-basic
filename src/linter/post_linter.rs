@@ -13,7 +13,7 @@ pub mod user_defined_sub_linter;
 use crate::common::{CaseInsensitiveString, QErrorNode};
 use crate::linter::post_linter::expression_reducer::ExpressionReducer;
 use crate::linter::post_linter::post_conversion_linter::PostConversionLinter;
-use crate::linter::types::{FunctionMap, ProgramNode, SubMap};
+use crate::parser::{FunctionMap, ProgramNode, SubMap};
 use std::collections::HashSet;
 
 pub fn post_linter(
@@ -25,7 +25,7 @@ pub fn post_linter(
     // lint
     apply_linters(&result, functions, subs, names_without_dot)?;
     // reduce
-    let reducer = undefined_function_reducer::UndefinedFunctionReducer { functions };
+    let mut reducer = undefined_function_reducer::UndefinedFunctionReducer { functions };
     reducer.visit_program(result)
 }
 

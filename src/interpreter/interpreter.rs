@@ -14,6 +14,7 @@ use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::parser::UserDefinedTypes;
 use crate::variant::{Path, Variant};
+use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::rc::Rc;
@@ -481,11 +482,4 @@ mod tests {
     }
 }
 
-mod allocation;
-mod cast;
-mod comparison;
-mod logical;
-mod math;
-mod registers;
-mod subprogram;
-mod var_path;
+mod handlers;

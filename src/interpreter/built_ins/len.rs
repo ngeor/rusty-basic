@@ -20,7 +20,9 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
                 len_of_user_defined_type(user_defined_type, interpreter.user_defined_types());
             sum as i32
         }
-        Variant::VArray(_) => todo!(),
+        Variant::VArray(_) => {
+            return Err(QError::ArgumentTypeMismatch).with_err_no_pos();
+        }
     };
     interpreter
         .context_mut()

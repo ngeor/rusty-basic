@@ -91,6 +91,19 @@ fn referencing_non_existing_member() {
 }
 
 #[test]
+fn referencing_existing_member_with_wrong_qualifier() {
+    let input = "
+            TYPE Card
+                Suit AS STRING * 9
+                Value AS INTEGER
+            END TYPE
+
+            DIM c AS Card
+            PRINT c.Suit%";
+    assert_linter_err!(input, QError::TypeMismatch, 8, 19);
+}
+
+#[test]
 fn cannot_define_variable_with_dot_if_clashes_with_user_defined_type() {
     let input = "
             TYPE Card

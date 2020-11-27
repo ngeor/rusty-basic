@@ -1,6 +1,6 @@
-use crate::common::QError;
+use crate::common::{QError, StringUtils};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::{BareName, ExpressionType, TypeQualifier};
+use crate::parser::{BareName, ExpressionType, TypeQualifier, UserDefinedTypes};
 use crate::variant::{UserDefinedTypeValue, VArray, Variant};
 use std::convert::TryFrom;
 
@@ -50,7 +50,7 @@ pub fn allocate_array<T: InterpreterTrait>(
     }
     let array = Variant::VArray(Box::new(VArray::new(
         dimensions,
-        element_type.default_variant(interpreter.user_defined_types()),
+        allocate_array_element(element_type, interpreter.user_defined_types()),
     )));
     interpreter.registers_mut().set_a(array);
     Ok(())
@@ -66,4 +66,16 @@ pub fn allocate_user_defined_type<T: InterpreterTrait>(
     )));
     interpreter.registers_mut().set_a(v);
     Ok(())
+}
+
+fn allocate_array_element(element_type: &ExpressionType, types: &UserDefinedTypes) -> Variant {
+    match element_type {
+        ExpressionType::BuiltIn(q) => Variant::from(*q),
+        ExpressionType::FixedLengthString(len) => String::new().fix_length(*len as usize).into(),
+        ExpressionType::UserDefined(type_name) => {
+            Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
+        }
+        ExpressionType::Unresolved => panic!("Unresolved array element type"),
+        ExpressionType::Array(_) => panic!("Nested arrays are not supported"),
+    }
 }

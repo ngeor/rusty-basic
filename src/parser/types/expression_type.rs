@@ -1,6 +1,5 @@
-use crate::common::{CanCastTo, Locatable, QError, StringUtils};
-use crate::parser::{BareName, Name, Operator, QualifiedName, TypeQualifier, UserDefinedTypes};
-use crate::variant::{UserDefinedTypeValue, Variant};
+use crate::common::{CanCastTo, Locatable, QError};
+use crate::parser::{BareName, Name, Operator, QualifiedName, TypeQualifier};
 
 /// The resolved type of an expression.
 #[derive(Clone, Debug, PartialEq)]
@@ -87,17 +86,6 @@ impl ExpressionType {
                 _ => None,
             },
             _ => None,
-        }
-    }
-
-    pub fn default_variant(&self, types: &UserDefinedTypes) -> Variant {
-        match self {
-            Self::BuiltIn(q) => Variant::from(*q),
-            Self::FixedLengthString(len) => String::new().fix_length(*len as usize).into(),
-            Self::UserDefined(type_name) => {
-                Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
-            }
-            _ => todo!(),
         }
     }
 }

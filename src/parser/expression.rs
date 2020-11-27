@@ -981,7 +981,6 @@ pub mod word {
 
                 #[test]
                 fn test_bare_array_qualified_property() {
-                    // TODO add linter err test for type mismatch
                     let input = "A(1).Suit$";
                     let eol_reader = EolReader::from(input);
                     let parser = word();

@@ -7,7 +7,6 @@ use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::{Keyword, Statement};
-use crate::variant::V_FALSE;
 use std::io::BufRead;
 
 pub fn constant<T: BufRead + 'static>(
@@ -38,7 +37,7 @@ pub fn constant<T: BufRead + 'static>(
             },
             _,
             expr,
-        )| Statement::Const(const_name.at(pos), expr, V_FALSE),
+        )| Statement::Const(const_name.at(pos), expr),
     )
 }
 
@@ -47,7 +46,6 @@ mod tests {
     use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{Expression, Name, Statement, TopLevelToken};
-    use crate::variant::V_FALSE;
 
     #[test]
     fn parse_const() {
@@ -62,12 +60,10 @@ mod tests {
                 TopLevelToken::Statement(Statement::Const(
                     "X".as_name(2, 15),
                     42.as_lit_expr(2, 19),
-                    V_FALSE
                 )),
                 TopLevelToken::Statement(Statement::Const(
                     "Y$".as_name(3, 15),
                     "hello".as_lit_expr(3, 20),
-                    V_FALSE
                 ))
             ]
         );
@@ -85,7 +81,6 @@ mod tests {
                     Statement::Const(
                         Locatable { element: left, .. },
                         Locatable { element: right, .. },
-                        _,
                     ) => {
                         assert_eq!(left, Name::from(*name));
                         assert_eq!(right, Expression::IntegerLiteral(*value));
@@ -106,7 +101,6 @@ mod tests {
                 TopLevelToken::Statement(Statement::Const(
                     "ANSWER".as_name(1, 7),
                     42.as_lit_expr(1, 16),
-                    V_FALSE
                 ))
                 .at_rc(1, 1),
                 TopLevelToken::Statement(Statement::Comment(

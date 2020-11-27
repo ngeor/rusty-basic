@@ -2,11 +2,9 @@ use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::parser::{
     CaseExpression, ConditionalBlockNode, DimNameNode, Expression, ExpressionNode, ForLoopNode,
-    FunctionImplementation, IfBlockNode, NameNode, PrintArg, PrintNode, ProgramNode,
-    SelectCaseNode, Statement, StatementNode, StatementNodes, SubImplementation, TopLevelToken,
-    TopLevelTokenNode,
+    FunctionImplementation, IfBlockNode, PrintArg, PrintNode, ProgramNode, SelectCaseNode,
+    Statement, StatementNode, StatementNodes, SubImplementation, TopLevelToken, TopLevelTokenNode,
 };
-use crate::variant::Variant;
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.
@@ -55,7 +53,9 @@ pub trait PostConversionLinter {
     fn visit_statement(&self, s: &Statement) -> Result<(), QErrorNode> {
         match s {
             Statement::Assignment(left, right) => self.visit_assignment(left, right),
-            Statement::Const(left, _, right) => self.visit_const(left, right),
+            Statement::Const(left, _) => {
+                panic!("Linter should have removed Const statements {:?}", left)
+            }
             Statement::SubCall(b, e) => self.visit_sub_call(b, e),
             Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, e),
             Statement::IfBlock(i) => self.visit_if_block(i),
@@ -158,10 +158,6 @@ pub trait PostConversionLinter {
     fn visit_conditional_block(&self, c: &ConditionalBlockNode) -> Result<(), QErrorNode> {
         self.visit_expression(&c.condition)?;
         self.visit_statement_nodes(&c.statements)
-    }
-
-    fn visit_const(&self, _left: &NameNode, _right: &Variant) -> Result<(), QErrorNode> {
-        Ok(())
     }
 
     fn visit_expression(&self, _e: &ExpressionNode) -> Result<(), QErrorNode> {

@@ -1,5 +1,4 @@
 mod assignment;
-mod constant;
 mod context;
 mod converter;
 mod dim;

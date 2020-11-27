@@ -331,7 +331,7 @@ impl<'a> Context<'a> {
         &mut self,
         left_side: NameNode,
         right_side: ExpressionNode,
-    ) -> Result<(NameNode, ExpressionNode, Variant), QErrorNode> {
+    ) -> Result<(), QErrorNode> {
         const_rules::on_const(self, left_side, right_side)
     }
 
@@ -1169,7 +1169,7 @@ pub mod const_rules {
     use std::convert::TryFrom;
 
     type I = (NameNode, ExpressionNode);
-    type O = (NameNode, ExpressionNode, Variant);
+    type O = ();
     type ConstResult = RuleResult<I, O>;
     type Result = std::result::Result<ConstResult, QErrorNode>;
 
@@ -1204,7 +1204,7 @@ pub mod const_rules {
         let (
             Locatable {
                 element: const_name,
-                pos: const_name_pos,
+                ..
             },
             right,
         ) = input;
@@ -1219,10 +1219,7 @@ pub mod const_rules {
         };
         ctx.names
             .insert_const(const_name.as_ref().clone(), final_value.clone());
-        let converted_name = const_name.qualify(value_qualifier).at(const_name_pos);
-        let converted_expr = Expression::try_from(final_value.clone()).with_err_at(&right)?;
-        let res = (converted_name, converted_expr.at(&right), final_value);
-        Ok(RuleResult::Success(res))
+        Ok(RuleResult::Success(()))
     }
 }
 

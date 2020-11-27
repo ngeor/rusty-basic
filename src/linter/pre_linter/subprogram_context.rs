@@ -75,7 +75,7 @@ pub fn parse_subprograms_and_types(
                 )?;
             }
             TopLevelToken::Statement(s) => match s {
-                Statement::Const(name_node, expression_node, _) => {
+                Statement::Const(name_node, expression_node) => {
                     global_const(&mut global_constants, name_node, expression_node)?;
                 }
                 _ => {}

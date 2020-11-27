@@ -67,7 +67,7 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
         match statement {
             Statement::Comment(c) => Ok((Some(Statement::Comment(c).at(pos)), vec![])),
             Statement::Assignment(n, e) => self.assignment(n.at(pos), e).map(|(x, y)| (Some(x), y)),
-            Statement::Const(n, e, _) => self.constant(n, e).map(|_| (None, vec![])),
+            Statement::Const(n, e) => self.context.on_const(n, e).map(|_| (None, vec![])),
             Statement::SubCall(n, args) => {
                 self.sub_call(n.at(pos), args).map(|(x, y)| (Some(x), y))
             }

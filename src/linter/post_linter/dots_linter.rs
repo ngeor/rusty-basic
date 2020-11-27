@@ -5,7 +5,6 @@ use crate::parser::{
     FunctionImplementation, Name, NameNode, ParamName, QualifiedName, QualifiedNameNode,
     SubImplementation,
 };
-use crate::variant::Variant;
 use std::collections::HashSet;
 
 pub struct DotsLinter<'a> {
@@ -187,10 +186,6 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
             None => (),
         }
         self.visit_statement_nodes(&f.statements)
-    }
-
-    fn visit_const(&self, left: &NameNode, _right: &Variant) -> Result<(), QErrorNode> {
-        self.ensure_no_dots(left)
     }
 
     fn visit_expression(&self, e: &ExpressionNode) -> Result<(), QErrorNode> {

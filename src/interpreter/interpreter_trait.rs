@@ -2,9 +2,11 @@ use crate::interpreter::context::Context;
 use crate::interpreter::input::Input;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::printer::Printer;
-use crate::interpreter::registers::Registers;
+use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::parser::UserDefinedTypes;
+use crate::variant::{Path, Variant};
+use std::collections::VecDeque;
 
 pub trait InterpreterTrait {
     type TStdlib: Stdlib;
@@ -44,4 +46,14 @@ pub trait InterpreterTrait {
 
     /// Holds the "registers" of the CPU
     fn registers_mut(&mut self) -> &mut Registers;
+
+    fn register_stack(&mut self) -> &mut RegisterStack;
+
+    fn by_ref_stack(&mut self) -> &mut VecDeque<Variant>;
+
+    fn take_function_result(&mut self) -> Option<Variant>;
+
+    fn set_function_result(&mut self, v: Variant);
+
+    fn var_path_stack(&mut self) -> &mut VecDeque<Path>;
 }

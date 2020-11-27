@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionNode};
+use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;
 use crate::interpreter::input::Input;
@@ -11,10 +12,8 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
-use crate::interpreter::{built_ins, instruction_handlers};
-use crate::parser::{BareName, Name, TypeQualifier, UserDefinedTypes};
+use crate::parser::UserDefinedTypes;
 use crate::variant::{Path, Variant};
-use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::rc::Rc;
@@ -112,6 +111,26 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     fn registers_mut(&mut self) -> &mut Registers {
         self.register_stack.last_mut().unwrap()
     }
+
+    fn register_stack(&mut self) -> &mut RegisterStack {
+        &mut self.register_stack
+    }
+
+    fn by_ref_stack(&mut self) -> &mut VecDeque<Variant> {
+        &mut self.by_ref_stack
+    }
+
+    fn take_function_result(&mut self) -> Option<Variant> {
+        self.function_result.take()
+    }
+
+    fn set_function_result(&mut self, v: Variant) {
+        self.function_result = Some(v);
+    }
+
+    fn var_path_stack(&mut self) -> &mut VecDeque<Path> {
+        &mut self.var_path_stack
+    }
 }
 
 pub type DefaultInterpreter = Interpreter<
@@ -158,18 +177,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         }
     }
 
-    fn get_a(&self) -> Variant {
-        self.registers().get_a()
-    }
-
-    fn get_b(&self) -> Variant {
-        self.registers().get_b()
-    }
-
-    fn set_a(&mut self, v: Variant) {
-        self.registers_mut().set_a(v);
-    }
-
     fn interpret_one(
         &mut self,
         i: &mut usize,
@@ -183,120 +190,82 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *error_handler = Some(*idx);
             }
             Instruction::PushRegisters => {
-                self.register_stack.push(Registers::new());
+                registers::push_registers(self);
             }
             Instruction::PopRegisters => {
-                self.register_stack.pop();
+                registers::pop_registers(self);
             }
             Instruction::LoadIntoA(v) => {
-                self.set_a(v.clone());
+                registers::load_into_a(self, v);
             }
             Instruction::Cast(q) => {
-                let v = self.get_a();
-                let casted = v.cast(*q).with_err_at(pos)?;
-                self.set_a(casted);
+                cast::cast(self, q).with_err_at(pos)?;
             }
             Instruction::FixLength(l) => {
-                let v = self.get_a();
-                let casted = v.cast(TypeQualifier::DollarString).with_err_at(pos)?;
-                self.set_a(match casted {
-                    Variant::VString(s) => {
-                        let len: usize = *l as usize;
-                        Variant::VString(s.fix_length(len))
-                    }
-                    _ => casted,
-                });
+                cast::fix_length(self, l).with_err_at(pos)?;
             }
             Instruction::CopyAToB => {
-                self.registers_mut().copy_a_to_b();
+                registers::copy_a_to_b(self);
             }
             Instruction::CopyAToC => {
-                self.registers_mut().copy_a_to_c();
+                registers::copy_a_to_c(self);
             }
             Instruction::CopyAToD => {
-                self.registers_mut().copy_a_to_d();
+                registers::copy_a_to_d(self);
             }
             Instruction::CopyCToB => {
-                self.registers_mut().copy_c_to_b();
+                registers::copy_c_to_b(self);
             }
             Instruction::CopyDToA => {
-                self.registers_mut().copy_d_to_a();
+                registers::copy_d_to_a(self);
             }
             Instruction::CopyDToB => {
-                self.registers_mut().copy_d_to_b();
+                registers::copy_d_to_b(self);
             }
             Instruction::Plus => {
-                instruction_handlers::math::plus(self).with_err_at(pos)?;
+                math::plus(self).with_err_at(pos)?;
             }
             Instruction::Minus => {
-                instruction_handlers::math::minus(self).with_err_at(pos)?;
+                math::minus(self).with_err_at(pos)?;
             }
             Instruction::Multiply => {
-                instruction_handlers::math::multiply(self).with_err_at(pos)?;
+                math::multiply(self).with_err_at(pos)?;
             }
             Instruction::Divide => {
-                instruction_handlers::math::divide(self).with_err_at(pos)?;
+                math::divide(self).with_err_at(pos)?;
             }
             Instruction::NegateA => {
-                let a = self.get_a();
-                let c = a.negate().with_err_at(pos)?;
-                self.set_a(c);
+                logical::negate_a(self).with_err_at(pos)?;
             }
             Instruction::NotA => {
-                let a = self.get_a();
-                let c = a.unary_not().with_err_at(pos)?;
-                self.set_a(c);
+                logical::not_a(self).with_err_at(pos)?;
             }
             Instruction::Equal => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Equal;
-                self.set_a(is_true.into());
+                comparison::equal(self).with_err_at(pos)?;
             }
             Instruction::NotEqual => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order != Ordering::Equal;
-                self.set_a(is_true.into());
+                comparison::not_equal(self).with_err_at(pos)?;
             }
             Instruction::Less => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Less;
-                self.set_a(is_true.into());
+                comparison::less(self).with_err_at(pos)?;
             }
             Instruction::Greater => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Greater;
-                self.set_a(is_true.into());
+                comparison::greater(self).with_err_at(pos)?;
             }
             Instruction::LessOrEqual => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Less || order == Ordering::Equal;
-                self.set_a(is_true.into());
+                comparison::less_or_equal(self).with_err_at(pos)?;
             }
             Instruction::GreaterOrEqual => {
-                let a = self.get_a();
-                let b = self.get_b();
-                let order = a.cmp(&b).with_err_at(pos)?;
-                let is_true = order == Ordering::Greater || order == Ordering::Equal;
-                self.set_a(is_true.into());
+                comparison::greater_or_equal(self).with_err_at(pos)?;
             }
             Instruction::And => {
-                instruction_handlers::logical::and(self).with_err_at(pos)?;
+                logical::and(self).with_err_at(pos)?;
             }
             Instruction::Or => {
-                instruction_handlers::logical::or(self).with_err_at(pos)?;
+                logical::or(self).with_err_at(pos)?;
             }
             Instruction::JumpIfFalse(resolved_idx) => {
-                let a = self.get_a();
+                let a = self.registers().get_a();
                 let is_true: bool = bool::try_from(a).with_err_at(pos)?;
                 if !is_true {
                     *i = resolved_idx - 1; // the +1 will happen at the end of the loop
@@ -306,7 +275,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *i = resolved_idx - 1;
             }
             Instruction::BeginCollectArguments => {
-                self.context.arguments_stack().begin_collect_arguments();
+                subprogram::begin_collect_arguments(self);
             }
             Instruction::PushStack => {
                 self.push_context();
@@ -317,37 +286,22 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.stacktrace.remove(0);
             }
             Instruction::EnqueueToReturnStack(idx) => {
-                let v = self.context.get(*idx).expect("Should have value").clone();
-                self.by_ref_stack.push_back(v);
+                subprogram::enqueue_to_return_stack(self, idx);
             }
             Instruction::DequeueFromReturnStack => {
-                let v = self
-                    .by_ref_stack
-                    .pop_front()
-                    .expect("by_ref_stack underflow");
-                self.registers_mut().set_a(v);
+                subprogram::dequeue_from_return_stack(self);
             }
             Instruction::StashFunctionReturnValue(function_name) => {
-                let name: Name = Name::Qualified(function_name.clone());
-                let v = self.context_mut().get_or_create(name).clone();
-                self.function_result = Some(v);
+                subprogram::stash_function_return_value(self, function_name);
             }
             Instruction::UnStashFunctionReturnValue => {
-                let v = self
-                    .function_result
-                    .take()
-                    .expect("Should have function result");
-                self.registers_mut().set_a(v);
+                subprogram::un_stash_function_return_value(self);
             }
             Instruction::PushAToUnnamedArg => {
-                let v = self.get_a();
-                self.context.arguments_stack().push_unnamed(v);
+                subprogram::push_a_to_unnamed_arg(self);
             }
-            Instruction::PushNamed(param_q_name) => {
-                let v = self.get_a();
-                self.context
-                    .arguments_stack()
-                    .push_named(param_q_name.clone(), v);
+            Instruction::PushNamed(param_name) => {
+                subprogram::push_a_to_named_arg(self, param_name);
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
@@ -377,56 +331,32 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 return Err(interpreter_error.clone()).with_err_at(pos);
             }
             Instruction::AllocateBuiltIn(q) => {
-                instruction_handlers::allocation::allocate_built_in(self, *q).with_err_at(pos)?;
+                allocation::allocate_built_in(self, *q).with_err_at(pos)?;
             }
             Instruction::AllocateFixedLengthString(len) => {
-                instruction_handlers::allocation::allocate_fixed_length_string(self, *len)
-                    .with_err_at(pos)?;
+                allocation::allocate_fixed_length_string(self, *len).with_err_at(pos)?;
             }
             Instruction::AllocateArrayIntoA(element_type) => {
-                instruction_handlers::allocation::allocate_array(self, element_type)
-                    .with_err_at(pos)?;
+                allocation::allocate_array(self, element_type).with_err_at(pos)?;
             }
             Instruction::AllocateUserDefined(user_defined_type_name) => {
-                instruction_handlers::allocation::allocate_user_defined_type(
-                    self,
-                    user_defined_type_name,
-                )
-                .with_err_at(pos)?;
+                allocation::allocate_user_defined_type(self, user_defined_type_name)
+                    .with_err_at(pos)?;
             }
             Instruction::VarPathName(name) => {
-                self.var_path_stack.push_back(Path::Root(name.clone()));
+                var_path::var_path_name(self, name);
             }
             Instruction::VarPathIndex => {
-                let index_value = self.get_a();
-                let old_name_ptr = self
-                    .var_path_stack
-                    .pop_back()
-                    .expect("Should have name_ptr");
-                self.var_path_stack
-                    .push_back(old_name_ptr.append_array_element(index_value));
+                var_path::var_path_index(self);
             }
             Instruction::VarPathProperty(property_name) => {
-                let old_name_ptr = self
-                    .var_path_stack
-                    .pop_back()
-                    .expect("Should have name_ptr");
-                self.var_path_stack.push_back(Path::Property(
-                    Box::new(old_name_ptr),
-                    property_name.clone(),
-                ));
+                var_path::var_path_property(self, property_name);
             }
             Instruction::CopyAToVarPath => {
-                // get value to copy into name_ptr
-                let a = self.get_a();
-                // copy
-                let v = self.resolve_name_ptr_mut().with_err_at(pos)?;
-                *v = a;
+                var_path::copy_a_to_var_path(self).with_err_at(pos)?;
             }
             Instruction::CopyVarPathToA => {
-                let v = self.resolve_name_ptr_mut().with_err_at(pos)?;
-                let v_copy = v.clone();
-                self.set_a(v_copy);
+                var_path::copy_var_path_to_a(self).with_err_at(pos)?;
             }
             Instruction::PushAToValueStack => {
                 let v = self.registers().get_a();
@@ -438,47 +368,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
         }
         Ok(())
-    }
-
-    fn resolve_name_ptr_mut(&mut self) -> Result<&mut Variant, QError> {
-        match self.var_path_stack.pop_back() {
-            Some(n) => self.resolve_some_name_ptr_mut(n),
-            _ => panic!("Root name_ptr was None"),
-        }
-    }
-
-    fn resolve_some_name_ptr_mut(&mut self, name_ptr: Path) -> Result<&mut Variant, QError> {
-        match name_ptr {
-            Path::Root(var_name) => Ok(self.context_mut().get_or_create(var_name)),
-            Path::ArrayElement(parent_name_ptr, indices) => {
-                let parent_variant = self.resolve_some_name_ptr_mut(*parent_name_ptr)?;
-                Self::resolve_array_mut(parent_variant, indices)
-            }
-            Path::Property(parent_name_ptr, property_name) => {
-                let parent_variant = self.resolve_some_name_ptr_mut(*parent_name_ptr)?;
-                Ok(Self::resolve_property_mut(parent_variant, &property_name))
-            }
-        }
-    }
-
-    fn resolve_array_mut(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Variant, QError> {
-        match v {
-            Variant::VArray(v_array) => {
-                let int_indices: Result<Vec<i32>, QError> =
-                    indices.into_iter().map(|v| i32::try_from(v)).collect();
-                v_array.get_element_mut(int_indices?)
-            }
-            _ => panic!("Expected array, found {:?}", v),
-        }
-    }
-
-    fn resolve_property_mut<'a>(v: &'a mut Variant, property_name: &BareName) -> &'a mut Variant {
-        match v {
-            Variant::VUserDefined(boxed_user_defined_value) => boxed_user_defined_value
-                .get_mut(property_name)
-                .expect("Property not defined, linter should have caught this"),
-            _ => panic!("Expected user defined type, found {:?}", v),
-        }
     }
 
     pub fn interpret(&mut self, instructions: Vec<InstructionNode>) -> Result<(), QErrorNode> {
@@ -591,3 +480,12 @@ mod tests {
         assert_eq!(interpreter.stdout().output_exact(), " 0 \r\n");
     }
 }
+
+mod allocation;
+mod cast;
+mod comparison;
+mod logical;
+mod math;
+mod registers;
+mod subprogram;
+mod var_path;

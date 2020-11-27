@@ -1,0 +1,91 @@
+use crate::common::QError;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::parser::{BareName, Name};
+use crate::variant::{Path, Variant};
+use std::convert::TryFrom;
+
+pub fn var_path_name<T: InterpreterTrait>(interpreter: &mut T, name: &Name) {
+    interpreter
+        .var_path_stack()
+        .push_back(Path::Root(name.clone()));
+}
+
+pub fn var_path_index<T: InterpreterTrait>(interpreter: &mut T) {
+    let index_value = interpreter.registers().get_a();
+    let old_name_ptr = interpreter
+        .var_path_stack()
+        .pop_back()
+        .expect("Should have name_ptr");
+    interpreter
+        .var_path_stack()
+        .push_back(old_name_ptr.append_array_element(index_value));
+}
+
+pub fn var_path_property<T: InterpreterTrait>(interpreter: &mut T, property_name: &BareName) {
+    let old_name_ptr = interpreter
+        .var_path_stack()
+        .pop_back()
+        .expect("Should have name_ptr");
+    interpreter.var_path_stack().push_back(Path::Property(
+        Box::new(old_name_ptr),
+        property_name.clone(),
+    ));
+}
+
+pub fn copy_a_to_var_path<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+    let a = interpreter.registers().get_a();
+    let v = resolve_name_ptr_mut(interpreter)?;
+    *v = a;
+    Ok(())
+}
+
+pub fn copy_var_path_to_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+    let v = resolve_name_ptr_mut(interpreter)?;
+    let v_copy = v.clone();
+    interpreter.registers_mut().set_a(v_copy);
+    Ok(())
+}
+
+fn resolve_name_ptr_mut<T: InterpreterTrait>(interpreter: &mut T) -> Result<&mut Variant, QError> {
+    match interpreter.var_path_stack().pop_back() {
+        Some(n) => resolve_some_name_ptr_mut(interpreter, n),
+        _ => panic!("Root name_ptr was None"),
+    }
+}
+
+fn resolve_some_name_ptr_mut<T: InterpreterTrait>(
+    interpreter: &mut T,
+    name_ptr: Path,
+) -> Result<&mut Variant, QError> {
+    match name_ptr {
+        Path::Root(var_name) => Ok(interpreter.context_mut().get_or_create(var_name)),
+        Path::ArrayElement(parent_name_ptr, indices) => {
+            let parent_variant = resolve_some_name_ptr_mut(interpreter, *parent_name_ptr)?;
+            resolve_array_mut(parent_variant, indices)
+        }
+        Path::Property(parent_name_ptr, property_name) => {
+            let parent_variant = resolve_some_name_ptr_mut(interpreter, *parent_name_ptr)?;
+            Ok(resolve_property_mut(parent_variant, &property_name))
+        }
+    }
+}
+
+fn resolve_array_mut(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Variant, QError> {
+    match v {
+        Variant::VArray(v_array) => {
+            let int_indices: Result<Vec<i32>, QError> =
+                indices.into_iter().map(|v| i32::try_from(v)).collect();
+            v_array.get_element_mut(int_indices?)
+        }
+        _ => panic!("Expected array, found {:?}", v),
+    }
+}
+
+fn resolve_property_mut<'a>(v: &'a mut Variant, property_name: &BareName) -> &'a mut Variant {
+    match v {
+        Variant::VUserDefined(boxed_user_defined_value) => boxed_user_defined_value
+            .get_mut(property_name)
+            .expect("Property not defined, linter should have caught this"),
+        _ => panic!("Expected user defined type, found {:?}", v),
+    }
+}

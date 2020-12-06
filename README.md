@@ -4,12 +4,21 @@
 
 [![Build Status](https://travis-ci.org/ngeor/rusty-basic.svg?branch=master)](https://travis-ci.org/ngeor/rusty-basic)
 
-
 ## Goals
 
-- Be able to interpret the sample `TODO.BAS` from the `basic` Docker project.
-- Be able to cross-compile to Rust
-- Unit tests, with code coverage
+The primary goal is to have an interpreter compatible with QBasic.
+
+- Be able to interpret the sample
+  [TODO.BAS](https://github.com/ngeor/kamino/blob/trunk/dockerfiles/basic/basic/rest-qb/TODO.BAS)
+  from my
+  [basic Docker project](https://github.com/ngeor/kamino/tree/trunk/dockerfiles/basic).
+  ✅
+- Be able to interpret `MONEY.BAS` from QBasic.
+
+Secondary goals:
+
+- Be able to cross-compile to Rust and/or JavaScript
+- Unit tests for QBasic programs, with code coverage
 - VS Code debugging
 
 ## Development
@@ -32,16 +41,17 @@ A program is read from a file character by character.
 input (file or str) -> CharReader -> EolReader -> Parser
 ```
 
-- CharReader returns one character a time, working with a `BufRead` as its source.
+- CharReader returns one character a time, working with a `BufRead` as its
+  source.
 - EolReader adds support for row-col position, handling new lines.
-- Parsing is done with parser combinators, ending up in a parse tree of declarations, statements, expressions, etc.
+- Parsing is done with parser combinators, ending up in a parse tree of
+  declarations, statements, expressions, etc.
 
 ### Linting
 
 The next layer is linting, where the parse tree is transformed into a different
-tree. In the resulting tree, all types are resolved. Built-in functions and
-subs are identified.
-
+tree. In the resulting tree, all types are resolved. Built-in functions and subs
+are identified.
 
 ### Instruction generation
 
@@ -61,9 +71,9 @@ In QBasic, you can have a simple variable like this `A = 42`.
 
 You can also specify its type like this `A$ = "Hello, world!"`.
 
-In rusty-basic, the first style is called _bare name_ and the second style
-is called _qualified name_. The character that denotes the type is called a
-_type qualifier_.
+In rusty-basic, the first style is called _bare name_ and the second style is
+called _qualified name_. The character that denotes the type is called a _type
+qualifier_.
 
 There are five of these characters, matching the five built-in types:
 
@@ -73,13 +83,14 @@ There are five of these characters, matching the five built-in types:
 - `#` for double
 - `$` for string
 
-Bare names also have a type. By default, it's single. So typing `A` and `A!` will
-point to the same variable.
+Bare names also have a type. By default, it's single. So typing `A` and `A!`
+will point to the same variable.
 
-The default type can be changed to integer with the `DEFINT A-Z` statement. There's
-also `DEFLNG`, `DEFSNG`, `DEFDBL` and `DEFSTR`.
+The default type can be changed to integer with the `DEFINT A-Z` statement.
+There's also `DEFLNG`, `DEFSNG`, `DEFDBL` and `DEFSTR`.
 
-This simple name resolution mechanism gets a bit more complicated with the `AS` keyword.
+This simple name resolution mechanism gets a bit more complicated with the `AS`
+keyword.
 
 ### Extended names
 
@@ -108,75 +119,3 @@ DIM A AS INTEGER
 A = 42 ' this is an integer because it's explicitly defined as such
 A$ = "hello" ' duplicate definition error here
 ```
-
-### Constants and constant type resolution
-
-TODO
-
-### Constant inheritance
-
-TODO
-
-### Parameters
-
-TODO
-
-
-## Design issues
-
-### Dealing with location
-
-Parsed tokens, instructions, all have a location (row / col). The same
-for errors. There's the question of how to propagate this information in enums.
-
-- Option 1 - Envelope
-
-  e.g.
-
-  ```rust
-  pub enum Whatever {
-    Foo(i32),
-    Bar
-  }
-
-  pub struct WhateverNode(Whatever, Location);
-  ```
-
-- Option 2 - Embed
-
-  e.g.
-
-  ```rust
-  pub enum Whatever {
-    Foo(i32, Location),
-    Bar(Location)
-  }
-  ```
-
-- Option 3 - Neither
-
-  This is applicable only for errors. The location that caused the error can
-  be retrieved by the processing class (e.g. `EolReader`).
-
-Regardless of the option, it can get more complicated for nested structs (e.g.
-`IF` blocks), where the location information needs to be preserved for inner
-elements as well.
-
-Using an envelope leads to more types and a bit more accessing to get to the body.
-Embedding on the other hand makes unit tests more difficult as we need to match
-on the exact location, which isn't always important.
-
-From a separation of concern principle, the envelope is the better solution,
-as we don't define the same member over and over. However, it is cumbersome
-to wrap/unwrap the body of the envelope.
-
-**Status:** There is no silver bullet at this point. Enums tend to embed the location,
-structs use the envelope approach with a common class `Locatable`.
-
-### Adding new built-in functions/subs
-
-~~Adding new built-ins involves touching a lot of places in the code. It would be
-interesting to see if this can be turned around, modeling the built-in as a
-struct implementing all necessary traits needed to make it fit into the puzzle
-(e.g. type resolver, linter, implementation logic).~~ Resolved. Built-ins are
-now self-contained modules.

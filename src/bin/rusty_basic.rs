@@ -9,6 +9,10 @@ use rusty_basic::parser;
 fn main() {
     let is_running_in_apache = is_running_in_apache();
     let filename = get_filename(is_running_in_apache);
+    if filename.is_empty() {
+        eprintln!("Please specify the program to run.");
+        return;
+    }
     let f = File::open(&filename).expect(format!("Could not find program {}", filename).as_ref());
     match parser::parse_main_file(f) {
         Ok(program) => match linter::lint(program) {
@@ -44,7 +48,7 @@ fn get_filename_from_args() -> String {
         .skip(1)
         .take(1)
         .last()
-        .expect("First argument should be the program to run")
+        .unwrap_or_default()
 }
 
 fn get_filename_from_env_var() -> String {

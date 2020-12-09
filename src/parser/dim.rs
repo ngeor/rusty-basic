@@ -243,4 +243,33 @@ mod tests {
             )
         );
     }
+
+    mod keyword_qualified_by_string_is_allowed {
+        use super::*;
+
+        #[test]
+        fn test_can_assign_to_keyword_qualified_by_string() {
+            let input = "DIM DIM$";
+            let program = parse(input).demand_single_statement();
+            assert_eq!(
+                program,
+                Statement::Dim(
+                    DimName::new(
+                        "DIM".into(),
+                        DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                    )
+                    .at_rc(1, 5)
+                )
+            );
+        }
+
+        #[test]
+        fn test_cannot_assign_to_other_cases_of_keyword() {
+            let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
+            for left_side in &left_sides {
+                let input = format!("DIM {}", left_side);
+                assert!(matches!(parse_err(input), QError::SyntaxError(_)));
+            }
+        }
+    }
 }

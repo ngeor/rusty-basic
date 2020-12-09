@@ -294,4 +294,31 @@ mod tests {
             )
         );
     }
+
+    // edge case where DIM$ = "hello" is allowed but not DIM = 42
+    mod keyword_qualified_by_string_is_allowed {
+        use super::*;
+
+        #[test]
+        fn test_can_assign_to_keyword_qualified_by_string() {
+            let input = "DIM$ = \"hello\"";
+            let program = parse(input).demand_single_statement();
+            assert_eq!(
+                program,
+                Statement::Assignment(
+                    Expression::Variable("DIM$".into(), ExpressionType::Unresolved),
+                    "hello".as_lit_expr(1, 8)
+                )
+            );
+        }
+
+        #[test]
+        fn test_cannot_assign_to_other_cases_of_keyword() {
+            let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
+            for left_side in &left_sides {
+                let input = format!("{} = 42", left_side);
+                assert!(matches!(parse_err(input), QError::SyntaxError(_)));
+            }
+        }
+    }
 }

@@ -86,7 +86,7 @@ fn type_definition_extended<T: BufRead + 'static>(
 fn extended_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimType, QError>> {
     source_and_then_some(
-        with_pos(any_identifier_with_dot()),
+        with_pos(any_identifier_without_dot()),
         |reader, Locatable { element: x, pos }| match Keyword::from_str(&x) {
             Ok(Keyword::Single) => Ok((
                 reader,

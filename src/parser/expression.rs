@@ -395,17 +395,18 @@ pub mod word {
     use super::*;
     use crate::parser::name::{any_word_without_dot, MAX_LENGTH};
     use std::convert::TryFrom;
+    use std::str::FromStr;
 
     pub fn word<T: BufRead + 'static>(
     ) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError> {
         move |r| {
             // read name
-            match any_word_without_dot()(r) {
+            match any_identifier_without_dot()(r) {
                 Ok((r, Some(bare_name_without_dot))) => {
                     validate_name_expr_after_parsing(continue_after_bare_name(
                         r,
                         Expression::Variable(
-                            Name::Bare(bare_name_without_dot),
+                            Name::Bare(bare_name_without_dot.into()),
                             ExpressionType::Unresolved,
                         ),
                         false,
@@ -444,18 +445,56 @@ pub mod word {
                 if ch == '.' {
                     continue_after_bare_name_dot(r, base_expr, already_folded)
                 } else if let Ok(q) = TypeQualifier::try_from(ch) {
-                    continue_after_qualified_name(r, qualify(base_expr, q))
+                    // edge case: if base_expr is keyword, only continue if dollar sign (i.e. DIM$ is allowed, DIM% isn't)
+                    if q == TypeQualifier::DollarString {
+                        continue_after_qualified_name(r, qualify(base_expr, q))
+                    } else {
+                        if let Some(_) = is_keyword(&base_expr) {
+                            Err((r.undo(ch), QError::syntax_error("Unexpected keyword")))
+                        } else {
+                            continue_after_qualified_name(r, qualify(base_expr, q))
+                        }
+                    }
                 } else if ch == '(' {
-                    // fold expr, because it's not possible to invoke or index a property,
-                    // so if it has dots, it must be a function (or array name) with dots
-                    continue_after_bare_name_parenthesis(r.undo(ch), fold_expr(base_expr))
+                    if let Some(keyword) = is_keyword(&base_expr) {
+                        Ok((r.undo(ch).undo(keyword), None))
+                    } else {
+                        // fold expr, because it's not possible to invoke or index a property,
+                        // so if it has dots, it must be a function (or array name) with dots
+                        continue_after_bare_name_parenthesis(r.undo(ch), fold_expr(base_expr))
+                    }
                 } else {
                     // something else, abort
-                    Ok((r.undo(ch), Some(base_expr)))
+                    let r = r.undo(ch);
+                    // if base_expr is keyword undo that too
+                    if let Some(keyword) = is_keyword(&base_expr) {
+                        Ok((r.undo(keyword), None))
+                    } else {
+                        Ok((r, Some(base_expr)))
+                    }
                 }
             }
-            Ok((r, None)) => Ok((r, Some(base_expr))),
+            Ok((r, None)) => {
+                if let Some(keyword) = is_keyword(&base_expr) {
+                    Ok((r.undo(keyword), None))
+                } else {
+                    Ok((r, Some(base_expr)))
+                }
+            }
             Err((r, err)) => Err((r, err)),
+        }
+    }
+
+    fn is_keyword(base_expr: &Expression) -> Option<String> {
+        match base_expr {
+            Expression::Variable(Name::Bare(bare_name), _) => {
+                if let Ok(_) = Keyword::from_str(bare_name.as_ref()) {
+                    Some(bare_name.clone().into())
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 

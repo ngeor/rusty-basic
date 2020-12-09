@@ -167,10 +167,14 @@ where
     map(
         and(
             str_case_insensitive(needle.as_str()), // find keyword
-            negate(read_if(is_non_leading_identifier_with_dot)), // ensure it's a whole word
+            negate(read_if(is_not_whole_keyword)), // ensure it's a whole word
         ),
         move |(s, _)| (needle, s),
     )
+}
+
+fn is_not_whole_keyword(ch: char) -> bool {
+    is_non_leading_identifier_with_dot(ch) || ch == '$'
 }
 
 pub fn demand_keyword<R>(

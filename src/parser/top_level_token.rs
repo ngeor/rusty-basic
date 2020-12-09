@@ -1,13 +1,3 @@
-// top level token ::=
-//      comment |
-//      def type |
-//      declaration |
-//      statement |
-//      function implementation |
-//      sub implementation |
-//      user defined type definition |
-//      whitespace - empty line
-
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::declaration;

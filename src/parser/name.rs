@@ -2,10 +2,10 @@ use super::{BareName, BareNameNode, Keyword, Name, NameNode};
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
-use crate::parser::pc::map::{map, source_and_then_some};
+use crate::parser::pc::map::source_and_then_some;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
-use crate::parser::type_qualifier;
+use crate::parser::{type_qualifier, TypeQualifier};
 use std::io::BufRead;
 use std::str::FromStr;
 
@@ -18,9 +18,30 @@ pub fn name_node<T: BufRead + 'static>(
 
 pub fn name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Name, QError>> {
-    map(
-        opt_seq2(any_word_with_dot(), type_qualifier::type_qualifier()),
-        |(l, r)| Name::new(l, r),
+    source_and_then_some(
+        opt_seq2(any_identifier_with_dot(), type_qualifier::type_qualifier()),
+        |reader, (bare_name, opt_q)| {
+            if bare_name.len() > MAX_LENGTH {
+                Err((reader, QError::IdentifierTooLong))
+            } else {
+                let is_keyword = Keyword::from_str(bare_name.as_ref()).is_ok();
+                if is_keyword {
+                    match opt_q {
+                        Some(TypeQualifier::DollarString) => {
+                            // this is surprisingly allowed
+                            Ok((reader, Some(Name::new(bare_name.into(), opt_q))))
+                        }
+                        Some(_) => Err((reader, QError::syntax_error("Unexpected keyword"))),
+                        None => {
+                            // let's undo everything
+                            Ok((reader.undo(bare_name), None))
+                        }
+                    }
+                } else {
+                    Ok((reader, Some(Name::new(bare_name.into(), opt_q))))
+                }
+            }
+        },
     )
 }
 

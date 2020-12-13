@@ -1,20 +1,21 @@
-use crate::common::*;
-use crate::parser::char_reader::*;
-use crate::parser::pc::map::source_and_then_some;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
-use crate::parser::types::TypeQualifier;
-use std::convert::TryFrom;
+use crate::common::QError;
+use crate::parser::char_reader::EolReader;
+use crate::parser::pc::{Reader, ReaderResult};
+use crate::parser::pc2::{read_one_if_try_from_p, Parser, ReadOneIfTryFrom};
+use crate::parser::TypeQualifier;
 use std::io::BufRead;
 
 /// Returns a function that can parse a `TypeQualifier`.
+#[deprecated]
 pub fn type_qualifier<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeQualifier, QError>> {
-    source_and_then_some(
-        any_symbol(),
-        |reader: EolReader<T>, ch| match TypeQualifier::try_from(ch) {
-            Ok(t) => Ok((reader, Some(t))),
-            Err(_) => Ok((reader.undo(ch), None)),
-        },
-    )
+    type_qualifier_p().convert_to_fn()
+}
+
+/// Returns a parser that can parse a `TypeQualifier`.
+pub fn type_qualifier_p<R>() -> ReadOneIfTryFrom<R, TypeQualifier>
+where
+    R: Reader<Item = char>,
+{
+    read_one_if_try_from_p::<R, TypeQualifier>()
 }

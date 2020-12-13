@@ -2,9 +2,11 @@ use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::name::name_with_dot_p;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then, map, source_and_then_some};
 use crate::parser::pc::*;
+use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -25,7 +27,7 @@ pub fn dim_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimNameNode, QError>> {
     and_then(
         opt_seq3(
-            name::name_node(),
+            name_with_dot_p().with_pos().convert_to_fn(),
             array_dimensions(),
             type_definition_extended(),
         ),

@@ -98,23 +98,23 @@ where
 // Miscellaneous
 // ========================================================
 
-fn is_digit(ch: char) -> bool {
+pub fn is_digit(ch: char) -> bool {
     ch >= '0' && ch <= '9'
 }
 
-fn is_letter(ch: char) -> bool {
+pub fn is_letter(ch: char) -> bool {
     (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
 }
 
-fn is_non_leading_identifier_without_dot(ch: char) -> bool {
+pub fn is_non_leading_identifier_without_dot(ch: char) -> bool {
     is_letter(ch) || is_digit(ch)
 }
 
-fn is_non_leading_identifier_with_dot(ch: char) -> bool {
+pub fn is_non_leading_identifier_with_dot(ch: char) -> bool {
     is_non_leading_identifier_without_dot(ch) || (ch == '.')
 }
 
-fn is_symbol(ch: char) -> bool {
+pub fn is_symbol(ch: char) -> bool {
     (ch > ' ' && ch < '0')
         || (ch > '9' && ch < 'A')
         || (ch > 'Z' && ch < 'a')
@@ -173,7 +173,7 @@ where
     )
 }
 
-fn is_not_whole_keyword(ch: char) -> bool {
+pub fn is_not_whole_keyword(ch: char) -> bool {
     is_non_leading_identifier_with_dot(ch) || ch == '$'
 }
 

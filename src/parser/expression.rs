@@ -4,6 +4,7 @@ use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
+use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use crate::variant;
@@ -189,21 +190,31 @@ pub fn parenthesis<T: BufRead + 'static>(
 
 mod string_literal {
     use super::*;
+    use crate::parser::pc2::read_one_p;
+    use crate::parser::pc2::str::read_one_or_more_while_p;
 
     fn is_not_quote(ch: char) -> bool {
         ch != '"'
     }
 
+    #[deprecated]
     pub fn string_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
-        map(
-            seq3(
-                read('"'),
-                crate::parser::pc::str::zero_or_more_if(is_not_quote),
-                demand(read('"'), QError::syntax_error_fn("Unterminated string")),
-            ),
-            |(_, s, _)| Expression::StringLiteral(s),
-        )
+        string_literal_p().convert_to_fn()
+    }
+
+    pub fn string_literal_p<R>() -> impl Parser<R, Output = Expression>
+    where
+        R: Reader<Item = char, Err = QError>,
+    {
+        read_one_p('"')
+            .and_opt(read_one_or_more_while_p(is_not_quote))
+            .and_demand(
+                read_one_p('"'),
+                QError::syntax_error_fn("Unterminated string"),
+            )
+            .keep_middle()
+            .map(|opt_s| Expression::StringLiteral(opt_s.unwrap_or_default()))
     }
 }
 

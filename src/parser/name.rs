@@ -4,7 +4,9 @@ use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::source_and_then_some;
 use crate::parser::pc::*;
+use crate::parser::pc2::{any_identifier_with_dot_p, Parser};
 use crate::parser::pc_specific::*;
+use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{type_qualifier, TypeQualifier};
 use std::io::BufRead;
 use std::str::FromStr;
@@ -16,33 +18,43 @@ pub fn name_node<T: BufRead + 'static>(
     with_pos(name())
 }
 
+#[deprecated]
 pub fn name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Name, QError>> {
-    source_and_then_some(
-        opt_seq2(any_identifier_with_dot(), type_qualifier::type_qualifier()),
-        |reader, (bare_name, opt_q)| {
-            if bare_name.len() > MAX_LENGTH {
-                Err((reader, QError::IdentifierTooLong))
+    name_with_dot_p().convert_to_fn()
+}
+
+pub fn name_with_dot_p<R>() -> impl Parser<R, Output = Name>
+where
+    R: Reader<Item = char, Err = QError> + 'static,
+{
+    any_identifier_with_dot_p()
+        .validate(|n| {
+            if n.len() > MAX_LENGTH {
+                Err(QError::IdentifierTooLong)
             } else {
-                let is_keyword = Keyword::from_str(bare_name.as_ref()).is_ok();
-                if is_keyword {
-                    match opt_q {
-                        Some(TypeQualifier::DollarString) => {
-                            // this is surprisingly allowed
-                            Ok((reader, Some(Name::new(bare_name.into(), opt_q))))
-                        }
-                        Some(_) => Err((reader, QError::syntax_error("Unexpected keyword"))),
-                        None => {
-                            // let's undo everything
-                            Ok((reader.undo(bare_name), None))
-                        }
-                    }
-                } else {
-                    Ok((reader, Some(Name::new(bare_name.into(), opt_q))))
-                }
+                Ok(true)
             }
-        },
-    )
+        })
+        .and_opt(type_qualifier_p())
+        .map(|(n, opt_q)| Name::new(n.into(), opt_q))
+        .validate(|n| {
+            let bare_name: &BareName = n.as_ref();
+            let s: &str = bare_name.as_ref();
+            let is_keyword = Keyword::from_str(s).is_ok();
+            if is_keyword {
+                match n.qualifier() {
+                    Some(TypeQualifier::DollarString) => Ok(true),
+                    Some(_) => Err(QError::syntax_error("Unexpected keyword")),
+                    _ => {
+                        // undo everything
+                        Ok(false)
+                    }
+                }
+            } else {
+                Ok(true)
+            }
+        })
 }
 
 // bare name node

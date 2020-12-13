@@ -1,11 +1,10 @@
-use crate::common::*;
-use crate::parser::char_reader::*;
-use crate::parser::dim_name;
-use crate::parser::pc::common::*;
+use crate::common::QError;
+use crate::parser::char_reader::EolReader;
+use crate::parser::pc::common::demand;
 use crate::parser::pc::map::map;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
-use crate::parser::types::*;
+use crate::parser::pc::ReaderResult;
+use crate::parser::pc2::{keyword_p, Parser};
+use crate::parser::{dim_name, Keyword, Statement};
 use std::io::BufRead;
 
 /// Parses DIM statement
@@ -13,7 +12,7 @@ pub fn dim<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     map(
         crate::parser::pc::ws::seq2(
-            keyword(Keyword::Dim),
+            keyword_p(Keyword::Dim).convert_to_fn(),
             demand(
                 dim_name::dim_name_node(),
                 QError::syntax_error_fn("Expected: name after DIM"),

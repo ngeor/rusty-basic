@@ -1,13 +1,12 @@
-use super::{BareName, BareNameNode, Keyword, Name, NameNode};
-use crate::common::*;
-use crate::parser::char_reader::*;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::source_and_then_some;
-use crate::parser::pc::*;
-use crate::parser::pc2::{any_identifier_with_dot_p, Parser};
-use crate::parser::pc_specific::*;
+use crate::common::QError;
+use crate::parser::char_reader::EolReader;
+use crate::parser::pc::{Reader, ReaderResult};
+use crate::parser::pc2::Parser;
+use crate::parser::pc_specific::{
+    any_identifier_with_dot_p, any_identifier_without_dot_p, with_pos,
+};
 use crate::parser::type_qualifier::type_qualifier_p;
-use crate::parser::{type_qualifier, TypeQualifier};
+use crate::parser::{BareName, BareNameNode, Keyword, Name, NameNode, TypeQualifier};
 use std::io::BufRead;
 use std::str::FromStr;
 
@@ -64,38 +63,54 @@ pub fn bare_name_node<T: BufRead + 'static>(
     with_pos(bare_name())
 }
 
+#[deprecated]
 pub fn bare_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
-    drop_right(and(
-        any_word_with_dot(),
-        negate(type_qualifier::type_qualifier()),
-    ))
+    bare_name_p().convert_to_fn()
+}
+
+pub fn bare_name_p<R>() -> impl Parser<R, Output = BareName>
+where
+    R: Reader<Item = char, Err = QError> + 'static,
+{
+    any_word_with_dot_p().and_rollback_if(type_qualifier_p())
 }
 
 pub const MAX_LENGTH: usize = 40;
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-pub fn any_word_with_dot<T: BufRead + 'static>(
-) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError> {
-    source_and_then_some(any_identifier_with_dot(), ensure_length_and_not_keyword)
+pub fn any_word_with_dot_p<R>() -> impl Parser<R, Output = BareName>
+where
+    R: Reader<Item = char, Err = QError> + 'static,
+{
+    any_identifier_with_dot_p()
+        .validate(ensure_length_and_not_keyword)
+        .map(|x| x.into())
 }
 
 /// Reads any word, i.e. any identifier which is not a keyword.
+#[deprecated]
 pub fn any_word_without_dot<T: BufRead + 'static>(
 ) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError> {
-    source_and_then_some(any_identifier_without_dot(), ensure_length_and_not_keyword)
+    any_word_without_dot_p().convert_to_fn()
 }
 
-fn ensure_length_and_not_keyword<T: BufRead + 'static>(
-    reader: EolReader<T>,
-    s: String,
-) -> ReaderResult<EolReader<T>, BareName, QError> {
+pub fn any_word_without_dot_p<R>() -> impl Parser<R, Output = BareName>
+where
+    R: Reader<Item = char, Err = QError> + 'static,
+{
+    any_identifier_without_dot_p()
+        .validate(ensure_length_and_not_keyword)
+        .map(|x| x.into())
+}
+
+fn ensure_length_and_not_keyword(s: &String) -> Result<bool, QError> {
     if s.len() > MAX_LENGTH {
-        Err((reader, QError::IdentifierTooLong))
+        Err(QError::IdentifierTooLong)
     } else {
-        match Keyword::from_str(&s) {
-            Ok(_) => Ok((reader.undo(s), None)),
-            Err(_) => Ok((reader, Some(s.into()))),
+        match Keyword::from_str(s.as_ref()) {
+            Ok(_) => Ok(false),
+            Err(_) => Ok(true),
         }
     }
 }
@@ -112,8 +127,8 @@ mod tests {
             let input = inputs[i];
             let expected_output = expected_outputs[i];
             let eol_reader = EolReader::from(input);
-            let parser = any_word_without_dot();
-            let (_, result) = parser(eol_reader).expect("Should succeed");
+            let parser = any_word_without_dot_p();
+            let (_, result) = parser.parse(eol_reader).expect("Should succeed");
             assert_eq!(result, Some(BareName::from(expected_output)));
         }
     }
@@ -126,8 +141,8 @@ mod tests {
             let input = inputs[i];
             let expected_output = expected_outputs[i];
             let eol_reader = EolReader::from(input);
-            let parser = any_word_with_dot();
-            let (_, result) = parser(eol_reader).expect("Should succeed");
+            let parser = any_word_with_dot_p();
+            let (_, result) = parser.parse(eol_reader).expect("Should succeed");
             assert_eq!(result, Some(BareName::from(expected_output)));
         }
     }

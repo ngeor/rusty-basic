@@ -1,15 +1,14 @@
 use crate::common::QError;
 use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable};
 use crate::parser::pc::common::{
-    and, demand, drop_left, many_with_terminating_indicator, map_default_to_not_found, negate,
-    opt_seq2, seq3,
+    and, demand, drop_left, many_with_terminating_indicator, opt_seq2, seq3,
 };
 use crate::parser::pc::map::map;
-use crate::parser::pc::str::{
-    one_or_more_if, str_case_insensitive, zero_or_more_if_leading_remaining,
-};
+use crate::parser::pc::str::one_or_more_if;
 /// Parser combinators specific to this parser (e.g. for keywords)
 use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
+use crate::parser::pc2::str::{read_one_or_more_while_p, read_string_p};
+use crate::parser::pc2::{read_one_if_p, Parser};
 use crate::parser::types::{Keyword, Name, QualifiedName, TypeQualifier};
 use std::convert::TryInto;
 
@@ -137,43 +136,68 @@ where
 
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn any_identifier_with_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
+pub fn any_identifier_with_dot_p<R>() -> impl Parser<R, Output = String>
 where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
+    R: Reader<Item = char> + 'static,
 {
-    map_default_to_not_found(zero_or_more_if_leading_remaining(
-        is_letter,
-        is_non_leading_identifier_with_dot,
-    ))
+    read_one_if_p(is_letter)
+        .and_opt(read_one_or_more_while_p(is_non_leading_identifier_with_dot))
+        .map(|(first_letter, opt_letters)| {
+            let mut s: String = String::new();
+            s.push(first_letter);
+            if let Some(letters) = opt_letters {
+                s.push_str(letters.as_ref());
+            }
+            s
+        })
 }
 
+#[deprecated]
 pub fn any_identifier_without_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
     E: 'static,
 {
-    map_default_to_not_found(zero_or_more_if_leading_remaining(
-        is_letter,
-        is_non_leading_identifier_without_dot,
-    ))
+    any_identifier_without_dot_p().convert_to_fn()
 }
 
+pub fn any_identifier_without_dot_p<R>() -> impl Parser<R, Output = String>
+where
+    R: Reader<Item = char> + 'static,
+{
+    read_one_if_p(is_letter)
+        .and_opt(read_one_or_more_while_p(
+            is_non_leading_identifier_without_dot,
+        ))
+        .map(|(first_letter, opt_letters)| {
+            let mut s: String = String::new();
+            s.push(first_letter);
+            if let Some(letters) = opt_letters {
+                s.push_str(letters.as_ref());
+            }
+            s
+        })
+}
+
+#[deprecated]
 pub fn keyword<R, E>(needle: Keyword) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
     E: 'static,
 {
-    map(
-        and(
-            str_case_insensitive(needle.as_str()), // find keyword
-            negate(read_if(is_not_whole_keyword)), // ensure it's a whole word
-        ),
-        move |(s, _)| (needle, s),
-    )
+    keyword_p(needle).convert_to_fn()
 }
 
-pub fn is_not_whole_keyword(ch: char) -> bool {
+pub fn keyword_p<R>(keyword: Keyword) -> impl Parser<R, Output = (Keyword, String)>
+where
+    R: Reader<Item = char> + 'static,
+{
+    read_string_p(keyword.as_str())
+        .and_rollback_if(read_one_if_p(is_not_whole_keyword))
+        .map(move |keyword_as_str| (keyword, keyword_as_str))
+}
+
+fn is_not_whole_keyword(ch: char) -> bool {
     is_non_leading_identifier_with_dot(ch) || ch == '$'
 }
 

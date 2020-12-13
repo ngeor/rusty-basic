@@ -100,19 +100,6 @@ where
 pub mod map {
     use super::*;
 
-    /// Gets the result of the source and maps it with the given function.
-    /// The mapping function has access to the reader and is called for Ok(Some) and Ok(None) values.
-    pub fn source_map<R, S, T, E, U, F>(source: S, f: F) -> Box<dyn Fn(R) -> ReaderResult<R, U, E>>
-    where
-        R: Reader + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        T: 'static,
-        E: 'static,
-        F: Fn(R, Option<T>) -> (R, Option<U>) + 'static,
-    {
-        Box::new(move |reader| source(reader).map(|(r, opt_res)| f(r, opt_res)))
-    }
-
     /// Gets the result of the source and then switches it to the result of the given function.
     /// The mapping function has access to the reader and is called for Ok(Some) and Ok(None) values.
     pub fn source_and_then<R, S, T, E, U, F>(
@@ -552,22 +539,6 @@ pub mod common {
         S: Fn(R) -> ReaderResult<R, (T1, T2), E> + 'static,
     {
         map(source, |(l, _)| l)
-    }
-
-    /// Reverses the result of the given source. If the source returns a successful
-    /// result, it returns a Not Found result. If the source returns a Not Found
-    /// result, it returns an Ok result.
-    pub fn negate<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, (), E>>
-    where
-        R: Reader + Undo<T> + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        T: 'static,
-        E: 'static,
-    {
-        source_map(source, |reader, res| match res {
-            Some(x) => (reader.undo(x), None),
-            None => (reader, Some(())),
-        })
     }
 
     pub fn or<R, S1, S2, T, E>(first: S1, second: S2) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>

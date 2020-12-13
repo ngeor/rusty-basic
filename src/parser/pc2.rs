@@ -1,9 +1,5 @@
 use crate::common::{AtLocation, HasLocation, Locatable};
 use crate::parser::pc::{Reader, ReaderResult, Undo};
-use crate::parser::pc_specific::{
-    is_letter, is_non_leading_identifier_with_dot, is_not_whole_keyword,
-};
-use crate::parser::Keyword;
 use std::convert::TryFrom;
 use std::marker::PhantomData;
 
@@ -646,39 +642,4 @@ where
             Err((reader, (self.1)()))
         }
     }
-}
-
-//
-// keyword
-//
-
-pub fn keyword_p<R>(keyword: Keyword) -> impl Parser<R, Output = (Keyword, String)>
-where
-    R: Reader<Item = char> + 'static,
-{
-    str::read_string_p(keyword.as_str())
-        .and_rollback_if(read_one_if_p(is_not_whole_keyword))
-        .map(move |keyword_as_str| (keyword, keyword_as_str))
-}
-
-//
-// any_identifier_with_dot
-//
-
-pub fn any_identifier_with_dot_p<R>() -> impl Parser<R, Output = String>
-where
-    R: Reader<Item = char> + 'static,
-{
-    read_one_if_p(is_letter)
-        .and_opt(str::read_one_or_more_while_p(
-            is_non_leading_identifier_with_dot,
-        ))
-        .map(|(first_letter, opt_letters)| {
-            let mut s: String = String::new();
-            s.push(first_letter);
-            if let Some(letters) = opt_letters {
-                s.push_str(letters.as_ref());
-            }
-            s
-        })
 }

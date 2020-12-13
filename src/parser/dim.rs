@@ -3,7 +3,8 @@ use crate::parser::char_reader::EolReader;
 use crate::parser::pc::common::demand;
 use crate::parser::pc::map::map;
 use crate::parser::pc::ReaderResult;
-use crate::parser::pc2::{keyword_p, Parser};
+use crate::parser::pc2::Parser;
+use crate::parser::pc_specific::keyword_p;
 use crate::parser::{dim_name, Keyword, Statement};
 use std::io::BufRead;
 

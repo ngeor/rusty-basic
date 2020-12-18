@@ -1,11 +1,11 @@
 use crate::parser::pc::Reader;
-use crate::parser::pc2::{read_one_if_try_from_p, ReadOneIfTryFrom};
+use crate::parser::pc2::{any_p, Parser};
 use crate::parser::TypeQualifier;
 
 /// Returns a parser that can parse a `TypeQualifier`.
-pub fn type_qualifier_p<R>() -> ReadOneIfTryFrom<R, TypeQualifier>
+pub fn type_qualifier_p<R>() -> impl Parser<R, Output = TypeQualifier>
 where
     R: Reader<Item = char>,
 {
-    read_one_if_try_from_p::<R, TypeQualifier>()
+    any_p::<R>().try_from::<TypeQualifier>()
 }

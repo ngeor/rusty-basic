@@ -7,8 +7,11 @@ use crate::parser::pc::map::map;
 use crate::parser::pc::str::one_or_more_if;
 /// Parser combinators specific to this parser (e.g. for keywords)
 use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
-use crate::parser::pc2::str::{read_one_or_more_while_p, read_string_p};
-use crate::parser::pc2::{read_one_if_p, Parser};
+use crate::parser::pc2::text::{
+    read_one_or_more_while_p, read_string_p, read_zero_or_more_whitespace_p,
+};
+use crate::parser::pc2::unary_fn::OrThrowVal;
+use crate::parser::pc2::{read_one_if_p, read_one_p, Parser};
 use crate::parser::types::{Keyword, Name, QualifiedName, TypeQualifier};
 use std::convert::TryInto;
 
@@ -152,7 +155,7 @@ where
         })
 }
 
-#[deprecated]
+// #[deprecated]
 pub fn any_identifier_without_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
@@ -169,17 +172,10 @@ where
         .and_opt(read_one_or_more_while_p(
             is_non_leading_identifier_without_dot,
         ))
-        .map(|(first_letter, opt_letters)| {
-            let mut s: String = String::new();
-            s.push(first_letter);
-            if let Some(letters) = opt_letters {
-                s.push_str(letters.as_ref());
-            }
-            s
-        })
+        .stringify()
 }
 
-#[deprecated]
+// #[deprecated]
 pub fn keyword<R, E>(needle: Keyword) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
@@ -193,7 +189,7 @@ where
     R: Reader<Item = char> + 'static,
 {
     read_string_p(keyword.as_str())
-        .and_rollback_if(read_one_if_p(is_not_whole_keyword))
+        .unless_followed_by(read_one_if_p(is_not_whole_keyword))
         .map(move |keyword_as_str| (keyword, keyword_as_str))
 }
 
@@ -244,6 +240,7 @@ where
 // Take multiple items
 //
 
+// #[deprecated]
 pub fn csv_zero_or_more<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
@@ -257,9 +254,21 @@ where
     ))
 }
 
+pub fn csv_one_or_more_p<R, S>(source: S) -> impl Parser<R, Output = Vec<S::Output>>
+where
+    R: Reader<Item = char, Err = QError> + 'static,
+    S: Parser<R> + 'static,
+{
+    source.one_or_more_delimited_by(
+        read_one_p(',').surrounded_by_opt_ws(),
+        QError::syntax_error_fn("Error: trailing comma"),
+    )
+}
+
 /// Parses opening and closing parenthesis around the given source.
 ///
 /// Panics if the source returns `Ok(None)`.
+// #[deprecated]
 pub fn in_parenthesis<R, S, T>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, QError>>
 where
     R: Reader<Item = char, Err = QError> + 'static,
@@ -277,4 +286,34 @@ where
         ),
         |(_, r, _)| r,
     )
+}
+
+pub fn in_parenthesis_p<R, S>(source: S) -> impl Parser<R, Output = S::Output>
+where
+    R: Reader<Item = char, Err = QError>,
+    S: Parser<R> + 'static,
+{
+    read_one_p('(')
+        .and_opt(read_zero_or_more_whitespace_p())
+        .stringify()
+        .and(source)
+        .and_demand(
+            read_zero_or_more_whitespace_p()
+                .and(read_one_p(')'))
+                .or_syntax_error("Expected: closing parenthesis"),
+        )
+        .keep_middle()
+}
+
+pub trait PcSpecific<R: Reader>: Sized {
+    fn or_syntax_error(self, msg: &str) -> OrThrowVal<Self, QError>;
+}
+
+impl<R: Reader<Err = QError>, T> PcSpecific<R> for T
+where
+    T: Parser<R>,
+{
+    fn or_syntax_error(self, msg: &str) -> OrThrowVal<Self, QError> {
+        OrThrowVal::new(self, QError::syntax_error(msg))
+    }
 }

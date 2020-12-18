@@ -17,12 +17,18 @@ pub fn name_node<T: BufRead + 'static>(
     with_pos(name())
 }
 
-#[deprecated]
+// #[deprecated]
 pub fn name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Name, QError>> {
     name_with_dot_p().convert_to_fn()
 }
 
+/// Parses a name. The name must start with a letter and can include
+/// letters, digits or dots. The name can optionally be qualified by a type
+/// qualifier.
+///
+/// The parser validates the maximum length of the name and checks that the name
+/// is not a keyword (with the exception of strings, e.g. `end$`).
 pub fn name_with_dot_p<R>() -> impl Parser<R, Output = Name>
 where
     R: Reader<Item = char, Err = QError> + 'static,
@@ -63,7 +69,7 @@ pub fn bare_name_node<T: BufRead + 'static>(
     with_pos(bare_name())
 }
 
-#[deprecated]
+// #[deprecated]
 pub fn bare_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
     bare_name_p().convert_to_fn()
@@ -73,7 +79,7 @@ pub fn bare_name_p<R>() -> impl Parser<R, Output = BareName>
 where
     R: Reader<Item = char, Err = QError> + 'static,
 {
-    any_word_with_dot_p().and_rollback_if(type_qualifier_p())
+    any_word_with_dot_p().unless_followed_by(type_qualifier_p())
 }
 
 pub const MAX_LENGTH: usize = 40;
@@ -89,7 +95,7 @@ where
 }
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-#[deprecated]
+// #[deprecated]
 pub fn any_word_without_dot<T: BufRead + 'static>(
 ) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError> {
     any_word_without_dot_p().convert_to_fn()

@@ -191,13 +191,13 @@ pub fn parenthesis<T: BufRead + 'static>(
 mod string_literal {
     use super::*;
     use crate::parser::pc2::read_one_p;
-    use crate::parser::pc2::str::read_one_or_more_while_p;
+    use crate::parser::pc2::text::read_one_or_more_while_p;
 
     fn is_not_quote(ch: char) -> bool {
         ch != '"'
     }
 
-    #[deprecated]
+    // #[deprecated]
     pub fn string_literal<T: BufRead + 'static>(
     ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
         string_literal_p().convert_to_fn()
@@ -209,10 +209,7 @@ mod string_literal {
     {
         read_one_p('"')
             .and_opt(read_one_or_more_while_p(is_not_quote))
-            .and_demand(
-                read_one_p('"'),
-                QError::syntax_error_fn("Unterminated string"),
-            )
+            .and_demand(read_one_p('"').or_syntax_error("Unterminated string"))
             .keep_middle()
             .map(|opt_s| Expression::StringLiteral(opt_s.unwrap_or_default()))
     }
@@ -404,9 +401,27 @@ mod number_literal {
 
 pub mod word {
     use super::*;
-    use crate::parser::name::{any_word_without_dot, MAX_LENGTH};
+    use crate::parser::name::{any_word_without_dot, name_with_dot_p, MAX_LENGTH};
     use std::convert::TryFrom;
     use std::str::FromStr;
+
+    /*
+    //word ::= <name>
+    array-prop ::= <name><parens> <dot-property-names>
+    name ::= <letter><letter-or-digit-or-dot>*(qualifier)
+    parens ::= '(' <expr> , <expr> ')'
+    empty-parens ::= '(' <ws>* ')'
+
+    dot-property-names ::= ( '.' <property-name> )*
+    property-name ::= <letter><letter-or-digit>*
+    */
+
+    // fn word_p<R>() -> impl Parser<R, Output = Expression>
+    // where
+    //     R: Reader<Item = char, Err = QError>,
+    // {
+    //     name_with_dot_p().and_opt(in_parenthesis_p())
+    // }
 
     pub fn word<T: BufRead + 'static>(
     ) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError> {

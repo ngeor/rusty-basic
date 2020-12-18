@@ -153,3 +153,60 @@ where
         }
     }
 }
+
+/// Offers chaining methods that result in unary parsers.
+pub trait UnaryParser<R: Reader>: Parser<R> {
+    /// Maps an unsuccessful result of the given parser into a successful default value.
+    fn map_none_to_default(self) -> MapNoneToDefault<Self>
+    where
+        Self::Output: Default,
+    {
+        MapNoneToDefault::new(self)
+    }
+
+    /// Keeps the left part of a tuple.
+    fn keep_left<T, U>(self) -> KeepLeft<Self>
+    where
+        Self: Parser<R, Output = (T, U)>,
+    {
+        KeepLeft::new(self)
+    }
+
+    /// Keeps the right part of a tuple.
+    fn keep_right<T, U>(self) -> KeepRight<Self>
+    where
+        Self: Parser<R, Output = (T, U)>,
+    {
+        KeepRight::new(self)
+    }
+
+    /// Keeps the middle part of a tuple.
+    fn keep_middle<A, B, C>(self) -> KeepMiddle<Self>
+    where
+        Self: Parser<R, Output = ((A, B), C)>,
+    {
+        KeepMiddle::new(self)
+    }
+
+    /// Adds location information to the result of this parser.
+    fn with_pos(self) -> WithPos<Self> {
+        WithPos::new(self)
+    }
+
+    /// Creates a new parser, wrapping the given parser as a reference.
+    fn as_ref(&self) -> RefParser<Self> {
+        RefParser::new(&self)
+    }
+
+    /// Converts the result of the parser with the `TryFrom` trait.
+    /// If the conversion fails, the item is undone.
+    fn try_from<T>(self) -> TryFromParser<Self, T>
+    where
+        T: TryFrom<Self::Output>,
+        R: Undo<Self::Output>,
+    {
+        TryFromParser::<Self, T>::new(self)
+    }
+}
+
+impl<R: Reader, T> UnaryParser<R> for T where T: Parser<R> {}

@@ -141,3 +141,62 @@ where
         }
     }
 }
+
+/// Offers chaining methods that result in binary parsers.
+pub trait BinaryParser<R: Reader>: Parser<R> {
+    /// Returns a new parser that combines the result of the current parser
+    /// with the given parser. Both parsers must return a result. If the
+    /// second parser returns `None`, the first result will be undone.
+    fn and<B>(self, other: B) -> LeftAndRight<Self, B>
+    where
+        R: Undo<Self::Output>,
+        B: Parser<R>,
+    {
+        LeftAndRight::new(self, other)
+    }
+
+    /// Returns a new parser that combines the result of the current parser
+    /// with the given parser. The current parser must return a value,
+    /// but the given parser can return `None`.
+    fn and_opt<B>(self, other: B) -> LeftAndOptRight<Self, B>
+    where
+        B: Parser<R>,
+    {
+        LeftAndOptRight::new(self, other)
+    }
+
+    /// Returns a new parser prepending the given parser before the current one.
+    /// The given parser can return `None`. Its result will be undone if the
+    /// current parser returns `None`.
+    fn preceded_by<B>(self, other: B) -> OptLeftAndRight<B, Self>
+    where
+        B: Parser<R>,
+        R: Undo<B::Output>,
+    {
+        OptLeftAndRight::new(other, self)
+    }
+
+    /// Returns a new parser which returns the result of the given parser,
+    /// as long as the second parser returns `None`.
+    ///
+    /// If the given parser succeeds, its result will be undone as well as the
+    /// result of the current parser.
+    fn unless_followed_by<B>(self, other: B) -> RollbackLeftIfRight<Self, B>
+    where
+        R: Undo<Self::Output> + Undo<B::Output>,
+        B: Parser<R>,
+    {
+        RollbackLeftIfRight::new(self, other)
+    }
+
+    /// Returns a parser which combines the results of this parser and the given one.
+    /// If the given parser fails, the parser will panic.
+    fn and_demand<B>(self, other: B) -> LeftAndDemandRight<Self, B>
+    where
+        B: Parser<R>,
+    {
+        LeftAndDemandRight::new(self, other)
+    }
+}
+
+impl<R: Reader, T> BinaryParser<R> for T where T: Parser<R> {}

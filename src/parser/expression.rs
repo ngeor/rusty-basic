@@ -190,8 +190,10 @@ pub fn parenthesis<T: BufRead + 'static>(
 
 mod string_literal {
     use super::*;
+    use crate::parser::pc2::binary::BinaryParser;
     use crate::parser::pc2::read_one_p;
     use crate::parser::pc2::text::read_one_or_more_while_p;
+    use crate::parser::pc2::unary::UnaryParser;
 
     fn is_not_quote(ch: char) -> bool {
         ch != '"'

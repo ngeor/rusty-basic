@@ -3,7 +3,7 @@
 use super::{Parser, Reader, ReaderResult, Undo};
 use crate::parser::pc::ws::is_whitespace;
 use crate::parser::pc2::binary::{LeftAndOptRight, OptLeftAndRight};
-use crate::parser::pc2::unary::MapNoneToDefault;
+use crate::parser::pc2::unary::{MapNoneToDefault, UnaryParser};
 use std::marker::PhantomData;
 
 // Find a string

@@ -5,9 +5,8 @@ pub mod unary;
 pub mod unary_fn;
 
 use crate::parser::pc::{Reader, ReaderResult, Undo};
-use crate::parser::pc2::binary::{LeftAndOptRight, OptLeftAndRight};
+use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::text::{read_one_or_more_whitespace_p, Whitespace};
-use std::convert::TryFrom;
 
 pub trait Parser<R>: Sized
 where
@@ -23,120 +22,6 @@ where
     {
         let x = self;
         Box::new(move |reader| x.parse(reader))
-    }
-
-    //
-    // binary parsers
-    //
-
-    /// Returns a new parser that combines the result of the current parser
-    /// with the given parser. Both parsers must return a result. If the
-    /// second parser returns `None`, the first result will be undone.
-    fn and<B>(self, other: B) -> binary::LeftAndRight<Self, B>
-    where
-        R: Undo<Self::Output>,
-        B: Parser<R>,
-    {
-        binary::LeftAndRight::new(self, other)
-    }
-
-    /// Returns a new parser that combines the result of the current parser
-    /// with the given parser. The current parser must return a value,
-    /// but the given parser can return `None`.
-    fn and_opt<B>(self, other: B) -> binary::LeftAndOptRight<Self, B>
-    where
-        B: Parser<R>,
-    {
-        binary::LeftAndOptRight::new(self, other)
-    }
-
-    /// Returns a new parser prepending the given parser before the current one.
-    /// The given parser can return `None`. Its result will be undone if the
-    /// current parser returns `None`.
-    fn preceded_by<B>(self, other: B) -> binary::OptLeftAndRight<B, Self>
-    where
-        B: Parser<R>,
-        R: Undo<B::Output>,
-    {
-        binary::OptLeftAndRight::new(other, self)
-    }
-
-    /// Returns a new parser which returns the result of the given parser,
-    /// as long as the second parser returns `None`.
-    ///
-    /// If the given parser succeeds, its result will be undone as well as the
-    /// result of the current parser.
-    fn unless_followed_by<B>(self, other: B) -> binary::RollbackLeftIfRight<Self, B>
-    where
-        R: Undo<Self::Output> + Undo<B::Output>,
-        B: Parser<R>,
-    {
-        binary::RollbackLeftIfRight::new(self, other)
-    }
-
-    /// Returns a parser which combines the results of this parser and the given one.
-    /// If the given parser fails, the parser will panic.
-    fn and_demand<B>(self, other: B) -> binary::LeftAndDemandRight<Self, B>
-    where
-        B: Parser<R>,
-    {
-        binary::LeftAndDemandRight::new(self, other)
-    }
-
-    //
-    // unary parsers
-    //
-
-    /// Maps an unsuccessful result of the given parser into a successful default value.
-    fn map_none_to_default(self) -> unary::MapNoneToDefault<Self>
-    where
-        Self::Output: Default,
-    {
-        unary::MapNoneToDefault::new(self)
-    }
-
-    /// Keeps the left part of a tuple.
-    fn keep_left<T, U>(self) -> unary::KeepLeft<Self>
-    where
-        Self: Parser<R, Output = (T, U)>,
-    {
-        unary::KeepLeft::new(self)
-    }
-
-    /// Keeps the right part of a tuple.
-    fn keep_right<T, U>(self) -> unary::KeepRight<Self>
-    where
-        Self: Parser<R, Output = (T, U)>,
-    {
-        unary::KeepRight::new(self)
-    }
-
-    /// Keeps the middle part of a tuple.
-    fn keep_middle<A, B, C>(self) -> unary::KeepMiddle<Self>
-    where
-        Self: Parser<R, Output = ((A, B), C)>,
-    {
-        unary::KeepMiddle::new(self)
-    }
-
-    /// Adds location information to the result of this parser.
-    fn with_pos(self) -> unary::WithPos<Self> {
-        unary::WithPos::new(self)
-    }
-
-    /// Creates a new parser, wrapping the given parser as a reference.
-    fn as_ref(&self) -> unary::RefParser<Self> {
-        unary::RefParser::new(&self)
-    }
-
-    /// Converts the result of the parser with the `TryFrom` trait.
-    /// If the conversion fails, the item is undone.
-    fn try_from<T>(self) -> unary::TryFromParser<Self, T>
-    where
-        T: TryFrom<Self::Output>,
-        R: Undo<Self::Output>,
-    {
-        unary::TryFromParser::<Self, T>::new(self)
     }
 
     //

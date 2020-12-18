@@ -1,6 +1,7 @@
 use crate::common::QError;
 use crate::parser::char_reader::EolReader;
 use crate::parser::pc::{Reader, ReaderResult};
+use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::{
     any_identifier_with_dot_p, any_identifier_without_dot_p, with_pos,

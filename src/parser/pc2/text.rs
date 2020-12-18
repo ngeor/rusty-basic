@@ -2,25 +2,25 @@
 /// The Reader is always a Reader<Item = char>
 use super::{Parser, Reader, ReaderResult, Undo};
 use crate::parser::pc::ws::is_whitespace;
-use crate::parser::pc2::binary::{LeftAndOptRight, OptLeftAndRight};
+use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::unary::{MapNoneToDefault, UnaryParser};
 use std::marker::PhantomData;
 
-// Find a string
-
-pub struct ReadString<R: Reader<Item = char>> {
+/// A parser that finds a specific string.
+pub struct StringRecognizer<R: Reader<Item = char>> {
     needle: &'static str,
     reader: PhantomData<R>,
 }
 
-pub fn read_string_p<R: Reader<Item = char>>(needle: &'static str) -> ReadString<R> {
-    ReadString {
+/// Parses the given string.
+pub fn string_p<R: Reader<Item = char>>(needle: &'static str) -> StringRecognizer<R> {
+    StringRecognizer {
         needle,
         reader: PhantomData,
     }
 }
 
-impl<R> Parser<R> for ReadString<R>
+impl<R> Parser<R> for StringRecognizer<R>
 where
     R: Reader<Item = char>,
 {
@@ -53,11 +53,10 @@ where
     }
 }
 
-// Read one or more characters that meet the predicate
+/// Read one or more characters that meet the predicate
+pub struct StringWhile<R, F>(F, PhantomData<R>);
 
-pub struct ReadOneOrMoreWhile<R, F>(F, PhantomData<R>);
-
-impl<R, F> ReadOneOrMoreWhile<R, F>
+impl<R, F> StringWhile<R, F>
 where
     R: Reader<Item = char>,
     F: Fn(char) -> bool,
@@ -67,18 +66,18 @@ where
     }
 }
 
-impl<R, F> Parser<R> for ReadOneOrMoreWhile<R, F>
+impl<R, F> Parser<R> for StringWhile<R, F>
 where
     R: Reader<Item = char>,
     F: Fn(char) -> bool,
 {
     type Output = String;
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        do_parse_while(reader, &self.0)
+        do_string_while(reader, &self.0)
     }
 }
 
-fn do_parse_while<R, F>(reader: R, predicate: F) -> ReaderResult<R, String, R::Err>
+fn do_string_while<R, F>(reader: R, predicate: F) -> ReaderResult<R, String, R::Err>
 where
     R: Reader<Item = char>,
     F: Fn(char) -> bool,
@@ -110,24 +109,23 @@ where
     }
 }
 
-pub fn read_one_or_more_while_p<R, F>(predicate: F) -> ReadOneOrMoreWhile<R, F>
+pub fn string_while_p<R, F>(predicate: F) -> StringWhile<R, F>
 where
     R: Reader<Item = char>,
     F: Fn(char) -> bool,
 {
-    ReadOneOrMoreWhile::new(predicate)
+    StringWhile::new(predicate)
 }
 
-pub fn read_zero_or_more_while_p<R, F>(predicate: F) -> impl Parser<R, Output = String>
+pub fn opt_string_while_p<R, F>(predicate: F) -> MapNoneToDefault<StringWhile<R, F>>
 where
     R: Reader<Item = char>,
     F: Fn(char) -> bool,
 {
-    read_one_or_more_while_p(predicate).map_none_to_default()
+    string_while_p(predicate).map_none_to_default()
 }
 
-// Reads one or more whitespace
-
+/// Reads one or more whitespace
 pub struct Whitespace<R>(PhantomData<R>);
 
 impl<R> Whitespace<R> {
@@ -143,31 +141,25 @@ where
     type Output = String;
 
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
-        do_parse_while(reader, is_whitespace)
+        do_string_while(reader, is_whitespace)
     }
 }
 
-pub fn read_one_or_more_whitespace_p<R>() -> Whitespace<R>
+pub fn whitespace_p<R>() -> Whitespace<R>
 where
     R: Reader<Item = char>,
 {
     Whitespace::new()
 }
 
-pub fn read_zero_or_more_whitespace_p<R>() -> MapNoneToDefault<Whitespace<R>>
+pub fn opt_whitespace_p<R>() -> MapNoneToDefault<Whitespace<R>>
 where
     R: Reader<Item = char>,
 {
-    read_one_or_more_whitespace_p().map_none_to_default()
+    whitespace_p().map_none_to_default()
 }
 
-//
-// Concat stuff
-//
-
-// Left And Opt Right
-// Opt Left And Right
-
+/// Converts the result of the underlying parser into a string.
 pub struct Stringify<A>(A);
 
 impl<A> Stringify<A> {
@@ -215,3 +207,32 @@ where
         }
     }
 }
+
+/// Offers chaining methods for parsers where the reader's item is `char`.
+pub trait TextParser<R: Reader<Item = char>>: Parser<R> {
+    /// Converts the result of this parser into a string.
+    fn stringify(self) -> Stringify<Self> {
+        Stringify::new(self)
+    }
+
+    /// Allows for optional whitespace after this parser's successful result.
+    fn followed_by_opt_ws(self) -> LeftAndOptRight<Self, Whitespace<R>> {
+        self.and_opt(whitespace_p())
+    }
+
+    /// Allows for optional whitespace before this parser's successful result.
+    /// If the parser fails, the whitespace will be undone.
+    fn preceded_by_opt_ws(self) -> OptLeftAndRight<Whitespace<R>, Self> {
+        self.preceded_by(whitespace_p())
+    }
+
+    /// Allows for optional whitespace around this parser's successful result.
+    /// If the parser fails, the leading whitespace will be undone.
+    fn surrounded_by_opt_ws(
+        self,
+    ) -> OptLeftAndRight<Whitespace<R>, LeftAndOptRight<Self, Whitespace<R>>> {
+        self.followed_by_opt_ws().preceded_by_opt_ws()
+    }
+}
+
+impl<R: Reader<Item = char>, T> TextParser<R> for T where T: Parser<R> {}

@@ -191,8 +191,8 @@ pub fn parenthesis<T: BufRead + 'static>(
 mod string_literal {
     use super::*;
     use crate::parser::pc2::binary::BinaryParser;
-    use crate::parser::pc2::read_one_p;
-    use crate::parser::pc2::text::read_one_or_more_while_p;
+    use crate::parser::pc2::item_p;
+    use crate::parser::pc2::text::string_while_p;
     use crate::parser::pc2::unary::UnaryParser;
     use crate::parser::pc2::unary_fn::UnaryFnParser;
 
@@ -210,9 +210,9 @@ mod string_literal {
     where
         R: Reader<Item = char, Err = QError>,
     {
-        read_one_p('"')
-            .and_opt(read_one_or_more_while_p(is_not_quote))
-            .and_demand(read_one_p('"').or_syntax_error("Unterminated string"))
+        item_p('"')
+            .and_opt(string_while_p(is_not_quote))
+            .and_demand(item_p('"').or_syntax_error("Unterminated string"))
             .keep_middle()
             .map(|opt_s| Expression::StringLiteral(opt_s.unwrap_or_default()))
     }

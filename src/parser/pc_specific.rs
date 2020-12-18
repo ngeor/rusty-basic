@@ -1,3 +1,4 @@
+/// Parser combinators specific to this project (e.g. for keywords)
 use crate::common::QError;
 use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable};
 use crate::parser::pc::common::{
@@ -5,15 +6,13 @@ use crate::parser::pc::common::{
 };
 use crate::parser::pc::map::map;
 use crate::parser::pc::str::one_or_more_if;
-/// Parser combinators specific to this parser (e.g. for keywords)
 use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
 use crate::parser::pc2::binary::BinaryParser;
-use crate::parser::pc2::text::{
-    read_one_or_more_while_p, read_string_p, read_zero_or_more_whitespace_p,
-};
+use crate::parser::pc2::many::ManyParser;
+use crate::parser::pc2::text::{opt_whitespace_p, string_p, string_while_p, TextParser};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::{OrThrowVal, UnaryFnParser};
-use crate::parser::pc2::{read_one_if_p, read_one_p, Parser};
+use crate::parser::pc2::{if_p, item_p, Parser};
 use crate::parser::types::{Keyword, Name, QualifiedName, TypeQualifier};
 use std::convert::TryInto;
 
@@ -110,12 +109,27 @@ pub fn is_letter(ch: char) -> bool {
     (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
 }
 
+/// Parses a letter (case insensitive).
+pub fn letter_p<R: Reader<Item = char>>() -> impl Parser<R, Output = char> {
+    if_p(is_letter)
+}
+
 pub fn is_non_leading_identifier_without_dot(ch: char) -> bool {
     is_letter(ch) || is_digit(ch)
 }
 
+/// Parses one or more letters or digits.
+pub fn letters_or_digits_p<R: Reader<Item = char>>() -> impl Parser<R, Output = String> {
+    string_while_p(is_non_leading_identifier_without_dot)
+}
+
 pub fn is_non_leading_identifier_with_dot(ch: char) -> bool {
     is_non_leading_identifier_without_dot(ch) || (ch == '.')
+}
+
+/// Parses one or more letters or digits or dots.
+pub fn letters_or_digits_or_dots_p<R: Reader<Item = char>>() -> impl Parser<R, Output = String> {
+    string_while_p(is_non_leading_identifier_with_dot)
 }
 
 pub fn is_symbol(ch: char) -> bool {
@@ -143,18 +157,11 @@ where
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
 pub fn any_identifier_with_dot_p<R>() -> impl Parser<R, Output = String>
 where
-    R: Reader<Item = char> + 'static,
+    R: Reader<Item = char>,
 {
-    read_one_if_p(is_letter)
-        .and_opt(read_one_or_more_while_p(is_non_leading_identifier_with_dot))
-        .map(|(first_letter, opt_letters)| {
-            let mut s: String = String::new();
-            s.push(first_letter);
-            if let Some(letters) = opt_letters {
-                s.push_str(letters.as_ref());
-            }
-            s
-        })
+    letter_p()
+        .and_opt(letters_or_digits_or_dots_p())
+        .stringify()
 }
 
 // #[deprecated]
@@ -166,15 +173,13 @@ where
     any_identifier_without_dot_p().convert_to_fn()
 }
 
+/// Parses an identifier that does not include a dot.
+/// This might be a keyword.
 pub fn any_identifier_without_dot_p<R>() -> impl Parser<R, Output = String>
 where
     R: Reader<Item = char> + 'static,
 {
-    read_one_if_p(is_letter)
-        .and_opt(read_one_or_more_while_p(
-            is_non_leading_identifier_without_dot,
-        ))
-        .stringify()
+    letter_p().and_opt(letters_or_digits_p()).stringify()
 }
 
 // #[deprecated]
@@ -186,12 +191,13 @@ where
     keyword_p(needle).convert_to_fn()
 }
 
+/// Recognizes the given keyword.
 pub fn keyword_p<R>(keyword: Keyword) -> impl Parser<R, Output = (Keyword, String)>
 where
     R: Reader<Item = char> + 'static,
 {
-    read_string_p(keyword.as_str())
-        .unless_followed_by(read_one_if_p(is_not_whole_keyword))
+    string_p(keyword.as_str())
+        .unless_followed_by(if_p(is_not_whole_keyword))
         .map(move |keyword_as_str| (keyword, keyword_as_str))
 }
 
@@ -262,7 +268,7 @@ where
     S: Parser<R> + 'static,
 {
     source.one_or_more_delimited_by(
-        read_one_p(',').surrounded_by_opt_ws(),
+        item_p(',').surrounded_by_opt_ws(),
         QError::syntax_error_fn("Error: trailing comma"),
     )
 }
@@ -295,13 +301,13 @@ where
     R: Reader<Item = char, Err = QError>,
     S: Parser<R> + 'static,
 {
-    read_one_p('(')
-        .and_opt(read_zero_or_more_whitespace_p())
+    item_p('(')
+        .and_opt(opt_whitespace_p())
         .stringify()
         .and(source)
         .and_demand(
-            read_zero_or_more_whitespace_p()
-                .and(read_one_p(')'))
+            opt_whitespace_p()
+                .and(item_p(')'))
                 .or_syntax_error("Expected: closing parenthesis"),
         )
         .keep_middle()

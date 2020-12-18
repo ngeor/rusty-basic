@@ -13,7 +13,7 @@ macro_rules! unary_fn_parser {
     };
 }
 
-/// Maps the successful result of a parser.
+// Maps the successful result of a parser.
 unary_fn_parser!(Map);
 
 impl<R, S, F, U> Parser<R> for Map<S, F>
@@ -29,11 +29,11 @@ where
     }
 }
 
-/// Validates the result of a parser.
-/// The validating function can return:
-/// Ok(true) -> success
-/// Ok(false) -> undo
-/// Err -> err
+// Validates the result of a parser.
+// The validating function can return:
+// Ok(true) -> success
+// Ok(false) -> undo
+// Err -> err
 unary_fn_parser!(Validate);
 
 impl<R, S, F> Parser<R> for Validate<S, F>
@@ -56,7 +56,7 @@ where
     }
 }
 
-/// Throws an error if the parser returns `None`.
+// Throws an error if the parser returns `None`.
 unary_fn_parser!(OrThrow);
 
 impl<R, S, F> Parser<R> for OrThrow<S, F>
@@ -102,8 +102,8 @@ where
     }
 }
 
-/// Filters the parser result given a predicate. The predicate has access to a
-/// reference of the item.
+// Filters the parser result given a predicate. The predicate has access to a
+// reference of the item.
 unary_fn_parser!(FilterRef);
 
 impl<R, S, F> Parser<R> for FilterRef<S, F>
@@ -128,8 +128,8 @@ where
     }
 }
 
-/// Filters the parser result given a predicate. The predicate has access to a
-/// copy of the item.
+// Filters the parser result given a predicate. The predicate has access to a
+// copy of the item.
 unary_fn_parser!(Filter);
 
 impl<R, S, F> Parser<R> for Filter<S, F>
@@ -155,9 +155,9 @@ where
     }
 }
 
-/// Similar to Filter, but the source parser returns the same item as the reader.
-/// This is due to the inability to have an Undo in the Reader for the Reader's
-/// item.
+// Similar to Filter, but the source parser returns the same item as the reader.
+// This is due to the inability to have an Undo in the Reader for the Reader's
+// item.
 unary_fn_parser!(FilterReaderItem);
 
 impl<R, S, F> Parser<R> for FilterReaderItem<S, F>

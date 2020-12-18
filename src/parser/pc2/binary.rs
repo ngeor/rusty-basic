@@ -14,8 +14,8 @@ macro_rules! binary_parser {
     };
 }
 
-/// LeftAndRight requires that both left and right parsers return a result.
-/// It will undo the first result if the second is `None`.
+// LeftAndRight requires that both left and right parsers return a result.
+// It will undo the first result if the second is `None`.
 binary_parser!(LeftAndRight);
 
 impl<R, A, B> Parser<R> for LeftAndRight<A, B>
@@ -40,8 +40,8 @@ where
     }
 }
 
-/// OptLeftAndRight requires that the right parser returns a result.
-/// It will undo the first result if it was `Some` and the second was `None`.
+// OptLeftAndRight requires that the right parser returns a result.
+// It will undo the first result if it was `Some` and the second was `None`.
 binary_parser!(OptLeftAndRight);
 
 impl<A, B, R> Parser<R> for OptLeftAndRight<A, B>
@@ -65,7 +65,7 @@ where
     }
 }
 
-/// LeftAndOptRight requires that the left parser returns a result.
+// LeftAndOptRight requires that the left parser returns a result.
 binary_parser!(LeftAndOptRight);
 
 impl<R, A, B> Parser<R> for LeftAndOptRight<A, B>
@@ -87,7 +87,7 @@ where
     }
 }
 
-/// Returns the result of the left parser, unless the right parser also succeeds.
+// Returns the result of the left parser, unless the right parser also succeeds.
 binary_parser!(RollbackLeftIfRight);
 
 impl<R, A, B> Parser<R> for RollbackLeftIfRight<A, B>
@@ -112,7 +112,7 @@ where
     }
 }
 
-/// Similar to And, but without undo.
+// Similar to And, but without undo.
 binary_parser!(LeftAndDemandRight);
 
 impl<R, A, B> Parser<R> for LeftAndDemandRight<A, B>

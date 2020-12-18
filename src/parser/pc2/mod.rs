@@ -7,6 +7,7 @@ pub mod unary_fn;
 use crate::parser::pc::{Reader, ReaderResult, Undo};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::text::{read_one_or_more_whitespace_p, Whitespace};
+use crate::parser::pc2::unary_fn::UnaryFnParser;
 
 pub trait Parser<R>: Sized
 where
@@ -22,70 +23,6 @@ where
     {
         let x = self;
         Box::new(move |reader| x.parse(reader))
-    }
-
-    //
-    // unary fn parsers
-    //
-
-    /// Maps the result of this parser with the given function.
-    fn map<F, U>(self, map: F) -> unary_fn::Map<Self, F>
-    where
-        Self: Sized,
-        F: Fn(Self::Output) -> U,
-    {
-        unary_fn::Map::new(self, map)
-    }
-
-    /// Validates the result of a parser.
-    /// The validating function can return:
-    /// - Ok(true) -> success
-    /// - Ok(false) -> undo
-    /// - Err -> err
-    fn validate<F>(self, validation: F) -> unary_fn::Validate<Self, F>
-    where
-        R: Undo<Self::Output>,
-        F: Fn(&Self::Output) -> Result<bool, R::Err>,
-    {
-        unary_fn::Validate::new(self, validation)
-    }
-
-    /// Returns a new parser which with throw an error if this parser
-    /// returns `None`. Thus, the resulting parser will never return `None`.
-    fn or_throw<F>(self, f: F) -> unary_fn::OrThrow<Self, F>
-    where
-        F: Fn() -> R::Err,
-    {
-        unary_fn::OrThrow::new(self, f)
-    }
-
-    /// Returns a new parser which filters the result of this parser.
-    /// The filtering function has access to a reference of the item.
-    fn filter_ref<F>(self, f: F) -> unary_fn::FilterRef<Self, F>
-    where
-        F: Fn(&Self::Output) -> bool,
-    {
-        unary_fn::FilterRef::new(self, f)
-    }
-
-    /// Returns a new parser which filters the result of this parser.
-    /// The filtering function has access to a copy of the item.
-    fn filter<F>(self, f: F) -> unary_fn::Filter<Self, F>
-    where
-        F: Fn(Self::Output) -> bool,
-        R: Undo<Self::Output>,
-        Self::Output: Copy,
-    {
-        unary_fn::Filter::new(self, f)
-    }
-
-    fn filter_reader_item<F>(self, f: F) -> unary_fn::FilterReaderItem<Self, F>
-    where
-        F: Fn(Self::Output) -> bool,
-        R: Reader<Item = Self::Output>,
-        Self::Output: Copy,
-    {
-        unary_fn::FilterReaderItem::new(self, f)
     }
 
     //

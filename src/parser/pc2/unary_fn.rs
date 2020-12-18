@@ -13,8 +13,7 @@ macro_rules! unary_fn_parser {
     };
 }
 
-// Maps the successful result of a parser.
-
+/// Maps the successful result of a parser.
 unary_fn_parser!(Map);
 
 impl<R, S, F, U> Parser<R> for Map<S, F>
@@ -30,12 +29,11 @@ where
     }
 }
 
-// Validates the result of a parser.
-// The validating function can return:
-// Ok(true) -> success
-// Ok(false) -> undo
-// Err -> err
-
+/// Validates the result of a parser.
+/// The validating function can return:
+/// Ok(true) -> success
+/// Ok(false) -> undo
+/// Err -> err
 unary_fn_parser!(Validate);
 
 impl<R, S, F> Parser<R> for Validate<S, F>
@@ -58,8 +56,7 @@ where
     }
 }
 
-// Throws an error if the parser returns `None`.
-
+/// Throws an error if the parser returns `None`.
 unary_fn_parser!(OrThrow);
 
 impl<R, S, F> Parser<R> for OrThrow<S, F>
@@ -79,8 +76,7 @@ where
     }
 }
 
-// Same as OrThrow but the error is not calculated by a function
-
+/// Same as OrThrow but the error is not calculated by a function
 pub struct OrThrowVal<S, E>(S, E);
 
 impl<S, E> OrThrowVal<S, E> {
@@ -106,9 +102,8 @@ where
     }
 }
 
-// Filters the parser result given a predicate. The predicate has access to a
-// reference of the item.
-
+/// Filters the parser result given a predicate. The predicate has access to a
+/// reference of the item.
 unary_fn_parser!(FilterRef);
 
 impl<R, S, F> Parser<R> for FilterRef<S, F>
@@ -133,9 +128,8 @@ where
     }
 }
 
-// Filters the parser result given a predicate. The predicate has access to a
-// copy of the item.
-
+/// Filters the parser result given a predicate. The predicate has access to a
+/// copy of the item.
 unary_fn_parser!(Filter);
 
 impl<R, S, F> Parser<R> for Filter<S, F>
@@ -161,6 +155,9 @@ where
     }
 }
 
+/// Similar to Filter, but the source parser returns the same item as the reader.
+/// This is due to the inability to have an Undo in the Reader for the Reader's
+/// item.
 unary_fn_parser!(FilterReaderItem);
 
 impl<R, S, F> Parser<R> for FilterReaderItem<S, F>
@@ -185,3 +182,71 @@ where
         }
     }
 }
+
+/// Offers chaining methods that result in unary parsers that work with a function.
+pub trait UnaryFnParser<R: Reader>: Parser<R> {
+    /// Maps the result of this parser with the given function.
+    fn map<F, U>(self, map: F) -> Map<Self, F>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> U,
+    {
+        Map::new(self, map)
+    }
+
+    /// Validates the result of a parser.
+    /// The validating function can return:
+    /// - Ok(true) -> success
+    /// - Ok(false) -> undo
+    /// - Err -> err
+    fn validate<F>(self, validation: F) -> Validate<Self, F>
+    where
+        R: Undo<Self::Output>,
+        F: Fn(&Self::Output) -> Result<bool, R::Err>,
+    {
+        Validate::new(self, validation)
+    }
+
+    /// Returns a new parser which with throw an error if this parser
+    /// returns `None`. Thus, the resulting parser will never return `None`.
+    fn or_throw<F>(self, f: F) -> OrThrow<Self, F>
+    where
+        F: Fn() -> R::Err,
+    {
+        OrThrow::new(self, f)
+    }
+
+    /// Returns a new parser which filters the result of this parser.
+    /// The filtering function has access to a reference of the item.
+    fn filter_ref<F>(self, f: F) -> FilterRef<Self, F>
+    where
+        F: Fn(&Self::Output) -> bool,
+    {
+        FilterRef::new(self, f)
+    }
+
+    /// Returns a new parser which filters the result of this parser.
+    /// The filtering function has access to a copy of the item.
+    fn filter<F>(self, f: F) -> Filter<Self, F>
+    where
+        F: Fn(Self::Output) -> bool,
+        R: Undo<Self::Output>,
+        Self::Output: Copy,
+    {
+        Filter::new(self, f)
+    }
+
+    /// Returns a new parser which filters the result of this parser.
+    /// The filtering function has access to a copy of the item.
+    /// This parser must return the same item as the reader.
+    fn filter_reader_item<F>(self, f: F) -> FilterReaderItem<Self, F>
+    where
+        F: Fn(Self::Output) -> bool,
+        R: Reader<Item = Self::Output>,
+        Self::Output: Copy,
+    {
+        FilterReaderItem::new(self, f)
+    }
+}
+
+impl<R: Reader, T> UnaryFnParser<R> for T where T: Parser<R> {}

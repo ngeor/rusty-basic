@@ -16,8 +16,7 @@ macro_rules! unary_parser {
     };
 }
 
-// Maps `None` to `Some(default)`.
-
+/// Maps `None` to `Some(default)`.
 unary_parser!(MapNoneToDefault);
 
 impl<R, S> Parser<R> for MapNoneToDefault<S>
@@ -33,8 +32,7 @@ where
     }
 }
 
-// Keeps the left side of a tuple.
-
+/// Keeps the left side of a tuple.
 unary_parser!(KeepLeft);
 
 impl<R, S, T, U> Parser<R> for KeepLeft<S>
@@ -50,8 +48,7 @@ where
     }
 }
 
-// Keeps the right side of a tuple.
-
+/// Keeps the right side of a tuple.
 unary_parser!(KeepRight);
 
 impl<R, S, T, U> Parser<R> for KeepRight<S>
@@ -67,8 +64,7 @@ where
     }
 }
 
-// Keeps the middle of a tuple.
-
+/// Keeps the middle of a tuple.
 unary_parser!(KeepMiddle);
 
 impl<R, S, A, B, C> Parser<R> for KeepMiddle<S>
@@ -85,8 +81,7 @@ where
     }
 }
 
-// Adds location information to the result of a parser.
-
+/// Adds location information to the result of a parser.
 unary_parser!(WithPos);
 
 impl<S, R> Parser<R> for WithPos<S>
@@ -102,8 +97,7 @@ where
     }
 }
 
-// Wraps a reference of a parser.
-
+/// Wraps a reference of a parser.
 pub struct RefParser<'a, A>(&'a A);
 
 impl<'a, A> RefParser<'a, A> {
@@ -124,8 +118,7 @@ where
     }
 }
 
-// Converts with the TryFrom trait.
-
+/// Converts with the TryFrom trait.
 pub struct TryFromParser<S, T>(S, PhantomData<T>);
 
 impl<S, T> TryFromParser<S, T> {

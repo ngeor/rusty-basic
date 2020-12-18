@@ -12,7 +12,7 @@ use crate::parser::pc2::text::{
     read_one_or_more_while_p, read_string_p, read_zero_or_more_whitespace_p,
 };
 use crate::parser::pc2::unary::UnaryParser;
-use crate::parser::pc2::unary_fn::OrThrowVal;
+use crate::parser::pc2::unary_fn::{OrThrowVal, UnaryFnParser};
 use crate::parser::pc2::{read_one_if_p, read_one_p, Parser};
 use crate::parser::types::{Keyword, Name, QualifiedName, TypeQualifier};
 use std::convert::TryInto;

@@ -81,6 +81,25 @@ where
     }
 }
 
+// Peeks the result by undoing it.
+unary_parser!(PeekReaderItem);
+
+impl<R, S> Parser<R> for PeekReaderItem<S>
+where
+    R: Reader,
+    R::Item: Copy,
+    S: Parser<R, Output = R::Item>,
+{
+    type Output = S::Output;
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_item) = self.0.parse(reader)?;
+        match opt_item {
+            Some(item) => Ok((reader.undo_item(item), Some(item))),
+            _ => Ok((reader, None)),
+        }
+    }
+}
+
 // Adds location information to the result of a parser.
 unary_parser!(WithPos);
 
@@ -113,7 +132,7 @@ where
 {
     type Output = A::Output;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         self.0.parse(reader)
     }
 }
@@ -179,6 +198,15 @@ pub trait UnaryParser<R: Reader>: Parser<R> {
         Self: Parser<R, Output = ((A, B), C)>,
     {
         KeepMiddle::new(self)
+    }
+
+    /// Peeks the item of the underlying reader by undoing it.
+    fn peek_reader_item(self) -> PeekReaderItem<Self>
+    where
+        Self: Parser<R, Output = R::Item>,
+        R::Item: Copy,
+    {
+        PeekReaderItem::new(self)
     }
 
     /// Adds location information to the result of this parser.

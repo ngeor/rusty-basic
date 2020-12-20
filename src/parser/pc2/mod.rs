@@ -55,7 +55,7 @@ where
 {
     type Output = R::Item;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         reader.read()
     }
 }
@@ -71,10 +71,55 @@ where
 }
 
 /// A parser that reads the next item if it matches the given parameter.
-pub fn item_p<R>(item: R::Item) -> impl Parser<R, Output = R::Item>
+pub struct Item<R: Reader>(PhantomData<R>, R::Item);
+
+impl<R> Parser<R> for Item<R>
 where
     R: Reader,
-    R::Item: Copy + Eq + 'static,
+    R::Item: Eq,
 {
-    if_p(move |x| x == item)
+    type Output = R::Item;
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_item) = reader.read()?;
+        match opt_item {
+            Some(item) => {
+                if item == self.1 {
+                    Ok((reader, Some(item)))
+                } else {
+                    Ok((reader.undo_item(item), None))
+                }
+            }
+            _ => Ok((reader, None)),
+        }
+    }
+}
+
+/// A parser that reads the next item if it matches the given parameter.
+pub fn item_p<R>(item: R::Item) -> Item<R>
+where
+    R: Reader,
+    R::Item: Eq,
+{
+    Item::<R>(PhantomData, item)
+}
+
+/// Wrapper for older function parsers
+pub struct LazyFnParser<R, T, F>(PhantomData<R>, PhantomData<T>, F);
+
+impl<R, T, F> LazyFnParser<R, T, F> {
+    pub fn new(f: F) -> Self {
+        Self(PhantomData, PhantomData, f)
+    }
+}
+
+impl<R, T, F> Parser<R> for LazyFnParser<R, T, F>
+where
+    R: Reader,
+    F: Fn() -> Box<dyn Fn(R) -> ReaderResult<R, T, R::Err>>,
+{
+    type Output = T;
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+        (self.2)()(reader)
+    }
 }

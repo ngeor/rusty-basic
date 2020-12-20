@@ -1,4 +1,4 @@
-use crate::parser::pc::Reader;
+use crate::parser::pc::{Reader, Undo};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::{any_p, Parser};
 use crate::parser::TypeQualifier;
@@ -9,4 +9,11 @@ where
     R: Reader<Item = char>,
 {
     any_p::<R>().try_from::<TypeQualifier>()
+}
+
+impl<R: Reader<Item = char>> Undo<TypeQualifier> for R {
+    fn undo(self, type_qualifier: TypeQualifier) -> Self {
+        let ch = char::from(type_qualifier);
+        self.undo_item(ch)
+    }
 }

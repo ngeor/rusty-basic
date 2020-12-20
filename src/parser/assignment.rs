@@ -160,6 +160,17 @@ mod tests {
                     )
                 );
             }
+
+            #[test]
+            fn test_max_length_variable_with_trailing_dot() {
+                assert_top_level_assignment!(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM.% = 42",
+                    Expression::Variable(
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM.%".into(),
+                        ExpressionType::Unresolved
+                    )
+                );
+            }
         }
     }
 

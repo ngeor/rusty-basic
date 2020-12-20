@@ -52,7 +52,7 @@ where
 {
     type Output = (Option<A::Output>, B::Output);
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_a) = self.0.parse(reader)?;
         let (reader, opt_b) = self.1.parse(reader)?;
         match opt_b {

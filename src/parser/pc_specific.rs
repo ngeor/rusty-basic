@@ -7,25 +7,19 @@ use crate::parser::pc::common::{
 use crate::parser::pc::map::map;
 use crate::parser::pc::str::one_or_more_if;
 use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
-use crate::parser::pc2::binary::BinaryParser;
-use crate::parser::pc2::many::ManyParser;
-use crate::parser::pc2::text::{opt_whitespace_p, string_p, string_while_p, TextParser};
+use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
+use crate::parser::pc2::many::{ManyParser, OneOrMoreDelimited};
+use crate::parser::pc2::text::{
+    letters_or_digits_or_dots_p, letters_or_digits_p, letters_p, string_p, TextParser, Whitespace,
+};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::{OrThrowVal, UnaryFnParser};
-use crate::parser::pc2::{if_p, item_p, Parser};
-use crate::parser::types::{Keyword, Name, QualifiedName, TypeQualifier};
-use std::convert::TryInto;
+use crate::parser::pc2::{if_p, item_p, Item, Parser};
+use crate::parser::types::{Keyword, Name, QualifiedName};
 
 // ========================================================
 // Undo support
 // ========================================================
-
-impl<R: Reader<Item = char>> Undo<TypeQualifier> for R {
-    fn undo(self, s: TypeQualifier) -> Self {
-        let ch: char = s.try_into().unwrap();
-        self.undo_item(ch)
-    }
-}
 
 impl<R: Reader<Item = char>> Undo<CaseInsensitiveString> for R {
     fn undo(self, s: CaseInsensitiveString) -> Self {
@@ -109,27 +103,12 @@ pub fn is_letter(ch: char) -> bool {
     (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
 }
 
-/// Parses a letter (case insensitive).
-pub fn letter_p<R: Reader<Item = char>>() -> impl Parser<R, Output = char> {
-    if_p(is_letter)
-}
-
 pub fn is_non_leading_identifier_without_dot(ch: char) -> bool {
     is_letter(ch) || is_digit(ch)
 }
 
-/// Parses one or more letters or digits.
-pub fn letters_or_digits_p<R: Reader<Item = char>>() -> impl Parser<R, Output = String> {
-    string_while_p(is_non_leading_identifier_without_dot)
-}
-
 pub fn is_non_leading_identifier_with_dot(ch: char) -> bool {
     is_non_leading_identifier_without_dot(ch) || (ch == '.')
-}
-
-/// Parses one or more letters or digits or dots.
-pub fn letters_or_digits_or_dots_p<R: Reader<Item = char>>() -> impl Parser<R, Output = String> {
-    string_while_p(is_non_leading_identifier_with_dot)
 }
 
 pub fn is_symbol(ch: char) -> bool {
@@ -137,13 +116,6 @@ pub fn is_symbol(ch: char) -> bool {
         || (ch > '9' && ch < 'A')
         || (ch > 'Z' && ch < 'a')
         || (ch > 'z' && ch <= '~')
-}
-
-pub fn any_symbol<R, E>() -> impl Fn(R) -> ReaderResult<R, char, E>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-{
-    read_if(is_symbol)
 }
 
 pub fn any_letter<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
@@ -155,11 +127,11 @@ where
 
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn any_identifier_with_dot_p<R>() -> impl Parser<R, Output = String>
+pub fn identifier_with_dot<R>() -> impl Parser<R, Output = String>
 where
     R: Reader<Item = char>,
 {
-    letter_p()
+    letters_p()
         .and_opt(letters_or_digits_or_dots_p())
         .stringify()
 }
@@ -170,16 +142,16 @@ where
     R: Reader<Item = char, Err = E> + 'static,
     E: 'static,
 {
-    any_identifier_without_dot_p().convert_to_fn()
+    identifier_without_dot_p().convert_to_fn()
 }
 
 /// Parses an identifier that does not include a dot.
 /// This might be a keyword.
-pub fn any_identifier_without_dot_p<R>() -> impl Parser<R, Output = String>
+pub fn identifier_without_dot_p<R>() -> impl Parser<R, Output = String>
 where
-    R: Reader<Item = char> + 'static,
+    R: Reader<Item = char>,
 {
-    letter_p().and_opt(letters_or_digits_p()).stringify()
+    letters_p().and_opt(letters_or_digits_p()).stringify()
 }
 
 // #[deprecated]
@@ -262,17 +234,6 @@ where
     ))
 }
 
-pub fn csv_one_or_more_p<R, S>(source: S) -> impl Parser<R, Output = Vec<S::Output>>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-    S: Parser<R> + 'static,
-{
-    source.one_or_more_delimited_by(
-        item_p(',').surrounded_by_opt_ws(),
-        QError::syntax_error_fn("Error: trailing comma"),
-    )
-}
-
 /// Parses opening and closing parenthesis around the given source.
 ///
 /// Panics if the source returns `Ok(None)`.
@@ -296,32 +257,47 @@ where
     )
 }
 
+/// Parses open and closing parenthesis around the given source.
+/// Additional whitespace is allowed inside the parenthesis.
+/// If the parser returns `None`, the left parenthesis is undone.
 pub fn in_parenthesis_p<R, S>(source: S) -> impl Parser<R, Output = S::Output>
 where
     R: Reader<Item = char, Err = QError>,
-    S: Parser<R> + 'static,
+    S: Parser<R>,
 {
     item_p('(')
-        .and_opt(opt_whitespace_p())
+        .followed_by_opt_ws()
         .stringify()
         .and(source)
         .and_demand(
-            opt_whitespace_p()
-                .and(item_p(')'))
+            item_p(')')
+                .preceded_by_opt_ws()
                 .or_syntax_error("Expected: closing parenthesis"),
         )
         .keep_middle()
 }
 
-pub trait PcSpecific<R: Reader>: Sized {
-    fn or_syntax_error(self, msg: &str) -> OrThrowVal<Self, QError>;
-}
-
-impl<R: Reader<Err = QError>, T> PcSpecific<R> for T
-where
-    T: Parser<R>,
-{
+/// Offers chaining methods for parsers specific to rusty_basic.
+pub trait PcSpecific<R: Reader<Item = char, Err = QError>>: Parser<R> {
+    /// Throws a syntax error if this parser returns `None`.
     fn or_syntax_error(self, msg: &str) -> OrThrowVal<Self, QError> {
         OrThrowVal::new(self, QError::syntax_error(msg))
     }
+
+    /// Parses one or more items provided by the given source, separated by commas.
+    /// Trailing commas are not allowed. Space is allowed around commas.
+    fn csv(
+        self,
+    ) -> OneOrMoreDelimited<
+        Self,
+        OptLeftAndRight<Whitespace<R>, LeftAndOptRight<Item<R>, Whitespace<R>>>,
+        QError,
+    > {
+        self.one_or_more_delimited_by(
+            item_p(',').surrounded_by_opt_ws(),
+            QError::syntax_error("Error: trailing comma"),
+        )
+    }
 }
+
+impl<R: Reader<Item = char, Err = QError>, T> PcSpecific<R> for T where T: Parser<R> {}

@@ -3,7 +3,9 @@
 use super::{Parser, Reader, ReaderResult, Undo};
 use crate::parser::pc::ws::is_whitespace;
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
-use crate::parser::pc2::unary::{MapNoneToDefault, UnaryParser};
+use crate::parser::pc_specific::{
+    is_letter, is_non_leading_identifier_with_dot, is_non_leading_identifier_without_dot,
+};
 use std::marker::PhantomData;
 
 /// A parser that finds a specific string.
@@ -117,47 +119,43 @@ where
     StringWhile::new(predicate)
 }
 
-pub fn opt_string_while_p<R, F>(predicate: F) -> MapNoneToDefault<StringWhile<R, F>>
-where
-    R: Reader<Item = char>,
-    F: Fn(char) -> bool,
-{
-    string_while_p(predicate).map_none_to_default()
+macro_rules! recognize_while_predicate {
+    ($struct_name:tt, $fn_name:tt, $predicate:expr) => {
+        pub struct $struct_name<R: Reader<Item = char>>(PhantomData<R>);
+
+        impl<R: Reader<Item = char>> $struct_name<R> {
+            pub fn new() -> Self {
+                Self(PhantomData)
+            }
+        }
+
+        impl<R: Reader<Item = char>> Parser<R> for $struct_name<R> {
+            type Output = String;
+
+            fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+                do_string_while(reader, $predicate)
+            }
+        }
+
+        pub fn $fn_name<R: Reader<Item = char>>() -> $struct_name<R> {
+            $struct_name::new()
+        }
+    };
 }
 
-/// Reads one or more whitespace
-pub struct Whitespace<R>(PhantomData<R>);
-
-impl<R> Whitespace<R> {
-    pub fn new() -> Self {
-        Self(PhantomData)
-    }
-}
-
-impl<R> Parser<R> for Whitespace<R>
-where
-    R: Reader<Item = char>,
-{
-    type Output = String;
-
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
-        do_string_while(reader, is_whitespace)
-    }
-}
-
-pub fn whitespace_p<R>() -> Whitespace<R>
-where
-    R: Reader<Item = char>,
-{
-    Whitespace::new()
-}
-
-pub fn opt_whitespace_p<R>() -> MapNoneToDefault<Whitespace<R>>
-where
-    R: Reader<Item = char>,
-{
-    whitespace_p().map_none_to_default()
-}
+// Reads one or more whitespace
+recognize_while_predicate!(Whitespace, whitespace_p, is_whitespace);
+recognize_while_predicate!(Letters, letters_p, is_letter);
+recognize_while_predicate!(
+    LettersOrDigits,
+    letters_or_digits_p,
+    is_non_leading_identifier_without_dot
+);
+recognize_while_predicate!(
+    LettersOrDigitsOrDots,
+    letters_or_digits_or_dots_p,
+    is_non_leading_identifier_with_dot
+);
 
 /// Converts the result of the underlying parser into a string.
 pub struct Stringify<A>(A);
@@ -178,7 +176,7 @@ where
 {
     type Output = String;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
             Some((left, Some(right))) => Ok((reader, Some(format!("{}{}", left, right)))),
@@ -198,7 +196,7 @@ where
 {
     type Output = String;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
             Some((Some(left), right)) => Ok((reader, Some(format!("{}{}", left, right)))),

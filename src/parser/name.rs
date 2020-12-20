@@ -4,9 +4,7 @@ use crate::parser::pc::{Reader, ReaderResult};
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
-use crate::parser::pc_specific::{
-    any_identifier_with_dot_p, any_identifier_without_dot_p, with_pos,
-};
+use crate::parser::pc_specific::{identifier_with_dot, identifier_without_dot_p, with_pos};
 use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{BareName, BareNameNode, Keyword, Name, NameNode, TypeQualifier};
 use std::io::BufRead;
@@ -35,7 +33,7 @@ pub fn name_with_dot_p<R>() -> impl Parser<R, Output = Name>
 where
     R: Reader<Item = char, Err = QError> + 'static,
 {
-    any_identifier_with_dot_p()
+    identifier_with_dot()
         .validate(|n| {
             if n.len() > MAX_LENGTH {
                 Err(QError::IdentifierTooLong)
@@ -91,23 +89,17 @@ pub fn any_word_with_dot_p<R>() -> impl Parser<R, Output = BareName>
 where
     R: Reader<Item = char, Err = QError> + 'static,
 {
-    any_identifier_with_dot_p()
+    identifier_with_dot()
         .validate(ensure_length_and_not_keyword)
         .map(|x| x.into())
 }
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-// #[deprecated]
-pub fn any_word_without_dot<T: BufRead + 'static>(
-) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError> {
-    any_word_without_dot_p().convert_to_fn()
-}
-
 pub fn any_word_without_dot_p<R>() -> impl Parser<R, Output = BareName>
 where
     R: Reader<Item = char, Err = QError> + 'static,
 {
-    any_identifier_without_dot_p()
+    identifier_without_dot_p()
         .validate(ensure_length_and_not_keyword)
         .map(|x| x.into())
 }

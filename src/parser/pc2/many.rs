@@ -1,5 +1,6 @@
 /// This module has parsers that return one or more items.
 use super::{Parser, Reader, ReaderResult};
+use crate::parser::pc2::unary::{MapNoneToDefault, UnaryParser};
 
 /// Calls the underlying parser multiple times and collects the results in a
 /// `Vec`.
@@ -40,15 +41,15 @@ where
 ///
 /// - S: The parser the provides the items.
 /// - D: The parser that provides the delimiters.
-/// - F: A function that returns an error in case of trailing delimiters.
-pub struct OneOrMoreDelimited<S, D, F>(S, D, F);
+/// - E: An error in case of trailing delimiters.
+pub struct OneOrMoreDelimited<S, D, E>(S, D, E);
 
-impl<R, S, D, F> Parser<R> for OneOrMoreDelimited<S, D, F>
+impl<R, S, D, E> Parser<R> for OneOrMoreDelimited<S, D, E>
 where
-    R: Reader,
+    R: Reader<Err = E>,
     S: Parser<R>,
     D: Parser<R>,
-    F: Fn() -> R::Err,
+    E: Clone,
 {
     type Output = Vec<S::Output>;
 
@@ -77,7 +78,7 @@ where
                 _ => {
                     if read_delimiter {
                         // error: trailing delimiter
-                        return Err((reader, (self.2)()));
+                        return Err((reader, self.2.clone()));
                     } else {
                         // break the loop
                         has_more = false;
@@ -95,19 +96,27 @@ where
 
 /// Offers chaining methods that result in parsers the return multiple results.
 pub trait ManyParser<R: Reader>: Parser<R> {
-    /// Returns a parser that uses this parser to parse items and collects them
-    /// into a `Vec`. Parsing stops when the underlying parser returns `None`.
+    /// Returns a parser that uses this parser to parse one or more items and
+    /// collects them into a `Vec`.
+    /// Parsing stops when the underlying parser returns `None`.
     fn one_or_more(self) -> OneOrMore<Self> {
         OneOrMore(self)
     }
 
+    /// Returns a parser that uses this parser to parse zero or more items and
+    /// collects them into a `Vec`.
+    /// Parsing stops when the underlying parser returns `None`.
+    fn zero_or_more(self) -> MapNoneToDefault<OneOrMore<Self>> {
+        self.one_or_more().map_none_to_default()
+    }
+
     /// Returns a parser that parses items separated by a delimiter.
-    fn one_or_more_delimited_by<D, F>(
+    fn one_or_more_delimited_by<D, E>(
         self,
         delimiter: D,
-        trailing_delimiter_err_fn: F,
-    ) -> OneOrMoreDelimited<Self, D, F> {
-        OneOrMoreDelimited(self, delimiter, trailing_delimiter_err_fn)
+        trailing_delimiter_err: E,
+    ) -> OneOrMoreDelimited<Self, D, E> {
+        OneOrMoreDelimited(self, delimiter, trailing_delimiter_err)
     }
 }
 

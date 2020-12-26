@@ -5,6 +5,8 @@ use crate::parser::name::MAX_LENGTH;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::and_then;
 use crate::parser::pc::*;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -19,7 +21,10 @@ use std::str::FromStr;
 pub fn param_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNameNode, QError>> {
     and_then(
-        opt_seq2(with_pos(param_name()), type_definition_extended()),
+        opt_seq2(
+            with_pos(param_name_p().convert_to_fn()),
+            type_definition_extended(),
+        ),
         |(
             Locatable {
                 element: (name, is_array),
@@ -60,9 +65,11 @@ pub fn param_name_node<T: BufRead + 'static>(
     )
 }
 
-fn param_name<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (Name, bool), QError>> {
-    and_then(expression::word::word(), |name_expr| match name_expr {
+fn param_name_p<R>() -> impl Parser<R, Output = (Name, bool)>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    expression::word::word_p().and_then(|name_expr| match name_expr {
         Expression::Variable(var_name, _) => Ok((var_name, false)),
         Expression::Property(_, _, _) => {
             // only allowed if we can fold it back into a single name

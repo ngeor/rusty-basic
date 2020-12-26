@@ -4,6 +4,7 @@ use crate::parser::expression;
 use crate::parser::pc::common::{drop_left, many, seq2};
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
+use crate::parser::pc2::Parser;
 use crate::parser::types::*;
 use std::io::BufRead;
 
@@ -14,7 +15,7 @@ use std::io::BufRead;
 pub fn sub_call_or_assignment<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     Box::new(move |r| {
-        match expression::word::word()(r) {
+        match expression::word::word_p().parse(r) {
             Ok((r, Some(name_expr))) => {
                 // is there an equal sign following?
                 match ws::zero_or_more_around(read('='))(r) {

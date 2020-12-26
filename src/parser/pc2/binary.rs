@@ -137,6 +137,24 @@ where
     }
 }
 
+binary_parser!(LeftOrRight);
+
+impl<R, A, B> Parser<R> for LeftOrRight<A, B>
+where
+    R: Reader,
+    A: Parser<R>,
+    B: Parser<R, Output = A::Output>,
+{
+    type Output = A::Output;
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_a) = self.0.parse(reader)?;
+        match opt_a {
+            Some(a) => Ok((reader, Some(a))),
+            _ => self.1.parse(reader),
+        }
+    }
+}
+
 /// Offers chaining methods that result in binary parsers.
 pub trait BinaryParser<R: Reader>: Parser<R> {
     /// Returns a new parser that combines the result of the current parser
@@ -191,6 +209,15 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
         B: Parser<R>,
     {
         LeftAndDemandRight::new(self, other)
+    }
+
+    /// Returns a parser which will return the result of this parser if it
+    /// is successful, otherwise it will use the given parser.
+    fn or<B>(self, other: B) -> LeftOrRight<Self, B>
+    where
+        B: Parser<R, Output = Self::Output>,
+    {
+        LeftOrRight::new(self, other)
     }
 }
 

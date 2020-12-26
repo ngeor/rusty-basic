@@ -119,7 +119,7 @@ where
 {
     type Output = T;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         (self.2)()(reader)
     }
 }

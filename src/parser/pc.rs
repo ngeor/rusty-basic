@@ -27,10 +27,17 @@ pub trait Reader: Sized {
 
 pub mod undo {
     use super::{Reader, Undo};
+    use crate::common::Locatable;
 
     impl<R: Reader<Item = char>> Undo<char> for R {
         fn undo(self, item: char) -> Self {
             self.undo_item(item)
+        }
+    }
+
+    impl<R: Reader<Item = char>> Undo<Locatable<char>> for R {
+        fn undo(self, item: Locatable<char>) -> Self {
+            self.undo_item(item.element)
         }
     }
 
@@ -41,6 +48,13 @@ pub mod undo {
                 result = result.undo_item(ch);
             }
             result
+        }
+    }
+
+    impl<R: Reader<Item = char>> Undo<(String, Locatable<char>)> for R {
+        fn undo(self, item: (String, Locatable<char>)) -> Self {
+            let (a, b) = item;
+            self.undo(b).undo(a)
         }
     }
 }

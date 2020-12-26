@@ -87,6 +87,29 @@ where
     }
 }
 
+pub struct LeftAndOptRightFactory<A, F>(A, F);
+
+impl<R, A, F, B> Parser<R> for LeftAndOptRightFactory<A, F>
+where
+    R: Reader,
+    A: Parser<R>,
+    F: Fn(&A::Output) -> B,
+    B: Parser<R>,
+{
+    type Output = (A::Output, Option<B::Output>);
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_a) = self.0.parse(reader)?;
+        match opt_a {
+            Some(a) => {
+                let next_parser = (self.1)(&a);
+                let (reader, opt_b) = next_parser.parse(reader)?;
+                Ok((reader, Some((a, opt_b))))
+            }
+            _ => Ok((reader, None)),
+        }
+    }
+}
+
 // Returns the result of the left parser, unless the right parser also succeeds.
 binary_parser!(RollbackLeftIfRight);
 
@@ -176,6 +199,14 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
         B: Parser<R>,
     {
         LeftAndOptRight::new(self, other)
+    }
+
+    fn and_opt_factory<F, B>(self, factory: F) -> LeftAndOptRightFactory<Self, F>
+    where
+        F: Fn(&Self::Output) -> B,
+        B: Parser<R>,
+    {
+        LeftAndOptRightFactory(self, factory)
     }
 
     /// Returns a new parser prepending the given parser before the current one.

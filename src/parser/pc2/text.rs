@@ -56,15 +56,15 @@ where
 }
 
 /// Read one or more characters that meet the predicate
-pub struct StringWhile<R, F>(F, PhantomData<R>);
+pub struct StringWhile<R, F>(PhantomData<R>, F, bool);
 
 impl<R, F> StringWhile<R, F>
 where
     R: Reader<Item = char>,
     F: Fn(char) -> bool,
 {
-    pub fn new(predicate: F) -> Self {
-        Self(predicate, PhantomData)
+    pub fn new(predicate: F, reject_empty: bool) -> Self {
+        Self(PhantomData, predicate, reject_empty)
     }
 }
 
@@ -75,11 +75,15 @@ where
 {
     type Output = String;
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        do_string_while(reader, &self.0)
+        do_string_while(reader, &self.1, self.2)
     }
 }
 
-fn do_string_while<R, F>(reader: R, predicate: F) -> ReaderResult<R, String, R::Err>
+fn do_string_while<R, F>(
+    reader: R,
+    predicate: F,
+    reject_empty: bool,
+) -> ReaderResult<R, String, R::Err>
 where
     R: Reader<Item = char>,
     F: Fn(char) -> bool,
@@ -104,7 +108,7 @@ where
             }
         }
     }
-    if result.is_empty() {
+    if result.is_empty() && reject_empty {
         Ok((r, None))
     } else {
         Ok((r, Some(result)))
@@ -116,16 +120,16 @@ where
     R: Reader<Item = char>,
     F: Fn(char) -> bool,
 {
-    StringWhile::new(predicate)
+    StringWhile::new(predicate, true)
 }
 
 macro_rules! recognize_while_predicate {
     ($struct_name:tt, $fn_name:tt, $predicate:expr) => {
-        pub struct $struct_name<R: Reader<Item = char>>(PhantomData<R>);
+        pub struct $struct_name<R: Reader<Item = char>>(PhantomData<R>, bool);
 
         impl<R: Reader<Item = char>> $struct_name<R> {
-            pub fn new() -> Self {
-                Self(PhantomData)
+            pub fn new(reject_empty: bool) -> Self {
+                Self(PhantomData, reject_empty)
             }
         }
 
@@ -133,12 +137,12 @@ macro_rules! recognize_while_predicate {
             type Output = String;
 
             fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-                do_string_while(reader, $predicate)
+                do_string_while(reader, $predicate, self.1)
             }
         }
 
         pub fn $fn_name<R: Reader<Item = char>>() -> $struct_name<R> {
-            $struct_name::new()
+            $struct_name::new(true)
         }
     };
 }

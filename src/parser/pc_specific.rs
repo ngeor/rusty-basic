@@ -5,7 +5,6 @@ use crate::parser::pc::common::{
     and, demand, drop_left, many_with_terminating_indicator, opt_seq2, seq3,
 };
 use crate::parser::pc::map::map;
-use crate::parser::pc::str::one_or_more_if;
 use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::many::{ManyParser, OneOrMoreDelimited};
@@ -166,7 +165,7 @@ where
 /// Recognizes the given keyword.
 pub fn keyword_p<R>(keyword: Keyword) -> impl Parser<R, Output = (Keyword, String)>
 where
-    R: Reader<Item = char> + 'static,
+    R: Reader<Item = char>,
 {
     string_p(keyword.as_str())
         .unless_followed_by(if_p(is_not_whole_keyword))
@@ -202,14 +201,6 @@ where
         ),
         demand_keyword(needle),
     ))
-}
-
-pub fn any_digits<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
-{
-    one_or_more_if(is_digit)
 }
 
 //

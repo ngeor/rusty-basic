@@ -4,6 +4,11 @@ use crate::parser::expression;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::TextParser;
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{item_p, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -157,10 +162,7 @@ mod close {
             let input = "CLOSE(#1)";
             assert_eq!(
                 parse_err_node(input),
-                QErrorNode::Pos(
-                    QError::syntax_error("Expected: expression"),
-                    Location::new(1, 7)
-                )
+                QErrorNode::Pos(QError::syntax_error("No separator: ("), Location::new(1, 7))
             );
         }
 
@@ -1458,22 +1460,39 @@ mod print {
 }
 
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
+#[deprecated]
 fn file_handle_as_expression_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    map(expression::file_handle(), |Locatable { element, pos }| {
-        Expression::IntegerLiteral(element.into()).at(pos)
-    })
+    file_handle_as_expression_node_p().convert_to_fn()
 }
 
+fn file_handle_as_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    expression::file_handle_p()
+        .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
+}
+
+#[deprecated]
 fn parse_file_number<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<FileHandle>, QError>> {
-    drop_right(seq2(
-        ws::one_or_more_leading(expression::file_handle()),
-        demand(
-            ws::zero_or_more_leading(read(',')),
-            QError::syntax_error_fn("Expected: ,"),
-        ),
-    ))
+    parse_file_number_p().convert_to_fn()
+}
+
+fn parse_file_number_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    expression::file_handle_p()
+        .preceded_by_opt_ws()
+        .keep_right()
+        .and_demand(
+            item_p(',')
+                .preceded_by_opt_ws()
+                .or_syntax_error("Expected: ,"),
+        )
+        .keep_left()
 }
 
 fn parse_first_arg_after_file_number<T: BufRead + 'static>(

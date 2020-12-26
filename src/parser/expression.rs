@@ -1,21 +1,32 @@
 use crate::common::*;
-use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
-use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::{digits_p, whitespace_p, TextParser, Whitespace};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{item_p, LazyFnParser, Parser};
+use crate::parser::pc2::{if_p, item_p, LazyFnParser, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use crate::variant;
+use std::marker::PhantomData;
 
-fn lazy_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
+    LazyExpressionParser(PhantomData)
+}
+
+struct LazyExpressionParser<R>(PhantomData<R>);
+
+impl<R> Parser<R> for LazyExpressionParser<R>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    LazyFnParser::new(expression_node)
+    type Output = ExpressionNode;
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+        let parser = expression_node_p();
+        parser.parse(reader)
+    }
 }
 
 #[deprecated]
@@ -23,10 +34,14 @@ pub fn demand_expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Expressio
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    demand(
-        expression_node(),
-        QError::syntax_error_fn("Expected: expression"),
-    )
+    demand_expression_node_p().convert_to_fn()
+}
+
+pub fn demand_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    expression_node_p().or_syntax_error("Expected: expression")
 }
 
 #[deprecated]
@@ -48,13 +63,17 @@ pub fn guarded_expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Expressi
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
+    guarded_expression_node_p().convert_to_fn()
+}
+
+pub fn guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     // the order is important because if there is whitespace we can pick up any expression
     // ws+ expr
     // ws* ( expr )
-    or(
-        guarded_whitespace_expression_node(),
-        guarded_parenthesis_expression_node(),
-    )
+    guarded_whitespace_expression_node_p().or(guarded_parenthesis_expression_node_p())
 }
 
 #[deprecated]
@@ -63,17 +82,25 @@ fn guarded_parenthesis_expression_node<R>(
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    // ws* ( expr )
-    map(
-        seq3(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('('))),
-            // caveat: once it reads the opening parenthesis, it goes into demand mode,
-            // which is not consistent with the name of the function
-            demand_expression_node(),
-            demand(read(')'), QError::syntax_error_fn("Expected: )")),
-        ),
-        |(Locatable { pos, .. }, e, _)| Expression::Parenthesis(Box::new(e)).at(pos),
-    )
+    guarded_parenthesis_expression_node_p().convert_to_fn()
+}
+
+fn guarded_parenthesis_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    Whitespace::new(false)
+        .and(item_p('(').with_pos())
+        .and(expression_node_p())
+        .and_demand(
+            item_p(')')
+                .preceded_by_opt_ws()
+                .or_syntax_error("Expected: )"),
+        )
+        .keep_left()
+        .map(|((_, left_parenthesis), child)| {
+            Expression::Parenthesis(Box::new(child)).at(left_parenthesis.pos())
+        })
 }
 
 #[deprecated]
@@ -83,7 +110,14 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     // ws+ expr
-    crate::parser::pc::ws::one_or_more_leading(expression_node())
+    guarded_whitespace_expression_node_p().convert_to_fn()
+}
+
+fn guarded_whitespace_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    whitespace_p().and(expression_node_p()).keep_right()
 }
 
 #[deprecated]
@@ -115,22 +149,23 @@ pub fn expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, 
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        combine_if_first_some(
-            // left side
-            single_expression_node(),
-            // maybe right side
-            |first_expr| {
-                seq2(
-                    operator(first_expr.is_parenthesis()),
-                    demand(
-                        crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
-                        QError::syntax_error_fn("Expected: right side expression"),
-                    ),
-                )
-            },
-        ),
-        |(left_side, opt_right_side)| {
+    expression_node_p().convert_to_fn()
+}
+
+pub fn expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    single_expression_node_p()
+        .and_opt_factory(|first_expr| {
+            operator_p(first_expr.is_parenthesis()).and_demand(
+                lazy_expression_node_p()
+                    .preceded_by_opt_ws()
+                    .or_syntax_error("Expected: right side expression")
+                    .keep_right(),
+            )
+        })
+        .map(|(left_side, opt_right_side)| {
             (match opt_right_side {
                 Some((loc_op, right_side)) => {
                     let Locatable { element: op, pos } = loc_op;
@@ -139,8 +174,7 @@ where
                 None => left_side,
             })
             .simplify_unary_minus_literals()
-        },
-    )
+        })
 }
 
 #[deprecated]
@@ -197,25 +231,28 @@ pub fn file_handle<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Locatable<FileHandle
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    and_then(
-        seq2(
-            with_pos(read('#')),
-            demand(
-                any_digits(),
-                QError::syntax_error_fn("Expected: digits after #"),
-            ),
-        ),
-        |(Locatable { pos, .. }, digits)| match digits.parse::<u8>() {
-            Ok(d) => {
-                if d > 0 {
-                    Ok(Locatable::new(d.into(), pos))
-                } else {
-                    Err(QError::BadFileNameOrNumber)
+    file_handle_p().convert_to_fn()
+}
+
+pub fn file_handle_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    item_p('#')
+        .with_pos()
+        .and_demand(digits_p().or_syntax_error("Expected: digits after #"))
+        .and_then(
+            |(Locatable { pos, .. }, digits)| match digits.parse::<u8>() {
+                Ok(d) => {
+                    if d > 0 {
+                        Ok(Locatable::new(d.into(), pos))
+                    } else {
+                        Err(QError::BadFileNameOrNumber)
+                    }
                 }
-            }
-            Err(_) => Err(QError::BadFileNameOrNumber),
-        },
-    )
+                Err(_) => Err(QError::BadFileNameOrNumber),
+            },
+        )
 }
 
 pub fn parenthesis_p<R>() -> impl Parser<R, Output = Expression>
@@ -847,96 +884,82 @@ pub mod word {
     }
 }
 
-#[deprecated]
-pub fn operator<R>(
+fn operator_p<R>(had_parenthesis_before: bool) -> impl Parser<R, Output = Locatable<Operator>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    relational_operator_p()
+        .preceded_by_opt_ws()
+        .keep_right()
+        .or(arithmetic_op_p()
+            .with_pos()
+            .preceded_by_opt_ws()
+            .keep_right())
+        .or(and_or_p(
+            had_parenthesis_before,
+            Keyword::And,
+            Operator::And,
+        ))
+        .or(and_or_p(had_parenthesis_before, Keyword::Or, Operator::Or))
+}
+
+fn and_or_p<R>(
     had_parenthesis_before: bool,
-) -> Box<dyn Fn(R) -> ReaderResult<R, Locatable<Operator>, QError>>
+    keyword: Keyword,
+    operator: Operator,
+) -> impl Parser<R, Output = Locatable<Operator>>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char> + HasLocation,
 {
-    or_vec(vec![
-        crate::parser::pc::ws::zero_or_more_leading(relational_operator()),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('+'))),
-            |x| x.map(|_| Operator::Plus),
-        ),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('-'))),
-            |x| x.map(|_| Operator::Minus),
-        ),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('*'))),
-            |x| x.map(|_| Operator::Multiply),
-        ),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('/'))),
-            |x| x.map(|_| Operator::Divide),
-        ),
-        if had_parenthesis_before {
-            // skip whitespace + AND
-            map(
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(keyword(Keyword::And))),
-                |x| x.map(|_| Operator::And),
-            )
-        } else {
-            // demand whitespace + AND
-            map(
-                crate::parser::pc::ws::one_or_more_leading(with_pos(keyword(Keyword::And))),
-                |locatable| locatable.map(|_| Operator::And),
-            )
-        },
-        if had_parenthesis_before {
-            // skip whitespace + OR
-            map(
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(keyword(Keyword::Or))),
-                |x| x.map(|_| Operator::Or),
-            )
-        } else {
-            // demand whitespace + OR
-            map(
-                crate::parser::pc::ws::one_or_more_leading(with_pos(keyword(Keyword::Or))),
-                |locatable| locatable.map(|_| Operator::Or),
-            )
-        },
-    ])
+    Whitespace::new(!had_parenthesis_before)
+        .and(keyword_p(keyword).map(move |_| operator).with_pos())
+        .keep_right()
 }
 
-#[deprecated]
-pub fn lte<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Operator, QError>>
+fn arithmetic_op_p<R>() -> impl Parser<R, Output = Operator>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char>,
 {
-    and_then(
-        opt_seq2(read('<'), read_if(|ch| ch == '=' || ch == '>')),
-        |(_, opt_r)| match opt_r {
-            Some('=') => Ok(Operator::LessOrEqual),
-            Some('>') => Ok(Operator::NotEqual),
-            None => Ok(Operator::Less),
-            Some(ch) => Err(QError::SyntaxError(format!(
-                "Invalid character {} after <",
-                ch
-            ))),
-        },
-    )
-}
-
-#[deprecated]
-pub fn gte<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Operator, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    map(opt_seq2(read('>'), read('=')), |(_, opt_r)| match opt_r {
-        Some(_) => Operator::GreaterOrEqual,
-        _ => Operator::Greater,
+    if_p(|ch| ch == '+' || ch == '-' || ch == '*' || ch == '/').map(|ch| match ch {
+        '+' => Operator::Plus,
+        '-' => Operator::Minus,
+        '*' => Operator::Multiply,
+        '/' => Operator::Divide,
+        _ => panic!("Parser should not have parsed this"),
     })
 }
 
-#[deprecated]
-pub fn eq<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Operator, QError>>
+fn lte_p<R>() -> impl Parser<R, Output = Operator>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char>,
 {
-    map(read('='), |_| Operator::Equal)
+    item_p('<')
+        .and_opt(if_p(|ch| ch == '=' || ch == '>'))
+        .map(|(_, opt_r)| match opt_r {
+            Some('=') => Operator::LessOrEqual,
+            Some('>') => Operator::NotEqual,
+            None => Operator::Less,
+            _ => panic!("Parser should not have parsed this"),
+        })
+}
+
+fn gte_p<R>() -> impl Parser<R, Output = Operator>
+where
+    R: Reader<Item = char>,
+{
+    item_p('>')
+        .and_opt(item_p('='))
+        .map(|(_, opt_r)| match opt_r {
+            Some(_) => Operator::GreaterOrEqual,
+            None => Operator::Greater,
+        })
+}
+
+fn eq_p<R>() -> impl Parser<R, Output = Operator>
+where
+    R: Reader<Item = char>,
+{
+    item_p('=').map(|_| Operator::Equal)
 }
 
 #[deprecated]
@@ -944,7 +967,14 @@ pub fn relational_operator<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Locatable<Op
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    with_pos(or_vec(vec![lte(), gte(), eq()]))
+    relational_operator_p().convert_to_fn()
+}
+
+fn relational_operator_p<R>() -> impl Parser<R, Output = Locatable<Operator>>
+where
+    R: Reader<Item = char> + HasLocation,
+{
+    lte_p().or(gte_p()).or(eq_p()).with_pos()
 }
 
 #[cfg(test)]

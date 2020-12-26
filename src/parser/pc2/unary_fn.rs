@@ -79,26 +79,6 @@ where
     }
 }
 
-// Throws an error if the parser returns `None`.
-unary_fn_parser!(OrThrow);
-
-impl<R, S, F> Parser<R> for OrThrow<S, F>
-where
-    R: Reader,
-    S: Parser<R>,
-    F: Fn() -> R::Err,
-{
-    type Output = S::Output;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_item) = self.0.parse(reader)?;
-        if opt_item.is_some() {
-            Ok((reader, opt_item))
-        } else {
-            Err((reader, (self.1)()))
-        }
-    }
-}
-
 /// Same as OrThrow but the error is not calculated by a function
 pub struct OrThrowVal<S, E>(S, E);
 
@@ -236,15 +216,6 @@ pub trait UnaryFnParser<R: Reader>: Parser<R> {
         F: Fn(&Self::Output) -> Result<bool, R::Err>,
     {
         Validate::new(self, validation)
-    }
-
-    /// Returns a new parser which with throw an error if this parser
-    /// returns `None`. Thus, the resulting parser will never return `None`.
-    fn or_throw<F>(self, f: F) -> OrThrow<Self, F>
-    where
-        F: Fn() -> R::Err,
-    {
-        OrThrow::new(self, f)
     }
 
     /// Returns a new parser which filters the result of this parser.

@@ -4,7 +4,7 @@ use crate::parser::pc::{Reader, ReaderResult};
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
-use crate::parser::pc_specific::{identifier_with_dot, identifier_without_dot_p, with_pos};
+use crate::parser::pc_specific::{identifier_with_dot, with_pos};
 use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{BareName, BareNameNode, Keyword, Name, NameNode, TypeQualifier};
 use std::io::BufRead;
@@ -94,16 +94,6 @@ where
         .map(|x| x.into())
 }
 
-/// Reads any word, i.e. any identifier which is not a keyword.
-pub fn any_word_without_dot_p<R>() -> impl Parser<R, Output = BareName>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    identifier_without_dot_p()
-        .validate(ensure_length_and_not_keyword)
-        .map(|x| x.into())
-}
-
 fn ensure_length_and_not_keyword(s: &String) -> Result<bool, QError> {
     if s.len() > MAX_LENGTH {
         Err(QError::IdentifierTooLong)
@@ -118,20 +108,6 @@ fn ensure_length_and_not_keyword(s: &String) -> Result<bool, QError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_any_word_without_dot() {
-        let inputs = ["abc", "abc1", "abc.def", "a$"];
-        let expected_outputs = ["abc", "abc1", "abc", "a"];
-        for i in 0..inputs.len() {
-            let input = inputs[i];
-            let expected_output = expected_outputs[i];
-            let eol_reader = EolReader::from(input);
-            let parser = any_word_without_dot_p();
-            let (_, result) = parser.parse(eol_reader).expect("Should succeed");
-            assert_eq!(result, Some(BareName::from(expected_output)));
-        }
-    }
 
     #[test]
     fn test_any_word_with_dot() {

@@ -4,7 +4,7 @@ use super::{Parser, Reader, ReaderResult, Undo};
 use crate::parser::pc::ws::is_whitespace;
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc_specific::{
-    is_letter, is_non_leading_identifier_with_dot, is_non_leading_identifier_without_dot,
+    is_digit, is_letter, is_non_leading_identifier_with_dot, is_non_leading_identifier_without_dot,
 };
 use std::marker::PhantomData;
 
@@ -156,6 +156,7 @@ recognize_while_predicate!(
     letters_or_digits_or_dots_p,
     is_non_leading_identifier_with_dot
 );
+recognize_while_predicate!(Digits, digits_p, is_digit);
 
 /// Converts the result of the underlying parser into a string.
 pub struct Stringify<A>(A);

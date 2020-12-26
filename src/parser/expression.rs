@@ -3,10 +3,20 @@ use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
-use crate::parser::pc2::Parser;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{item_p, LazyFnParser, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use crate::variant;
+
+fn lazy_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    LazyFnParser::new(expression_node)
+}
 
 pub fn demand_expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
 where
@@ -143,37 +153,43 @@ where
     ])
 }
 
-pub fn unary_minus<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
+fn unary_minus<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq2(
-            with_pos(read('-')),
-            demand(
-                lazy(expression_node),
-                QError::syntax_error_fn("Expected: expression after unary minus"),
-            ),
-        ),
-        |(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos()),
-    )
+    unary_minus_p().convert_to_fn()
+}
+
+fn unary_minus_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    item_p('-')
+        .with_pos()
+        .and_demand(
+            lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
+        )
+        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos()))
 }
 
 pub fn unary_not<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        crate::parser::pc::ws::seq2(
-            with_pos(keyword(Keyword::Not)),
-            demand(
-                lazy(expression_node),
-                QError::syntax_error_fn("Expected: expression after NOT"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace after NOT"),
-        ),
-        |(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()),
-    )
+    unary_not_p().convert_to_fn()
+}
+
+pub fn unary_not_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Not)
+        .with_pos()
+        .and_demand(
+            LazyFnParser::new(guarded_expression_node)
+                .or_syntax_error("Expected: expression after NOT"),
+        )
+        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
 }
 
 pub fn file_handle<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Locatable<FileHandle>, QError>>
@@ -205,13 +221,17 @@ pub fn parenthesis<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Expression, QError>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        in_parenthesis(demand(
-            crate::parser::pc::ws::zero_or_more_around(lazy(expression_node)),
-            QError::syntax_error_fn("Expected: expression"),
-        )),
-        |v| Expression::Parenthesis(Box::new(v)),
+    parenthesis_p().convert_to_fn()
+}
+
+pub fn parenthesis_p<R>() -> impl Parser<R, Output = Expression>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    in_parenthesis_p(
+        lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
+    .map(|child| Expression::Parenthesis(Box::new(child)))
 }
 
 mod string_literal {
@@ -248,38 +268,60 @@ mod string_literal {
 
 mod number_literal {
     use super::*;
+    use crate::parser::pc2::binary::BinaryParser;
+    use crate::parser::pc2::item_p;
+    use crate::parser::pc2::text::{digits_p, string_p, string_while_p, TextParser};
+    use crate::parser::pc2::unary::UnaryParser;
+    use crate::parser::pc2::unary_fn::UnaryFnParser;
     use crate::variant::BitVec;
+
+    pub fn number_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation,
+    {
+        // TODO support more qualifiers besides '#'
+        digits_p()
+            .and_opt(
+                item_p('.')
+                    .and_demand(digits_p().or_syntax_error("Expected: digits after decimal point"))
+                    .keep_right(),
+            )
+            .and_opt(item_p('#'))
+            .and_then(
+                |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
+                    Some(fraction_digits) => parse_floating_point_literal_no_pos(
+                        int_digits,
+                        fraction_digits,
+                        opt_double.is_some(),
+                    ),
+                    _ => integer_literal_to_expression_node_no_pos(int_digits),
+                },
+            )
+            .with_pos()
+    }
 
     pub fn number_literal<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        and_then(
-            opt_seq3(
-                with_pos(any_digits()),
-                seq2(
-                    with_pos(read('.')),
-                    demand(
-                        any_digits(),
-                        QError::syntax_error_fn("Expected: digits after decimal point"),
-                    ),
-                ),
-                read('#'),
-            ),
-            |(
-                Locatable {
-                    element: int_digits,
-                    pos,
-                },
-                opt_frac,
-                opt_double,
-            )| match opt_frac {
-                Some((_, frac_digits)) => {
-                    parse_floating_point_literal(int_digits, frac_digits, opt_double.is_some(), pos)
-                }
-                None => integer_literal_to_expression_node(int_digits, pos),
-            },
-        )
+        number_literal_p().convert_to_fn()
+    }
+
+    pub fn float_without_leading_zero_p<R>() -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation,
+    {
+        item_p('.')
+            .and(digits_p())
+            .and_opt(item_p('#'))
+            .and_then(|((_, fraction_digits), opt_double)| {
+                parse_floating_point_literal_no_pos(
+                    "0".to_string(),
+                    fraction_digits,
+                    opt_double.is_some(),
+                )
+            })
+            .with_pos()
     }
 
     pub fn float_without_leading_zero<R>(
@@ -287,58 +329,37 @@ mod number_literal {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        and_then(
-            opt_seq3(
-                with_pos(read('.')),
-                demand(
-                    any_digits(),
-                    QError::syntax_error_fn("Expected: digits after decimal point"),
-                ),
-                read('#'),
-            ),
-            |(Locatable { pos, .. }, opt_frac_digits, opt_double)| {
-                parse_floating_point_literal(
-                    "0".to_string(),
-                    opt_frac_digits.unwrap(),
-                    opt_double.is_some(),
-                    pos,
-                )
-            },
-        )
+        float_without_leading_zero_p().convert_to_fn()
     }
 
-    fn integer_literal_to_expression_node(
-        s: String,
-        pos: Location,
-    ) -> Result<ExpressionNode, QError> {
+    fn integer_literal_to_expression_node_no_pos(s: String) -> Result<Expression, QError> {
         match s.parse::<u32>() {
             Ok(u) => {
                 if u <= variant::MAX_INTEGER as u32 {
-                    Ok(Expression::IntegerLiteral(u as i32).at(pos))
+                    Ok(Expression::IntegerLiteral(u as i32))
                 } else if u <= variant::MAX_LONG as u32 {
-                    Ok(Expression::LongLiteral(u as i64).at(pos))
+                    Ok(Expression::LongLiteral(u as i64))
                 } else {
-                    Ok(Expression::DoubleLiteral(u as f64).at(pos))
+                    Ok(Expression::DoubleLiteral(u as f64))
                 }
             }
             Err(e) => Err(e.into()),
         }
     }
 
-    fn parse_floating_point_literal(
+    fn parse_floating_point_literal_no_pos(
         integer_digits: String,
         fraction_digits: String,
         is_double: bool,
-        pos: Location,
-    ) -> Result<ExpressionNode, QError> {
+    ) -> Result<Expression, QError> {
         if is_double {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
-                Ok(f) => Ok(Expression::DoubleLiteral(f).at(pos)),
+                Ok(f) => Ok(Expression::DoubleLiteral(f)),
                 Err(err) => Err(err.into()),
             }
         } else {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
-                Ok(f) => Ok(Expression::SingleLiteral(f).at(pos)),
+                Ok(f) => Ok(Expression::SingleLiteral(f)),
                 Err(err) => Err(err.into()),
             }
         }
@@ -358,6 +379,28 @@ mod number_literal {
         hex_or_oct_literal("&O", is_oct_digit, convert_oct_digits)
     }
 
+    fn hex_or_literal_p<R>(
+        needle: &'static str,
+        predicate: fn(char) -> bool,
+        converter: fn(String) -> Result<Expression, QError>,
+    ) -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation,
+    {
+        string_p(needle)
+            .and_opt(item_p('-'))
+            .stringify()
+            .and(string_while_p(predicate))
+            .and_then(move |(opt_negative, digits)| {
+                if opt_negative.ends_with('-') {
+                    Err(QError::Overflow)
+                } else {
+                    converter(digits)
+                }
+            })
+            .with_pos()
+    }
+
     fn hex_or_oct_literal<R>(
         needle: &'static str,
         predicate: fn(char) -> bool,
@@ -366,22 +409,7 @@ mod number_literal {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        with_pos(and_then(
-            and(
-                str::str_case_insensitive(needle),
-                or(
-                    and(read('-'), str::one_or_more_if(predicate)),
-                    map(str::one_or_more_if(predicate), |h| ('+', h)),
-                ),
-            ),
-            move |(_ampersand, (sign, digits))| {
-                if sign == '-' {
-                    Err(QError::Overflow)
-                } else {
-                    converter(digits)
-                }
-            },
-        ))
+        hex_or_literal_p(needle, predicate, converter).convert_to_fn()
     }
 
     fn is_oct_digit(ch: char) -> bool {
@@ -449,7 +477,7 @@ pub mod word {
     use crate::parser::pc2::many::ManyParser;
     use crate::parser::pc2::unary::UnaryParser;
     use crate::parser::pc2::unary_fn::UnaryFnParser;
-    use crate::parser::pc2::{any_p, item_p, LazyFnParser};
+    use crate::parser::pc2::{any_p, item_p};
     use crate::parser::type_qualifier::type_qualifier_p;
     use std::convert::TryFrom;
 
@@ -571,14 +599,7 @@ pub mod word {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        in_parenthesis_p(expression_node_p().csv().map_none_to_default())
-    }
-
-    fn expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        LazyFnParser::new(expression_node)
+        in_parenthesis_p(lazy_expression_node_p().csv().map_none_to_default())
     }
 
     fn dot_property_name<R>() -> impl Parser<R, Output = String>

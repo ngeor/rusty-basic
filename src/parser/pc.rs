@@ -798,39 +798,6 @@ pub mod str {
     {
         map(source, |x| x.to_string())
     }
-
-    pub fn str_case_insensitive<R>(
-        needle: &'static str,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, String, R::Err>>
-    where
-        R: Reader<Item = char> + 'static,
-    {
-        Box::new(move |mut reader| {
-            let mut result = String::new();
-            for n in needle.chars() {
-                let res = reader.read();
-                match res {
-                    Ok((r, Some(ch))) => {
-                        result.push(ch);
-                        if ch.to_ascii_uppercase() == n.to_ascii_uppercase() {
-                            reader = r;
-                        } else {
-                            return Ok((r.undo(result), None));
-                        }
-                    }
-                    Ok((r, None)) => {
-                        // EOF before matching all characters, undo collected and return None
-                        return Ok((r.undo(result), None));
-                    }
-                    Err((r, err)) => {
-                        // Error occurred, exit fast
-                        return Err((r, err));
-                    }
-                }
-            }
-            Ok((reader, Some(result)))
-        })
-    }
 }
 
 // ========================================================

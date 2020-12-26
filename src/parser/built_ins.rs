@@ -146,7 +146,7 @@ mod close {
             assert_eq!(
                 parse_err_node(input),
                 QErrorNode::Pos(
-                    QError::syntax_error("Expected: expression"),
+                    QError::syntax_error("Expected: expression inside parenthesis"),
                     Location::new(1, 8)
                 )
             );

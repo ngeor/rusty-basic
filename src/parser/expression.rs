@@ -34,14 +34,14 @@ pub fn demand_expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Expressio
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    demand_expression_node_p().convert_to_fn()
+    demand_expression_node_p("Expected: expression").convert_to_fn()
 }
 
-pub fn demand_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+pub fn demand_expression_node_p<R>(err_msg: &str) -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    expression_node_p().or_syntax_error("Expected: expression")
+    expression_node_p().or_syntax_error(err_msg)
 }
 
 #[deprecated]
@@ -129,18 +129,20 @@ where
     // ws* ( expr )
     // ws+ expr ws+
     demand(
-        or(
-            guarded_parenthesis_expression_node(),
-            drop_right(seq2(
-                guarded_whitespace_expression_node(),
-                demand(
-                    crate::parser::pc::ws::one_or_more(),
-                    QError::syntax_error_fn("Expected: whitespace after expression"),
-                ),
-            )),
-        ),
+        back_guarded_expression_node_p().convert_to_fn(),
         QError::syntax_error_fn("Expected: expression"),
     )
+}
+
+pub fn back_guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    // ws* ( expr )
+    // ws+ expr ws+
+    guarded_parenthesis_expression_node_p().or(guarded_whitespace_expression_node_p()
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after expression"))
+        .keep_left())
 }
 
 /// Parses an expression

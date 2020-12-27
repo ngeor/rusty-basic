@@ -135,7 +135,7 @@ where
         .stringify()
 }
 
-// #[deprecated]
+#[deprecated]
 pub fn any_identifier_without_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
@@ -153,7 +153,7 @@ where
     letters_p().and_opt(letters_or_digits_p()).stringify()
 }
 
-// #[deprecated]
+#[deprecated]
 pub fn keyword<R, E>(needle: Keyword) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
@@ -211,7 +211,7 @@ where
 // Take multiple items
 //
 
-// #[deprecated]
+#[deprecated]
 pub fn csv_zero_or_more<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
 where
     R: Reader<Item = char, Err = E> + 'static,
@@ -228,7 +228,7 @@ where
 /// Parses opening and closing parenthesis around the given source.
 ///
 /// Panics if the source returns `Ok(None)`.
-// #[deprecated]
+#[deprecated]
 pub fn in_parenthesis<R, S, T>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, QError>>
 where
     R: Reader<Item = char, Err = QError> + 'static,

@@ -17,7 +17,7 @@ pub fn name_node<T: BufRead + 'static>(
     with_pos(name())
 }
 
-// #[deprecated]
+#[deprecated]
 pub fn name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Name, QError>> {
     name_with_dot_p().convert_to_fn()
@@ -69,7 +69,7 @@ pub fn bare_name_node<T: BufRead + 'static>(
     with_pos(bare_name())
 }
 
-// #[deprecated]
+#[deprecated]
 pub fn bare_name<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
     bare_name_p().convert_to_fn()

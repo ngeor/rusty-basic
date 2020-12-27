@@ -87,6 +87,11 @@ where
     }
 }
 
+/// Combines the result of the first parser with the result of the parser
+/// constructed by the second function. The function has access to the first
+/// parser's result.
+///
+/// The resulting parser succeeds if the first result is `Ok(Some)`.
 pub struct LeftAndOptRightFactory<A, F>(A, F);
 
 impl<R, A, F, B> Parser<R> for LeftAndOptRightFactory<A, F>
@@ -201,6 +206,11 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
         LeftAndOptRight::new(self, other)
     }
 
+    /// Combines the result of the first parser with the result of the parser
+    /// constructed by the second function. The function has access to the first
+    /// parser's result.
+    ///
+    /// The resulting parser succeeds if the first result is `Ok(Some)`.
     fn and_opt_factory<F, B>(self, factory: F) -> LeftAndOptRightFactory<Self, F>
     where
         F: Fn(&Self::Output) -> B,

@@ -57,6 +57,22 @@ pub mod undo {
             self.undo(b).undo(a)
         }
     }
+
+    // undo char followed by opt ws
+    impl<R: Reader<Item = char>> Undo<(char, Option<String>)> for R {
+        fn undo(self, item: (char, Option<String>)) -> Self {
+            let (a, b) = item;
+            self.undo(b.unwrap_or_default()).undo_item(a)
+        }
+    }
+
+    // undo char preceded by opt ws
+    impl<B, R: Reader<Item = char> + Undo<String> + Undo<B>> Undo<(Option<String>, B)> for R {
+        fn undo(self, item: (Option<String>, B)) -> Self {
+            let (a, b) = item;
+            self.undo(b).undo(a.unwrap_or_default())
+        }
+    }
 }
 
 // ========================================================

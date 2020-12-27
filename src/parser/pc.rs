@@ -298,17 +298,6 @@ pub mod common {
     // simple parsing combinators
     // ========================================================
 
-    /// Creates a parsing function which will get a result by creating a different
-    /// function at runtime. The function is provided by the given factory.
-    /// This can be used to solve recursive structures that cause stack overflow.
-    pub fn lazy<R, LS, T, E>(lazy_source: LS) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
-    where
-        R: Reader + 'static,
-        LS: Fn() -> Box<dyn Fn(R) -> ReaderResult<R, T, E>> + 'static,
-    {
-        Box::new(move |reader| lazy_source()(reader))
-    }
-
     /// Returns a function that ensures that we don't get a Not Found result from
     /// the given source.
     ///
@@ -717,7 +706,6 @@ pub mod common {
 // ========================================================
 
 pub mod str {
-    use super::common;
     use super::map::map;
     use super::*;
 
@@ -807,18 +795,6 @@ pub mod str {
         })
     }
 
-    /// Reads characters into a string as long as they satisfy the predicate.
-    ///
-    /// This function will return a Not Found result if no characters match.
-    pub fn one_or_more_if<R, E, F>(predicate: F) -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
-    where
-        R: Reader<Item = char, Err = E> + 'static,
-        E: 'static,
-        F: Fn(char) -> bool + 'static,
-    {
-        common::map_default_to_not_found(zero_or_more_if(predicate))
-    }
-
     pub fn map_to_str<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
     where
         R: Reader + 'static,
@@ -874,23 +850,6 @@ pub mod ws {
         E: 'static,
     {
         common::drop_left(common::and(one_or_more(), source))
-    }
-
-    pub fn one_or_more_trailing<R, S, T, E, FE>(
-        source: S,
-        err_fn_expected_whitespace: FE,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
-    where
-        R: Reader<Item = char, Err = E> + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        T: 'static,
-        E: 'static,
-        FE: Fn() -> E + 'static,
-    {
-        common::drop_right(common::seq2(
-            source,
-            common::demand(one_or_more(), err_fn_expected_whitespace),
-        ))
     }
 
     /// Reads any whitespace.

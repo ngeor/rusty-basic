@@ -5,7 +5,7 @@ use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
-use crate::parser::pc2::text::TextParser;
+use crate::parser::pc2::text::{whitespace_p, TextParser};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::{item_p, Parser};
@@ -21,7 +21,7 @@ pub fn parse_built_in<T: BufRead + 'static>(
         input::parse_input_p().convert_to_fn(),
         line_input::parse_line_input_p().convert_to_fn(),
         name::parse_name_p().convert_to_fn(),
-        open::parse_open(),
+        open::parse_open_p().convert_to_fn(),
         print::parse_print(),
         print::parse_lprint(),
     ])
@@ -30,9 +30,7 @@ pub fn parse_built_in<T: BufRead + 'static>(
 mod close {
     use super::*;
     use crate::built_ins::BuiltInSub;
-    use crate::parser::expression::{expression_node_p, guarded_expression_node_p};
     use crate::parser::pc2::many::ManyParser;
-    use crate::parser::pc2::text::whitespace_p;
 
     pub fn parse_close_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -57,23 +55,6 @@ mod close {
                 }
                 Statement::SubCall(BuiltInSub::Close.into(), args)
             })
-    }
-
-    fn file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        file_handle_as_expression_node_p().or(expression_node_p())
-    }
-
-    fn guarded_file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        whitespace_p()
-            .and(file_handle_as_expression_node_p())
-            .keep_right()
-            .or(guarded_expression_node_p())
     }
 
     #[cfg(test)]
@@ -280,7 +261,6 @@ mod close {
 mod input {
     use super::*;
     use crate::built_ins::BuiltInSub;
-    use crate::parser::pc2::text::whitespace_p;
 
     pub fn parse_input_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -404,8 +384,6 @@ mod input {
 mod line_input {
     use super::*;
     use crate::built_ins::BuiltInSub;
-    use crate::parser::expression::expression_node_p;
-    use crate::parser::pc2::text::whitespace_p;
 
     pub fn parse_line_input_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -416,7 +394,10 @@ mod line_input {
             .and_demand(keyword_p(Keyword::Input).or_syntax_error("Expected: INPUT"))
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LINE INPUT"))
             .and_opt(parse_file_number_p())
-            .and_demand(expression_node_p().or_syntax_error("Expected: #file-number or variable"))
+            .and_demand(
+                expression::expression_node_p()
+                    .or_syntax_error("Expected: #file-number or variable"),
+            )
             .map(|((_, opt_loc_file_handle), variable)| {
                 let mut args: Vec<ExpressionNode> = vec![];
                 // add dummy arguments to encode the file number
@@ -537,57 +518,31 @@ mod open {
     use super::*;
     use crate::built_ins::BuiltInSub;
 
-    pub fn parse_open<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-        map(
-            crate::parser::pc::common::seq4(
-                // OPEN
-                keyword(Keyword::Open),
-                // <ws+>file-name<ws+> OR ( file-name )
-                expression::demand_back_guarded_expression_node(),
-                // (FOR INPUT ACCESS READ OR FOR INPUT OR ACCESS READ)<ws+> OR nothing
-                parse_mode_access(),
-                // AS <ws+> #1 OR AS <ws+> 1 OR AS(#1) OR AS(1)
-                demand(
-                    parse_file_number(),
-                    QError::syntax_error_fn("Expected: AS file-number"),
-                ),
-            ),
-            |(_, file_name, (opt_file_mode, opt_file_access), file_number)| {
-                Statement::SubCall(
-                    BuiltInSub::Open.into(),
-                    vec![
-                        file_name,
-                        map_opt_locatable_enum(opt_file_mode, FileMode::Input),
-                        map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
-                        file_number,
-                    ],
-                )
-            },
-        )
-    }
-
-    // FOR <ws+> INPUT <ws+> ACCESS <ws+> READ <ws+>
-    // FOR <ws+> INPUT <ws+>
-    // ACCESS <ws+> READ <ws+>
-    // or nothing
-    fn parse_mode_access<T: BufRead + 'static>() -> Box<
-        dyn Fn(
-            EolReader<T>,
-        ) -> ReaderResult<
-            EolReader<T>,
-            (Option<Locatable<FileMode>>, Option<Locatable<FileAccess>>),
-            QError,
-        >,
-    > {
-        or_vec(vec![
-            map(
-                opt_seq2(parse_open_mode(), parse_open_access()),
-                |(m, opt_a)| (Some(m), opt_a),
-            ),
-            map(parse_open_access(), |a| (None, Some(a))),
-            Box::new(|reader: EolReader<T>| Ok((reader, Some((None, None))))),
-        ])
+    pub fn parse_open_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::Open)
+            .and_demand(
+                expression::back_guarded_expression_node_p()
+                    .or_syntax_error("Expected: file name after OPEN"),
+            )
+            .and_opt(parse_open_mode_p())
+            .and_opt(parse_open_access_p())
+            .and_demand(parse_file_number_p().or_syntax_error("Expected: AS file-number"))
+            .map(
+                |((((_, file_name), opt_file_mode), opt_file_access), file_number)| {
+                    Statement::SubCall(
+                        BuiltInSub::Open.into(),
+                        vec![
+                            file_name,
+                            map_opt_locatable_enum(opt_file_mode, FileMode::Input),
+                            map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
+                            file_number,
+                        ],
+                    )
+                },
+            )
     }
 
     fn map_opt_locatable_enum<T>(
@@ -603,60 +558,67 @@ mod open {
     }
 
     // FOR <ws+> INPUT <ws+>
-    fn parse_open_mode<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<FileMode>, QError>> {
-        crate::parser::pc::ws::one_or_more_trailing(
-            drop_left(crate::parser::pc::ws::seq2(
-                keyword(Keyword::For),
-                with_pos(demand(
-                    or_vec(vec![
-                        map(keyword(Keyword::Append), |_| FileMode::Append),
-                        map(keyword(Keyword::Input), |_| FileMode::Input),
-                        map(keyword(Keyword::Output), |_| FileMode::Output),
-                    ]),
-                    QError::syntax_error_fn("Invalid file mode"),
-                )),
-                QError::syntax_error_fn("Expected: whitespace after FOR"),
-            )),
-            QError::syntax_error_fn("Expected: space after file mode"),
-        )
+    fn parse_open_mode_p<R>() -> impl Parser<R, Output = Locatable<FileMode>>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::For)
+            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FOR"))
+            .and_demand(
+                keyword_p(Keyword::Append)
+                    .or(keyword_p(Keyword::Input))
+                    .or(keyword_p(Keyword::Output))
+                    .or_syntax_error("Expected: APPEND, INPUT or OUTPUT")
+                    .with_pos(),
+            )
+            .keep_right()
+            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after file mode"))
+            .keep_left()
+            .map(
+                |Locatable {
+                     element: (file_mode, _),
+                     pos,
+                 }| {
+                    (match file_mode {
+                        Keyword::Append => FileMode::Append,
+                        Keyword::Input => FileMode::Input,
+                        Keyword::Output => FileMode::Output,
+                        _ => panic!("Parser should not have parsed {}", file_mode),
+                    })
+                    .at(pos)
+                },
+            )
     }
 
     // ACCESS <ws+> READ <ws+>
-    fn parse_open_access<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<FileAccess>, QError>>
+    fn parse_open_access_p<R>() -> impl Parser<R, Output = Locatable<FileAccess>>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        map(
-            crate::parser::pc::common::seq4(
-                keyword(Keyword::Access),
-                demand(
-                    crate::parser::pc::ws::one_or_more(),
-                    QError::syntax_error_fn("Expected: whitespace after ACCESS"),
-                ),
-                with_pos(demand(
-                    map(keyword(Keyword::Read), |_| FileAccess::Read),
-                    QError::syntax_error_fn("Invalid file access"),
-                )),
-                demand(
-                    crate::parser::pc::ws::one_or_more(),
-                    QError::syntax_error_fn("Expected: whitespace after file-access"),
-                ),
-            ),
-            |(_, _, a, _)| a,
-        )
+        keyword_p(Keyword::Access)
+            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ACCESS"))
+            .and_demand(
+                keyword_p(Keyword::Read)
+                    .with_pos()
+                    .or_syntax_error("Invalid file access"),
+            )
+            .keep_right()
+            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after file-access"))
+            .keep_left()
+            .map(|x| FileAccess::Read.at(x.pos()))
     }
 
     // AS <ws+> expression
     // AS ( expression )
-    fn parse_file_number<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-        drop_left(crate::parser::pc::common::seq2(
-            keyword(Keyword::As),
-            or(
-                ws::one_or_more_leading(file_handle_as_expression_node()),
-                expression::demand_guarded_expression_node(),
-            ),
-        ))
+    fn parse_file_number_p<R>() -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::As)
+            .and_demand(
+                guarded_file_handle_or_expression_p().or_syntax_error("Expected: #file-number%"),
+            )
+            .keep_right()
     }
 
     #[cfg(test)]
@@ -1447,12 +1409,6 @@ mod print {
 }
 
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-#[deprecated]
-fn file_handle_as_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    file_handle_as_expression_node_p().convert_to_fn()
-}
-
 fn file_handle_as_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -1480,4 +1436,21 @@ where
                 .or_syntax_error("Expected: ,"),
         )
         .keep_left()
+}
+
+fn file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    file_handle_as_expression_node_p().or(expression::expression_node_p())
+}
+
+fn guarded_file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    whitespace_p()
+        .and(file_handle_as_expression_node_p())
+        .keep_right()
+        .or(expression::guarded_expression_node_p())
 }

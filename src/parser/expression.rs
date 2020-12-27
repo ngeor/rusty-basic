@@ -76,15 +76,6 @@ where
     guarded_whitespace_expression_node_p().or(guarded_parenthesis_expression_node_p())
 }
 
-#[deprecated]
-fn guarded_parenthesis_expression_node<R>(
-) -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    guarded_parenthesis_expression_node_p().convert_to_fn()
-}
-
 fn guarded_parenthesis_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -103,20 +94,11 @@ where
         })
 }
 
-#[deprecated]
-fn guarded_whitespace_expression_node<R>(
-) -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    // ws+ expr
-    guarded_whitespace_expression_node_p().convert_to_fn()
-}
-
 fn guarded_whitespace_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
+    // ws+ expr
     whitespace_p().and(expression_node_p()).keep_right()
 }
 
@@ -177,14 +159,6 @@ where
             })
             .simplify_unary_minus_literals()
         })
-}
-
-#[deprecated]
-fn single_expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    single_expression_node_p().convert_to_fn()
 }
 
 fn single_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>

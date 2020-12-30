@@ -1,11 +1,11 @@
-use crate::common::*;
-use crate::parser::char_reader::EolReader;
-use crate::parser::pc::common::{and, demand, map_default_to_not_found, or, or_vec, seq2, seq3};
-use crate::parser::pc::map::{and_then, map};
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{any_letter, csv_zero_or_more, keyword};
-use crate::parser::types::*;
-use std::io::BufRead;
+use crate::common::{HasLocation, QError};
+use crate::parser::pc::Reader;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::whitespace_p;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{if_p, item_p, Parser};
+use crate::parser::pc_specific::{is_letter, keyword_p, PcSpecific};
+use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
 // DefKeyword   ::= DEFSNG|DEFDBL|DEFSTR|DEFINT|DEFLNG
@@ -13,81 +13,75 @@ use std::io::BufRead;
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-pub fn def_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DefType, QError>> {
-    map(
-        seq3(
-            def_keyword(),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace"),
-            ),
-            demand(
-                letter_ranges(),
-                QError::syntax_error_fn("Expected: letter ranges"),
-            ),
-        ),
-        |(l, _, r)| DefType::new(l, r),
-    )
+pub fn def_type_p<R>() -> impl Parser<R, Output = DefType>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    def_keyword_p()
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DEF-type"))
+        .and_demand(
+            letter_range_p()
+                .csv()
+                .or_syntax_error("Expected: letter ranges"),
+        )
+        .map(|((l, _), r)| DefType::new(l, r))
 }
 
-fn def_keyword<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TypeQualifier, QError>> {
-    or_vec(vec![
-        map(keyword(Keyword::DefDbl), |_| TypeQualifier::HashDouble),
-        map(keyword(Keyword::DefInt), |_| TypeQualifier::PercentInteger),
-        map(keyword(Keyword::DefLng), |_| TypeQualifier::AmpersandLong),
-        map(keyword(Keyword::DefSng), |_| TypeQualifier::BangSingle),
-        map(keyword(Keyword::DefStr), |_| TypeQualifier::DollarString),
-    ])
+fn def_keyword_p<R>() -> impl Parser<R, Output = TypeQualifier>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::DefDbl)
+        .or(keyword_p(Keyword::DefInt))
+        .or(keyword_p(Keyword::DefLng))
+        .or(keyword_p(Keyword::DefSng))
+        .or(keyword_p(Keyword::DefStr))
+        .map(|(k, _)| match k {
+            Keyword::DefInt => TypeQualifier::PercentInteger,
+            Keyword::DefLng => TypeQualifier::AmpersandLong,
+            Keyword::DefSng => TypeQualifier::BangSingle,
+            Keyword::DefDbl => TypeQualifier::HashDouble,
+            Keyword::DefStr => TypeQualifier::DollarString,
+            _ => panic!("Should not have parsed keyword {} in def_keyword_p", k),
+        })
 }
 
-fn letter_ranges<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<LetterRange>, QError>> {
-    map_default_to_not_found(csv_zero_or_more(letter_range()))
+fn letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    two_letter_range_p().or(single_letter_range_p())
 }
 
-fn letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, LetterRange, QError>> {
-    or(
-        two_letter_range(), // needs to be first because the second will match too
-        single_letter_range(),
-    )
+fn single_letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    if_p(is_letter).map(|l| LetterRange::Single(l))
 }
 
-fn single_letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, LetterRange, QError>> {
-    map(any_letter(), |l| LetterRange::Single(l))
-}
-
-fn two_letter_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, LetterRange, QError>> {
-    and_then(
-        and(
-            any_letter(),
-            seq2(
-                read('-'),
-                demand(
-                    any_letter(),
-                    QError::syntax_error_fn("Expected: letter after dash"),
-                ),
-            ),
-        ),
-        |(l, (_, r))| {
+fn two_letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    if_p(is_letter)
+        .and(item_p('-'))
+        .and_demand(if_p(is_letter).or_syntax_error("Expected: letter after dash"))
+        .and_then(|((l, _), r)| {
             if l < r {
                 Ok(LetterRange::Range(l, r))
             } else {
                 Err(QError::syntax_error("Invalid letter range"))
             }
-        },
-    )
+        })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::*;
     use crate::parser::test_utils::*;
-    use crate::parser::Statement;
+    use crate::parser::types::{Statement, TopLevelToken};
 
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {

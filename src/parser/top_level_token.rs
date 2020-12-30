@@ -6,6 +6,7 @@ use crate::parser::implementation;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
+use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::with_pos;
 use crate::parser::statement;
 use crate::parser::types::*;
@@ -90,7 +91,9 @@ pub fn top_level_token_one<T: BufRead + 'static>(
 
 fn top_level_token_def_type<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    map(def_type::def_type(), |d| TopLevelToken::DefType(d))
+    map(def_type::def_type_p().convert_to_fn(), |d| {
+        TopLevelToken::DefType(d)
+    })
 }
 
 fn top_level_token_declaration<T: BufRead + 'static>(

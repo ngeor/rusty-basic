@@ -5,7 +5,7 @@ use crate::parser::pc::common::{
     and, demand, drop_left, many_with_terminating_indicator, opt_seq2, seq3,
 };
 use crate::parser::pc::map::map;
-use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
+use crate::parser::pc::{read, Reader, ReaderResult, Undo};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::many::{ManyParser, OneOrMoreDelimited};
 use crate::parser::pc2::text::{
@@ -115,13 +115,6 @@ pub fn is_symbol(ch: char) -> bool {
         || (ch > '9' && ch < 'A')
         || (ch > 'Z' && ch < 'a')
         || (ch > 'z' && ch <= '~')
-}
-
-pub fn any_letter<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-{
-    read_if(is_letter)
 }
 
 /// Reads any identifier. Note that the result might be a keyword.

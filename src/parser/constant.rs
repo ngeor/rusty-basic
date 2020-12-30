@@ -1,44 +1,37 @@
-use crate::common::*;
-use crate::parser::char_reader::*;
+use crate::common::{HasLocation, QError};
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
+use crate::parser::pc::Reader;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::{whitespace_p, TextParser};
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{item_p, Parser};
+use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::types::{Keyword, Statement};
-use std::io::BufRead;
 
-pub fn constant<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
-        seq5(
-            keyword(Keyword::Const),
-            demand(
-                ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after CONST"),
-            ),
-            demand(
-                with_pos(name::name()),
-                QError::syntax_error_fn("Expected: const name"),
-            ),
-            demand(
-                ws::zero_or_more_around(read('=')),
-                QError::syntax_error_fn("Expected: ="),
-            ),
-            expression::demand_expression_node(),
-        ),
-        |(
-            _,
-            _,
-            Locatable {
-                element: const_name,
-                pos,
-            },
-            _,
-            expr,
-        )| Statement::Const(const_name.at(pos), expr),
-    )
+pub fn constant_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Const)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after CONST"))
+        .and_demand(
+            name::name_with_dot_p()
+                .with_pos()
+                .or_syntax_error("Expected: const name"),
+        )
+        .and_demand(
+            item_p('=')
+                .surrounded_by_opt_ws()
+                .or_syntax_error("Expected: ="),
+        )
+        .and_demand(expression::demand_expression_node_p(
+            "Expected: const value",
+        ))
+        .map(|(((_, const_name), _), const_value_expr)| {
+            Statement::Const(const_name, const_value_expr)
+        })
 }
 
 #[cfg(test)]

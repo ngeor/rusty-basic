@@ -10,6 +10,7 @@ use crate::parser::name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
+use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::select_case;
 use crate::parser::sub_call;
@@ -26,7 +27,7 @@ pub fn statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or_vec(vec![
         dim::dim(),
-        constant::constant(),
+        constant::constant_p().convert_to_fn(),
         comment::comment(),
         built_ins::parse_built_in(),
         statement_label(),
@@ -47,7 +48,7 @@ pub fn single_line_non_comment_statement<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
     or_vec(vec![
         dim::dim(),
-        constant::constant(),
+        constant::constant_p().convert_to_fn(),
         built_ins::parse_built_in(),
         sub_call::sub_call_or_assignment(),
         statement_go_to(),
@@ -62,7 +63,7 @@ pub fn single_line_statement<T: BufRead + 'static>(
     or_vec(vec![
         comment::comment(),
         dim::dim(),
-        constant::constant(),
+        constant::constant_p().convert_to_fn(),
         built_ins::parse_built_in(),
         sub_call::sub_call_or_assignment(),
         statement_go_to(),

@@ -1,8 +1,6 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::expression;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::{whitespace_p, TextParser};
@@ -13,18 +11,24 @@ use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
 
-/// Parses built-in subs which have a special syntax.
+#[deprecated]
 pub fn parse_built_in<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::Statement, QError>> {
-    or_vec(vec![
-        close::parse_close_p().convert_to_fn(),
-        input::parse_input_p().convert_to_fn(),
-        line_input::parse_line_input_p().convert_to_fn(),
-        name::parse_name_p().convert_to_fn(),
-        open::parse_open_p().convert_to_fn(),
-        print::parse_print(),
-        print::parse_lprint(),
-    ])
+    parse_built_in_p().convert_to_fn()
+}
+
+/// Parses built-in subs which have a special syntax.
+pub fn parse_built_in_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    close::parse_close_p()
+        .or(input::parse_input_p().box_dyn())
+        .or(line_input::parse_line_input_p().box_dyn())
+        .or(name::parse_name_p().box_dyn())
+        .or(open::parse_open_p().box_dyn())
+        .or(print::parse_print_p().box_dyn())
+        .or(print::parse_lprint_p().box_dyn())
 }
 
 mod close {
@@ -768,227 +772,154 @@ mod open {
 
 mod print {
     use super::*;
-    use crate::parser::pc::combine::{combine_if_first_ok, switch};
-    use crate::parser::pc::map::opt_map;
+    use crate::parser::pc2::many::ManyParser;
+    use crate::parser::pc2::text::Whitespace;
+    use crate::parser::pc2::{any_p, opt_static_p, static_p};
 
-    pub fn parse_print<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-        parse_print_or_lprint(false)
-    }
-
-    pub fn parse_lprint<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-        parse_print_or_lprint(true)
-    }
-
-    fn parse_print_or_lprint<T: BufRead + 'static>(
-        lpt1: bool,
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-        map(
-            opt_seq2(
-                keyword(if lpt1 {
-                    Keyword::LPrint
-                } else {
-                    Keyword::Print
-                }),
-                switch(
-                    print_file_number_and_format_string_and_first_arg(lpt1),
-                    parse_remaining_print_args,
-                ),
-            ),
-            move |(_, o)| map_print_result(lpt1, o),
-        )
-    }
-
-    fn map_print_result(
-        lpt1: bool,
-        o: Option<(
-            Option<Locatable<FileHandle>>,
-            Option<ExpressionNode>,
-            Vec<PrintArg>,
-        )>,
-    ) -> Statement {
-        match o {
-            Some((file_number, format_string, args)) => Statement::Print(PrintNode {
-                file_number: file_number.map(|x| x.strip_location()),
-                lpt1,
-                format_string,
-                args,
-            }),
-            None => Statement::Print(PrintNode {
-                file_number: None,
-                lpt1,
-                format_string: None,
-                args: vec![],
-            }),
-        }
-    }
-
-    fn parse_remaining_print_args<T: BufRead + 'static>(
-        args: (
-            Option<Locatable<FileHandle>>,
-            Option<ExpressionNode>,
-            Option<PrintArg>,
-        ),
-    ) -> Box<
-        dyn Fn(
-            EolReader<T>,
-        ) -> ReaderResult<
-            EolReader<T>,
-            (
-                Option<Locatable<FileHandle>>,
-                Option<ExpressionNode>,
-                Vec<PrintArg>,
-            ),
-            QError,
-        >,
-    > {
-        let (opt_file_handle, opt_format_string, opt_first_arg) = args;
-        match opt_first_arg {
-            Some(first_arg) => map(
-                many_looking_back(Some(first_arg), parse_print_arg_looking_back),
-                move |args| (opt_file_handle.clone(), opt_format_string.clone(), args),
-            ),
-            None => Box::new(move |r| {
-                Ok((
-                    r,
-                    Some((opt_file_handle.clone(), opt_format_string.clone(), vec![])),
-                ))
-            }),
-        }
-    }
-
-    fn print_file_number_and_format_string_and_first_arg<T: BufRead + 'static>(
-        lpt1: bool,
-    ) -> Box<
-        dyn Fn(
-            EolReader<T>,
-        ) -> ReaderResult<
-            EolReader<T>,
-            (
-                Option<Locatable<FileHandle>>,
-                Option<ExpressionNode>,
-                Option<PrintArg>,
-            ),
-            QError,
-        >,
-    > {
-        opt_map(
-            combine_if_first_ok(
-                print_file_number_and_format_string(lpt1),
-                parse_first_print_arg,
-            ),
-            |(opt_file_number_and_format_string, opt_first_print_arg)| {
-                match opt_file_number_and_format_string {
-                    Some((opt_file_number, opt_format_string)) => {
-                        Some((opt_file_number, opt_format_string, opt_first_print_arg))
-                    }
-                    None => {
-                        if opt_first_print_arg.is_some() {
-                            Some((None, None, opt_first_print_arg))
-                        } else {
-                            None
+    pub fn parse_print_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::Print)
+            .and_opt(parse_file_number_p())
+            .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
+            .and_opt_factory(|((_, opt_file_number), opt_using)| FirstPrintArg {
+                // we're just past PRINT. No need for space for ; or , but we need it for expressions
+                needs_leading_whitespace_for_expression: opt_file_number.is_none()
+                    && opt_using.is_none(),
+            })
+            .switch(|(((_, opt_file_number), opt_using), opt_first_arg)| {
+                static_p((opt_file_number, opt_using)).and_opt(
+                    opt_static_p(opt_first_arg).one_or_more_looking_back(|prev_arg| {
+                        PrintArgLookingBack {
+                            prev_print_arg_was_expression: prev_arg.is_expression(),
                         }
-                    }
-                }
-            },
-        )
+                    }),
+                )
+            })
+            .map(|((opt_file_number, format_string), opt_args)| {
+                Statement::Print(PrintNode {
+                    file_number: opt_file_number.map(|x| x.element),
+                    lpt1: false,
+                    format_string,
+                    args: opt_args.unwrap_or_default(),
+                })
+            })
     }
 
-    fn print_file_number_and_format_string<T: BufRead + 'static>(
-        lpt1: bool,
-    ) -> Box<
-        dyn Fn(
-            EolReader<T>,
-        ) -> ReaderResult<
-            EolReader<T>,
-            (Option<Locatable<FileHandle>>, Option<ExpressionNode>),
-            QError,
-        >,
-    > {
-        if lpt1 {
-            combine_if_first_ok(|r| Ok((r, None)), parse_using)
-        } else {
-            combine_if_first_ok(parse_file_number(), parse_using)
-        }
+    pub fn parse_lprint_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::LPrint)
+            .and_opt(using_p(true))
+            .and_opt_factory(|(_keyword, opt_using)| FirstPrintArg {
+                // we're just past LPRINT. No need for space for ; or , but we need it for expressions
+                needs_leading_whitespace_for_expression: opt_using.is_none(),
+            })
+            .switch(|((_, opt_using), opt_first_arg)| {
+                static_p(opt_using).and_opt(opt_static_p(opt_first_arg).one_or_more_looking_back(
+                    |prev_arg| PrintArgLookingBack {
+                        prev_print_arg_was_expression: prev_arg.is_expression(),
+                    },
+                ))
+            })
+            .map(|(format_string, opt_args)| {
+                Statement::Print(PrintNode {
+                    file_number: None,
+                    lpt1: true,
+                    format_string,
+                    args: opt_args.unwrap_or_default(),
+                })
+            })
     }
 
-    fn parse_using<T: BufRead + 'static>(
-        file_number: Option<&Locatable<FileHandle>>,
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-        if file_number.is_some() {
-            // we are past PRINT #1,  we don't need to demand space before USING
-            map(
-                seq3(
-                    ws::zero_or_more_leading(keyword(Keyword::Using)),
-                    expression::demand_guarded_expression_node(),
-                    demand(read(';'), QError::syntax_error_fn("Expected: ;")),
-                ),
-                |(_, expr, _)| expr,
+    fn using_p<R>(needs_leading_whitespace: bool) -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        Whitespace::new(needs_leading_whitespace)
+            .and(keyword_p(Keyword::Using))
+            .and_demand(
+                expression::guarded_expression_node_p()
+                    .or_syntax_error("Expected: expression after USING"),
             )
-        } else {
-            // we are past PRINT, we need a whitespace
-            map(
-                seq3(
-                    ws::one_or_more_leading(keyword(Keyword::Using)),
-                    expression::demand_guarded_expression_node(),
-                    demand(read(';'), QError::syntax_error_fn("Expected: ;")),
-                ),
-                |(_, expr, _)| expr,
-            )
-        }
+            .and_demand(item_p(';').or_syntax_error("Expected: ;"))
+            .keep_left()
+            .keep_right()
     }
 
-    fn parse_first_print_arg<T: BufRead + 'static>(
-        opt_file_handle_and_format_string: Option<&(
-            Option<Locatable<FileHandle>>,
-            Option<ExpressionNode>,
-        )>,
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
-        if opt_file_handle_and_format_string.is_some() {
-            // we're either past PRINT #1, or PRINT [#1,]USING "x";
-            // in any case, no need to demand whitespace
-            ws::zero_or_more_leading(or_vec(vec![
-                map(read(';'), |_| PrintArg::Semicolon),
-                map(read(','), |_| PrintArg::Comma),
-                map(expression::expression_node(), |e| PrintArg::Expression(e)),
-            ]))
-        } else {
-            // we're just past PRINT. No need for space for ; or , but we need it for expressions
-            or_vec(vec![
-                map(ws::zero_or_more_leading(read(';')), |_| PrintArg::Semicolon),
-                map(ws::zero_or_more_leading(read(',')), |_| PrintArg::Comma),
-                map(expression::guarded_expression_node(), |e| {
-                    PrintArg::Expression(e)
-                }),
-            ])
-        }
+    struct FirstPrintArg {
+        needs_leading_whitespace_for_expression: bool,
     }
 
-    fn parse_print_arg_looking_back<T: BufRead + 'static>(
-        opt_prev_arg: Option<&PrintArg>,
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, PrintArg, QError>> {
-        match opt_prev_arg {
-            Some(prev_arg) => {
-                match prev_arg {
-                    PrintArg::Expression(_) => {
-                        // only comma or semicolon is allowed
-                        ws::zero_or_more_leading(or_vec(vec![
-                            map(read(';'), |_| PrintArg::Semicolon),
-                            map(read(','), |_| PrintArg::Comma),
-                        ]))
-                    }
-                    _ => {
-                        // everything is allowed
-                        ws::zero_or_more_leading(or_vec(vec![
-                            map(read(';'), |_| PrintArg::Semicolon),
-                            map(read(','), |_| PrintArg::Comma),
-                            map(expression::expression_node(), |e| PrintArg::Expression(e)),
-                        ]))
-                    }
-                }
+    impl<R> Parser<R> for FirstPrintArg
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        type Output = PrintArg;
+
+        fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+            if self.needs_leading_whitespace_for_expression {
+                semicolon_or_comma_as_print_arg_p()
+                    .preceded_by_opt_ws()
+                    .keep_right()
+                    .or(expression::guarded_expression_node_p().map(|e| PrintArg::Expression(e)))
+                    .parse(reader)
+            } else {
+                any_print_arg_p()
+                    .preceded_by_opt_ws()
+                    .keep_right()
+                    .parse(reader)
             }
-            None => Box::new(|r| Ok((r, None))),
+        }
+    }
+
+    fn any_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        semicolon_or_comma_as_print_arg_p()
+            .or(expression::expression_node_p().map(|e| PrintArg::Expression(e)))
+    }
+
+    fn semicolon_or_comma_as_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        any_p()
+            .filter_reader_item(|ch| ch == ';' || ch == ',')
+            .map(|ch| match ch {
+                ';' => PrintArg::Semicolon,
+                ',' => PrintArg::Comma,
+                _ => panic!("Parser should not have parsed {}", ch),
+            })
+    }
+
+    struct PrintArgLookingBack {
+        prev_print_arg_was_expression: bool,
+    }
+
+    impl<R> Parser<R> for PrintArgLookingBack
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        type Output = PrintArg;
+
+        fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+            if self.prev_print_arg_was_expression {
+                // only comma or semicolon is allowed
+                semicolon_or_comma_as_print_arg_p()
+                    .preceded_by_opt_ws()
+                    .keep_right()
+                    .parse(reader)
+            } else {
+                // everything is allowed
+                any_print_arg_p()
+                    .preceded_by_opt_ws()
+                    .keep_right()
+                    .parse(reader)
+            }
         }
     }
 

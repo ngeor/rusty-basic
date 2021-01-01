@@ -94,8 +94,59 @@ where
     }
 }
 
+pub struct OneOrMoreLookingBack<A, F>(A, F);
+
+impl<A, F> OneOrMoreLookingBack<A, F> {
+    pub fn new(seed_source: A, factory: F) -> Self {
+        Self(seed_source, factory)
+    }
+}
+
+impl<R, A, B, F> Parser<R> for OneOrMoreLookingBack<A, F>
+where
+    R: Reader,
+    A: Parser<R>,
+    B: Parser<R, Output = A::Output>,
+    F: Fn(&A::Output) -> B,
+{
+    type Output = Vec<A::Output>;
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+        // get first item
+        let mut r = reader;
+        let (tmp, opt_first_item) = self.0.parse(r)?;
+        r = tmp;
+        match opt_first_item {
+            Some(first_item) => {
+                let mut result: Vec<A::Output> = vec![];
+                loop {
+                    let seed = if result.is_empty() {
+                        &first_item
+                    } else {
+                        result.last().unwrap()
+                    };
+                    let parser = (self.1)(seed);
+                    let (tmp, opt_item) = parser.parse(r)?;
+                    r = tmp;
+                    match opt_item {
+                        Some(item) => {
+                            result.push(item);
+                        }
+                        _ => {
+                            break;
+                        }
+                    }
+                }
+                result.insert(0, first_item);
+                Ok((r, Some(result)))
+            }
+            _ => Ok((r, None)),
+        }
+    }
+}
+
 /// Offers chaining methods that result in parsers the return multiple results.
-pub trait ManyParser<R: Reader>: Parser<R> {
+pub trait ManyParser<R: Reader>: Parser<R> + Sized {
     /// Returns a parser that uses this parser to parse one or more items and
     /// collects them into a `Vec`.
     /// Parsing stops when the underlying parser returns `None`.
@@ -117,6 +168,14 @@ pub trait ManyParser<R: Reader>: Parser<R> {
         trailing_delimiter_err: E,
     ) -> OneOrMoreDelimited<Self, D, E> {
         OneOrMoreDelimited(self, delimiter, trailing_delimiter_err)
+    }
+
+    fn one_or_more_looking_back<S, F>(self, factory: F) -> OneOrMoreLookingBack<Self, F>
+    where
+        F: Fn(&Self::Output) -> S,
+        S: Parser<R, Output = Self::Output>,
+    {
+        OneOrMoreLookingBack::new(self, factory)
     }
 }
 

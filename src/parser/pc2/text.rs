@@ -212,7 +212,7 @@ where
 }
 
 /// Offers chaining methods for parsers where the reader's item is `char`.
-pub trait TextParser<R: Reader<Item = char>>: Parser<R> {
+pub trait TextParser<R: Reader<Item = char>>: Parser<R> + Sized {
     /// Converts the result of this parser into a string.
     fn stringify(self) -> Stringify<Self> {
         Stringify::new(self)

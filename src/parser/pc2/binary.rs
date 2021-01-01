@@ -165,6 +165,8 @@ where
     }
 }
 
+// Implements the "or" parser, returning the first successful
+// result out of the two given parsers.
 binary_parser!(LeftOrRight);
 
 impl<R, A, B> Parser<R> for LeftOrRight<A, B>
@@ -184,14 +186,14 @@ where
 }
 
 /// Offers chaining methods that result in binary parsers.
-pub trait BinaryParser<R: Reader>: Parser<R> {
+pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
     /// Returns a new parser that combines the result of the current parser
     /// with the given parser. Both parsers must return a result. If the
     /// second parser returns `None`, the first result will be undone.
     fn and<B>(self, other: B) -> LeftAndRight<Self, B>
     where
         R: Undo<Self::Output>,
-        B: Parser<R>,
+        B: Sized + Parser<R>,
     {
         LeftAndRight::new(self, other)
     }
@@ -201,7 +203,7 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
     /// but the given parser can return `None`.
     fn and_opt<B>(self, other: B) -> LeftAndOptRight<Self, B>
     where
-        B: Parser<R>,
+        B: Sized + Parser<R>,
     {
         LeftAndOptRight::new(self, other)
     }
@@ -214,7 +216,7 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
     fn and_opt_factory<F, B>(self, factory: F) -> LeftAndOptRightFactory<Self, F>
     where
         F: Fn(&Self::Output) -> B,
-        B: Parser<R>,
+        B: Sized + Parser<R>,
     {
         LeftAndOptRightFactory(self, factory)
     }
@@ -224,7 +226,7 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
     /// current parser returns `None`.
     fn preceded_by<B>(self, other: B) -> OptLeftAndRight<B, Self>
     where
-        B: Parser<R>,
+        B: Sized + Parser<R>,
         R: Undo<B::Output>,
     {
         OptLeftAndRight::new(other, self)
@@ -238,7 +240,7 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
     fn unless_followed_by<B>(self, other: B) -> RollbackLeftIfRight<Self, B>
     where
         R: Undo<Self::Output> + Undo<B::Output>,
-        B: Parser<R>,
+        B: Sized + Parser<R>,
     {
         RollbackLeftIfRight::new(self, other)
     }
@@ -247,7 +249,7 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
     /// If the given parser fails, the parser will panic.
     fn and_demand<B>(self, other: B) -> LeftAndDemandRight<Self, B>
     where
-        B: Parser<R>,
+        B: Sized + Parser<R>,
     {
         LeftAndDemandRight::new(self, other)
     }
@@ -256,7 +258,7 @@ pub trait BinaryParser<R: Reader>: Parser<R> {
     /// is successful, otherwise it will use the given parser.
     fn or<B>(self, other: B) -> LeftOrRight<Self, B>
     where
-        B: Parser<R, Output = Self::Output>,
+        B: Sized + Parser<R, Output = Self::Output>,
     {
         LeftOrRight::new(self, other)
     }

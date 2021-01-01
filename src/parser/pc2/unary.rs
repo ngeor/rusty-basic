@@ -167,7 +167,7 @@ where
 }
 
 /// Offers chaining methods that result in unary parsers.
-pub trait UnaryParser<R: Reader>: Parser<R> {
+pub trait UnaryParser<R: Reader>: Parser<R> + Sized {
     /// Maps an unsuccessful result of the given parser into a successful default value.
     fn map_none_to_default(self) -> MapNoneToDefault<Self>
     where

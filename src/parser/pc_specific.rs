@@ -169,6 +169,7 @@ fn is_not_whole_keyword(ch: char) -> bool {
     is_non_leading_identifier_with_dot(ch) || ch == '$'
 }
 
+#[deprecated]
 pub fn demand_keyword<R>(
     needle: Keyword,
 ) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), QError>>
@@ -262,7 +263,10 @@ where
 }
 
 /// Offers chaining methods for parsers specific to rusty_basic.
-pub trait PcSpecific<R: Reader<Item = char, Err = QError>>: Parser<R> {
+pub trait PcSpecific<R>: Parser<R> + Sized
+where
+    R: Reader<Item = char, Err = QError>,
+{
     /// Throws a syntax error if this parser returns `None`.
     fn or_syntax_error(self, msg: &str) -> OrThrowVal<Self, QError> {
         OrThrowVal::new(self, QError::syntax_error(msg))

@@ -8,7 +8,7 @@ use crate::parser::pc::{Reader, ReaderResult, Undo};
 use crate::parser::pc2::unary_fn::{FilterReaderItem, UnaryFnParser};
 use std::marker::PhantomData;
 
-pub trait Parser<R>: Sized
+pub trait Parser<R>
 where
     R: Reader,
 {
@@ -23,6 +23,17 @@ where
     {
         let x = self;
         Box::new(move |reader| x.parse(reader))
+    }
+
+    /// Wraps this parser into a Box dyn. This is a workaround for dealing with
+    /// the compiler's limitations regarding deeply nested concrete parser types.
+    fn box_dyn(self) -> BoxDynParser<R, Self::Output>
+    where
+        Self: Sized + 'static,
+    {
+        BoxDynParser {
+            source: Box::new(self),
+        }
     }
 }
 
@@ -121,5 +132,58 @@ where
 
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         (self.2)()(reader)
+    }
+}
+
+/// A static parser that returns the given item, without reading from the reader.
+pub struct StaticParser<R, T>(PhantomData<R>, T);
+
+impl<R, T> Parser<R> for StaticParser<R, T>
+where
+    R: Reader,
+    T: Clone,
+{
+    type Output = T;
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        Ok((reader, Some(self.1.clone())))
+    }
+}
+
+pub fn static_p<R, T>(item: T) -> StaticParser<R, T> {
+    StaticParser(PhantomData, item)
+}
+
+/// A static parser that returns the given optional item, without reading from the reader.
+pub struct OptStaticParser<R, T>(PhantomData<R>, Option<T>);
+
+impl<R, T> Parser<R> for OptStaticParser<R, T>
+where
+    R: Reader,
+    T: Clone,
+{
+    type Output = T;
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        Ok((reader, self.1.clone()))
+    }
+}
+
+pub fn opt_static_p<R, T>(item: Option<T>) -> OptStaticParser<R, T> {
+    OptStaticParser(PhantomData, item)
+}
+
+/// A workaround parser that wraps a parser into a box.
+/// This works around the compiler's limitations dealing with too deeply nested
+/// concrete parser types.
+pub struct BoxDynParser<R, T> {
+    source: Box<dyn Parser<R, Output = T>>,
+}
+
+impl<R, T> Parser<R> for BoxDynParser<R, T>
+where
+    R: Reader,
+{
+    type Output = T;
+    fn parse(&self, reader: R) -> ReaderResult<R, T, R::Err> {
+        self.source.parse(reader)
     }
 }

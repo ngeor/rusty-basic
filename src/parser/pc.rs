@@ -240,50 +240,6 @@ pub mod combine {
             Err(err) => Err(err),
         })
     }
-
-    /// Combines the two given sources, letting the second use the value returned by the first one.
-    /// The second source is used if the first result was `Ok`.
-    /// Errors from any source have priority.
-    pub fn combine_if_first_ok<R, S1, PS2, T1, T2, E>(
-        first: S1,
-        second: PS2,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, (Option<T1>, Option<T2>), E>>
-    where
-        R: Reader + 'static,
-        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
-        PS2: Fn(Option<&T1>) -> Box<dyn Fn(R) -> ReaderResult<R, T2, E>> + 'static,
-    {
-        Box::new(move |reader| match first(reader) {
-            Ok((reader, opt_first_result)) => {
-                second(opt_first_result.as_ref())(reader).and_then(|(reader, opt_second_result)| {
-                    if opt_first_result.is_none() && opt_second_result.is_none() {
-                        Ok((reader, None))
-                    } else {
-                        Ok((reader, Some((opt_first_result, opt_second_result))))
-                    }
-                })
-            }
-            Err(err) => Err(err),
-        })
-    }
-
-    /// Uses the first source to get an intermediate result which is used
-    /// to create the source that returns the final result.
-    pub fn switch<R, S1, S2, T1, T2, E>(
-        first: S1,
-        second: S2,
-    ) -> impl Fn(R) -> ReaderResult<R, T2, E>
-    where
-        R: Reader + 'static,
-        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
-        S2: Fn(T1) -> Box<dyn Fn(R) -> ReaderResult<R, T2, E>> + 'static,
-    {
-        move |reader| match first(reader) {
-            Ok((reader, Some(first_result))) => second(first_result)(reader),
-            Ok((reader, None)) => Ok((reader, None)),
-            Err(err) => Err(err),
-        }
-    }
 }
 
 // ========================================================

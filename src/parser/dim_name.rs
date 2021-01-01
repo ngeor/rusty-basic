@@ -3,11 +3,12 @@ use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::{and_then, map, source_and_then_some};
 use crate::parser::pc::*;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::{whitespace_p, TextParser};
 use crate::parser::pc2::unary::UnaryParser;
-use crate::parser::pc2::Parser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{item_p, static_err_p, static_p, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -24,43 +25,57 @@ use std::str::FromStr;
 // A$(1 TO 2, 0 TO 10)
 // A(1 TO 5) AS INTEGER
 
+#[deprecated]
 pub fn dim_name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimNameNode, QError>> {
-    and_then(
-        opt_seq3(
-            name_with_dot_p().with_pos().convert_to_fn(),
-            array_dimensions(),
-            type_definition_extended(),
-        ),
-        |(name_node, opt_array_dimensions, opt_extended_type_definition)| {
-            map_name_opt_extended_type_definition(
-                name_node,
-                opt_array_dimensions,
-                opt_extended_type_definition,
-            )
-        },
+    dim_name_node_p().convert_to_fn()
+}
+
+pub fn dim_name_node_p<R>() -> impl Parser<R, Output = DimNameNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    name_with_dot_p()
+        .with_pos()
+        .and_opt(array_dimensions_p())
+        .and_opt(type_definition_extended_p())
+        .and_then(
+            |((name_node, opt_array_dimensions), opt_extended_type_definition)| {
+                map_name_opt_extended_type_definition(
+                    name_node,
+                    opt_array_dimensions,
+                    opt_extended_type_definition,
+                )
+            },
+        )
+}
+
+fn array_dimensions_p<R>() -> impl Parser<R, Output = ArrayDimensions>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    in_parenthesis_p(
+        array_dimension_p()
+            .csv()
+            .or_syntax_error("Expected: array dimension"),
     )
 }
 
-fn array_dimensions<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ArrayDimensions, QError>> {
-    in_parenthesis(demand(
-        map_default_to_not_found(csv_zero_or_more(array_dimension())),
-        QError::syntax_error_fn("Expected: array dimension"),
-    ))
-}
-
-fn array_dimension<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ArrayDimension, QError>> {
-    map(
-        opt_seq2(
-            expression::expression_node(),
-            drop_left(seq2(
-                ws::one_or_more_leading(keyword(Keyword::To)),
-                expression::demand_guarded_expression_node(),
-            )),
-        ),
-        |(l, opt_r)| match opt_r {
+fn array_dimension_p<R>() -> impl Parser<R, Output = ArrayDimension>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    expression::expression_node_p()
+        .and_opt(
+            whitespace_p()
+                .and(keyword_p(Keyword::To))
+                .and_demand(
+                    expression::guarded_expression_node_p()
+                        .or_syntax_error("Expected: expression after TO"),
+                )
+                .keep_right(),
+        )
+        .map(|(l, opt_r)| match opt_r {
             Some(r) => ArrayDimension {
                 lbound: Some(l),
                 ubound: r,
@@ -69,90 +84,78 @@ fn array_dimension<T: BufRead + 'static>(
                 lbound: None,
                 ubound: l,
             },
-        },
-    )
+        })
 }
 
-fn type_definition_extended<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimType, QError>> {
+fn type_definition_extended_p<R>() -> impl Parser<R, Output = DimType>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     // <ws+> AS <ws+> identifier
-    drop_left(crate::parser::pc::ws::seq2(
-        crate::parser::pc::ws::one_or_more_leading(keyword(Keyword::As)),
-        demand(
-            extended_type(),
-            QError::syntax_error_fn("Expected: type after AS"),
-        ),
-        QError::syntax_error_fn("Expected: whitespace after AS"),
-    ))
+    whitespace_p()
+        .and(keyword_p(Keyword::As))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after AS"))
+        .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
+        .keep_right()
 }
 
-fn extended_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimType, QError>> {
-    source_and_then_some(
-        with_pos(any_identifier_without_dot()),
-        |reader, Locatable { element: x, pos }| match Keyword::from_str(&x) {
-            Ok(Keyword::Single) => Ok((
-                reader,
-                Some(DimType::BuiltIn(
+fn extended_type_p<R>() -> impl Parser<R, Output = DimType>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    identifier_without_dot_p()
+        .with_pos()
+        .switch(
+            |Locatable { element: x, pos }| match Keyword::from_str(&x) {
+                Ok(Keyword::Single) => static_p(DimType::BuiltIn(
                     TypeQualifier::BangSingle,
                     BuiltInStyle::Extended,
-                )),
-            )),
-            Ok(Keyword::Double) => Ok((
-                reader,
-                Some(DimType::BuiltIn(
+                ))
+                .box_dyn(),
+                Ok(Keyword::Double) => static_p(DimType::BuiltIn(
                     TypeQualifier::HashDouble,
                     BuiltInStyle::Extended,
-                )),
-            )),
-            Ok(Keyword::String_) => {
-                let expr_res: ReaderResult<EolReader<T>, ExpressionNode, QError> =
-                    drop_left(seq2(
-                        ws::zero_or_more_around(read('*')),
-                        expression::demand_expression_node(),
-                    ))(reader);
-                match expr_res {
-                    Ok((reader, Some(e))) => Ok((reader, Some(DimType::FixedLengthString(e, 0)))),
-                    Ok((reader, None)) => Ok((
-                        reader,
-                        Some(DimType::BuiltIn(
-                            TypeQualifier::DollarString,
-                            BuiltInStyle::Extended,
-                        )),
-                    )),
-                    Err(err) => Err(err),
-                }
-            }
-            Ok(Keyword::Integer) => Ok((
-                reader,
-                Some(DimType::BuiltIn(
+                ))
+                .box_dyn(),
+                Ok(Keyword::String_) => item_p('*')
+                    .surrounded_by_opt_ws()
+                    .and_demand(
+                        expression::expression_node_p()
+                            .or_syntax_error("Expected: string length after *"),
+                    )
+                    .keep_right()
+                    .optional()
+                    .map(|opt_len| match opt_len {
+                        Some(l) => DimType::FixedLengthString(l, 0),
+                        _ => DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
+                    })
+                    .box_dyn(),
+                Ok(Keyword::Integer) => static_p(DimType::BuiltIn(
                     TypeQualifier::PercentInteger,
                     BuiltInStyle::Extended,
-                )),
-            )),
-            Ok(Keyword::Long) => Ok((
-                reader,
-                Some(DimType::BuiltIn(
+                ))
+                .box_dyn(),
+                Ok(Keyword::Long) => static_p(DimType::BuiltIn(
                     TypeQualifier::AmpersandLong,
                     BuiltInStyle::Extended,
-                )),
-            )),
-            Ok(_) => Err((
-                reader,
-                QError::syntax_error(
+                ))
+                .box_dyn(),
+                Ok(_) => static_err_p(QError::syntax_error(
                     "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                ),
-            )),
-            Err(_) => {
-                if x.len() > name::MAX_LENGTH {
-                    Err((reader, QError::IdentifierTooLong))
-                } else {
-                    let type_name: BareName = x.into();
-                    Ok((reader, Some(DimType::UserDefined(type_name.at(pos)))))
-                }
-            }
-        },
-    )
+                ))
+                .box_dyn(),
+                Err(_) => static_p(x)
+                    .validate(|x| {
+                        if x.len() > name::MAX_LENGTH {
+                            Err(QError::IdentifierTooLong)
+                        } else {
+                            Ok(true)
+                        }
+                    })
+                    .map(move |x| DimType::UserDefined(BareName::from(x).at(pos)))
+                    .box_dyn(),
+            },
+        )
 }
 
 fn map_name_opt_extended_type_definition(

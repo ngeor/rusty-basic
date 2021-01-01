@@ -32,6 +32,21 @@ where
     }
 }
 
+// Accepts `None` results by wrapping them in an `Option`.
+unary_parser!(Optional);
+
+impl<R, S> Parser<R> for Optional<S>
+where
+    R: Reader,
+    S: Parser<R>,
+{
+    type Output = Option<S::Output>;
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_item) = self.0.parse(reader)?;
+        Ok((reader, Some(opt_item)))
+    }
+}
+
 // Keeps the left side of a tuple.
 unary_parser!(KeepLeft);
 
@@ -174,6 +189,12 @@ pub trait UnaryParser<R: Reader>: Parser<R> + Sized {
         Self::Output: Default,
     {
         MapNoneToDefault::new(self)
+    }
+
+    /// Accepts unsuccessful results by wrapping the results of the given parser
+    /// into an `Option`.
+    fn optional(self) -> Optional<Self> {
+        Optional::new(self)
     }
 
     /// Keeps the left part of a tuple.

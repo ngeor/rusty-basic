@@ -1,27 +1,29 @@
-use crate::common::QError;
+use crate::common::{HasLocation, QError};
 use crate::parser::char_reader::EolReader;
-use crate::parser::pc::common::demand;
-use crate::parser::pc::map::map;
-use crate::parser::pc::ReaderResult;
+use crate::parser::pc::{Reader, ReaderResult};
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::whitespace_p;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
-use crate::parser::pc_specific::keyword_p;
+use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::{dim_name, Keyword, Statement};
 use std::io::BufRead;
 
-/// Parses DIM statement
+#[deprecated]
 pub fn dim<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
-        crate::parser::pc::ws::seq2(
-            keyword_p(Keyword::Dim).convert_to_fn(),
-            demand(
-                dim_name::dim_name_node(),
-                QError::syntax_error_fn("Expected: name after DIM"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace after DIM"),
-        ),
-        |(_, r)| Statement::Dim(r),
-    )
+    dim_p().convert_to_fn()
+}
+
+/// Parses DIM statement
+pub fn dim_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Dim)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DIM"))
+        .and_demand(dim_name::dim_name_node_p().or_syntax_error("Expected: name after DIM"))
+        .map(|(_, r)| Statement::Dim(r))
 }
 
 #[cfg(test)]

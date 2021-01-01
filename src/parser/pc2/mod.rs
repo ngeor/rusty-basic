@@ -171,6 +171,28 @@ pub fn opt_static_p<R, T>(item: Option<T>) -> OptStaticParser<R, T> {
     OptStaticParser(PhantomData, item)
 }
 
+/// A static parser that always throws an error.
+pub struct StaticErrParser<R, T, E>(PhantomData<R>, PhantomData<T>, E);
+
+impl<R, T, E> Parser<R> for StaticErrParser<R, T, E>
+where
+    R: Reader<Err = E>,
+    E: Clone,
+{
+    type Output = T;
+    fn parse(&self, reader: R) -> ReaderResult<R, T, E> {
+        Err((reader, self.2.clone()))
+    }
+}
+
+pub fn static_err_p<R, T, E>(err: E) -> StaticErrParser<R, T, E>
+where
+    R: Reader<Err = E>,
+    E: Clone,
+{
+    StaticErrParser(PhantomData, PhantomData, err)
+}
+
 /// A workaround parser that wraps a parser into a box.
 /// This works around the compiler's limitations dealing with too deeply nested
 /// concrete parser types.

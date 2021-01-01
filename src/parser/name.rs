@@ -6,12 +6,13 @@ use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::{identifier_with_dot, with_pos};
 use crate::parser::type_qualifier::type_qualifier_p;
-use crate::parser::{BareName, BareNameNode, Keyword, Name, NameNode, TypeQualifier};
+use crate::parser::{BareName, Keyword, Name, NameNode, TypeQualifier};
 use std::io::BufRead;
 use std::str::FromStr;
 
 // name node
 
+#[deprecated]
 pub fn name_node<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, NameNode, QError>> {
     with_pos(name())
@@ -63,11 +64,6 @@ where
 }
 
 // bare name node
-
-pub fn bare_name_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareNameNode, QError>> {
-    with_pos(bare_name())
-}
 
 #[deprecated]
 pub fn bare_name<T: BufRead + 'static>(

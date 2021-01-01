@@ -1348,12 +1348,6 @@ where
         .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
 }
 
-#[deprecated]
-fn parse_file_number<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<FileHandle>, QError>> {
-    parse_file_number_p().convert_to_fn()
-}
-
 fn parse_file_number_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

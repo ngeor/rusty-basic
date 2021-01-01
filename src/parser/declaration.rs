@@ -1,10 +1,13 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
 use crate::parser::name;
-use crate::parser::param_name;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::{and_then_none, map};
+use crate::parser::param_name::param_name_node_p;
 use crate::parser::pc::*;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::whitespace_p;
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::io::BufRead;
@@ -22,77 +25,76 @@ use std::io::BufRead;
 
 pub fn declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    drop_left(crate::parser::pc::ws::seq2(
-        keyword(Keyword::Declare),
-        demand(
-            or(function_declaration_token(), sub_declaration_token()),
-            QError::syntax_error_fn("Expected: FUNCTION or SUB after DECLARE"),
-        ),
-        QError::syntax_error_fn("Expected: whitespace after DECLARE"),
-    ))
+    declaration_p().convert_to_fn()
 }
 
-fn function_declaration_token<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    map(function_declaration(), |(n, p)| {
-        TopLevelToken::FunctionDeclaration(n, p)
-    })
+pub fn declaration_p<R>() -> impl Parser<R, Output = TopLevelToken>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Declare)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DECLARE"))
+        .and_demand(
+            function_declaration_p()
+                .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
+                .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
+                .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
+        )
+        .keep_right()
 }
 
+#[deprecated]
 pub fn function_declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (NameNode, ParamNameNodes), QError>> {
-    map(
-        seq5(
-            keyword(Keyword::Function),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after FUNCTION"),
-            ),
-            demand(
-                name::name_node(),
-                QError::syntax_error_fn("Expected: function name"),
-            ),
-            crate::parser::pc::ws::zero_or_more(),
-            opt_declaration_parameters(),
-        ),
-        |(_, _, n, _, opt_p)| (n, opt_p),
-    )
+    function_declaration_p().convert_to_fn()
 }
 
-fn sub_declaration_token<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    map(sub_declaration(), |(n, p)| {
-        TopLevelToken::SubDeclaration(n, p)
-    })
+pub fn function_declaration_p<R>() -> impl Parser<R, Output = (NameNode, ParamNameNodes)>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Function)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FUNCTION"))
+        .and_demand(
+            name::name_with_dot_p()
+                .with_pos()
+                .or_syntax_error("Expected: function name"),
+        )
+        .and_opt(whitespace_p())
+        .and_opt(declaration_parameters_p())
+        .map(|(((_, function_name_node), _), opt_p)| {
+            (function_name_node, opt_p.unwrap_or_default())
+        })
 }
 
+#[deprecated]
 pub fn sub_declaration<T: BufRead + 'static>(
 ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, ParamNameNodes), QError>>
 {
-    map(
-        seq5(
-            keyword(Keyword::Sub),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after SUB"),
-            ),
-            demand(
-                name::bare_name_node(),
-                QError::syntax_error_fn("Expected: sub name"),
-            ),
-            crate::parser::pc::ws::zero_or_more(),
-            opt_declaration_parameters(),
-        ),
-        |(_, _, n, _, opt_p)| (n, opt_p),
-    )
+    sub_declaration_p().convert_to_fn()
 }
 
-fn opt_declaration_parameters<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNameNodes, QError>> {
-    and_then_none(
-        in_parenthesis(csv_zero_or_more(param_name::param_name_node())),
-        || Ok(vec![]),
-    )
+pub fn sub_declaration_p<R>() -> impl Parser<R, Output = (BareNameNode, ParamNameNodes)>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Sub)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after SUB"))
+        .and_demand(
+            name::bare_name_p()
+                .with_pos()
+                .or_syntax_error("Expected: sub name"),
+        )
+        .and_opt(whitespace_p())
+        .and_opt(declaration_parameters_p())
+        .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
+}
+
+fn declaration_parameters_p<R>() -> impl Parser<R, Output = ParamNameNodes>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    in_parenthesis_p(param_name_node_p().csv())
 }
 
 #[cfg(test)]

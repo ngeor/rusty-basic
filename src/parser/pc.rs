@@ -615,46 +615,6 @@ pub mod common {
             Ok((cr, Some(result)))
         })
     }
-
-    pub fn many_looking_back<R, S, T, E>(
-        opt_first_arg: Option<T>,
-        source: S,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
-    where
-        R: Reader + 'static,
-        S: Fn(Option<&T>) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>> + 'static,
-        T: Clone + 'static,
-        E: 'static,
-    {
-        Box::new(move |char_reader| {
-            let mut result: Vec<T> = match &opt_first_arg {
-                Some(first_arg) => vec![first_arg.clone()],
-                None => vec![],
-            };
-            let mut cr: R = char_reader;
-            loop {
-                let last = result.last();
-                let s = source(last);
-                match s(cr) {
-                    Ok((next_cr, opt_res)) => {
-                        cr = next_cr;
-                        match opt_res {
-                            Some(t) => {
-                                result.push(t);
-                            }
-                            None => {
-                                break;
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            }
-            Ok((cr, Some(result)))
-        })
-    }
 }
 
 // ========================================================

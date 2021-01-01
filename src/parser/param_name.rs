@@ -1,15 +1,14 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::and_then;
 use crate::parser::pc::*;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::whitespace_p;
+use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
-use std::io::BufRead;
 use std::str::FromStr;
 
 // Parses a Param name. Possible options:
@@ -18,51 +17,55 @@ use std::str::FromStr;
 // A AS INTEGER
 // A AS UserDefinedType
 
-pub fn param_name_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamNameNode, QError>> {
-    and_then(
-        opt_seq2(
-            with_pos(param_name_p().convert_to_fn()),
-            type_definition_extended(),
-        ),
-        |(
-            Locatable {
-                element: (name, is_array),
-                pos,
-            },
-            opt_type_definition,
-        )| match name {
-            Name::Bare(b) => match opt_type_definition {
-                Some(param_type) => match param_type {
-                    ParamType::UserDefined(_) => {
-                        if b.contains('.') {
-                            Err(QError::IdentifierCannotIncludePeriod)
-                        } else {
-                            Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos))
-                        }
-                    }
-                    _ => Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos)),
+pub fn param_name_node_p<R>() -> impl Parser<R, Output = ParamNameNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    param_name_p()
+        .with_pos()
+        .and_opt(type_definition_extended_p())
+        .and_then(
+            |(
+                Locatable {
+                    element: (name, is_array),
+                    pos,
                 },
-                None => Ok(ParamName::new(b, final_param_type(ParamType::Bare, is_array)).at(pos)),
-            },
-            Name::Qualified(QualifiedName {
-                bare_name,
-                qualifier,
-            }) => match opt_type_definition {
-                Some(_) => Err(QError::syntax_error(
-                    "Identifier cannot end with %, &, !, #, or $",
-                )),
-                None => Ok(ParamName::new(
+                opt_type_definition,
+            )| match name {
+                Name::Bare(b) => match opt_type_definition {
+                    Some(param_type) => match param_type {
+                        ParamType::UserDefined(_) => {
+                            if b.contains('.') {
+                                Err(QError::IdentifierCannotIncludePeriod)
+                            } else {
+                                Ok(ParamName::new(b, final_param_type(param_type, is_array))
+                                    .at(pos))
+                            }
+                        }
+                        _ => Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos)),
+                    },
+                    None => {
+                        Ok(ParamName::new(b, final_param_type(ParamType::Bare, is_array)).at(pos))
+                    }
+                },
+                Name::Qualified(QualifiedName {
                     bare_name,
-                    final_param_type(
-                        ParamType::BuiltIn(qualifier, BuiltInStyle::Compact),
-                        is_array,
-                    ),
-                )
-                .at(pos)),
+                    qualifier,
+                }) => match opt_type_definition {
+                    Some(_) => Err(QError::syntax_error(
+                        "Identifier cannot end with %, &, !, #, or $",
+                    )),
+                    None => Ok(ParamName::new(
+                        bare_name,
+                        final_param_type(
+                            ParamType::BuiltIn(qualifier, BuiltInStyle::Compact),
+                            is_array,
+                        ),
+                    )
+                    .at(pos)),
+                },
             },
-        },
-    )
+        )
 }
 
 fn param_name_p<R>() -> impl Parser<R, Output = (Name, bool)>
@@ -97,55 +100,57 @@ fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
     }
 }
 
-fn type_definition_extended<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamType, QError>> {
+fn type_definition_extended_p<R>() -> impl Parser<R, Output = ParamType>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     // <ws+> AS <ws+> identifier
-    drop_left(crate::parser::pc::ws::seq2(
-        crate::parser::pc::ws::one_or_more_leading(keyword(Keyword::As)),
-        demand(
-            extended_type(),
-            QError::syntax_error_fn("Expected: type after AS"),
-        ),
-        QError::syntax_error_fn("Expected: whitespace after AS"),
-    ))
+    whitespace_p()
+        .and(keyword_p(Keyword::As))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after AS"))
+        .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
+        .keep_right()
 }
 
-fn extended_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ParamType, QError>> {
-    and_then(
-        with_pos(any_identifier_without_dot()),
-        |Locatable { element: x, pos }| match Keyword::from_str(&x) {
-            Ok(Keyword::Single) => Ok(ParamType::BuiltIn(
-                TypeQualifier::BangSingle,
-                BuiltInStyle::Extended,
-            )),
-            Ok(Keyword::Double) => Ok(ParamType::BuiltIn(
-                TypeQualifier::HashDouble,
-                BuiltInStyle::Extended,
-            )),
-            Ok(Keyword::String_) => Ok(ParamType::BuiltIn(
-                TypeQualifier::DollarString,
-                BuiltInStyle::Extended,
-            )),
-            Ok(Keyword::Integer) => Ok(ParamType::BuiltIn(
-                TypeQualifier::PercentInteger,
-                BuiltInStyle::Extended,
-            )),
-            Ok(Keyword::Long) => Ok(ParamType::BuiltIn(
-                TypeQualifier::AmpersandLong,
-                BuiltInStyle::Extended,
-            )),
-            Ok(_) => Err(QError::syntax_error(
-                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-            )),
-            Err(_) => {
-                if x.len() > MAX_LENGTH {
-                    Err(QError::IdentifierTooLong)
-                } else {
-                    let type_name: BareName = x.into();
-                    Ok(ParamType::UserDefined(type_name.at(pos)))
+fn extended_type_p<R>() -> impl Parser<R, Output = ParamType>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    identifier_without_dot_p()
+        .with_pos()
+        .and_then(
+            |Locatable { element: x, pos }| match Keyword::from_str(&x) {
+                Ok(Keyword::Single) => Ok(ParamType::BuiltIn(
+                    TypeQualifier::BangSingle,
+                    BuiltInStyle::Extended,
+                )),
+                Ok(Keyword::Double) => Ok(ParamType::BuiltIn(
+                    TypeQualifier::HashDouble,
+                    BuiltInStyle::Extended,
+                )),
+                Ok(Keyword::String_) => Ok(ParamType::BuiltIn(
+                    TypeQualifier::DollarString,
+                    BuiltInStyle::Extended,
+                )),
+                Ok(Keyword::Integer) => Ok(ParamType::BuiltIn(
+                    TypeQualifier::PercentInteger,
+                    BuiltInStyle::Extended,
+                )),
+                Ok(Keyword::Long) => Ok(ParamType::BuiltIn(
+                    TypeQualifier::AmpersandLong,
+                    BuiltInStyle::Extended,
+                )),
+                Ok(_) => Err(QError::syntax_error(
+                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+                )),
+                Err(_) => {
+                    if x.len() > MAX_LENGTH {
+                        Err(QError::IdentifierTooLong)
+                    } else {
+                        let type_name: BareName = x.into();
+                        Ok(ParamType::UserDefined(type_name.at(pos)))
+                    }
                 }
-            }
-        },
-    )
+            },
+        )
 }

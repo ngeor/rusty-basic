@@ -1,24 +1,24 @@
 use crate::common::*;
-use crate::parser::char_reader::EolReader;
 use crate::parser::pc::combine::combine_if_first_some;
 use crate::parser::pc::common::*;
 use crate::parser::pc::str::{map_to_str, zero_or_more_if_leading_remaining};
 use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace, is_whitespace};
 use crate::parser::pc::*;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::many::ManyParser;
+use crate::parser::pc2::text::{string_while_p, TextParser};
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{any_p, item_p, Parser};
 use crate::parser::pc_specific::with_pos;
 use crate::parser::statement;
 use crate::parser::types::*;
-use std::io::BufRead;
 
-#[derive(Debug)]
-pub struct ParseStatementsOptions {
-    /// Indicates that a whitespace is a valid separator for the first statement in a block
-    pub first_statement_separated_by_whitespace: bool,
-    pub err: QError,
-}
-
-pub fn single_line_non_comment_statements<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>> {
+pub fn single_line_non_comment_statements<R>(
+) -> Box<dyn Fn(R) -> ReaderResult<R, StatementNodes, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(
         many_with_terminating_indicator(opt_seq2(
             with_pos(statement::single_line_non_comment_statement()),
@@ -27,8 +27,10 @@ pub fn single_line_non_comment_statements<T: BufRead + 'static>(
     ))
 }
 
-pub fn single_line_statements<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>> {
+pub fn single_line_statements<R>() -> Box<dyn Fn(R) -> ReaderResult<R, StatementNodes, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(
         many_with_terminating_indicator(opt_seq2(
             with_pos(statement::single_line_statement()),
@@ -37,10 +39,11 @@ pub fn single_line_statements<T: BufRead + 'static>(
     ))
 }
 
-fn parse_first_statement_separator<T: BufRead + 'static, FE>(
+fn parse_first_statement_separator<R, FE>(
     err_fn: FE,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, String, QError>>
+) -> Box<dyn Fn(R) -> ReaderResult<R, String, QError>>
 where
+    R: Reader<Item = char, Err = QError>,
     FE: Fn() -> QError + 'static,
 {
     // Allowed to read:
@@ -93,13 +96,14 @@ where
 // When `statements` is called, it must always read first the first statement separator.
 // `top_level_token` handles the case where the first statement does not start with
 // a separator.
-pub fn statements<T: BufRead + 'static, S, X, FE>(
+#[deprecated]
+pub fn statements<R, S, X, FE>(
     exit_source: S,
     err_fn: FE,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNodes, QError>>
+) -> Box<dyn Fn(R) -> ReaderResult<R, StatementNodes, QError>>
 where
-    S: Fn(EolReader<T>) -> ReaderResult<EolReader<T>, X, QError> + 'static,
-    EolReader<T>: Undo<X>,
+    S: Fn(R) -> ReaderResult<R, X, QError> + 'static,
+    R: Reader<Item = char, Err = QError> + Undo<X> + HasLocation + 'static,
     FE: Fn() -> QError + 'static,
 {
     drop_left(and(
@@ -123,8 +127,71 @@ where
     ))
 }
 
-fn statement_node_and_separator<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (StatementNode, Option<String>), QError>>
+pub fn statements_p<R, S>(exit_source: S) -> impl Parser<R, Output = StatementNodes>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + Undo<S::Output> + 'static,
+    S: Parser<R>,
+{
+    first_statement_separator_p()
+        .and(
+            exit_source
+                .negate()
+                .and(statement_node_and_separator_p().keep_left())
+                .keep_right()
+                .zero_or_more(),
+        )
+        .keep_right()
+    // first separator
+    // loop
+    //      negate exit source
+    //      statement node and separator
+}
+
+// <ws>* '\'' (undoing it)
+// <ws>* ':' <ws*>
+// <ws>* EOL <ws | eol>*
+fn first_statement_separator_p<R>() -> impl Parser<R, Output = String>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    comment_separator_p()
+        .or(colon_separator_p())
+        .or(eol_separator_p())
+        .preceded_by_opt_ws()
+        .stringify()
+}
+
+// '\'' (undoing it)
+fn comment_separator_p<R>() -> impl Parser<R, Output = String>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    item_p('\'').peek_reader_item().stringify()
+}
+
+// ':' <ws>*
+fn colon_separator_p<R>() -> impl Parser<R, Output = String>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    item_p(':').followed_by_opt_ws().stringify()
+}
+
+// <eol> < ws | eol >*
+fn eol_separator_p<R>() -> impl Parser<R, Output = String>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    any_p()
+        .filter_reader_item(is_eol)
+        .and_opt(string_while_p(is_eol_or_whitespace))
+        .stringify()
+}
+
+fn statement_node_and_separator<R>(
+) -> Box<dyn Fn(R) -> ReaderResult<R, (StatementNode, Option<String>), QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     combine_if_first_some(
         // first part is the statement node
@@ -145,16 +212,35 @@ fn statement_node_and_separator<T: BufRead + 'static>(
     )
 }
 
-fn comment_separator<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, String, QError>> {
+fn statement_node_and_separator_p<R>() -> impl Parser<R, Output = (StatementNode, Option<String>)>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    statement::statement_p()
+        .with_pos()
+        .and_opt_factory(|Locatable { element, .. }| {
+            if let Statement::Comment(_) = element {
+                eol_separator_p().box_dyn()
+            } else {
+                first_statement_separator_p().box_dyn()
+            }
+        })
+}
+
+fn comment_separator<R>() -> Box<dyn Fn(R) -> ReaderResult<R, String, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map_default_to_not_found(zero_or_more_if_leading_remaining(
         is_eol,
         is_eol_or_whitespace,
     ))
 }
 
-fn non_comment_separator<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, String, QError>> {
+fn non_comment_separator<R>() -> Box<dyn Fn(R) -> ReaderResult<R, String, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     // ws* : ws*
     // ws* eol (ws | eol)*
     // ws*' comment

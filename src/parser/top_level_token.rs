@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
@@ -11,10 +10,11 @@ use crate::parser::pc_specific::with_pos;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
-use std::io::BufRead;
 
-pub fn top_level_tokens<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ProgramNode, QError>> {
+pub fn top_level_tokens<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ProgramNode, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     Box::new(move |r| {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
@@ -78,8 +78,10 @@ pub fn top_level_tokens<T: BufRead + 'static>(
     })
 }
 
-pub fn top_level_token_one<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelTokenNode, QError>> {
+pub fn top_level_token_one<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelTokenNode, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     with_pos(or_vec(vec![
         top_level_token_def_type(),
         top_level_token_declaration(),
@@ -89,30 +91,40 @@ pub fn top_level_token_one<T: BufRead + 'static>(
     ]))
 }
 
-fn top_level_token_def_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
+fn top_level_token_def_type<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(def_type::def_type_p().convert_to_fn(), |d| {
         TopLevelToken::DefType(d)
     })
 }
 
-fn top_level_token_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    declaration::declaration()
+fn top_level_token_declaration<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    declaration::declaration_p().convert_to_fn()
 }
 
-fn top_level_token_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
+fn top_level_token_implementation<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     implementation::implementation()
 }
 
-fn top_level_token_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
+fn top_level_token_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(statement::statement(), |s| TopLevelToken::Statement(s))
 }
 
-fn top_level_token_user_defined_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
+fn top_level_token_user_defined_type<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(user_defined_type::user_defined_type(), |u| {
         TopLevelToken::UserDefinedType(u)
     })

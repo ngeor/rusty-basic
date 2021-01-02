@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
@@ -11,7 +10,6 @@ use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::{item_p, static_err_p, static_p, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
-use std::io::BufRead;
 use std::str::FromStr;
 
 // Parses a declared name. Possible options:
@@ -24,12 +22,6 @@ use std::str::FromStr;
 // A(10)
 // A$(1 TO 2, 0 TO 10)
 // A(1 TO 5) AS INTEGER
-
-#[deprecated]
-pub fn dim_name_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, DimNameNode, QError>> {
-    dim_name_node_p().convert_to_fn()
-}
 
 pub fn dim_name_node_p<R>() -> impl Parser<R, Output = DimNameNode>
 where

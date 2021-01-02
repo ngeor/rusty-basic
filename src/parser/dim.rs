@@ -1,5 +1,4 @@
 use crate::common::{HasLocation, QError};
-use crate::parser::char_reader::EolReader;
 use crate::parser::pc::{Reader, ReaderResult};
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::whitespace_p;
@@ -7,11 +6,12 @@ use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::{dim_name, Keyword, Statement};
-use std::io::BufRead;
 
 #[deprecated]
-pub fn dim<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn dim<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     dim_p().convert_to_fn()
 }
 

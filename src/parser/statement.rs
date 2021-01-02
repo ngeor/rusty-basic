@@ -1,6 +1,5 @@
 use crate::common::*;
 use crate::parser::built_ins;
-use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -10,26 +9,38 @@ use crate::parser::name;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
-use crate::parser::pc2::Parser;
+use crate::parser::pc2::{LazyFnParser, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
-use std::io::BufRead;
 
-pub fn statement_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNode, QError>> {
+#[deprecated]
+pub fn statement_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, StatementNode, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     with_pos(statement())
 }
 
-pub fn statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn statement_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    LazyFnParser::new(statement)
+}
+
+#[deprecated]
+pub fn statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     or_vec(vec![
-        dim::dim(),
+        dim::dim_p().convert_to_fn(),
         constant::constant_p().convert_to_fn(),
         comment::comment(),
-        built_ins::parse_built_in(),
+        built_ins::parse_built_in_p().convert_to_fn(),
         statement_label(),
         sub_call::sub_call_or_assignment(),
         if_block::if_block(),
@@ -44,8 +55,10 @@ pub fn statement<T: BufRead + 'static>(
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
-pub fn single_line_non_comment_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn single_line_non_comment_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     or_vec(vec![
         dim::dim(),
         constant::constant_p().convert_to_fn(),
@@ -58,8 +71,10 @@ pub fn single_line_non_comment_statement<T: BufRead + 'static>(
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn single_line_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     or_vec(vec![
         comment::comment(),
         dim::dim(),
@@ -71,15 +86,19 @@ pub fn single_line_statement<T: BufRead + 'static>(
     ])
 }
 
-pub fn statement_label<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn statement_label<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(and(name::bare_name(), read(':')), |(l, _)| {
         Statement::Label(l)
     })
 }
 
-pub fn statement_go_to<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn statement_go_to<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         crate::parser::pc::ws::seq2(
             keyword(Keyword::GoTo),
@@ -93,8 +112,10 @@ pub fn statement_go_to<T: BufRead + 'static>(
     )
 }
 
-pub fn statement_on_error_go_to<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn statement_on_error_go_to<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         crate::parser::pc::ws::seq4(
             keyword(Keyword::On),
@@ -116,8 +137,10 @@ pub fn statement_on_error_go_to<T: BufRead + 'static>(
     )
 }
 
-pub fn statement_illegal_keywords<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn statement_illegal_keywords<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     or(
         and_then(keyword(Keyword::Wend), |_| Err(QError::WendWithoutWhile)),
         and_then(keyword(Keyword::Else), |_| Err(QError::ElseWithoutIf)),

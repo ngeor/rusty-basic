@@ -3,6 +3,8 @@
 use super::{Parser, Reader, ReaderResult, Undo};
 use crate::parser::pc::ws::is_whitespace;
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
+use crate::parser::pc2::unary::PeekReaderItem;
+use crate::parser::pc2::Item;
 use crate::parser::pc_specific::{
     is_digit, is_letter, is_non_leading_identifier_with_dot, is_non_leading_identifier_without_dot,
 };
@@ -206,6 +208,25 @@ where
         match opt_item {
             Some((Some(left), right)) => Ok((reader, Some(format!("{}{}", left, right)))),
             Some((None, right)) => Ok((reader, Some(right.to_string()))),
+            _ => Ok((reader, None)),
+        }
+    }
+}
+
+impl<R> Parser<R> for Stringify<PeekReaderItem<Item<R>>>
+where
+    R: Reader<Item = char>,
+{
+    type Output = String;
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+        let (reader, opt_item) = self.0.parse(reader)?;
+        match opt_item {
+            Some(item) => {
+                let mut s: String = String::new();
+                s.push(item);
+                Ok((reader, Some(s)))
+            }
             _ => Ok((reader, None)),
         }
     }

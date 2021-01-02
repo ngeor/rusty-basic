@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::str::zero_or_more_if;
@@ -7,23 +6,26 @@ use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::with_pos;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 fn is_not_eol(ch: char) -> bool {
     !is_eol(ch)
 }
 
 /// Tries to read a comment.
-pub fn comment<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn comment<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(and(read('\''), zero_or_more_if(is_not_eol)), |(_, r)| {
         Statement::Comment(r)
     })
 }
 
 /// Reads multiple comments
-pub fn comments<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<Locatable<String>>, QError>> {
+pub fn comments<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Vec<Locatable<String>>, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     // skip while ws or eol
     // if "'", undo and read comment
     // repeat

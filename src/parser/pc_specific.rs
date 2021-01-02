@@ -1,11 +1,8 @@
 /// Parser combinators specific to this project (e.g. for keywords)
 use crate::common::QError;
 use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable};
-use crate::parser::pc::common::{
-    and, demand, drop_left, many_with_terminating_indicator, opt_seq2, seq3,
-};
-use crate::parser::pc::map::map;
-use crate::parser::pc::{read, Reader, ReaderResult, Undo};
+use crate::parser::pc::common::{and, demand, drop_left};
+use crate::parser::pc::{Reader, ReaderResult, Undo};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::many::{ManyParser, OneOrMoreDelimited};
 use crate::parser::pc2::text::{
@@ -128,15 +125,6 @@ where
         .stringify()
 }
 
-#[deprecated]
-pub fn any_identifier_without_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
-{
-    identifier_without_dot_p().convert_to_fn()
-}
-
 /// Parses an identifier that does not include a dot.
 /// This might be a keyword.
 pub fn identifier_without_dot_p<R>() -> impl Parser<R, Output = String>
@@ -198,49 +186,8 @@ where
 }
 
 //
-// Modify the result of a parser
-//
-
-//
 // Take multiple items
 //
-
-#[deprecated]
-pub fn csv_zero_or_more<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-    T: 'static,
-    E: 'static,
-{
-    many_with_terminating_indicator(opt_seq2(
-        source,
-        crate::parser::pc::ws::zero_or_more_around(read(',')),
-    ))
-}
-
-/// Parses opening and closing parenthesis around the given source.
-///
-/// Panics if the source returns `Ok(None)`.
-#[deprecated]
-pub fn in_parenthesis<R, S, T>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, QError>>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-    S: Fn(R) -> ReaderResult<R, T, QError> + 'static,
-    T: 'static,
-{
-    map(
-        seq3(
-            read('('),
-            source,
-            demand(
-                read(')'),
-                QError::syntax_error_fn("Expected: closing parenthesis"),
-            ),
-        ),
-        |(_, r, _)| r,
-    )
-}
 
 /// Parses open and closing parenthesis around the given source.
 /// Additional whitespace is allowed inside the parenthesis.

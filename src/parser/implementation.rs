@@ -1,27 +1,30 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::declaration;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
+use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::statements;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
+pub fn implementation<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     or(function_implementation(), sub_implementation())
 }
 
-pub fn function_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
+pub fn function_implementation<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq5(
-            declaration::function_declaration(),
+            declaration::function_declaration_p().convert_to_fn(),
             statements::statements(
                 keyword(Keyword::End),
                 QError::syntax_error_fn("Expected: end-of-statement"),
@@ -45,11 +48,13 @@ pub fn function_implementation<T: BufRead + 'static>(
     )
 }
 
-pub fn sub_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
+pub fn sub_implementation<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq5(
-            declaration::sub_declaration(),
+            declaration::sub_declaration_p().convert_to_fn(),
             statements::statements(
                 keyword(Keyword::End),
                 QError::syntax_error_fn("Expected: end-of-statement"),

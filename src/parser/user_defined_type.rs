@@ -42,24 +42,24 @@
 //
 // Type must be defined Before DECLARE SUB
 
-use crate::common::{Locatable, QError};
-use crate::parser::char_reader::EolReader;
+use crate::common::{HasLocation, Locatable, QError};
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::common::{demand, many, or_vec, seq3, seq5};
 use crate::parser::pc::map::{and_then, map, source_and_then_some};
-use crate::parser::pc::ws;
 use crate::parser::pc::{read, ReaderResult};
+use crate::parser::pc::{ws, Reader};
 use crate::parser::pc_specific::{demand_guarded_keyword, demand_keyword, keyword, with_pos};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
 };
-use std::io::BufRead;
 
-pub fn user_defined_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, UserDefinedType, QError>> {
+pub fn user_defined_type<R>() -> Box<dyn Fn(R) -> ReaderResult<R, UserDefinedType, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq5(
             ws::seq2(
@@ -79,8 +79,10 @@ pub fn user_defined_type<T: BufRead + 'static>(
     )
 }
 
-fn bare_name_without_dot<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, BareName, QError>> {
+fn bare_name_without_dot<R>() -> Box<dyn Fn(R) -> ReaderResult<R, BareName, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     source_and_then_some(name::name(), |r, n| match n {
         Name::Bare(b) => {
             if b.contains('.') {
@@ -96,8 +98,10 @@ fn bare_name_without_dot<T: BufRead + 'static>(
     })
 }
 
-fn element_nodes<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Vec<ElementNode>, QError>> {
+fn element_nodes<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Vec<ElementNode>, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     and_then(many(element_node), |v| {
         if v.is_empty() {
             Err(QError::ElementNotDefined)
@@ -107,9 +111,10 @@ fn element_nodes<T: BufRead + 'static>(
     })
 }
 
-fn element_node<T: BufRead + 'static>(
-    reader: EolReader<T>,
-) -> ReaderResult<EolReader<T>, ElementNode, QError> {
+fn element_node<R>(reader: R) -> ReaderResult<R, ElementNode, QError>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq5(
             with_pos(bare_name_without_dot()),
@@ -130,8 +135,10 @@ fn element_node<T: BufRead + 'static>(
     )(reader)
 }
 
-fn element_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ElementType, QError>> {
+fn element_type<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ElementType, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     or_vec(vec![
         map(keyword(Keyword::Integer), |_| ElementType::Integer),
         map(keyword(Keyword::Long), |_| ElementType::Long),
@@ -154,8 +161,10 @@ fn element_type<T: BufRead + 'static>(
     ])
 }
 
-fn demand_string_length<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+fn demand_string_length<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     and_then(
         expression::demand_expression_node(),
         |Locatable { element, pos }| match element {

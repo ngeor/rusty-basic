@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
 use crate::parser::pc::*;
@@ -10,7 +9,6 @@ use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
 // FunctionDeclaration   ::= FUNCTION<ws+><Name><ws*><DeclarationParameters>
@@ -22,11 +20,6 @@ use std::io::BufRead;
 // CompactBuiltIn        ::= <BareName>[!#$%&]
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
-
-pub fn declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    declaration_p().convert_to_fn()
-}
 
 pub fn declaration_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
@@ -41,12 +34,6 @@ where
                 .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
         )
         .keep_right()
-}
-
-#[deprecated]
-pub fn function_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (NameNode, ParamNameNodes), QError>> {
-    function_declaration_p().convert_to_fn()
 }
 
 pub fn function_declaration_p<R>() -> impl Parser<R, Output = (NameNode, ParamNameNodes)>
@@ -65,13 +52,6 @@ where
         .map(|(((_, function_name_node), _), opt_p)| {
             (function_name_node, opt_p.unwrap_or_default())
         })
-}
-
-#[deprecated]
-pub fn sub_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (BareNameNode, ParamNameNodes), QError>>
-{
-    sub_declaration_p().convert_to_fn()
 }
 
 pub fn sub_declaration_p<R>() -> impl Parser<R, Output = (BareNameNode, ParamNameNodes)>

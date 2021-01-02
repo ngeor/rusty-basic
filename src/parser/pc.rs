@@ -115,6 +115,7 @@ where
     read_if(move |ch| ch == needle)
 }
 
+#[deprecated]
 pub fn peek<R, T>(needle: T) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>
 where
     R: Reader<Item = T> + Undo<T> + 'static,
@@ -711,6 +712,7 @@ pub mod str {
         })
     }
 
+    #[deprecated]
     pub fn map_to_str<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
     where
         R: Reader + 'static,

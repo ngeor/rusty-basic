@@ -170,6 +170,9 @@ pub trait ManyParser<R: Reader>: Parser<R> + Sized {
         OneOrMoreDelimited(self, delimiter, trailing_delimiter_err)
     }
 
+    /// Returns a parser that collects multiple items, looking back at the previously
+    /// collected item to determine the next parser using the given factory.
+    /// The result of the current parser is used as the seed value.
     fn one_or_more_looking_back<S, F>(self, factory: F) -> OneOrMoreLookingBack<Self, F>
     where
         F: Fn(&Self::Output) -> S,

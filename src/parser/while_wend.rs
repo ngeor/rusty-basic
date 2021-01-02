@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
@@ -7,10 +6,11 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::statements::*;
 use crate::parser::types::*;
-use std::io::BufRead;
 
-pub fn while_wend<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn while_wend<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq3(
             parse_while_expression(),
@@ -29,8 +29,10 @@ pub fn while_wend<T: BufRead + 'static>(
     )
 }
 
-fn parse_while_expression<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+fn parse_while_expression<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     drop_left(seq2(
         keyword(Keyword::While),
         expression::demand_guarded_expression_node(),

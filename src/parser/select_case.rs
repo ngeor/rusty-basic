@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::pc::combine::combine_if_first_some;
@@ -9,7 +8,6 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::statements;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -23,8 +21,10 @@ use std::io::BufRead;
 // CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
-pub fn select_case<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn select_case<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq2(
             seq3(
@@ -67,8 +67,10 @@ pub fn select_case<T: BufRead + 'static>(
     )
 }
 
-fn parse_select_case_expr<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+fn parse_select_case_expr<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq3(
             keyword(Keyword::Select),
@@ -84,15 +86,11 @@ enum ExprOrElse {
     Else,
 }
 
-fn parse_case_any<T: BufRead + 'static>() -> Box<
-    dyn Fn(
-        EolReader<T>,
-    ) -> ReaderResult<
-        EolReader<T>,
-        ((Option<CaseExpression>, StatementNodes), Option<()>),
-        QError,
-    >,
-> {
+fn parse_case_any<R>(
+) -> Box<dyn Fn(R) -> ReaderResult<R, ((Option<CaseExpression>, StatementNodes), Option<()>), QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq2(
             keyword(Keyword::Case),
@@ -130,16 +128,20 @@ fn parse_case_any<T: BufRead + 'static>() -> Box<
     )
 }
 
-fn parse_case_else<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
+fn parse_case_else<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExprOrElse, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         and(crate::parser::pc::ws::one_or_more(), keyword(Keyword::Else)),
         |_| ExprOrElse::Else,
     )
 }
 
-fn parse_case_is<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
+fn parse_case_is<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExprOrElse, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq5(
             and(crate::parser::pc::ws::one_or_more(), keyword(Keyword::Is)),
@@ -155,8 +157,10 @@ fn parse_case_is<T: BufRead + 'static>(
     )
 }
 
-fn parse_case_simple_or_range<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExprOrElse, QError>> {
+fn parse_case_simple_or_range<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExprOrElse, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         combine_if_first_some(expression::guarded_expression_node(), parse_range),
         |(l, opt_r)| match opt_r {
@@ -166,9 +170,12 @@ fn parse_case_simple_or_range<T: BufRead + 'static>(
     )
 }
 
-fn parse_range<T: BufRead + 'static>(
+fn parse_range<R>(
     first_expr_ref: &ExpressionNode,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+) -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     let parenthesis = first_expr_ref.is_parenthesis();
     if parenthesis {
         drop_left(drop_left(and(
@@ -196,8 +203,10 @@ fn parse_range<T: BufRead + 'static>(
     }
 }
 
-fn parse_end_select<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, (), QError>> {
+fn parse_end_select<R>() -> Box<dyn Fn(R) -> ReaderResult<R, (), QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq2(
             keyword(Keyword::End),

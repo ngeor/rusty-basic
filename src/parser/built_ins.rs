@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
@@ -9,11 +8,12 @@ use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::{item_p, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 #[deprecated]
-pub fn parse_built_in<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, crate::parser::Statement, QError>> {
+pub fn parse_built_in<R>() -> Box<dyn Fn(R) -> ReaderResult<R, crate::parser::Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     parse_built_in_p().convert_to_fn()
 }
 

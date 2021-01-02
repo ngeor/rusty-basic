@@ -1,19 +1,19 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::expression;
 use crate::parser::pc::common::{drop_left, many, seq2};
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::pc2::Parser;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
 // SubCallNoArgs            ::= BareName [eof | eol | ' | <ws+>: ]
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
-pub fn sub_call_or_assignment<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
+pub fn sub_call_or_assignment<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     Box::new(move |r| {
         match expression::word::word_p().parse(r) {
             Ok((r, Some(name_expr))) => {
@@ -30,10 +30,10 @@ pub fn sub_call_or_assignment<T: BufRead + 'static>(
     })
 }
 
-fn assignment<T: BufRead + 'static>(
-    r: EolReader<T>,
-    name_expr: Expression,
-) -> ReaderResult<EolReader<T>, Statement, QError> {
+fn assignment<R>(r: R, name_expr: Expression) -> ReaderResult<R, Statement, QError>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     match expression::demand_expression_node()(r) {
         Ok((r, Some(right_expr_node))) => {
             Ok((r, Some(Statement::Assignment(name_expr, right_expr_node))))
@@ -43,10 +43,10 @@ fn assignment<T: BufRead + 'static>(
     }
 }
 
-fn sub_call<T: BufRead + 'static>(
-    r: EolReader<T>,
-    name_expr: Expression,
-) -> ReaderResult<EolReader<T>, Statement, QError> {
+fn sub_call<R>(r: R, name_expr: Expression) -> ReaderResult<R, Statement, QError>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     match name_expr {
         // A(1, 2) or A$(1, 2)
         Expression::FunctionCall(name, args) => {
@@ -105,8 +105,10 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
     }
 }
 
-fn sub_call_args_after_space<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNodes, QError>> {
+fn sub_call_args_after_space<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNodes, QError>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     map(
         seq2(
             // first expression after sub name

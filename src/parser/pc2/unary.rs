@@ -131,6 +131,30 @@ where
     }
 }
 
+// Negates the result of the underlying parser.
+// If the parser succeeds, the item is undone and `None` is returned.
+// If the parser fails, a successful empty string is returned.
+unary_parser!(Negate);
+
+impl<R, S> Parser<R> for Negate<S>
+where
+    R: Reader<Item = char> + Undo<S::Output>,
+    S: Parser<R>,
+{
+    type Output = String;
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+        let (reader, opt_item) = self.0.parse(reader)?;
+        match opt_item {
+            Some(item) => {
+                // found the exit
+                Ok((reader.undo(item), None))
+            }
+            _ => Ok((reader, Some(String::new()))),
+        }
+    }
+}
+
 /// Wraps a reference of a parser.
 pub struct RefParser<'a, A>(&'a A);
 
@@ -248,6 +272,16 @@ pub trait UnaryParser<R: Reader>: Parser<R> + Sized {
         R: Undo<Self::Output>,
     {
         TryFromParser::<Self, T>::new(self)
+    }
+
+    /// Negates the result of the underlying parser.
+    /// If the parser succeeds, the item is undone and `None` is returned.
+    /// If the parser fails, a successful empty string is returned.
+    fn negate(self) -> Negate<Self>
+    where
+        R: Undo<Self::Output>,
+    {
+        Negate::new(self)
     }
 }
 

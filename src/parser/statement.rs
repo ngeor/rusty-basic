@@ -31,12 +31,14 @@ where
     or_vec(vec![
         dim::dim_p().box_dyn().convert_to_fn(),
         constant::constant_p().box_dyn().convert_to_fn(),
-        comment::comment(),
+        comment::comment_p().box_dyn().convert_to_fn(),
         built_ins::parse_built_in_p().box_dyn().convert_to_fn(),
         statement_label(),
-        sub_call::sub_call_or_assignment(),
+        sub_call::sub_call_or_assignment_p()
+            .box_dyn()
+            .convert_to_fn(),
         if_block::if_block_p().box_dyn().convert_to_fn(),
-        for_loop::for_loop(),
+        for_loop::for_loop_p().box_dyn().convert_to_fn(),
         select_case::select_case_p().box_dyn().convert_to_fn(),
         while_wend::while_wend_p().box_dyn().convert_to_fn(),
         statement_go_to(),
@@ -56,7 +58,9 @@ where
         dim::dim(),
         constant::constant_p().convert_to_fn(),
         built_ins::parse_built_in(),
-        sub_call::sub_call_or_assignment(),
+        sub_call::sub_call_or_assignment_p()
+            .box_dyn()
+            .convert_to_fn(),
         statement_go_to(),
         statement_on_error_go_to(),
     ])
@@ -81,7 +85,9 @@ where
         dim::dim(),
         constant::constant_p().convert_to_fn(),
         built_ins::parse_built_in(),
-        sub_call::sub_call_or_assignment(),
+        sub_call::sub_call_or_assignment_p()
+            .box_dyn()
+            .convert_to_fn(),
         statement_go_to(),
         statement_on_error_go_to(),
     ])

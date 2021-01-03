@@ -1,61 +1,51 @@
 use crate::common::*;
 use crate::parser::expression;
-use crate::parser::pc::common::{drop_left, many, seq2};
-use crate::parser::pc::map::map;
 use crate::parser::pc::*;
-use crate::parser::pc2::Parser;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::many::ManyParser;
+use crate::parser::pc2::text::TextParser;
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{item_p, static_err_p, static_p, Parser};
 use crate::parser::types::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
 // SubCallNoArgs            ::= BareName [eof | eol | ' | <ws+>: ]
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
-pub fn sub_call_or_assignment<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+
+// TODO fix the extra clone in this file
+
+pub fn sub_call_or_assignment_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    Box::new(move |r| {
-        match expression::word::word_p().parse(r) {
-            Ok((r, Some(name_expr))) => {
-                // is there an equal sign following?
-                match ws::zero_or_more_around(read('='))(r) {
-                    Ok((r, Some(_))) => assignment(r, name_expr),
-                    Ok((r, None)) => sub_call(r, name_expr),
-                    Err((r, err)) => Err((r, err)),
-                }
+    expression::word::word_p()
+        .and_opt(item_p('=').surrounded_by_opt_ws())
+        .switch(|(name_expr, opt_equal_sign)| {
+            if opt_equal_sign.is_some() {
+                expression::demand_expression_node_p("Expected: expression for assignment")
+                    .map(move |r| Statement::Assignment(name_expr.clone(), r))
+                    .box_dyn()
+            } else {
+                sub_call_p(name_expr).box_dyn()
             }
-            Ok((r, None)) => Ok((r, None)),
-            Err((r, err)) => Err((r, err)),
-        }
-    })
+        })
 }
 
-fn assignment<R>(r: R, name_expr: Expression) -> ReaderResult<R, Statement, QError>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    match expression::demand_expression_node()(r) {
-        Ok((r, Some(right_expr_node))) => {
-            Ok((r, Some(Statement::Assignment(name_expr, right_expr_node))))
-        }
-        Ok((_r, None)) => panic!("Got None from demand_expression_node, should not happen"),
-        Err((r, err)) => Err((r, err)),
-    }
-}
-
-fn sub_call<R>(r: R, name_expr: Expression) -> ReaderResult<R, Statement, QError>
+fn sub_call_p<R>(name_expr: Expression) -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     match name_expr {
-        // A(1, 2) or A$(1, 2)
+        // A(1,2) or A$(1,2)
         Expression::FunctionCall(name, args) => {
             match name {
                 Name::Bare(bare_name) => {
                     // this one is easy, convert it to a sub
-                    Ok((r, Some(Statement::SubCall(bare_name, args))))
+                    static_p(Statement::SubCall(bare_name, args)).box_dyn()
                 }
-                _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
+                _ => static_err_p(QError::syntax_error("Sub cannot be qualified")).box_dyn(),
             }
         }
         Expression::Variable(name, _) => {
@@ -63,15 +53,12 @@ where
             match name {
                 Name::Bare(bare_name) => {
                     // are there any args after the space?
-                    match sub_call_args_after_space()(r) {
-                        Ok((r, opt_args)) => Ok((
-                            r,
-                            Some(Statement::SubCall(bare_name, opt_args.unwrap_or_default())),
-                        )),
-                        Err((r, err)) => Err((r, err)),
-                    }
+                    sub_call_args_after_space_p()
+                        .map_none_to_default()
+                        .map(move |opt_args| Statement::SubCall(bare_name.clone(), opt_args))
+                        .box_dyn()
                 }
-                _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
+                _ => static_err_p(QError::syntax_error("Sub cannot be qualified")).box_dyn(),
             }
         }
         Expression::Property(_, _, _) => {
@@ -79,15 +66,12 @@ where
             match fold_to_bare_name(name_expr) {
                 Ok(bare_name) => {
                     // are there any args after the space?
-                    match sub_call_args_after_space()(r) {
-                        Ok((r, opt_args)) => Ok((
-                            r,
-                            Some(Statement::SubCall(bare_name, opt_args.unwrap_or_default())),
-                        )),
-                        Err((r, err)) => Err((r, err)),
-                    }
+                    sub_call_args_after_space_p()
+                        .map_none_to_default()
+                        .map(move |opt_args| Statement::SubCall(bare_name.clone(), opt_args))
+                        .box_dyn()
                 }
-                Err(err) => Err((r, err)),
+                Err(err) => static_err_p(err).box_dyn(),
             }
         }
         _ => panic!("Unexpected name expression"),
@@ -105,28 +89,24 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
     }
 }
 
-fn sub_call_args_after_space<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNodes, QError>>
+fn sub_call_args_after_space_p<R>() -> impl Parser<R, Output = ExpressionNodes>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq2(
-            // first expression after sub name
-            expression::guarded_expression_node(),
-            many(drop_left(seq2(
-                // read comma after previous expression
-                ws::zero_or_more_around(read(',')),
-                // must have expression after comma
-                expression::demand_expression_node(),
-                "sub_call_args_after_space_inner",
-            ))),
-            "sub_call_args_after_space_outer",
-        ),
-        |(first_expr, mut remaining_expr)| {
-            remaining_expr.insert(0, first_expr);
-            remaining_expr
-        },
-    )
+    expression::guarded_expression_node_p()
+        .and_demand(
+            item_p(',')
+                .surrounded_by_opt_ws()
+                .and_demand(expression::demand_expression_node_p(
+                    "Expected: expression after comma",
+                ))
+                .keep_right()
+                .zero_or_more(),
+        )
+        .map(|(first, mut remaining)| {
+            remaining.insert(0, first);
+            remaining
+        })
 }
 
 #[cfg(test)]

@@ -3,20 +3,12 @@ use crate::parser::pc::{Reader, ReaderResult};
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
-use crate::parser::pc_specific::{identifier_with_dot, with_pos};
+use crate::parser::pc_specific::identifier_with_dot;
 use crate::parser::type_qualifier::type_qualifier_p;
-use crate::parser::{BareName, Keyword, Name, NameNode, TypeQualifier};
+use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 use std::str::FromStr;
 
 // name node
-
-#[deprecated]
-pub fn name_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, NameNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    with_pos(name())
-}
 
 #[deprecated]
 pub fn name<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Name, QError>>

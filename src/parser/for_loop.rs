@@ -32,10 +32,9 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     parse_for_step_p()
-        .and_demand(
-            statements::statements_p(keyword_p(Keyword::Next))
-                .or_syntax_error("Expected: STEP or end-of-statement"),
-        )
+        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+            Keyword::Next,
+        )))
         .and_demand(next_counter_p().or(static_err_p(QError::ForWithoutNext)))
         .map(
             |(
@@ -299,7 +298,7 @@ mod tests {
         assert_eq!(
             result,
             QErrorNode::Pos(
-                QError::syntax_error("Expected: STEP or end-of-statement"),
+                QError::syntax_error("Expected: end-of-statement"),
                 Location::new(2, 23),
             )
         );

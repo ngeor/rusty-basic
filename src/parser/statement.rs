@@ -46,7 +46,7 @@ where
         if_block::if_block(),
         for_loop::for_loop(),
         select_case::select_case(),
-        while_wend::while_wend(),
+        while_wend::while_wend_p().convert_to_fn(),
         statement_go_to(),
         statement_on_error_go_to(),
         statement_illegal_keywords(),

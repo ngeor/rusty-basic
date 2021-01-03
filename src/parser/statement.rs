@@ -16,14 +16,6 @@ use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
 
-#[deprecated]
-pub fn statement_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, StatementNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    with_pos(statement())
-}
-
 pub fn statement_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

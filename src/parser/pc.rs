@@ -115,15 +115,6 @@ where
     read_if(move |ch| ch == needle)
 }
 
-#[deprecated]
-pub fn peek<R, T>(needle: T) -> Box<dyn Fn(R) -> ReaderResult<R, R::Item, R::Err>>
-where
-    R: Reader<Item = T> + Undo<T> + 'static,
-    T: Copy + PartialEq + 'static,
-{
-    map::source_and_then_some(read(needle), |reader: R, c| Ok((reader.undo(c), Some(c))))
-}
-
 // ========================================================
 // Parsers that apply a function to a source
 // ========================================================
@@ -209,37 +200,6 @@ pub mod map {
         F: Fn(T) -> U + 'static,
     {
         opt_map(source, move |x| Some(map(x)))
-    }
-}
-
-// ========================================================
-// Combine two or more sources
-// ========================================================
-
-pub mod combine {
-    use super::*;
-
-    /// Combines the two given sources, letting the second use the value returned by the first one.
-    /// The second source is only used if the first result was `Ok(Some)`.
-    /// Errors from any source have priority.
-    pub fn combine_if_first_some<R, S1, PS2, T1, T2, E>(
-        first: S1,
-        second: PS2,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, Option<T2>), E>>
-    where
-        R: Reader + 'static,
-        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
-        PS2: Fn(&T1) -> Box<dyn Fn(R) -> ReaderResult<R, T2, E>> + 'static,
-    {
-        Box::new(move |reader| match first(reader) {
-            Ok((reader, Some(first_result))) => {
-                second(&first_result)(reader).and_then(|(reader, opt_second_result)| {
-                    Ok((reader, Some((first_result, opt_second_result))))
-                })
-            }
-            Ok((reader, None)) => Ok((reader, None)),
-            Err(err) => Err(err),
-        })
     }
 }
 
@@ -574,44 +534,6 @@ pub mod common {
             Ok((cr, Some(result)))
         })
     }
-
-    #[deprecated]
-    pub fn many_with_terminating_indicator<R, S, T1, T2, E>(
-        source: S,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T1>, E>>
-    where
-        R: Reader + 'static,
-        S: Fn(R) -> ReaderResult<R, (T1, Option<T2>), E> + 'static,
-        E: 'static,
-    {
-        Box::new(move |char_reader| {
-            let mut result: Vec<T1> = vec![];
-            let mut cr: R = char_reader;
-            loop {
-                match source(cr) {
-                    Ok((next_cr, opt_res)) => {
-                        cr = next_cr;
-                        match opt_res {
-                            Some((t1, opt_t2)) => {
-                                let last = opt_t2.is_none();
-                                result.push(t1);
-                                if last {
-                                    break;
-                                }
-                            }
-                            None => {
-                                break;
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            }
-            Ok((cr, Some(result)))
-        })
-    }
 }
 
 // ========================================================
@@ -619,55 +541,7 @@ pub mod common {
 // ========================================================
 
 pub mod str {
-    use super::map::map;
     use super::*;
-
-    /// Reads characters into a string as long as they satisfy the predicates.
-    ///
-    /// The first character must satisfy the `leading_predicate` and the remaining
-    /// characters must satisfy the `remaining_predicate`.
-    ///
-    /// This function will return an empty string if no characters match.
-    pub fn zero_or_more_if_leading_remaining<R, E, F1, F2>(
-        leading_predicate: F1,
-        remaining_predicate: F2,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
-    where
-        R: Reader<Item = char, Err = E> + 'static,
-        F1: Fn(char) -> bool + 'static,
-        F2: Fn(char) -> bool + 'static,
-    {
-        Box::new(move |char_reader| {
-            let mut result: String = String::new();
-            let mut cr: R = char_reader;
-            loop {
-                match cr.read() {
-                    Ok((x, opt_res)) => {
-                        cr = x;
-                        match opt_res {
-                            Some(ch) => {
-                                if (result.is_empty() && leading_predicate(ch))
-                                    || (!result.is_empty() && remaining_predicate(ch))
-                                {
-                                    result.push(ch);
-                                } else {
-                                    cr = cr.undo_item(ch);
-                                    break;
-                                }
-                            }
-                            None => {
-                                break;
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            }
-            Ok((cr, Some(result)))
-        })
-    }
 
     /// Reads characters into a string as long as they satisfy the predicate.
     ///
@@ -706,17 +580,6 @@ pub mod str {
             }
             Ok((cr, Some(result)))
         })
-    }
-
-    #[deprecated]
-    pub fn map_to_str<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
-    where
-        R: Reader + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        T: std::fmt::Display + 'static,
-        E: 'static,
-    {
-        map(source, |x| x.to_string())
     }
 }
 

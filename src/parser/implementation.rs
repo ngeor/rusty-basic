@@ -1,8 +1,9 @@
 use crate::common::*;
 use crate::parser::declaration;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
 use crate::parser::pc::*;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::whitespace_p;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::statements;
@@ -11,73 +12,51 @@ use crate::parser::types::*;
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
+#[deprecated]
 pub fn implementation<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    or(function_implementation(), sub_implementation())
+    implementation_p().convert_to_fn()
 }
 
-pub fn function_implementation<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+pub fn implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq5(
-            declaration::function_declaration_p().convert_to_fn(),
-            statements::statements(
-                keyword(Keyword::End),
-                QError::syntax_error_fn("Expected: end-of-statement"),
-            ),
-            demand(
-                keyword(Keyword::End),
-                QError::syntax_error_fn("Expected: END FUNCTION"),
-            ),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after END"),
-            ),
-            demand(
-                keyword(Keyword::Function),
-                QError::syntax_error_fn("Expected: FUNCTION after END"),
-            ),
-            "function_implementation",
-        ),
-        |((name, params), body, _, _, _)| {
+    function_implementation_p().or(sub_implementation_p())
+}
+
+fn function_implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    declaration::function_declaration_p()
+        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+            Keyword::End,
+        )))
+        .and_demand(keyword_p(Keyword::End).or_syntax_error("Expected: END FUNCTION"))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
+        .and_demand(keyword_p(Keyword::Function).or_syntax_error("Expected: FUNCTION after END"))
+        .map(|(((((name, params), body), _), _), _)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation { name, params, body })
-        },
-    )
+        })
 }
 
-pub fn sub_implementation<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
+fn sub_implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq5(
-            declaration::sub_declaration_p().convert_to_fn(),
-            statements::statements(
-                keyword(Keyword::End),
-                QError::syntax_error_fn("Expected: end-of-statement"),
-            ),
-            demand(
-                keyword(Keyword::End),
-                QError::syntax_error_fn("Expected: END SUB"),
-            ),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after END"),
-            ),
-            demand(
-                keyword(Keyword::Sub),
-                QError::syntax_error_fn("Expected: SUB after END"),
-            ),
-            "sub_implementation",
-        ),
-        |((name, params), body, _, _, _)| {
+    declaration::sub_declaration_p()
+        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+            Keyword::End,
+        )))
+        .and_demand(keyword_p(Keyword::End).or_syntax_error("Expected: END SUB"))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
+        .and_demand(keyword_p(Keyword::Sub).or_syntax_error("Expected: SUB after END"))
+        .map(|(((((name, params), body), _), _), _)| {
             TopLevelToken::SubImplementation(SubImplementation { name, params, body })
-        },
-    )
+        })
 }
 
 #[cfg(test)]

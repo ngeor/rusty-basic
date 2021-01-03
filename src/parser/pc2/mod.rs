@@ -17,7 +17,7 @@ where
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err>;
 
     /// For backwards compatibility with the older style fn parsers.
-    #[deprecated]
+    //#[deprecated]
     fn convert_to_fn(self) -> Box<dyn Fn(R) -> ReaderResult<R, Self::Output, R::Err>>
     where
         Self: Sized + 'static,
@@ -28,7 +28,7 @@ where
 
     /// Wraps this parser into a Box dyn. This is a workaround for dealing with
     /// the compiler's limitations regarding deeply nested concrete parser types.
-    #[deprecated]
+    //#[deprecated]
     fn box_dyn(self) -> BoxDynParser<R, Self::Output>
     where
         Self: Sized + 'static,

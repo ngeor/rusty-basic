@@ -1,7 +1,6 @@
 /// Parser combinators specific to this project (e.g. for keywords)
 use crate::common::QError;
 use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable};
-use crate::parser::pc::common::{and, demand, drop_left};
 use crate::parser::pc::{Reader, ReaderResult, Undo};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::many::{ManyParser, OneOrMoreDelimited};
@@ -157,34 +156,8 @@ fn is_not_whole_keyword(ch: char) -> bool {
     is_non_leading_identifier_with_dot(ch) || ch == '$'
 }
 
-#[deprecated]
-pub fn demand_keyword<R>(
-    needle: Keyword,
-) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), QError>>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    demand(
-        keyword(needle),
-        QError::syntax_error_fn(format!("Expected: {}", needle)),
-    )
-}
-
-#[deprecated]
-pub fn demand_guarded_keyword<R>(
-    needle: Keyword,
-) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), QError>>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    drop_left(and(
-        demand(
-            crate::parser::pc::ws::one_or_more(),
-            QError::syntax_error_fn(format!("Expected: whitespace before {}", needle)),
-        ),
-        demand_keyword(needle),
-    ))
-}
+// TODO: add keyword_pair_p e.g. keyword_pair_p(End, Function)
+// TODO: add keywords_p e.g. keywords_p([Integer, Long, Single, Double])
 
 //
 // Take multiple items

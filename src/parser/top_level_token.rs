@@ -5,6 +5,7 @@ use crate::parser::implementation;
 use crate::parser::pc::common::*;
 use crate::parser::pc::map::map;
 use crate::parser::pc::*;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::with_pos;
 use crate::parser::statement;
@@ -125,7 +126,7 @@ fn top_level_token_user_defined_type<R>() -> Box<dyn Fn(R) -> ReaderResult<R, To
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(user_defined_type::user_defined_type(), |u| {
-        TopLevelToken::UserDefinedType(u)
-    })
+    user_defined_type::user_defined_type_p()
+        .map(|u| TopLevelToken::UserDefinedType(u))
+        .convert_to_fn()
 }

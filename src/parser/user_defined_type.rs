@@ -46,144 +46,126 @@ use crate::common::{HasLocation, Locatable, QError};
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::common::{demand, many, or_vec, seq3, seq5};
-use crate::parser::pc::map::{and_then, map, source_and_then_some};
-use crate::parser::pc::{read, ReaderResult};
-use crate::parser::pc::{ws, Reader};
-use crate::parser::pc_specific::{demand_guarded_keyword, demand_keyword, keyword, with_pos};
+use crate::parser::pc::Reader;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::many::ManyParser;
+use crate::parser::pc2::text::{whitespace_p, TextParser};
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{item_p, static_err_p, Parser};
+use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
 };
 
-pub fn user_defined_type<R>() -> Box<dyn Fn(R) -> ReaderResult<R, UserDefinedType, QError>>
+pub fn user_defined_type_p<R>() -> impl Parser<R, Output = UserDefinedType>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq5(
-            ws::seq2(
-                keyword(Keyword::Type),
-                demand(
-                    with_pos(bare_name_without_dot()),
-                    QError::syntax_error_fn("Expected name after TYPE"),
-                ),
-                QError::syntax_error_fn("Expected: whitespace after TYPE"),
-                "user_defined_type_type",
-            ),
-            comment::comments_and_whitespace(),
-            element_nodes(),
-            demand_keyword(Keyword::End),
-            demand_guarded_keyword(Keyword::Type),
-            "user_defined_type",
-        ),
-        |((_, name), comments, elements, _, _)| UserDefinedType::new(name, comments, elements),
-    )
+    keyword_p(Keyword::Type)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after TYPE"))
+        .and_demand(
+            bare_name_without_dot_p()
+                .with_pos()
+                .or_syntax_error("Expected: name after TYPE"),
+        )
+        .and_demand(comment::comments_and_whitespace_p())
+        .and_demand(element_nodes_p())
+        .and_demand(keyword_p(Keyword::End).or_syntax_error("Expected: END"))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
+        .and_demand(keyword_p(Keyword::Type).or_syntax_error("Expected: TYPE"))
+        .map(|((((((_, name), comments), elements), _), _), _)| {
+            UserDefinedType::new(name, comments, elements)
+        })
 }
 
-fn bare_name_without_dot<R>() -> Box<dyn Fn(R) -> ReaderResult<R, BareName, QError>>
+fn bare_name_without_dot_p<R>() -> impl Parser<R, Output = BareName>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    source_and_then_some(name::name(), |r, n| match n {
+    name::name_with_dot_p().and_then(|n| match n {
         Name::Bare(b) => {
             if b.contains('.') {
-                Err((r, QError::IdentifierCannotIncludePeriod))
+                Err(QError::IdentifierCannotIncludePeriod)
             } else {
-                Ok((r, Some(b)))
+                Ok(b)
             }
         }
-        Name::Qualified { .. } => Err((
-            r,
-            QError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
+        Name::Qualified { .. } => Err(QError::syntax_error(
+            "Identifier cannot end with %, &, !, #, or $",
         )),
     })
 }
 
-fn element_nodes<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Vec<ElementNode>, QError>>
+fn element_nodes_p<R>() -> impl Parser<R, Output = Vec<ElementNode>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    and_then(many(element_node), |v| {
-        if v.is_empty() {
-            Err(QError::ElementNotDefined)
-        } else {
-            Ok(v)
-        }
-    })
+    element_node_p()
+        .one_or_more()
+        .or(static_err_p(QError::ElementNotDefined))
 }
 
-fn element_node<R>(reader: R) -> ReaderResult<R, ElementNode, QError>
+fn element_node_p<R>() -> impl Parser<R, Output = ElementNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq5(
-            with_pos(bare_name_without_dot()),
-            demand_guarded_keyword(Keyword::As),
-            demand(
-                ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after AS"),
-            ),
-            demand(
-                element_type(),
-                QError::syntax_error_fn("Expected: element type"),
-            ),
-            comment::comments_and_whitespace(),
-            "element_node",
-        ),
-        |(Locatable { element, pos }, _, _, element_type, comments)| {
-            Locatable::new(Element::new(element, element_type, comments), pos)
-        },
-    )(reader)
+    bare_name_without_dot_p()
+        .with_pos()
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after element name"))
+        .and_demand(keyword_p(Keyword::As).or_syntax_error("Expected: AS"))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after AS"))
+        .and_demand(element_type_p().or_syntax_error("Expected: element type"))
+        .and_demand(comment::comments_and_whitespace_p())
+        .map(
+            |(((((Locatable { element, pos }, _), _), _), element_type), comments)| {
+                Locatable::new(Element::new(element, element_type, comments), pos)
+            },
+        )
 }
 
-fn element_type<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ElementType, QError>>
+fn element_type_p<R>() -> impl Parser<R, Output = ElementType>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    or_vec(vec![
-        map(keyword(Keyword::Integer), |_| ElementType::Integer),
-        map(keyword(Keyword::Long), |_| ElementType::Long),
-        map(keyword(Keyword::Single), |_| ElementType::Single),
-        map(keyword(Keyword::Double), |_| ElementType::Double),
-        map(
-            seq3(
-                keyword(Keyword::String_),
-                demand(
-                    ws::zero_or_more_around(read('*')),
-                    QError::syntax_error_fn("Expected: *"),
-                ),
-                demand_string_length(),
-                "element_type",
-            ),
-            |(_, _, e)| ElementType::FixedLengthString(e, 0),
-        ),
-        map(with_pos(bare_name_without_dot()), |n| {
-            ElementType::UserDefined(n)
-        }),
-    ])
+    keyword_p(Keyword::Integer)
+        .map(|_| ElementType::Integer)
+        .or(keyword_p(Keyword::Long).map(|_| ElementType::Long))
+        .or(keyword_p(Keyword::Single).map(|_| ElementType::Single))
+        .or(keyword_p(Keyword::Double).map(|_| ElementType::Double))
+        .or(keyword_p(Keyword::String_)
+            .and_demand(
+                item_p('*')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: *"),
+            )
+            .and_demand(demand_string_length_p())
+            .keep_right()
+            .map(|e| ElementType::FixedLengthString(e, 0)))
+        .or(bare_name_without_dot_p()
+            .with_pos()
+            .map(|n| ElementType::UserDefined(n)))
 }
 
-fn demand_string_length<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
+fn demand_string_length_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    and_then(
-        expression::demand_expression_node(),
+    expression::demand_expression_node_p("Expected: string length").and_then(
         |Locatable { element, pos }| match element {
             Expression::IntegerLiteral(i) => {
                 if i > 0 && i < crate::variant::MAX_INTEGER {
                     Ok(Locatable::new(element, pos))
                 } else {
-                    Err(QError::syntax_error("Illegal number"))
+                    Err(QError::syntax_error("String length out of range"))
                 }
             }
             Expression::Variable(_, _) => {
                 // allow it, in case it is a CONST
                 Ok(Locatable::new(element, pos))
             }
-            _ => Err(QError::syntax_error("Illegal number")),
+            _ => Err(QError::syntax_error("Illegal string length")),
         },
     )
 }
@@ -266,14 +248,12 @@ mod tests {
     #[test]
     fn string_length_wrong_type() {
         let illegal_expressions = [
-            "0",
-            "-1",
             "3.14",
             "6.28#",
             "\"hello\"",
             "(1+1)",
             "Foo(1)",
-            "32768", // MAX_INT (32767) + 1
+            "32768", /* MAX_INT (32767) + 1*/
         ];
         for e in &illegal_expressions {
             let input = format!(
@@ -283,7 +263,28 @@ mod tests {
             END TYPE",
                 e
             );
-            assert_eq!(parse_err(input), QError::syntax_error("Illegal number"));
+            assert_eq!(
+                parse_err(input),
+                QError::syntax_error("Illegal string length")
+            );
+        }
+    }
+
+    #[test]
+    fn string_length_out_of_range() {
+        let illegal_expressions = ["0", "-1"];
+        for e in &illegal_expressions {
+            let input = format!(
+                "
+            TYPE Invalid
+                ZeroString AS STRING * {}
+            END TYPE",
+                e
+            );
+            assert_eq!(
+                parse_err(input),
+                QError::syntax_error("String length out of range")
+            );
         }
     }
 

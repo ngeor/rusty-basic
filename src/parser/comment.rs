@@ -33,20 +33,6 @@ where
 }
 
 /// Reads multiple comments and the surrounding whitespace.
-#[deprecated]
-pub fn comments_and_whitespace<R>(
-) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<Locatable<String>>, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    // skip while ws or eol
-    // if "'", undo and read comment
-    // repeat
-
-    comments_and_whitespace_p().convert_to_fn()
-}
-
-/// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p<R>() -> impl Parser<R, Output = Vec<Locatable<String>>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

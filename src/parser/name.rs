@@ -8,16 +8,6 @@ use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 use std::str::FromStr;
 
-// name node
-
-#[deprecated]
-pub fn name<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Name, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    name_with_dot_p().convert_to_fn()
-}
-
 /// Parses a name. The name must start with a letter and can include
 /// letters, digits or dots. The name can optionally be qualified by a type
 /// qualifier.

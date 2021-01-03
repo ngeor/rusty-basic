@@ -37,16 +37,16 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     or_vec(vec![
-        dim::dim_p().convert_to_fn(),
-        constant::constant_p().convert_to_fn(),
+        dim::dim_p().box_dyn().convert_to_fn(),
+        constant::constant_p().box_dyn().convert_to_fn(),
         comment::comment(),
-        built_ins::parse_built_in_p().convert_to_fn(),
+        built_ins::parse_built_in_p().box_dyn().convert_to_fn(),
         statement_label(),
         sub_call::sub_call_or_assignment(),
         if_block::if_block(),
         for_loop::for_loop(),
-        select_case::select_case(),
-        while_wend::while_wend_p().convert_to_fn(),
+        select_case::select_case_p().box_dyn().convert_to_fn(),
+        while_wend::while_wend_p().box_dyn().convert_to_fn(),
         statement_go_to(),
         statement_on_error_go_to(),
         statement_illegal_keywords(),
@@ -107,6 +107,7 @@ where
                 QError::syntax_error_fn("Expected: label"),
             ),
             QError::syntax_error_fn("Expected: whitespace"),
+            "statement_go_to",
         ),
         |(_, l)| Statement::GoTo(l),
     )
@@ -132,6 +133,7 @@ where
                 QError::syntax_error_fn("Expected: label"),
             ),
             QError::syntax_error_fn_fn("Expected: whitespace"),
+            "statement_on_error_go_to",
         ),
         |(_, _, _, l)| Statement::ErrorHandler(l),
     )

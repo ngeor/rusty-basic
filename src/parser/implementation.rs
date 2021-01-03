@@ -41,6 +41,7 @@ where
                 keyword(Keyword::Function),
                 QError::syntax_error_fn("Expected: FUNCTION after END"),
             ),
+            "function_implementation",
         ),
         |((name, params), body, _, _, _)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation { name, params, body })
@@ -71,6 +72,7 @@ where
                 keyword(Keyword::Sub),
                 QError::syntax_error_fn("Expected: SUB after END"),
             ),
+            "sub_implementation",
         ),
         |((name, params), body, _, _, _)| {
             TopLevelToken::SubImplementation(SubImplementation { name, params, body })

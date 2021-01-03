@@ -69,11 +69,13 @@ where
                     QError::syntax_error_fn("Expected name after TYPE"),
                 ),
                 QError::syntax_error_fn("Expected: whitespace after TYPE"),
+                "user_defined_type_type",
             ),
-            comment::comments(),
+            comment::comments_and_whitespace(),
             element_nodes(),
             demand_keyword(Keyword::End),
             demand_guarded_keyword(Keyword::Type),
+            "user_defined_type",
         ),
         |((_, name), comments, elements, _, _)| UserDefinedType::new(name, comments, elements),
     )
@@ -127,7 +129,8 @@ where
                 element_type(),
                 QError::syntax_error_fn("Expected: element type"),
             ),
-            comment::comments(),
+            comment::comments_and_whitespace(),
+            "element_node",
         ),
         |(Locatable { element, pos }, _, _, element_type, comments)| {
             Locatable::new(Element::new(element, element_type, comments), pos)
@@ -152,6 +155,7 @@ where
                     QError::syntax_error_fn("Expected: *"),
                 ),
                 demand_string_length(),
+                "element_type",
             ),
             |(_, _, e)| ElementType::FixedLengthString(e, 0),
         ),

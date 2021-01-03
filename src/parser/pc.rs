@@ -326,6 +326,7 @@ pub mod common {
     pub fn seq2<R, S1, S2, T1, T2, E>(
         first: S1,
         second: S2,
+        tag: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, T2), E>>
     where
         R: Reader + 'static,
@@ -337,7 +338,10 @@ pub mod common {
     {
         opt_map(opt_seq2(first, second), move |(r1, opt_r2)| match opt_r2 {
             Some(r2) => Some((r1, r2)),
-            None => panic!("`seq2` second function returned None, wrap it in a `demand`"),
+            None => panic!(
+                "`seq2` second function returned None, wrap it in a `demand` (tag: {})",
+                tag
+            ),
         })
     }
 
@@ -345,6 +349,7 @@ pub mod common {
         first: S1,
         second: S2,
         third: S3,
+        tag: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, T2, T3), E>>
     where
         R: Reader + 'static,
@@ -356,7 +361,9 @@ pub mod common {
         T3: 'static,
         E: 'static,
     {
-        map(seq2(first, seq2(second, third)), |(a, (b, c))| (a, b, c))
+        map(seq2(first, seq2(second, third, tag), tag), |(a, (b, c))| {
+            (a, b, c)
+        })
     }
 
     pub fn seq4<R, S1, S2, S3, S4, T1, T2, T3, T4, E>(
@@ -364,6 +371,7 @@ pub mod common {
         second: S2,
         third: S3,
         fourth: S4,
+        tag: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, T2, T3, T4), E>>
     where
         R: Reader + 'static,
@@ -378,7 +386,7 @@ pub mod common {
         E: 'static,
     {
         map(
-            seq2(first, seq3(second, third, fourth)),
+            seq2(first, seq3(second, third, fourth, tag), tag),
             |(a, (b, c, d))| (a, b, c, d),
         )
     }
@@ -389,6 +397,7 @@ pub mod common {
         third: S3,
         fourth: S4,
         fifth: S5,
+        tag: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, T2, T3, T4, T5), E>>
     where
         R: Reader + 'static,
@@ -405,7 +414,7 @@ pub mod common {
         E: 'static,
     {
         map(
-            seq2(first, seq4(second, third, fourth, fifth)),
+            seq2(first, seq4(second, third, fourth, fifth, tag), tag),
             |(a, (b, c, d, e))| (a, b, c, d, e),
         )
     }
@@ -417,6 +426,7 @@ pub mod common {
         fourth: S4,
         fifth: S5,
         sixth: S6,
+        tag: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, T2, T3, T4, T5, T6), E>>
     where
         R: Reader + 'static,
@@ -435,7 +445,7 @@ pub mod common {
         E: 'static,
     {
         map(
-            seq2(first, seq5(second, third, fourth, fifth, sixth)),
+            seq2(first, seq5(second, third, fourth, fifth, sixth, tag), tag),
             |(a, (b, c, d, e, f))| (a, b, c, d, e, f),
         )
     }
@@ -448,6 +458,7 @@ pub mod common {
         fifth: S5,
         sixth: S6,
         seventh: S7,
+        tag: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, T2, T3, T4, T5, T6, T7), E>>
     where
         R: Reader + 'static,
@@ -468,7 +479,11 @@ pub mod common {
         E: 'static,
     {
         map(
-            seq2(first, seq6(second, third, fourth, fifth, sixth, seventh)),
+            seq2(
+                first,
+                seq6(second, third, fourth, fifth, sixth, seventh, tag),
+                tag,
+            ),
             |(a, (b, c, d, e, f, g))| (a, b, c, d, e, f, g),
         )
     }
@@ -817,6 +832,7 @@ pub mod ws {
         first: S1,
         second: S2,
         err_fn_expected_whitespace: FE,
+        tag: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, T2), E>>
     where
         R: Reader<Item = char, Err = E> + 'static,
@@ -832,6 +848,7 @@ pub mod ws {
                 first,
                 common::demand(one_or_more(), err_fn_expected_whitespace),
                 second,
+                tag,
             ),
             |(l, _, r)| (l, r),
         )
@@ -843,6 +860,7 @@ pub mod ws {
         third: S3,
         fourth: S4,
         err_fn_fn_expected_whitespace: FE,
+        tag: &'static str,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, T2, T3, T4), E>>
     where
         R: Reader<Item = char, Err = E> + 'static,
@@ -866,6 +884,7 @@ pub mod ws {
                 third,
                 common::demand(one_or_more(), err_fn_fn_expected_whitespace()),
                 fourth,
+                tag,
             ),
             |(a, _, b, _, c, _, d)| (a, b, c, d),
         )

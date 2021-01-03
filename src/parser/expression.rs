@@ -5,7 +5,7 @@ use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::{digits_p, whitespace_p, TextParser, Whitespace};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{if_p, item_p, LazyFnParser, Parser};
+use crate::parser::pc2::{if_p, item_p, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use crate::variant;
@@ -45,20 +45,6 @@ where
 }
 
 #[deprecated]
-pub fn demand_guarded_expression_node<R>(
-) -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    // ws* ( expr )
-    // ws+ expr
-    demand(
-        guarded_expression_node(),
-        QError::syntax_error_fn("Expected: expression"),
-    )
-}
-
-#[deprecated]
 pub fn guarded_expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -82,7 +68,7 @@ where
 {
     Whitespace::new(false)
         .and(item_p('(').with_pos())
-        .and(expression_node_p())
+        .and(lazy_expression_node_p())
         .and_demand(
             item_p(')')
                 .preceded_by_opt_ws()
@@ -99,7 +85,7 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     // ws+ expr
-    whitespace_p().and(expression_node_p()).keep_right()
+    whitespace_p().and(lazy_expression_node_p()).keep_right()
 }
 
 #[deprecated]
@@ -195,10 +181,7 @@ where
 {
     keyword_p(Keyword::Not)
         .with_pos()
-        .and_demand(
-            LazyFnParser::new(guarded_expression_node)
-                .or_syntax_error("Expected: expression after NOT"),
-        )
+        .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"))
         .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
 }
 
@@ -946,7 +929,7 @@ where
     relational_operator_p().convert_to_fn()
 }
 
-fn relational_operator_p<R>() -> impl Parser<R, Output = Locatable<Operator>>
+pub fn relational_operator_p<R>() -> impl Parser<R, Output = Locatable<Operator>>
 where
     R: Reader<Item = char> + HasLocation,
 {

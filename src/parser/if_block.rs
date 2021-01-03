@@ -19,6 +19,7 @@ where
                 or(single_line_if_else(), multi_line_if()),
                 QError::syntax_error_fn("Expected: single or multi line IF"),
             ),
+            "if_block",
         ),
         |(condition, (statements, else_if_blocks, else_block))| {
             Statement::IfBlock(IfBlockNode {
@@ -47,6 +48,7 @@ where
             keyword(Keyword::If),
             expression::demand_back_guarded_expression_node(),
             demand_keyword(Keyword::Then),
+            "if_expr_then",
         ),
         |(_, e, _)| e,
     )
@@ -134,6 +136,7 @@ where
                 else_block(),
             ),
             demand(end_if(), QError::syntax_error_fn("Expected: END IF")),
+            "multi_line_if",
         ),
         |((if_block, opt_else_if_blocks, opt_else), _)| {
             (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
@@ -150,6 +153,7 @@ where
             keyword(Keyword::ElseIf),
             expression::demand_back_guarded_expression_node(),
             demand_keyword(Keyword::Then),
+            "else_if_expr_then",
         ),
         |(_, e, _)| e,
     )
@@ -177,6 +181,7 @@ where
                 ]),
                 QError::syntax_error_fn("Expected: end-of-statement"),
             ),
+            "else_if_block",
         ),
         |(condition, statements)| ConditionalBlockNode {
             condition,
@@ -195,6 +200,7 @@ where
             keyword(Keyword::End),
             QError::syntax_error_fn("Expected: end-of-statement"),
         ),
+        "else_block",
     ))
 }
 
@@ -210,6 +216,7 @@ where
                 QError::syntax_error_fn("Expected: IF after END"),
             ),
             QError::syntax_error_fn("Expected: whitespace after END"),
+            "end_if",
         ),
         |_| (),
     )

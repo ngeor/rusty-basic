@@ -17,6 +17,7 @@ where
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err>;
 
     /// For backwards compatibility with the older style fn parsers.
+    #[deprecated]
     fn convert_to_fn(self) -> Box<dyn Fn(R) -> ReaderResult<R, Self::Output, R::Err>>
     where
         Self: Sized + 'static,
@@ -27,6 +28,7 @@ where
 
     /// Wraps this parser into a Box dyn. This is a workaround for dealing with
     /// the compiler's limitations regarding deeply nested concrete parser types.
+    #[deprecated]
     fn box_dyn(self) -> BoxDynParser<R, Self::Output>
     where
         Self: Sized + 'static,
@@ -169,6 +171,26 @@ where
 
 pub fn opt_static_p<R, T>(item: Option<T>) -> OptStaticParser<R, T> {
     OptStaticParser(PhantomData, item)
+}
+
+/// A static parser which always returns `None`.
+pub struct NoneParser<R, T>(PhantomData<R>, PhantomData<T>);
+
+impl<R, T> Parser<R> for NoneParser<R, T>
+where
+    R: Reader,
+{
+    type Output = T;
+    fn parse(&self, reader: R) -> ReaderResult<R, T, R::Err> {
+        Ok((reader, None))
+    }
+}
+
+pub fn static_none_p<R, T>() -> NoneParser<R, T>
+where
+    R: Reader,
+{
+    NoneParser(PhantomData, PhantomData)
 }
 
 /// A static parser that always throws an error.

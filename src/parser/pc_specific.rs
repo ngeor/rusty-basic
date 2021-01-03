@@ -170,6 +170,7 @@ where
     )
 }
 
+#[deprecated]
 pub fn demand_guarded_keyword<R>(
     needle: Keyword,
 ) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), QError>>

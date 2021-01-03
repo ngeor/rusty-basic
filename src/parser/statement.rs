@@ -6,10 +6,13 @@ use crate::parser::dim;
 use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::{and_then, map};
+use crate::parser::name::bare_name_p;
 use crate::parser::pc::*;
-use crate::parser::pc2::{LazyFnParser, Parser};
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::text::whitespace_p;
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::{item_p, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::select_case;
 use crate::parser::sub_call;
@@ -20,7 +23,20 @@ pub fn statement_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    LazyFnParser::new(statement)
+    dim::dim_p()
+        .box_dyn()
+        .or(constant::constant_p().box_dyn())
+        .or(comment::comment_p().box_dyn())
+        .or(built_ins::parse_built_in_p().box_dyn())
+        .or(statement_label_p().box_dyn())
+        .or(sub_call::sub_call_or_assignment_p().box_dyn())
+        .or(if_block::if_block_p().box_dyn())
+        .or(for_loop::for_loop_p().box_dyn())
+        .or(select_case::select_case_p().box_dyn())
+        .or(while_wend::while_wend_p().box_dyn())
+        .or(statement_go_to_p().box_dyn())
+        .or(statement_on_error_go_to_p().box_dyn())
+        .or(illegal_starting_keywords().box_dyn())
 }
 
 #[deprecated]
@@ -28,23 +44,7 @@ pub fn statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    or_vec(vec![
-        dim::dim_p().box_dyn().convert_to_fn(),
-        constant::constant_p().box_dyn().convert_to_fn(),
-        comment::comment_p().box_dyn().convert_to_fn(),
-        built_ins::parse_built_in_p().box_dyn().convert_to_fn(),
-        statement_label(),
-        sub_call::sub_call_or_assignment_p()
-            .box_dyn()
-            .convert_to_fn(),
-        if_block::if_block_p().box_dyn().convert_to_fn(),
-        for_loop::for_loop_p().box_dyn().convert_to_fn(),
-        select_case::select_case_p().box_dyn().convert_to_fn(),
-        while_wend::while_wend_p().box_dyn().convert_to_fn(),
-        statement_go_to(),
-        statement_on_error_go_to(),
-        statement_illegal_keywords(),
-    ])
+    statement_p().convert_to_fn()
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
@@ -54,23 +54,20 @@ pub fn single_line_non_comment_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    or_vec(vec![
-        dim::dim(),
-        constant::constant_p().convert_to_fn(),
-        built_ins::parse_built_in(),
-        sub_call::sub_call_or_assignment_p()
-            .box_dyn()
-            .convert_to_fn(),
-        statement_go_to(),
-        statement_on_error_go_to(),
-    ])
+    single_line_non_comment_statement_p().convert_to_fn()
 }
 
 pub fn single_line_non_comment_statement_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    LazyFnParser::new(single_line_non_comment_statement)
+    dim::dim_p()
+        .box_dyn()
+        .or(constant::constant_p().box_dyn())
+        .or(built_ins::parse_built_in_p().box_dyn())
+        .or(sub_call::sub_call_or_assignment_p().box_dyn())
+        .or(statement_go_to_p().box_dyn())
+        .or(statement_on_error_go_to_p().box_dyn())
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
@@ -80,87 +77,70 @@ pub fn single_line_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement,
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    or_vec(vec![
-        comment::comment(),
-        dim::dim(),
-        constant::constant_p().convert_to_fn(),
-        built_ins::parse_built_in(),
-        sub_call::sub_call_or_assignment_p()
-            .box_dyn()
-            .convert_to_fn(),
-        statement_go_to(),
-        statement_on_error_go_to(),
-    ])
+    single_line_statement_p().convert_to_fn()
 }
 
 pub fn single_line_statement_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    LazyFnParser::new(single_line_statement)
+    comment::comment_p()
+        .box_dyn()
+        .or(dim::dim_p().box_dyn())
+        .or(constant::constant_p().box_dyn())
+        .or(built_ins::parse_built_in_p().box_dyn())
+        .or(sub_call::sub_call_or_assignment_p().box_dyn())
+        .or(statement_go_to_p().box_dyn())
+        .or(statement_on_error_go_to_p().box_dyn())
 }
 
-pub fn statement_label<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+// TODO: remove 'static from as many Reader as possible
+
+fn statement_label_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(and(name::bare_name(), read(':')), |(l, _)| {
-        Statement::Label(l)
-    })
+    name::bare_name_p()
+        .and(item_p(':'))
+        .keep_left()
+        .map(|l| Statement::Label(l))
 }
 
-pub fn statement_go_to<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+fn statement_go_to_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        crate::parser::pc::ws::seq2(
-            keyword(Keyword::GoTo),
-            demand(
-                name::bare_name(),
-                QError::syntax_error_fn("Expected: label"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace"),
-            "statement_go_to",
-        ),
-        |(_, l)| Statement::GoTo(l),
-    )
+    keyword_p(Keyword::GoTo)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after GOTO"))
+        .and_demand(bare_name_p().or_syntax_error("Expected: label"))
+        .map(|(_, l)| Statement::GoTo(l))
 }
 
-pub fn statement_on_error_go_to<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+fn statement_on_error_go_to_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        crate::parser::pc::ws::seq4(
-            keyword(Keyword::On),
-            demand(
-                keyword(Keyword::Error),
-                QError::syntax_error_fn("Expected: ERROR"),
-            ),
-            demand(
-                keyword(Keyword::GoTo),
-                QError::syntax_error_fn("Expected: GOTO"),
-            ),
-            demand(
-                name::bare_name(),
-                QError::syntax_error_fn("Expected: label"),
-            ),
-            QError::syntax_error_fn_fn("Expected: whitespace"),
-            "statement_on_error_go_to",
-        ),
-        |(_, _, _, l)| Statement::ErrorHandler(l),
-    )
+    keyword_p(Keyword::On)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ON"))
+        .and_demand(keyword_p(Keyword::Error).or_syntax_error("Expected: ERROR"))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ERROR"))
+        .and_demand(keyword_p(Keyword::GoTo).or_syntax_error("Expected: GOTO"))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after GOTO"))
+        .and_demand(name::bare_name_p().or_syntax_error("Expected: label"))
+        .map(|(_, l)| Statement::ErrorHandler(l))
 }
 
-pub fn statement_illegal_keywords<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+fn illegal_starting_keywords<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    or(
-        and_then(keyword(Keyword::Wend), |_| Err(QError::WendWithoutWhile)),
-        and_then(keyword(Keyword::Else), |_| Err(QError::ElseWithoutIf)),
-    )
+    keyword_p(Keyword::Wend)
+        .or(keyword_p(Keyword::Else))
+        .and_then(|(k, _)| match k {
+            Keyword::Wend => Err(QError::WendWithoutWhile),
+            Keyword::Else => Err(QError::ElseWithoutIf),
+            _ => panic!("Parser should not have parsed {}", k),
+        })
 }
 
 #[cfg(test)]

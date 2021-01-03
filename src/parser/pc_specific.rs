@@ -133,15 +133,6 @@ where
     letters_p().and_opt(letters_or_digits_p()).stringify()
 }
 
-#[deprecated]
-pub fn keyword<R, E>(needle: Keyword) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
-{
-    keyword_p(needle).convert_to_fn()
-}
-
 /// Recognizes the given keyword.
 pub fn keyword_p<R>(keyword: Keyword) -> impl Parser<R, Output = (Keyword, String)>
 where

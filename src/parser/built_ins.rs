@@ -9,14 +9,6 @@ use crate::parser::pc2::{item_p, Parser};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
-#[deprecated]
-pub fn parse_built_in<R>() -> Box<dyn Fn(R) -> ReaderResult<R, crate::parser::Statement, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    parse_built_in_p().convert_to_fn()
-}
-
 /// Parses built-in subs which have a special syntax.
 pub fn parse_built_in_p<R>() -> impl Parser<R, Output = Statement>
 where

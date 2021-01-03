@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::pc::ws::is_eol;
 use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::many::ManyParser;
@@ -14,14 +13,6 @@ fn is_not_eol(ch: char) -> bool {
 }
 
 /// Tries to read a comment.
-#[deprecated]
-pub fn comment<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    comment_p().convert_to_fn()
-}
-
 pub fn comment_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

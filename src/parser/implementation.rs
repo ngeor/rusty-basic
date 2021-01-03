@@ -12,14 +12,6 @@ use crate::parser::types::*;
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-#[deprecated]
-pub fn implementation<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelToken, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    implementation_p().convert_to_fn()
-}
-
 pub fn implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

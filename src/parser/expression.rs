@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::pc::common::*;
 use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::{digits_p, whitespace_p, TextParser, Whitespace};
@@ -29,27 +28,11 @@ where
     }
 }
 
-#[deprecated]
-pub fn demand_expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    demand_expression_node_p("Expected: expression").convert_to_fn()
-}
-
 pub fn demand_expression_node_p<R>(err_msg: &str) -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     expression_node_p().or_syntax_error(err_msg)
-}
-
-#[deprecated]
-pub fn guarded_expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    guarded_expression_node_p().convert_to_fn()
 }
 
 pub fn guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
@@ -88,20 +71,6 @@ where
     whitespace_p().and(lazy_expression_node_p()).keep_right()
 }
 
-#[deprecated]
-pub fn demand_back_guarded_expression_node<R>(
-) -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    // ws* ( expr )
-    // ws+ expr ws+
-    demand(
-        back_guarded_expression_node_p().convert_to_fn(),
-        QError::syntax_error_fn("Expected: expression"),
-    )
-}
-
 pub fn back_guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -114,14 +83,6 @@ where
 }
 
 /// Parses an expression
-#[deprecated]
-pub fn expression_node<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    expression_node_p().convert_to_fn()
-}
-
 pub fn expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -183,14 +144,6 @@ where
         .with_pos()
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"))
         .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
-}
-
-#[deprecated]
-pub fn file_handle<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Locatable<FileHandle>, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    file_handle_p().convert_to_fn()
 }
 
 pub fn file_handle_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
@@ -919,14 +872,6 @@ where
     R: Reader<Item = char>,
 {
     item_p('=').map(|_| Operator::Equal)
-}
-
-#[deprecated]
-pub fn relational_operator<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Locatable<Operator>, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    relational_operator_p().convert_to_fn()
 }
 
 pub fn relational_operator_p<R>() -> impl Parser<R, Output = Locatable<Operator>>

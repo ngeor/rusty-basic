@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::pc::ws::{is_eol, is_eol_or_whitespace};
 use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::many::ManyParser;

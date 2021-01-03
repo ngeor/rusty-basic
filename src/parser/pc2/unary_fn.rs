@@ -128,59 +128,6 @@ where
     }
 }
 
-// Filters the parser result given a predicate. The predicate has access to a
-// reference of the item.
-unary_fn_parser!(FilterRef);
-
-impl<R, S, F> Parser<R> for FilterRef<S, F>
-where
-    R: Reader + Undo<S::Output>,
-    S: Parser<R>,
-    F: Fn(&S::Output) -> bool,
-{
-    type Output = S::Output;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_item) = self.0.parse(reader)?;
-        match opt_item {
-            Some(item) => {
-                if (self.1)(&item) {
-                    Ok((reader, Some(item)))
-                } else {
-                    Ok((reader.undo(item), None))
-                }
-            }
-            _ => Ok((reader, None)),
-        }
-    }
-}
-
-// Filters the parser result given a predicate. The predicate has access to a
-// copy of the item.
-unary_fn_parser!(Filter);
-
-impl<R, S, F> Parser<R> for Filter<S, F>
-where
-    R: Reader + Undo<S::Output>,
-    S: Parser<R>,
-    S::Output: Copy,
-    F: Fn(S::Output) -> bool,
-{
-    type Output = S::Output;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_item) = self.0.parse(reader)?;
-        match opt_item {
-            Some(item) => {
-                if (self.1)(item) {
-                    Ok((reader, Some(item)))
-                } else {
-                    Ok((reader.undo(item), None))
-                }
-            }
-            _ => Ok((reader, None)),
-        }
-    }
-}
-
 // Similar to Filter, but the source parser returns the same item as the reader.
 // This is due to the inability to have an Undo in the Reader for the Reader's
 // item.
@@ -249,26 +196,6 @@ pub trait UnaryFnParser<R: Reader>: Parser<R> + Sized {
         F: Fn(&Self::Output) -> Result<bool, R::Err>,
     {
         Validate::new(self, validation)
-    }
-
-    /// Returns a new parser which filters the result of this parser.
-    /// The filtering function has access to a reference of the item.
-    fn filter_ref<F>(self, f: F) -> FilterRef<Self, F>
-    where
-        F: Fn(&Self::Output) -> bool,
-    {
-        FilterRef::new(self, f)
-    }
-
-    /// Returns a new parser which filters the result of this parser.
-    /// The filtering function has access to a copy of the item.
-    fn filter<F>(self, f: F) -> Filter<Self, F>
-    where
-        F: Fn(Self::Output) -> bool,
-        R: Undo<Self::Output>,
-        Self::Output: Copy,
-    {
-        Filter::new(self, f)
     }
 
     /// Returns a new parser which filters the result of this parser.

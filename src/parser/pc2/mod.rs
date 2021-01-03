@@ -17,7 +17,7 @@ where
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err>;
 
     /// For backwards compatibility with the older style fn parsers.
-    //#[deprecated]
+    #[deprecated]
     fn convert_to_fn(self) -> Box<dyn Fn(R) -> ReaderResult<R, Self::Output, R::Err>>
     where
         Self: Sized + 'static,
@@ -114,27 +114,6 @@ where
     R::Item: Eq,
 {
     Item::<R>(PhantomData, item)
-}
-
-/// Wrapper for older function parsers
-pub struct LazyFnParser<R, T, F>(PhantomData<R>, PhantomData<T>, F);
-
-impl<R, T, F> LazyFnParser<R, T, F> {
-    pub fn new(f: F) -> Self {
-        Self(PhantomData, PhantomData, f)
-    }
-}
-
-impl<R, T, F> Parser<R> for LazyFnParser<R, T, F>
-where
-    R: Reader,
-    F: Fn() -> Box<dyn Fn(R) -> ReaderResult<R, T, R::Err>>,
-{
-    type Output = T;
-
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        (self.2)()(reader)
-    }
 }
 
 /// A static parser that returns the given item, without reading from the reader.

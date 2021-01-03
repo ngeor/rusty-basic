@@ -1,5 +1,5 @@
-use crate::common::{HasLocation, QError};
-use crate::parser::pc::{Reader, ReaderResult};
+use crate::common::QError;
+use crate::parser::pc::Reader;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
@@ -48,14 +48,6 @@ where
 }
 
 // bare name node
-
-#[deprecated]
-pub fn bare_name<R>() -> Box<dyn Fn(R) -> ReaderResult<R, BareName, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    bare_name_p().convert_to_fn()
-}
 
 pub fn bare_name_p<R>() -> impl Parser<R, Output = BareName>
 where

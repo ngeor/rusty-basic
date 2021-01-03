@@ -1,6 +1,6 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::name;
-use crate::parser::pc::{Reader, ReaderResult};
+use crate::parser::pc::Reader;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::{whitespace_p, TextParser, Whitespace};
 use crate::parser::pc2::unary::UnaryParser;
@@ -16,14 +16,6 @@ use crate::parser::{
 // FOR I = 0 TO 5 STEP 1
 // statements
 // NEXT (I)
-
-#[deprecated]
-pub fn for_loop<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    for_loop_p().convert_to_fn()
-}
 
 // TODO use expression parser to parse variable names for FOR and NEXT counter
 

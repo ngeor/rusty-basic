@@ -1,19 +1,11 @@
 use crate::common::{HasLocation, QError};
-use crate::parser::pc::{Reader, ReaderResult};
+use crate::parser::pc::Reader;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::whitespace_p;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::{dim_name, Keyword, Statement};
-
-#[deprecated]
-pub fn dim<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    dim_p().convert_to_fn()
-}
 
 /// Parses DIM statement
 pub fn dim_p<R>() -> impl Parser<R, Output = Statement>

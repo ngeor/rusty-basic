@@ -1,7 +1,7 @@
 /// Deals with characters and strings.
 /// The Reader is always a Reader<Item = char>
 use super::{Parser, Reader, ReaderResult, Undo};
-use crate::parser::pc::ws::{is_eol_or_whitespace, is_whitespace};
+use crate::parser::pc::{is_eol_or_whitespace, is_whitespace};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::unary::PeekReaderItem;
 use crate::parser::pc2::Item;

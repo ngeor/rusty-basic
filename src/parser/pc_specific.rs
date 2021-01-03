@@ -1,6 +1,6 @@
 /// Parser combinators specific to this project (e.g. for keywords)
 use crate::common::QError;
-use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable};
+use crate::common::{CaseInsensitiveString, ErrorEnvelope, HasLocation};
 use crate::parser::pc::{Reader, ReaderResult, Undo};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::many::{ManyParser, OneOrMoreDelimited};
@@ -45,24 +45,6 @@ impl<R: Reader<Item = char>> Undo<(Keyword, String)> for R {
 }
 
 // ========================================================
-// when Reader + HasLocation
-// ========================================================
-
-/// Creates a function that maps the result of the source into a locatable result,
-/// using the position of the reader just before invoking the source.
-pub fn with_pos<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Locatable<T>, E>>
-where
-    R: Reader<Err = E> + HasLocation + 'static,
-    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-{
-    Box::new(move |reader| {
-        // capture pos before invoking source
-        let pos = reader.pos();
-        source(reader).and_then(|(reader, ok_res)| Ok((reader, ok_res.map(|x| x.at(pos)))))
-    })
-}
-
-// ========================================================
 // Error location
 // ========================================================
 
@@ -104,13 +86,6 @@ pub fn is_non_leading_identifier_without_dot(ch: char) -> bool {
 
 pub fn is_non_leading_identifier_with_dot(ch: char) -> bool {
     is_non_leading_identifier_without_dot(ch) || (ch == '.')
-}
-
-pub fn is_symbol(ch: char) -> bool {
-    (ch > ' ' && ch < '0')
-        || (ch > '9' && ch < 'A')
-        || (ch > 'Z' && ch < 'a')
-        || (ch > 'z' && ch <= '~')
 }
 
 /// Reads any identifier. Note that the result might be a keyword.

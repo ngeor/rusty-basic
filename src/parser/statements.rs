@@ -10,37 +10,41 @@ use crate::parser::pc2::text::{string_while_p, whitespace_p, TextParser};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::{any_p, item_p, Parser};
-use crate::parser::pc_specific::with_pos;
 use crate::parser::statement;
 use crate::parser::statement::statement_p;
 use crate::parser::types::*;
 use std::marker::PhantomData;
 
-#[deprecated]
-pub fn single_line_non_comment_statements<R>(
-) -> Box<dyn Fn(R) -> ReaderResult<R, StatementNodes, QError>>
+pub fn single_line_non_comment_statements_p<R>() -> impl Parser<R, Output = StatementNodes>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(
-        many_with_terminating_indicator(opt_seq2(
-            with_pos(statement::single_line_non_comment_statement()),
-            crate::parser::pc::ws::zero_or_more_around(read(':')),
-        )),
-    ))
+    whitespace_p()
+        .and(
+            statement::single_line_non_comment_statement_p()
+                .with_pos()
+                .one_or_more_delimited_by(
+                    item_p(':').surrounded_by_opt_ws(),
+                    QError::syntax_error("Error: trailing colon"),
+                ),
+        )
+        .keep_right()
 }
 
-#[deprecated]
-pub fn single_line_statements<R>() -> Box<dyn Fn(R) -> ReaderResult<R, StatementNodes, QError>>
+pub fn single_line_statements_p<R>() -> impl Parser<R, Output = StatementNodes>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    crate::parser::pc::ws::one_or_more_leading(map_default_to_not_found(
-        many_with_terminating_indicator(opt_seq2(
-            with_pos(statement::single_line_statement()),
-            crate::parser::pc::ws::zero_or_more_around(read(':')),
-        )),
-    ))
+    whitespace_p()
+        .and(
+            statement::single_line_statement_p()
+                .with_pos()
+                .one_or_more_delimited_by(
+                    item_p(':').surrounded_by_opt_ws(),
+                    QError::syntax_error("Error: trailing colon"),
+                ),
+        )
+        .keep_right()
 }
 
 #[deprecated]

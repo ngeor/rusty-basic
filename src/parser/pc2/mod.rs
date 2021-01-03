@@ -203,6 +203,7 @@ where
 {
     type Output = T;
     fn parse(&self, reader: R) -> ReaderResult<R, T, E> {
+        // TODO: it should be possible to remove cloning in the static parsers by adding mutability (which is currently blocked due to deprecated parsers)
         Err((reader, self.2.clone()))
     }
 }

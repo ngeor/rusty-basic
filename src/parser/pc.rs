@@ -303,26 +303,6 @@ pub mod common {
         })
     }
 
-    pub fn opt_seq3<R, S1, S2, S3, T1, T2, T3, E>(
-        first: S1,
-        second: S2,
-        third: S3,
-    ) -> Box<dyn Fn(R) -> ReaderResult<R, (T1, Option<T2>, Option<T3>), E>>
-    where
-        R: Reader + 'static,
-        S1: Fn(R) -> ReaderResult<R, T1, E> + 'static,
-        S2: Fn(R) -> ReaderResult<R, T2, E> + 'static,
-        S3: Fn(R) -> ReaderResult<R, T3, E> + 'static,
-        T1: 'static,
-        T2: 'static,
-        T3: 'static,
-        E: 'static,
-    {
-        map(opt_seq2(opt_seq2(first, second), third), |((a, b), c)| {
-            (a, b, c)
-        })
-    }
-
     pub fn seq2<R, S1, S2, T1, T2, E>(
         first: S1,
         second: S2,
@@ -595,6 +575,7 @@ pub mod common {
         })
     }
 
+    #[deprecated]
     pub fn many_with_terminating_indicator<R, S, T1, T2, E>(
         source: S,
     ) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T1>, E>>
@@ -769,20 +750,6 @@ pub mod ws {
         R: Reader<Item = char> + 'static,
     {
         common::map_default_to_not_found(zero_or_more())
-    }
-
-    /// Reads some whitespace before the source and then returns the result of the source.
-    ///
-    /// If no whitespace exists before the source, the source will not be invoked and
-    /// a Not Found result will be returned.
-    pub fn one_or_more_leading<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, E>>
-    where
-        R: Reader<Item = char, Err = E> + Undo<String> + 'static,
-        S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-        T: 'static,
-        E: 'static,
-    {
-        common::drop_left(common::and(one_or_more(), source))
     }
 
     /// Reads any whitespace.

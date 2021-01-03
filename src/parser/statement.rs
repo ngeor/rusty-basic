@@ -43,7 +43,7 @@ where
         built_ins::parse_built_in_p().box_dyn().convert_to_fn(),
         statement_label(),
         sub_call::sub_call_or_assignment(),
-        if_block::if_block(),
+        if_block::if_block_p().box_dyn().convert_to_fn(),
         for_loop::for_loop(),
         select_case::select_case_p().box_dyn().convert_to_fn(),
         while_wend::while_wend_p().box_dyn().convert_to_fn(),
@@ -55,6 +55,7 @@ where
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
+#[deprecated]
 pub fn single_line_non_comment_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -69,8 +70,16 @@ where
     ])
 }
 
+pub fn single_line_non_comment_statement_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    LazyFnParser::new(single_line_non_comment_statement)
+}
+
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
+#[deprecated]
 pub fn single_line_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -84,6 +93,13 @@ where
         statement_go_to(),
         statement_on_error_go_to(),
     ])
+}
+
+pub fn single_line_statement_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    LazyFnParser::new(single_line_statement)
 }
 
 pub fn statement_label<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>

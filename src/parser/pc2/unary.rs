@@ -155,27 +155,6 @@ where
     }
 }
 
-/// Wraps a reference of a parser.
-pub struct RefParser<'a, A>(&'a A);
-
-impl<'a, A> RefParser<'a, A> {
-    pub fn new(a: &'a A) -> Self {
-        Self(a)
-    }
-}
-
-impl<'a, A, R> Parser<R> for RefParser<'a, A>
-where
-    R: Reader,
-    A: Parser<R>,
-{
-    type Output = A::Output;
-
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        self.0.parse(reader)
-    }
-}
-
 /// Converts with the TryFrom trait.
 pub struct TryFromParser<S, T>(S, PhantomData<T>);
 
@@ -257,11 +236,6 @@ pub trait UnaryParser<R: Reader>: Parser<R> + Sized {
     /// Adds location information to the result of this parser.
     fn with_pos(self) -> WithPos<Self> {
         WithPos::new(self)
-    }
-
-    /// Creates a new parser, wrapping the given parser as a reference.
-    fn as_ref(&self) -> RefParser<Self> {
-        RefParser::new(&self)
     }
 
     /// Converts the result of the parser with the `TryFrom` trait.

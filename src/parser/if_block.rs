@@ -1,27 +1,28 @@
 use crate::common::*;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
 use crate::parser::pc::*;
+use crate::parser::pc2::binary::BinaryParser;
+use crate::parser::pc2::many::ManyParser;
+use crate::parser::pc2::text::whitespace_p;
+use crate::parser::pc2::unary::UnaryParser;
+use crate::parser::pc2::unary_fn::UnaryFnParser;
+use crate::parser::pc2::Parser;
 use crate::parser::pc_specific::*;
 use crate::parser::statements;
 use crate::parser::types::*;
 
-pub fn if_block<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
+pub fn if_block_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq2(
-            if_expr_then(),
-            demand(
-                or(single_line_if_else(), multi_line_if()),
-                QError::syntax_error_fn("Expected: single or multi line IF"),
-            ),
-            "if_block",
-        ),
-        |(condition, (statements, else_if_blocks, else_block))| {
+    if_expr_then_p()
+        .and_demand(
+            single_line_if_else_p()
+                .or(multi_line_if_p())
+                .or_syntax_error("Expected: single or multi line IF"),
+        )
+        .map(|(condition, (statements, else_if_blocks, else_block))| {
             Statement::IfBlock(IfBlockNode {
                 if_block: ConditionalBlockNode {
                     condition,
@@ -30,8 +31,7 @@ where
                 else_if_blocks,
                 else_block,
             })
-        },
-    )
+        })
 }
 
 // IF expr THEN ( single line if | multi line if)
@@ -39,187 +39,122 @@ where
 // single line else ::= ELSE non-comment-statements-separated-by-colon comment-statement
 // multi line if    ::= statements else-if-blocks else-block END IF
 
-fn if_expr_then<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
+fn if_expr_then_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq3(
-            keyword(Keyword::If),
-            expression::demand_back_guarded_expression_node(),
-            demand_keyword(Keyword::Then),
-            "if_expr_then",
-        ),
-        |(_, e, _)| e,
-    )
+    keyword_p(Keyword::If)
+        .and_demand(
+            expression::back_guarded_expression_node_p()
+                .or_syntax_error("Expected: expression after IF"),
+        )
+        .and_demand(keyword_p(Keyword::Then))
+        .keep_middle()
 }
 
-fn single_line_if_else<R>() -> Box<
-    dyn Fn(
-        R,
-    ) -> ReaderResult<
-        R,
-        (
-            StatementNodes,
-            Vec<ConditionalBlockNode>,
-            Option<StatementNodes>,
-        ),
-        QError,
-    >,
+fn single_line_if_else_p<R>() -> impl Parser<
+    R,
+    Output = (
+        StatementNodes,
+        Vec<ConditionalBlockNode>,
+        Option<StatementNodes>,
+    ),
 >
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        opt_seq2(
-            single_line_if(),
-            or(
-                map(
-                    crate::parser::pc::ws::one_or_more_leading(with_pos(comment::comment())),
-                    |r| vec![r],
-                ),
-                single_line_else(),
-            ),
-        ),
-        |(l, r)| (l, vec![], r),
-    )
+    statements::single_line_non_comment_statements_p()
+        .and_opt(
+            // comment or ELSE
+            whitespace_p()
+                .and(comment::comment_p().with_pos())
+                .keep_right()
+                .map(|s| vec![s])
+                .or(single_line_else_p()),
+        )
+        .map(|(l, r)| (l, vec![], r))
 }
 
-fn single_line_if<R>() -> Box<dyn Fn(R) -> ReaderResult<R, StatementNodes, QError>>
+fn single_line_else_p<R>() -> impl Parser<R, Output = StatementNodes>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    statements::single_line_non_comment_statements()
+    whitespace_p()
+        .and(keyword_p(Keyword::Else))
+        .and_demand(statements::single_line_statements_p())
+        .keep_right()
 }
 
-fn single_line_else<R>() -> Box<dyn Fn(R) -> ReaderResult<R, StatementNodes, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    map(
-        crate::parser::pc::ws::one_or_more_leading(and(
-            keyword(Keyword::Else),
-            statements::single_line_statements(),
-        )),
-        |(_, r)| r,
-    )
-}
-
-fn multi_line_if<R>() -> Box<
-    dyn Fn(
-        R,
-    ) -> ReaderResult<
-        R,
-        (
-            StatementNodes,
-            Vec<ConditionalBlockNode>,
-            Option<StatementNodes>,
-        ),
-        QError,
-    >,
+fn multi_line_if_p<R>() -> impl Parser<
+    R,
+    Output = (
+        StatementNodes,
+        Vec<ConditionalBlockNode>,
+        Option<StatementNodes>,
+    ),
 >
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq2(
-            opt_seq3(
-                statements::statements(
-                    or_vec(vec![
-                        keyword(Keyword::End),
-                        keyword(Keyword::Else),
-                        keyword(Keyword::ElseIf),
-                    ]),
-                    QError::syntax_error_fn("Expected: end-of-statement"),
-                ),
-                else_if_blocks(),
-                else_block(),
-            ),
-            demand(end_if(), QError::syntax_error_fn("Expected: END IF")),
-            "multi_line_if",
-        ),
-        |((if_block, opt_else_if_blocks, opt_else), _)| {
-            (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
-        },
+    statements::zero_or_more_statements_p(
+        keyword_p(Keyword::End)
+            .or(keyword_p(Keyword::Else))
+            .or(keyword_p(Keyword::ElseIf)),
     )
+    .and_opt(else_if_block_p().one_or_more())
+    .and_opt(else_block_p())
+    .and_demand(end_if_p().or_syntax_error("Expected: END IF"))
+    .map(|(((if_block, opt_else_if_blocks), opt_else), _)| {
+        (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
+    })
 }
 
-fn else_if_expr_then<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ExpressionNode, QError>>
+fn else_if_expr_then_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        seq3(
-            keyword(Keyword::ElseIf),
-            expression::demand_back_guarded_expression_node(),
-            demand_keyword(Keyword::Then),
-            "else_if_expr_then",
-        ),
-        |(_, e, _)| e,
-    )
+    keyword_p(Keyword::ElseIf)
+        .and_demand(
+            expression::back_guarded_expression_node_p()
+                .or_syntax_error("Expected: expression after ELSEIF"),
+        )
+        .and_demand(keyword_p(Keyword::Then).or_syntax_error("Expected: THEN"))
+        .keep_middle()
 }
 
-fn else_if_blocks<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Vec<ConditionalBlockNode>, QError>>
+fn else_if_block_p<R>() -> impl Parser<R, Output = ConditionalBlockNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map_default_to_not_found(many(else_if_block()))
-}
-
-fn else_if_block<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ConditionalBlockNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    map(
-        seq2(
-            else_if_expr_then(),
-            statements::statements(
-                or_vec(vec![
-                    keyword(Keyword::End),
-                    keyword(Keyword::Else),
-                    keyword(Keyword::ElseIf),
-                ]),
-                QError::syntax_error_fn("Expected: end-of-statement"),
-            ),
-            "else_if_block",
-        ),
-        |(condition, statements)| ConditionalBlockNode {
+    else_if_expr_then_p()
+        .and_demand(statements::zero_or_more_statements_p(
+            keyword_p(Keyword::End).or(keyword_p(Keyword::Else).or(keyword_p(Keyword::ElseIf))),
+        ))
+        .map(|(condition, statements)| ConditionalBlockNode {
             condition,
             statements,
-        },
-    )
+        })
 }
 
-fn else_block<R>() -> Box<dyn Fn(R) -> ReaderResult<R, StatementNodes, QError>>
+fn else_block_p<R>() -> impl Parser<R, Output = StatementNodes>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    drop_left(seq2(
-        keyword(Keyword::Else),
-        statements::statements(
-            keyword(Keyword::End),
-            QError::syntax_error_fn("Expected: end-of-statement"),
-        ),
-        "else_block",
-    ))
+    keyword_p(Keyword::Else)
+        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+            Keyword::End,
+        )))
+        .keep_right()
 }
 
-fn end_if<R>() -> Box<dyn Fn(R) -> ReaderResult<R, (), QError>>
+fn end_if_p<R>() -> impl Parser<R, Output = ()>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map(
-        crate::parser::pc::ws::seq2(
-            keyword(Keyword::End),
-            demand(
-                keyword(Keyword::If),
-                QError::syntax_error_fn("Expected: IF after END"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace after END"),
-            "end_if",
-        ),
-        |_| (),
-    )
+    keyword_p(Keyword::End)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
+        .and_demand(keyword_p(Keyword::If).or_syntax_error("Expected: IF after END"))
+        .map(|_| ())
 }
 
 #[cfg(test)]

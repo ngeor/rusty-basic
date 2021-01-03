@@ -235,7 +235,7 @@ pub trait UnaryFnParser<R: Reader>: Parser<R> + Sized {
         F: Fn(Self::Output) -> U,
         U: Parser<R>,
     {
-        Switch(self, factory)
+        Switch::new(self, factory)
     }
 
     /// Validates the result of a parser.

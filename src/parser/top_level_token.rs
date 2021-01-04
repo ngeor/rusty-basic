@@ -10,80 +10,62 @@ use crate::parser::pc2::Parser;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
+use std::marker::PhantomData;
 
-pub fn top_level_tokens<R>() -> Box<dyn Fn(R) -> ReaderResult<R, ProgramNode, QError>>
+pub struct TopLevelTokensParser<R>(PhantomData<R>);
+
+impl<R> TopLevelTokensParser<R> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<R> Parser<R> for TopLevelTokensParser<R>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    Box::new(move |r| {
+    type Output = ProgramNode;
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
-        let mut reader = r;
+        let mut r = reader;
         loop {
-            match reader.read() {
-                Ok((tmp, opt_res)) => {
-                    reader = tmp;
-                    match opt_res {
-                        Some(' ') => {
-                            // skip whitespace
+            let (tmp, opt_item) = r.read()?;
+            r = tmp;
+            match opt_item {
+                Some(ch) => {
+                    if ch == ' ' {
+                        // skip whitespace
+                    } else if ch == '\r' || ch == '\n' || ch == ':' {
+                        read_separator = true;
+                    } else {
+                        // if it is a comment, we are allowed to read it without a separator
+                        let can_read = ch == '\'' || read_separator;
+                        if !can_read {
+                            return Err((r, QError::SyntaxError(format!("No separator: {}", ch))));
                         }
-                        Some('\r') | Some('\n') | Some(':') => {
-                            read_separator = true;
-                        }
-                        Some(ch) => {
-                            // if it is a comment, we are allowed to read it without a separator
-                            let can_read = ch == '\'' || read_separator;
-                            if can_read {
-                                match top_level_token_one()(reader.undo(ch)) {
-                                    Ok((tmp, opt_res)) => {
-                                        reader = tmp;
-                                        read_separator = false;
-                                        match opt_res {
-                                            Some(top_level_token) => {
-                                                top_level_tokens.push(top_level_token);
-                                            }
-                                            None => {
-                                                return Err((
-                                                    reader,
-                                                    QError::SyntaxError(format!(
-                                                        "Expected: top level statement"
-                                                    )),
-                                                ));
-                                            }
-                                        }
-                                    }
-                                    Err(err) => {
-                                        return Err(err);
-                                    }
-                                }
-                            } else {
-                                return Err((
-                                    reader,
-                                    QError::SyntaxError(format!("No separator: {}", ch)),
-                                ));
+                        let (tmp, opt_top_level_token) =
+                            top_level_token_one_p().parse(r.undo_item(ch))?;
+                        r = tmp;
+                        match opt_top_level_token {
+                            Some(top_level_token) => {
+                                top_level_tokens.push(top_level_token);
+                                read_separator = false;
                             }
-                        }
-                        None => {
-                            break;
+                            _ => {
+                                return Err((r, QError::syntax_error("Expected: top level token")));
+                            }
                         }
                     }
                 }
-                Err(err) => {
-                    return Err(err);
+                _ => {
+                    break;
                 }
             }
         }
-
-        Ok((reader, Some(top_level_tokens)))
-    })
-}
-
-#[deprecated]
-pub fn top_level_token_one<R>() -> Box<dyn Fn(R) -> ReaderResult<R, TopLevelTokenNode, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    top_level_token_one_p().convert_to_fn()
+        Ok((r, Some(top_level_tokens)))
+    }
 }
 
 fn top_level_token_one_p<R>() -> impl Parser<R, Output = TopLevelTokenNode>

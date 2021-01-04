@@ -1,7 +1,7 @@
+use crate::common::CaseInsensitiveString;
 /// Parser combinators specific to this project (e.g. for keywords)
 use crate::common::QError;
-use crate::common::{CaseInsensitiveString, ErrorEnvelope, HasLocation};
-use crate::parser::pc::{Reader, ReaderResult, Undo};
+use crate::parser::pc::{Reader, Undo};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::many::{ManyParser, OneOrMoreDelimited};
 use crate::parser::pc2::text::{
@@ -42,30 +42,6 @@ impl<R: Reader<Item = char>> Undo<(Keyword, String)> for R {
     fn undo(self, s: (Keyword, String)) -> Self {
         self.undo(s.1)
     }
-}
-
-// ========================================================
-// Error location
-// ========================================================
-
-pub fn with_err_at<R, S, T, E>(
-    source: S,
-) -> Box<dyn Fn(R) -> Result<(R, Option<T>), ErrorEnvelope<E>>>
-where
-    R: Reader<Err = E> + HasLocation + 'static,
-    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-{
-    Box::new(move |reader| {
-        let result = source(reader);
-        match result {
-            Ok(x) => Ok(x),
-            Err((reader, err)) => {
-                // capture pos after invoking source
-                let pos = reader.pos();
-                Err(ErrorEnvelope::Pos(err, pos))
-            }
-        }
-    })
 }
 
 // ========================================================

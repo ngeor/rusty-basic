@@ -39,24 +39,8 @@ where
         .or(illegal_starting_keywords().box_dyn())
 }
 
-#[deprecated]
-pub fn statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    statement_p().convert_to_fn()
-}
-
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
-#[deprecated]
-pub fn single_line_non_comment_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    single_line_non_comment_statement_p().convert_to_fn()
-}
-
 pub fn single_line_non_comment_statement_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -72,14 +56,6 @@ where
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-#[deprecated]
-pub fn single_line_statement<R>() -> Box<dyn Fn(R) -> ReaderResult<R, Statement, QError>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    single_line_statement_p().convert_to_fn()
-}
-
 pub fn single_line_statement_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

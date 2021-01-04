@@ -3,14 +3,11 @@ use crate::common::CaseInsensitiveString;
 use crate::common::QError;
 use crate::parser::pc::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc::many::{ManyParser, OneOrMoreDelimited};
-use crate::parser::pc::text::{letters_p, string_p, TextParser, Whitespace};
+use crate::parser::pc::text::{string_p, TextParser, Whitespace};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::{OrThrowVal, UnaryFnParser};
-use crate::parser::pc::{
-    if_p, is_digit, is_letter, item_p, Item, Parser, Reader, ReaderResult, Undo,
-};
+use crate::parser::pc::{if_p, is_digit, is_letter, item_p, Item, Parser, Reader, Undo};
 use crate::parser::types::{Keyword, Name, QualifiedName};
-use std::marker::PhantomData;
 
 // ========================================================
 // Undo support
@@ -48,43 +45,30 @@ impl<R: Reader<Item = char>> Undo<(Keyword, String)> for R {
 // Miscellaneous
 // ========================================================
 
-pub fn is_non_leading_identifier_without_dot(ch: char) -> bool {
+// Reads any identifier. Note that the result might be a keyword.
+// An identifier must start with a letter and consists of letters, numbers and the dot.
+crate::char_sequence_p!(
+    IdentifierWithDot,
+    identifier_with_dot,
+    is_letter,
+    is_letter_or_digit_or_dot
+);
+
+fn is_letter_or_digit_or_dot(ch: char) -> bool {
+    is_letter(ch) || is_digit(ch) || ch == '.'
+}
+
+// Parses an identifier that does not include a dot.
+// This might be a keyword.
+crate::char_sequence_p!(
+    IdentifierWithoutDot,
+    identifier_without_dot_p,
+    is_letter,
+    is_letter_or_digit
+);
+
+fn is_letter_or_digit(ch: char) -> bool {
     is_letter(ch) || is_digit(ch)
-}
-
-pub fn is_non_leading_identifier_with_dot(ch: char) -> bool {
-    is_non_leading_identifier_without_dot(ch) || (ch == '.')
-}
-
-crate::recognize_while_predicate!(
-    LettersOrDigits,
-    letters_or_digits_p,
-    is_non_leading_identifier_without_dot
-);
-crate::recognize_while_predicate!(
-    LettersOrDigitsOrDots,
-    letters_or_digits_or_dots_p,
-    is_non_leading_identifier_with_dot
-);
-
-/// Reads any identifier. Note that the result might be a keyword.
-/// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn identifier_with_dot<R>() -> impl Parser<R, Output = String>
-where
-    R: Reader<Item = char>,
-{
-    letters_p()
-        .and_opt(letters_or_digits_or_dots_p())
-        .stringify()
-}
-
-/// Parses an identifier that does not include a dot.
-/// This might be a keyword.
-pub fn identifier_without_dot_p<R>() -> impl Parser<R, Output = String>
-where
-    R: Reader<Item = char>,
-{
-    letters_p().and_opt(letters_or_digits_p()).stringify()
 }
 
 /// Recognizes the given keyword.
@@ -98,7 +82,7 @@ where
 }
 
 fn is_not_whole_keyword(ch: char) -> bool {
-    is_non_leading_identifier_with_dot(ch) || ch == '$'
+    is_letter(ch) || is_digit(ch) || ch == '.' || ch == '$'
 }
 
 // TODO: add keyword_pair_p e.g. keyword_pair_p(End, Function)

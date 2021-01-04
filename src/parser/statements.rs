@@ -3,12 +3,9 @@ use std::marker::PhantomData;
 use crate::common::*;
 use crate::parser::pc::binary::BinaryParser;
 use crate::parser::pc::many::ManyParser;
-use crate::parser::pc::text::{string_while_p, whitespace_p, TextParser};
+use crate::parser::pc::text::{whitespace_p, TextParser};
 use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{
-    any_p, is_eol, is_eol_or_whitespace, item_p, Parser, Reader, ReaderResult, Undo,
-};
+use crate::parser::pc::{is_eol, is_eol_or_whitespace, item_p, Parser, Reader, ReaderResult, Undo};
 use crate::parser::statement;
 use crate::parser::statement::statement_p;
 use crate::parser::types::*;
@@ -181,12 +178,9 @@ where
 }
 
 // <eol> < ws | eol >*
-fn eol_separator_p<R>() -> impl Parser<R, Output = String>
-where
-    R: Reader<Item = char, Err = QError>,
-{
-    any_p()
-        .filter_reader_item(is_eol)
-        .and_opt(string_while_p(is_eol_or_whitespace))
-        .stringify()
-}
+crate::char_sequence_p!(
+    EolFollowedByEolOrWhitespace,
+    eol_separator_p,
+    is_eol,
+    is_eol_or_whitespace
+);

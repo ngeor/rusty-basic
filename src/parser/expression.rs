@@ -2,10 +2,10 @@ use std::marker::PhantomData;
 
 use crate::common::*;
 use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::{digits_p, whitespace_p, TextParser, Whitespace};
+use crate::parser::pc::text::{whitespace_p, TextParser, Whitespace};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{if_p, item_p, Parser, Reader, ReaderResult};
+use crate::parser::pc::{if_p, is_digit, item_p, Parser, Reader, ReaderResult};
 use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
 use crate::parser::types::*;
 use crate::variant;
@@ -180,32 +180,33 @@ where
 mod string_literal {
     use crate::parser::pc::binary::BinaryParser;
     use crate::parser::pc::item_p;
-    use crate::parser::pc::text::string_while_p;
     use crate::parser::pc::unary::UnaryParser;
     use crate::parser::pc::unary_fn::UnaryFnParser;
 
     use super::*;
-
-    fn is_not_quote(ch: char) -> bool {
-        ch != '"'
-    }
 
     pub fn string_literal_p<R>() -> impl Parser<R, Output = Expression>
     where
         R: Reader<Item = char, Err = QError>,
     {
         item_p('"')
-            .and_opt(string_while_p(is_not_quote))
+            .and_opt(non_quote_p())
             .and_demand(item_p('"').or_syntax_error("Unterminated string"))
             .keep_middle()
             .map(|opt_s| Expression::StringLiteral(opt_s.unwrap_or_default()))
+    }
+
+    crate::char_sequence_p!(NonQuote, non_quote_p, is_not_quote);
+
+    fn is_not_quote(ch: char) -> bool {
+        ch != '"'
     }
 }
 
 mod number_literal {
     use crate::parser::pc::binary::BinaryParser;
     use crate::parser::pc::item_p;
-    use crate::parser::pc::text::{digits_p, string_p, string_while_p, TextParser};
+    use crate::parser::pc::text::{string_p, string_while_p, TextParser};
     use crate::parser::pc::unary::UnaryParser;
     use crate::parser::pc::unary_fn::UnaryFnParser;
     use crate::variant::BitVec;
@@ -886,6 +887,9 @@ where
 {
     lte_p().or(gte_p()).or(eq_p()).with_pos()
 }
+
+// Parses one or more digits.
+crate::char_sequence_p!(Digits, digits_p, is_digit);
 
 #[cfg(test)]
 mod tests {

@@ -1,30 +1,27 @@
-use std::marker::PhantomData;
-
+/// Deals with characters and strings.
+/// The Reader is always a Reader<Item = char>
 use crate::parser::pc::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc::unary::PeekReaderItem;
 use crate::parser::pc::{
-    is_digit, is_eol_or_whitespace, is_letter, is_whitespace, Item, Reader, ReaderResult, Undo,
+    is_eol_or_whitespace, is_whitespace, Item, Parser, Reader, ReaderResult, Undo,
 };
+use std::marker::PhantomData;
 
-/// Deals with characters and strings.
-/// The Reader is always a Reader<Item = char>
-use super::Parser;
-
-/// A parser that finds a specific string.
-pub struct StringRecognizer<R: Reader<Item = char>> {
+/// A parser that finds a specific string, case insensitive.
+pub struct StringParser<R: Reader<Item = char>> {
     needle: &'static str,
     reader: PhantomData<R>,
 }
 
-/// Parses the given string.
-pub fn string_p<R: Reader<Item = char>>(needle: &'static str) -> StringRecognizer<R> {
-    StringRecognizer {
+/// Parses the given string, case insensitive.
+pub fn string_p<R: Reader<Item = char>>(needle: &'static str) -> StringParser<R> {
+    StringParser {
         needle,
         reader: PhantomData,
     }
 }
 
-impl<R> Parser<R> for StringRecognizer<R>
+impl<R> Parser<R> for StringParser<R>
 where
     R: Reader<Item = char>,
 {
@@ -81,7 +78,8 @@ where
     }
 }
 
-pub fn do_string_while<R, F>(
+#[deprecated]
+fn do_string_while<R, F>(
     reader: R,
     predicate: F,
     reject_empty: bool,
@@ -117,6 +115,8 @@ where
     }
 }
 
+/// Reads one or more characters as long as the predicate is met.
+#[deprecated]
 pub fn string_while_p<R, F>(predicate: F) -> StringWhile<R, F>
 where
     R: Reader<Item = char>,
@@ -125,7 +125,7 @@ where
     StringWhile::new(predicate, true)
 }
 
-#[macro_export]
+// TODO remove this macro
 macro_rules! recognize_while_predicate {
     ($struct_name:tt, $fn_name:tt, $predicate:expr) => {
         pub struct $struct_name<R: Reader<Item = char>>(PhantomData<R>, bool);
@@ -152,9 +152,101 @@ macro_rules! recognize_while_predicate {
 
 // Reads one or more whitespace
 recognize_while_predicate!(Whitespace, whitespace_p, is_whitespace);
-recognize_while_predicate!(Letters, letters_p, is_letter);
-recognize_while_predicate!(Digits, digits_p, is_digit);
-recognize_while_predicate!(EolOrWhitespace, eol_or_whitespace_p, is_eol_or_whitespace);
+
+/// Defines a character sequence with a leading character set and
+/// subsequent characters.
+///
+/// A parser is automatically implemented for implementations of this trait.
+pub trait CharSequence {
+    /// Checks if the given character can be the first in the sequence.
+    fn is_leading(ch: char) -> bool {
+        Self::is_valid(ch)
+    }
+
+    /// Checks if the given character can belong in the sequence.
+    fn is_valid(ch: char) -> bool;
+}
+
+impl<R, S: CharSequence> Parser<R> for S
+where
+    R: Reader<Item = char>,
+{
+    type Output = String;
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+        let mut r = reader;
+        let (tmp, opt_first) = r.read()?;
+        r = tmp;
+        match opt_first {
+            Some(first) => {
+                if !S::is_leading(first) {
+                    return Ok((r.undo_item(first), None));
+                }
+                let mut buf = String::new();
+                buf.push(first);
+                loop {
+                    let (tmp, opt_next) = r.read()?;
+                    r = tmp;
+                    match opt_next {
+                        Some(next) => {
+                            if S::is_valid(next) {
+                                buf.push(next);
+                            } else {
+                                r = r.undo_item(next);
+                                break;
+                            }
+                        }
+                        _ => {
+                            break;
+                        }
+                    }
+                }
+                Ok((r, Some(buf)))
+            }
+            _ => Ok((r, None)),
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! char_sequence_p {
+    ($struct_name:tt, $fn_name:tt, $is_valid:expr) => {
+        pub fn $fn_name<R: crate::parser::pc::Reader<Item = char>>(
+        ) -> impl crate::parser::pc::Parser<R, Output = String> {
+            $struct_name {}
+        }
+
+        struct $struct_name {}
+
+        impl crate::parser::pc::text::CharSequence for $struct_name {
+            fn is_valid(ch: char) -> bool {
+                $is_valid(ch)
+            }
+        }
+    };
+
+    ($struct_name:tt, $fn_name:tt, $is_leading:expr, $is_valid:expr) => {
+        pub fn $fn_name<R: crate::parser::pc::Reader<Item = char>>(
+        ) -> impl crate::parser::pc::Parser<R, Output = String> {
+            $struct_name {}
+        }
+
+        struct $struct_name {}
+
+        impl crate::parser::pc::text::CharSequence for $struct_name {
+            fn is_leading(ch: char) -> bool {
+                $is_leading(ch)
+            }
+
+            fn is_valid(ch: char) -> bool {
+                $is_valid(ch)
+            }
+        }
+    };
+}
+
+// Parses one or more characters consisting of whitespace and/or eol.
+char_sequence_p!(EolOrWhitespace, eol_or_whitespace_p, is_eol_or_whitespace);
 
 /// Converts the result of the underlying parser into a string.
 pub struct Stringify<A>(A);

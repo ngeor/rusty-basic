@@ -15,7 +15,7 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 pub fn def_type_p<R>() -> impl Parser<R, Output = DefType>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     def_keyword_p()
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DEF-type"))
@@ -29,7 +29,7 @@ where
 
 fn def_keyword_p<R>() -> impl Parser<R, Output = TypeQualifier>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::DefDbl)
         .or(keyword_p(Keyword::DefInt))
@@ -48,21 +48,21 @@ where
 
 fn letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     two_letter_range_p().or(single_letter_range_p())
 }
 
 fn single_letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     if_p(is_letter).map(|l| LetterRange::Single(l))
 }
 
 fn two_letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     if_p(is_letter)
         .and(item_p('-'))

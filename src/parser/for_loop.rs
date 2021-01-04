@@ -58,7 +58,7 @@ fn parse_for_step_p<R>() -> impl Parser<
     ),
 >
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
@@ -76,7 +76,7 @@ where
 /// Parses the "FOR I = 1 TO 2" part
 fn parse_for_p<R>() -> impl Parser<R, Output = (NameNode, ExpressionNode, ExpressionNode)>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::For)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FOR"))
@@ -104,7 +104,7 @@ where
 
 fn next_counter_p<R>() -> impl Parser<R, Output = Option<NameNode>>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Next)
         .and_opt(whitespace_p().and(name::name_with_dot_p().with_pos()))

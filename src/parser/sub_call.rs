@@ -90,7 +90,7 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
 
 fn sub_call_args_after_space_p<R>() -> impl Parser<R, Output = ExpressionNodes>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     expression::guarded_expression_node_p()
         .and_demand(

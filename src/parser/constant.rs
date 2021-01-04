@@ -12,7 +12,7 @@ use crate::parser::types::{Keyword, Statement};
 
 pub fn constant_p<R>() -> impl Parser<R, Output = Statement>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Const)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after CONST"))

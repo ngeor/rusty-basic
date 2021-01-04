@@ -19,7 +19,7 @@ use crate::parser::types::*;
 
 pub fn param_name_node_p<R>() -> impl Parser<R, Output = ParamNameNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     param_name_p()
         .with_pos()
@@ -70,7 +70,7 @@ where
 
 fn param_name_p<R>() -> impl Parser<R, Output = (Name, bool)>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     expression::word::word_p().and_then(|name_expr| match name_expr {
         Expression::Variable(var_name, _) => Ok((var_name, false)),
@@ -102,7 +102,7 @@ fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
 
 fn type_definition_extended_p<R>() -> impl Parser<R, Output = ParamType>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     // <ws+> AS <ws+> identifier
     whitespace_p()
@@ -114,7 +114,7 @@ where
 
 fn extended_type_p<R>() -> impl Parser<R, Output = ParamType>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     identifier_without_dot_p()
         .with_pos()

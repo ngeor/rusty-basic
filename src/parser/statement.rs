@@ -72,7 +72,7 @@ where
 
 fn statement_label_p<R>() -> impl Parser<R, Output = Statement>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     name::bare_name_p()
         .and(item_p(':'))
@@ -82,7 +82,7 @@ where
 
 fn statement_go_to_p<R>() -> impl Parser<R, Output = Statement>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::GoTo)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after GOTO"))
@@ -92,7 +92,7 @@ where
 
 fn statement_on_error_go_to_p<R>() -> impl Parser<R, Output = Statement>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::On)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ON"))
@@ -106,7 +106,7 @@ where
 
 fn illegal_starting_keywords<R>() -> impl Parser<R, Output = Statement>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Wend)
         .or(keyword_p(Keyword::Else))

@@ -10,7 +10,7 @@ use crate::parser::types::*;
 /// Tries to read a comment.
 pub fn comment_p<R>() -> impl Parser<R, Output = Statement>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     item_p('\'')
         .and_opt(non_eol_p())
@@ -21,7 +21,7 @@ where
 /// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p<R>() -> impl Parser<R, Output = Vec<Locatable<String>>>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     eol_or_whitespace_p()
         .map_none_to_default()

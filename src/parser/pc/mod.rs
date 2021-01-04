@@ -144,26 +144,6 @@ pub fn opt_static_p<R, T>(item: Option<T>) -> OptStaticParser<R, T> {
     OptStaticParser(PhantomData, item)
 }
 
-/// A static parser which always returns `None`.
-pub struct NoneParser<R, T>(PhantomData<R>, PhantomData<T>);
-
-impl<R, T> Parser<R> for NoneParser<R, T>
-where
-    R: Reader,
-{
-    type Output = T;
-    fn parse(&self, reader: R) -> ReaderResult<R, T, R::Err> {
-        Ok((reader, None))
-    }
-}
-
-pub fn static_none_p<R, T>() -> NoneParser<R, T>
-where
-    R: Reader,
-{
-    NoneParser(PhantomData, PhantomData)
-}
-
 /// A static parser that always throws an error.
 pub struct StaticErrParser<R, T, E>(PhantomData<R>, PhantomData<T>, E);
 

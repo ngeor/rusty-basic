@@ -61,7 +61,7 @@ use crate::parser::types::{
 
 pub fn user_defined_type_p<R>() -> impl Parser<R, Output = UserDefinedType>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Type)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after TYPE"))
@@ -82,7 +82,7 @@ where
 
 fn bare_name_without_dot_p<R>() -> impl Parser<R, Output = BareName>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     name::name_with_dot_p().and_then(|n| match n {
         Name::Bare(b) => {
@@ -100,7 +100,7 @@ where
 
 fn element_nodes_p<R>() -> impl Parser<R, Output = Vec<ElementNode>>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     element_node_p()
         .one_or_more()
@@ -109,7 +109,7 @@ where
 
 fn element_node_p<R>() -> impl Parser<R, Output = ElementNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     bare_name_without_dot_p()
         .with_pos()
@@ -127,7 +127,7 @@ where
 
 fn element_type_p<R>() -> impl Parser<R, Output = ElementType>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Integer)
         .map(|_| ElementType::Integer)
@@ -150,7 +150,7 @@ where
 
 fn demand_string_length_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     expression::demand_expression_node_p("Expected: string length").and_then(
         |Locatable { element, pos }| match element {

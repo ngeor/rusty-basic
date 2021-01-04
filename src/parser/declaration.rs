@@ -22,7 +22,7 @@ use crate::parser::types::*;
 
 pub fn declaration_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Declare)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DECLARE"))
@@ -37,7 +37,7 @@ where
 
 pub fn function_declaration_p<R>() -> impl Parser<R, Output = (NameNode, ParamNameNodes)>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Function)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FUNCTION"))
@@ -55,7 +55,7 @@ where
 
 pub fn sub_declaration_p<R>() -> impl Parser<R, Output = (BareNameNode, ParamNameNodes)>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Sub)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after SUB"))
@@ -71,7 +71,7 @@ where
 
 fn declaration_parameters_p<R>() -> impl Parser<R, Output = ParamNameNodes>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     in_parenthesis_p(param_name_node_p().csv())
 }

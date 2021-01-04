@@ -170,7 +170,7 @@ impl<T: BufRead> EolReader<T> {
     }
 }
 
-impl<T: BufRead + 'static> Reader for EolReader<T> {
+impl<T: BufRead> Reader for EolReader<T> {
     type Item = char;
     type Err = QError;
 

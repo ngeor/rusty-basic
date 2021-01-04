@@ -6,7 +6,7 @@ use crate::parser::pc::many::ManyParser;
 use crate::parser::pc::text::{opt_whitespace_p, whitespace_p};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{static_none_p, Parser, Reader};
+use crate::parser::pc::{Parser, Reader, ReaderResult};
 use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -61,7 +61,7 @@ where
 
 fn select_case_expr_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Select)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after SELECT"))
@@ -82,16 +82,30 @@ fn case_any_many<R>() -> impl Parser<R, Output = Vec<(ExprOrElse, StatementNodes
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    case_any().one_or_more_looking_back(|(expr_or_else, _)| match expr_or_else {
-        ExprOrElse::Expr(_) => {
-            // might have more
-            case_any().box_dyn()
-        }
-        ExprOrElse::Else => {
-            // it was the last one
-            static_none_p().box_dyn()
-        }
+    case_any().one_or_more_looking_back(|(expr_or_else, _)| {
+        CaseAnyLookingBack(if let ExprOrElse::Expr(_) = expr_or_else {
+            true
+        } else {
+            false
+        })
     })
+}
+
+struct CaseAnyLookingBack(bool);
+
+impl<R> Parser<R> for CaseAnyLookingBack
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    type Output = (ExprOrElse, StatementNodes);
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        if self.0 {
+            case_any().parse(reader)
+        } else {
+            Ok((reader, None))
+        }
+    }
 }
 
 fn case_any<R>() -> impl Parser<R, Output = (ExprOrElse, StatementNodes)>
@@ -101,20 +115,17 @@ where
     keyword_p(Keyword::Case)
         .and_demand(
             case_else()
-                .box_dyn()
                 .and_demand(statements::zero_or_more_statements_p(keyword_p(
                     Keyword::Else,
                 )))
-                .or(case_is()
-                    .box_dyn()
-                    .and_demand(statements::zero_or_more_statements_p(
+                .or(case_is().and_demand(statements::zero_or_more_statements_p(
+                    keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
+                )))
+                .or(
+                    simple_or_range_p().and_demand(statements::zero_or_more_statements_p(
                         keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
-                    )))
-                .or(simple_or_range_p().box_dyn().and_demand(
-                    statements::zero_or_more_statements_p(
-                        keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
-                    ),
-                ))
+                    )),
+                )
                 .or_syntax_error("Expected: ELSE, IS, expression"),
         )
         .keep_right()
@@ -122,7 +133,7 @@ where
 
 fn case_else<R>() -> impl Parser<R, Output = ExprOrElse>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     whitespace_p()
         .and(keyword_p(Keyword::Else))
@@ -131,7 +142,7 @@ where
 
 fn case_is<R>() -> impl Parser<R, Output = ExprOrElse>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     whitespace_p()
         .and(keyword_p(Keyword::Is))
@@ -149,7 +160,7 @@ where
 
 fn simple_or_range_p<R>() -> impl Parser<R, Output = ExprOrElse>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     expression::guarded_expression_node_p()
         .and_opt_factory(range_p)
@@ -161,7 +172,7 @@ where
 
 fn range_p<R>(first_expr_ref: &ExpressionNode) -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     let parenthesis = first_expr_ref.is_parenthesis();
     opt_whitespace_p(!parenthesis)
@@ -175,7 +186,7 @@ where
 
 fn end_select_p<R>() -> impl Parser<R, Output = ()>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::End)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))

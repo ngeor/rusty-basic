@@ -1,5 +1,5 @@
-use crate::parser::pc2::unary::UnaryParser;
-use crate::parser::pc2::{any_p, Parser, Reader, Undo};
+use crate::parser::pc::unary::UnaryParser;
+use crate::parser::pc::{any_p, Parser, Reader, Undo};
 use crate::parser::TypeQualifier;
 
 /// Returns a parser that can parse a `TypeQualifier`.

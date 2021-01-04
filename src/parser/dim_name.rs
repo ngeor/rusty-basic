@@ -4,11 +4,11 @@ use crate::common::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
-use crate::parser::pc2::binary::BinaryParser;
-use crate::parser::pc2::text::{whitespace_p, TextParser};
-use crate::parser::pc2::unary::UnaryParser;
-use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{item_p, static_err_p, static_p, Parser, Reader};
+use crate::parser::pc::binary::BinaryParser;
+use crate::parser::pc::text::{whitespace_p, TextParser};
+use crate::parser::pc::unary::UnaryParser;
+use crate::parser::pc::unary_fn::UnaryFnParser;
+use crate::parser::pc::{item_p, static_err_p, static_p, Parser, Reader};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 

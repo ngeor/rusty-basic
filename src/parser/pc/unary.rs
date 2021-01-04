@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::marker::PhantomData;
 
 use crate::common::{AtLocation, HasLocation, Locatable};
-use crate::parser::pc2::{Reader, ReaderResult, Undo};
+use crate::parser::pc::{Reader, ReaderResult, Undo};
 
 /// This module holds parsers that modify the result of another parser.
 use super::Parser;

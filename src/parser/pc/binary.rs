@@ -1,4 +1,4 @@
-use crate::parser::pc2::{Reader, ReaderResult, Undo};
+use crate::parser::pc::{Reader, ReaderResult, Undo};
 
 /// This module holds parsers that combine two other parsers in order to form
 /// their result.

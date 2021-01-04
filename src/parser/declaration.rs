@@ -1,11 +1,11 @@
 use crate::common::*;
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
-use crate::parser::pc2::binary::BinaryParser;
-use crate::parser::pc2::text::whitespace_p;
-use crate::parser::pc2::unary::UnaryParser;
-use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{Parser, Reader};
+use crate::parser::pc::binary::BinaryParser;
+use crate::parser::pc::text::whitespace_p;
+use crate::parser::pc::unary::UnaryParser;
+use crate::parser::pc::unary_fn::UnaryFnParser;
+use crate::parser::pc::{Parser, Reader};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 

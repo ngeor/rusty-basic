@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::parser::pc2::unary_fn::{FilterReaderItem, UnaryFnParser};
+use crate::parser::pc::unary_fn::{FilterReaderItem, UnaryFnParser};
 
 pub mod binary;
 pub mod many;
@@ -217,7 +217,7 @@ pub trait Reader: Sized {
 
 pub mod undo {
     use crate::common::Locatable;
-    use crate::parser::pc2::{Reader, Undo};
+    use crate::parser::pc::{Reader, Undo};
 
     impl<R: Reader<Item = char>> Undo<char> for R {
         fn undo(self, item: char) -> Self {

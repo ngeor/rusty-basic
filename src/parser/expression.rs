@@ -1,11 +1,11 @@
 use std::marker::PhantomData;
 
 use crate::common::*;
-use crate::parser::pc2::binary::BinaryParser;
-use crate::parser::pc2::text::{digits_p, whitespace_p, TextParser, Whitespace};
-use crate::parser::pc2::unary::UnaryParser;
-use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{if_p, item_p, Parser, Reader, ReaderResult};
+use crate::parser::pc::binary::BinaryParser;
+use crate::parser::pc::text::{digits_p, whitespace_p, TextParser, Whitespace};
+use crate::parser::pc::unary::UnaryParser;
+use crate::parser::pc::unary_fn::UnaryFnParser;
+use crate::parser::pc::{if_p, item_p, Parser, Reader, ReaderResult};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use crate::variant;
@@ -178,11 +178,11 @@ where
 }
 
 mod string_literal {
-    use crate::parser::pc2::binary::BinaryParser;
-    use crate::parser::pc2::item_p;
-    use crate::parser::pc2::text::string_while_p;
-    use crate::parser::pc2::unary::UnaryParser;
-    use crate::parser::pc2::unary_fn::UnaryFnParser;
+    use crate::parser::pc::binary::BinaryParser;
+    use crate::parser::pc::item_p;
+    use crate::parser::pc::text::string_while_p;
+    use crate::parser::pc::unary::UnaryParser;
+    use crate::parser::pc::unary_fn::UnaryFnParser;
 
     use super::*;
 
@@ -203,11 +203,11 @@ mod string_literal {
 }
 
 mod number_literal {
-    use crate::parser::pc2::binary::BinaryParser;
-    use crate::parser::pc2::item_p;
-    use crate::parser::pc2::text::{digits_p, string_p, string_while_p, TextParser};
-    use crate::parser::pc2::unary::UnaryParser;
-    use crate::parser::pc2::unary_fn::UnaryFnParser;
+    use crate::parser::pc::binary::BinaryParser;
+    use crate::parser::pc::item_p;
+    use crate::parser::pc::text::{digits_p, string_p, string_while_p, TextParser};
+    use crate::parser::pc::unary::UnaryParser;
+    use crate::parser::pc::unary_fn::UnaryFnParser;
     use crate::variant::BitVec;
 
     use super::*;
@@ -385,11 +385,11 @@ pub mod word {
     use std::convert::TryFrom;
 
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::pc2::binary::BinaryParser;
-    use crate::parser::pc2::many::ManyParser;
-    use crate::parser::pc2::unary::UnaryParser;
-    use crate::parser::pc2::unary_fn::UnaryFnParser;
-    use crate::parser::pc2::{any_p, item_p};
+    use crate::parser::pc::binary::BinaryParser;
+    use crate::parser::pc::many::ManyParser;
+    use crate::parser::pc::unary::UnaryParser;
+    use crate::parser::pc::unary_fn::UnaryFnParser;
+    use crate::parser::pc::{any_p, item_p};
     use crate::parser::type_qualifier::type_qualifier_p;
 
     use super::*;

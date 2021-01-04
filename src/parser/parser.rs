@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::pc2::Parser;
-use crate::parser::pc2::Reader;
+use crate::parser::pc::Parser;
+use crate::parser::pc::Reader;
 use crate::parser::top_level_token::TopLevelTokensParser;
 use crate::parser::types::*;
 use std::fs::File;

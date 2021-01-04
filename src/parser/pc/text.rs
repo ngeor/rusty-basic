@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
-use crate::parser::pc2::unary::PeekReaderItem;
-use crate::parser::pc2::{is_eol_or_whitespace, is_whitespace, Item, Reader, ReaderResult, Undo};
+use crate::parser::pc::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
+use crate::parser::pc::unary::PeekReaderItem;
+use crate::parser::pc::{is_eol_or_whitespace, is_whitespace, Item, Reader, ReaderResult, Undo};
 use crate::parser::pc_specific::{
     is_digit, is_letter, is_non_leading_identifier_with_dot, is_non_leading_identifier_without_dot,
 };

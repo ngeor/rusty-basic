@@ -1,8 +1,8 @@
 use crate::common::*;
 use crate::parser::expression::guarded_expression_node_p;
-use crate::parser::pc2::binary::BinaryParser;
-use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{static_err_p, Parser, Reader};
+use crate::parser::pc::binary::BinaryParser;
+use crate::parser::pc::unary_fn::UnaryFnParser;
+use crate::parser::pc::{static_err_p, Parser, Reader};
 use crate::parser::pc_specific::*;
 use crate::parser::statements::*;
 use crate::parser::types::*;

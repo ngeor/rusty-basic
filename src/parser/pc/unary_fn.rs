@@ -1,4 +1,4 @@
-use crate::parser::pc2::{Reader, ReaderResult, Undo};
+use crate::parser::pc::{Reader, ReaderResult, Undo};
 
 /// This module holds parsers that modify the result of another parser, together with a function.
 use super::Parser;

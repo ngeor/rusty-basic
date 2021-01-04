@@ -1,10 +1,10 @@
 use crate::common::*;
 use crate::parser::expression;
-use crate::parser::pc2::binary::BinaryParser;
-use crate::parser::pc2::text::{whitespace_p, TextParser};
-use crate::parser::pc2::unary::UnaryParser;
-use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{item_p, Parser, Reader};
+use crate::parser::pc::binary::BinaryParser;
+use crate::parser::pc::text::{whitespace_p, TextParser};
+use crate::parser::pc::unary::UnaryParser;
+use crate::parser::pc::unary_fn::UnaryFnParser;
+use crate::parser::pc::{item_p, Parser, Reader};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
@@ -24,7 +24,7 @@ where
 
 mod close {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::pc2::many::ManyParser;
+    use crate::parser::pc::many::ManyParser;
 
     use super::*;
 
@@ -771,9 +771,9 @@ mod open {
 }
 
 mod print {
-    use crate::parser::pc2::many::ManyParser;
-    use crate::parser::pc2::text::Whitespace;
-    use crate::parser::pc2::{any_p, opt_static_p, static_p, ReaderResult};
+    use crate::parser::pc::many::ManyParser;
+    use crate::parser::pc::text::Whitespace;
+    use crate::parser::pc::{any_p, opt_static_p, static_p, ReaderResult};
 
     use super::*;
 

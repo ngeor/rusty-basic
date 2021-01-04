@@ -1,13 +1,12 @@
 /// Parser combinators specific to this project (e.g. for keywords)
-use crate::common::CaseInsensitiveString;
-use crate::common::QError;
-use crate::parser::pc::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
+use crate::common::*;
+use crate::parser::pc::binary::BinaryParser;
 use crate::parser::pc::many::{ManyParser, OneOrMoreDelimited};
-use crate::parser::pc::text::{string_p, TextParser, Whitespace};
+use crate::parser::pc::text::{string_p, SurroundedByOptWhitespace, TextParser};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::{OrThrowVal, UnaryFnParser};
-use crate::parser::pc::{if_p, is_digit, is_letter, item_p, Item, Parser, Reader, Undo};
-use crate::parser::types::{Keyword, Name, QualifiedName};
+use crate::parser::pc::*;
+use crate::parser::types::*;
 
 // ========================================================
 // Undo support
@@ -100,9 +99,7 @@ where
     R: Reader<Item = char, Err = QError>,
     S: Parser<R>,
 {
-    item_p('(')
-        .followed_by_opt_ws()
-        .stringify()
+    lparen_opt_ws_p()
         .and(source)
         .and_demand(
             item_p(')')
@@ -110,6 +107,16 @@ where
                 .or_syntax_error("Expected: closing parenthesis"),
         )
         .keep_middle()
+}
+
+crate::char_sequence_p!(
+    LParenOptWhitespace,
+    lparen_opt_ws_p,
+    is_left_parenthesis,
+    is_whitespace
+);
+fn is_left_parenthesis(ch: char) -> bool {
+    ch == '('
 }
 
 /// Offers chaining methods for parsers specific to rusty_basic.
@@ -124,13 +131,7 @@ where
 
     /// Parses one or more items provided by the given source, separated by commas.
     /// Trailing commas are not allowed. Space is allowed around commas.
-    fn csv(
-        self,
-    ) -> OneOrMoreDelimited<
-        Self,
-        OptLeftAndRight<Whitespace<R>, LeftAndOptRight<Item<R>, Whitespace<R>>>,
-        QError,
-    > {
+    fn csv(self) -> OneOrMoreDelimited<Self, SurroundedByOptWhitespace<Item<R>>, QError> {
         self.one_or_more_delimited_by(
             item_p(',').surrounded_by_opt_ws(),
             QError::syntax_error("Error: trailing comma"),

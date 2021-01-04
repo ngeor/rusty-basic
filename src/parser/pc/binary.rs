@@ -42,31 +42,6 @@ where
     }
 }
 
-// OptLeftAndRight requires that the right parser returns a result.
-// It will undo the first result if it was `Some` and the second was `None`.
-binary_parser!(OptLeftAndRight);
-
-impl<A, B, R> Parser<R> for OptLeftAndRight<A, B>
-where
-    R: Reader + Undo<A::Output>,
-    A: Parser<R>,
-    B: Parser<R>,
-{
-    type Output = (Option<A::Output>, B::Output);
-
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_a) = self.0.parse(reader)?;
-        let (reader, opt_b) = self.1.parse(reader)?;
-        match opt_b {
-            Some(b) => Ok((reader, Some((opt_a, b)))),
-            _ => match opt_a {
-                Some(a) => Ok((reader.undo(a), None)),
-                _ => Ok((reader, None)),
-            },
-        }
-    }
-}
-
 // LeftAndOptRight requires that the left parser returns a result.
 binary_parser!(LeftAndOptRight);
 
@@ -221,17 +196,6 @@ pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
         B: Sized + Parser<R>,
     {
         LeftAndOptRightFactory(self, factory)
-    }
-
-    /// Returns a new parser prepending the given parser before the current one.
-    /// The given parser can return `None`. Its result will be undone if the
-    /// current parser returns `None`.
-    fn preceded_by<B>(self, other: B) -> OptLeftAndRight<B, Self>
-    where
-        B: Sized + Parser<R>,
-        R: Undo<B::Output>,
-    {
-        OptLeftAndRight::new(other, self)
     }
 
     /// Returns a new parser which returns the result of the given parser,

@@ -8,6 +8,8 @@ pub mod text;
 pub mod unary;
 pub mod unary_fn;
 
+// TODO use pub self to make a better api surface
+
 pub trait Parser<R>
 where
     R: Reader,

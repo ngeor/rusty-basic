@@ -1,14 +1,13 @@
-use std::marker::PhantomData;
-
 use crate::common::*;
 use crate::parser::pc::binary::BinaryParser;
 use crate::parser::pc::many::ManyParser;
 use crate::parser::pc::text::{whitespace_p, TextParser};
 use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::{is_eol, is_eol_or_whitespace, item_p, Parser, Reader, ReaderResult, Undo};
+use crate::parser::pc::unary_fn::UnaryFnParser;
+use crate::parser::pc::*;
 use crate::parser::statement;
-use crate::parser::statement::statement_p;
 use crate::parser::types::*;
+use std::marker::PhantomData;
 
 pub fn single_line_non_comment_statements_p<R>() -> impl Parser<R, Output = StatementNodes>
 where
@@ -83,7 +82,7 @@ where
     type Output = StatementNode;
 
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
-        let (reader, opt_statement_node) = statement_p().with_pos().parse(reader)?;
+        let (reader, opt_statement_node) = statement::statement_p().with_pos().parse(reader)?;
         match opt_statement_node {
             Some(statement_node) => {
                 let is_comment = if let Statement::Comment(_) = statement_node.as_ref() {
@@ -166,15 +165,17 @@ fn comment_separator_p<R>() -> impl Parser<R, Output = String>
 where
     R: Reader<Item = char, Err = QError>,
 {
-    item_p('\'').peek_reader_item().stringify()
+    item_p('\'').peek_reader_item().map(|ch| {
+        let mut s = String::new();
+        s.push(ch);
+        s
+    })
 }
 
 // ':' <ws>*
-fn colon_separator_p<R>() -> impl Parser<R, Output = String>
-where
-    R: Reader<Item = char, Err = QError>,
-{
-    item_p(':').followed_by_opt_ws().stringify()
+crate::char_sequence_p!(ColonOptWs, colon_separator_p, is_colon, is_whitespace);
+fn is_colon(ch: char) -> bool {
+    ch == ':'
 }
 
 // <eol> < ws | eol >*

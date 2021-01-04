@@ -3,7 +3,7 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::pc::binary::BinaryParser;
 use crate::parser::pc::many::ManyParser;
-use crate::parser::pc::text::{whitespace_p, Whitespace};
+use crate::parser::pc::text::{opt_whitespace_p, whitespace_p};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
 use crate::parser::pc::{static_none_p, Parser, Reader};
@@ -164,7 +164,7 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     let parenthesis = first_expr_ref.is_parenthesis();
-    Whitespace::new(!parenthesis)
+    opt_whitespace_p(!parenthesis)
         .and(keyword_p(Keyword::To))
         .and_demand(
             expression::guarded_expression_node_p()

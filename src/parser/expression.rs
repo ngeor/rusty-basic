@@ -2,13 +2,12 @@ use std::marker::PhantomData;
 
 use crate::common::*;
 use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::{whitespace_p, TextParser, Whitespace};
+use crate::parser::pc::text::{opt_whitespace_p, whitespace_p, TextParser};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
 use crate::parser::pc::{if_p, is_digit, item_p, Parser, Reader, ReaderResult};
 use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
 use crate::parser::types::*;
-use crate::variant;
 
 fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
     LazyExpressionParser(PhantomData)
@@ -49,7 +48,7 @@ fn guarded_parenthesis_expression_node_p<R>() -> impl Parser<R, Output = Express
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    Whitespace::new(false)
+    opt_whitespace_p(false)
         .and(item_p('(').with_pos())
         .and(lazy_expression_node_p())
         .and_demand(
@@ -92,8 +91,7 @@ where
             operator_p(first_expr.is_parenthesis()).and_demand(
                 lazy_expression_node_p()
                     .preceded_by_opt_ws()
-                    .or_syntax_error("Expected: right side expression")
-                    .keep_right(),
+                    .or_syntax_error("Expected: right side expression"),
             )
         })
         .map(|(left_side, opt_right_side)| {
@@ -204,14 +202,16 @@ mod string_literal {
 }
 
 mod number_literal {
+    use super::digits_p;
+    use crate::common::*;
     use crate::parser::pc::binary::BinaryParser;
-    use crate::parser::pc::item_p;
-    use crate::parser::pc::text::{string_p, string_while_p, TextParser};
+    use crate::parser::pc::text::string_p;
     use crate::parser::pc::unary::UnaryParser;
     use crate::parser::pc::unary_fn::UnaryFnParser;
-    use crate::variant::BitVec;
-
-    use super::*;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::PcSpecific;
+    use crate::parser::types::*;
+    use crate::variant::{BitVec, INT_BITS, LONG_BITS, MAX_INTEGER, MAX_LONG};
 
     pub fn number_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
     where
@@ -258,9 +258,9 @@ mod number_literal {
     fn integer_literal_to_expression_node_no_pos(s: String) -> Result<Expression, QError> {
         match s.parse::<u32>() {
             Ok(u) => {
-                if u <= variant::MAX_INTEGER as u32 {
+                if u <= MAX_INTEGER as u32 {
                     Ok(Expression::IntegerLiteral(u as i32))
-                } else if u <= variant::MAX_LONG as u32 {
+                } else if u <= MAX_LONG as u32 {
                     Ok(Expression::LongLiteral(u as i64))
                 } else {
                     Ok(Expression::DoubleLiteral(u as f64))
@@ -288,46 +288,36 @@ mod number_literal {
         }
     }
 
-    pub fn hexadecimal_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        hex_or_literal_p("&H", is_hex_digit, convert_hex_digits)
+    macro_rules! hex_or_oct_literal_p {
+        ($fn_name:tt, $needle:expr, $recognizer:tt, $converter:tt) => {
+            pub fn $fn_name<R>() -> impl Parser<R, Output = ExpressionNode>
+            where
+                R: Reader<Item = char, Err = QError> + HasLocation,
+            {
+                string_p($needle)
+                    .and_opt(item_p('-'))
+                    .and_demand($recognizer().or_syntax_error("Expected: digits"))
+                    .and_then(|((_, opt_negative), digits)| {
+                        if opt_negative.is_some() {
+                            Err(QError::Overflow)
+                        } else {
+                            $converter(digits)
+                        }
+                    })
+                    .with_pos()
+            }
+        };
     }
 
-    pub fn octal_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        hex_or_literal_p("&O", is_oct_digit, convert_oct_digits)
-    }
+    hex_or_oct_literal_p!(hexadecimal_literal_p, "&H", hex_digit_p, convert_hex_digits);
+    hex_or_oct_literal_p!(octal_literal_p, "&O", oct_digit_p, convert_oct_digits);
 
-    fn hex_or_literal_p<R>(
-        needle: &'static str,
-        predicate: fn(char) -> bool,
-        converter: fn(String) -> Result<Expression, QError>,
-    ) -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation,
-    {
-        string_p(needle)
-            .and_opt(item_p('-'))
-            .stringify()
-            .and(string_while_p(predicate))
-            .and_then(move |(opt_negative, digits)| {
-                if opt_negative.ends_with('-') {
-                    Err(QError::Overflow)
-                } else {
-                    converter(digits)
-                }
-            })
-            .with_pos()
-    }
-
+    crate::char_sequence_p!(OctDigit, oct_digit_p, is_oct_digit);
     fn is_oct_digit(ch: char) -> bool {
         ch >= '0' && ch <= '7'
     }
 
+    crate::char_sequence_p!(HexDigit, hex_digit_p, is_hex_digit);
     fn is_hex_digit(ch: char) -> bool {
         ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
     }
@@ -372,9 +362,9 @@ mod number_literal {
 
     fn create_expression_from_bit_vec(mut bit_vec: BitVec) -> Result<Expression, QError> {
         bit_vec.fit()?;
-        if bit_vec.len() == variant::INT_BITS {
+        if bit_vec.len() == INT_BITS {
             Ok(Expression::IntegerLiteral(bit_vec.into()))
-        } else if bit_vec.len() == variant::LONG_BITS {
+        } else if bit_vec.len() == LONG_BITS {
             Ok(Expression::LongLiteral(bit_vec.into()))
         } else {
             Err(QError::Overflow)
@@ -809,11 +799,7 @@ where
 {
     relational_operator_p()
         .preceded_by_opt_ws()
-        .keep_right()
-        .or(arithmetic_op_p()
-            .with_pos()
-            .preceded_by_opt_ws()
-            .keep_right())
+        .or(arithmetic_op_p().with_pos().preceded_by_opt_ws())
         .or(and_or_p(
             had_parenthesis_before,
             Keyword::And,
@@ -828,9 +814,9 @@ fn and_or_p<R>(
     operator: Operator,
 ) -> impl Parser<R, Output = Locatable<Operator>>
 where
-    R: Reader<Item = char> + HasLocation,
+    R: Reader<Item = char> + HasLocation + 'static,
 {
-    Whitespace::new(!had_parenthesis_before)
+    opt_whitespace_p(!had_parenthesis_before)
         .and(keyword_p(keyword).map(move |_| operator).with_pos())
         .keep_right()
 }

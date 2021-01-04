@@ -1,7 +1,7 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::name;
 use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::{whitespace_p, TextParser, Whitespace};
+use crate::parser::pc::text::{opt_whitespace_p, whitespace_p, TextParser};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
 use crate::parser::pc::Reader;
@@ -62,7 +62,7 @@ where
 {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
-            Whitespace::new(!upper.is_parenthesis())
+            opt_whitespace_p(!upper.is_parenthesis())
                 .and(keyword_p(Keyword::Step))
                 .and_demand(
                     expression::guarded_expression_node_p()

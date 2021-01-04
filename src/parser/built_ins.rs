@@ -772,10 +772,10 @@ mod open {
 
 mod print {
     use crate::parser::pc::many::ManyParser;
-    use crate::parser::pc::text::Whitespace;
     use crate::parser::pc::{any_p, opt_static_p, static_p, ReaderResult};
 
     use super::*;
+    use crate::parser::pc::text::opt_whitespace_p;
 
     pub fn parse_print_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -839,7 +839,7 @@ mod print {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        Whitespace::new(needs_leading_whitespace)
+        opt_whitespace_p(needs_leading_whitespace)
             .and(keyword_p(Keyword::Using))
             .and_demand(
                 expression::guarded_expression_node_p()
@@ -864,14 +864,10 @@ mod print {
             if self.needs_leading_whitespace_for_expression {
                 semicolon_or_comma_as_print_arg_p()
                     .preceded_by_opt_ws()
-                    .keep_right()
                     .or(expression::guarded_expression_node_p().map(|e| PrintArg::Expression(e)))
                     .parse(reader)
             } else {
-                any_print_arg_p()
-                    .preceded_by_opt_ws()
-                    .keep_right()
-                    .parse(reader)
+                any_print_arg_p().preceded_by_opt_ws().parse(reader)
             }
         }
     }
@@ -912,14 +908,10 @@ mod print {
                 // only comma or semicolon is allowed
                 semicolon_or_comma_as_print_arg_p()
                     .preceded_by_opt_ws()
-                    .keep_right()
                     .parse(reader)
             } else {
                 // everything is allowed
-                any_print_arg_p()
-                    .preceded_by_opt_ws()
-                    .keep_right()
-                    .parse(reader)
+                any_print_arg_p().preceded_by_opt_ws().parse(reader)
             }
         }
     }
@@ -1356,7 +1348,6 @@ where
 {
     expression::file_handle_p()
         .preceded_by_opt_ws()
-        .keep_right()
         .and_demand(
             item_p(',')
                 .surrounded_by_opt_ws()

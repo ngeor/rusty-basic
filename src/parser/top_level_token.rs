@@ -74,8 +74,8 @@ where
 {
     def_type::def_type_p()
         .map(TopLevelToken::DefType)
-        .or(declaration::declaration_p().box_dyn())
-        .or(implementation::implementation_p().box_dyn())
+        .or(declaration::declaration_p())
+        .or(implementation::implementation_p())
         .or(statement::statement_p().map(TopLevelToken::Statement))
         .or(user_defined_type::user_defined_type_p().map(TopLevelToken::UserDefinedType))
         .with_pos()

@@ -45,12 +45,11 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     dim::dim_p()
-        .box_dyn()
-        .or(constant::constant_p().box_dyn())
+        .or(constant::constant_p())
         .or(built_ins::parse_built_in_p().box_dyn())
-        .or(sub_call::sub_call_or_assignment_p().box_dyn())
-        .or(statement_go_to_p().box_dyn())
-        .or(statement_on_error_go_to_p().box_dyn())
+        .or(sub_call::sub_call_or_assignment_p())
+        .or(statement_go_to_p())
+        .or(statement_on_error_go_to_p())
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,

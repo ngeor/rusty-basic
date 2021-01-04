@@ -8,7 +8,7 @@ use crate::parser::pc::binary::BinaryParser;
 use crate::parser::pc::text::{whitespace_p, TextParser};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{item_p, static_err_p, static_p, Parser, Reader};
+use crate::parser::pc::{item_p, Parser, Reader, ReaderResult};
 use crate::parser::pc_specific::{
     identifier_without_dot_p, in_parenthesis_p, keyword_p, PcSpecific,
 };
@@ -99,57 +99,73 @@ where
 {
     identifier_without_dot_p()
         .with_pos()
-        .switch(
-            |Locatable { element: x, pos }| match Keyword::from_str(&x) {
-                Ok(Keyword::Single) => static_p(DimType::BuiltIn(
-                    TypeQualifier::BangSingle,
-                    BuiltInStyle::Extended,
-                ))
-                .box_dyn(),
-                Ok(Keyword::Double) => static_p(DimType::BuiltIn(
-                    TypeQualifier::HashDouble,
-                    BuiltInStyle::Extended,
-                ))
-                .box_dyn(),
-                Ok(Keyword::String_) => item_p('*')
-                    .surrounded_by_opt_ws()
-                    .and_demand(
-                        expression::expression_node_p()
-                            .or_syntax_error("Expected: string length after *"),
-                    )
-                    .keep_right()
-                    .optional()
-                    .map(|opt_len| match opt_len {
-                        Some(l) => DimType::FixedLengthString(l, 0),
-                        _ => DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
-                    })
-                    .box_dyn(),
-                Ok(Keyword::Integer) => static_p(DimType::BuiltIn(
-                    TypeQualifier::PercentInteger,
-                    BuiltInStyle::Extended,
-                ))
-                .box_dyn(),
-                Ok(Keyword::Long) => static_p(DimType::BuiltIn(
-                    TypeQualifier::AmpersandLong,
-                    BuiltInStyle::Extended,
-                ))
-                .box_dyn(),
-                Ok(_) => static_err_p(QError::syntax_error(
+        .switch(ExtendedTypeAfterIdentifier::new)
+}
+
+struct ExtendedTypeAfterIdentifier(Locatable<String>);
+
+impl ExtendedTypeAfterIdentifier {
+    pub fn new(identifier: Locatable<String>) -> Self {
+        Self(identifier)
+    }
+
+    fn built_in<R>(reader: R, q: TypeQualifier) -> ReaderResult<R, DimType, R::Err>
+    where
+        R: Reader,
+    {
+        Ok((reader, Some(DimType::BuiltIn(q, BuiltInStyle::Extended))))
+    }
+
+    fn string<R>(reader: R) -> ReaderResult<R, DimType, R::Err>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation,
+    {
+        let (reader, opt_len) = item_p('*')
+            .surrounded_by_opt_ws()
+            .and_demand(
+                expression::expression_node_p().or_syntax_error("Expected: string length after *"),
+            )
+            .keep_right()
+            .parse(reader)?;
+        match opt_len {
+            Some(len) => Ok((reader, Some(DimType::FixedLengthString(len, 0)))),
+            _ => Self::built_in(reader, TypeQualifier::DollarString),
+        }
+    }
+}
+impl<R> Parser<R> for ExtendedTypeAfterIdentifier
+where
+    R: Reader<Item = char, Err = QError> + HasLocation,
+{
+    type Output = DimType;
+
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let Locatable { element: x, pos } = &self.0;
+        match Keyword::from_str(x.as_str()) {
+            Ok(Keyword::Single) => Self::built_in(reader, TypeQualifier::BangSingle),
+            Ok(Keyword::Double) => Self::built_in(reader, TypeQualifier::HashDouble),
+            Ok(Keyword::String_) => Self::string(reader),
+            Ok(Keyword::Integer) => Self::built_in(reader, TypeQualifier::PercentInteger),
+            Ok(Keyword::Long) => Self::built_in(reader, TypeQualifier::AmpersandLong),
+            Ok(_) => Err((
+                reader,
+                QError::syntax_error(
                     "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                ))
-                .box_dyn(),
-                Err(_) => static_p(x)
-                    .validate(|x| {
-                        if x.len() > name::MAX_LENGTH {
-                            Err(QError::IdentifierTooLong)
-                        } else {
-                            Ok(true)
-                        }
-                    })
-                    .map(move |x| DimType::UserDefined(BareName::from(x).at(pos)))
-                    .box_dyn(),
-            },
-        )
+                ),
+            )),
+            Err(_) => {
+                if x.len() > name::MAX_LENGTH {
+                    Err((reader, QError::IdentifierTooLong))
+                } else {
+                    Ok((
+                        reader,
+                        // TODO try to remove clone if we can have mutable parser or without '&self'
+                        Some(DimType::UserDefined(BareName::from(x.clone()).at(pos))),
+                    ))
+                }
+            }
+        }
+    }
 }
 
 fn map_name_opt_extended_type_definition(

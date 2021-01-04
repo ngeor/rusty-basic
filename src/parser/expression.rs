@@ -17,7 +17,7 @@ struct LazyExpressionParser<R>(PhantomData<R>);
 
 impl<R> Parser<R> for LazyExpressionParser<R>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     type Output = ExpressionNode;
 
@@ -29,14 +29,14 @@ where
 
 pub fn demand_expression_node_p<R>(err_msg: &str) -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     expression_node_p().or_syntax_error(err_msg)
 }
 
 pub fn guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     // the order is important because if there is whitespace we can pick up any expression
     // ws+ expr
@@ -46,7 +46,7 @@ where
 
 fn guarded_parenthesis_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     opt_whitespace_p(false)
         .and(item_p('(').with_pos())
@@ -64,7 +64,7 @@ where
 
 fn guarded_whitespace_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     // ws+ expr
     whitespace_p().and(lazy_expression_node_p()).keep_right()
@@ -72,7 +72,7 @@ where
 
 pub fn back_guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     // ws* ( expr )
     // ws+ expr ws+
@@ -84,7 +84,7 @@ where
 /// Parses an expression
 pub fn expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     single_expression_node_p()
         .and_opt_factory(|first_expr| {
@@ -108,7 +108,7 @@ where
 
 fn single_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     string_literal::string_literal_p()
         .with_pos()
@@ -124,7 +124,7 @@ where
 
 fn unary_minus_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     item_p('-')
         .with_pos()
@@ -136,7 +136,7 @@ where
 
 pub fn unary_not_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     keyword_p(Keyword::Not)
         .with_pos()
@@ -146,7 +146,7 @@ where
 
 pub fn file_handle_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     item_p('#')
         .with_pos()
@@ -167,7 +167,7 @@ where
 
 pub fn parenthesis_p<R>() -> impl Parser<R, Output = Expression>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     in_parenthesis_p(
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
@@ -399,7 +399,7 @@ pub mod word {
 
     pub fn word_p<R>() -> impl Parser<R, Output = Expression>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+        R: Reader<Item = char, Err = QError> + HasLocation,
     {
         name_with_dot_p()
             .and_opt(parenthesis_with_zero_or_more_expressions_p())
@@ -502,7 +502,7 @@ pub mod word {
 
     fn parenthesis_with_zero_or_more_expressions_p<R>() -> impl Parser<R, Output = ExpressionNodes>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+        R: Reader<Item = char, Err = QError> + HasLocation,
     {
         in_parenthesis_p(lazy_expression_node_p().csv().map_none_to_default())
     }
@@ -795,7 +795,7 @@ pub mod word {
 
 fn operator_p<R>(had_parenthesis_before: bool) -> impl Parser<R, Output = Locatable<Operator>>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation,
 {
     relational_operator_p()
         .preceded_by_opt_ws()
@@ -814,7 +814,7 @@ fn and_or_p<R>(
     operator: Operator,
 ) -> impl Parser<R, Output = Locatable<Operator>>
 where
-    R: Reader<Item = char> + HasLocation + 'static,
+    R: Reader<Item = char> + HasLocation,
 {
     opt_whitespace_p(!had_parenthesis_before)
         .and(keyword_p(keyword).map(move |_| operator).with_pos())

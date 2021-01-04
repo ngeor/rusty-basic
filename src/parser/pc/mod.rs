@@ -20,7 +20,7 @@ where
 
     /// Wraps this parser into a Box dyn. This is a workaround for dealing with
     /// the compiler's limitations regarding deeply nested concrete parser types.
-    //#[deprecated]
+    #[deprecated]
     fn box_dyn(self) -> BoxDynParser<R, Self::Output>
     where
         Self: Sized + 'static,

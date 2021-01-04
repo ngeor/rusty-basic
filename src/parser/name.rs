@@ -16,7 +16,7 @@ use std::str::FromStr;
 /// is not a keyword (with the exception of strings, e.g. `end$`).
 pub fn name_with_dot_p<R>() -> impl Parser<R, Output = Name>
 where
-    R: Reader<Item = char, Err = QError> + 'static,
+    R: Reader<Item = char, Err = QError>,
 {
     identifier_with_dot()
         .validate(|n| {
@@ -51,7 +51,7 @@ where
 
 pub fn bare_name_p<R>() -> impl Parser<R, Output = BareName>
 where
-    R: Reader<Item = char, Err = QError> + 'static,
+    R: Reader<Item = char, Err = QError>,
 {
     any_word_with_dot_p().unless_followed_by(type_qualifier_p())
 }
@@ -61,7 +61,7 @@ pub const MAX_LENGTH: usize = 40;
 /// Reads any word, i.e. any identifier which is not a keyword.
 pub fn any_word_with_dot_p<R>() -> impl Parser<R, Output = BareName>
 where
-    R: Reader<Item = char, Err = QError> + 'static,
+    R: Reader<Item = char, Err = QError>,
 {
     identifier_with_dot()
         .validate(ensure_length_and_not_keyword)

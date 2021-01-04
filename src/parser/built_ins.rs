@@ -14,12 +14,12 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     close::parse_close_p()
-        .or(input::parse_input_p().box_dyn())
-        .or(line_input::parse_line_input_p().box_dyn())
-        .or(name::parse_name_p().box_dyn())
-        .or(open::parse_open_p().box_dyn())
-        .or(print::parse_print_p().box_dyn())
-        .or(print::parse_lprint_p().box_dyn())
+        .or(input::parse_input_p())
+        .or(line_input::parse_line_input_p())
+        .or(name::parse_name_p())
+        .or(open::parse_open_p())
+        .or(print::parse_print_p())
+        .or(print::parse_lprint_p())
 }
 
 mod close {

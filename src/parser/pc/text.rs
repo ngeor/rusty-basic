@@ -2,9 +2,8 @@ use std::marker::PhantomData;
 
 use crate::parser::pc::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc::unary::PeekReaderItem;
-use crate::parser::pc::{is_eol_or_whitespace, is_whitespace, Item, Reader, ReaderResult, Undo};
-use crate::parser::pc_specific::{
-    is_digit, is_letter, is_non_leading_identifier_with_dot, is_non_leading_identifier_without_dot,
+use crate::parser::pc::{
+    is_digit, is_eol_or_whitespace, is_letter, is_whitespace, Item, Reader, ReaderResult, Undo,
 };
 
 /// Deals with characters and strings.
@@ -82,7 +81,7 @@ where
     }
 }
 
-fn do_string_while<R, F>(
+pub fn do_string_while<R, F>(
     reader: R,
     predicate: F,
     reject_empty: bool,
@@ -126,6 +125,7 @@ where
     StringWhile::new(predicate, true)
 }
 
+#[macro_export]
 macro_rules! recognize_while_predicate {
     ($struct_name:tt, $fn_name:tt, $predicate:expr) => {
         pub struct $struct_name<R: Reader<Item = char>>(PhantomData<R>, bool);
@@ -140,7 +140,7 @@ macro_rules! recognize_while_predicate {
             type Output = String;
 
             fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-                do_string_while(reader, $predicate, self.1)
+                crate::parser::pc::text::do_string_while(reader, $predicate, self.1)
             }
         }
 
@@ -153,16 +153,6 @@ macro_rules! recognize_while_predicate {
 // Reads one or more whitespace
 recognize_while_predicate!(Whitespace, whitespace_p, is_whitespace);
 recognize_while_predicate!(Letters, letters_p, is_letter);
-recognize_while_predicate!(
-    LettersOrDigits,
-    letters_or_digits_p,
-    is_non_leading_identifier_without_dot
-);
-recognize_while_predicate!(
-    LettersOrDigitsOrDots,
-    letters_or_digits_or_dots_p,
-    is_non_leading_identifier_with_dot
-);
 recognize_while_predicate!(Digits, digits_p, is_digit);
 recognize_while_predicate!(EolOrWhitespace, eol_or_whitespace_p, is_eol_or_whitespace);
 

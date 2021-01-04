@@ -9,7 +9,9 @@ use crate::parser::pc::text::{whitespace_p, TextParser};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
 use crate::parser::pc::{item_p, static_err_p, static_p, Parser, Reader};
-use crate::parser::pc_specific::*;
+use crate::parser::pc_specific::{
+    identifier_without_dot_p, in_parenthesis_p, keyword_p, PcSpecific,
+};
 use crate::parser::types::*;
 
 // Parses a declared name. Possible options:

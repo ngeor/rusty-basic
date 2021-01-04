@@ -1,15 +1,16 @@
-use crate::common::CaseInsensitiveString;
 /// Parser combinators specific to this project (e.g. for keywords)
+use crate::common::CaseInsensitiveString;
 use crate::common::QError;
 use crate::parser::pc::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc::many::{ManyParser, OneOrMoreDelimited};
-use crate::parser::pc::text::{
-    letters_or_digits_or_dots_p, letters_or_digits_p, letters_p, string_p, TextParser, Whitespace,
-};
+use crate::parser::pc::text::{letters_p, string_p, TextParser, Whitespace};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::{OrThrowVal, UnaryFnParser};
-use crate::parser::pc::{if_p, item_p, Item, Parser, Reader, Undo};
+use crate::parser::pc::{
+    if_p, is_digit, is_letter, item_p, Item, Parser, Reader, ReaderResult, Undo,
+};
 use crate::parser::types::{Keyword, Name, QualifiedName};
+use std::marker::PhantomData;
 
 // ========================================================
 // Undo support
@@ -47,14 +48,6 @@ impl<R: Reader<Item = char>> Undo<(Keyword, String)> for R {
 // Miscellaneous
 // ========================================================
 
-pub fn is_digit(ch: char) -> bool {
-    ch >= '0' && ch <= '9'
-}
-
-pub fn is_letter(ch: char) -> bool {
-    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
-}
-
 pub fn is_non_leading_identifier_without_dot(ch: char) -> bool {
     is_letter(ch) || is_digit(ch)
 }
@@ -62,6 +55,17 @@ pub fn is_non_leading_identifier_without_dot(ch: char) -> bool {
 pub fn is_non_leading_identifier_with_dot(ch: char) -> bool {
     is_non_leading_identifier_without_dot(ch) || (ch == '.')
 }
+
+crate::recognize_while_predicate!(
+    LettersOrDigits,
+    letters_or_digits_p,
+    is_non_leading_identifier_without_dot
+);
+crate::recognize_while_predicate!(
+    LettersOrDigitsOrDots,
+    letters_or_digits_or_dots_p,
+    is_non_leading_identifier_with_dot
+);
 
 /// Reads any identifier. Note that the result might be a keyword.
 /// An identifier must start with a letter and consists of letters, numbers and the dot.

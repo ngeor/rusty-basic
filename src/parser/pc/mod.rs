@@ -276,3 +276,11 @@ pub fn is_eol(ch: char) -> bool {
 pub fn is_eol_or_whitespace(ch: char) -> bool {
     is_eol(ch) || is_whitespace(ch)
 }
+
+pub fn is_digit(ch: char) -> bool {
+    ch >= '0' && ch <= '9'
+}
+
+pub fn is_letter(ch: char) -> bool {
+    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+}

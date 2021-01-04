@@ -6,7 +6,7 @@ use crate::parser::pc::text::{digits_p, whitespace_p, TextParser, Whitespace};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
 use crate::parser::pc::{if_p, item_p, Parser, Reader, ReaderResult};
-use crate::parser::pc_specific::*;
+use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
 use crate::parser::types::*;
 use crate::variant;
 
@@ -393,6 +393,7 @@ pub mod word {
     use crate::parser::type_qualifier::type_qualifier_p;
 
     use super::*;
+    use crate::parser::pc_specific::identifier_without_dot_p;
 
     /*
     //word ::= <name>

@@ -5,7 +5,7 @@ use crate::parser::pc::text::{whitespace_p, TextParser};
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
 use crate::parser::pc::{item_p, Parser, Reader};
-use crate::parser::pc_specific::*;
+use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::types::*;
 
 /// Parses built-in subs which have a special syntax.

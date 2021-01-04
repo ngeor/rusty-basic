@@ -7,12 +7,11 @@ use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::name::bare_name_p;
-use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::whitespace_p;
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{item_p, Parser};
+use crate::parser::pc2::{item_p, Parser, Reader};
 use crate::parser::pc_specific::*;
 use crate::parser::select_case;
 use crate::parser::sub_call;
@@ -121,9 +120,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{PrintNode, Statement, TopLevelToken};
+
+    use super::super::test_utils::*;
 
     #[test]
     fn test_top_level_comment() {

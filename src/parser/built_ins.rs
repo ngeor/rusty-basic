@@ -1,11 +1,10 @@
 use crate::common::*;
 use crate::parser::expression;
-use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::{whitespace_p, TextParser};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{item_p, Parser};
+use crate::parser::pc2::{item_p, Parser, Reader};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
@@ -24,9 +23,10 @@ where
 }
 
 mod close {
-    use super::*;
     use crate::built_ins::BuiltInSub;
     use crate::parser::pc2::many::ManyParser;
+
+    use super::*;
 
     pub fn parse_close_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -55,8 +55,9 @@ mod close {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::parser::test_utils::*;
+
+        use super::*;
 
         #[test]
         fn test_no_args() {
@@ -255,8 +256,9 @@ mod close {
 }
 
 mod input {
-    use super::*;
     use crate::built_ins::BuiltInSub;
+
+    use super::*;
 
     pub fn parse_input_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -289,9 +291,10 @@ mod input {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::assert_sub_call;
         use crate::parser::test_utils::*;
+
+        use super::*;
 
         #[test]
         fn test_parse_one_variable() {
@@ -378,8 +381,9 @@ mod input {
 }
 
 mod line_input {
-    use super::*;
     use crate::built_ins::BuiltInSub;
+
+    use super::*;
 
     pub fn parse_line_input_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -411,9 +415,10 @@ mod line_input {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::assert_sub_call;
         use crate::parser::test_utils::*;
+
+        use super::*;
 
         #[test]
         fn test_parse_one_variable() {
@@ -493,9 +498,10 @@ mod line_input {
 }
 
 mod name {
-    use super::*;
     use crate::built_ins::BuiltInSub;
     use crate::parser::expression::{back_guarded_expression_node_p, guarded_expression_node_p};
+
+    use super::*;
 
     pub fn parse_name_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -511,8 +517,9 @@ mod name {
 }
 
 mod open {
-    use super::*;
     use crate::built_ins::BuiltInSub;
+
+    use super::*;
 
     pub fn parse_open_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -619,8 +626,9 @@ mod open {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::parser::test_utils::*;
+
+        use super::*;
 
         #[test]
         fn test_open_for_input_access_read_as_file_handle_with_spaces() {
@@ -763,10 +771,11 @@ mod open {
 }
 
 mod print {
-    use super::*;
     use crate::parser::pc2::many::ManyParser;
     use crate::parser::pc2::text::Whitespace;
-    use crate::parser::pc2::{any_p, opt_static_p, static_p};
+    use crate::parser::pc2::{any_p, opt_static_p, static_p, ReaderResult};
+
+    use super::*;
 
     pub fn parse_print_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -917,8 +926,9 @@ mod print {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::parser::test_utils::*;
+
+        use super::*;
 
         #[test]
         fn test_print_no_args() {

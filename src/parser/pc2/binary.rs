@@ -1,6 +1,8 @@
+use crate::parser::pc2::{Reader, ReaderResult, Undo};
+
 /// This module holds parsers that combine two other parsers in order to form
 /// their result.
-use super::{Parser, Reader, ReaderResult, Undo};
+use super::Parser;
 
 macro_rules! binary_parser {
     ($name:tt) => {

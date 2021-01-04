@@ -1,11 +1,10 @@
 use crate::common::*;
-use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::many::ManyParser;
 use crate::parser::pc2::text::{eol_or_whitespace_p, string_while_p};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{item_p, Parser};
+use crate::parser::pc2::{is_eol, item_p, Parser, Reader};
 use crate::parser::types::*;
 
 fn is_not_eol(ch: char) -> bool {

@@ -1,12 +1,12 @@
+use std::marker::PhantomData;
+
+use crate::parser::pc2::unary_fn::{FilterReaderItem, UnaryFnParser};
+
 pub mod binary;
 pub mod many;
 pub mod text;
 pub mod unary;
 pub mod unary_fn;
-
-use crate::parser::pc::{Reader, ReaderResult, Undo};
-use crate::parser::pc2::unary_fn::{FilterReaderItem, UnaryFnParser};
-use std::marker::PhantomData;
 
 pub trait Parser<R>
 where
@@ -200,4 +200,79 @@ where
     fn parse(&self, reader: R) -> ReaderResult<R, T, R::Err> {
         self.source.parse(reader)
     }
+}
+
+pub type ReaderResult<R, T, E> = Result<(R, Option<T>), (R, E)>;
+
+pub trait Undo<T> {
+    fn undo(self, item: T) -> Self;
+}
+
+pub trait Reader: Sized {
+    type Item;
+    type Err;
+    fn read(self) -> ReaderResult<Self, Self::Item, Self::Err>;
+    fn undo_item(self, item: Self::Item) -> Self;
+}
+
+pub mod undo {
+    use crate::common::Locatable;
+    use crate::parser::pc2::{Reader, Undo};
+
+    impl<R: Reader<Item = char>> Undo<char> for R {
+        fn undo(self, item: char) -> Self {
+            self.undo_item(item)
+        }
+    }
+
+    impl<R: Reader<Item = char>> Undo<Locatable<char>> for R {
+        fn undo(self, item: Locatable<char>) -> Self {
+            self.undo_item(item.element)
+        }
+    }
+
+    impl<R: Reader<Item = char>> Undo<String> for R {
+        fn undo(self, s: String) -> Self {
+            let mut result = self;
+            for ch in s.chars().rev() {
+                result = result.undo_item(ch);
+            }
+            result
+        }
+    }
+
+    impl<R: Reader<Item = char>> Undo<(String, Locatable<char>)> for R {
+        fn undo(self, item: (String, Locatable<char>)) -> Self {
+            let (a, b) = item;
+            self.undo(b).undo(a)
+        }
+    }
+
+    // undo char followed by opt ws
+    impl<R: Reader<Item = char>> Undo<(char, Option<String>)> for R {
+        fn undo(self, item: (char, Option<String>)) -> Self {
+            let (a, b) = item;
+            self.undo(b.unwrap_or_default()).undo_item(a)
+        }
+    }
+
+    // undo char preceded by opt ws
+    impl<B, R: Reader<Item = char> + Undo<String> + Undo<B>> Undo<(Option<String>, B)> for R {
+        fn undo(self, item: (Option<String>, B)) -> Self {
+            let (a, b) = item;
+            self.undo(b).undo(a.unwrap_or_default())
+        }
+    }
+}
+
+pub fn is_whitespace(ch: char) -> bool {
+    ch == ' ' || ch == '\t'
+}
+
+pub fn is_eol(ch: char) -> bool {
+    ch == '\r' || ch == '\n'
+}
+
+pub fn is_eol_or_whitespace(ch: char) -> bool {
+    is_eol(ch) || is_whitespace(ch)
 }

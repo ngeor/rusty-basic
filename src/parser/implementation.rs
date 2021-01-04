@@ -1,10 +1,9 @@
 use crate::common::*;
 use crate::parser::declaration;
-use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::whitespace_p;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::Parser;
+use crate::parser::pc2::{Parser, Reader};
 use crate::parser::pc_specific::*;
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -53,8 +52,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::parser::test_utils::*;
+
+    use super::*;
 
     #[test]
     fn test_function_implementation() {

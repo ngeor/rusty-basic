@@ -1,6 +1,8 @@
-/// This module has parsers that return one or more items.
-use super::{Parser, Reader, ReaderResult};
 use crate::parser::pc2::unary::{MapNoneToDefault, UnaryParser};
+use crate::parser::pc2::{Reader, ReaderResult};
+
+/// This module has parsers that return one or more items.
+use super::Parser;
 
 /// Calls the underlying parser multiple times and collects the results in a
 /// `Vec`.

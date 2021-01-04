@@ -1,5 +1,7 @@
+use crate::parser::pc2::{Reader, ReaderResult, Undo};
+
 /// This module holds parsers that modify the result of another parser, together with a function.
-use super::{Parser, Reader, ReaderResult, Undo};
+use super::Parser;
 
 macro_rules! unary_fn_parser {
     ($name:tt) => {

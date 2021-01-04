@@ -1,14 +1,14 @@
+use std::marker::PhantomData;
+
 use crate::common::*;
-use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::text::{digits_p, whitespace_p, TextParser, Whitespace};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{if_p, item_p, Parser};
+use crate::parser::pc2::{if_p, item_p, Parser, Reader, ReaderResult};
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use crate::variant;
-use std::marker::PhantomData;
 
 fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
     LazyExpressionParser(PhantomData)
@@ -178,12 +178,13 @@ where
 }
 
 mod string_literal {
-    use super::*;
     use crate::parser::pc2::binary::BinaryParser;
     use crate::parser::pc2::item_p;
     use crate::parser::pc2::text::string_while_p;
     use crate::parser::pc2::unary::UnaryParser;
     use crate::parser::pc2::unary_fn::UnaryFnParser;
+
+    use super::*;
 
     fn is_not_quote(ch: char) -> bool {
         ch != '"'
@@ -202,13 +203,14 @@ mod string_literal {
 }
 
 mod number_literal {
-    use super::*;
     use crate::parser::pc2::binary::BinaryParser;
     use crate::parser::pc2::item_p;
     use crate::parser::pc2::text::{digits_p, string_p, string_while_p, TextParser};
     use crate::parser::pc2::unary::UnaryParser;
     use crate::parser::pc2::unary_fn::UnaryFnParser;
     use crate::variant::BitVec;
+
+    use super::*;
 
     pub fn number_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
     where
@@ -380,7 +382,8 @@ mod number_literal {
 }
 
 pub mod word {
-    use super::*;
+    use std::convert::TryFrom;
+
     use crate::parser::name::name_with_dot_p;
     use crate::parser::pc2::binary::BinaryParser;
     use crate::parser::pc2::many::ManyParser;
@@ -388,7 +391,8 @@ pub mod word {
     use crate::parser::pc2::unary_fn::UnaryFnParser;
     use crate::parser::pc2::{any_p, item_p};
     use crate::parser::type_qualifier::type_qualifier_p;
-    use std::convert::TryFrom;
+
+    use super::*;
 
     /*
     //word ::= <name>
@@ -524,9 +528,10 @@ pub mod word {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::parser::char_reader::EolReader;
         use crate::parser::test_utils::ExpressionNodeLiteralFactory;
+
+        use super::*;
 
         mod unqualified {
             use super::*;
@@ -883,10 +888,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{Expression, ExpressionType, Operator, Statement, UnaryOperator};
     use crate::{assert_expression, assert_literal_expression, assert_sub_call};
+
+    use super::super::test_utils::*;
 
     #[test]
     fn test_parse_literals() {

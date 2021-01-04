@@ -1,7 +1,6 @@
 use crate::common::CaseInsensitiveString;
 /// Parser combinators specific to this project (e.g. for keywords)
 use crate::common::QError;
-use crate::parser::pc::{Reader, Undo};
 use crate::parser::pc2::binary::{BinaryParser, LeftAndOptRight, OptLeftAndRight};
 use crate::parser::pc2::many::{ManyParser, OneOrMoreDelimited};
 use crate::parser::pc2::text::{
@@ -9,7 +8,7 @@ use crate::parser::pc2::text::{
 };
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::{OrThrowVal, UnaryFnParser};
-use crate::parser::pc2::{if_p, item_p, Item, Parser};
+use crate::parser::pc2::{if_p, item_p, Item, Parser, Reader, Undo};
 use crate::parser::types::{Keyword, Name, QualifiedName};
 
 // ========================================================

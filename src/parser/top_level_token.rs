@@ -1,16 +1,16 @@
+use std::marker::PhantomData;
+
 use crate::common::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
-use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::Parser;
+use crate::parser::pc2::{Parser, Reader, ReaderResult};
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
-use std::marker::PhantomData;
 
 pub struct TopLevelTokensParser<R>(PhantomData<R>);
 

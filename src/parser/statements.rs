@@ -1,15 +1,17 @@
+use std::marker::PhantomData;
+
 use crate::common::*;
-use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::many::ManyParser;
 use crate::parser::pc2::text::{string_while_p, whitespace_p, TextParser};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{any_p, item_p, Parser};
+use crate::parser::pc2::{
+    any_p, is_eol, is_eol_or_whitespace, item_p, Parser, Reader, ReaderResult, Undo,
+};
 use crate::parser::statement;
 use crate::parser::statement::statement_p;
 use crate::parser::types::*;
-use std::marker::PhantomData;
 
 pub fn single_line_non_comment_statements_p<R>() -> impl Parser<R, Output = StatementNodes>
 where

@@ -1,8 +1,9 @@
-use crate::common::{HasLocation, Location, QError};
-use crate::parser::pc::*;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
+
+use crate::common::{HasLocation, Location, QError};
+use crate::parser::pc2::{Reader, ReaderResult};
 
 /// Reads one character at a time out of a `BufRead`.
 ///

@@ -1,8 +1,8 @@
 use crate::common::QError;
-use crate::parser::pc::Reader;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
 use crate::parser::pc2::Parser;
+use crate::parser::pc2::Reader;
 use crate::parser::pc_specific::identifier_with_dot;
 use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};

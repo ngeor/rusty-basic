@@ -1,13 +1,12 @@
 use crate::common::*;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::pc::*;
 use crate::parser::pc2::binary::BinaryParser;
 use crate::parser::pc2::many::ManyParser;
 use crate::parser::pc2::text::{whitespace_p, Whitespace};
 use crate::parser::pc2::unary::UnaryParser;
 use crate::parser::pc2::unary_fn::UnaryFnParser;
-use crate::parser::pc2::{static_none_p, Parser};
+use crate::parser::pc2::{static_none_p, Parser, Reader};
 use crate::parser::pc_specific::*;
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -186,9 +185,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::types::*;
+
+    use super::super::test_utils::*;
 
     #[test]
     fn test_select_case_inline_comment() {

@@ -47,7 +47,7 @@ where
 pub fn zero_or_more_statements_p<R, S>(exit_source: S) -> impl Parser<R, Output = StatementNodes>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + Undo<S::Output> + 'static,
-    S: Parser<R>,
+    S: Parser<R> + 'static,
 {
     // first separator
     // loop
@@ -108,7 +108,7 @@ struct StatementSeparator<R> {
 
 impl<R> StatementSeparator<R>
 where
-    R: Reader<Item = char, Err = QError>,
+    R: Reader<Item = char, Err = QError> + 'static,
 {
     pub fn new(comment_mode: bool) -> Self {
         Self {
@@ -144,7 +144,7 @@ where
 
 impl<R> Parser<R> for StatementSeparator<R>
 where
-    R: Reader<Item = char, Err = QError>,
+    R: Reader<Item = char, Err = QError> + 'static,
 {
     type Output = String;
 

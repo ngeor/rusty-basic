@@ -96,8 +96,8 @@ fn is_not_whole_keyword(ch: char) -> bool {
 /// If the parser returns `None`, the left parenthesis is undone.
 pub fn in_parenthesis_p<R, S>(source: S) -> impl Parser<R, Output = S::Output>
 where
-    R: Reader<Item = char, Err = QError>,
-    S: Parser<R>,
+    R: Reader<Item = char, Err = QError> + 'static,
+    S: Parser<R> + 'static,
 {
     lparen_opt_ws_p()
         .and(source)

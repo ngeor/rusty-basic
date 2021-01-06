@@ -16,6 +16,38 @@ macro_rules! binary_parser {
     };
 }
 
+macro_rules! binary_dyn_parser {
+    ($name:tt) => {
+        pub struct $name<R, A, B>
+        where
+            R: Reader,
+        {
+            left: Box<dyn Parser<R, Output = A>>,
+            right: Box<dyn Parser<R, Output = B>>,
+        }
+
+        impl<R, A, B> $name<R, A, B>
+        where
+            R: Reader,
+        {
+            pub fn new(
+                left: Box<dyn Parser<R, Output = A>>,
+                right: Box<dyn Parser<R, Output = B>>,
+            ) -> Self {
+                Self { left, right }
+            }
+
+            pub fn new_from_unboxed<T, U>(left: T, right: U) -> Self
+            where
+                T: Parser<R, Output = A> + 'static,
+                U: Parser<R, Output = B> + 'static,
+            {
+                Self::new(Box::new(left), Box::new(right))
+            }
+        }
+    };
+}
+
 // LeftAndRight requires that both left and right parsers return a result.
 // It will undo the first result if the second is `None`.
 binary_parser!(LeftAndRight);
@@ -144,20 +176,22 @@ where
 
 // Implements the "or" parser, returning the first successful
 // result out of the two given parsers.
-binary_parser!(LeftOrRight);
+pub struct LeftOrRight<R, T> {
+    left: Box<dyn Parser<R, Output = T>>,
+    right: Box<dyn Parser<R, Output = T>>,
+}
 
-impl<R, A, B> Parser<R> for LeftOrRight<A, B>
+impl<R, T> Parser<R> for LeftOrRight<R, T>
 where
     R: Reader,
-    A: Parser<R>,
-    B: Parser<R, Output = A::Output>,
 {
-    type Output = A::Output;
+    type Output = T;
+
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_a) = self.0.parse(reader)?;
+        let (reader, opt_a) = self.left.parse(reader)?;
         match opt_a {
             Some(a) => Ok((reader, Some(a))),
-            _ => self.1.parse(reader),
+            _ => self.right.parse(reader),
         }
     }
 }
@@ -222,11 +256,15 @@ pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
 
     /// Returns a parser which will return the result of this parser if it
     /// is successful, otherwise it will use the given parser.
-    fn or<B>(self, other: B) -> LeftOrRight<Self, B>
+    fn or<B>(self, other: B) -> LeftOrRight<R, Self::Output>
     where
-        B: Sized + Parser<R, Output = Self::Output>,
+        Self: 'static,
+        B: Sized + Parser<R, Output = Self::Output> + 'static,
     {
-        LeftOrRight::new(self, other)
+        LeftOrRight {
+            left: Box::new(self),
+            right: Box::new(other),
+        }
     }
 }
 

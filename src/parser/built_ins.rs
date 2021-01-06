@@ -11,7 +11,7 @@ use crate::parser::types::*;
 /// Parses built-in subs which have a special syntax.
 pub fn parse_built_in_p<R>() -> impl Parser<R, Output = Statement>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     close::parse_close_p()
         .or(input::parse_input_p())
@@ -30,7 +30,7 @@ mod close {
 
     pub fn parse_close_p<R>() -> impl Parser<R, Output = Statement>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::Close)
             .and_opt(
@@ -262,7 +262,7 @@ mod input {
 
     pub fn parse_input_p<R>() -> impl Parser<R, Output = Statement>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         // INPUT variable-list
         // LINE INPUT variable$
@@ -387,7 +387,7 @@ mod line_input {
 
     pub fn parse_line_input_p<R>() -> impl Parser<R, Output = Statement>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::Line)
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LINE"))
@@ -505,7 +505,7 @@ mod name {
 
     pub fn parse_name_p<R>() -> impl Parser<R, Output = Statement>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::Name)
             .and_demand(back_guarded_expression_node_p().or_syntax_error("Expected: old file name"))
@@ -523,7 +523,7 @@ mod open {
 
     pub fn parse_open_p<R>() -> impl Parser<R, Output = Statement>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::Open)
             .and_demand(
@@ -563,7 +563,7 @@ mod open {
     // FOR <ws+> INPUT <ws+>
     fn parse_open_mode_p<R>() -> impl Parser<R, Output = Locatable<FileMode>>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::For)
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FOR"))
@@ -596,7 +596,7 @@ mod open {
     // ACCESS <ws+> READ <ws+>
     fn parse_open_access_p<R>() -> impl Parser<R, Output = Locatable<FileAccess>>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::Access)
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ACCESS"))
@@ -615,7 +615,7 @@ mod open {
     // AS ( expression )
     fn parse_file_number_p<R>() -> impl Parser<R, Output = ExpressionNode>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::As)
             .and_demand(
@@ -779,7 +779,7 @@ mod print {
 
     pub fn parse_print_p<R>() -> impl Parser<R, Output = Statement>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::Print)
             .and_opt(parse_file_number_p())
@@ -810,7 +810,7 @@ mod print {
 
     pub fn parse_lprint_p<R>() -> impl Parser<R, Output = Statement>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         keyword_p(Keyword::LPrint)
             .and_opt(using_p(true))
@@ -837,7 +837,7 @@ mod print {
 
     fn using_p<R>(needs_leading_whitespace: bool) -> impl Parser<R, Output = ExpressionNode>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         opt_whitespace_p(needs_leading_whitespace)
             .and(keyword_p(Keyword::Using))
@@ -856,7 +856,7 @@ mod print {
 
     impl<R> Parser<R> for FirstPrintArg
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         type Output = PrintArg;
 
@@ -874,7 +874,7 @@ mod print {
 
     fn any_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         semicolon_or_comma_as_print_arg_p()
             .or(expression::expression_node_p().map(|e| PrintArg::Expression(e)))
@@ -899,7 +899,7 @@ mod print {
 
     impl<R> Parser<R> for PrintArgLookingBack
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         type Output = PrintArg;
 
@@ -1336,7 +1336,7 @@ mod print {
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
 fn file_handle_as_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     expression::file_handle_p()
         .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
@@ -1344,7 +1344,7 @@ where
 
 fn parse_file_number_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     expression::file_handle_p()
         .preceded_by_opt_ws()
@@ -1358,14 +1358,14 @@ where
 
 fn file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     file_handle_as_expression_node_p().or(expression::expression_node_p())
 }
 
 fn guarded_file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     whitespace_p()
         .and(file_handle_as_expression_node_p())

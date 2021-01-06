@@ -27,7 +27,7 @@ use crate::parser::types::*;
 
 pub fn dim_name_node_p<R>() -> impl Parser<R, Output = DimNameNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     name_with_dot_p()
         .with_pos()
@@ -46,7 +46,7 @@ where
 
 fn array_dimensions_p<R>() -> impl Parser<R, Output = ArrayDimensions>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     in_parenthesis_p(
         array_dimension_p()
@@ -57,7 +57,7 @@ where
 
 fn array_dimension_p<R>() -> impl Parser<R, Output = ArrayDimension>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     expression::expression_node_p()
         .and_opt(
@@ -83,7 +83,7 @@ where
 
 fn type_definition_extended_p<R>() -> impl Parser<R, Output = DimType>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     // <ws+> AS <ws+> identifier
     whitespace_p()
@@ -95,7 +95,7 @@ where
 
 fn extended_type_p<R>() -> impl Parser<R, Output = DimType>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     identifier_without_dot_p()
         .with_pos()
@@ -118,7 +118,7 @@ impl ExtendedTypeAfterIdentifier {
 
     fn string<R>(reader: R) -> ReaderResult<R, DimType, R::Err>
     where
-        R: Reader<Item = char, Err = QError> + HasLocation,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         let (reader, opt_len) = item_p('*')
             .surrounded_by_opt_ws()
@@ -135,7 +135,7 @@ impl ExtendedTypeAfterIdentifier {
 }
 impl<R> Parser<R> for ExtendedTypeAfterIdentifier
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     type Output = DimType;
 

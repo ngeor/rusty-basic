@@ -40,7 +40,7 @@ where
 
 fn if_expr_then_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     keyword_p(Keyword::If)
         .and_demand(
@@ -110,7 +110,7 @@ where
 
 fn else_if_expr_then_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     keyword_p(Keyword::ElseIf)
         .and_demand(
@@ -148,7 +148,7 @@ where
 
 fn end_if_p<R>() -> impl Parser<R, Output = ()>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     keyword_p(Keyword::End)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))

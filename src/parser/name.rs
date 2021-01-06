@@ -16,7 +16,7 @@ use std::str::FromStr;
 /// is not a keyword (with the exception of strings, e.g. `end$`).
 pub fn name_with_dot_p<R>() -> impl Parser<R, Output = Name>
 where
-    R: Reader<Item = char, Err = QError>,
+    R: Reader<Item = char, Err = QError> + 'static,
 {
     identifier_with_dot()
         .validate(|n| {
@@ -48,6 +48,8 @@ where
 }
 
 // bare name node
+
+// TODO throw error if followed by type qualifier
 
 pub fn bare_name_p<R>() -> impl Parser<R, Output = BareName>
 where

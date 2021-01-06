@@ -70,7 +70,7 @@ where
 {
     type Output = String;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let mut r = reader;
         let (tmp, opt_first) = r.read()?;
         r = tmp;
@@ -155,7 +155,7 @@ where
 {
     type Output = String;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let mut buf = String::new();
         let mut r = reader;
         loop {
@@ -201,7 +201,7 @@ where
 {
     type Output = S::Output;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
             Some(item) => {
@@ -222,7 +222,7 @@ where
 {
     type Output = S::Output;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_whitespace) = opt_whitespace_p(false).parse(reader)?;
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
@@ -241,7 +241,7 @@ where
 {
     type Output = S::Output;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_leading_whitespace) = opt_whitespace_p(false).parse(reader)?;
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {

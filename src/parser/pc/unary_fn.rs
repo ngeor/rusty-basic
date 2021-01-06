@@ -42,7 +42,7 @@ where
 {
     type Output = U;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
             Some(item) => match (self.1)(item) {
@@ -65,7 +65,7 @@ where
     U: Parser<R>,
 {
     type Output = U::Output;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
             Some(item) => {

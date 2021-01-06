@@ -1,8 +1,6 @@
-use crate::parser::pc::{Reader, ReaderResult, Undo};
-
 /// This module holds parsers that combine two other parsers in order to form
 /// their result.
-use super::Parser;
+use crate::parser::pc::{Parser, Reader, ReaderResult, Undo};
 
 macro_rules! binary_parser {
     ($name:tt) => {
@@ -50,20 +48,18 @@ macro_rules! binary_dyn_parser {
 
 // LeftAndRight requires that both left and right parsers return a result.
 // It will undo the first result if the second is `None`.
-binary_parser!(LeftAndRight);
+binary_dyn_parser!(LeftAndRight);
 
-impl<R, A, B> Parser<R> for LeftAndRight<A, B>
+impl<R, A, B> Parser<R> for LeftAndRight<R, A, B>
 where
-    R: Reader + Undo<A::Output>,
-    A: Parser<R>,
-    B: Parser<R>,
+    R: Reader + Undo<A>,
 {
-    type Output = (A::Output, B::Output);
+    type Output = (A, B);
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_a) = self.0.parse(reader)?;
+        let (reader, opt_a) = self.left.parse(reader)?;
         match opt_a {
             Some(a) => {
-                let (reader, opt_b) = self.1.parse(reader)?;
+                let (reader, opt_b) = self.right.parse(reader)?;
                 match opt_b {
                     Some(b) => Ok((reader, Some((a, b)))),
                     None => Ok((reader.undo(a), None)),
@@ -75,20 +71,18 @@ where
 }
 
 // LeftAndOptRight requires that the left parser returns a result.
-binary_parser!(LeftAndOptRight);
+binary_dyn_parser!(LeftAndOptRight);
 
-impl<R, A, B> Parser<R> for LeftAndOptRight<A, B>
+impl<R, A, B> Parser<R> for LeftAndOptRight<R, A, B>
 where
     R: Reader,
-    A: Parser<R>,
-    B: Parser<R>,
 {
-    type Output = (A::Output, Option<B::Output>);
+    type Output = (A, Option<B>);
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_a) = self.0.parse(reader)?;
+        let (reader, opt_a) = self.left.parse(reader)?;
         match opt_a {
             Some(a) => {
-                let (reader, opt_b) = self.1.parse(reader)?;
+                let (reader, opt_b) = self.right.parse(reader)?;
                 Ok((reader, Some((a, opt_b))))
             }
             None => Ok((reader, None)),
@@ -150,20 +144,18 @@ where
 }
 
 // Similar to And, but without undo.
-binary_parser!(LeftAndDemandRight);
+binary_dyn_parser!(LeftAndDemandRight);
 
-impl<R, A, B> Parser<R> for LeftAndDemandRight<A, B>
+impl<R, A, B> Parser<R> for LeftAndDemandRight<R, A, B>
 where
     R: Reader,
-    A: Parser<R>,
-    B: Parser<R>,
 {
-    type Output = (A::Output, B::Output);
+    type Output = (A, B);
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_a) = self.0.parse(reader)?;
+        let (reader, opt_a) = self.left.parse(reader)?;
         match opt_a {
             Some(a) => {
-                let (reader, opt_b) = self.1.parse(reader)?;
+                let (reader, opt_b) = self.right.parse(reader)?;
                 Ok((
                     reader,
                     Some((a, opt_b.expect("Right parser of LeftAndDemandRight failed"))),
@@ -201,22 +193,24 @@ pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
     /// Returns a new parser that combines the result of the current parser
     /// with the given parser. Both parsers must return a result. If the
     /// second parser returns `None`, the first result will be undone.
-    fn and<B>(self, other: B) -> LeftAndRight<Self, B>
+    fn and<B>(self, other: B) -> LeftAndRight<R, Self::Output, B::Output>
     where
         R: Undo<Self::Output>,
-        B: Sized + Parser<R>,
+        Self: 'static,
+        B: Sized + Parser<R> + 'static,
     {
-        LeftAndRight::new(self, other)
+        LeftAndRight::new_from_unboxed(self, other)
     }
 
     /// Returns a new parser that combines the result of the current parser
     /// with the given parser. The current parser must return a value,
     /// but the given parser can return `None`.
-    fn and_opt<B>(self, other: B) -> LeftAndOptRight<Self, B>
+    fn and_opt<B>(self, other: B) -> LeftAndOptRight<R, Self::Output, B::Output>
     where
-        B: Sized + Parser<R>,
+        Self: 'static,
+        B: Sized + Parser<R> + 'static,
     {
-        LeftAndOptRight::new(self, other)
+        LeftAndOptRight::new_from_unboxed(self, other)
     }
 
     /// Combines the result of the first parser with the result of the parser
@@ -247,11 +241,12 @@ pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
 
     /// Returns a parser which combines the results of this parser and the given one.
     /// If the given parser fails, the parser will panic.
-    fn and_demand<B>(self, other: B) -> LeftAndDemandRight<Self, B>
+    fn and_demand<B>(self, other: B) -> LeftAndDemandRight<R, Self::Output, B::Output>
     where
-        B: Sized + Parser<R>,
+        Self: 'static,
+        B: Sized + Parser<R> + 'static,
     {
-        LeftAndDemandRight::new(self, other)
+        LeftAndDemandRight::new_from_unboxed(self, other)
     }
 
     /// Returns a parser which will return the result of this parser if it

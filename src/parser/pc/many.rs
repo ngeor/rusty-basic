@@ -113,7 +113,7 @@ where
 {
     type Output = Vec<A::Output>;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         // get first item
         let mut r = reader;
         let (tmp, opt_first_item) = self.0.parse(r)?;

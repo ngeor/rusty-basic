@@ -21,7 +21,7 @@ where
 {
     type Output = ExpressionNode;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let parser = expression_node_p();
         parser.parse(reader)
     }

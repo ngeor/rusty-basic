@@ -1,11 +1,9 @@
+/// This module holds parsers that modify the result of another parser.
+use crate::common::{AtLocation, HasLocation, Locatable};
+use crate::parser::pc::{Parser, Reader, ReaderResult, Undo};
+
 use std::convert::TryFrom;
 use std::marker::PhantomData;
-
-use crate::common::{AtLocation, HasLocation, Locatable};
-use crate::parser::pc::{Reader, ReaderResult, Undo};
-
-/// This module holds parsers that modify the result of another parser.
-use super::Parser;
 
 macro_rules! unary_parser {
     ($name:tt) => {
@@ -85,17 +83,19 @@ where
 }
 
 // Peeks the result by undoing it.
-unary_parser!(PeekReaderItem);
 
-impl<R, S> Parser<R> for PeekReaderItem<S>
+pub struct PeekReaderItem<R: Reader> {
+    source: Box<dyn Parser<R, Output = R::Item>>,
+}
+
+impl<R: Reader> Parser<R> for PeekReaderItem<R>
 where
-    R: Reader,
     R::Item: Copy,
-    S: Parser<R, Output = R::Item>,
 {
-    type Output = S::Output;
+    type Output = R::Item;
+
     fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_item) = self.0.parse(reader)?;
+        let (reader, opt_item) = self.source.parse(reader)?;
         match opt_item {
             Some(item) => Ok((reader.undo_item(item), Some(item))),
             _ => Ok((reader, None)),
@@ -131,7 +131,7 @@ where
 {
     type Output = String;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, <R as Reader>::Err> {
+    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
             Some(item) => {
@@ -207,12 +207,14 @@ pub trait UnaryParser<R: Reader>: Parser<R> + Sized {
     }
 
     /// Peeks the item of the underlying reader by undoing it.
-    fn peek_reader_item(self) -> PeekReaderItem<Self>
+    fn peek_reader_item(self) -> PeekReaderItem<R>
     where
-        Self: Parser<R, Output = R::Item>,
+        Self: Parser<R, Output = R::Item> + 'static,
         R::Item: Copy,
     {
-        PeekReaderItem::new(self)
+        PeekReaderItem {
+            source: Box::new(self),
+        }
     }
 
     /// Adds location information to the result of this parser.

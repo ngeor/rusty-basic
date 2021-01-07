@@ -94,7 +94,7 @@ mod tests {
             let input = inputs[i];
             let expected_output = expected_outputs[i];
             let eol_reader = EolReader::from(input);
-            let parser = any_word_with_dot_p();
+            let mut parser = any_word_with_dot_p();
             let (_, result) = parser.parse(eol_reader).expect("Should succeed");
             assert_eq!(result, Some(BareName::from(expected_output)));
         }

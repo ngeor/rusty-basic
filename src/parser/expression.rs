@@ -21,8 +21,8 @@ where
 {
     type Output = ExpressionNode;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let parser = expression_node_p();
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let mut parser = expression_node_p();
         parser.parse(reader)
     }
 }
@@ -535,7 +535,7 @@ pub mod word {
                 fn test_any_word_without_dot() {
                     let input = "abc";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
@@ -544,7 +544,7 @@ pub mod word {
                 fn test_array_or_function_no_dot_no_qualifier() {
                     let input = "A(1)";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
@@ -560,7 +560,7 @@ pub mod word {
                 fn test_trailing_dot() {
                     let input = "abc.";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
@@ -569,7 +569,7 @@ pub mod word {
                 fn test_two_consecutive_trailing_dots() {
                     let input = "abc..";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
@@ -578,7 +578,7 @@ pub mod word {
                 fn test_possible_property() {
                     let input = "a.b.c";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
@@ -598,7 +598,7 @@ pub mod word {
                 fn test_possible_variable() {
                     let input = "a.b.c.";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var("a.b.c.")));
                 }
@@ -607,7 +607,7 @@ pub mod word {
                 fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
                     let input = "A(1).O..ops";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
@@ -619,7 +619,7 @@ pub mod word {
                 fn test_bare_array_bare_property() {
                     let input = "A(1).Suit";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
@@ -643,7 +643,7 @@ pub mod word {
                 fn test_qualified_var_without_dot() {
                     let input = "abc$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
@@ -652,7 +652,7 @@ pub mod word {
                 fn test_duplicate_qualifier_is_error() {
                     let input = "abc$%";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }
@@ -661,7 +661,7 @@ pub mod word {
                 fn test_array_or_function_no_dot_qualified() {
                     let input = "A$(1)";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
@@ -677,7 +677,7 @@ pub mod word {
                 fn test_possible_qualified_property() {
                     let input = "a.b$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
@@ -693,7 +693,7 @@ pub mod word {
                 fn test_possible_qualified_property_reverts_to_array() {
                     let input = "a.b$(1)";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
@@ -705,7 +705,7 @@ pub mod word {
                 fn test_qualified_var_with_dot() {
                     let input = "abc.$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
@@ -714,7 +714,7 @@ pub mod word {
                 fn test_qualified_var_with_two_dots() {
                     let input = "abc..$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
@@ -723,7 +723,7 @@ pub mod word {
                 fn test_dot_after_qualifier_is_error() {
                     let input = "abc$.";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
@@ -735,7 +735,7 @@ pub mod word {
                 fn test_array_or_function_dotted_qualified() {
                     let input = "A.B$(1)";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
@@ -747,7 +747,7 @@ pub mod word {
                 fn test_qualified_array_cannot_have_properties() {
                     let input = "A$(1).Oops";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
@@ -759,7 +759,7 @@ pub mod word {
                 fn test_bare_array_qualified_property() {
                     let input = "A(1).Suit$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
@@ -775,7 +775,7 @@ pub mod word {
                 fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
                     let input = "A(1).Suit$.";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }
@@ -784,7 +784,7 @@ pub mod word {
                 fn test_bare_array_qualified_property_extra_qualifier_is_error() {
                     let input = "A(1).Suit$%";
                     let eol_reader = EolReader::from(input);
-                    let parser = word_p();
+                    let mut parser = word_p();
                     let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }

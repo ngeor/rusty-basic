@@ -55,7 +55,7 @@ where
     R: Reader + Undo<A>,
 {
     type Output = (A, B);
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_a) = self.left.parse(reader)?;
         match opt_a {
             Some(a) => {
@@ -78,7 +78,7 @@ where
     R: Reader,
 {
     type Output = (A, Option<B>);
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_a) = self.left.parse(reader)?;
         match opt_a {
             Some(a) => {
@@ -105,11 +105,11 @@ where
     B: Parser<R>,
 {
     type Output = (A::Output, Option<B::Output>);
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_a) = self.0.parse(reader)?;
         match opt_a {
             Some(a) => {
-                let next_parser = (self.1)(&a);
+                let mut next_parser = (self.1)(&a);
                 let (reader, opt_b) = next_parser.parse(reader)?;
                 Ok((reader, Some((a, opt_b))))
             }
@@ -128,7 +128,7 @@ where
     B: Parser<R>,
 {
     type Output = A::Output;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_a) = self.0.parse(reader)?;
         match opt_a {
             Some(a) => {
@@ -151,7 +151,7 @@ where
     R: Reader,
 {
     type Output = (A, B);
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_a) = self.left.parse(reader)?;
         match opt_a {
             Some(a) => {
@@ -179,7 +179,7 @@ where
 {
     type Output = T;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_a) = self.left.parse(reader)?;
         match opt_a {
             Some(a) => Ok((reader, Some(a))),

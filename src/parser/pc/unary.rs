@@ -27,7 +27,7 @@ where
     S::Output: Default,
 {
     type Output = S::Output;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         Ok((reader, Some(opt_item.unwrap_or_default())))
     }
@@ -42,7 +42,7 @@ where
     S: Parser<R, Output = (T, U)>,
 {
     type Output = T;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         let mapped_opt_item = opt_item.map(|(t, _)| t);
         Ok((reader, mapped_opt_item))
@@ -58,7 +58,7 @@ where
     S: Parser<R, Output = (T, U)>,
 {
     type Output = U;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         let mapped_opt_item = opt_item.map(|(_, u)| u);
         Ok((reader, mapped_opt_item))
@@ -75,7 +75,7 @@ where
 {
     type Output = B;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         let mapped_opt_item = opt_item.map(|((_, b), _)| b);
         Ok((reader, mapped_opt_item))
@@ -94,7 +94,7 @@ where
 {
     type Output = R::Item;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.source.parse(reader)?;
         match opt_item {
             Some(item) => Ok((reader.undo_item(item), Some(item))),
@@ -112,7 +112,7 @@ where
     S: Parser<R>,
 {
     type Output = Locatable<S::Output>;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let pos = reader.pos();
         let (reader, opt_item) = self.0.parse(reader)?;
         Ok((reader, opt_item.map(|item| item.at(pos))))
@@ -131,7 +131,7 @@ where
 {
     type Output = String;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
             Some(item) => {
@@ -160,7 +160,7 @@ where
     T: TryFrom<S::Output>,
 {
     type Output = T;
-    fn parse(&self, reader: R) -> ReaderResult<R, T, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, T, R::Err> {
         let (reader, opt_item) = self.0.parse(reader)?;
         match opt_item {
             Some(item) => match T::try_from(item) {

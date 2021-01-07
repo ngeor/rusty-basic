@@ -139,7 +139,7 @@ where
 {
     type Output = DimType;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let Locatable { element: x, pos } = &self.0;
         match Keyword::from_str(x.as_str()) {
             Ok(Keyword::Single) => Self::built_in(reader, TypeQualifier::BangSingle),

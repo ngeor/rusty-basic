@@ -16,7 +16,7 @@ where
 {
     type Output;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err>;
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err>;
 
     /// Wraps this parser into a Box dyn. This is a workaround for dealing with
     /// the compiler's limitations regarding deeply nested concrete parser types.
@@ -60,7 +60,7 @@ where
 {
     type Output = R::Item;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         reader.read()
     }
 }
@@ -84,7 +84,7 @@ where
     R::Item: Eq,
 {
     type Output = R::Item;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_item) = reader.read()?;
         match opt_item {
             Some(item) => {
@@ -109,62 +109,66 @@ where
 }
 
 /// A static parser that returns the given item, without reading from the reader.
-pub struct StaticParser<R, T>(PhantomData<R>, T);
+pub struct StaticParser<R, T>(PhantomData<R>, Option<T>);
 
 impl<R, T> Parser<R> for StaticParser<R, T>
 where
     R: Reader,
-    T: Clone,
 {
     type Output = T;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        Ok((reader, Some(self.1.clone())))
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        match self.1.take() {
+            Some(item) => Ok((reader, Some(item))),
+            _ => panic!("StaticParser cannot be used multiple times"),
+        }
     }
 }
 
 pub fn static_p<R, T>(item: T) -> StaticParser<R, T> {
-    StaticParser(PhantomData, item)
+    StaticParser(PhantomData, Some(item))
 }
 
 /// A static parser that returns the given optional item, without reading from the reader.
-pub struct OptStaticParser<R, T>(PhantomData<R>, Option<T>);
+pub struct OptStaticParser<R, T>(PhantomData<R>, Option<Option<T>>);
 
 impl<R, T> Parser<R> for OptStaticParser<R, T>
 where
     R: Reader,
-    T: Clone,
 {
     type Output = T;
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        Ok((reader, self.1.clone()))
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        match self.1.take() {
+            Some(item) => Ok((reader, item)),
+            _ => panic!("OptStaticParser cannot be used multiple times"),
+        }
     }
 }
 
 pub fn opt_static_p<R, T>(item: Option<T>) -> OptStaticParser<R, T> {
-    OptStaticParser(PhantomData, item)
+    OptStaticParser(PhantomData, Some(item))
 }
 
 /// A static parser that always throws an error.
-pub struct StaticErrParser<R, T, E>(PhantomData<R>, PhantomData<T>, E);
+pub struct StaticErrParser<R, T, E>(PhantomData<R>, PhantomData<T>, Option<E>);
 
 impl<R, T, E> Parser<R> for StaticErrParser<R, T, E>
 where
     R: Reader<Err = E>,
-    E: Clone,
 {
     type Output = T;
-    fn parse(&self, reader: R) -> ReaderResult<R, T, E> {
-        // TODO: it should be possible to remove cloning in the static parsers by adding mutability (which is currently blocked due to deprecated parsers)
-        Err((reader, self.2.clone()))
+    fn parse(&mut self, reader: R) -> ReaderResult<R, T, E> {
+        match self.2.take() {
+            Some(err) => Err((reader, err)),
+            _ => panic!("StaticErrParser cannot be used multiple times"),
+        }
     }
 }
 
 pub fn static_err_p<R, T, E>(err: E) -> StaticErrParser<R, T, E>
 where
     R: Reader<Err = E>,
-    E: Clone,
 {
-    StaticErrParser(PhantomData, PhantomData, err)
+    StaticErrParser(PhantomData, PhantomData, Some(err))
 }
 
 /// A workaround parser that wraps a parser into a box.
@@ -179,7 +183,7 @@ where
     R: Reader,
 {
     type Output = T;
-    fn parse(&self, reader: R) -> ReaderResult<R, T, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, T, R::Err> {
         self.source.parse(reader)
     }
 }

@@ -81,7 +81,7 @@ where
 {
     type Output = StatementNode;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let (reader, opt_statement_node) = statement::statement_p().with_pos().parse(reader)?;
         match opt_statement_node {
             Some(statement_node) => {
@@ -148,7 +148,7 @@ where
 {
     type Output = String;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         // skip any whitespace, so that the error will hit the first offending character
         let (reader, opt_buf) = whitespace_p().parse(reader)?;
         let buf = opt_buf.unwrap_or_default();

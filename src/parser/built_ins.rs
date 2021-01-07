@@ -860,7 +860,7 @@ mod print {
     {
         type Output = PrintArg;
 
-        fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
             if self.needs_leading_whitespace_for_expression {
                 semicolon_or_comma_as_print_arg_p()
                     .preceded_by_opt_ws()
@@ -903,7 +903,7 @@ mod print {
     {
         type Output = PrintArg;
 
-        fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
             if self.prev_print_arg_was_expression {
                 // only comma or semicolon is allowed
                 semicolon_or_comma_as_print_arg_p()

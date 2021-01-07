@@ -99,7 +99,7 @@ where
 {
     type Output = (ExprOrElse, StatementNodes);
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         if self.0 {
             case_any().parse(reader)
         } else {

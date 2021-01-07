@@ -15,7 +15,7 @@ where
 {
     type Output = Vec<S::Output>;
 
-    fn parse(&self, r: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, r: R) -> ReaderResult<R, Self::Output, R::Err> {
         let mut reader = r;
         let mut has_more = true;
         let mut result: Vec<S::Output> = vec![];
@@ -55,7 +55,7 @@ where
 {
     type Output = Vec<S::Output>;
 
-    fn parse(&self, r: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, r: R) -> ReaderResult<R, Self::Output, R::Err> {
         let mut reader = r;
         let mut has_more = true;
         let mut read_delimiter = false;
@@ -113,7 +113,7 @@ where
 {
     type Output = Vec<A::Output>;
 
-    fn parse(&self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         // get first item
         let mut r = reader;
         let (tmp, opt_first_item) = self.0.parse(r)?;
@@ -127,7 +127,7 @@ where
                     } else {
                         result.last().unwrap()
                     };
-                    let parser = (self.1)(seed);
+                    let mut parser = (self.1)(seed);
                     let (tmp, opt_item) = parser.parse(r)?;
                     r = tmp;
                     match opt_item {

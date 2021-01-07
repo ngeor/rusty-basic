@@ -13,8 +13,6 @@ use crate::parser::types::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 
-// TODO fix the extra clone in this file
-
 pub fn sub_call_or_assignment_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -23,8 +21,11 @@ where
         .and_opt(item_p('=').surrounded_by_opt_ws())
         .switch(|(name_expr, opt_equal_sign)| {
             if opt_equal_sign.is_some() {
-                expression::demand_expression_node_p("Expected: expression for assignment")
-                    .map(move |r| Statement::Assignment(name_expr.clone(), r))
+                static_p(name_expr)
+                    .and_demand(expression::demand_expression_node_p(
+                        "Expected: expression for assignment",
+                    ))
+                    .map(|(n, r)| Statement::Assignment(n, r))
                     .box_dyn()
             } else {
                 sub_call_p(name_expr).box_dyn()
@@ -52,10 +53,7 @@ where
             match name {
                 Name::Bare(bare_name) => {
                     // are there any args after the space?
-                    sub_call_args_after_space_p()
-                        .map_none_to_default()
-                        .map(move |opt_args| Statement::SubCall(bare_name.clone(), opt_args))
-                        .box_dyn()
+                    sub_call(bare_name).box_dyn()
                 }
                 _ => static_err_p(QError::syntax_error("Sub cannot be qualified")).box_dyn(),
             }
@@ -63,13 +61,7 @@ where
         Expression::Property(_, _, _) => {
             // only possible if A.B is a sub, if left_name_expr contains a Function, abort
             match fold_to_bare_name(name_expr) {
-                Ok(bare_name) => {
-                    // are there any args after the space?
-                    sub_call_args_after_space_p()
-                        .map_none_to_default()
-                        .map(move |opt_args| Statement::SubCall(bare_name.clone(), opt_args))
-                        .box_dyn()
-                }
+                Ok(bare_name) => sub_call(bare_name).box_dyn(),
                 Err(err) => static_err_p(err).box_dyn(),
             }
         }
@@ -88,6 +80,17 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
     }
 }
 
+// bare-name [ guarded-expression [ , expression ]* ]
+fn sub_call<R>(bare_name: BareName) -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    static_p(bare_name)
+        .and_opt(sub_call_args_after_space_p())
+        .map(|(l, r)| Statement::SubCall(l, r.unwrap_or_default()))
+}
+
+// guarded-expression [ , expression ] *
 fn sub_call_args_after_space_p<R>() -> impl Parser<R, Output = ExpressionNodes>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

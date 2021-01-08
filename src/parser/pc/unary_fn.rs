@@ -179,6 +179,7 @@ pub trait UnaryFnParser<R: Reader>: Parser<R> + Sized {
 
     /// Switches to a different parser. The given function creates the next
     /// parser based on the output of the current parser.
+    #[deprecated]
     fn switch<F, U>(self, factory: F) -> Switch<Self, F>
     where
         F: Fn(Self::Output) -> U,

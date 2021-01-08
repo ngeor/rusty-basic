@@ -5,7 +5,7 @@ use crate::parser::pc::many::ManyParser;
 use crate::parser::pc::text::TextParser;
 use crate::parser::pc::unary::UnaryParser;
 use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{item_p, static_err_p, static_p, Parser, Reader};
+use crate::parser::pc::*;
 use crate::parser::types::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
@@ -37,35 +37,44 @@ fn sub_call_p<R>(name_expr: Expression) -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
+    // resolve sub name and optionally args
+    static_p(name_expr)
+        .and_then(expr_to_bare_name_args)
+        .resolve_opt_right(
+            // definitely resolve optional args
+            sub_call_args_after_space_p().map_none_to_default(),
+        )
+        .map(|(l, r)| Statement::SubCall(l, r))
+}
+
+/// Converts a name expression into a sub bare name and optionally sub arguments.
+/// Sub arguments are only present for `Expression:FunctionCall` (i.e. when
+/// the sub already has parenthesis). For other cases arguments are resolved later.
+fn expr_to_bare_name_args(
+    name_expr: Expression,
+) -> Result<(BareName, Option<ExpressionNodes>), QError> {
     match name_expr {
         // A(1,2) or A$(1,2)
         Expression::FunctionCall(name, args) => {
-            match name {
-                Name::Bare(bare_name) => {
-                    // this one is easy, convert it to a sub
-                    static_p(Statement::SubCall(bare_name, args)).box_dyn()
-                }
-                _ => static_err_p(QError::syntax_error("Sub cannot be qualified")).box_dyn(),
-            }
+            // this one is easy, convert it to a sub
+            demand_unqualified(name).map(|bare_name| (bare_name, Some(args)))
         }
+        // A or A$ (might have arguments after space)
         Expression::Variable(name, _) => {
-            // A or A$ (might have arguments after space)
-            match name {
-                Name::Bare(bare_name) => {
-                    // are there any args after the space?
-                    sub_call(bare_name).box_dyn()
-                }
-                _ => static_err_p(QError::syntax_error("Sub cannot be qualified")).box_dyn(),
-            }
+            demand_unqualified(name).map(|bare_name| (bare_name, None))
         }
+        // only possible if A.B is a sub, if left_name_expr contains a Function, abort
         Expression::Property(_, _, _) => {
-            // only possible if A.B is a sub, if left_name_expr contains a Function, abort
-            match fold_to_bare_name(name_expr) {
-                Ok(bare_name) => sub_call(bare_name).box_dyn(),
-                Err(err) => static_err_p(err).box_dyn(),
-            }
+            fold_to_bare_name(name_expr).map(|bare_name| (bare_name, None))
         }
         _ => panic!("Unexpected name expression"),
+    }
+}
+
+fn demand_unqualified(name: Name) -> Result<BareName, QError> {
+    match name {
+        Name::Bare(bare_name) => Ok(bare_name),
+        _ => Err(QError::syntax_error("Sub cannot be qualified")),
     }
 }
 
@@ -78,16 +87,6 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
         }
         _ => Err(QError::syntax_error("Illegal sub name")),
     }
-}
-
-// bare-name [ guarded-expression [ , expression ]* ]
-fn sub_call<R>(bare_name: BareName) -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    static_p(bare_name)
-        .and_opt(sub_call_args_after_space_p())
-        .map(|(l, r)| Statement::SubCall(l, r.unwrap_or_default()))
 }
 
 // guarded-expression [ , expression ] *

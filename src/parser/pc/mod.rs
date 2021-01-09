@@ -129,26 +129,6 @@ pub fn static_p<R, T>(item: T) -> StaticParser<R, T> {
     StaticParser(PhantomData, Some(item))
 }
 
-/// A static parser that returns the given optional item, without reading from the reader.
-pub struct OptStaticParser<R, T>(PhantomData<R>, Option<Option<T>>);
-
-impl<R, T> Parser<R> for OptStaticParser<R, T>
-where
-    R: Reader,
-{
-    type Output = T;
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        match self.1.take() {
-            Some(item) => Ok((reader, item)),
-            _ => panic!("OptStaticParser cannot be used multiple times"),
-        }
-    }
-}
-
-pub fn opt_static_p<R, T>(item: Option<T>) -> OptStaticParser<R, T> {
-    OptStaticParser(PhantomData, Some(item))
-}
-
 /// A static parser that always throws an error.
 pub struct StaticErrParser<R, T, E>(PhantomData<R>, PhantomData<T>, Option<E>);
 

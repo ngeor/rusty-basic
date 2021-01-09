@@ -772,7 +772,7 @@ mod open {
 
 mod print {
     use crate::parser::pc::many::ManyParser;
-    use crate::parser::pc::{any_p, opt_static_p, static_p, ReaderResult};
+    use crate::parser::pc::{any_p, ReaderResult};
 
     use super::*;
     use crate::parser::pc::text::opt_whitespace_p;
@@ -784,21 +784,15 @@ mod print {
         keyword_p(Keyword::Print)
             .and_opt(parse_file_number_p())
             .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
-            .and_opt_factory(|((_, opt_file_number), opt_using)| FirstPrintArg {
-                // we're just past PRINT. No need for space for ; or , but we need it for expressions
-                needs_leading_whitespace_for_expression: opt_file_number.is_none()
-                    && opt_using.is_none(),
-            })
-            .switch(|(((_, opt_file_number), opt_using), opt_first_arg)| {
-                static_p((opt_file_number, opt_using)).and_opt(
-                    opt_static_p(opt_first_arg).one_or_more_looking_back(|prev_arg| {
-                        PrintArgLookingBack {
-                            prev_print_arg_was_expression: prev_arg.is_expression(),
-                        }
-                    }),
-                )
-            })
-            .map(|((opt_file_number, format_string), opt_args)| {
+            .and_opt_factory(|((_, opt_file_number), opt_using)|
+                 // we're just past PRINT. No need for space for ; or , but we need it for expressions
+                first_print_arg_p( opt_file_number.is_none() && opt_using.is_none()).one_or_more_looking_back(|prev_arg| {
+                    PrintArgLookingBack {
+                        prev_print_arg_was_expression: prev_arg.is_expression(),
+                    }
+                })
+            )
+            .map(|(((_,opt_file_number), format_string), opt_args)| {
                 Statement::Print(PrintNode {
                     file_number: opt_file_number.map(|x| x.element),
                     lpt1: false,
@@ -814,18 +808,15 @@ mod print {
     {
         keyword_p(Keyword::LPrint)
             .and_opt(using_p(true))
-            .and_opt_factory(|(_keyword, opt_using)| FirstPrintArg {
+            .and_opt_factory(|(_keyword, opt_using)| {
                 // we're just past LPRINT. No need for space for ; or , but we need it for expressions
-                needs_leading_whitespace_for_expression: opt_using.is_none(),
-            })
-            .switch(|((_, opt_using), opt_first_arg)| {
-                static_p(opt_using).and_opt(opt_static_p(opt_first_arg).one_or_more_looking_back(
-                    |prev_arg| PrintArgLookingBack {
+                first_print_arg_p(opt_using.is_none()).one_or_more_looking_back(|prev_arg| {
+                    PrintArgLookingBack {
                         prev_print_arg_was_expression: prev_arg.is_expression(),
-                    },
-                ))
+                    }
+                })
             })
-            .map(|(format_string, opt_args)| {
+            .map(|((_, format_string), opt_args)| {
                 Statement::Print(PrintNode {
                     file_number: None,
                     lpt1: true,
@@ -848,6 +839,17 @@ mod print {
             .and_demand(item_p(';').or_syntax_error("Expected: ;"))
             .keep_left()
             .keep_right()
+    }
+
+    fn first_print_arg_p<R>(
+        needs_leading_whitespace_for_expression: bool,
+    ) -> impl Parser<R, Output = PrintArg>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        FirstPrintArg {
+            needs_leading_whitespace_for_expression,
+        }
     }
 
     struct FirstPrintArg {

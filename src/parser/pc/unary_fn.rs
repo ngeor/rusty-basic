@@ -54,29 +54,6 @@ where
     }
 }
 
-// Switches to a different parser.
-unary_fn_parser!(Switch);
-
-impl<R, S, F, U> Parser<R> for Switch<S, F>
-where
-    R: Reader,
-    S: Parser<R>,
-    F: Fn(S::Output) -> U,
-    U: Parser<R>,
-{
-    type Output = U::Output;
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_item) = self.0.parse(reader)?;
-        match opt_item {
-            Some(item) => {
-                let mut next_parser = (self.1)(item);
-                next_parser.parse(reader)
-            }
-            _ => Ok((reader, None)),
-        }
-    }
-}
-
 // Validates the result of a parser.
 // The validating function can return:
 // Ok(true) -> success
@@ -175,17 +152,6 @@ pub trait UnaryFnParser<R: Reader>: Parser<R> + Sized {
         F: Fn(Self::Output) -> Result<U, R::Err>,
     {
         AndThen::new(self, map)
-    }
-
-    /// Switches to a different parser. The given function creates the next
-    /// parser based on the output of the current parser.
-    #[deprecated]
-    fn switch<F, U>(self, factory: F) -> Switch<Self, F>
-    where
-        F: Fn(Self::Output) -> U,
-        U: Parser<R>,
-    {
-        Switch::new(self, factory)
     }
 
     /// Validates the result of a parser.

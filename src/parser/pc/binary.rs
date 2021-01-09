@@ -290,6 +290,7 @@ pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
 
     /// Takes a parser which returns a tuple (A, Option<B>) and if the second
     /// member of the tuple is None, uses the second parser to resolve it.
+    #[deprecated]
     fn resolve_opt_right<B, T, U>(self, other: B) -> ResolveOptRight<Self, B>
     where
         Self: Parser<R, Output = (T, Option<U>)>,

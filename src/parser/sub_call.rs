@@ -17,20 +17,44 @@ pub fn sub_call_or_assignment_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    expression::word::word_p()
-        .and_opt(item_p('=').surrounded_by_opt_ws())
-        .switch(|(name_expr, opt_equal_sign)| {
-            if opt_equal_sign.is_some() {
-                static_p(name_expr)
-                    .and_demand(expression::demand_expression_node_p(
-                        "Expected: expression for assignment",
+    SubCallOrAssignment {}
+}
+
+pub struct SubCallOrAssignment {}
+
+impl<R> Parser<R> for SubCallOrAssignment
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    type Output = Statement;
+
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_item) = Self::name_and_opt_eq_sign().parse(reader)?;
+        match opt_item {
+            Some((name_expr, opt_equal_sign)) => match opt_equal_sign {
+                Some(_) => {
+                    let (reader, opt_v) =
+                        expression::demand_expression_node_p("Expected: expression for assignment")
+                            .parse(reader)?;
+                    Ok((
+                        reader,
+                        Some(Statement::Assignment(name_expr, opt_v.unwrap())),
                     ))
-                    .map(|(n, r)| Statement::Assignment(n, r))
-                    .box_dyn()
-            } else {
-                sub_call_p(name_expr).box_dyn()
-            }
-        })
+                }
+                _ => sub_call_p(name_expr).parse(reader),
+            },
+            _ => Ok((reader, None)),
+        }
+    }
+}
+
+impl SubCallOrAssignment {
+    fn name_and_opt_eq_sign<R>() -> impl Parser<R, Output = (Expression, Option<char>)>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
+    }
 }
 
 fn sub_call_p<R>(name_expr: Expression) -> impl Parser<R, Output = Statement>

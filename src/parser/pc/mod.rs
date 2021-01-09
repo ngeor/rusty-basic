@@ -1,14 +1,16 @@
 use std::marker::PhantomData;
 
-use crate::parser::pc::unary_fn::{FilterReaderItem, UnaryFnParser};
+mod binary;
+mod many;
+mod text;
+mod unary;
+mod unary_fn;
 
-pub mod binary;
-pub mod many;
-pub mod text;
-pub mod unary;
-pub mod unary_fn;
-
-// TODO use pub self to make a better api surface
+pub use self::binary::*;
+pub use self::many::*;
+pub use self::text::*;
+pub use self::unary::*;
+pub use self::unary_fn::*;
 
 pub type ReaderResult<R, T, E> = Result<(R, Option<T>), (R, E)>;
 

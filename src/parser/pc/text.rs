@@ -115,7 +115,7 @@ macro_rules! char_sequence_p {
 
         struct $struct_name {}
 
-        impl crate::parser::pc::text::CharSequence for $struct_name {
+        impl crate::parser::pc::CharSequence for $struct_name {
             fn is_valid(ch: char) -> bool {
                 $is_valid(ch)
             }
@@ -130,7 +130,7 @@ macro_rules! char_sequence_p {
 
         pub struct $struct_name {}
 
-        impl crate::parser::pc::text::CharSequence for $struct_name {
+        impl crate::parser::pc::CharSequence for $struct_name {
             fn is_leading(ch: char) -> bool {
                 $is_leading(ch)
             }

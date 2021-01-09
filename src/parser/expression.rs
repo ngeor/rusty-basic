@@ -1,11 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::common::*;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::{opt_whitespace_p, whitespace_p, TextParser};
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{if_p, is_digit, item_p, Parser, Reader, ReaderResult};
+use crate::parser::pc::*;
 use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
 use crate::parser::types::*;
 
@@ -176,11 +172,6 @@ where
 }
 
 mod string_literal {
-    use crate::parser::pc::binary::BinaryParser;
-    use crate::parser::pc::item_p;
-    use crate::parser::pc::unary::UnaryParser;
-    use crate::parser::pc::unary_fn::UnaryFnParser;
-
     use super::*;
 
     pub fn string_literal_p<R>() -> impl Parser<R, Output = Expression>
@@ -204,10 +195,6 @@ mod string_literal {
 mod number_literal {
     use super::digits_p;
     use crate::common::*;
-    use crate::parser::pc::binary::BinaryParser;
-    use crate::parser::pc::text::string_p;
-    use crate::parser::pc::unary::UnaryParser;
-    use crate::parser::pc::unary_fn::UnaryFnParser;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::PcSpecific;
     use crate::parser::types::*;
@@ -376,11 +363,7 @@ pub mod word {
     use std::convert::TryFrom;
 
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::pc::binary::BinaryParser;
-    use crate::parser::pc::many::ManyParser;
-    use crate::parser::pc::unary::UnaryParser;
-    use crate::parser::pc::unary_fn::UnaryFnParser;
-    use crate::parser::pc::{any_p, item_p};
+    use crate::parser::pc::*;
     use crate::parser::type_qualifier::type_qualifier_p;
 
     use super::*;

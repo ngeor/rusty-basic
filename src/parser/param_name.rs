@@ -3,11 +3,7 @@ use std::str::FromStr;
 use crate::common::*;
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::whitespace_p;
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{Parser, Reader};
+use crate::parser::pc::*;
 use crate::parser::pc_specific::{identifier_without_dot_p, keyword_p, PcSpecific};
 use crate::parser::types::*;
 

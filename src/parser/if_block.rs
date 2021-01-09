@@ -1,13 +1,8 @@
 use crate::common::*;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::many::ManyParser;
-use crate::parser::pc::text::whitespace_p;
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{Parser, Reader};
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -102,7 +97,7 @@ where
     )
     .and_opt(else_if_block_p().one_or_more())
     .and_opt(else_block_p())
-    .and_demand(end_if_p().or_syntax_error("Expected: END IF"))
+    .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::If))
     .map(|(((if_block, opt_else_if_blocks), opt_else), _)| {
         (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
     })
@@ -144,16 +139,6 @@ where
             Keyword::End,
         )))
         .keep_right()
-}
-
-fn end_if_p<R>() -> impl Parser<R, Output = ()>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_p(Keyword::End)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
-        .and_demand(keyword_p(Keyword::If).or_syntax_error("Expected: IF after END"))
-        .map(|_| ())
 }
 
 #[cfg(test)]

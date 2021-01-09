@@ -1,10 +1,5 @@
 /// Parser combinators specific to this project (e.g. for keywords)
 use crate::common::*;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::many::{ManyParser, OneOrMoreDelimited};
-use crate::parser::pc::text::{string_p, SurroundedByOptWhitespace, TextParser};
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::{OrThrowVal, UnaryFnParser};
 use crate::parser::pc::*;
 use crate::parser::types::*;
 
@@ -84,8 +79,32 @@ fn is_not_whole_keyword(ch: char) -> bool {
     is_letter(ch) || is_digit(ch) || ch == '.' || ch == '$'
 }
 
-// TODO: add keyword_pair_p e.g. keyword_pair_p(End, Function)
 // TODO: add keywords_p e.g. keywords_p([Integer, Long, Single, Double])
+
+pub fn keyword_pair_p<R>(
+    first: Keyword,
+    second: Keyword,
+) -> impl Parser<R, Output = (Keyword, String, Keyword, String)>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(first)
+        .and_demand(whitespace_p().or_syntax_error(format!("Expected: whitespace after {}", first)))
+        .and_demand(keyword_p(second).or_syntax_error(format!("Expected: {}", second)))
+        .map(|(((first_k, first_s), _), (second_k, second_s))| {
+            (first_k, first_s, second_k, second_s)
+        })
+}
+
+pub fn demand_keyword_pair_p<R>(
+    first: Keyword,
+    second: Keyword,
+) -> impl Parser<R, Output = (Keyword, String, Keyword, String)>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_pair_p(first, second).or_syntax_error(format!("Expected: {} {}", first, second))
+}
 
 //
 // Take multiple items
@@ -125,7 +144,7 @@ where
     R: Reader<Item = char, Err = QError>,
 {
     /// Throws a syntax error if this parser returns `None`.
-    fn or_syntax_error(self, msg: &str) -> OrThrowVal<Self, QError> {
+    fn or_syntax_error<S: AsRef<str>>(self, msg: S) -> OrThrowVal<Self, QError> {
         OrThrowVal::new(self, QError::syntax_error(msg))
     }
 

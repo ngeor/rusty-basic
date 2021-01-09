@@ -46,14 +46,8 @@ use crate::common::{HasLocation, Locatable, QError};
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::many::ManyParser;
-use crate::parser::pc::text::{whitespace_p, TextParser};
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::Reader;
-use crate::parser::pc::{item_p, static_err_p, Parser};
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, PcSpecific};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
@@ -72,10 +66,8 @@ where
         )
         .and_demand(comment::comments_and_whitespace_p())
         .and_demand(element_nodes_p())
-        .and_demand(keyword_p(Keyword::End).or_syntax_error("Expected: END"))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
-        .and_demand(keyword_p(Keyword::Type).or_syntax_error("Expected: TYPE"))
-        .map(|((((((_, name), comments), elements), _), _), _)| {
+        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Type))
+        .map(|((((_, name), comments), elements), _)| {
             UserDefinedType::new(name, comments, elements)
         })
 }

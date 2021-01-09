@@ -1,10 +1,7 @@
 use crate::common::*;
 use crate::parser::declaration;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::whitespace_p;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{Parser, Reader};
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -26,10 +23,8 @@ where
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::End,
         )))
-        .and_demand(keyword_p(Keyword::End).or_syntax_error("Expected: END FUNCTION"))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
-        .and_demand(keyword_p(Keyword::Function).or_syntax_error("Expected: FUNCTION after END"))
-        .map(|(((((name, params), body), _), _), _)| {
+        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Function))
+        .map(|(((name, params), body), _)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation { name, params, body })
         })
 }
@@ -42,10 +37,8 @@ where
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::End,
         )))
-        .and_demand(keyword_p(Keyword::End).or_syntax_error("Expected: END SUB"))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
-        .and_demand(keyword_p(Keyword::Sub).or_syntax_error("Expected: SUB after END"))
-        .map(|(((((name, params), body), _), _), _)| {
+        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Sub))
+        .map(|(((name, params), body), _)| {
             TopLevelToken::SubImplementation(SubImplementation { name, params, body })
         })
 }

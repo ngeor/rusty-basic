@@ -1,10 +1,6 @@
 use crate::common::*;
 use crate::parser::expression;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::{whitespace_p, TextParser};
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{item_p, Parser, Reader};
+use crate::parser::pc::*;
 use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::types::*;
 
@@ -23,10 +19,8 @@ where
 }
 
 mod close {
-    use crate::built_ins::BuiltInSub;
-    use crate::parser::pc::many::ManyParser;
-
     use super::*;
+    use crate::built_ins::BuiltInSub;
 
     pub fn parse_close_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -771,11 +765,7 @@ mod open {
 }
 
 mod print {
-    use crate::parser::pc::many::ManyParser;
-    use crate::parser::pc::{any_p, ReaderResult};
-
     use super::*;
-    use crate::parser::pc::text::opt_whitespace_p;
 
     pub fn parse_print_p<R>() -> impl Parser<R, Output = Statement>
     where

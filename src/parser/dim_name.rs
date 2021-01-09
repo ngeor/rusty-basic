@@ -4,11 +4,7 @@ use crate::common::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::{whitespace_p, TextParser};
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{item_p, Parser, Reader, ReaderResult};
+use crate::parser::pc::*;
 use crate::parser::pc_specific::{
     identifier_without_dot_p, in_parenthesis_p, keyword_p, PcSpecific,
 };
@@ -129,8 +125,7 @@ where
                     } else {
                         Ok((
                             reader,
-                            // TODO try to remove clone if we can have mutable parser or without '&self'
-                            Some(DimType::UserDefined(BareName::from(x.clone()).at(pos))),
+                            Some(DimType::UserDefined(BareName::from(x).at(pos))),
                         ))
                     }
                 }

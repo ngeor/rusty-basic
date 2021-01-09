@@ -1,11 +1,6 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::name;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::{opt_whitespace_p, whitespace_p, TextParser};
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::Reader;
-use crate::parser::pc::{item_p, static_err_p, Parser};
+use crate::parser::pc::*;
 use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::{

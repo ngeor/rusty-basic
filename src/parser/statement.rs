@@ -7,11 +7,7 @@ use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::name::bare_name_p;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::whitespace_p;
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{item_p, Parser, Reader};
+use crate::parser::pc::*;
 use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::select_case;
 use crate::parser::sub_call;
@@ -65,8 +61,6 @@ where
         .or(statement_go_to_p())
         .or(statement_on_error_go_to_p())
 }
-
-// TODO: remove 'static from as many Reader as possible
 
 fn statement_label_p<R>() -> impl Parser<R, Output = Statement>
 where

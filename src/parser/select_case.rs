@@ -1,13 +1,8 @@
 use crate::common::*;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::many::ManyParser;
-use crate::parser::pc::text::{opt_whitespace_p, whitespace_p};
-use crate::parser::pc::unary::UnaryParser;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::{Parser, Reader, ReaderResult};
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -30,7 +25,7 @@ where
     select_case_expr_p()
         .and_opt(comment::comments_and_whitespace_p())
         .and_opt(case_any_many())
-        .and_demand(end_select_p().or_syntax_error("Expected: END SELECT"))
+        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Select))
         .map(|(((expr, inline_comments), r), _)| {
             let mut case_blocks: Vec<CaseBlockNode> = vec![];
             let mut else_block: Option<StatementNodes> = None;
@@ -182,16 +177,6 @@ where
                 .or_syntax_error("Expected: expression after TO"),
         )
         .keep_right()
-}
-
-fn end_select_p<R>() -> impl Parser<R, Output = ()>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_p(Keyword::End)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after END"))
-        .and_demand(keyword_p(Keyword::Select).or_syntax_error("Expected: SELECT"))
-        .map(|_| ())
 }
 
 #[cfg(test)]

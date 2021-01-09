@@ -1,9 +1,5 @@
 use crate::common::{HasLocation, QError};
-use crate::parser::pc::binary::BinaryParser;
-use crate::parser::pc::text::whitespace_p;
-use crate::parser::pc::unary_fn::UnaryFnParser;
-use crate::parser::pc::Parser;
-use crate::parser::pc::Reader;
+use crate::parser::pc::*;
 use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::{dim_name, Keyword, Statement};
 

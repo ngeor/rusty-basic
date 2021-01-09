@@ -46,8 +46,6 @@ where
 
 // bare name node
 
-// TODO throw error if followed by type qualifier
-
 pub fn bare_name_p<R>() -> impl Parser<R, Output = BareName>
 where
     R: Reader<Item = char, Err = QError>,

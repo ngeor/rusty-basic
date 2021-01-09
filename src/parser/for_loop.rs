@@ -1,18 +1,13 @@
 use crate::common::{HasLocation, QError};
-use crate::parser::name;
+use crate::parser::expression;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::statements;
-use crate::parser::{
-    expression, Expression, ExpressionNode, ExpressionType, ForLoopNode, Keyword, NameNode,
-    Statement,
-};
+use crate::parser::types::*;
 
 // FOR I = 0 TO 5 STEP 1
 // statements
 // NEXT (I)
-
-// TODO use expression parser to parse variable names for FOR and NEXT counter
 
 pub fn for_loop_p<R>() -> impl Parser<R, Output = Statement>
 where
@@ -29,14 +24,12 @@ where
                 opt_next_name_node,
             )| {
                 Statement::ForLoop(ForLoopNode {
-                    variable_name: variable_name
-                        .map(|x| Expression::Variable(x, ExpressionType::Unresolved)),
+                    variable_name,
                     lower_bound,
                     upper_bound,
                     step: opt_step,
                     statements,
-                    next_counter: opt_next_name_node
-                        .map(|x| x.map(|y| Expression::Variable(y, ExpressionType::Unresolved))),
+                    next_counter: opt_next_name_node,
                 })
             },
         )
@@ -46,7 +39,7 @@ where
 fn parse_for_step_p<R>() -> impl Parser<
     R,
     Output = (
-        NameNode,
+        ExpressionNode,
         ExpressionNode,
         ExpressionNode,
         Option<ExpressionNode>,
@@ -69,14 +62,14 @@ where
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p<R>() -> impl Parser<R, Output = (NameNode, ExpressionNode, ExpressionNode)>
+fn parse_for_p<R>() -> impl Parser<R, Output = (ExpressionNode, ExpressionNode, ExpressionNode)>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     keyword_p(Keyword::For)
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FOR"))
         .and_demand(
-            name::name_with_dot_p()
+            expression::word::word_p()
                 .with_pos()
                 .or_syntax_error("Expected: name after FOR"),
         )
@@ -97,12 +90,12 @@ where
         .map(|(((((_, n), _), l), _), u)| (n, l, u))
 }
 
-fn next_counter_p<R>() -> impl Parser<R, Output = Option<NameNode>>
+fn next_counter_p<R>() -> impl Parser<R, Output = Option<ExpressionNode>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     keyword_p(Keyword::Next)
-        .and_opt(whitespace_p().and(name::name_with_dot_p().with_pos()))
+        .and_opt(whitespace_p().and(expression::word::word_p().with_pos()))
         .map(|(_, opt_right)| opt_right.map(|(_, r)| r))
 }
 

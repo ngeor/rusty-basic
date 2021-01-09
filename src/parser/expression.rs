@@ -360,25 +360,14 @@ mod number_literal {
 }
 
 pub mod word {
-    use std::convert::TryFrom;
-
+    use super::lazy_expression_node_p;
+    use crate::common::*;
     use crate::parser::name::name_with_dot_p;
     use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
     use crate::parser::type_qualifier::type_qualifier_p;
-
-    use super::*;
-    use crate::parser::pc_specific::identifier_without_dot_p;
-
-    /*
-    //word ::= <name>
-    array-prop ::= <name><parens> <dot-property-names>
-    name ::= <letter><letter-or-digit-or-dot>*(qualifier)
-    parens ::= '(' <expr> , <expr> ')'
-    empty-parens ::= '(' <ws>* ')'
-
-    dot-property-names ::= ( '.' <property-name> )*
-    property-name ::= <letter><letter-or-digit>*
-    */
+    use crate::parser::types::*;
+    use std::convert::TryFrom;
 
     pub fn word_p<R>() -> impl Parser<R, Output = Expression>
     where

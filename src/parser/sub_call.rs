@@ -41,7 +41,19 @@ where
                         Some(Statement::Assignment(name_expr, opt_v.unwrap())),
                     ))
                 }
-                _ => sub_call_p(name_expr).parse(reader),
+                _ => match expr_to_bare_name_args(name_expr) {
+                    Ok((bare_name, Some(args))) => {
+                        Ok((reader, Some(Statement::SubCall(bare_name, args))))
+                    }
+                    Ok((bare_name, None)) => {
+                        let (reader, args) = sub_call_args_after_space_p().parse(reader)?;
+                        Ok((
+                            reader,
+                            Some(Statement::SubCall(bare_name, args.unwrap_or_default())),
+                        ))
+                    }
+                    Err(err) => Err((reader, err)),
+                },
             },
             _ => Ok((reader, None)),
         }
@@ -55,20 +67,6 @@ impl SubCallOrAssignment {
     {
         expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
     }
-}
-
-fn sub_call_p<R>(name_expr: Expression) -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    // resolve sub name and optionally args
-    static_p(name_expr)
-        .and_then(expr_to_bare_name_args)
-        .resolve_opt_right(
-            // definitely resolve optional args
-            sub_call_args_after_space_p().map_none_to_default(),
-        )
-        .map(|(l, r)| Statement::SubCall(l, r))
 }
 
 /// Converts a name expression into a sub bare name and optionally sub arguments.

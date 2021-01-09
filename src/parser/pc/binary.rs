@@ -188,32 +188,6 @@ where
     }
 }
 
-// Takes a parser which returns a tuple (A, Option<B>) and if the second
-// member of the tuple is None, uses the second parser to resolve it.
-binary_parser!(ResolveOptRight);
-
-impl<R, A, B, T, U> Parser<R> for ResolveOptRight<A, B>
-where
-    R: Reader,
-    A: Parser<R, Output = (T, Option<U>)>,
-    B: Parser<R, Output = U>,
-{
-    type Output = (T, U);
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_item) = self.0.parse(reader)?;
-        match opt_item {
-            Some((left, opt_right)) => match opt_right {
-                Some(right) => Ok((reader, Some((left, right)))),
-                _ => {
-                    let (reader, opt_right) = self.1.parse(reader)?;
-                    Ok((reader, Some((left, opt_right.unwrap()))))
-                }
-            },
-            _ => Ok((reader, None)),
-        }
-    }
-}
-
 /// Offers chaining methods that result in binary parsers.
 pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
     /// Returns a new parser that combines the result of the current parser
@@ -286,17 +260,6 @@ pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
             left: Box::new(self),
             right: Box::new(other),
         }
-    }
-
-    /// Takes a parser which returns a tuple (A, Option<B>) and if the second
-    /// member of the tuple is None, uses the second parser to resolve it.
-    #[deprecated]
-    fn resolve_opt_right<B, T, U>(self, other: B) -> ResolveOptRight<Self, B>
-    where
-        Self: Parser<R, Output = (T, Option<U>)>,
-        B: Parser<R, Output = U>,
-    {
-        ResolveOptRight::new(self, other)
     }
 }
 

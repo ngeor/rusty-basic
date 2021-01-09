@@ -204,16 +204,6 @@ impl QError {
     pub fn syntax_error<S: AsRef<str>>(msg: S) -> Self {
         QError::SyntaxError(format!("{}", msg.as_ref()))
     }
-
-    pub fn syntax_error_fn<S: AsRef<str>>(msg: S) -> impl Fn() -> QError {
-        // repeating of format due to "cannot move out of closure"
-        move || QError::syntax_error(format!("{}", msg.as_ref()))
-    }
-
-    pub fn syntax_error_fn_fn<S: AsRef<str>>(msg: S) -> impl Fn() -> Box<dyn Fn() -> QError> {
-        // repeating of format due to "cannot move out of closure"
-        move || Box::new(QError::syntax_error_fn(format!("{}", msg.as_ref())))
-    }
 }
 
 pub type QErrorNode = ErrorEnvelope<QError>;

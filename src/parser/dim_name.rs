@@ -97,18 +97,50 @@ fn extended_type_p<R>() -> impl Parser<R, Output = DimType>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    identifier_without_dot_p()
-        .with_pos()
-        .switch(ExtendedTypeAfterIdentifier::new)
+    ExtendedTypeParser {}
 }
 
-struct ExtendedTypeAfterIdentifier(Locatable<String>);
+struct ExtendedTypeParser;
 
-impl ExtendedTypeAfterIdentifier {
-    pub fn new(identifier: Locatable<String>) -> Self {
-        Self(identifier)
+impl<R> Parser<R> for ExtendedTypeParser
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    type Output = DimType;
+
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_identifier) = identifier_without_dot_p().with_pos().parse(reader)?;
+        match opt_identifier {
+            Some(Locatable { element: x, pos }) => match Keyword::from_str(x.as_str()) {
+                Ok(Keyword::Single) => Self::built_in(reader, TypeQualifier::BangSingle),
+                Ok(Keyword::Double) => Self::built_in(reader, TypeQualifier::HashDouble),
+                Ok(Keyword::String_) => Self::string(reader),
+                Ok(Keyword::Integer) => Self::built_in(reader, TypeQualifier::PercentInteger),
+                Ok(Keyword::Long) => Self::built_in(reader, TypeQualifier::AmpersandLong),
+                Ok(_) => Err((
+                    reader,
+                    QError::syntax_error(
+                        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+                    ),
+                )),
+                Err(_) => {
+                    if x.len() > name::MAX_LENGTH {
+                        Err((reader, QError::IdentifierTooLong))
+                    } else {
+                        Ok((
+                            reader,
+                            // TODO try to remove clone if we can have mutable parser or without '&self'
+                            Some(DimType::UserDefined(BareName::from(x.clone()).at(pos))),
+                        ))
+                    }
+                }
+            },
+            _ => Ok((reader, None)),
+        }
     }
+}
 
+impl ExtendedTypeParser {
     fn built_in<R>(reader: R, q: TypeQualifier) -> ReaderResult<R, DimType, R::Err>
     where
         R: Reader,
@@ -130,40 +162,6 @@ impl ExtendedTypeAfterIdentifier {
         match opt_len {
             Some(len) => Ok((reader, Some(DimType::FixedLengthString(len, 0)))),
             _ => Self::built_in(reader, TypeQualifier::DollarString),
-        }
-    }
-}
-impl<R> Parser<R> for ExtendedTypeAfterIdentifier
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    type Output = DimType;
-
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let Locatable { element: x, pos } = &self.0;
-        match Keyword::from_str(x.as_str()) {
-            Ok(Keyword::Single) => Self::built_in(reader, TypeQualifier::BangSingle),
-            Ok(Keyword::Double) => Self::built_in(reader, TypeQualifier::HashDouble),
-            Ok(Keyword::String_) => Self::string(reader),
-            Ok(Keyword::Integer) => Self::built_in(reader, TypeQualifier::PercentInteger),
-            Ok(Keyword::Long) => Self::built_in(reader, TypeQualifier::AmpersandLong),
-            Ok(_) => Err((
-                reader,
-                QError::syntax_error(
-                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                ),
-            )),
-            Err(_) => {
-                if x.len() > name::MAX_LENGTH {
-                    Err((reader, QError::IdentifierTooLong))
-                } else {
-                    Ok((
-                        reader,
-                        // TODO try to remove clone if we can have mutable parser or without '&self'
-                        Some(DimType::UserDefined(BareName::from(x.clone()).at(pos))),
-                    ))
-                }
-            }
         }
     }
 }

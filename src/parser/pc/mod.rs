@@ -10,6 +10,19 @@ pub mod unary_fn;
 
 // TODO use pub self to make a better api surface
 
+pub type ReaderResult<R, T, E> = Result<(R, Option<T>), (R, E)>;
+
+pub trait Reader: Sized {
+    type Item;
+    type Err;
+    fn read(self) -> ReaderResult<Self, Self::Item, Self::Err>;
+    fn undo_item(self, item: Self::Item) -> Self;
+}
+
+pub trait Undo<T> {
+    fn undo(self, item: T) -> Self;
+}
+
 pub trait Parser<R>
 where
     R: Reader,
@@ -17,18 +30,6 @@ where
     type Output;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err>;
-
-    /// Wraps this parser into a Box dyn. This is a workaround for dealing with
-    /// the compiler's limitations regarding deeply nested concrete parser types.
-    #[deprecated]
-    fn box_dyn(self) -> BoxDynParser<R, Self::Output>
-    where
-        Self: Sized + 'static,
-    {
-        BoxDynParser {
-            source: Box::new(self),
-        }
-    }
 }
 
 //
@@ -169,36 +170,6 @@ where
     R: Reader<Err = E>,
 {
     StaticErrParser(PhantomData, PhantomData, Some(err))
-}
-
-/// A workaround parser that wraps a parser into a box.
-/// This works around the compiler's limitations dealing with too deeply nested
-/// concrete parser types.
-pub struct BoxDynParser<R, T> {
-    source: Box<dyn Parser<R, Output = T>>,
-}
-
-impl<R, T> Parser<R> for BoxDynParser<R, T>
-where
-    R: Reader,
-{
-    type Output = T;
-    fn parse(&mut self, reader: R) -> ReaderResult<R, T, R::Err> {
-        self.source.parse(reader)
-    }
-}
-
-pub type ReaderResult<R, T, E> = Result<(R, Option<T>), (R, E)>;
-
-pub trait Undo<T> {
-    fn undo(self, item: T) -> Self;
-}
-
-pub trait Reader: Sized {
-    type Item;
-    type Err;
-    fn read(self) -> ReaderResult<Self, Self::Item, Self::Err>;
-    fn undo_item(self, item: Self::Item) -> Self;
 }
 
 pub mod undo {

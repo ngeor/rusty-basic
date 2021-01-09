@@ -2,6 +2,7 @@
 use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::types::*;
+use std::marker::PhantomData;
 
 // ========================================================
 // Undo support
@@ -79,8 +80,6 @@ fn is_not_whole_keyword(ch: char) -> bool {
     is_letter(ch) || is_digit(ch) || ch == '.' || ch == '$'
 }
 
-// TODO: add keywords_p e.g. keywords_p([Integer, Long, Single, Double])
-
 pub fn keyword_pair_p<R>(
     first: Keyword,
     second: Keyword,
@@ -106,9 +105,99 @@ where
     keyword_pair_p(first, second).or_syntax_error(format!("Expected: {} {}", first, second))
 }
 
-//
-// Take multiple items
-//
+pub fn keyword_choice_p<R>(keywords: &[Keyword]) -> KeywordChoice<R> {
+    KeywordChoice {
+        reader: PhantomData,
+        keywords,
+    }
+}
+
+pub struct KeywordChoice<'a, R> {
+    reader: PhantomData<R>,
+    keywords: &'a [Keyword],
+}
+
+impl<'a, R> Parser<R> for KeywordChoice<'a, R>
+where
+    R: Reader<Item = char>,
+{
+    type Output = (Keyword, String);
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        // collect characters we read
+        let mut buf = String::new();
+
+        // candidate keywords and their character representations
+        let mut candidates: Vec<(Keyword, Vec<char>)> = self
+            .keywords
+            .iter()
+            .map(|k| (*k, k.as_str().chars().collect()))
+            .collect();
+
+        // we need a mutable reader as we're on a loop
+        let mut r = reader;
+
+        // the character index of the character we're trying to match currently
+        let mut char_index: usize = 0;
+
+        while !candidates.is_empty() {
+            let (tmp, opt_item) = r.read()?;
+            r = tmp;
+
+            if let Some(ch) = opt_item {
+                buf.push(ch);
+
+                let mut i = 0;
+                while i < candidates.len() {
+                    let (candidate_keyword, candidate_chars) = candidates.get(i).unwrap();
+                    if Self::matches(candidate_chars, char_index, ch) {
+                        // possibly found the entire keyword, check that it is followed by None, or symbol, except dollar sign
+                        if candidate_chars.len() == char_index + 1 {
+                            let (tmp, opt_separator) = r.read()?;
+                            r = tmp.undo(opt_separator); // put it back
+                            if Self::is_keyword_separator(opt_separator) {
+                                // found it
+                                return Ok((r, Some((*candidate_keyword, buf))));
+                            } else {
+                                // candidate may not stay
+                                candidates.remove(i);
+                            }
+                        } else {
+                            // candidate can stay
+                            i += 1;
+                        }
+                    } else {
+                        // remove candidate
+                        candidates.remove(i);
+                    }
+                }
+
+                char_index += 1;
+            } else {
+                // could've just said "break;" here
+                candidates.clear();
+            }
+        }
+
+        r = r.undo(buf);
+        Ok((r, None))
+    }
+}
+
+impl<'a, R> KeywordChoice<'a, R> {
+    fn is_keyword_separator(opt_separator: Option<char>) -> bool {
+        match opt_separator {
+            None => true,
+            Some(ch) => !is_not_whole_keyword(ch),
+        }
+    }
+
+    fn matches(candidate_chars: &Vec<char>, idx: usize, ch: char) -> bool {
+        match candidate_chars.get(idx) {
+            Some(x) => x.eq_ignore_ascii_case(&ch),
+            _ => false,
+        }
+    }
+}
 
 /// Parses open and closing parenthesis around the given source.
 /// Additional whitespace is allowed inside the parenthesis.

@@ -1,6 +1,6 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc_specific::{keyword_choice_p, PcSpecific};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
@@ -27,19 +27,21 @@ fn def_keyword_p<R>() -> impl Parser<R, Output = TypeQualifier>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::DefDbl)
-        .or(keyword_p(Keyword::DefInt))
-        .or(keyword_p(Keyword::DefLng))
-        .or(keyword_p(Keyword::DefSng))
-        .or(keyword_p(Keyword::DefStr))
-        .map(|(k, _)| match k {
-            Keyword::DefInt => TypeQualifier::PercentInteger,
-            Keyword::DefLng => TypeQualifier::AmpersandLong,
-            Keyword::DefSng => TypeQualifier::BangSingle,
-            Keyword::DefDbl => TypeQualifier::HashDouble,
-            Keyword::DefStr => TypeQualifier::DollarString,
-            _ => panic!("Should not have parsed keyword {} in def_keyword_p", k),
-        })
+    keyword_choice_p(&[
+        Keyword::DefDbl,
+        Keyword::DefInt,
+        Keyword::DefLng,
+        Keyword::DefSng,
+        Keyword::DefStr,
+    ])
+    .map(|(k, _)| match k {
+        Keyword::DefInt => TypeQualifier::PercentInteger,
+        Keyword::DefLng => TypeQualifier::AmpersandLong,
+        Keyword::DefSng => TypeQualifier::BangSingle,
+        Keyword::DefDbl => TypeQualifier::HashDouble,
+        Keyword::DefStr => TypeQualifier::DollarString,
+        _ => panic!("Should not have parsed keyword {} in def_keyword_p", k),
+    })
 }
 
 fn letter_range_p<R>() -> impl Parser<R, Output = LetterRange>

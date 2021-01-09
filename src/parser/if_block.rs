@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, PcSpecific};
+use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_choice_p, keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -90,11 +90,11 @@ fn multi_line_if_p<R>() -> impl Parser<
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    statements::zero_or_more_statements_p(
-        keyword_p(Keyword::End)
-            .or(keyword_p(Keyword::Else))
-            .or(keyword_p(Keyword::ElseIf)),
-    )
+    statements::zero_or_more_statements_p(keyword_choice_p(&[
+        Keyword::End,
+        Keyword::Else,
+        Keyword::ElseIf,
+    ]))
     .and_opt(else_if_block_p().one_or_more())
     .and_opt(else_block_p())
     .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::If))
@@ -121,9 +121,11 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     else_if_expr_then_p()
-        .and_demand(statements::zero_or_more_statements_p(
-            keyword_p(Keyword::End).or(keyword_p(Keyword::Else).or(keyword_p(Keyword::ElseIf))),
-        ))
+        .and_demand(statements::zero_or_more_statements_p(keyword_choice_p(&[
+            Keyword::End,
+            Keyword::Else,
+            Keyword::ElseIf,
+        ])))
         .map(|(condition, statements)| ConditionalBlockNode {
             condition,
             statements,

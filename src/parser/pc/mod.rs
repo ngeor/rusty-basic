@@ -144,6 +144,15 @@ pub mod undo {
         }
     }
 
+    impl<R: Reader<Item = char>> Undo<Option<char>> for R {
+        fn undo(self, opt_item: Option<char>) -> Self {
+            match opt_item {
+                Some(item) => self.undo_item(item),
+                _ => self,
+            }
+        }
+    }
+
     impl<R: Reader<Item = char>> Undo<Locatable<char>> for R {
         fn undo(self, item: Locatable<char>) -> Self {
             self.undo_item(item.element)

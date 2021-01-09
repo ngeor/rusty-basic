@@ -47,7 +47,7 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, PcSpecific};
+use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_choice_p, keyword_p, PcSpecific};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
@@ -121,23 +121,31 @@ fn element_type_p<R>() -> impl Parser<R, Output = ElementType>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Integer)
-        .map(|_| ElementType::Integer)
-        .or(keyword_p(Keyword::Long).map(|_| ElementType::Long))
-        .or(keyword_p(Keyword::Single).map(|_| ElementType::Single))
-        .or(keyword_p(Keyword::Double).map(|_| ElementType::Double))
-        .or(keyword_p(Keyword::String_)
-            .and_demand(
-                item_p('*')
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: *"),
-            )
-            .and_demand(demand_string_length_p())
-            .keep_right()
-            .map(|e| ElementType::FixedLengthString(e, 0)))
-        .or(bare_name_without_dot_p()
-            .with_pos()
-            .map(|n| ElementType::UserDefined(n)))
+    keyword_choice_p(&[
+        Keyword::Integer,
+        Keyword::Long,
+        Keyword::Single,
+        Keyword::Double,
+    ])
+    .map(|(k, _)| match k {
+        Keyword::Integer => ElementType::Integer,
+        Keyword::Long => ElementType::Long,
+        Keyword::Single => ElementType::Single,
+        Keyword::Double => ElementType::Double,
+        _ => panic!("Parser should not have parsed this"),
+    })
+    .or(keyword_p(Keyword::String_)
+        .and_demand(
+            item_p('*')
+                .surrounded_by_opt_ws()
+                .or_syntax_error("Expected: *"),
+        )
+        .and_demand(demand_string_length_p())
+        .keep_right()
+        .map(|e| ElementType::FixedLengthString(e, 0)))
+    .or(bare_name_without_dot_p()
+        .with_pos()
+        .map(|n| ElementType::UserDefined(n)))
 }
 
 fn demand_string_length_p<R>() -> impl Parser<R, Output = ExpressionNode>

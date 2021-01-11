@@ -1,40 +1,24 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
-use crate::parser::expression;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
+use crate::parser::expression::guarded_expression_node_p;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
+use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::statements::*;
 use crate::parser::types::*;
-use std::io::BufRead;
 
-pub fn while_wend<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
-        seq3(
-            parse_while_expression(),
-            statements(
-                keyword(Keyword::Wend),
-                QError::syntax_error_fn("Expected: end-of-statement"),
-            ),
-            demand(keyword(Keyword::Wend), || QError::WhileWithoutWend),
-        ),
-        |(l, r, _)| {
+pub fn while_wend_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::While)
+        .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after WHILE"))
+        .and_demand(zero_or_more_statements_p(keyword_p(Keyword::Wend)))
+        .and_demand(keyword_p(Keyword::Wend).or(static_err_p(QError::WhileWithoutWend)))
+        .map(|(((_, condition), statements), _)| {
             Statement::While(ConditionalBlockNode {
-                condition: l,
-                statements: r,
+                condition,
+                statements,
             })
-        },
-    )
-}
-
-fn parse_while_expression<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    drop_left(seq2(
-        keyword(Keyword::While),
-        expression::demand_guarded_expression_node(),
-    ))
+        })
 }
 
 #[cfg(test)]

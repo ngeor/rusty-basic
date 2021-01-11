@@ -1,104 +1,102 @@
-use crate::common::*;
-use crate::parser::char_reader::*;
+use crate::common::{HasLocation, QError};
 use crate::parser::expression;
-use crate::parser::name;
-use crate::parser::pc::combine::combine_if_first_some;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
+use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 // FOR I = 0 TO 5 STEP 1
 // statements
 // NEXT (I)
 
-pub fn for_loop<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
-        seq3(
-            combine_if_first_some(parse_for(), parse_step),
-            statements::statements(
-                keyword(Keyword::Next),
-                QError::syntax_error_fn("Expected: STEP or end-of-statement"),
-            ),
-            demand(next_counter(), || QError::ForWithoutNext),
-        ),
-        |(((variable_name, lower_bound, upper_bound), opt_step), statements, next_counter)| {
-            Statement::ForLoop(ForLoopNode {
-                variable_name: variable_name
-                    .map(|x| Expression::Variable(x, ExpressionType::Unresolved)),
-                lower_bound,
-                upper_bound,
-                step: opt_step,
-                statements,
-                next_counter: next_counter
-                    .map(|x| x.map(|y| Expression::Variable(y, ExpressionType::Unresolved))),
-            })
-        },
-    )
+pub fn for_loop_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    parse_for_step_p()
+        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+            Keyword::Next,
+        )))
+        .and_demand(next_counter_p().or(static_err_p(QError::ForWithoutNext)))
+        .map(
+            |(
+                ((variable_name, lower_bound, upper_bound, opt_step), statements),
+                opt_next_name_node,
+            )| {
+                Statement::ForLoop(ForLoopNode {
+                    variable_name,
+                    lower_bound,
+                    upper_bound,
+                    step: opt_step,
+                    statements,
+                    next_counter: opt_next_name_node,
+                })
+            },
+        )
 }
 
-fn parse_for<T: BufRead + 'static>() -> Box<
-    dyn Fn(
-        EolReader<T>,
-    ) -> ReaderResult<EolReader<T>, (NameNode, ExpressionNode, ExpressionNode), QError>,
-> {
-    map(
-        seq7(
-            keyword(Keyword::For),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after FOR"),
-            ),
-            demand(
-                name::name_node(),
-                QError::syntax_error_fn("Expected: name after FOR"),
-            ),
-            demand(
-                crate::parser::pc::ws::zero_or_more_leading(read('=')),
-                QError::syntax_error_fn("Expected: = after name"),
-            ),
-            expression::demand_back_guarded_expression_node(),
-            demand(
-                keyword(Keyword::To),
-                QError::syntax_error_fn("Expected: TO"),
-            ),
-            expression::demand_guarded_expression_node(),
-        ),
-        |(_, _, n, _, l, _, u)| (n, l, u),
-    )
+/// Parses the "FOR I = 1 TO 2 [STEP X]" part
+fn parse_for_step_p<R>() -> impl Parser<
+    R,
+    Output = (
+        ExpressionNode,
+        ExpressionNode,
+        ExpressionNode,
+        Option<ExpressionNode>,
+    ),
+>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    parse_for_p()
+        .and_opt_factory(|(_, _, upper)| {
+            opt_whitespace_p(!upper.is_parenthesis())
+                .and(keyword_p(Keyword::Step))
+                .and_demand(
+                    expression::guarded_expression_node_p()
+                        .or_syntax_error("Expected: expression after STEP"),
+                )
+                .keep_right()
+        })
+        .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 
-fn parse_step<T: BufRead + 'static>(
-    for_expr: &(NameNode, ExpressionNode, ExpressionNode),
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    let (_, _, upper) = for_expr;
-    let parenthesis = upper.is_parenthesis();
-    if parenthesis {
-        drop_left(seq2(
-            crate::parser::pc::ws::zero_or_more_leading(keyword(Keyword::Step)),
-            expression::demand_guarded_expression_node(),
-        ))
-    } else {
-        drop_left(seq2(
-            crate::parser::pc::ws::one_or_more_leading(keyword(Keyword::Step)),
-            expression::demand_guarded_expression_node(),
-        ))
-    }
+/// Parses the "FOR I = 1 TO 2" part
+fn parse_for_p<R>() -> impl Parser<R, Output = (ExpressionNode, ExpressionNode, ExpressionNode)>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::For)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FOR"))
+        .and_demand(
+            expression::word::word_p()
+                .with_pos()
+                .or_syntax_error("Expected: name after FOR"),
+        )
+        .and_demand(
+            item_p('=')
+                .preceded_by_opt_ws()
+                .or_syntax_error("Expected: = after name"),
+        )
+        .and_demand(
+            expression::back_guarded_expression_node_p()
+                .or_syntax_error("Expected: lower bound of FOR loop"),
+        )
+        .and_demand(keyword_p(Keyword::To).or_syntax_error("Expected: TO"))
+        .and_demand(
+            expression::guarded_expression_node_p()
+                .or_syntax_error("Expected: upper bound of FOR loop"),
+        )
+        .map(|(((((_, n), _), l), _), u)| (n, l, u))
 }
 
-fn next_counter<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Option<NameNode>, QError>> {
-    map(
-        opt_seq2(
-            keyword(Keyword::Next),
-            crate::parser::pc::ws::one_or_more_leading(name::name_node()),
-        ),
-        |(_, opt_second)| opt_second,
-    )
+fn next_counter_p<R>() -> impl Parser<R, Output = Option<ExpressionNode>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Next)
+        .and_opt(whitespace_p().and(expression::word::word_p().with_pos()))
+        .map(|(_, opt_right)| opt_right.map(|(_, r)| r))
 }
 
 #[cfg(test)]
@@ -280,7 +278,7 @@ mod tests {
         assert_eq!(
             result,
             QErrorNode::Pos(
-                QError::syntax_error("Expected: STEP or end-of-statement"),
+                QError::syntax_error("Expected: end-of-statement"),
                 Location::new(2, 23),
             )
         );

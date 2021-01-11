@@ -1,21 +1,30 @@
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::pc_specific::with_err_at;
-use crate::parser::top_level_token;
+use crate::parser::pc::Parser;
+use crate::parser::pc::Reader;
+use crate::parser::top_level_token::TopLevelTokensParser;
 use crate::parser::types::*;
 use std::fs::File;
 
 pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
     let reader = EolReader::from(f);
-    let (_, result) = with_err_at(top_level_token::top_level_tokens())(reader)?;
-    Ok(result.unwrap_or_default())
+    parse_reader(reader)
 }
 
 #[cfg(test)]
 pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
     let reader = EolReader::from(s);
-    let (_, result) = with_err_at(top_level_token::top_level_tokens())(reader)?;
-    Ok(result.unwrap_or_default())
+    parse_reader(reader)
+}
+
+fn parse_reader<R>(reader: R) -> Result<ProgramNode, QErrorNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    match TopLevelTokensParser::new().parse(reader) {
+        Ok((_, opt_program)) => Ok(opt_program.unwrap_or_default()),
+        Err((reader, err)) => Err(ErrorEnvelope::Pos(err, reader.pos())),
+    }
 }
 
 #[cfg(test)]

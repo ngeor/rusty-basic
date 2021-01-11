@@ -1,133 +1,120 @@
 use crate::common::*;
 use crate::parser::built_ins;
-use crate::parser::char_reader::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
 use crate::parser::for_loop;
 use crate::parser::if_block;
 use crate::parser::name;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::{and_then, map};
+use crate::parser::name::bare_name_p;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
+use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
-use std::io::BufRead;
 
-pub fn statement_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, StatementNode, QError>> {
-    with_pos(statement())
-}
-
-pub fn statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    or_vec(vec![
-        dim::dim(),
-        constant::constant(),
-        comment::comment(),
-        built_ins::parse_built_in(),
-        statement_label(),
-        sub_call::sub_call_or_assignment(),
-        if_block::if_block(),
-        for_loop::for_loop(),
-        select_case::select_case(),
-        while_wend::while_wend(),
-        statement_go_to(),
-        statement_on_error_go_to(),
-        statement_illegal_keywords(),
-    ])
+pub fn statement_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    dim::dim_p()
+        .or(constant::constant_p())
+        .or(comment::comment_p())
+        .or(built_ins::parse_built_in_p())
+        .or(statement_label_p())
+        .or(sub_call::sub_call_or_assignment_p())
+        .or(if_block::if_block_p())
+        .or(for_loop::for_loop_p())
+        .or(select_case::select_case_p())
+        .or(while_wend::while_wend_p())
+        .or(statement_go_to_p())
+        .or(statement_on_error_go_to_p())
+        .or(illegal_starting_keywords())
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
-pub fn single_line_non_comment_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    or_vec(vec![
-        dim::dim(),
-        constant::constant(),
-        built_ins::parse_built_in(),
-        sub_call::sub_call_or_assignment(),
-        statement_go_to(),
-        statement_on_error_go_to(),
-    ])
+pub fn single_line_non_comment_statement_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    dim::dim_p()
+        .or(constant::constant_p())
+        .or(built_ins::parse_built_in_p())
+        .or(sub_call::sub_call_or_assignment_p())
+        .or(statement_go_to_p())
+        .or(statement_on_error_go_to_p())
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    or_vec(vec![
-        comment::comment(),
-        dim::dim(),
-        constant::constant(),
-        built_ins::parse_built_in(),
-        sub_call::sub_call_or_assignment(),
-        statement_go_to(),
-        statement_on_error_go_to(),
-    ])
+pub fn single_line_statement_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    comment::comment_p()
+        .or(dim::dim_p())
+        .or(constant::constant_p())
+        .or(built_ins::parse_built_in_p())
+        .or(sub_call::sub_call_or_assignment_p())
+        .or(statement_go_to_p())
+        .or(statement_on_error_go_to_p())
 }
 
-pub fn statement_label<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(and(name::bare_name(), read(':')), |(l, _)| {
-        Statement::Label(l)
-    })
+fn statement_label_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    name::bare_name_p()
+        .and(item_p(':'))
+        .keep_left()
+        .map(|l| Statement::Label(l))
 }
 
-pub fn statement_go_to<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
-        crate::parser::pc::ws::seq2(
-            keyword(Keyword::GoTo),
-            demand(
-                name::bare_name(),
-                QError::syntax_error_fn("Expected: label"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace"),
-        ),
-        |(_, l)| Statement::GoTo(l),
-    )
+fn statement_go_to_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::GoTo)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after GOTO"))
+        .and_demand(bare_name_p().or_syntax_error("Expected: label"))
+        .map(|(_, l)| Statement::GoTo(l))
 }
 
-pub fn statement_on_error_go_to<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
-        crate::parser::pc::ws::seq4(
-            keyword(Keyword::On),
-            demand(
-                keyword(Keyword::Error),
-                QError::syntax_error_fn("Expected: ERROR"),
-            ),
-            demand(
-                keyword(Keyword::GoTo),
-                QError::syntax_error_fn("Expected: GOTO"),
-            ),
-            demand(
-                name::bare_name(),
-                QError::syntax_error_fn("Expected: label"),
-            ),
-            QError::syntax_error_fn_fn("Expected: whitespace"),
-        ),
-        |(_, _, _, l)| Statement::ErrorHandler(l),
-    )
+fn statement_on_error_go_to_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::On)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ON"))
+        .and_demand(keyword_p(Keyword::Error).or_syntax_error("Expected: ERROR"))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ERROR"))
+        .and_demand(keyword_p(Keyword::GoTo).or_syntax_error("Expected: GOTO"))
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after GOTO"))
+        .and_demand(name::bare_name_p().or_syntax_error("Expected: label"))
+        .map(|(_, l)| Statement::ErrorHandler(l))
 }
 
-pub fn statement_illegal_keywords<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    or(
-        and_then(keyword(Keyword::Wend), |_| Err(QError::WendWithoutWhile)),
-        and_then(keyword(Keyword::Else), |_| Err(QError::ElseWithoutIf)),
-    )
+fn illegal_starting_keywords<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Wend)
+        .or(keyword_p(Keyword::Else))
+        .and_then(|(k, _)| match k {
+            Keyword::Wend => Err(QError::WendWithoutWhile),
+            Keyword::Else => Err(QError::ElseWithoutIf),
+            _ => panic!("Parser should not have parsed {}", k),
+        })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{PrintNode, Statement, TopLevelToken};
+
+    use super::super::test_utils::*;
 
     #[test]
     fn test_top_level_comment() {

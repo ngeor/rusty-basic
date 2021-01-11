@@ -1,102 +1,96 @@
+use std::marker::PhantomData;
+
 use crate::common::*;
-use crate::parser::char_reader::*;
-use crate::parser::pc::combine::combine_if_first_some;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::{and_then, map};
 use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
+use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
 use crate::parser::types::*;
-use crate::variant;
-use std::io::BufRead;
 
-pub fn demand_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    demand(
-        expression_node(),
-        QError::syntax_error_fn("Expected: expression"),
-    )
+fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
+    LazyExpressionParser(PhantomData)
 }
 
-pub fn demand_guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // ws* ( expr )
-    // ws+ expr
-    demand(
-        guarded_expression_node(),
-        QError::syntax_error_fn("Expected: expression"),
-    )
+struct LazyExpressionParser<R>(PhantomData<R>);
+
+impl<R> Parser<R> for LazyExpressionParser<R>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    type Output = ExpressionNode;
+
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let mut parser = expression_node_p();
+        parser.parse(reader)
+    }
 }
 
-pub fn guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+pub fn demand_expression_node_p<R>(err_msg: &str) -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    expression_node_p().or_syntax_error(err_msg)
+}
+
+pub fn guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     // the order is important because if there is whitespace we can pick up any expression
     // ws+ expr
     // ws* ( expr )
-    or(
-        guarded_whitespace_expression_node(),
-        guarded_parenthesis_expression_node(),
-    )
+    guarded_whitespace_expression_node_p().or(guarded_parenthesis_expression_node_p())
 }
 
-fn guarded_parenthesis_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    // ws* ( expr )
-    map(
-        seq3(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('('))),
-            // caveat: once it reads the opening parenthesis, it goes into demand mode,
-            // which is not consistent with the name of the function
-            demand_expression_node(),
-            demand(read(')'), QError::syntax_error_fn("Expected: )")),
-        ),
-        |(Locatable { pos, .. }, e, _)| Expression::Parenthesis(Box::new(e)).at(pos),
-    )
+fn guarded_parenthesis_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    opt_whitespace_p(false)
+        .and(item_p('(').with_pos())
+        .and(lazy_expression_node_p())
+        .and_demand(
+            item_p(')')
+                .preceded_by_opt_ws()
+                .or_syntax_error("Expected: )"),
+        )
+        .keep_left()
+        .map(|((_, left_parenthesis), child)| {
+            Expression::Parenthesis(Box::new(child)).at(left_parenthesis.pos())
+        })
 }
 
-fn guarded_whitespace_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+fn guarded_whitespace_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     // ws+ expr
-    crate::parser::pc::ws::one_or_more_leading(expression_node())
+    whitespace_p().and(lazy_expression_node_p()).keep_right()
 }
 
-pub fn demand_back_guarded_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
+pub fn back_guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
     // ws* ( expr )
     // ws+ expr ws+
-    demand(
-        or(
-            guarded_parenthesis_expression_node(),
-            drop_right(seq2(
-                guarded_whitespace_expression_node(),
-                demand(
-                    crate::parser::pc::ws::one_or_more(),
-                    QError::syntax_error_fn("Expected: whitespace after expression"),
-                ),
-            )),
-        ),
-        QError::syntax_error_fn("Expected: expression"),
-    )
+    guarded_parenthesis_expression_node_p().or(guarded_whitespace_expression_node_p()
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after expression"))
+        .keep_left())
 }
 
 /// Parses an expression
-pub fn expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    map(
-        combine_if_first_some(
-            // left side
-            single_expression_node(),
-            // maybe right side
-            |first_expr| {
-                seq2(
-                    operator(first_expr.is_parenthesis()),
-                    demand(
-                        crate::parser::pc::ws::zero_or_more_leading(lazy(expression_node)),
-                        QError::syntax_error_fn("Expected: right side expression"),
-                    ),
-                )
-            },
-        ),
-        |(left_side, opt_right_side)| {
+pub fn expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    single_expression_node_p()
+        .and_opt_factory(|first_expr| {
+            operator_p(first_expr.is_parenthesis()).and_demand(
+                lazy_expression_node_p()
+                    .preceded_by_opt_ws()
+                    .or_syntax_error("Expected: right side expression"),
+            )
+        })
+        .map(|(left_side, opt_right_side)| {
             (match opt_right_side {
                 Some((loc_op, right_side)) => {
                     let Locatable { element: op, pos } = loc_op;
@@ -105,238 +99,212 @@ pub fn expression_node<T: BufRead + 'static>(
                 None => left_side,
             })
             .simplify_unary_minus_literals()
-        },
-    )
+        })
 }
 
-fn single_expression_node<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    or_vec(vec![
-        with_pos(string_literal::string_literal()),
-        with_pos(word::word()),
-        number_literal::number_literal(),
-        number_literal::float_without_leading_zero(),
-        number_literal::hexadecimal_literal(),
-        number_literal::octal_literal(),
-        with_pos(parenthesis()),
-        unary_not(),
-        unary_minus(),
-    ])
+fn single_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    string_literal::string_literal_p()
+        .with_pos()
+        .or(word::word_p().with_pos())
+        .or(number_literal::number_literal_p())
+        .or(number_literal::float_without_leading_zero_p())
+        .or(number_literal::hexadecimal_literal_p())
+        .or(number_literal::octal_literal_p())
+        .or(parenthesis_p().with_pos())
+        .or(unary_not_p())
+        .or(unary_minus_p())
 }
 
-pub fn unary_minus<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    map(
-        seq2(
-            with_pos(read('-')),
-            demand(
-                lazy(expression_node),
-                QError::syntax_error_fn("Expected: expression after unary minus"),
-            ),
-        ),
-        |(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos()),
-    )
+fn unary_minus_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    item_p('-')
+        .with_pos()
+        .and_demand(
+            lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
+        )
+        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos()))
 }
 
-pub fn unary_not<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-    map(
-        crate::parser::pc::ws::seq2(
-            with_pos(keyword(Keyword::Not)),
-            demand(
-                lazy(expression_node),
-                QError::syntax_error_fn("Expected: expression after NOT"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace after NOT"),
-        ),
-        |(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()),
-    )
+pub fn unary_not_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Not)
+        .with_pos()
+        .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"))
+        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
 }
 
-pub fn file_handle<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<FileHandle>, QError>> {
-    and_then(
-        seq2(
-            with_pos(read('#')),
-            demand(
-                any_digits(),
-                QError::syntax_error_fn("Expected: digits after #"),
-            ),
-        ),
-        |(Locatable { pos, .. }, digits)| match digits.parse::<u8>() {
-            Ok(d) => {
-                if d > 0 {
-                    Ok(Locatable::new(d.into(), pos))
-                } else {
-                    Err(QError::BadFileNameOrNumber)
+pub fn file_handle_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    item_p('#')
+        .with_pos()
+        .and_demand(digits_p().or_syntax_error("Expected: digits after #"))
+        .and_then(
+            |(Locatable { pos, .. }, digits)| match digits.parse::<u8>() {
+                Ok(d) => {
+                    if d > 0 {
+                        Ok(Locatable::new(d.into(), pos))
+                    } else {
+                        Err(QError::BadFileNameOrNumber)
+                    }
                 }
-            }
-            Err(_) => Err(QError::BadFileNameOrNumber),
-        },
-    )
+                Err(_) => Err(QError::BadFileNameOrNumber),
+            },
+        )
 }
 
-pub fn parenthesis<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
-    map(
-        in_parenthesis(demand(
-            crate::parser::pc::ws::zero_or_more_around(lazy(expression_node)),
-            QError::syntax_error_fn("Expected: expression"),
-        )),
-        |v| Expression::Parenthesis(Box::new(v)),
+pub fn parenthesis_p<R>() -> impl Parser<R, Output = Expression>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    in_parenthesis_p(
+        lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
+    .map(|child| Expression::Parenthesis(Box::new(child)))
 }
 
 mod string_literal {
     use super::*;
 
-    fn is_not_quote(ch: char) -> bool {
-        ch != '"'
+    pub fn string_literal_p<R>() -> impl Parser<R, Output = Expression>
+    where
+        R: Reader<Item = char, Err = QError> + 'static,
+    {
+        item_p('"')
+            .and_opt(non_quote_p())
+            .and_demand(item_p('"').or_syntax_error("Unterminated string"))
+            .keep_middle()
+            .map(|opt_s| Expression::StringLiteral(opt_s.unwrap_or_default()))
     }
 
-    pub fn string_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError>> {
-        map(
-            seq3(
-                read('"'),
-                crate::parser::pc::str::zero_or_more_if(is_not_quote),
-                demand(read('"'), QError::syntax_error_fn("Unterminated string")),
-            ),
-            |(_, s, _)| Expression::StringLiteral(s),
-        )
+    crate::char_sequence_p!(NonQuote, non_quote_p, is_not_quote);
+
+    fn is_not_quote(ch: char) -> bool {
+        ch != '"'
     }
 }
 
 mod number_literal {
-    use super::*;
-    use crate::variant::BitVec;
+    use super::digits_p;
+    use crate::common::*;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::PcSpecific;
+    use crate::parser::types::*;
+    use crate::variant::{BitVec, INT_BITS, LONG_BITS, MAX_INTEGER, MAX_LONG};
 
-    pub fn number_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-        and_then(
-            opt_seq3(
-                with_pos(any_digits()),
-                seq2(
-                    with_pos(read('.')),
-                    demand(
-                        any_digits(),
-                        QError::syntax_error_fn("Expected: digits after decimal point"),
+    pub fn number_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        // TODO support more qualifiers besides '#'
+        digits_p()
+            .and_opt(
+                item_p('.')
+                    .and_demand(digits_p().or_syntax_error("Expected: digits after decimal point"))
+                    .keep_right(),
+            )
+            .and_opt(item_p('#'))
+            .and_then(
+                |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
+                    Some(fraction_digits) => parse_floating_point_literal_no_pos(
+                        int_digits,
+                        fraction_digits,
+                        opt_double.is_some(),
                     ),
-                ),
-                read('#'),
-            ),
-            |(
-                Locatable {
-                    element: int_digits,
-                    pos,
+                    _ => integer_literal_to_expression_node_no_pos(int_digits),
                 },
-                opt_frac,
-                opt_double,
-            )| match opt_frac {
-                Some((_, frac_digits)) => {
-                    parse_floating_point_literal(int_digits, frac_digits, opt_double.is_some(), pos)
-                }
-                None => integer_literal_to_expression_node(int_digits, pos),
-            },
-        )
+            )
+            .with_pos()
     }
 
-    pub fn float_without_leading_zero<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-        and_then(
-            opt_seq3(
-                with_pos(read('.')),
-                demand(
-                    any_digits(),
-                    QError::syntax_error_fn("Expected: digits after decimal point"),
-                ),
-                read('#'),
-            ),
-            |(Locatable { pos, .. }, opt_frac_digits, opt_double)| {
-                parse_floating_point_literal(
+    pub fn float_without_leading_zero_p<R>() -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        item_p('.')
+            .and(digits_p())
+            .and_opt(item_p('#'))
+            .and_then(|((_, fraction_digits), opt_double)| {
+                parse_floating_point_literal_no_pos(
                     "0".to_string(),
-                    opt_frac_digits.unwrap(),
+                    fraction_digits,
                     opt_double.is_some(),
-                    pos,
                 )
-            },
-        )
+            })
+            .with_pos()
     }
 
-    fn integer_literal_to_expression_node(
-        s: String,
-        pos: Location,
-    ) -> Result<ExpressionNode, QError> {
+    fn integer_literal_to_expression_node_no_pos(s: String) -> Result<Expression, QError> {
         match s.parse::<u32>() {
             Ok(u) => {
-                if u <= variant::MAX_INTEGER as u32 {
-                    Ok(Expression::IntegerLiteral(u as i32).at(pos))
-                } else if u <= variant::MAX_LONG as u32 {
-                    Ok(Expression::LongLiteral(u as i64).at(pos))
+                if u <= MAX_INTEGER as u32 {
+                    Ok(Expression::IntegerLiteral(u as i32))
+                } else if u <= MAX_LONG as u32 {
+                    Ok(Expression::LongLiteral(u as i64))
                 } else {
-                    Ok(Expression::DoubleLiteral(u as f64).at(pos))
+                    Ok(Expression::DoubleLiteral(u as f64))
                 }
             }
             Err(e) => Err(e.into()),
         }
     }
 
-    fn parse_floating_point_literal(
+    fn parse_floating_point_literal_no_pos(
         integer_digits: String,
         fraction_digits: String,
         is_double: bool,
-        pos: Location,
-    ) -> Result<ExpressionNode, QError> {
+    ) -> Result<Expression, QError> {
         if is_double {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
-                Ok(f) => Ok(Expression::DoubleLiteral(f).at(pos)),
+                Ok(f) => Ok(Expression::DoubleLiteral(f)),
                 Err(err) => Err(err.into()),
             }
         } else {
             match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
-                Ok(f) => Ok(Expression::SingleLiteral(f).at(pos)),
+                Ok(f) => Ok(Expression::SingleLiteral(f)),
                 Err(err) => Err(err.into()),
             }
         }
     }
 
-    pub fn hexadecimal_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-        hex_or_oct_literal("&H", is_hex_digit, convert_hex_digits)
+    macro_rules! hex_or_oct_literal_p {
+        ($fn_name:tt, $needle:expr, $recognizer:tt, $converter:tt) => {
+            pub fn $fn_name<R>() -> impl Parser<R, Output = ExpressionNode>
+            where
+                R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+            {
+                string_p($needle)
+                    .and_opt(item_p('-'))
+                    .and_demand($recognizer().or_syntax_error("Expected: digits"))
+                    .and_then(|((_, opt_negative), digits)| {
+                        if opt_negative.is_some() {
+                            Err(QError::Overflow)
+                        } else {
+                            $converter(digits)
+                        }
+                    })
+                    .with_pos()
+            }
+        };
     }
 
-    pub fn octal_literal<T: BufRead + 'static>(
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-        hex_or_oct_literal("&O", is_oct_digit, convert_oct_digits)
-    }
+    hex_or_oct_literal_p!(hexadecimal_literal_p, "&H", hex_digit_p, convert_hex_digits);
+    hex_or_oct_literal_p!(octal_literal_p, "&O", oct_digit_p, convert_oct_digits);
 
-    fn hex_or_oct_literal<T: BufRead + 'static>(
-        needle: &'static str,
-        predicate: fn(char) -> bool,
-        converter: fn(String) -> Result<Expression, QError>,
-    ) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNode, QError>> {
-        with_pos(and_then(
-            and(
-                str::str_case_insensitive(needle),
-                or(
-                    and(read('-'), str::one_or_more_if(predicate)),
-                    map(str::one_or_more_if(predicate), |h| ('+', h)),
-                ),
-            ),
-            move |(_ampersand, (sign, digits))| {
-                if sign == '-' {
-                    Err(QError::Overflow)
-                } else {
-                    converter(digits)
-                }
-            },
-        ))
-    }
-
+    crate::char_sequence_p!(OctDigit, oct_digit_p, is_oct_digit);
     fn is_oct_digit(ch: char) -> bool {
         ch >= '0' && ch <= '7'
     }
 
+    crate::char_sequence_p!(HexDigit, hex_digit_p, is_hex_digit);
     fn is_hex_digit(ch: char) -> bool {
         ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
     }
@@ -381,9 +349,9 @@ mod number_literal {
 
     fn create_expression_from_bit_vec(mut bit_vec: BitVec) -> Result<Expression, QError> {
         bit_vec.fit()?;
-        if bit_vec.len() == variant::INT_BITS {
+        if bit_vec.len() == INT_BITS {
             Ok(Expression::IntegerLiteral(bit_vec.into()))
-        } else if bit_vec.len() == variant::LONG_BITS {
+        } else if bit_vec.len() == LONG_BITS {
             Ok(Expression::LongLiteral(bit_vec.into()))
         } else {
             Err(QError::Overflow)
@@ -392,365 +360,142 @@ mod number_literal {
 }
 
 pub mod word {
-    use super::*;
-    use crate::parser::name::{any_word_without_dot, MAX_LENGTH};
+    use super::lazy_expression_node_p;
+    use crate::common::*;
+    use crate::parser::name::name_with_dot_p;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::type_qualifier::type_qualifier_p;
+    use crate::parser::types::*;
     use std::convert::TryFrom;
 
-    pub fn word<T: BufRead + 'static>(
-    ) -> impl Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Expression, QError> {
-        move |r| {
-            // read name
-            match any_word_without_dot()(r) {
-                Ok((r, Some(bare_name_without_dot))) => {
-                    validate_name_expr_after_parsing(continue_after_bare_name(
-                        r,
-                        Expression::Variable(
-                            Name::Bare(bare_name_without_dot),
-                            ExpressionType::Unresolved,
-                        ),
-                        false,
-                    ))
-                }
-                Ok((r, None)) => Ok((r, None)),
-                Err(e) => Err(e),
-            }
-        }
-    }
-
-    fn validate_name_expr_after_parsing<T: BufRead>(
-        result: ReaderResult<EolReader<T>, Expression, QError>,
-    ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        if let Ok((r, Some(expr))) = result {
-            if ensure_identifier_max_length(&expr) {
-                Ok((r, Some(expr)))
-            } else {
-                Err((r, QError::IdentifierTooLong))
-            }
-        } else {
-            result
-        }
-    }
-
-    fn continue_after_bare_name<T: BufRead + 'static>(
-        r: EolReader<T>,
-        base_expr: Expression,
-        already_folded: bool,
-    ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        // we have read so far A or A.B or A..B
-        // might encounter: '(', TypeQualifier, or dot
-        // if we find '(', we need to fold the existing Expression into a single Name
-        match any_symbol()(r) {
-            Ok((r, Some(ch))) => {
-                if ch == '.' {
-                    continue_after_bare_name_dot(r, base_expr, already_folded)
-                } else if let Ok(q) = TypeQualifier::try_from(ch) {
-                    continue_after_qualified_name(r, qualify(base_expr, q))
-                } else if ch == '(' {
-                    // fold expr, because it's not possible to invoke or index a property,
-                    // so if it has dots, it must be a function (or array name) with dots
-                    continue_after_bare_name_parenthesis(r.undo(ch), fold_expr(base_expr))
-                } else {
-                    // something else, abort
-                    Ok((r.undo(ch), Some(base_expr)))
-                }
-            }
-            Ok((r, None)) => Ok((r, Some(base_expr))),
-            Err((r, err)) => Err((r, err)),
-        }
-    }
-
-    fn continue_after_bare_name_dot<T: BufRead + 'static>(
-        r: EolReader<T>,
-        base_expr: Expression,
-        already_folded: bool,
-    ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        // might be a name or a dot or a type qualifier or parenthesis...
-        // e.g. A.[B | . | $ | (]
-        match any_identifier_without_dot()(r) {
-            Ok((r, Some(bare_name))) => {
-                let bare_name = CaseInsensitiveString::from(bare_name);
-                let expr = if already_folded {
-                    concat_name(concat_name(base_expr, '.'), bare_name)
-                } else {
-                    Expression::Property(
-                        Box::new(base_expr),
-                        Name::Bare(bare_name),
-                        ExpressionType::Unresolved,
-                    )
-                };
-                continue_after_bare_name(r, expr, already_folded) // recursion
-            }
-            Ok((r, None)) => {
-                // we could not find a name, let's try a symbol
-                let next_expr: Expression = if already_folded {
-                    concat_name(base_expr, '.')
-                } else {
-                    concat_name(fold_expr(base_expr), '.')
-                };
-                match any_symbol()(r) {
-                    Ok((r, Some(ch))) => {
-                        if ch == '.' {
-                            continue_after_bare_name_dot(r, next_expr, true)
-                        } else if let Ok(q) = TypeQualifier::try_from(ch) {
-                            continue_after_qualified_name(r, qualify(next_expr, q))
-                        } else if ch == '(' {
-                            continue_after_bare_name_parenthesis(r.undo(ch), next_expr)
-                        } else {
-                            Ok((r.undo(ch), Some(next_expr)))
-                        }
-                    }
-                    Ok((r, None)) => Ok((r, Some(next_expr))),
-                    Err((r, err)) => Err((r, err)),
-                }
-            }
-            Err((r, err)) => Err((r, err)),
-        }
-    }
-
-    fn qualify(base_expr: Expression, q: TypeQualifier) -> Expression {
-        match base_expr {
-            Expression::Variable(Name::Bare(bare_name), expression_type) => Expression::Variable(
-                Name::Qualified(QualifiedName::new(bare_name, q)),
-                expression_type,
-            ),
-            Expression::Property(left, Name::Bare(bare_name), expression_type) => {
-                Expression::Property(
-                    left,
-                    Name::Qualified(QualifiedName::new(bare_name, q)),
-                    expression_type,
-                )
-            }
-            _ => panic!("Unexpected expression"),
-        }
-    }
-
-    fn fold_name(base_expr: Expression) -> Name {
-        match base_expr {
-            Expression::Variable(name, _) => name,
-            Expression::Property(left, property_name, _) => {
-                let left_name = fold_name(*left);
-                match left_name {
-                    Name::Bare(bare_left_name) => match property_name {
-                        Name::Bare(bare_property_name) => {
-                            Name::Bare(bare_left_name + '.' + bare_property_name)
-                        }
-                        Name::Qualified(QualifiedName {
-                            bare_name: bare_property_name,
-                            qualifier,
-                        }) => Name::Qualified(QualifiedName::new(
-                            bare_left_name + '.' + bare_property_name,
-                            qualifier,
-                        )),
-                    },
-                    _ => panic!("Left name already qualified, cannot append to it!"),
-                }
-            }
-            _ => panic!("Unexpected expression"),
-        }
-    }
-
-    fn fold_expr(base_expr: Expression) -> Expression {
-        Expression::Variable(fold_name(base_expr), ExpressionType::Unresolved)
-    }
-
-    fn concat_name<X>(base_expr: Expression, x: X) -> Expression
+    pub fn word_p<R>() -> impl Parser<R, Output = Expression>
     where
-        BareName: std::ops::Add<X, Output = BareName>,
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        match base_expr {
-            Expression::Variable(Name::Bare(bare_name), expression_type) => {
-                Expression::Variable(Name::Bare(bare_name + x), expression_type)
-            }
-            _ => panic!("Unsupported expression"),
-        }
-    }
-
-    fn get_expr_name(base_expr: Expression) -> Name {
-        match base_expr {
-            Expression::Variable(name, _) => name,
-            _ => panic!("Unsupported expression"),
-        }
-    }
-
-    fn continue_after_bare_name_parenthesis<T: BufRead + 'static>(
-        r: EolReader<T>,
-        base_expr: Expression,
-    ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        match in_parenthesis(csv_zero_or_more(lazy(expression_node)))(r) {
-            Ok((r, Some(args))) => match any_symbol()(r) {
-                Ok((r, Some(ch))) => {
-                    if ch == '.' {
-                        continue_after_bare_name_args_dot(
-                            r,
-                            Expression::FunctionCall(get_expr_name(base_expr), args),
-                        )
-                    } else if let Ok(_) = TypeQualifier::try_from(ch) {
-                        Err((r, QError::syntax_error("Expected: end of name expression")))
-                    } else {
-                        Ok((
-                            r.undo(ch),
-                            Some(Expression::FunctionCall(get_expr_name(base_expr), args)),
-                        ))
-                    }
-                }
-                Ok((r, None)) => Ok((
-                    r,
-                    Some(Expression::FunctionCall(get_expr_name(base_expr), args)),
-                )),
-                Err((r, err)) => Err((r, err)),
-            },
-            Ok((_r, None)) => {
-                // not possible because we peeked '('
-                panic!("Should have read parenthesis")
-            }
-            Err((r, err)) => Err((r, err)),
-        }
-    }
-
-    fn continue_after_bare_name_args_dot<T: BufRead + 'static>(
-        r: EolReader<T>,
-        base_expr: Expression,
-    ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        match any_word_without_dot()(r) {
-            Ok((r, Some(bare_property_name))) => continue_after_bare_name_args_dot_bare_name(
-                r,
-                Expression::Property(
-                    Box::new(base_expr),
-                    Name::Bare(bare_property_name),
-                    ExpressionType::Unresolved,
-                ),
-            ),
-            Ok((r, None)) => Err((
-                r,
-                QError::syntax_error("Expected: property name after period"),
-            )),
-            Err((r, err)) => Err((r, err)),
-        }
-    }
-
-    fn continue_after_bare_name_args_dot_bare_name<T: BufRead + 'static>(
-        r: EolReader<T>,
-        base_expr: Expression,
-    ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        match any_symbol()(r) {
-            Ok((r, Some(ch))) => {
-                if ch == '.' {
-                    continue_after_bare_name_args_dot(r, base_expr) // recursion
-                } else if let Ok(q) = TypeQualifier::try_from(ch) {
-                    // e.g. A(1).First$ or A(1).First.Second$
-                    let result = qualify(base_expr, q);
-                    // pre-emptive strike to see if there is a dot or a type qualifier after this
-                    match any_symbol()(r) {
-                        Ok((r, Some(ch))) => {
-                            if ch == '.' || TypeQualifier::try_from(ch).is_ok() {
-                                Err((r, QError::syntax_error("Expected: end of name expr")))
-                            } else {
-                                Ok((r.undo(ch), Some(result)))
-                            }
-                        }
-                        Ok((r, None)) => Ok((r, Some(result))),
-                        Err((r, err)) => Err((r, err)),
-                    }
+        name_with_dot_p()
+            .and_opt(parenthesis_with_zero_or_more_expressions_p())
+            .and_opt(
+                dot_property_name()
+                    .one_or_more()
+                    .and_opt(type_qualifier_p()),
+            )
+            .and_opt(any_p::<R>().peek_reader_item().validate(|x: &char| {
+                if TypeQualifier::try_from(*x).is_ok() || *x == '.' {
+                    Err(QError::syntax_error("Expected: end of name expr"))
                 } else {
-                    Ok((r.undo(ch), Some(base_expr)))
+                    Ok(true)
                 }
-            }
-            Ok((r, None)) => Ok((r, Some(base_expr))),
-            Err((r, err)) => Err((r, err)),
-        }
-    }
-
-    fn continue_after_qualified_name<T: BufRead + 'static>(
-        r: EolReader<T>,
-        base_expr: Expression,
-    ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        // might be A$ followed by '(' (if '.' or type qualifier again it is an error)
-        match any_symbol()(r) {
-            Ok((r, Some(ch))) => {
-                if ch == '(' {
-                    // we might be after A$, A.$, A.B$, etc
-                    // we need to fold the base_expr as properties cannot have arrays
-                    continue_after_qualified_name_parenthesis(r.undo(ch), fold_expr(base_expr))
-                } else if let Ok(_) = TypeQualifier::try_from(ch) {
-                    Err((r, QError::syntax_error("Expected: end of name expr")))
-                } else if ch == '.' {
-                    Err((r, QError::syntax_error("Expected: end of name expr")))
-                } else {
-                    // something else
-                    Ok((r.undo(ch), Some(base_expr)))
-                }
-            }
-            Ok((r, None)) => Ok((r, Some(base_expr))),
-            Err((r, err)) => Err((r, err)),
-        }
-    }
-
-    fn continue_after_qualified_name_parenthesis<T: BufRead + 'static>(
-        r: EolReader<T>,
-        base_expr: Expression,
-    ) -> ReaderResult<EolReader<T>, Expression, QError> {
-        match in_parenthesis(csv_zero_or_more(lazy(expression_node)))(r) {
-            Ok((r, Some(args))) => match any_symbol()(r) {
-                Ok((r, Some(ch))) => {
-                    if ch == '.' || TypeQualifier::try_from(ch).is_ok() {
-                        Err((r, QError::syntax_error("Expected: end of name expression")))
-                    } else {
-                        Ok((
-                            r.undo(ch),
-                            Some(Expression::FunctionCall(get_expr_name(base_expr), args)),
-                        ))
+            }))
+            .keep_left()
+            .and_then(|((name, opt_args), opt_properties)| {
+                if opt_args.is_none() && opt_properties.is_none() {
+                    // it only makes sense to try to break down a name into properties
+                    // when there are no parenthesis and additional properties
+                    let (mut name_props, opt_q) = name_to_properties(name.clone());
+                    if name_props.len() == 1 {
+                        return Ok(Expression::Variable(name, ExpressionType::Unresolved));
                     }
+                    let mut base_expr = Expression::Variable(
+                        Name::Bare(name_props.remove(0).into()),
+                        ExpressionType::Unresolved,
+                    );
+                    while name_props.len() > 1 {
+                        let name_prop = name_props.remove(0);
+                        base_expr = Expression::Property(
+                            Box::new(base_expr),
+                            Name::Bare(name_prop.into()),
+                            ExpressionType::Unresolved,
+                        );
+                    }
+                    base_expr = Expression::Property(
+                        Box::new(base_expr),
+                        Name::new(name_props.remove(0).into(), opt_q),
+                        ExpressionType::Unresolved,
+                    );
+                    return Ok(base_expr);
                 }
-                Ok((r, None)) => Ok((
-                    r,
-                    Some(Expression::FunctionCall(get_expr_name(base_expr), args)),
-                )),
-                Err((r, err)) => Err((r, err)),
-            },
-            Ok((_r, None)) => {
-                // not possible because we peeked '('
-                panic!("Should have read parenthesis")
-            }
-            Err((r, err)) => Err((r, err)),
-        }
+
+                if !name.is_bare() && opt_properties.is_some() {
+                    return Err(QError::syntax_error(
+                        "Qualified name cannot have properties",
+                    ));
+                }
+
+                let mut base_expr = if let Some(args) = opt_args {
+                    Expression::FunctionCall(name, args)
+                } else {
+                    Expression::Variable(name, ExpressionType::Unresolved)
+                };
+                if let Some((mut properties, opt_q)) = opt_properties {
+                    // take all but last
+                    while properties.len() > 1 {
+                        base_expr = Expression::Property(
+                            Box::new(base_expr),
+                            Name::Bare(properties.remove(0).into()),
+                            ExpressionType::Unresolved,
+                        );
+                    }
+
+                    // take last (no need to check for bounds, because it was built with `one_or_more`)
+                    base_expr = Expression::Property(
+                        Box::new(base_expr),
+                        Name::new(properties.remove(0).into(), opt_q),
+                        ExpressionType::Unresolved,
+                    );
+
+                    Ok(base_expr)
+                } else {
+                    Ok(base_expr)
+                }
+            })
     }
 
-    fn ensure_identifier_max_length(expr: &Expression) -> bool {
-        match expr {
-            Expression::Variable(name, _) | Expression::FunctionCall(name, _) => {
-                name_length(name) <= MAX_LENGTH
+    /// Breakdown a name with dots into properties.
+    /// If the name has continuous or trailing dots, it is returned as-is.
+    fn name_to_properties(name: Name) -> (Vec<String>, Option<TypeQualifier>) {
+        let (bare_name, opt_q) = name.into_inner();
+        let raw_name: String = bare_name.into();
+        let raw_name_copy = raw_name.clone();
+        let split = raw_name_copy.split('.');
+        let mut parts: Vec<String> = vec![];
+        for part in split {
+            if part.is_empty() {
+                // abort
+                parts.clear();
+                parts.push(raw_name);
+                break;
+            } else {
+                parts.push(part.to_owned());
             }
-            Expression::Property(left_side, property_name, _) => {
-                ensure_identifier_max_length(left_side)
-                    && name_length(property_name) <= MAX_LENGTH
-                    && folded_property_length(expr).unwrap_or_default() <= MAX_LENGTH
-            }
-            _ => true,
         }
+        (parts, opt_q)
     }
 
-    fn name_length(name: &Name) -> usize {
-        match name {
-            Name::Bare(bare_name) | Name::Qualified(QualifiedName { bare_name, .. }) => {
-                bare_name.len()
-            }
-        }
+    fn parenthesis_with_zero_or_more_expressions_p<R>() -> impl Parser<R, Output = ExpressionNodes>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        in_parenthesis_p(lazy_expression_node_p().csv().map_none_to_default())
     }
 
-    fn folded_property_length(expr: &Expression) -> Option<usize> {
-        match expr {
-            Expression::Property(left_side, property_name, _) => {
-                folded_property_length(left_side).map(|l| l + 1 + name_length(property_name))
-            }
-            Expression::Variable(name, _) => Some(name_length(name)),
-            _ => None,
-        }
+    fn dot_property_name<R>() -> impl Parser<R, Output = String>
+    where
+        R: Reader<Item = char, Err = QError> + 'static,
+    {
+        item_p('.')
+            .and_demand(
+                identifier_without_dot_p().or_syntax_error("Expected: property name after period"),
+            )
+            .keep_right()
     }
 
     #[cfg(test)]
     mod tests {
-        use super::*;
+        use crate::parser::char_reader::EolReader;
         use crate::parser::test_utils::ExpressionNodeLiteralFactory;
+
+        use super::*;
 
         mod unqualified {
             use super::*;
@@ -762,8 +507,8 @@ pub mod word {
                 fn test_any_word_without_dot() {
                     let input = "abc";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
 
@@ -771,8 +516,8 @@ pub mod word {
                 fn test_array_or_function_no_dot_no_qualifier() {
                     let input = "A(1)";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)]))
@@ -787,8 +532,8 @@ pub mod word {
                 fn test_trailing_dot() {
                     let input = "abc.";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
 
@@ -796,8 +541,8 @@ pub mod word {
                 fn test_two_consecutive_trailing_dots() {
                     let input = "abc..";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
 
@@ -805,8 +550,8 @@ pub mod word {
                 fn test_possible_property() {
                     let input = "a.b.c";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::Property(
@@ -825,8 +570,8 @@ pub mod word {
                 fn test_possible_variable() {
                     let input = "a.b.c.";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var("a.b.c.")));
                 }
 
@@ -834,8 +579,8 @@ pub mod word {
                 fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
                     let input = "A(1).O..ops";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    let mut parser = word_p();
+                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
                         QError::syntax_error("Expected: property name after period")
@@ -846,8 +591,8 @@ pub mod word {
                 fn test_bare_array_bare_property() {
                     let input = "A(1).Suit";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::Property(
@@ -870,8 +615,8 @@ pub mod word {
                 fn test_qualified_var_without_dot() {
                     let input = "abc$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
 
@@ -879,8 +624,8 @@ pub mod word {
                 fn test_duplicate_qualifier_is_error() {
                     let input = "abc$%";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    let mut parser = word_p();
+                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }
 
@@ -888,8 +633,8 @@ pub mod word {
                 fn test_array_or_function_no_dot_qualified() {
                     let input = "A$(1)";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::func("A$".into(), vec![1.as_lit_expr(1, 4)]))
@@ -904,8 +649,8 @@ pub mod word {
                 fn test_possible_qualified_property() {
                     let input = "a.b$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::Property(
@@ -920,8 +665,8 @@ pub mod word {
                 fn test_possible_qualified_property_reverts_to_array() {
                     let input = "a.b$(1)";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::func("a.b$".into(), vec![1.as_lit_expr(1, 6)]))
@@ -932,8 +677,8 @@ pub mod word {
                 fn test_qualified_var_with_dot() {
                     let input = "abc.$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
 
@@ -941,8 +686,8 @@ pub mod word {
                 fn test_qualified_var_with_two_dots() {
                     let input = "abc..$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var(input)));
                 }
 
@@ -950,17 +695,20 @@ pub mod word {
                 fn test_dot_after_qualifier_is_error() {
                     let input = "abc$.";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
-                    assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
+                    let mut parser = word_p();
+                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
+                    assert_eq!(
+                        err,
+                        QError::syntax_error("Expected: property name after period")
+                    );
                 }
 
                 #[test]
                 fn test_array_or_function_dotted_qualified() {
                     let input = "A.B$(1)";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::func("A.B$".into(), vec![1.as_lit_expr(1, 6)]))
@@ -971,11 +719,11 @@ pub mod word {
                 fn test_qualified_array_cannot_have_properties() {
                     let input = "A$(1).Oops";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    let mut parser = word_p();
+                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
-                        QError::syntax_error("Expected: end of name expression")
+                        QError::syntax_error("Qualified name cannot have properties")
                     );
                 }
 
@@ -983,8 +731,8 @@ pub mod word {
                 fn test_bare_array_qualified_property() {
                     let input = "A(1).Suit$";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, result) = parser(eol_reader).expect("Should parse");
+                    let mut parser = word_p();
+                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::Property(
@@ -999,8 +747,8 @@ pub mod word {
                 fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
                     let input = "A(1).Suit$.";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    let mut parser = word_p();
+                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }
 
@@ -1008,8 +756,8 @@ pub mod word {
                 fn test_bare_array_qualified_property_extra_qualifier_is_error() {
                     let input = "A(1).Suit$%";
                     let eol_reader = EolReader::from(input);
-                    let parser = word();
-                    let (_, err) = parser(eol_reader).expect_err("Should not parse");
+                    let mut parser = word_p();
+                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }
             }
@@ -1017,96 +765,97 @@ pub mod word {
     }
 }
 
-pub fn operator<T: BufRead + 'static>(
+fn operator_p<R>(had_parenthesis_before: bool) -> impl Parser<R, Output = Locatable<Operator>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    relational_operator_p()
+        .preceded_by_opt_ws()
+        .or(arithmetic_op_p().with_pos().preceded_by_opt_ws())
+        .or(and_or_p(
+            had_parenthesis_before,
+            Keyword::And,
+            Operator::And,
+        ))
+        .or(and_or_p(had_parenthesis_before, Keyword::Or, Operator::Or))
+}
+
+fn and_or_p<R>(
     had_parenthesis_before: bool,
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operator>, QError>> {
-    or_vec(vec![
-        crate::parser::pc::ws::zero_or_more_leading(relational_operator()),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('+'))),
-            |x| x.map(|_| Operator::Plus),
-        ),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('-'))),
-            |x| x.map(|_| Operator::Minus),
-        ),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('*'))),
-            |x| x.map(|_| Operator::Multiply),
-        ),
-        map(
-            crate::parser::pc::ws::zero_or_more_leading(with_pos(read('/'))),
-            |x| x.map(|_| Operator::Divide),
-        ),
-        if had_parenthesis_before {
-            // skip whitespace + AND
-            map(
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(keyword(Keyword::And))),
-                |x| x.map(|_| Operator::And),
-            )
-        } else {
-            // demand whitespace + AND
-            map(
-                crate::parser::pc::ws::one_or_more_leading(with_pos(keyword(Keyword::And))),
-                |locatable| locatable.map(|_| Operator::And),
-            )
-        },
-        if had_parenthesis_before {
-            // skip whitespace + OR
-            map(
-                crate::parser::pc::ws::zero_or_more_leading(with_pos(keyword(Keyword::Or))),
-                |x| x.map(|_| Operator::Or),
-            )
-        } else {
-            // demand whitespace + OR
-            map(
-                crate::parser::pc::ws::one_or_more_leading(with_pos(keyword(Keyword::Or))),
-                |locatable| locatable.map(|_| Operator::Or),
-            )
-        },
-    ])
+    keyword: Keyword,
+    operator: Operator,
+) -> impl Parser<R, Output = Locatable<Operator>>
+where
+    R: Reader<Item = char> + HasLocation + 'static,
+{
+    opt_whitespace_p(!had_parenthesis_before)
+        .and(keyword_p(keyword).map(move |_| operator).with_pos())
+        .keep_right()
 }
 
-pub fn lte<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operator, QError>> {
-    and_then(
-        opt_seq2(read('<'), read_if(|ch| ch == '=' || ch == '>')),
-        |(_, opt_r)| match opt_r {
-            Some('=') => Ok(Operator::LessOrEqual),
-            Some('>') => Ok(Operator::NotEqual),
-            None => Ok(Operator::Less),
-            Some(ch) => Err(QError::SyntaxError(format!(
-                "Invalid character {} after <",
-                ch
-            ))),
-        },
-    )
-}
-
-pub fn gte<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operator, QError>> {
-    map(opt_seq2(read('>'), read('=')), |(_, opt_r)| match opt_r {
-        Some(_) => Operator::GreaterOrEqual,
-        _ => Operator::Greater,
+fn arithmetic_op_p<R>() -> impl Parser<R, Output = Operator>
+where
+    R: Reader<Item = char>,
+{
+    if_p(|ch| ch == '+' || ch == '-' || ch == '*' || ch == '/').map(|ch| match ch {
+        '+' => Operator::Plus,
+        '-' => Operator::Minus,
+        '*' => Operator::Multiply,
+        '/' => Operator::Divide,
+        _ => panic!("Parser should not have parsed this"),
     })
 }
 
-pub fn eq<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Operator, QError>> {
-    map(read('='), |_| Operator::Equal)
+fn lte_p<R>() -> impl Parser<R, Output = Operator>
+where
+    R: Reader<Item = char> + 'static,
+{
+    item_p('<')
+        .and_opt(if_p(|ch| ch == '=' || ch == '>'))
+        .map(|(_, opt_r)| match opt_r {
+            Some('=') => Operator::LessOrEqual,
+            Some('>') => Operator::NotEqual,
+            None => Operator::Less,
+            _ => panic!("Parser should not have parsed this"),
+        })
 }
 
-pub fn relational_operator<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Locatable<Operator>, QError>> {
-    with_pos(or_vec(vec![lte(), gte(), eq()]))
+fn gte_p<R>() -> impl Parser<R, Output = Operator>
+where
+    R: Reader<Item = char> + 'static,
+{
+    item_p('>')
+        .and_opt(item_p('='))
+        .map(|(_, opt_r)| match opt_r {
+            Some(_) => Operator::GreaterOrEqual,
+            None => Operator::Greater,
+        })
 }
+
+fn eq_p<R>() -> impl Parser<R, Output = Operator>
+where
+    R: Reader<Item = char>,
+{
+    item_p('=').map(|_| Operator::Equal)
+}
+
+pub fn relational_operator_p<R>() -> impl Parser<R, Output = Locatable<Operator>>
+where
+    R: Reader<Item = char> + HasLocation + 'static,
+{
+    lte_p().or(gte_p()).or(eq_p()).with_pos()
+}
+
+// Parses one or more digits.
+crate::char_sequence_p!(Digits, digits_p, is_digit);
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{Expression, ExpressionType, Operator, Statement, UnaryOperator};
     use crate::{assert_expression, assert_literal_expression, assert_sub_call};
+
+    use super::super::test_utils::*;
 
     #[test]
     fn test_parse_literals() {

@@ -1,82 +1,53 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::declaration;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
+use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p};
 use crate::parser::statements;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    or(function_implementation(), sub_implementation())
+pub fn implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    function_implementation_p().or(sub_implementation_p())
 }
 
-pub fn function_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    map(
-        seq5(
-            declaration::function_declaration(),
-            statements::statements(
-                keyword(Keyword::End),
-                QError::syntax_error_fn("Expected: end-of-statement"),
-            ),
-            demand(
-                keyword(Keyword::End),
-                QError::syntax_error_fn("Expected: END FUNCTION"),
-            ),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after END"),
-            ),
-            demand(
-                keyword(Keyword::Function),
-                QError::syntax_error_fn("Expected: FUNCTION after END"),
-            ),
-        ),
-        |((name, params), body, _, _, _)| {
+fn function_implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    declaration::function_declaration_p()
+        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+            Keyword::End,
+        )))
+        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Function))
+        .map(|(((name, params), body), _)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation { name, params, body })
-        },
-    )
+        })
 }
 
-pub fn sub_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    map(
-        seq5(
-            declaration::sub_declaration(),
-            statements::statements(
-                keyword(Keyword::End),
-                QError::syntax_error_fn("Expected: end-of-statement"),
-            ),
-            demand(
-                keyword(Keyword::End),
-                QError::syntax_error_fn("Expected: END SUB"),
-            ),
-            demand(
-                crate::parser::pc::ws::one_or_more(),
-                QError::syntax_error_fn("Expected: whitespace after END"),
-            ),
-            demand(
-                keyword(Keyword::Sub),
-                QError::syntax_error_fn("Expected: SUB after END"),
-            ),
-        ),
-        |((name, params), body, _, _, _)| {
+fn sub_implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    declaration::sub_declaration_p()
+        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+            Keyword::End,
+        )))
+        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Sub))
+        .map(|(((name, params), body), _)| {
             TopLevelToken::SubImplementation(SubImplementation { name, params, body })
-        },
-    )
+        })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::parser::test_utils::*;
+
+    use super::*;
 
     #[test]
     fn test_function_implementation() {

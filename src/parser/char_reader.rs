@@ -1,8 +1,9 @@
-use crate::common::{HasLocation, Location, QError};
-use crate::parser::pc::*;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
+
+use crate::common::{HasLocation, Location, QError};
+use crate::parser::pc::{Reader, ReaderResult};
 
 /// Reads one character at a time out of a `BufRead`.
 ///
@@ -169,7 +170,7 @@ impl<T: BufRead> EolReader<T> {
     }
 }
 
-impl<T: BufRead + 'static> Reader for EolReader<T> {
+impl<T: BufRead> Reader for EolReader<T> {
     type Item = char;
     type Err = QError;
 

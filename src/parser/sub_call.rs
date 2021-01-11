@@ -1,95 +1,97 @@
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::expression;
-use crate::parser::pc::common::{drop_left, many, seq2};
-use crate::parser::pc::map::map;
 use crate::parser::pc::*;
 use crate::parser::types::*;
-use std::io::BufRead;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
 // SubCallNoArgs            ::= BareName [eof | eol | ' | <ws+>: ]
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
-pub fn sub_call_or_assignment<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    Box::new(move |r| {
-        match expression::word::word()(r) {
-            Ok((r, Some(name_expr))) => {
-                // is there an equal sign following?
-                match ws::zero_or_more_around(read('='))(r) {
-                    Ok((r, Some(_))) => assignment(r, name_expr),
-                    Ok((r, None)) => sub_call(r, name_expr),
-                    Err((r, err)) => Err((r, err)),
-                }
-            }
-            Ok((r, None)) => Ok((r, None)),
-            Err((r, err)) => Err((r, err)),
-        }
-    })
+
+pub fn sub_call_or_assignment_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    SubCallOrAssignment {}
 }
 
-fn assignment<T: BufRead + 'static>(
-    r: EolReader<T>,
-    name_expr: Expression,
-) -> ReaderResult<EolReader<T>, Statement, QError> {
-    match expression::demand_expression_node()(r) {
-        Ok((r, Some(right_expr_node))) => {
-            Ok((r, Some(Statement::Assignment(name_expr, right_expr_node))))
+pub struct SubCallOrAssignment {}
+
+impl<R> Parser<R> for SubCallOrAssignment
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    type Output = Statement;
+
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_item) = Self::name_and_opt_eq_sign().parse(reader)?;
+        match opt_item {
+            Some((name_expr, opt_equal_sign)) => match opt_equal_sign {
+                Some(_) => {
+                    let (reader, opt_v) =
+                        expression::demand_expression_node_p("Expected: expression for assignment")
+                            .parse(reader)?;
+                    Ok((
+                        reader,
+                        Some(Statement::Assignment(name_expr, opt_v.unwrap())),
+                    ))
+                }
+                _ => match expr_to_bare_name_args(name_expr) {
+                    Ok((bare_name, Some(args))) => {
+                        Ok((reader, Some(Statement::SubCall(bare_name, args))))
+                    }
+                    Ok((bare_name, None)) => {
+                        let (reader, args) = sub_call_args_after_space_p().parse(reader)?;
+                        Ok((
+                            reader,
+                            Some(Statement::SubCall(bare_name, args.unwrap_or_default())),
+                        ))
+                    }
+                    Err(err) => Err((reader, err)),
+                },
+            },
+            _ => Ok((reader, None)),
         }
-        Ok((_r, None)) => panic!("Got None from demand_expression_node, should not happen"),
-        Err((r, err)) => Err((r, err)),
     }
 }
 
-fn sub_call<T: BufRead + 'static>(
-    r: EolReader<T>,
+impl SubCallOrAssignment {
+    fn name_and_opt_eq_sign<R>() -> impl Parser<R, Output = (Expression, Option<char>)>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
+    }
+}
+
+/// Converts a name expression into a sub bare name and optionally sub arguments.
+/// Sub arguments are only present for `Expression:FunctionCall` (i.e. when
+/// the sub already has parenthesis). For other cases arguments are resolved later.
+fn expr_to_bare_name_args(
     name_expr: Expression,
-) -> ReaderResult<EolReader<T>, Statement, QError> {
+) -> Result<(BareName, Option<ExpressionNodes>), QError> {
     match name_expr {
-        // A(1, 2) or A$(1, 2)
+        // A(1,2) or A$(1,2)
         Expression::FunctionCall(name, args) => {
-            match name {
-                Name::Bare(bare_name) => {
-                    // this one is easy, convert it to a sub
-                    Ok((r, Some(Statement::SubCall(bare_name, args))))
-                }
-                _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
-            }
+            // this one is easy, convert it to a sub
+            demand_unqualified(name).map(|bare_name| (bare_name, Some(args)))
         }
+        // A or A$ (might have arguments after space)
         Expression::Variable(name, _) => {
-            // A or A$ (might have arguments after space)
-            match name {
-                Name::Bare(bare_name) => {
-                    // are there any args after the space?
-                    match sub_call_args_after_space()(r) {
-                        Ok((r, opt_args)) => Ok((
-                            r,
-                            Some(Statement::SubCall(bare_name, opt_args.unwrap_or_default())),
-                        )),
-                        Err((r, err)) => Err((r, err)),
-                    }
-                }
-                _ => Err((r, QError::syntax_error("Sub cannot be qualified"))),
-            }
+            demand_unqualified(name).map(|bare_name| (bare_name, None))
         }
+        // only possible if A.B is a sub, if left_name_expr contains a Function, abort
         Expression::Property(_, _, _) => {
-            // only possible if A.B is a sub, if left_name_expr contains a Function, abort
-            match fold_to_bare_name(name_expr) {
-                Ok(bare_name) => {
-                    // are there any args after the space?
-                    match sub_call_args_after_space()(r) {
-                        Ok((r, opt_args)) => Ok((
-                            r,
-                            Some(Statement::SubCall(bare_name, opt_args.unwrap_or_default())),
-                        )),
-                        Err((r, err)) => Err((r, err)),
-                    }
-                }
-                Err(err) => Err((r, err)),
-            }
+            fold_to_bare_name(name_expr).map(|bare_name| (bare_name, None))
         }
         _ => panic!("Unexpected name expression"),
+    }
+}
+
+fn demand_unqualified(name: Name) -> Result<BareName, QError> {
+    match name {
+        Name::Bare(bare_name) => Ok(bare_name),
+        _ => Err(QError::syntax_error("Sub cannot be qualified")),
     }
 }
 
@@ -104,35 +106,37 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
     }
 }
 
-fn sub_call_args_after_space<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ExpressionNodes, QError>> {
-    map(
-        seq2(
-            // first expression after sub name
-            expression::guarded_expression_node(),
-            many(drop_left(seq2(
-                // read comma after previous expression
-                ws::zero_or_more_around(read(',')),
-                // must have expression after comma
-                expression::demand_expression_node(),
-            ))),
-        ),
-        |(first_expr, mut remaining_expr)| {
-            remaining_expr.insert(0, first_expr);
-            remaining_expr
-        },
-    )
+// guarded-expression [ , expression ] *
+fn sub_call_args_after_space_p<R>() -> impl Parser<R, Output = ExpressionNodes>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    expression::guarded_expression_node_p()
+        .and_demand(
+            item_p(',')
+                .surrounded_by_opt_ws()
+                .and_demand(expression::demand_expression_node_p(
+                    "Expected: expression after comma",
+                ))
+                .keep_right()
+                .zero_or_more(),
+        )
+        .map(|(first, mut remaining)| {
+            remaining.insert(0, first);
+            remaining
+        })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::assert_sub_call;
     use crate::common::*;
     use crate::parser::{
         BuiltInStyle, Expression, ExpressionType, Operator, ParamName, ParamType, PrintArg,
         PrintNode, Statement, SubImplementation, TopLevelToken, TypeQualifier,
     };
+
+    use super::super::test_utils::*;
 
     #[test]
     fn test_parse_sub_call_no_args() {

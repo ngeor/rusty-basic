@@ -1,126 +1,79 @@
-// top level token ::=
-//      comment |
-//      def type |
-//      declaration |
-//      statement |
-//      function implementation |
-//      sub implementation |
-//      user defined type definition |
-//      whitespace - empty line
+use std::marker::PhantomData;
 
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::with_pos;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
-use std::io::BufRead;
 
-pub fn top_level_tokens<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, ProgramNode, QError>> {
-    Box::new(move |r| {
+pub struct TopLevelTokensParser<R>(PhantomData<R>);
+
+impl<R> TopLevelTokensParser<R> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<R> Parser<R> for TopLevelTokensParser<R>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    type Output = ProgramNode;
+
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
-        let mut reader = r;
+        let mut r = reader;
         loop {
-            match reader.read() {
-                Ok((tmp, opt_res)) => {
-                    reader = tmp;
-                    match opt_res {
-                        Some(' ') => {
-                            // skip whitespace
+            let (tmp, opt_item) = r.read()?;
+            r = tmp;
+            match opt_item {
+                Some(ch) => {
+                    if ch == ' ' {
+                        // skip whitespace
+                    } else if ch == '\r' || ch == '\n' || ch == ':' {
+                        read_separator = true;
+                    } else {
+                        // if it is a comment, we are allowed to read it without a separator
+                        let can_read = ch == '\'' || read_separator;
+                        if !can_read {
+                            return Err((r, QError::SyntaxError(format!("No separator: {}", ch))));
                         }
-                        Some('\r') | Some('\n') | Some(':') => {
-                            read_separator = true;
-                        }
-                        Some(ch) => {
-                            // if it is a comment, we are allowed to read it without a separator
-                            let can_read = ch == '\'' || read_separator;
-                            if can_read {
-                                match top_level_token_one()(reader.undo(ch)) {
-                                    Ok((tmp, opt_res)) => {
-                                        reader = tmp;
-                                        read_separator = false;
-                                        match opt_res {
-                                            Some(top_level_token) => {
-                                                top_level_tokens.push(top_level_token);
-                                            }
-                                            None => {
-                                                return Err((
-                                                    reader,
-                                                    QError::SyntaxError(format!(
-                                                        "Expected: top level statement"
-                                                    )),
-                                                ));
-                                            }
-                                        }
-                                    }
-                                    Err(err) => {
-                                        return Err(err);
-                                    }
-                                }
-                            } else {
-                                return Err((
-                                    reader,
-                                    QError::SyntaxError(format!("No separator: {}", ch)),
-                                ));
+                        let (tmp, opt_top_level_token) =
+                            top_level_token_one_p().parse(r.undo_item(ch))?;
+                        r = tmp;
+                        match opt_top_level_token {
+                            Some(top_level_token) => {
+                                top_level_tokens.push(top_level_token);
+                                read_separator = false;
                             }
-                        }
-                        None => {
-                            break;
+                            _ => {
+                                return Err((r, QError::syntax_error("Expected: top level token")));
+                            }
                         }
                     }
                 }
-                Err(err) => {
-                    return Err(err);
+                _ => {
+                    break;
                 }
             }
         }
-
-        Ok((reader, Some(top_level_tokens)))
-    })
+        Ok((r, Some(top_level_tokens)))
+    }
 }
 
-pub fn top_level_token_one<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelTokenNode, QError>> {
-    with_pos(or_vec(vec![
-        top_level_token_def_type(),
-        top_level_token_declaration(),
-        top_level_token_implementation(),
-        top_level_token_statement(),
-        top_level_token_user_defined_type(),
-    ]))
-}
-
-fn top_level_token_def_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    map(def_type::def_type(), |d| TopLevelToken::DefType(d))
-}
-
-fn top_level_token_declaration<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    declaration::declaration()
-}
-
-fn top_level_token_implementation<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    implementation::implementation()
-}
-
-fn top_level_token_statement<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    map(statement::statement(), |s| TopLevelToken::Statement(s))
-}
-
-fn top_level_token_user_defined_type<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, TopLevelToken, QError>> {
-    map(user_defined_type::user_defined_type(), |u| {
-        TopLevelToken::UserDefinedType(u)
-    })
+fn top_level_token_one_p<R>() -> impl Parser<R, Output = TopLevelTokenNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    def_type::def_type_p()
+        .map(TopLevelToken::DefType)
+        .or(declaration::declaration_p())
+        .or(implementation::implementation_p())
+        .or(statement::statement_p().map(TopLevelToken::Statement))
+        .or(user_defined_type::user_defined_type_p().map(TopLevelToken::UserDefinedType))
+        .with_pos()
 }

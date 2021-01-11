@@ -1,28 +1,12 @@
-use crate::common::QError;
-use crate::common::{AtLocation, CaseInsensitiveString, ErrorEnvelope, HasLocation, Locatable};
-use crate::parser::pc::common::{
-    and, demand, drop_left, many_with_terminating_indicator, map_default_to_not_found, negate,
-    opt_seq2, seq3,
-};
-use crate::parser::pc::map::map;
-use crate::parser::pc::str::{
-    one_or_more_if, str_case_insensitive, zero_or_more_if_leading_remaining,
-};
-/// Parser combinators specific to this parser (e.g. for keywords)
-use crate::parser::pc::{read, read_if, Reader, ReaderResult, Undo};
-use crate::parser::types::{Keyword, Name, QualifiedName, TypeQualifier};
-use std::convert::TryInto;
+/// Parser combinators specific to this project (e.g. for keywords)
+use crate::common::*;
+use crate::parser::pc::*;
+use crate::parser::types::*;
+use std::marker::PhantomData;
 
 // ========================================================
 // Undo support
 // ========================================================
-
-impl<R: Reader<Item = char>> Undo<TypeQualifier> for R {
-    fn undo(self, s: TypeQualifier) -> Self {
-        let ch: char = s.try_into().unwrap();
-        self.undo_item(ch)
-    }
-}
 
 impl<R: Reader<Item = char>> Undo<CaseInsensitiveString> for R {
     fn undo(self, s: CaseInsensitiveString) -> Self {
@@ -53,200 +37,214 @@ impl<R: Reader<Item = char>> Undo<(Keyword, String)> for R {
 }
 
 // ========================================================
-// when Reader + HasLocation
-// ========================================================
-
-/// Creates a function that maps the result of the source into a locatable result,
-/// using the position of the reader just before invoking the source.
-pub fn with_pos<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Locatable<T>, E>>
-where
-    R: Reader<Err = E> + HasLocation + 'static,
-    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-{
-    Box::new(move |reader| {
-        // capture pos before invoking source
-        let pos = reader.pos();
-        source(reader).and_then(|(reader, ok_res)| Ok((reader, ok_res.map(|x| x.at(pos)))))
-    })
-}
-
-// ========================================================
-// Error location
-// ========================================================
-
-pub fn with_err_at<R, S, T, E>(
-    source: S,
-) -> Box<dyn Fn(R) -> Result<(R, Option<T>), ErrorEnvelope<E>>>
-where
-    R: Reader<Err = E> + HasLocation + 'static,
-    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-{
-    Box::new(move |reader| {
-        let result = source(reader);
-        match result {
-            Ok(x) => Ok(x),
-            Err((reader, err)) => {
-                // capture pos after invoking source
-                let pos = reader.pos();
-                Err(ErrorEnvelope::Pos(err, pos))
-            }
-        }
-    })
-}
-
-// ========================================================
 // Miscellaneous
 // ========================================================
 
-fn is_digit(ch: char) -> bool {
-    ch >= '0' && ch <= '9'
+// Reads any identifier. Note that the result might be a keyword.
+// An identifier must start with a letter and consists of letters, numbers and the dot.
+crate::char_sequence_p!(
+    IdentifierWithDot,
+    identifier_with_dot,
+    is_letter,
+    is_letter_or_digit_or_dot
+);
+
+fn is_letter_or_digit_or_dot(ch: char) -> bool {
+    is_letter(ch) || is_digit(ch) || ch == '.'
 }
 
-fn is_letter(ch: char) -> bool {
-    (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
-}
+// Parses an identifier that does not include a dot.
+// This might be a keyword.
+crate::char_sequence_p!(
+    IdentifierWithoutDot,
+    identifier_without_dot_p,
+    is_letter,
+    is_letter_or_digit
+);
 
-fn is_non_leading_identifier_without_dot(ch: char) -> bool {
+fn is_letter_or_digit(ch: char) -> bool {
     is_letter(ch) || is_digit(ch)
 }
 
-fn is_non_leading_identifier_with_dot(ch: char) -> bool {
-    is_non_leading_identifier_without_dot(ch) || (ch == '.')
-}
-
-fn is_symbol(ch: char) -> bool {
-    (ch > ' ' && ch < '0')
-        || (ch > '9' && ch < 'A')
-        || (ch > 'Z' && ch < 'a')
-        || (ch > 'z' && ch <= '~')
-}
-
-pub fn any_symbol<R, E>() -> impl Fn(R) -> ReaderResult<R, char, E>
+/// Recognizes the given keyword.
+pub fn keyword_p<R>(keyword: Keyword) -> impl Parser<R, Output = (Keyword, String)>
 where
-    R: Reader<Item = char, Err = E> + 'static,
+    R: Reader<Item = char>,
 {
-    read_if(is_symbol)
+    string_p(keyword.as_str())
+        .unless_followed_by(if_p(is_not_whole_keyword))
+        .map(move |keyword_as_str| (keyword, keyword_as_str))
 }
 
-pub fn any_letter<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, char, E>>
+fn is_not_whole_keyword(ch: char) -> bool {
+    is_letter(ch) || is_digit(ch) || ch == '.' || ch == '$'
+}
+
+pub fn keyword_pair_p<R>(
+    first: Keyword,
+    second: Keyword,
+) -> impl Parser<R, Output = (Keyword, String, Keyword, String)>
 where
-    R: Reader<Item = char, Err = E> + 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    read_if(is_letter)
+    keyword_p(first)
+        .and_demand(whitespace_p().or_syntax_error(format!("Expected: whitespace after {}", first)))
+        .and_demand(keyword_p(second).or_syntax_error(format!("Expected: {}", second)))
+        .map(|(((first_k, first_s), _), (second_k, second_s))| {
+            (first_k, first_s, second_k, second_s)
+        })
 }
 
-/// Reads any identifier. Note that the result might be a keyword.
-/// An identifier must start with a letter and consists of letters, numbers and the dot.
-pub fn any_identifier_with_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
+pub fn demand_keyword_pair_p<R>(
+    first: Keyword,
+    second: Keyword,
+) -> impl Parser<R, Output = (Keyword, String, Keyword, String)>
 where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    map_default_to_not_found(zero_or_more_if_leading_remaining(
-        is_letter,
-        is_non_leading_identifier_with_dot,
-    ))
+    keyword_pair_p(first, second).or_syntax_error(format!("Expected: {} {}", first, second))
 }
 
-pub fn any_identifier_without_dot<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
+pub fn keyword_choice_p<R>(keywords: &[Keyword]) -> KeywordChoice<R> {
+    KeywordChoice {
+        reader: PhantomData,
+        keywords,
+    }
+}
+
+pub struct KeywordChoice<'a, R> {
+    reader: PhantomData<R>,
+    keywords: &'a [Keyword],
+}
+
+impl<'a, R> Parser<R> for KeywordChoice<'a, R>
 where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
+    R: Reader<Item = char>,
 {
-    map_default_to_not_found(zero_or_more_if_leading_remaining(
-        is_letter,
-        is_non_leading_identifier_without_dot,
-    ))
+    type Output = (Keyword, String);
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        // collect characters we read
+        let mut buf = String::new();
+
+        // candidate keywords and their character representations
+        let mut candidates: Vec<(Keyword, Vec<char>)> = self
+            .keywords
+            .iter()
+            .map(|k| (*k, k.as_str().chars().collect()))
+            .collect();
+
+        // we need a mutable reader as we're on a loop
+        let mut r = reader;
+
+        // the character index of the character we're trying to match currently
+        let mut char_index: usize = 0;
+
+        while !candidates.is_empty() {
+            let (tmp, opt_item) = r.read()?;
+            r = tmp;
+
+            if let Some(ch) = opt_item {
+                buf.push(ch);
+
+                let mut i = 0;
+                while i < candidates.len() {
+                    let (candidate_keyword, candidate_chars) = candidates.get(i).unwrap();
+                    if Self::matches(candidate_chars, char_index, ch) {
+                        // possibly found the entire keyword, check that it is followed by None, or symbol, except dollar sign
+                        if candidate_chars.len() == char_index + 1 {
+                            let (tmp, opt_separator) = r.read()?;
+                            r = tmp.undo(opt_separator); // put it back
+                            if Self::is_keyword_separator(opt_separator) {
+                                // found it
+                                return Ok((r, Some((*candidate_keyword, buf))));
+                            } else {
+                                // candidate may not stay
+                                candidates.remove(i);
+                            }
+                        } else {
+                            // candidate can stay
+                            i += 1;
+                        }
+                    } else {
+                        // remove candidate
+                        candidates.remove(i);
+                    }
+                }
+
+                char_index += 1;
+            } else {
+                // could've just said "break;" here
+                candidates.clear();
+            }
+        }
+
+        r = r.undo(buf);
+        Ok((r, None))
+    }
 }
 
-pub fn keyword<R, E>(needle: Keyword) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
-{
-    map(
-        and(
-            str_case_insensitive(needle.as_str()), // find keyword
-            negate(read_if(is_non_leading_identifier_with_dot)), // ensure it's a whole word
-        ),
-        move |(s, _)| (needle, s),
-    )
+impl<'a, R> KeywordChoice<'a, R> {
+    fn is_keyword_separator(opt_separator: Option<char>) -> bool {
+        match opt_separator {
+            None => true,
+            Some(ch) => !is_not_whole_keyword(ch),
+        }
+    }
+
+    fn matches(candidate_chars: &Vec<char>, idx: usize, ch: char) -> bool {
+        match candidate_chars.get(idx) {
+            Some(x) => x.eq_ignore_ascii_case(&ch),
+            _ => false,
+        }
+    }
 }
 
-pub fn demand_keyword<R>(
-    needle: Keyword,
-) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), QError>>
+/// Parses open and closing parenthesis around the given source.
+/// Additional whitespace is allowed inside the parenthesis.
+/// If the parser returns `None`, the left parenthesis is undone.
+pub fn in_parenthesis_p<R, S>(source: S) -> impl Parser<R, Output = S::Output>
 where
     R: Reader<Item = char, Err = QError> + 'static,
+    S: Parser<R> + 'static,
 {
-    demand(
-        keyword(needle),
-        QError::syntax_error_fn(format!("Expected: {}", needle)),
-    )
+    lparen_opt_ws_p()
+        .and(source)
+        .and_demand(
+            item_p(')')
+                .preceded_by_opt_ws()
+                .or_syntax_error("Expected: closing parenthesis"),
+        )
+        .keep_middle()
 }
 
-pub fn demand_guarded_keyword<R>(
-    needle: Keyword,
-) -> Box<dyn Fn(R) -> ReaderResult<R, (Keyword, String), QError>>
+crate::char_sequence_p!(
+    LParenOptWhitespace,
+    lparen_opt_ws_p,
+    is_left_parenthesis,
+    is_whitespace
+);
+fn is_left_parenthesis(ch: char) -> bool {
+    ch == '('
+}
+
+/// Offers chaining methods for parsers specific to rusty_basic.
+pub trait PcSpecific<R>: Parser<R> + Sized
 where
-    R: Reader<Item = char, Err = QError> + 'static,
+    R: Reader<Item = char, Err = QError>,
 {
-    drop_left(and(
-        demand(
-            crate::parser::pc::ws::one_or_more(),
-            QError::syntax_error_fn(format!("Expected: whitespace before {}", needle)),
-        ),
-        demand_keyword(needle),
-    ))
+    /// Throws a syntax error if this parser returns `None`.
+    fn or_syntax_error<S: AsRef<str>>(self, msg: S) -> OrThrowVal<Self, QError> {
+        OrThrowVal::new(self, QError::syntax_error(msg))
+    }
+
+    /// Parses one or more items provided by the given source, separated by commas.
+    /// Trailing commas are not allowed. Space is allowed around commas.
+    fn csv(self) -> OneOrMoreDelimited<Self, SurroundedByOptWhitespace<Item<R>>, QError> {
+        self.one_or_more_delimited_by(
+            item_p(',').surrounded_by_opt_ws(),
+            QError::syntax_error("Error: trailing comma"),
+        )
+    }
 }
 
-pub fn any_digits<R, E>() -> Box<dyn Fn(R) -> ReaderResult<R, String, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    E: 'static,
-{
-    one_or_more_if(is_digit)
-}
-
-//
-// Modify the result of a parser
-//
-
-//
-// Take multiple items
-//
-
-pub fn csv_zero_or_more<R, S, T, E>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, Vec<T>, E>>
-where
-    R: Reader<Item = char, Err = E> + 'static,
-    S: Fn(R) -> ReaderResult<R, T, E> + 'static,
-    T: 'static,
-    E: 'static,
-{
-    many_with_terminating_indicator(opt_seq2(
-        source,
-        crate::parser::pc::ws::zero_or_more_around(read(',')),
-    ))
-}
-
-/// Parses opening and closing parenthesis around the given source.
-///
-/// Panics if the source returns `Ok(None)`.
-pub fn in_parenthesis<R, S, T>(source: S) -> Box<dyn Fn(R) -> ReaderResult<R, T, QError>>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-    S: Fn(R) -> ReaderResult<R, T, QError> + 'static,
-    T: 'static,
-{
-    map(
-        seq3(
-            read('('),
-            source,
-            demand(
-                read(')'),
-                QError::syntax_error_fn("Expected: closing parenthesis"),
-            ),
-        ),
-        |(_, r, _)| r,
-    )
-}
+impl<R: Reader<Item = char, Err = QError>, T> PcSpecific<R> for T where T: Parser<R> {}

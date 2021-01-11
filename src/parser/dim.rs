@@ -1,27 +1,17 @@
-use crate::common::*;
-use crate::parser::char_reader::*;
-use crate::parser::dim_name;
-use crate::parser::pc::common::*;
-use crate::parser::pc::map::map;
+use crate::common::{HasLocation, QError};
 use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
-use crate::parser::types::*;
-use std::io::BufRead;
+use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::{dim_name, Keyword, Statement};
 
 /// Parses DIM statement
-pub fn dim<T: BufRead + 'static>(
-) -> Box<dyn Fn(EolReader<T>) -> ReaderResult<EolReader<T>, Statement, QError>> {
-    map(
-        crate::parser::pc::ws::seq2(
-            keyword(Keyword::Dim),
-            demand(
-                dim_name::dim_name_node(),
-                QError::syntax_error_fn("Expected: name after DIM"),
-            ),
-            QError::syntax_error_fn("Expected: whitespace after DIM"),
-        ),
-        |(_, r)| Statement::Dim(r),
-    )
+pub fn dim_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Dim)
+        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DIM"))
+        .and_demand(dim_name::dim_name_node_p().or_syntax_error("Expected: name after DIM"))
+        .map(|(_, r)| Statement::Dim(r))
 }
 
 #[cfg(test)]
@@ -242,5 +232,34 @@ mod tests {
                 .at_rc(1, 5)
             )
         );
+    }
+
+    mod keyword_qualified_by_string_is_allowed {
+        use super::*;
+
+        #[test]
+        fn test_can_assign_to_keyword_qualified_by_string() {
+            let input = "DIM DIM$";
+            let program = parse(input).demand_single_statement();
+            assert_eq!(
+                program,
+                Statement::Dim(
+                    DimName::new(
+                        "DIM".into(),
+                        DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                    )
+                    .at_rc(1, 5)
+                )
+            );
+        }
+
+        #[test]
+        fn test_cannot_assign_to_other_cases_of_keyword() {
+            let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
+            for left_side in &left_sides {
+                let input = format!("DIM {}", left_side);
+                assert!(matches!(parse_err(input), QError::SyntaxError(_)));
+            }
+        }
     }
 }

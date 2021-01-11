@@ -73,3 +73,12 @@ pub enum PrintArg {
     Semicolon,
     Expression(ExpressionNode),
 }
+
+impl PrintArg {
+    pub fn is_expression(&self) -> bool {
+        match self {
+            Self::Expression(_) => true,
+            _ => false,
+        }
+    }
+}

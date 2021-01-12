@@ -69,7 +69,7 @@ fn declaration_parameters_p<R>() -> impl Parser<R, Output = ParamNameNodes>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    in_parenthesis_p(param_name_node_p().csv())
+    in_parenthesis_p(param_name_node_p().csv().map_none_to_default())
 }
 
 #[cfg(test)]
@@ -229,6 +229,38 @@ mod tests {
                 })
                 .at_rc(3, 9),
             ]
+        );
+    }
+
+    #[test]
+    fn test_sub_no_args_space_after_sub_name() {
+        let input = r#"
+        DECLARE SUB ScrollUp ()
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![TopLevelToken::SubDeclaration("ScrollUp".as_bare_name(2, 21), vec![]).at_rc(2, 9)]
+        );
+    }
+
+    #[test]
+    fn test_sub_one_arg_space_after_sub_name() {
+        let input = r#"
+        DECLARE SUB LCenter (text$)
+        "#;
+        let program = parse(input);
+        assert_eq!(
+            program,
+            vec![TopLevelToken::SubDeclaration(
+                "LCenter".as_bare_name(2, 21),
+                vec![ParamName::new(
+                    "text".into(),
+                    ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                )
+                .at_rc(2, 30)]
+            )
+            .at_rc(2, 9)]
         );
     }
 }

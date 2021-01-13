@@ -2,15 +2,14 @@ use crate::common::{HasLocation, QError};
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, PcSpecific};
 use crate::parser::types::{Keyword, Statement};
 
 pub fn constant_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Const)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after CONST"))
+    keyword_followed_by_whitespace_p(Keyword::Const)
         .and_demand(
             name::name_with_dot_p()
                 .with_pos()

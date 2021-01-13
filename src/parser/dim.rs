@@ -1,6 +1,6 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, PcSpecific};
 use crate::parser::{dim_name, Keyword, Statement};
 
 /// Parses DIM statement
@@ -8,10 +8,10 @@ pub fn dim_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Dim)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DIM"))
+    keyword_followed_by_whitespace_p(Keyword::Dim)
+        .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(dim_name::dim_name_node_p().or_syntax_error("Expected: name after DIM"))
-        .map(|(_, r)| Statement::Dim(r))
+        .map(|((_, _opt_shared), r)| Statement::Dim(r))
 }
 
 #[cfg(test)]

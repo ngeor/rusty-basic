@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, PcSpecific};
+use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, keyword_pair_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -58,9 +58,7 @@ fn select_case_expr_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Select)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after SELECT"))
-        .and_demand(keyword_p(Keyword::Case).or_syntax_error("Expected: CASE after SELECT"))
+    keyword_pair_p(Keyword::Select, Keyword::Case)
         .and_demand(
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: expression after CASE"),

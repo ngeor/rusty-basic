@@ -8,7 +8,7 @@ use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::name::bare_name_p;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;
@@ -76,8 +76,7 @@ fn statement_go_to_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::GoTo)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after GOTO"))
+    keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_demand(bare_name_p().or_syntax_error("Expected: label"))
         .map(|(_, l)| Statement::GoTo(l))
 }
@@ -86,12 +85,13 @@ fn statement_on_error_go_to_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::On)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ON"))
-        .and_demand(keyword_p(Keyword::Error).or_syntax_error("Expected: ERROR"))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ERROR"))
-        .and_demand(keyword_p(Keyword::GoTo).or_syntax_error("Expected: GOTO"))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after GOTO"))
+    keyword_followed_by_whitespace_p(Keyword::On)
+        .and_demand(
+            keyword_followed_by_whitespace_p(Keyword::Error).or_syntax_error("Expected: ERROR"),
+        )
+        .and_demand(
+            keyword_followed_by_whitespace_p(Keyword::GoTo).or_syntax_error("Expected: GOTO"),
+        )
         .and_demand(name::bare_name_p().or_syntax_error("Expected: label"))
         .map(|(_, l)| Statement::ErrorHandler(l))
 }

@@ -76,6 +76,70 @@ where
         .map(move |keyword_as_str| (keyword, keyword_as_str))
 }
 
+/// Recognizes the given keyword, followed by whitespace.
+///
+/// This is an optimization over `keyword_p`, which checks if the keyword is a whole word,
+/// but then undoes the whitespace.
+pub fn keyword_followed_by_whitespace_p<R>(
+    keyword: Keyword,
+) -> impl Parser<R, Output = (Keyword, String)>
+where
+    R: Reader<Item = char, Err = QError> + 'static,
+{
+    string_p(keyword.as_str())
+        .and(SpaceAfterKeyword(PhantomData, keyword))
+        .map(move |(keyword_as_str, _)| (keyword, keyword_as_str))
+}
+
+pub struct SpaceAfterKeyword<R>(PhantomData<R>, Keyword);
+
+impl<R> Parser<R> for SpaceAfterKeyword<R>
+where
+    R: Reader<Item = char, Err = QError>,
+{
+    type Output = String;
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        // read first character
+        let (reader, opt_ch) = reader.read()?;
+        // if $, rollback everything
+        // if ' ', ok
+        // if None or sth else, error
+        match opt_ch {
+            Some(ch) => {
+                if ch == ' ' {
+                    // ok, continue reading while whitespace
+                    let mut buf = String::new();
+                    buf.push(' ');
+                    let mut r = reader;
+                    loop {
+                        let (tmp, opt_ch) = r.read()?;
+                        r = tmp;
+                        if let Some(' ') = opt_ch {
+                            buf.push(' ');
+                        } else {
+                            r = r.undo(opt_ch);
+                            break;
+                        }
+                    }
+                    Ok((r, Some(buf)))
+                } else if is_not_whole_keyword(ch) {
+                    // undo and abort
+                    Ok((reader.undo_item(ch), None))
+                } else {
+                    Err((
+                        reader.undo_item(ch),
+                        QError::SyntaxError(format!("Expected: whitespace after {}", self.1)),
+                    ))
+                }
+            }
+            None => Err((
+                reader,
+                QError::SyntaxError(format!("Expected: whitespace after {}", self.1)),
+            )),
+        }
+    }
+}
+
 fn is_not_whole_keyword(ch: char) -> bool {
     is_letter(ch) || is_digit(ch) || ch == '.' || ch == '$'
 }
@@ -87,12 +151,11 @@ pub fn keyword_pair_p<R>(
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(first)
-        .and_demand(whitespace_p().or_syntax_error(format!("Expected: whitespace after {}", first)))
-        .and_demand(keyword_p(second).or_syntax_error(format!("Expected: {}", second)))
-        .map(|(((first_k, first_s), _), (second_k, second_s))| {
-            (first_k, first_s, second_k, second_s)
-        })
+    keyword_followed_by_whitespace_p(first)
+        .and_demand(
+            keyword_p(second).or_syntax_error(format!("Expected: {} after {}", second, first)),
+        )
+        .map(|((first_k, first_s), (second_k, second_s))| (first_k, first_s, second_k, second_s))
 }
 
 pub fn demand_keyword_pair_p<R>(

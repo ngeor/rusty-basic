@@ -1,7 +1,7 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::expression;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -66,8 +66,7 @@ fn parse_for_p<R>() -> impl Parser<R, Output = (ExpressionNode, ExpressionNode, 
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::For)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FOR"))
+    keyword_followed_by_whitespace_p(Keyword::For)
         .and_demand(
             expression::word::word_p()
                 .with_pos()

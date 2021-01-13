@@ -56,3 +56,19 @@ fn test_dim_string_fixed_length_length_declared_as_const() {
     "#;
     assert_prints!(program, "12345");
 }
+
+#[test]
+fn test_dim_shared() {
+    let program = r#"
+    DIM SHARED A$
+    A$ = "hi"
+    PRINT A$
+    SubThatUsesSharedVariable
+    PRINT A$
+
+    SUB SubThatUsesSharedVariable
+        A$ = "hello"
+    END SUB
+    "#;
+    assert_prints!(program, "hi", "hello");
+}

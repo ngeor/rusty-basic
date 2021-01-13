@@ -6,7 +6,8 @@ use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{
-    identifier_without_dot_p, in_parenthesis_p, keyword_p, PcSpecific,
+    identifier_without_dot_p, in_parenthesis_p, keyword_followed_by_whitespace_p, keyword_p,
+    PcSpecific,
 };
 use crate::parser::types::*;
 
@@ -83,8 +84,7 @@ where
 {
     // <ws+> AS <ws+> identifier
     whitespace_p()
-        .and(keyword_p(Keyword::As))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after AS"))
+        .and(keyword_followed_by_whitespace_p(Keyword::As))
         .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
         .keep_right()
 }

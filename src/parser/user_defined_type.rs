@@ -47,7 +47,10 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_choice_p, keyword_p, PcSpecific};
+use crate::parser::pc_specific::{
+    demand_keyword_pair_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p,
+    PcSpecific,
+};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
@@ -57,8 +60,7 @@ pub fn user_defined_type_p<R>() -> impl Parser<R, Output = UserDefinedType>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Type)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after TYPE"))
+    keyword_followed_by_whitespace_p(Keyword::Type)
         .and_demand(
             bare_name_without_dot_p()
                 .with_pos()
@@ -106,12 +108,11 @@ where
     bare_name_without_dot_p()
         .with_pos()
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after element name"))
-        .and_demand(keyword_p(Keyword::As).or_syntax_error("Expected: AS"))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after AS"))
+        .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
         .and_demand(comment::comments_and_whitespace_p())
         .map(
-            |(((((Locatable { element, pos }, _), _), _), element_type), comments)| {
+            |((((Locatable { element, pos }, _), _), element_type), comments)| {
                 Locatable::new(Element::new(element, element_type, comments), pos)
             },
         )

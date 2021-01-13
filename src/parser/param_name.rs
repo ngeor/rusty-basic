@@ -4,7 +4,9 @@ use crate::common::*;
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{identifier_without_dot_p, keyword_p, PcSpecific};
+use crate::parser::pc_specific::{
+    identifier_without_dot_p, keyword_followed_by_whitespace_p, PcSpecific,
+};
 use crate::parser::types::*;
 
 // Parses a Param name. Possible options:
@@ -102,8 +104,7 @@ where
 {
     // <ws+> AS <ws+> identifier
     whitespace_p()
-        .and(keyword_p(Keyword::As))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after AS"))
+        .and(keyword_followed_by_whitespace_p(Keyword::As))
         .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
         .keep_right()
 }

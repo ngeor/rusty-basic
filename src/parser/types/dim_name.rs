@@ -6,6 +6,7 @@ use std::convert::TryFrom;
 pub struct DimName {
     pub bare_name: BareName,
     pub dim_type: DimType,
+    pub shared: bool,
 }
 
 pub type DimNameNode = Locatable<DimName>;
@@ -16,6 +17,7 @@ impl DimName {
         Self {
             bare_name,
             dim_type,
+            shared: false,
         }
     }
 
@@ -25,6 +27,19 @@ impl DimName {
 
     pub fn into_inner(self) -> (BareName, DimType) {
         (self.bare_name, self.dim_type)
+    }
+
+    pub fn with_shared(self, shared: bool) -> Self {
+        let Self {
+            bare_name,
+            dim_type,
+            ..
+        } = self;
+        Self {
+            bare_name,
+            dim_type,
+            shared,
+        }
     }
 
     #[cfg(test)]
@@ -142,6 +157,7 @@ impl<'a> From<&'a DimName> for NameRef<'a> {
         let DimName {
             bare_name,
             dim_type,
+            ..
         } = dim_name;
         let opt_q: Option<TypeQualifier> = dim_type.into();
         NameRef { bare_name, opt_q }

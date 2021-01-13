@@ -11,7 +11,9 @@ where
     keyword_followed_by_whitespace_p(Keyword::Dim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(dim_name::dim_name_node_p().or_syntax_error("Expected: name after DIM"))
-        .map(|((_, _opt_shared), r)| Statement::Dim(r))
+        .map(|((_, opt_shared), dim_name_node)| {
+            Statement::Dim(dim_name_node.map(|dim_name| dim_name.with_shared(opt_shared.is_some())))
+        })
 }
 
 #[cfg(test)]

@@ -1061,13 +1061,14 @@ pub mod dim_rules {
         input: I,
     ) -> std::result::Result<O, QErrorNode> {
         let Locatable {
-            element: dim_name,
+            element:
+                DimName {
+                    bare_name,
+                    dim_type,
+                    shared,
+                },
             pos,
         } = input;
-        let DimName {
-            bare_name,
-            dim_type,
-        } = dim_name;
         match dim_type {
             DimType::Bare => {
                 let qualifier = ctx.resolve(&bare_name);

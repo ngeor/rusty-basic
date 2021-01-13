@@ -8,10 +8,12 @@ use crate::parser::{
 impl InstructionGenerator {
     pub fn generate_dim_instructions(&mut self, dim_name_node: DimNameNode) {
         let Locatable {
-            element: DimName {
-                bare_name,
-                dim_type,
-            },
+            element:
+                DimName {
+                    bare_name,
+                    dim_type,
+                    shared,
+                },
             pos,
         } = dim_name_node;
         match dim_type {

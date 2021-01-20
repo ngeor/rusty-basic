@@ -18,6 +18,7 @@ mod top_level_token_node;
 mod type_qualifier;
 mod unary_operator;
 mod user_defined_type;
+mod variable_info;
 
 pub use self::array_dimension::*;
 pub use self::bare_name::*;
@@ -39,3 +40,4 @@ pub use self::top_level_token_node::*;
 pub use self::type_qualifier::*;
 pub use self::unary_operator::*;
 pub use self::user_defined_type::*;
+pub use self::variable_info::*;

@@ -180,7 +180,9 @@ fn map_name_opt_extended_type_definition(
         _ => dim_type,
     };
     let bare_name: BareName = name.into();
-    let dim_name = DimName::new(bare_name, final_dim_type);
+    // shared will be filled-in by the DIM parser
+    let shared = false;
+    let dim_name = DimName::new(bare_name, final_dim_type, shared);
     Ok(dim_name.at(pos))
 }
 

@@ -5,8 +5,8 @@ use std::collections::HashMap;
 // same as dim minus the x as string * 5
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParamName {
-    bare_name: BareName,
-    param_type: ParamType,
+    pub bare_name: BareName,
+    pub param_type: ParamType,
 }
 
 #[derive(Clone, Debug)]
@@ -26,14 +26,6 @@ impl ParamName {
             bare_name,
             param_type,
         }
-    }
-
-    pub fn param_type(&self) -> &ParamType {
-        &self.param_type
-    }
-
-    pub fn into_inner(self) -> (BareName, ParamType) {
-        (self.bare_name, self.param_type)
     }
 
     pub fn new_array(self) -> Self {
@@ -161,33 +153,5 @@ impl From<DimType> for ParamType {
                 panic!("Fixed length string params are not supported")
             }
         }
-    }
-}
-
-impl From<ParamName> for DimName {
-    fn from(param_name: ParamName) -> Self {
-        let (bare_name, param_type) = param_name.into_inner();
-        let dim_type = DimType::from(param_type);
-        DimName::new(bare_name, dim_type)
-    }
-}
-
-impl From<DimName> for ParamName {
-    fn from(dim_name: DimName) -> Self {
-        let (bare_name, dim_type) = dim_name.into_inner();
-        let param_type = ParamType::from(dim_type);
-        Self::new(bare_name, param_type)
-    }
-}
-
-impl From<ParamNameNode> for DimNameNode {
-    fn from(param_name_node: ParamNameNode) -> Self {
-        param_name_node.map(DimName::from)
-    }
-}
-
-impl From<DimNameNode> for ParamNameNode {
-    fn from(dim_name_node: DimNameNode) -> Self {
-        dim_name_node.map(ParamName::from)
     }
 }

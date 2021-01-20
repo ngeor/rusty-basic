@@ -26,7 +26,7 @@ where
         .and_opt(type_qualifier_p())
         .map(|(n, opt_q)| Name::new(n.into(), opt_q))
         .validate(|n| {
-            let bare_name: &BareName = n.as_ref();
+            let bare_name: &BareName = n.bare_name();
             let s: &str = bare_name.as_ref();
             let is_keyword = Keyword::from_str(s).is_ok();
             if is_keyword {

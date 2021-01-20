@@ -1,17 +1,14 @@
-use crate::common::{AtLocation, CaseInsensitiveString, Locatable, QErrorNode};
-use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::type_resolver::TypeResolver;
-use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::parser::{
-    BareName, DimNameNode, Expression, ExpressionNode, ExpressionNodes, ExpressionType,
-    FunctionMap, Name, NameNode, ParamNameNode, ParamNameNodes, QualifiedNameNode, SubMap,
-    TypeQualifier, UserDefinedTypes,
-};
-use crate::variant::Variant;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::rc::Rc;
+
+use crate::common::{AtLocation, CaseInsensitiveString, Locatable, QErrorNode};
+use crate::linter::const_value_resolver::ConstValueResolver;
+use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver_impl::TypeResolverImpl;
+use crate::parser::*;
+use crate::variant::Variant;
 
 /*
 
@@ -44,8 +41,8 @@ pub struct Context<'a> {
 
 struct Names {
     compact_name_set: HashMap<BareName, HashSet<TypeQualifier>>,
-    compact_names: HashMap<Name, ExpressionType>,
-    extended_names: HashMap<BareName, ExpressionType>,
+    compact_names: HashMap<Name, VariableInfo>,
+    extended_names: HashMap<BareName, VariableInfo>,
     constants: HashMap<BareName, Variant>,
     current_function_name: Option<BareName>,
     parent: Option<Box<Names>>,
@@ -67,23 +64,17 @@ impl Names {
         Self::new(None, None)
     }
 
-    pub fn contains_any<T: AsRef<BareName>>(&self, bare_name: T) -> bool {
-        let x = bare_name.as_ref();
-        self.compact_name_set.contains_key(x)
-            || self.extended_names.contains_key(x)
-            || self.constants.contains_key(x)
+    pub fn contains_any(&self, bare_name: &BareName) -> bool {
+        self.compact_name_set.contains_key(bare_name)
+            || self.extended_names.contains_key(bare_name)
+            || self.constants.contains_key(bare_name)
     }
 
-    pub fn can_accept_compact<T: AsRef<BareName>>(
-        &self,
-        bare_name: T,
-        qualifier: TypeQualifier,
-    ) -> bool {
-        let x = bare_name.as_ref();
-        if self.extended_names.contains_key(x) || self.constants.contains_key(x) {
+    pub fn can_accept_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> bool {
+        if self.extended_names.contains_key(bare_name) || self.constants.contains_key(bare_name) {
             false
         } else {
-            match self.compact_name_set.get(x) {
+            match self.compact_name_set.get(bare_name) {
                 Some(qualifiers) => !qualifiers.contains(&qualifier),
                 _ => true,
             }
@@ -94,7 +85,7 @@ impl Names {
         &self,
         bare_name: &BareName,
         qualifier: TypeQualifier,
-    ) -> Option<&ExpressionType> {
+    ) -> Option<&VariableInfo> {
         match self.compact_name_set.get(bare_name) {
             Some(qualifiers) => {
                 if qualifiers.contains(&qualifier) {
@@ -108,7 +99,7 @@ impl Names {
         }
     }
 
-    pub fn contains_extended(&self, bare_name: &BareName) -> Option<&ExpressionType> {
+    pub fn contains_extended(&self, bare_name: &BareName) -> Option<&VariableInfo> {
         self.extended_names.get(bare_name)
     }
 
@@ -147,10 +138,10 @@ impl Names {
         &mut self,
         bare_name: BareName,
         q: TypeQualifier,
-        expr_type: ExpressionType,
+        variable_context: VariableInfo,
     ) {
         self.compact_names
-            .insert(Name::new(bare_name.clone(), Some(q)), expr_type);
+            .insert(Name::new(bare_name.clone(), Some(q)), variable_context);
         match self.compact_name_set.get_mut(&bare_name) {
             Some(s) => {
                 s.insert(q);
@@ -163,8 +154,8 @@ impl Names {
         }
     }
 
-    pub fn insert_extended(&mut self, bare_name: BareName, expr_type: ExpressionType) {
-        self.extended_names.insert(bare_name, expr_type);
+    pub fn insert_extended(&mut self, bare_name: BareName, variable_context: VariableInfo) {
+        self.extended_names.insert(bare_name, variable_context);
     }
 
     pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
@@ -231,7 +222,7 @@ impl<'a> Context<'a> {
     ) -> Result<(Name, ParamNameNodes), QErrorNode> {
         let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
-        self.names = Names::new(Some(Box::new(old_names)), Some(name.as_ref().clone()));
+        self.names = Names::new(Some(Box::new(old_names)), Some(name.bare_name().clone()));
         let converted_function_name = self.resolve_name_to_name(name);
         Ok((
             converted_function_name,
@@ -349,10 +340,34 @@ impl<'a> Context<'a> {
         &mut self,
         param_name_node: ParamNameNode,
     ) -> Result<ParamNameNode, QErrorNode> {
-        let dim_name_node: DimNameNode = DimNameNode::from(param_name_node);
+        let Locatable {
+            element:
+                ParamName {
+                    bare_name,
+                    param_type,
+                },
+            pos,
+        } = param_name_node;
+        let dim_type = DimType::from(param_type);
+        let dim_name_node: DimNameNode = DimNameBuilder::new()
+            .bare_name(bare_name)
+            .dim_type(dim_type)
+            .build()
+            .at(pos);
         let (converted_dim_name_node, implicits) = dim_rules::on_dim(self, dim_name_node, true)?;
         if implicits.is_empty() {
-            Ok(ParamNameNode::from(converted_dim_name_node))
+            let Locatable {
+                element:
+                    DimName {
+                        bare_name,
+                        dim_type,
+                        ..
+                    },
+                pos,
+            } = converted_dim_name_node;
+            let param_type = ParamType::from(dim_type);
+            let param_name = ParamName::new(bare_name, param_type);
+            Ok(param_name.at(pos))
         } else {
             panic!("Should not have introduced implicit variables via parameter")
         }
@@ -447,11 +462,12 @@ impl<I, O, E> Rule<I, O, E> for FnRule<I, O, E> {
 }
 
 pub mod expr_rules {
-    use super::*;
+    use std::convert::TryFrom;
+
     use crate::built_ins::BuiltInFunction;
     use crate::common::{QError, ToLocatableError};
-    use crate::parser::HasExpressionType;
-    use std::convert::TryFrom;
+
+    use super::*;
 
     type I = ExpressionNode;
     type O = (ExpressionNode, Vec<QualifiedNameNode>);
@@ -470,6 +486,7 @@ pub mod expr_rules {
             .chain_fn(function_call_existing_extended_array_with_parenthesis)
             .chain_fn(function_call_existing_compact_array_with_parenthesis)
             .chain_fn(variable_or_property_existing_compact_name)
+            .chain_fn(variable_existing_global_shared_var_compact)
             .chain_fn(if expr_context != ExprContext::Default {
                 variable_or_property_assign_to_function
             } else {
@@ -491,7 +508,7 @@ pub mod expr_rules {
         let Locatable { element: expr, pos } = input;
         match expr.fold_name() {
             Some(name) => {
-                let bare_name: &BareName = name.as_ref();
+                let bare_name: &BareName = name.bare_name();
                 // if a function of this name exists...
                 match ctx.function_qualifier(bare_name) {
                     Some(function_qualifier) => {
@@ -501,7 +518,10 @@ pub mod expr_rules {
                             if ctx.names.current_function_name.as_ref() == Some(bare_name) {
                                 let converted_name = name.qualify(function_qualifier);
                                 let expr_type = ExpressionType::BuiltIn(function_qualifier);
-                                let expr = Expression::Variable(converted_name, expr_type);
+                                let expr = Expression::Variable(
+                                    converted_name,
+                                    VariableInfo::new_local(expr_type),
+                                );
                                 Ok(RuleResult::Success((expr.at(pos), vec![])))
                             } else {
                                 Err(QError::DuplicateDefinition).with_err_at(pos)
@@ -523,7 +543,7 @@ pub mod expr_rules {
             pos,
         } = &input
         {
-            if ctx.subs.contains_key(name.as_ref()) {
+            if ctx.subs.contains_key(name.bare_name()) {
                 Err(QError::DuplicateDefinition).with_err_at(*pos)
             } else {
                 Ok(RuleResult::Skip(input))
@@ -539,11 +559,19 @@ pub mod expr_rules {
             pos,
         } = input
         {
-            let bare_name = name.as_ref();
-            if let Some(expr_type) = ctx.names.contains_extended(bare_name) {
+            let bare_name = name.bare_name();
+            if let Some(VariableInfo {
+                expression_type: expr_type,
+                ..
+            }) = ctx.names.contains_extended(bare_name)
+            {
                 let converted_name = expr_type.qualify_name(name).with_err_at(pos)?;
                 Ok(RuleResult::Success((
-                    Expression::Variable(converted_name, expr_type.clone()).at(pos),
+                    Expression::Variable(
+                        converted_name,
+                        VariableInfo::new_local(expr_type.clone()),
+                    )
+                    .at(pos),
                     vec![],
                 )))
             } else {
@@ -562,7 +590,7 @@ pub mod expr_rules {
             pos,
         } = input
         {
-            if let Some(v) = ctx.names.get_const_value_no_recursion(name.as_ref()) {
+            if let Some(v) = ctx.names.get_const_value_no_recursion(name.bare_name()) {
                 let q: TypeQualifier = TypeQualifier::try_from(v).with_err_at(pos)?;
                 if name.is_bare_or_of_type(q) {
                     // resolve to literal expr
@@ -587,7 +615,7 @@ pub mod expr_rules {
             pos,
         } = input
         {
-            if let Some(v) = ctx.names.get_const_value_recursively(name.as_ref()) {
+            if let Some(v) = ctx.names.get_const_value_recursively(name.bare_name()) {
                 let q: TypeQualifier = TypeQualifier::try_from(v).with_err_at(pos)?;
                 if name.is_bare_or_of_type(q) {
                     // resolve to literal expr
@@ -610,17 +638,53 @@ pub mod expr_rules {
         let Locatable { element: expr, pos } = input;
         match expr.fold_name() {
             Some(name) => {
-                let bare_name: &BareName = name.as_ref();
+                let bare_name: &BareName = name.bare_name();
                 let q: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
-                if let Some(expr_type) = ctx.names.contains_compact(bare_name, q) {
+                if let Some(VariableInfo {
+                    expression_type: expr_type,
+                    ..
+                }) = ctx.names.contains_compact(bare_name, q)
+                {
                     let converted_name = name.qualify(q);
-                    let expr = Expression::Variable(converted_name, expr_type.clone());
+                    let expr = Expression::Variable(
+                        converted_name,
+                        VariableInfo::new_local(expr_type.clone()),
+                    );
                     Ok(RuleResult::Success((expr.at(pos), vec![])))
                 } else {
                     Ok(RuleResult::Skip(expr.at(pos)))
                 }
             }
             _ => Ok(RuleResult::Skip(expr.at(pos))),
+        }
+    }
+
+    fn variable_existing_global_shared_var_compact(ctx: &mut Context, input: I) -> Result {
+        match &ctx.names.parent {
+            Some(parent_names) => {
+                let Locatable { element, pos } = input;
+                match element.fold_name() {
+                    Some(name) => {
+                        let bare_name: &BareName = name.bare_name();
+                        let q: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
+                        match parent_names.contains_compact(bare_name, q) {
+                            Some(var_context) => {
+                                if var_context.shared {
+                                    let converted_name = name.qualify(q);
+                                    let expr =
+                                        Expression::Variable(converted_name, var_context.clone());
+                                    Ok(RuleResult::Success((expr.at(pos), vec![])))
+                                } else {
+                                    Ok(RuleResult::Skip(element.at(pos)))
+                                }
+                            }
+                            _ => Ok(RuleResult::Skip(element.at(pos))),
+                        }
+                    }
+                    _ => Ok(RuleResult::Skip(element.at(pos))),
+                }
+            }
+            _ => Ok(RuleResult::Skip(input)),
         }
     }
 
@@ -686,9 +750,13 @@ pub mod expr_rules {
             let qualifier = q_name.qualifier;
             let implicit_vars = vec![q_name.at(pos)];
             let expr_type = ExpressionType::BuiltIn(qualifier);
-            ctx.names
-                .insert_compact(resolved_name.as_ref().clone(), qualifier, expr_type.clone());
-            let resoled_expr = Expression::Variable(resolved_name, expr_type).at(pos);
+            ctx.names.insert_compact(
+                resolved_name.bare_name().clone(),
+                qualifier,
+                VariableInfo::new_local(expr_type.clone()),
+            );
+            let resoled_expr =
+                Expression::Variable(resolved_name, VariableInfo::new_local(expr_type)).at(pos);
             Ok(RuleResult::Success((resoled_expr, implicit_vars)))
         } else {
             Ok(RuleResult::Skip(input))
@@ -704,8 +772,10 @@ pub mod expr_rules {
             // Find the most left name. If it is an existing variable, expect all to be resolved.
             // If it is not an existing variable, skip and allow the fold rule to follow.
             if let Some(left_most_name) = left.left_most_name() {
-                if let Some(ExpressionType::UserDefined(_)) =
-                    ctx.names.contains_extended(left_most_name.as_ref())
+                if let Some(VariableInfo {
+                    expression_type: ExpressionType::UserDefined(_),
+                    ..
+                }) = ctx.names.contains_extended(left_most_name.bare_name())
                 {
                     let (
                         Locatable {
@@ -723,7 +793,7 @@ pub mod expr_rules {
                             ctx.user_defined_types.get(user_defined_type_name)
                         {
                             if let Some(element_type) =
-                                user_defined_type.find_element(right.as_ref())
+                                user_defined_type.find_element(right.bare_name())
                             {
                                 if element_type.can_be_referenced_by_property_name(&right) {
                                     Ok(RuleResult::Success((
@@ -773,7 +843,11 @@ pub mod expr_rules {
                 Some(folded_left_name) => match folded_left_name.try_concat_name(right) {
                     Some(folded_name) => variable_implicit_var(
                         ctx,
-                        Expression::Variable(folded_name, ExpressionType::Unresolved).at(pos),
+                        Expression::Variable(
+                            folded_name,
+                            VariableInfo::new_local(ExpressionType::Unresolved),
+                        )
+                        .at(pos),
                     ),
                     _ => Err(QError::ElementNotDefined).with_err_at(pos),
                 },
@@ -793,20 +867,29 @@ pub mod expr_rules {
             pos,
         } = input
         {
-            let bare_name = name.as_ref();
-            if let Some(ExpressionType::Array(boxed_element_type)) =
-                ctx.names.contains_extended(bare_name)
+            let bare_name = name.bare_name();
+            if let Some(VariableInfo {
+                expression_type: ExpressionType::Array(boxed_element_type),
+                shared,
+            }) = ctx.names.contains_extended(bare_name)
             {
                 // clone element type early in order to be able to use ctx as mutable later
                 let element_type = boxed_element_type.as_ref().clone();
+                let shared = *shared;
                 // convert args
                 let (converted_args, implicit_vars) =
                     ctx.on_expressions(args, ExprContext::Default)?;
                 // convert name
                 let converted_name = element_type.qualify_name(name).with_err_at(pos)?;
                 // create result
-                let result_expr =
-                    Expression::ArrayElement(converted_name, converted_args, element_type);
+                let result_expr = Expression::ArrayElement(
+                    converted_name,
+                    converted_args,
+                    VariableInfo {
+                        expression_type: element_type,
+                        shared,
+                    },
+                );
                 Ok(RuleResult::Success((result_expr.at(pos), implicit_vars)))
             } else {
                 Ok(RuleResult::Skip(
@@ -827,21 +910,30 @@ pub mod expr_rules {
             pos,
         } = input
         {
-            let bare_name: &BareName = name.as_ref();
+            let bare_name: &BareName = name.bare_name();
             let qualifier: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
-            if let Some(ExpressionType::Array(boxed_element_type)) =
-                ctx.names.contains_compact(bare_name, qualifier)
+            if let Some(VariableInfo {
+                expression_type: ExpressionType::Array(boxed_element_type),
+                shared,
+            }) = ctx.names.contains_compact(bare_name, qualifier)
             {
                 // clone element type early in order to be able to use ctx as mutable later
                 let element_type = boxed_element_type.as_ref().clone();
+                let shared = *shared;
                 // convert args
                 let (converted_args, implicit_vars) =
                     ctx.on_expressions(args, ExprContext::Default)?;
                 // convert name
                 let converted_name = name.qualify(qualifier);
                 // create result
-                let result_expr =
-                    Expression::ArrayElement(converted_name, converted_args, element_type);
+                let result_expr = Expression::ArrayElement(
+                    converted_name,
+                    converted_args,
+                    VariableInfo {
+                        expression_type: element_type,
+                        shared,
+                    },
+                );
                 Ok(RuleResult::Success((result_expr.at(pos), implicit_vars)))
             } else {
                 Ok(RuleResult::Skip(
@@ -888,7 +980,7 @@ pub mod expr_rules {
                         Expression::BuiltInFunctionCall(built_in_function, converted_args)
                     }
                     _ => {
-                        let converted_name: Name = match ctx.function_qualifier(name.as_ref()) {
+                        let converted_name: Name = match ctx.function_qualifier(name.bare_name()) {
                             Some(q) => name.qualify(q),
                             _ => ctx.resolve_name_to_name(name),
                         };
@@ -911,7 +1003,7 @@ pub mod expr_rules {
                         Expression::BuiltInFunctionCall(built_in_function, vec![]).at(pos),
                         vec![],
                     ))),
-                    _ => match ctx.function_qualifier(name.as_ref()) {
+                    _ => match ctx.function_qualifier(name.bare_name()) {
                         Some(q) => {
                             let converted_name = name.qualify(q);
                             Ok(RuleResult::Success((
@@ -944,14 +1036,12 @@ pub mod expr_rules {
 }
 
 pub mod dim_rules {
-    use super::*;
-    use crate::common::{QError, ToLocatableError};
-    use crate::parser::{
-        ArrayDimension, ArrayDimensions, BuiltInStyle, DimName, DimType, DimTypeTrait,
-        HasExpressionType,
-    };
-    use crate::variant::MAX_INTEGER;
     use std::convert::TryFrom;
+
+    use crate::common::{QError, ToLocatableError};
+    use crate::variant::MAX_INTEGER;
+
+    use super::*;
 
     type I = DimNameNode;
     type O = (DimNameNode, Vec<QualifiedNameNode>);
@@ -991,7 +1081,7 @@ pub mod dim_rules {
     }
 
     fn cannot_clash_with_functions_dim(ctx: &mut Context, input: I) -> Result {
-        if ctx.functions.contains_key(input.as_ref()) {
+        if ctx.functions.contains_key(input.bare_name()) {
             Err(QError::DuplicateDefinition).with_err_at(&input)
         } else {
             Ok(RuleResult::Skip(input))
@@ -999,7 +1089,7 @@ pub mod dim_rules {
     }
 
     fn cannot_clash_with_functions_param(ctx: &mut Context, input: I) -> Result {
-        match ctx.function_qualifier(input.as_ref()) {
+        match ctx.function_qualifier(input.bare_name()) {
             Some(func_qualifier) => {
                 if input.is_extended() {
                     Err(QError::DuplicateDefinition).with_err_at(&input)
@@ -1018,7 +1108,7 @@ pub mod dim_rules {
     }
 
     fn cannot_clash_with_subs(ctx: &mut Context, input: I) -> Result {
-        if ctx.subs.contains_key(input.as_ref()) {
+        if ctx.subs.contains_key(input.bare_name()) {
             Err(QError::DuplicateDefinition).with_err_at(&input)
         } else {
             Ok(RuleResult::Skip(input))
@@ -1027,14 +1117,14 @@ pub mod dim_rules {
 
     fn cannot_clash_with_existing_names(ctx: &mut Context, input: I) -> Result {
         if input.is_extended() {
-            if ctx.names.contains_any(&input) {
+            if ctx.names.contains_any(input.bare_name()) {
                 Err(QError::DuplicateDefinition).with_err_at(&input)
             } else {
                 Ok(RuleResult::Skip(input))
             }
         } else {
             let qualifier = ctx.resolve_name_ref_to_qualifier(&input);
-            if ctx.names.can_accept_compact(&input, qualifier) {
+            if ctx.names.can_accept_compact(input.bare_name(), qualifier) {
                 Ok(RuleResult::Skip(input))
             } else {
                 Err(QError::DuplicateDefinition).with_err_at(&input)
@@ -1045,13 +1135,22 @@ pub mod dim_rules {
     fn new_var(ctx: &mut Context, input: I) -> Result {
         let (converted_input, implicit_vars) = new_var_not_adding_to_context(ctx, input)?;
         // add to context
-        let bare_name: &BareName = converted_input.as_ref();
-        let expr_type = converted_input.expression_type();
+        let DimName {
+            bare_name,
+            dim_type,
+            shared,
+        } = converted_input.as_ref();
+        let variable_context = VariableInfo {
+            expression_type: dim_type.expression_type(),
+            shared: *shared,
+        };
         if converted_input.is_extended() {
-            ctx.names.insert_extended(bare_name.clone(), expr_type);
+            ctx.names
+                .insert_extended(bare_name.clone(), variable_context);
         } else {
             let q = TypeQualifier::try_from(&converted_input)?;
-            ctx.names.insert_compact(bare_name.clone(), q, expr_type);
+            ctx.names
+                .insert_compact(bare_name.clone(), q, variable_context);
         }
         Ok(RuleResult::Success((converted_input, implicit_vars)))
     }
@@ -1073,11 +1172,12 @@ pub mod dim_rules {
             DimType::Bare => {
                 let qualifier = ctx.resolve(&bare_name);
                 let dim_type = DimType::BuiltIn(qualifier, BuiltInStyle::Compact);
-                let converted_dim_name = DimName::new(bare_name, dim_type);
+                let converted_dim_name = DimName::new(bare_name, dim_type, shared);
                 Ok((converted_dim_name.at(pos), vec![]))
             }
             DimType::BuiltIn(q, built_in_style) => {
-                let result = DimName::new(bare_name, DimType::BuiltIn(q, built_in_style)).at(pos);
+                let result =
+                    DimName::new(bare_name, DimType::BuiltIn(q, built_in_style), shared).at(pos);
                 Ok((result, vec![]))
             }
             DimType::FixedLengthString(len_expr, _) => {
@@ -1090,6 +1190,7 @@ pub mod dim_rules {
                                 Expression::IntegerLiteral(len).at(&len_expr),
                                 len as u16,
                             ),
+                            shared,
                         )
                         .at(pos);
                         Ok((result, vec![]))
@@ -1101,9 +1202,12 @@ pub mod dim_rules {
                 }
             }
             DimType::UserDefined(user_defined_type_name_node) => {
-                let result =
-                    DimName::new(bare_name, DimType::UserDefined(user_defined_type_name_node))
-                        .at(pos);
+                let result = DimName::new(
+                    bare_name,
+                    DimType::UserDefined(user_defined_type_name_node),
+                    shared,
+                )
+                .at(pos);
                 Ok((result, vec![]))
             }
             DimType::Array(dimensions, boxed_element_type) => {
@@ -1132,7 +1236,8 @@ pub mod dim_rules {
                 }
                 // dim_type
                 let element_dim_type = *boxed_element_type;
-                let element_dim_name = DimName::new(bare_name.clone(), element_dim_type).at(pos);
+                let element_dim_name =
+                    DimName::new(bare_name.clone(), element_dim_type, shared).at(pos);
                 let (
                     Locatable {
                         element: DimName { dim_type, .. },
@@ -1143,7 +1248,7 @@ pub mod dim_rules {
                 implicit_vars = union(implicit_vars, implicits);
                 let array_dim_type = DimType::Array(converted_dimensions, Box::new(dim_type));
                 Ok((
-                    DimName::new(bare_name, array_dim_type).at(pos),
+                    DimName::new(bare_name, array_dim_type, shared).at(pos),
                     implicit_vars,
                 ))
             }
@@ -1152,9 +1257,11 @@ pub mod dim_rules {
 }
 
 pub mod const_rules {
-    use super::*;
-    use crate::common::{QError, ToLocatableError};
     use std::convert::TryFrom;
+
+    use crate::common::{QError, ToLocatableError};
+
+    use super::*;
 
     type I = (NameNode, ExpressionNode);
     type O = ();
@@ -1178,9 +1285,9 @@ pub mod const_rules {
             },
             right,
         ) = input;
-        if ctx.names.contains_any(&const_name)
-            || ctx.subs.contains_key(const_name.as_ref())
-            || ctx.functions.contains_key(const_name.as_ref())
+        if ctx.names.contains_any(const_name.bare_name())
+            || ctx.subs.contains_key(const_name.bare_name())
+            || ctx.functions.contains_key(const_name.bare_name())
         {
             Err(QError::DuplicateDefinition).with_err_at(const_name_pos)
         } else {
@@ -1206,14 +1313,15 @@ pub mod const_rules {
                 .with_err_at(&right)?
         };
         ctx.names
-            .insert_const(const_name.as_ref().clone(), final_value.clone());
+            .insert_const(const_name.bare_name().clone(), final_value.clone());
         Ok(RuleResult::Success(()))
     }
 }
 
 pub mod assignment_pre_conversion_validation_rules {
-    use super::*;
     use crate::common::{QError, ToLocatableError};
+
+    use super::*;
 
     type I<'a> = &'a ExpressionNode;
     type ValidationResult<'a> = RuleResult<I<'a>, ()>;
@@ -1233,7 +1341,7 @@ pub mod assignment_pre_conversion_validation_rules {
             ..
         } = input
         {
-            if ctx.names.contains_const_recursively(var_name.as_ref()) {
+            if ctx.names.contains_const_recursively(var_name.bare_name()) {
                 Err(QError::DuplicateDefinition).with_err_at(input)
             } else {
                 Ok(RuleResult::Skip(input))
@@ -1249,8 +1357,9 @@ pub mod assignment_pre_conversion_validation_rules {
 }
 
 pub mod assignment_post_conversion_validation_rules {
-    use super::*;
     use crate::common::{CanCastTo, QError, ToLocatableError};
+
+    use super::*;
 
     type I<'a> = (&'a ExpressionNode, &'a ExpressionNode);
     type ValidationResult<'a> = RuleResult<I<'a>, ()>;

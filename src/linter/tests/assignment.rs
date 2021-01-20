@@ -1,9 +1,7 @@
 use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
 use crate::common::{AtRowCol, QError};
-use crate::parser::{
-    BuiltInStyle, DimName, DimType, Expression, ExpressionType, Operator, Statement, TypeQualifier,
-};
+use crate::parser::{DimName, Expression, ExpressionType, Operator, Statement, TypeQualifier};
 
 #[test]
 fn name_clashes_with_other_sub_name() {
@@ -63,15 +61,9 @@ fn assign_integer_to_extended_string() {
 fn test_assign_binary_plus() {
     assert_linter_ok_top_level_statements!(
         "X% = 1 + 2.1",
-        Statement::Dim(
-            DimName::new(
-                "X".into(),
-                DimType::BuiltIn(TypeQualifier::PercentInteger, BuiltInStyle::Compact)
-            )
-            .at_rc(1, 1)
-        ),
+        Statement::Dim(DimName::new_compact_local("X", TypeQualifier::PercentInteger).at_rc(1, 1)),
         Statement::Assignment(
-            Expression::var_linted("X%"),
+            Expression::var_resolved("X%"),
             Expression::BinaryExpression(
                 Operator::Plus,
                 Box::new(Expression::IntegerLiteral(1).at_rc(1, 6)),
@@ -87,15 +79,9 @@ fn test_assign_binary_plus() {
 fn test_possible_property_folded_back_to_variable() {
     assert_linter_ok_top_level_statements!(
         "A.B = 12",
-        Statement::Dim(
-            DimName::new(
-                "A.B".into(),
-                DimType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
-            )
-            .at_rc(1, 1)
-        ),
+        Statement::Dim(DimName::new_compact_local("A.B", TypeQualifier::BangSingle).at_rc(1, 1)),
         Statement::Assignment(
-            Expression::var_linted("A.B!".into()),
+            Expression::var_resolved("A.B!".into()),
             Expression::IntegerLiteral(12).at_rc(1, 7),
         )
     );

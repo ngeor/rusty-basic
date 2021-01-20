@@ -1,13 +1,13 @@
 use crate::common::QError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::{BareName, Name};
-use crate::variant::{Path, Variant};
+use crate::parser::BareName;
+use crate::variant::{Path, RootPath, Variant};
 use std::convert::TryFrom;
 
-pub fn var_path_name<T: InterpreterTrait>(interpreter: &mut T, name: &Name) {
+pub fn var_path_name<T: InterpreterTrait>(interpreter: &mut T, root_path: RootPath) {
     interpreter
         .var_path_stack()
-        .push_back(Path::Root(name.clone()));
+        .push_back(Path::Root(root_path));
 }
 
 pub fn var_path_index<T: InterpreterTrait>(interpreter: &mut T) {
@@ -58,7 +58,13 @@ fn resolve_some_name_ptr_mut<T: InterpreterTrait>(
     name_ptr: Path,
 ) -> Result<&mut Variant, QError> {
     match name_ptr {
-        Path::Root(var_name) => Ok(interpreter.context_mut().get_or_create(var_name)),
+        Path::Root(RootPath { name, shared }) => {
+            if shared {
+                Ok(interpreter.context_mut().get_or_create_global(name))
+            } else {
+                Ok(interpreter.context_mut().get_or_create(name))
+            }
+        }
         Path::ArrayElement(parent_name_ptr, indices) => {
             let parent_variant = resolve_some_name_ptr_mut(interpreter, *parent_name_ptr)?;
             resolve_array_mut(parent_variant, indices)

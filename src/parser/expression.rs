@@ -54,7 +54,7 @@ where
         )
         .keep_left()
         .map(|((_, left_parenthesis), child)| {
-            Expression::Parenthesis(Box::new(child)).at(left_parenthesis.pos())
+            Expression::Parenthesis(Box::new(child)).at(left_parenthesis.pos)
         })
 }
 
@@ -127,7 +127,7 @@ where
         .and_demand(
             lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
         )
-        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos()))
+        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos))
 }
 
 pub fn unary_not_p<R>() -> impl Parser<R, Output = ExpressionNode>
@@ -394,11 +394,11 @@ pub mod word {
                     // when there are no parenthesis and additional properties
                     let (mut name_props, opt_q) = name_to_properties(name.clone());
                     if name_props.len() == 1 {
-                        return Ok(Expression::Variable(name, ExpressionType::Unresolved));
+                        return Ok(Expression::Variable(name, VariableInfo::unresolved()));
                     }
                     let mut base_expr = Expression::Variable(
                         Name::Bare(name_props.remove(0).into()),
-                        ExpressionType::Unresolved,
+                        VariableInfo::unresolved(),
                     );
                     while name_props.len() > 1 {
                         let name_prop = name_props.remove(0);
@@ -425,7 +425,7 @@ pub mod word {
                 let mut base_expr = if let Some(args) = opt_args {
                     Expression::FunctionCall(name, args)
                 } else {
-                    Expression::Variable(name, ExpressionType::Unresolved)
+                    Expression::Variable(name, VariableInfo::unresolved())
                 };
                 if let Some((mut properties, opt_q)) = opt_properties {
                     // take all but last
@@ -509,7 +509,7 @@ pub mod word {
                     let eol_reader = EolReader::from(input);
                     let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var(input)));
+                    assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
                 #[test]
@@ -534,7 +534,7 @@ pub mod word {
                     let eol_reader = EolReader::from(input);
                     let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var(input)));
+                    assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
                 #[test]
@@ -543,7 +543,7 @@ pub mod word {
                     let eol_reader = EolReader::from(input);
                     let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var(input)));
+                    assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
                 #[test]
@@ -556,7 +556,7 @@ pub mod word {
                         result,
                         Some(Expression::Property(
                             Box::new(Expression::Property(
-                                Box::new(Expression::var("a")),
+                                Box::new(Expression::var_unresolved("a")),
                                 "b".into(),
                                 ExpressionType::Unresolved
                             )),
@@ -572,7 +572,7 @@ pub mod word {
                     let eol_reader = EolReader::from(input);
                     let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var("a.b.c.")));
+                    assert_eq!(result, Some(Expression::var_unresolved("a.b.c.")));
                 }
 
                 #[test]
@@ -617,7 +617,7 @@ pub mod word {
                     let eol_reader = EolReader::from(input);
                     let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var(input)));
+                    assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
                 #[test]
@@ -654,7 +654,7 @@ pub mod word {
                     assert_eq!(
                         result,
                         Some(Expression::Property(
-                            Box::new(Expression::var("a".into())),
+                            Box::new(Expression::var_unresolved("a".into())),
                             "b$".into(),
                             ExpressionType::Unresolved
                         ))
@@ -679,7 +679,7 @@ pub mod word {
                     let eol_reader = EolReader::from(input);
                     let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var(input)));
+                    assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
                 #[test]
@@ -688,7 +688,7 @@ pub mod word {
                     let eol_reader = EolReader::from(input);
                     let mut parser = word_p();
                     let (_, result) = parser.parse(eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var(input)));
+                    assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
                 #[test]
@@ -874,7 +874,7 @@ mod tests {
 
         #[test]
         fn test_bare_name() {
-            assert_expression!("A", Expression::var("A"));
+            assert_expression!("A", Expression::var_unresolved("A"));
         }
 
         #[test]
@@ -882,7 +882,7 @@ mod tests {
             assert_expression!(
                 "A.B",
                 Expression::Property(
-                    Box::new(Expression::var("A")),
+                    Box::new(Expression::var_unresolved("A")),
                     "B".into(),
                     ExpressionType::Unresolved
                 )
@@ -891,7 +891,7 @@ mod tests {
 
         #[test]
         fn test_qualified_name() {
-            assert_expression!("A%", Expression::var("A%"));
+            assert_expression!("A%", Expression::var_unresolved("A%"));
         }
 
         #[test]

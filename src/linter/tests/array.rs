@@ -3,10 +3,7 @@ use crate::built_ins::BuiltInFunction;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
 use crate::parser::test_utils::ExpressionNodeLiteralFactory;
-use crate::parser::{
-    ArrayDimension, BareName, BuiltInStyle, DimName, DimType, Expression, ExpressionType,
-    ParamName, ParamType, Statement, SubImplementation, TopLevelToken, TypeQualifier,
-};
+use crate::parser::*;
 
 #[test]
 fn test_passing_array_parameter_without_parenthesis() {
@@ -32,7 +29,7 @@ fn test_dim_array() {
         linter_ok(input),
         vec![TopLevelToken::Statement(Statement::Dim(
             DimName::new(
-                "choice".into(),
+                "choice",
                 DimType::Array(
                     vec![ArrayDimension {
                         lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
@@ -42,7 +39,8 @@ fn test_dim_array() {
                         TypeQualifier::DollarString,
                         BuiltInStyle::Compact
                     ))
-                )
+                ),
+                false
             )
             .at_rc(2, 9)
         ))
@@ -91,9 +89,9 @@ fn test_passing_array_parameter_with_parenthesis() {
         linter_ok(input),
         vec![
             TopLevelToken::Statement(Statement::Dim(
-                DimName::new(
-                    "choice".into(),
-                    DimType::Array(
+                DimNameBuilder::new()
+                    .bare_name("choice")
+                    .dim_type(DimType::Array(
                         vec![ArrayDimension {
                             lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
                             ubound: Expression::IntegerLiteral(3).at_rc(2, 22)
@@ -102,9 +100,9 @@ fn test_passing_array_parameter_with_parenthesis() {
                             TypeQualifier::DollarString,
                             BuiltInStyle::Compact
                         ))
-                    )
-                )
-                .at_rc(2, 9)
+                    ))
+                    .build()
+                    .at_rc(2, 9)
             ))
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::SubCall(
@@ -112,7 +110,10 @@ fn test_passing_array_parameter_with_parenthesis() {
                 vec![Expression::ArrayElement(
                     "choice$".into(),
                     vec![],
-                    ExpressionType::BuiltIn(TypeQualifier::DollarString)
+                    VariableInfo {
+                        expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
+                        shared: false
+                    }
                 )
                 .at_rc(4, 10)]
             ))
@@ -129,19 +130,20 @@ fn test_passing_array_parameter_with_parenthesis() {
                 .at_rc(6, 14)],
                 body: vec![
                     Statement::Dim(
-                        DimName::new(
-                            "X".into(),
-                            DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
-                        )
-                        .at_rc(7, 9)
+                        DimName::new_compact_local("X", TypeQualifier::DollarString).at_rc(7, 9)
                     )
                     .at_rc(7, 9),
                     Statement::Assignment(
-                        Expression::var_linted("X$"),
+                        Expression::var_resolved("X$"),
                         Expression::ArrayElement(
                             "choice$".into(),
                             vec![1.as_lit_expr(7, 22)],
-                            ExpressionType::BuiltIn(TypeQualifier::DollarString)
+                            VariableInfo {
+                                expression_type: ExpressionType::BuiltIn(
+                                    TypeQualifier::DollarString
+                                ),
+                                shared: false
+                            }
                         )
                         .at_rc(7, 14)
                     )
@@ -163,9 +165,9 @@ fn test_passing_array_without_parenthesis() {
         linter_ok(input),
         vec![
             TopLevelToken::Statement(Statement::Dim(
-                DimName::new(
-                    "choice".into(),
-                    DimType::Array(
+                DimNameBuilder::new()
+                    .bare_name("choice")
+                    .dim_type(DimType::Array(
                         vec![ArrayDimension {
                             lbound: Some(1.as_lit_expr(2, 17)),
                             ubound: 3.as_lit_expr(2, 22)
@@ -174,30 +176,26 @@ fn test_passing_array_without_parenthesis() {
                             TypeQualifier::DollarString,
                             BuiltInStyle::Compact
                         ))
-                    )
-                )
-                .at_rc(2, 9)
+                    ))
+                    .build()
+                    .at_rc(2, 9)
             ))
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::Dim(
-                DimName::new(
-                    "X".into(),
-                    DimType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
-                )
-                .at_rc(3, 5)
+                DimName::new_compact_local("X", TypeQualifier::BangSingle).at_rc(3, 5)
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::Variable(
                     "X!".into(),
-                    ExpressionType::BuiltIn(TypeQualifier::BangSingle)
+                    VariableInfo::new_local(ExpressionType::BuiltIn(TypeQualifier::BangSingle))
                 ),
                 Expression::BuiltInFunctionCall(
                     BuiltInFunction::LBound,
                     vec![Expression::Variable(
                         "choice$".into(),
-                        ExpressionType::Array(Box::new(ExpressionType::BuiltIn(
-                            TypeQualifier::DollarString
+                        VariableInfo::new_local(ExpressionType::Array(Box::new(
+                            ExpressionType::BuiltIn(TypeQualifier::DollarString)
                         )))
                     )
                     .at_rc(3, 16)]

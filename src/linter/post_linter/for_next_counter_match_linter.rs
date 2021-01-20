@@ -1,6 +1,7 @@
-use super::post_conversion_linter::*;
 use crate::common::*;
-use crate::parser::{Expression, ExpressionType, ForLoopNode, TypeQualifier};
+use crate::parser::{Expression, ExpressionType, ForLoopNode, TypeQualifier, VariableInfo};
+
+use super::post_conversion_linter::*;
 
 pub struct ForNextCounterMatch;
 
@@ -10,7 +11,13 @@ impl ForNextCounterMatch {
             element: var_expr, ..
         } = &f.variable_name;
         match var_expr {
-            Expression::Variable(_, var_type) => match var_type {
+            Expression::Variable(
+                _,
+                VariableInfo {
+                    expression_type: var_type,
+                    ..
+                },
+            ) => match var_type {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
                     Err(QError::TypeMismatch).with_err_no_pos()
                 }

@@ -1,9 +1,7 @@
-use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
-use crate::parser::{
-    BareName, Expression, ExpressionNode, ExpressionType, FunctionMap, HasExpressionType, Name,
-    ParamType, ParamTypes, QualifiedName, TypeQualifier,
-};
+use crate::parser::*;
+
+use super::post_conversion_linter::PostConversionLinter;
 
 pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,
@@ -36,53 +34,31 @@ fn lint_call_arg(arg_node: &ExpressionNode, param_type: &ParamType) -> Result<()
 fn lint_by_ref_arg(arg_node: &ExpressionNode, param_type: &ParamType) -> Result<(), QErrorNode> {
     match param_type {
         ParamType::Bare => panic!("Unresolved param {:?} {:?}", arg_node, param_type),
-        ParamType::BuiltIn(q, _) => match arg_node.as_ref() {
-            Expression::Variable(_, expr_type) | Expression::Property(_, _, expr_type) => {
-                // either match or dollar string + FixedLengthString
-                if expr_type_matches_type_qualifier_by_ref(expr_type, *q) {
-                    Ok(())
-                } else {
-                    Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
-                }
-            }
-            Expression::ArrayElement(_, args, expr_type) => {
-                // must have at least one arg otherwise it is full array
-                if !args.is_empty() && expr_type_matches_type_qualifier_by_ref(expr_type, *q) {
-                    Ok(())
-                } else {
-                    Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
-                }
-            }
-            _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg_node),
-        },
+        ParamType::BuiltIn(q, _) => {
+            lint_arg_node(arg_node, |e| expr_type_matches_type_qualifier_by_ref(e, *q))
+        }
         ParamType::UserDefined(Locatable {
             element: user_defined_type_name,
             ..
-        }) => match arg_node.as_ref() {
-            Expression::Variable(_, expr_type) | Expression::Property(_, _, expr_type) => {
-                if expr_type_is_user_defined(expr_type, user_defined_type_name) {
-                    Ok(())
-                } else {
-                    Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
-                }
-            }
-            Expression::ArrayElement(_, args, expr_type) => {
-                if !args.is_empty() && expr_type_is_user_defined(expr_type, user_defined_type_name)
-                {
-                    Ok(())
-                } else {
-                    Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
-                }
-            }
-            _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg_node),
-        },
+        }) => lint_arg_node(arg_node, |e| {
+            expr_type_is_user_defined(e, user_defined_type_name)
+        }),
         ParamType::Array(boxed_element_type) => {
             // we can only pass an array by using the array name followed by parenthesis e.g. `Menu choice$()`
             match arg_node.as_ref() {
-                Expression::ArrayElement(name, args, expr_type) => {
+                Expression::ArrayElement(
+                    name,
+                    args,
+                    VariableInfo {
+                        expression_type, ..
+                    },
+                ) => {
                     if args.is_empty() {
-                        let dummy_expr =
-                            Expression::Variable(name.clone(), expr_type.clone()).at(arg_node);
+                        let dummy_expr = Expression::Variable(
+                            name.clone(),
+                            VariableInfo::new_local(expression_type.clone()),
+                        )
+                        .at(arg_node);
                         lint_by_ref_arg(&dummy_expr, boxed_element_type.as_ref())
                     } else {
                         Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
@@ -118,6 +94,54 @@ fn lint_by_val_arg(arg_node: &ExpressionNode, param_type: &ParamType) -> Result<
         Ok(())
     } else {
         Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
+    }
+}
+
+fn lint_arg_node<F>(
+    arg_node: &ExpressionNode,
+    expression_type_predicate: F,
+) -> Result<(), QErrorNode>
+where
+    F: Fn(&ExpressionType) -> bool,
+{
+    match arg_node_to_expr_type_and_opt_args(arg_node) {
+        Some((expression_type, opt_args)) => {
+            if has_at_least_one_arg(opt_args) && expression_type_predicate(expression_type) {
+                Ok(())
+            } else {
+                Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
+            }
+        }
+        _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg_node),
+    }
+}
+
+fn arg_node_to_expr_type_and_opt_args(
+    arg_node: &ExpressionNode,
+) -> Option<(&ExpressionType, Option<&Vec<ExpressionNode>>)> {
+    match arg_node.as_ref() {
+        Expression::Variable(
+            _,
+            VariableInfo {
+                expression_type, ..
+            },
+        )
+        | Expression::Property(_, _, expression_type) => Some((expression_type, None)),
+        Expression::ArrayElement(
+            _,
+            args,
+            VariableInfo {
+                expression_type, ..
+            },
+        ) => Some((expression_type, Some(args))),
+        _ => None,
+    }
+}
+
+fn has_at_least_one_arg(opt_args: Option<&Vec<ExpressionNode>>) -> bool {
+    match opt_args {
+        Some(args) => !args.is_empty(),
+        _ => true, // not an array expression
     }
 }
 

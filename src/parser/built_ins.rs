@@ -298,7 +298,7 @@ mod input {
                 result,
                 "INPUT",
                 Expression::IntegerLiteral(0), // no file number
-                Expression::var("A$")
+                Expression::var_unresolved("A$")
             );
         }
 
@@ -310,8 +310,8 @@ mod input {
                 result,
                 "INPUT",
                 Expression::IntegerLiteral(0), // no file number
-                Expression::var("A$"),
-                Expression::var("B")
+                Expression::var_unresolved("A$"),
+                Expression::var_unresolved("B")
             );
         }
 
@@ -342,7 +342,7 @@ mod input {
                 "INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
 
@@ -355,7 +355,7 @@ mod input {
                 "INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(2), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
 
@@ -368,7 +368,7 @@ mod input {
                 "INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(3), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
     }
@@ -421,7 +421,7 @@ mod line_input {
                 result,
                 "LINE INPUT",
                 Expression::IntegerLiteral(0), // no file number
-                Expression::var("A$")
+                Expression::var_unresolved("A$")
             );
         }
 
@@ -458,7 +458,7 @@ mod line_input {
                 "LINE INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
 
@@ -471,7 +471,7 @@ mod line_input {
                 "LINE INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(2), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
 
@@ -484,7 +484,7 @@ mod line_input {
                 "LINE INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
     }

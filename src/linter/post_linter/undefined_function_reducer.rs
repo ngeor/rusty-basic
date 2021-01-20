@@ -20,7 +20,7 @@ impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
                 Ok(Expression::UnaryExpression(op, Box::new(mapped_child)))
             }
             Expression::FunctionCall(name, args) => {
-                if self.functions.contains_key(name.as_ref()) {
+                if self.functions.contains_key(name.bare_name()) {
                     Ok(Expression::FunctionCall(
                         name,
                         self.visit_expression_nodes(args)?,

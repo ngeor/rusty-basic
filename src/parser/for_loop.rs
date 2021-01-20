@@ -111,7 +111,7 @@ mod tests {
         assert_eq!(
             result,
             Statement::ForLoop(ForLoopNode {
-                variable_name: Expression::var("I").at_rc(1, 5),
+                variable_name: Expression::var_unresolved("I").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
@@ -130,7 +130,7 @@ mod tests {
         assert_eq!(
             result,
             Statement::ForLoop(ForLoopNode {
-                variable_name: Expression::var("i").at_rc(1, 5),
+                variable_name: Expression::var_unresolved("i").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
@@ -148,7 +148,7 @@ mod tests {
         assert_eq!(
             result,
             Statement::ForLoop(ForLoopNode {
-                variable_name: Expression::var("I").at_rc(1, 5),
+                variable_name: Expression::var_unresolved("I").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
@@ -178,7 +178,7 @@ mod tests {
                     "Before the outer loop".as_lit_expr(1, 7)
                 ))),
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
-                    variable_name: Expression::var("I").at_rc(2, 5),
+                    variable_name: Expression::var_unresolved("I").at_rc(2, 5),
                     lower_bound: 1.as_lit_expr(2, 9),
                     upper_bound: 10.as_lit_expr(2, 14),
                     step: None,
@@ -195,7 +195,7 @@ mod tests {
                         })
                         .at_rc(3, 5),
                         Statement::ForLoop(ForLoopNode {
-                            variable_name: Expression::var("J").at_rc(4, 9),
+                            variable_name: Expression::var_unresolved("J").at_rc(4, 9),
                             lower_bound: 1.as_lit_expr(4, 13),
                             upper_bound: 10.as_lit_expr(4, 18),
                             step: None,
@@ -248,7 +248,7 @@ mod tests {
             result,
             vec![
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
-                    variable_name: Expression::var("I").at_rc(2, 13),
+                    variable_name: Expression::var_unresolved("I").at_rc(2, 13),
                     lower_bound: 1.as_lit_expr(2, 17),
                     upper_bound: 10.as_lit_expr(2, 22),
                     step: None,

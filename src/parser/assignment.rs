@@ -16,7 +16,7 @@ mod tests {
         ($input:expr, $name:expr, $value:expr) => {
             match parse($input).demand_single_statement() {
                 Statement::Assignment(n, crate::common::Locatable { element: v, .. }) => {
-                    assert_eq!(n, Expression::var($name));
+                    assert_eq!(n, Expression::var_unresolved($name));
                     assert_eq!(v, Expression::IntegerLiteral($value));
                 }
                 _ => panic!("Expected: assignment"),
@@ -33,7 +33,7 @@ mod tests {
             #[test]
             fn test_assign_unqualified_variable_no_dots() {
                 let input = "A = 42";
-                assert_top_level_assignment!(input, Expression::var("A"));
+                assert_top_level_assignment!(input, Expression::var_unresolved("A"));
             }
 
             #[test]
@@ -65,7 +65,7 @@ mod tests {
                 assert_top_level_assignment!(
                     input,
                     Expression::Property(
-                        Box::new(Expression::var("A")),
+                        Box::new(Expression::var_unresolved("A")),
                         "B".into(),
                         ExpressionType::Unresolved
                     )
@@ -75,7 +75,7 @@ mod tests {
             #[test]
             fn test_not_property_due_to_consecutive_dots() {
                 let input = "A..B = 42";
-                assert_top_level_assignment!(input, Expression::var("A..B"));
+                assert_top_level_assignment!(input, Expression::var_unresolved("A..B"));
             }
 
             #[test]
@@ -99,7 +99,7 @@ mod tests {
                 assert_top_level_assignment!(
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM = 42",
                     Expression::Property(
-                        Box::new(Expression::var("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+                        Box::new(Expression::var_unresolved("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
                         "ABCDEFGHIJKLM".into(),
                         ExpressionType::Unresolved
                     )
@@ -117,7 +117,7 @@ mod tests {
             #[test]
             fn test_assign_qualified_variable_no_dots() {
                 let input = "A% = 42";
-                assert_top_level_assignment!(input, Expression::var("A%"));
+                assert_top_level_assignment!(input, Expression::var_unresolved("A%"));
             }
 
             #[test]
@@ -154,7 +154,7 @@ mod tests {
                 assert_top_level_assignment!(
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM% = 42",
                     Expression::Property(
-                        Box::new(Expression::var("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+                        Box::new(Expression::var_unresolved("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
                         "ABCDEFGHIJKLM%".into(),
                         ExpressionType::Unresolved
                     )
@@ -167,7 +167,7 @@ mod tests {
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM.% = 42",
                     Expression::Variable(
                         "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM.%".into(),
-                        ExpressionType::Unresolved
+                        VariableInfo::unresolved()
                     )
                 );
             }
@@ -221,7 +221,7 @@ mod tests {
             program,
             vec![
                 TopLevelToken::Statement(Statement::Assignment(
-                    Expression::var("ANSWER"),
+                    Expression::var_unresolved("ANSWER"),
                     42.as_lit_expr(1, 10)
                 ))
                 .at_rc(1, 1),
@@ -297,7 +297,7 @@ mod tests {
             program,
             Statement::Assignment(
                 Expression::Property(
-                    Box::new(Expression::var("A")),
+                    Box::new(Expression::var_unresolved("A")),
                     "B".into(),
                     ExpressionType::Unresolved
                 ),
@@ -317,7 +317,7 @@ mod tests {
             assert_eq!(
                 program,
                 Statement::Assignment(
-                    Expression::Variable("DIM$".into(), ExpressionType::Unresolved),
+                    Expression::Variable("DIM$".into(), VariableInfo::unresolved()),
                     "hello".as_lit_expr(1, 8)
                 )
             );

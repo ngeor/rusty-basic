@@ -344,8 +344,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 allocation::allocate_user_defined_type(self, user_defined_type_name)
                     .with_err_at(pos)?;
             }
-            Instruction::VarPathName(name) => {
-                var_path::var_path_name(self, name);
+            Instruction::VarPathName(root_path) => {
+                var_path::var_path_name(self, root_path.clone());
             }
             Instruction::VarPathIndex => {
                 var_path::var_path_index(self);

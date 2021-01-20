@@ -398,14 +398,14 @@ end if"#;
                     )
                     .at_rc(1, 7),
                     statements: vec![Statement::Assignment(
-                        Expression::var("A$"),
+                        Expression::var_unresolved("A$"),
                         "B$".as_var_expr(1, 21)
                     )
                     .at_rc(1, 16)]
                 },
                 else_if_blocks: vec![],
                 else_block: Some(vec![Statement::Assignment(
-                    Expression::var("A$"),
+                    Expression::var_unresolved("A$"),
                     "C$".as_var_expr(1, 34)
                 )
                 .at_rc(1, 29)])

@@ -4,6 +4,7 @@ use crate::parser::{
     ArrayDimension, DimName, DimNameNode, DimType, ExpressionType, HasExpressionType, Name,
     TypeQualifier,
 };
+use crate::variant::RootPath;
 
 impl InstructionGenerator {
     pub fn generate_dim_instructions(&mut self, dim_name_node: DimNameNode) {
@@ -44,21 +45,33 @@ impl InstructionGenerator {
 
                 self.push(Instruction::AllocateArrayIntoA(element_type), pos);
 
-                self.push(Instruction::VarPathName(Name::new(bare_name, opt_q)), pos);
+                self.push(
+                    Instruction::VarPathName(RootPath {
+                        name: Name::new(bare_name, opt_q),
+                        shared,
+                    }),
+                    pos,
+                );
                 self.push(Instruction::CopyAToVarPath, pos);
             }
             DimType::BuiltIn(q, _) => {
                 self.push(Instruction::AllocateBuiltIn(q), pos);
-                self.push(Instruction::VarPathName(Name::new(bare_name, Some(q))), pos);
+                self.push(
+                    Instruction::VarPathName(RootPath {
+                        name: Name::new(bare_name, Some(q)),
+                        shared,
+                    }),
+                    pos,
+                );
                 self.push(Instruction::CopyAToVarPath, pos);
             }
             DimType::FixedLengthString(_, len) => {
                 self.push(Instruction::AllocateFixedLengthString(len), pos);
                 self.push(
-                    Instruction::VarPathName(Name::new(
-                        bare_name,
-                        Some(TypeQualifier::DollarString),
-                    )),
+                    Instruction::VarPathName(RootPath {
+                        name: Name::new(bare_name, Some(TypeQualifier::DollarString)),
+                        shared,
+                    }),
                     pos,
                 );
                 self.push(Instruction::CopyAToVarPath, pos);
@@ -71,7 +84,13 @@ impl InstructionGenerator {
                     Instruction::AllocateUserDefined(user_defined_type_name),
                     pos,
                 );
-                self.push(Instruction::VarPathName(Name::new(bare_name, None)), pos);
+                self.push(
+                    Instruction::VarPathName(RootPath {
+                        name: Name::new(bare_name, None),
+                        shared,
+                    }),
+                    pos,
+                );
                 self.push(Instruction::CopyAToVarPath, pos);
             }
             DimType::Bare => panic!("Unresolved type"),

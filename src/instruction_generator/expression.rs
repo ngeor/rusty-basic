@@ -1,9 +1,7 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::parser::{
-    Expression, ExpressionNode, ExpressionType, HasExpressionType, Operator, TypeQualifier,
-    UnaryOperator,
-};
+use crate::parser::*;
+use crate::variant::RootPath;
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(
@@ -96,11 +94,23 @@ impl InstructionGenerator {
         let Locatable { element: expr, pos } = expr_node;
 
         match expr {
-            Expression::Variable(var_name, _) => {
-                self.push(Instruction::VarPathName(var_name), pos);
+            Expression::Variable(var_name, VariableInfo { shared, .. }) => {
+                self.push(
+                    Instruction::VarPathName(RootPath {
+                        name: var_name,
+                        shared,
+                    }),
+                    pos,
+                );
             }
-            Expression::ArrayElement(array_name, indices, _element_type) => {
-                self.push(Instruction::VarPathName(array_name), pos);
+            Expression::ArrayElement(array_name, indices, VariableInfo { shared, .. }) => {
+                self.push(
+                    Instruction::VarPathName(RootPath {
+                        name: array_name,
+                        shared,
+                    }),
+                    pos,
+                );
                 for arg in indices {
                     let arg_pos = arg.pos();
                     self.push(Instruction::PushAToValueStack, arg_pos);

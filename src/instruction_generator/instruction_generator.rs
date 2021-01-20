@@ -24,7 +24,7 @@ fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
                     params,
                     ..
                 } = f;
-                let bare_name: &BareName = name.as_ref();
+                let bare_name: &BareName = name.bare_name();
                 functions.insert(
                     bare_name.clone(),
                     params.iter().map(|p| p.as_ref().clone()).collect(),

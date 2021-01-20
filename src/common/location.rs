@@ -2,6 +2,8 @@
 // Location
 //
 
+use std::ops::Deref;
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Location {
     row: u32,
@@ -94,6 +96,14 @@ impl<T: AsRef<str>> AsRef<str> for Locatable<T> {
 impl<T: PartialEq<T>> PartialEq<T> for Locatable<T> {
     fn eq(&self, that: &T) -> bool {
         &self.element == that
+    }
+}
+
+impl<T> Deref for Locatable<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.element
     }
 }
 

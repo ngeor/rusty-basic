@@ -3,7 +3,7 @@ use crate::common::{AtRowCol, StripLocation};
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::Instruction;
 use crate::parser::{BuiltInStyle, ExpressionType, ParamName, ParamType, TypeQualifier};
-use crate::variant::Variant;
+use crate::variant::{RootPath, Variant};
 
 #[test]
 fn test_declaration() {
@@ -31,7 +31,11 @@ fn test_declaration() {
             Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::BangSingle))
                 .at_rc(2, 9),
             // store allocated array value into variable
-            Instruction::VarPathName("X!".into()).at_rc(2, 9),
+            Instruction::VarPathName(RootPath {
+                name: "X!".into(),
+                shared: false
+            })
+            .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]
@@ -59,13 +63,21 @@ fn test_assignment() {
             Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::PercentInteger))
                 .at_rc(2, 9),
             // store allocated array value into variable
-            Instruction::VarPathName("X%".into()).at_rc(2, 9),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            })
+            .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
             // assignment to array
             // evaluate right side into A
             Instruction::LoadIntoA(Variant::VInteger(4)).at_rc(3, 13),
             // build name path
-            Instruction::VarPathName("X%".into()).at_rc(3, 5),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            })
+            .at_rc(3, 5),
             Instruction::PushAToValueStack.at_rc(3, 8),
             Instruction::LoadIntoA(Variant::VInteger(2)).at_rc(3, 8), // loads into A, therefore needs PushRegisters before
             Instruction::VarPathIndex.at_rc(3, 8),
@@ -96,13 +108,19 @@ fn test_assign_and_print_one_element() {
             Instruction::PushAToUnnamedArg,
             // allocate array into A
             Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::BangSingle)),
-            Instruction::VarPathName("A!".into()),
+            Instruction::VarPathName(RootPath {
+                name: "A!".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             // assign to array element
             // evaluate right side into A
             Instruction::LoadIntoA(Variant::VInteger(42)),
             Instruction::Cast(TypeQualifier::BangSingle),
-            Instruction::VarPathName("A!".into()),
+            Instruction::VarPathName(RootPath {
+                name: "A!".into(),
+                shared: false
+            }),
             Instruction::PushAToValueStack,
             Instruction::LoadIntoA(Variant::VInteger(1)),
             Instruction::VarPathIndex,
@@ -116,7 +134,10 @@ fn test_assign_and_print_one_element() {
             Instruction::PushAToUnnamedArg,
             Instruction::LoadIntoA(Variant::VInteger(0)),
             Instruction::PushAToUnnamedArg,
-            Instruction::VarPathName("A!".into()),
+            Instruction::VarPathName(RootPath {
+                name: "A!".into(),
+                shared: false
+            }),
             Instruction::PushAToValueStack,
             Instruction::LoadIntoA(Variant::VInteger(1)),
             Instruction::VarPathIndex,
@@ -153,11 +174,17 @@ fn test_pass_param_to_sub() {
             Instruction::PushAToUnnamedArg,
             // allocate array into A
             Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::BangSingle)),
-            Instruction::VarPathName("A!".into()),
+            Instruction::VarPathName(RootPath {
+                name: "A!".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             // call sub
             Instruction::BeginCollectArguments,
-            Instruction::VarPathName("A!".into()),
+            Instruction::VarPathName(RootPath {
+                name: "A!".into(),
+                shared: false
+            }),
             Instruction::CopyVarPathToA,
             Instruction::PushNamed(ParamName::new(
                 "values".into(),
@@ -172,7 +199,10 @@ fn test_pass_param_to_sub() {
             Instruction::EnqueueToReturnStack(0),
             Instruction::PopStack,
             Instruction::DequeueFromReturnStack,
-            Instruction::VarPathName("A!".into()),
+            Instruction::VarPathName(RootPath {
+                name: "A!".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             Instruction::Halt,
             // sub implementation

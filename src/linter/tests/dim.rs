@@ -346,3 +346,33 @@ fn test_dim_array_extended_user_defined() {
         .at_rc(5, 5)]
     );
 }
+
+#[test]
+fn test_dim_shared_in_function_not_allowed() {
+    let program = r#"
+    FUNCTION Test
+        DIM SHARED A
+    END FUNCTION
+    "#;
+    assert_linter_err!(
+        program,
+        QError::syntax_error("SHARED not allowed in subprogram"),
+        3,
+        20
+    );
+}
+
+#[test]
+fn test_dim_shared_in_sub_not_allowed() {
+    let program = r#"
+    SUB Test
+        DIM SHARED A
+    END SUB
+    "#;
+    assert_linter_err!(
+        program,
+        QError::syntax_error("SHARED not allowed in subprogram"),
+        3,
+        20
+    );
+}

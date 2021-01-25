@@ -70,6 +70,9 @@ impl Names {
             || self.constants.contains_key(bare_name)
     }
 
+    /// Checks if a new compact variable can be introduced for the given name and qualifier.
+    /// This is allowed if the given name is not yet known, or if it is known as a compact
+    /// name and the qualifier hasn't been used yet.
     pub fn can_accept_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> bool {
         if self.extended_names.contains_key(bare_name) || self.constants.contains_key(bare_name) {
             false
@@ -1045,94 +1048,32 @@ pub mod dim_rules {
 
     type I = DimNameNode;
     type O = (DimNameNode, Vec<QualifiedNameNode>);
-    type DimResult = RuleResult<I, O>;
-    type Result = std::result::Result<DimResult, QErrorNode>;
 
     pub fn on_dim(
         ctx: &mut Context,
         dim_name_node: DimNameNode,
         is_param: bool,
-    ) -> std::result::Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let rule = FnRule::new(cannot_clash_with_subs)
-            .chain_fn(if is_param {
-                cannot_clash_with_functions_param
-            } else {
-                cannot_clash_with_functions_dim
-            })
-            .chain_fn(cannot_clash_with_existing_names)
-            .chain_fn(user_defined_type_must_exist)
-            .chain_fn(new_var);
-        rule.demand(ctx, dim_name_node)
+    ) -> Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
+        validate(ctx, &dim_name_node, is_param)?;
+        new_var(ctx, dim_name_node)
     }
 
-    fn user_defined_type_must_exist(ctx: &mut Context, input: I) -> Result {
-        if let Some(user_defined_type_name_node) = input.is_user_defined() {
-            if ctx
-                .user_defined_types
-                .contains_key(user_defined_type_name_node.as_ref())
-            {
-                Ok(RuleResult::Skip(input))
-            } else {
-                Err(QError::TypeNotDefined).with_err_at(user_defined_type_name_node)
-            }
+    fn validate(ctx: &Context, dim_name_node: &I, is_param: bool) -> Result<(), QErrorNode> {
+        cannot_clash_with_subs::validate(ctx, dim_name_node)?;
+        if is_param {
+            cannot_clash_with_functions_param::validate(ctx, dim_name_node)?;
         } else {
-            Ok(RuleResult::Skip(input))
+            cannot_clash_with_functions::validate(ctx, dim_name_node)?;
         }
+        cannot_clash_with_existing_names::validate(ctx, dim_name_node)?;
+        user_defined_type_must_exist::validate(ctx, dim_name_node)?;
+        shared_not_allowed_in_subprogram::validate(ctx, dim_name_node)
     }
 
-    fn cannot_clash_with_functions_dim(ctx: &mut Context, input: I) -> Result {
-        if ctx.functions.contains_key(input.bare_name()) {
-            Err(QError::DuplicateDefinition).with_err_at(&input)
-        } else {
-            Ok(RuleResult::Skip(input))
-        }
-    }
-
-    fn cannot_clash_with_functions_param(ctx: &mut Context, input: I) -> Result {
-        match ctx.function_qualifier(input.bare_name()) {
-            Some(func_qualifier) => {
-                if input.is_extended() {
-                    Err(QError::DuplicateDefinition).with_err_at(&input)
-                } else {
-                    let q = ctx.resolve_name_ref_to_qualifier(&input);
-                    if q == func_qualifier {
-                        // for some reason you can have a FUNCTION Add(Add)
-                        Ok(RuleResult::Skip(input))
-                    } else {
-                        Err(QError::DuplicateDefinition).with_err_at(&input)
-                    }
-                }
-            }
-            _ => Ok(RuleResult::Skip(input)),
-        }
-    }
-
-    fn cannot_clash_with_subs(ctx: &mut Context, input: I) -> Result {
-        if ctx.subs.contains_key(input.bare_name()) {
-            Err(QError::DuplicateDefinition).with_err_at(&input)
-        } else {
-            Ok(RuleResult::Skip(input))
-        }
-    }
-
-    fn cannot_clash_with_existing_names(ctx: &mut Context, input: I) -> Result {
-        if input.is_extended() {
-            if ctx.names.contains_any(input.bare_name()) {
-                Err(QError::DuplicateDefinition).with_err_at(&input)
-            } else {
-                Ok(RuleResult::Skip(input))
-            }
-        } else {
-            let qualifier = ctx.resolve_name_ref_to_qualifier(&input);
-            if ctx.names.can_accept_compact(input.bare_name(), qualifier) {
-                Ok(RuleResult::Skip(input))
-            } else {
-                Err(QError::DuplicateDefinition).with_err_at(&input)
-            }
-        }
-    }
-
-    fn new_var(ctx: &mut Context, input: I) -> Result {
+    fn new_var(
+        ctx: &mut Context,
+        input: I,
+    ) -> Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
         let (converted_input, implicit_vars) = new_var_not_adding_to_context(ctx, input)?;
         // add to context
         let DimName {
@@ -1152,13 +1093,10 @@ pub mod dim_rules {
             ctx.names
                 .insert_compact(bare_name.clone(), q, variable_context);
         }
-        Ok(RuleResult::Success((converted_input, implicit_vars)))
+        Ok((converted_input, implicit_vars))
     }
 
-    fn new_var_not_adding_to_context(
-        ctx: &mut Context,
-        input: I,
-    ) -> std::result::Result<O, QErrorNode> {
+    fn new_var_not_adding_to_context(ctx: &mut Context, input: I) -> Result<O, QErrorNode> {
         let Locatable {
             element:
                 DimName {
@@ -1251,6 +1189,109 @@ pub mod dim_rules {
                     DimName::new(bare_name, array_dim_type, shared).at(pos),
                     implicit_vars,
                 ))
+            }
+        }
+    }
+
+    pub mod cannot_clash_with_subs {
+        use super::*;
+
+        pub fn validate(ctx: &Context, dim_name_node: &DimNameNode) -> Result<(), QErrorNode> {
+            if ctx.subs.contains_key(dim_name_node.bare_name()) {
+                Err(QError::DuplicateDefinition).with_err_at(dim_name_node)
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    pub mod cannot_clash_with_functions {
+        use super::*;
+
+        pub fn validate(ctx: &Context, dim_name_node: &DimNameNode) -> Result<(), QErrorNode> {
+            if ctx.functions.contains_key(dim_name_node.bare_name()) {
+                Err(QError::DuplicateDefinition).with_err_at(dim_name_node)
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    pub mod cannot_clash_with_functions_param {
+        use super::*;
+
+        pub fn validate(ctx: &Context, dim_name_node: &DimNameNode) -> Result<(), QErrorNode> {
+            match ctx.function_qualifier(dim_name_node.bare_name()) {
+                Some(func_qualifier) => {
+                    if dim_name_node.is_extended() {
+                        Err(QError::DuplicateDefinition).with_err_at(dim_name_node)
+                    } else {
+                        let q = ctx.resolve_name_ref_to_qualifier(dim_name_node);
+                        if q == func_qualifier {
+                            // for some reason you can have a FUNCTION Add(Add)
+                            Ok(())
+                        } else {
+                            Err(QError::DuplicateDefinition).with_err_at(dim_name_node)
+                        }
+                    }
+                }
+                _ => Ok(()),
+            }
+        }
+    }
+
+    pub mod cannot_clash_with_existing_names {
+        use super::*;
+
+        pub fn validate(ctx: &Context, dim_name_node: &DimNameNode) -> Result<(), QErrorNode> {
+            if dim_name_node.is_extended() {
+                if ctx.names.contains_any(dim_name_node.bare_name()) {
+                    Err(QError::DuplicateDefinition).with_err_at(dim_name_node)
+                } else {
+                    Ok(())
+                }
+            } else {
+                let qualifier = ctx.resolve_name_ref_to_qualifier(dim_name_node);
+                if ctx
+                    .names
+                    .can_accept_compact(dim_name_node.bare_name(), qualifier)
+                {
+                    Ok(())
+                } else {
+                    Err(QError::DuplicateDefinition).with_err_at(dim_name_node)
+                }
+            }
+        }
+    }
+
+    pub mod user_defined_type_must_exist {
+        use super::*;
+
+        pub fn validate(ctx: &Context, dim_name_node: &DimNameNode) -> Result<(), QErrorNode> {
+            if let Some(user_defined_type_name_node) = dim_name_node.is_user_defined() {
+                if ctx
+                    .user_defined_types
+                    .contains_key(user_defined_type_name_node.as_ref())
+                {
+                    Ok(())
+                } else {
+                    Err(QError::TypeNotDefined).with_err_at(user_defined_type_name_node)
+                }
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    pub mod shared_not_allowed_in_subprogram {
+        use super::*;
+
+        pub fn validate(ctx: &Context, dim_name_node: &DimNameNode) -> Result<(), QErrorNode> {
+            if ctx.names.parent.is_some() && dim_name_node.shared {
+                Err(QError::syntax_error("SHARED not allowed in subprogram"))
+                    .with_err_at(dim_name_node)
+            } else {
+                Ok(())
             }
         }
     }

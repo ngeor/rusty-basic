@@ -347,32 +347,80 @@ fn test_dim_array_extended_user_defined() {
     );
 }
 
-#[test]
-fn test_dim_shared_in_function_not_allowed() {
-    let program = r#"
-    FUNCTION Test
-        DIM SHARED A
-    END FUNCTION
-    "#;
-    assert_linter_err!(
-        program,
-        QError::syntax_error("SHARED not allowed in subprogram"),
-        3,
-        20
-    );
-}
+mod dim_shared {
+    use super::*;
 
-#[test]
-fn test_dim_shared_in_sub_not_allowed() {
-    let program = r#"
-    SUB Test
-        DIM SHARED A
-    END SUB
-    "#;
-    assert_linter_err!(
-        program,
-        QError::syntax_error("SHARED not allowed in subprogram"),
-        3,
-        20
-    );
+    #[test]
+    fn test_dim_shared_in_function_not_allowed() {
+        let program = r#"
+        FUNCTION Test
+            DIM SHARED A
+        END FUNCTION
+        "#;
+        assert_linter_err!(
+            program,
+            QError::syntax_error("SHARED not allowed in subprogram"),
+            3,
+            24
+        );
+    }
+
+    #[test]
+    fn test_dim_shared_in_sub_not_allowed() {
+        let program = r#"
+        SUB Test
+            DIM SHARED A
+        END SUB
+        "#;
+        assert_linter_err!(
+            program,
+            QError::syntax_error("SHARED not allowed in subprogram"),
+            3,
+            24
+        );
+    }
+
+    #[test]
+    fn test_dim_in_function_clash_with_shared_dim() {
+        let program = r#"
+        DIM SHARED A AS STRING
+        FUNCTION Test
+            DIM A AS STRING
+        END FUNCTION
+        "#;
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+    }
+
+    #[test]
+    fn test_dim_in_sub_clash_with_shared_dim() {
+        let program = r#"
+        DIM SHARED A AS STRING
+        SUB Test
+            DIM A AS STRING
+        END SUB
+        "#;
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+    }
+
+    #[test]
+    fn test_const_in_function_clash_with_shared_dim() {
+        let program = r#"
+        DIM SHARED A AS STRING
+        FUNCTION Test
+            CONST A = "hello"
+        END FUNCTION
+        "#;
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+    }
+
+    #[test]
+    fn test_const_in_sub_clash_with_shared_dim() {
+        let program = r#"
+        DIM SHARED A AS STRING
+        SUB Test
+            CONST A = "hello"
+        END SUB
+        "#;
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+    }
 }

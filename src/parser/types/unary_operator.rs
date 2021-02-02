@@ -8,6 +8,7 @@ pub enum UnaryOperator {
 }
 
 impl UnaryOperator {
+    // TODO move to context.rs as it is only used there
     pub fn applies_to(&self, expr_type: &ExpressionType) -> bool {
         match expr_type {
             ExpressionType::BuiltIn(TypeQualifier::BangSingle)

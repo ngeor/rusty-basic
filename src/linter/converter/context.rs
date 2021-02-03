@@ -369,7 +369,6 @@ impl<'a> Context<'a> {
         let (converted_left_side, left_side_implicit_vars) =
             expr_rules::on_expression(self, left_side, ExprContext::Assignment)?;
         assignment_post_conversion_validation_rules::validate(
-            self,
             &converted_left_side,
             &converted_right_side,
         )?;
@@ -452,84 +451,6 @@ impl<'a> Context<'a> {
     }
 }
 
-enum RuleResult<I, O> {
-    Success(O),
-    Skip(I),
-}
-
-trait Rule<I, O, E> {
-    fn eval(&self, ctx: &mut Context, input: I) -> Result<RuleResult<I, O>, E>;
-
-    fn chain<X: Rule<I, O, E>>(self, other: X) -> Chain<Self, X>
-    where
-        Self: Sized,
-    {
-        Chain {
-            left: self,
-            right: other,
-        }
-    }
-
-    fn chain_fn(
-        self,
-        f: fn(&mut Context, I) -> Result<RuleResult<I, O>, E>,
-    ) -> Chain<Self, FnRule<I, O, E>>
-    where
-        Self: Sized,
-    {
-        Chain {
-            left: self,
-            right: FnRule::new(f),
-        }
-    }
-
-    fn demand(&self, ctx: &mut Context, input: I) -> Result<O, E>
-    where
-        I: Debug,
-    {
-        match self.eval(ctx, input) {
-            Ok(RuleResult::Success(o)) => Ok(o),
-            Err(err) => Err(err),
-            Ok(RuleResult::Skip(input)) => panic!("Could not process {:?}", input),
-        }
-    }
-}
-
-struct Chain<A, B> {
-    pub left: A,
-    pub right: B,
-}
-
-impl<A, B, I, O, E> Rule<I, O, E> for Chain<A, B>
-where
-    A: Rule<I, O, E>,
-    B: Rule<I, O, E>,
-{
-    fn eval(&self, ctx: &mut Context, input: I) -> Result<RuleResult<I, O>, E> {
-        match self.left.eval(ctx, input) {
-            Ok(RuleResult::Success(s)) => Ok(RuleResult::Success(s)),
-            Err(e) => Err(e),
-            Ok(RuleResult::Skip(i)) => self.right.eval(ctx, i),
-        }
-    }
-}
-
-struct FnRule<I, O, E> {
-    f: fn(&mut Context, I) -> Result<RuleResult<I, O>, E>,
-}
-
-impl<I, O, E> FnRule<I, O, E> {
-    pub fn new(f: fn(&mut Context, I) -> Result<RuleResult<I, O>, E>) -> Self {
-        Self { f }
-    }
-}
-
-impl<I, O, E> Rule<I, O, E> for FnRule<I, O, E> {
-    fn eval(&self, ctx: &mut Context, input: I) -> Result<RuleResult<I, O>, E> {
-        (self.f)(ctx, input)
-    }
-}
-
 pub mod expr_rules {
     use std::convert::TryFrom;
 
@@ -539,13 +460,13 @@ pub mod expr_rules {
     use super::*;
 
     type O = (ExpressionNode, Vec<QualifiedNameNode>);
-    type R = std::result::Result<O, QErrorNode>;
+    type R = Result<O, QErrorNode>;
 
     pub fn on_expression(
         ctx: &mut Context,
         expr_node: ExpressionNode,
         expr_context: ExprContext,
-    ) -> std::result::Result<O, QErrorNode> {
+    ) -> Result<O, QErrorNode> {
         let Locatable { element: expr, pos } = expr_node;
         match expr {
             // literals
@@ -688,11 +609,7 @@ pub mod expr_rules {
             }
         }
 
-        fn validate(
-            ctx: &Context,
-            name: &Name,
-            pos: Location,
-        ) -> std::result::Result<(), QErrorNode> {
+        fn validate(ctx: &Context, name: &Name, pos: Location) -> Result<(), QErrorNode> {
             if ctx.subs.contains_key(name.bare_name()) {
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
@@ -724,7 +641,7 @@ pub mod expr_rules {
                 ctx: &'a Context,
                 name: Name,
                 pos: Location,
-            ) -> std::result::Result<ExpressionNode, QErrorNode>;
+            ) -> Result<ExpressionNode, QErrorNode>;
 
             fn resolve_no_implicits(&self, ctx: &'a Context, name: Name, pos: Location) -> R {
                 self.resolve(ctx, name, pos).map(|e| (e, vec![]))
@@ -754,7 +671,7 @@ pub mod expr_rules {
                 _ctx: &'a Context,
                 name: Name,
                 pos: Location,
-            ) -> std::result::Result<ExpressionNode, QErrorNode> {
+            ) -> Result<ExpressionNode, QErrorNode> {
                 let variable_info = self.var_info.unwrap();
                 let expression_type = &variable_info.expression_type;
                 let converted_name = expression_type
@@ -800,7 +717,7 @@ pub mod expr_rules {
                 _ctx: &'a Context,
                 name: Name,
                 pos: Location,
-            ) -> std::result::Result<ExpressionNode, QErrorNode> {
+            ) -> Result<ExpressionNode, QErrorNode> {
                 let v = self.opt_v.unwrap();
                 let q = TypeQualifier::try_from(v).with_err_at(pos)?;
                 if name.is_bare_or_of_type(q) {
@@ -835,7 +752,7 @@ pub mod expr_rules {
                 ctx: &'a Context,
                 name: Name,
                 pos: Location,
-            ) -> std::result::Result<ExpressionNode, QErrorNode> {
+            ) -> Result<ExpressionNode, QErrorNode> {
                 let function_qualifier = self.function_qualifier.unwrap();
                 let bare_name = name.bare_name();
                 if name.is_bare_or_of_type(function_qualifier) {
@@ -870,7 +787,7 @@ pub mod expr_rules {
                 _ctx: &'a Context,
                 name: Name,
                 pos: Location,
-            ) -> std::result::Result<ExpressionNode, QErrorNode> {
+            ) -> Result<ExpressionNode, QErrorNode> {
                 match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
                     Some(built_in_function) => {
                         Ok(Expression::BuiltInFunctionCall(built_in_function, vec![]).at(pos))
@@ -896,7 +813,7 @@ pub mod expr_rules {
                 _ctx: &'a Context<'a>,
                 name: Name,
                 pos: Location,
-            ) -> std::result::Result<ExpressionNode, QErrorNode> {
+            ) -> Result<ExpressionNode, QErrorNode> {
                 let converted_name = name.qualify(self.function_qualifier.unwrap());
                 Ok(Expression::FunctionCall(converted_name, vec![]).at(pos))
             }
@@ -1176,7 +1093,7 @@ pub mod expr_rules {
                 args: ExpressionNodes,
                 expr_context: ExprContext,
                 pos: Location,
-            ) -> std::result::Result<O, QErrorNode>;
+            ) -> Result<O, QErrorNode>;
         }
 
         #[derive(Default)]
@@ -1222,8 +1139,7 @@ pub mod expr_rules {
                 args: ExpressionNodes,
                 expr_context: ExprContext,
                 pos: Location,
-            ) -> std::result::Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode>
-            {
+            ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
                 // convert args
                 let (converted_args, implicit_vars) = ctx.on_expressions(args, expr_context)?;
                 // convert name
@@ -1519,22 +1435,16 @@ pub mod dim_rules {
 }
 
 pub mod const_rules {
-    use std::convert::TryFrom;
-
-    use crate::common::{QError, ToLocatableError};
-
     use super::*;
-
-    type I = (NameNode, ExpressionNode);
-    type O = ();
-    type ConstResult = RuleResult<I, O>;
-    type Result = std::result::Result<ConstResult, QErrorNode>;
+    use crate::common::{QError, ToLocatableError};
+    use std::convert::TryFrom;
 
     pub fn on_const(
         ctx: &mut Context,
         left_side: NameNode,
         right_side: ExpressionNode,
-    ) -> std::result::Result<O, QErrorNode> {
+    ) -> Result<(), QErrorNode> {
+        // TODO merge with next rule
         if ctx
             .names
             .get_extended_var_recursively(left_side.bare_name())
@@ -1542,71 +1452,65 @@ pub mod const_rules {
         {
             return Err(QError::DuplicateDefinition).with_err_at(&left_side);
         }
-        let rule = FnRule::new(const_cannot_clash_with_existing_names).chain_fn(new_const);
-        rule.demand(ctx, (left_side, right_side))
+
+        const_cannot_clash_with_existing_names(ctx, &left_side)?;
+        new_const(ctx, left_side, right_side)
     }
 
-    fn const_cannot_clash_with_existing_names(ctx: &mut Context, input: I) -> Result {
-        let (
-            Locatable {
-                element: const_name,
-                pos: const_name_pos,
-            },
-            right,
-        ) = input;
+    fn const_cannot_clash_with_existing_names(
+        ctx: &mut Context,
+        left_side: &NameNode,
+    ) -> Result<(), QErrorNode> {
+        let Locatable {
+            element: const_name,
+            pos: const_name_pos,
+        } = left_side;
         if ctx
             .names
             .contains_local_var_or_local_const(const_name.bare_name())
             || ctx.subs.contains_key(const_name.bare_name())
             || ctx.functions.contains_key(const_name.bare_name())
         {
-            Err(QError::DuplicateDefinition).with_err_at(const_name_pos)
+            Err(QError::DuplicateDefinition).with_err_at(*const_name_pos)
         } else {
-            Ok(RuleResult::Skip((const_name.at(const_name_pos), right)))
+            Ok(())
         }
     }
 
-    fn new_const(ctx: &mut Context, input: I) -> Result {
-        let (
-            Locatable {
-                element: const_name,
-                ..
-            },
-            right,
-        ) = input;
-        let value_before_casting = ctx.names.resolve_const_value_node(&right)?;
-        let value_qualifier = TypeQualifier::try_from(&value_before_casting).with_err_at(&right)?;
+    fn new_const(
+        ctx: &mut Context,
+        left_side: NameNode,
+        right_side: ExpressionNode,
+    ) -> Result<(), QErrorNode> {
+        let Locatable {
+            element: const_name,
+            ..
+        } = left_side;
+        let value_before_casting = ctx.names.resolve_const_value_node(&right_side)?;
+        let value_qualifier =
+            TypeQualifier::try_from(&value_before_casting).with_err_at(&right_side)?;
         let final_value = if const_name.is_bare_or_of_type(value_qualifier) {
             value_before_casting
         } else {
             value_before_casting
                 .cast(const_name.qualifier().unwrap())
-                .with_err_at(&right)?
+                .with_err_at(&right_side)?
         };
         ctx.names
             .insert_const(const_name.bare_name().clone(), final_value.clone());
-        Ok(RuleResult::Success(()))
+        Ok(())
     }
 }
 
 pub mod assignment_pre_conversion_validation_rules {
+    use super::*;
     use crate::common::{QError, ToLocatableError};
 
-    use super::*;
-
-    type I<'a> = &'a ExpressionNode;
-    type ValidationResult<'a> = RuleResult<I<'a>, ()>;
-    type Result<'a> = std::result::Result<ValidationResult<'a>, QErrorNode>;
-
-    pub fn validate(
-        ctx: &mut Context,
-        left_side: &ExpressionNode,
-    ) -> std::result::Result<(), QErrorNode> {
-        let rule = FnRule::new(cannot_assign_to_const).chain_fn(success);
-        rule.demand(ctx, left_side)
+    pub fn validate(ctx: &mut Context, left_side: &ExpressionNode) -> Result<(), QErrorNode> {
+        cannot_assign_to_const(ctx, left_side)
     }
 
-    fn cannot_assign_to_const<'a>(ctx: &mut Context, input: I<'a>) -> Result<'a> {
+    fn cannot_assign_to_const(ctx: &mut Context, input: &ExpressionNode) -> Result<(), QErrorNode> {
         if let Locatable {
             element: Expression::Variable(var_name, _),
             ..
@@ -1615,47 +1519,27 @@ pub mod assignment_pre_conversion_validation_rules {
             if ctx.names.contains_const_recursively(var_name.bare_name()) {
                 Err(QError::DuplicateDefinition).with_err_at(input)
             } else {
-                Ok(RuleResult::Skip(input))
+                Ok(())
             }
         } else {
-            Ok(RuleResult::Skip(input))
+            Ok(())
         }
-    }
-
-    fn success<'a>(_ctx: &mut Context, _input: I<'a>) -> Result<'a> {
-        Ok(RuleResult::Success(()))
     }
 }
 
 pub mod assignment_post_conversion_validation_rules {
+    use super::*;
     use crate::common::{CanCastTo, QError, ToLocatableError};
 
-    use super::*;
-
-    type I<'a> = (&'a ExpressionNode, &'a ExpressionNode);
-    type ValidationResult<'a> = RuleResult<I<'a>, ()>;
-    type Result<'a> = std::result::Result<ValidationResult<'a>, QErrorNode>;
-
     pub fn validate(
-        ctx: &mut Context,
         left_side: &ExpressionNode,
         right_side: &ExpressionNode,
-    ) -> std::result::Result<(), QErrorNode> {
-        let rule = FnRule::new(can_cast_right_to_left).chain_fn(success);
-        rule.demand(ctx, (left_side, right_side))
-    }
-
-    fn can_cast_right_to_left<'a>(_ctx: &mut Context, input: I<'a>) -> Result<'a> {
-        let (left, right) = input;
-        if right.can_cast_to(left) {
-            Ok(RuleResult::Skip((left, right)))
+    ) -> Result<(), QErrorNode> {
+        if right_side.can_cast_to(left_side) {
+            Ok(())
         } else {
-            Err(QError::TypeMismatch).with_err_at(right)
+            Err(QError::TypeMismatch).with_err_at(right_side)
         }
-    }
-
-    fn success<'a>(_ctx: &mut Context, _input: I<'a>) -> Result<'a> {
-        Ok(RuleResult::Success(()))
     }
 }
 

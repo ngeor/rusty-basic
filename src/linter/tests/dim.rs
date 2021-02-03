@@ -388,7 +388,7 @@ mod dim_shared {
             DIM A AS STRING
         END FUNCTION
         "#;
-        assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 17);
     }
 
     #[test]
@@ -399,7 +399,7 @@ mod dim_shared {
             DIM A AS STRING
         END SUB
         "#;
-        assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 17);
     }
 
     #[test]
@@ -410,7 +410,7 @@ mod dim_shared {
             CONST A = "hello"
         END FUNCTION
         "#;
-        assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 19);
     }
 
     #[test]
@@ -421,6 +421,6 @@ mod dim_shared {
             CONST A = "hello"
         END SUB
         "#;
-        assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 19);
     }
 }

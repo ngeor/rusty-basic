@@ -64,7 +64,7 @@ impl Names {
         Self::new(None, None)
     }
 
-    pub fn contains_any(&self, bare_name: &BareName) -> bool {
+    pub fn contains_local_var_or_local_const(&self, bare_name: &BareName) -> bool {
         self.compact_name_set.contains_key(bare_name)
             || self.extended_names.contains_key(bare_name)
             || self.constants.contains_key(bare_name)
@@ -84,7 +84,7 @@ impl Names {
         }
     }
 
-    fn contains_compact(
+    fn get_local_compact_var(
         &self,
         bare_name: &BareName,
         qualifier: TypeQualifier,
@@ -102,40 +102,32 @@ impl Names {
         }
     }
 
-    fn contains_compact_shared(
+    pub fn get_compact_var_recursively(
         &self,
         bare_name: &BareName,
         qualifier: TypeQualifier,
     ) -> Option<&VariableInfo> {
-        Self::require_shared(self.contains_compact(bare_name, qualifier))
-    }
-
-    pub fn contains_compact_recursively(
-        &self,
-        bare_name: &BareName,
-        qualifier: TypeQualifier,
-    ) -> Option<&VariableInfo> {
-        match self.contains_compact(bare_name, qualifier) {
+        match self.get_local_compact_var(bare_name, qualifier) {
             Some(variable_info) => Some(variable_info),
             _ => match &self.parent {
                 Some(parent_names) => {
-                    parent_names.contains_compact_shared_recursively(bare_name, qualifier)
+                    parent_names.get_compact_shared_var_recursively(bare_name, qualifier)
                 }
                 _ => None,
             },
         }
     }
 
-    fn contains_compact_shared_recursively(
+    fn get_compact_shared_var_recursively(
         &self,
         bare_name: &BareName,
         qualifier: TypeQualifier,
     ) -> Option<&VariableInfo> {
-        match self.contains_compact_shared(bare_name, qualifier) {
+        match Self::require_shared(self.get_local_compact_var(bare_name, qualifier)) {
             Some(variable_info) => Some(variable_info),
             _ => match &self.parent {
                 Some(parent_names) => {
-                    parent_names.contains_compact_shared_recursively(bare_name, qualifier)
+                    parent_names.get_compact_shared_var_recursively(bare_name, qualifier)
                 }
                 _ => None,
             },
@@ -155,29 +147,25 @@ impl Names {
         }
     }
 
-    fn contains_extended(&self, bare_name: &BareName) -> Option<&VariableInfo> {
+    fn get_local_extended_var(&self, bare_name: &BareName) -> Option<&VariableInfo> {
         self.extended_names.get(bare_name)
     }
 
-    fn contains_extended_shared(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        Self::require_shared(self.contains_extended(bare_name))
-    }
-
-    pub fn contains_extended_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match self.contains_extended(bare_name) {
+    pub fn get_extended_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
+        match self.get_local_extended_var(bare_name) {
             Some(variable_info) => Some(variable_info),
             _ => match &self.parent {
-                Some(parent_names) => parent_names.contains_extended_shared_recursively(bare_name),
+                Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
                 _ => None,
             },
         }
     }
 
-    fn contains_extended_shared_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match self.contains_extended_shared(bare_name) {
+    fn get_extended_shared_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
+        match Self::require_shared(self.get_local_extended_var(bare_name)) {
             Some(variable_info) => Some(variable_info),
             _ => match &self.parent {
-                Some(parent_names) => parent_names.contains_extended_shared_recursively(bare_name),
+                Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
                 _ => None,
             },
         }
@@ -751,12 +739,12 @@ pub mod expr_rules {
         impl<'a> VarResolve<'a> for ExistingVar<'a> {
             fn can_handle(&mut self, ctx: &'a Context, name: &Name) -> bool {
                 let bare_name = name.bare_name();
-                self.var_info = ctx.names.contains_extended_recursively(bare_name);
+                self.var_info = ctx.names.get_extended_var_recursively(bare_name);
                 if self.var_info.is_some() {
                     true
                 } else {
                     let q: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
-                    self.var_info = ctx.names.contains_compact_recursively(bare_name, q);
+                    self.var_info = ctx.names.get_compact_var_recursively(bare_name, q);
                     self.var_info.is_some()
                 }
             }
@@ -1213,7 +1201,7 @@ pub mod expr_rules {
                 let bare_name = name.bare_name();
                 self.var_info = ctx
                     .names
-                    .contains_extended_recursively(bare_name)
+                    .get_extended_var_recursively(bare_name)
                     .map(Clone::clone);
                 if self.var_info.is_some() {
                     self.is_array()
@@ -1221,7 +1209,7 @@ pub mod expr_rules {
                     let qualifier: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
                     self.var_info = ctx
                         .names
-                        .contains_compact_recursively(bare_name, qualifier)
+                        .get_compact_var_recursively(bare_name, qualifier)
                         .map(Clone::clone);
                     self.is_array()
                 }
@@ -1471,7 +1459,14 @@ pub mod dim_rules {
 
         pub fn validate(ctx: &Context, dim_name_node: &DimNameNode) -> Result<(), QErrorNode> {
             if dim_name_node.is_extended() {
-                if ctx.names.contains_any(dim_name_node.bare_name()) {
+                if ctx
+                    .names
+                    .contains_local_var_or_local_const(dim_name_node.bare_name())
+                    || ctx
+                        .names
+                        .get_extended_var_recursively(dim_name_node.bare_name())
+                        .is_some()
+                {
                     Err(QError::DuplicateDefinition).with_err_at(dim_name_node)
                 } else {
                     Ok(())
@@ -1540,6 +1535,13 @@ pub mod const_rules {
         left_side: NameNode,
         right_side: ExpressionNode,
     ) -> std::result::Result<O, QErrorNode> {
+        if ctx
+            .names
+            .get_extended_var_recursively(left_side.bare_name())
+            .is_some()
+        {
+            return Err(QError::DuplicateDefinition).with_err_at(&left_side);
+        }
         let rule = FnRule::new(const_cannot_clash_with_existing_names).chain_fn(new_const);
         rule.demand(ctx, (left_side, right_side))
     }
@@ -1552,7 +1554,9 @@ pub mod const_rules {
             },
             right,
         ) = input;
-        if ctx.names.contains_any(const_name.bare_name())
+        if ctx
+            .names
+            .contains_local_var_or_local_const(const_name.bare_name())
             || ctx.subs.contains_key(const_name.bare_name())
             || ctx.functions.contains_key(const_name.bare_name())
         {

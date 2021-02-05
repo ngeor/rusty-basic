@@ -369,8 +369,8 @@ pub mod variable_v2 {
 pub mod property_v2 {
     use super::*;
     use crate::linter::converter::context::expr_rules::variable_v2::{
-        add_as_new_implicit_var, AssignToFunction, ExistingVar, VarAsUserDefinedFunctionCall,
-        VarResolve,
+        add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
+        VarAsUserDefinedFunctionCall, VarResolve,
     };
 
     pub fn convert(
@@ -392,9 +392,8 @@ pub mod property_v2 {
                 // no need to check for built-in, they don't have dots
                 rules.push(Box::new(VarAsUserDefinedFunctionCall::default()));
             }
-
-            // TODO what about const with dot?
-
+            rules.push(Box::new(ExistingConst::new_local()));
+            rules.push(Box::new(ExistingConst::new_recursive()));
             for mut rule in rules {
                 if rule.can_handle(ctx, &folded_name) {
                     return rule.resolve_no_implicits(ctx, folded_name, pos);
@@ -464,9 +463,6 @@ pub mod property_v2 {
                     pos,
                     false,
                 )
-            }
-            Expression::Parenthesis(_) => {
-                todo!()
             }
             _ => {
                 // this cannot possibly have a dot property

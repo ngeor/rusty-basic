@@ -61,6 +61,22 @@ mod dim_shared {
     use super::*;
 
     #[test]
+    fn test_dim_shared_bare() {
+        let program = r#"
+        DIM SHARED A
+        A = 42
+        PRINT A
+        SubThatUsesSharedVariable
+        PRINT A
+
+        SUB SubThatUsesSharedVariable
+            A = 3
+        END SUB
+        "#;
+        assert_prints!(program, "42", "3");
+    }
+
+    #[test]
     fn test_dim_shared_compact_string() {
         let program = r#"
         DIM SHARED A$
@@ -87,6 +103,57 @@ mod dim_shared {
 
         SUB SubThatUsesSharedVariable
             A = "hello"
+        END SUB
+        "#;
+        assert_prints!(program, "hi", "hello");
+    }
+
+    #[test]
+    fn test_dim_shared_user_defined_type() {
+        let program = r#"
+        TYPE User
+            Username AS STRING * 10
+        END TYPE
+        DIM SHARED A AS User
+        A.Username = "hi"
+        PRINT A.Username
+        SubThatUsesSharedVariable
+        PRINT A.Username
+
+        SUB SubThatUsesSharedVariable
+            A.Username = "hello"
+        END SUB
+        "#;
+        assert_prints!(program, "hi", "hello");
+    }
+
+    #[test]
+    fn test_dim_shared_array_bare() {
+        let program = r#"
+        DIM SHARED A(5)
+        A(1) = 42
+        PRINT A(1)
+        SubThatUsesSharedVariable
+        PRINT A(1)
+
+        SUB SubThatUsesSharedVariable
+            A(1) = 12
+        END SUB
+        "#;
+        assert_prints!(program, "42", "12");
+    }
+
+    #[test]
+    fn test_dim_shared_array_compact_string() {
+        let program = r#"
+        DIM SHARED A$(5)
+        A$(1) = "hi"
+        PRINT A$(1)
+        SubThatUsesSharedVariable
+        PRINT A$(1)
+
+        SUB SubThatUsesSharedVariable
+            A$(1) = "hello"
         END SUB
         "#;
         assert_prints!(program, "hi", "hello");
@@ -122,25 +189,6 @@ mod dim_shared {
 
         SUB SubThatUsesSharedVariable
             A(1).Username = "hello"
-        END SUB
-        "#;
-        assert_prints!(program, "hi", "hello");
-    }
-
-    #[test]
-    fn test_dim_shared_user_defined_type() {
-        let program = r#"
-        TYPE User
-            Username AS STRING * 10
-        END TYPE
-        DIM SHARED A AS User
-        A.Username = "hi"
-        PRINT A.Username
-        SubThatUsesSharedVariable
-        PRINT A.Username
-
-        SUB SubThatUsesSharedVariable
-            A.Username = "hello"
         END SUB
         "#;
         assert_prints!(program, "hi", "hello");

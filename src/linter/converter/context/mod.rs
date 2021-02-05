@@ -39,6 +39,8 @@ pub enum ExprContext {
     Default,
     Assignment,
     Parameter,
+
+    /// Used in resolving left-side of property expressions
     ResolvingPropertyOwner,
 }
 

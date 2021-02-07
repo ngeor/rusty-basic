@@ -1,8 +1,8 @@
 use crate::common::{AtRowCol, StripLocation};
 use crate::instruction_generator::test_utils::*;
-use crate::instruction_generator::Instruction;
+use crate::instruction_generator::{Instruction, RootPath};
 use crate::parser::TypeQualifier;
-use crate::variant::{RootPath, Variant};
+use crate::variant::Variant;
 
 #[test]
 fn test_assignment() {

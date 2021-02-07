@@ -1,7 +1,6 @@
-use super::{Instruction, InstructionGenerator};
+use super::{Instruction, InstructionGenerator, RootPath};
 use crate::common::*;
 use crate::parser::*;
-use crate::variant::RootPath;
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(

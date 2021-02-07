@@ -8,6 +8,7 @@ mod function_call;
 mod if_block;
 mod instruction;
 mod instruction_generator;
+mod path;
 pub mod print;
 mod select_case;
 mod statement;
@@ -21,3 +22,4 @@ mod tests;
 
 pub use self::instruction::*;
 pub use self::instruction_generator::*;
+pub use self::path::*;

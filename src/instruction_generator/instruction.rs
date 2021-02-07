@@ -1,7 +1,8 @@
+use super::RootPath;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::parser::{BareName, ExpressionType, ParamName, QualifiedName, TypeQualifier};
-use crate::variant::{RootPath, Variant};
+use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
 pub enum Instruction {

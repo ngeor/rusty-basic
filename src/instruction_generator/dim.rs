@@ -1,10 +1,9 @@
-use super::{Instruction, InstructionGenerator};
+use super::{Instruction, InstructionGenerator, RootPath};
 use crate::common::*;
 use crate::parser::{
     ArrayDimension, DimName, DimNameNode, DimType, ExpressionType, HasExpressionType, Name,
     TypeQualifier,
 };
-use crate::variant::RootPath;
 
 impl InstructionGenerator {
     pub fn generate_dim_instructions(&mut self, dim_name_node: DimNameNode) {

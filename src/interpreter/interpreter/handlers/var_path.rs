@@ -1,7 +1,8 @@
 use crate::common::QError;
+use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::parser::BareName;
-use crate::variant::{Path, RootPath, Variant};
+use crate::variant::Variant;
 use std::convert::TryFrom;
 
 pub fn var_path_name<T: InterpreterTrait>(interpreter: &mut T, root_path: RootPath) {

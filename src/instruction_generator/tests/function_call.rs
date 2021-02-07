@@ -1,9 +1,8 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::AtRowCol;
 use crate::instruction_generator::test_utils::*;
-use crate::instruction_generator::Instruction;
+use crate::instruction_generator::{Instruction, RootPath};
 use crate::parser::{QualifiedName, TypeQualifier};
-use crate::variant::RootPath;
 use std::convert::TryFrom;
 
 #[test]

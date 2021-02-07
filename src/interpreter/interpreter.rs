@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::instruction_generator::{Instruction, InstructionNode};
+use crate::instruction_generator::{Instruction, InstructionNode, Path};
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;
@@ -13,7 +13,7 @@ use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::parser::UserDefinedTypes;
-use crate::variant::{Path, Variant};
+use crate::variant::Variant;
 use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
 use std::collections::VecDeque;
 use std::convert::TryFrom;

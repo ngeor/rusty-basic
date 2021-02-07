@@ -129,7 +129,7 @@ impl Expression {
             }
             _ => Self::UnaryExpression(
                 UnaryOperator::Minus,
-                Box::new(child.at(pos).simplify_unary_minus_literals()),
+                Box::new(child.simplify_unary_minus_literals().at(pos)),
             ),
         }
     }
@@ -140,23 +140,16 @@ impl Expression {
                 let x: ExpressionNode = *child;
                 match op {
                     UnaryOperator::Minus => Self::unary_minus(x),
-                    _ => Self::UnaryExpression(op, Box::new(x.simplify_unary_minus_literals())),
+                    _ => Self::UnaryExpression(op, Self::simplify_unary_minus_node(x)),
                 }
             }
-            Self::BinaryExpression(op, left, right, old_expression_type) => {
-                let x: ExpressionNode = *left;
-                let y: ExpressionNode = *right;
-                Self::BinaryExpression(
-                    op,
-                    Box::new(x.simplify_unary_minus_literals()),
-                    Box::new(y.simplify_unary_minus_literals()),
-                    old_expression_type,
-                )
-            }
-            Self::Parenthesis(child) => {
-                let x: ExpressionNode = *child;
-                Self::Parenthesis(Box::new(x.simplify_unary_minus_literals()))
-            }
+            Self::BinaryExpression(op, left, right, old_expression_type) => Self::BinaryExpression(
+                op,
+                Self::simplify_boxed_node(left),
+                Self::simplify_boxed_node(right),
+                old_expression_type,
+            ),
+            Self::Parenthesis(child) => Self::Parenthesis(Self::simplify_boxed_node(child)),
             Self::FunctionCall(name, args) => Self::FunctionCall(
                 name,
                 args.into_iter()
@@ -165,6 +158,16 @@ impl Expression {
             ),
             _ => self,
         }
+    }
+
+    fn simplify_boxed_node(child: Box<ExpressionNode>) -> Box<ExpressionNode> {
+        Self::simplify_unary_minus_node(*child)
+    }
+
+    fn simplify_unary_minus_node(child: ExpressionNode) -> Box<ExpressionNode> {
+        let Locatable { element, pos } = child;
+        let simplified = element.simplify_unary_minus_literals();
+        Box::new(simplified.at(pos))
     }
 
     pub fn is_parenthesis(&self) -> bool {

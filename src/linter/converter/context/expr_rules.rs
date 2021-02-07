@@ -90,11 +90,21 @@ pub mod unary_v2 {
         let (converted_child, implicit_vars) = ctx.on_expression(*box_child, expr_context)?;
         // ensure operator applies to converted expr
         let converted_expr_type = converted_child.expression_type();
-        if unary_operator.applies_to(&converted_expr_type) {
+        if is_applicable_to_expr_type(&converted_expr_type) {
             let unary_expr = Expression::UnaryExpression(unary_operator, Box::new(converted_child));
             Ok((unary_expr.at(pos), implicit_vars))
         } else {
             Err(QError::TypeMismatch).with_err_at(&converted_child)
+        }
+    }
+
+    fn is_applicable_to_expr_type(expr_type: &ExpressionType) -> bool {
+        match expr_type {
+            ExpressionType::BuiltIn(TypeQualifier::BangSingle)
+            | ExpressionType::BuiltIn(TypeQualifier::HashDouble)
+            | ExpressionType::BuiltIn(TypeQualifier::PercentInteger)
+            | ExpressionType::BuiltIn(TypeQualifier::AmpersandLong) => true,
+            _ => false,
         }
     }
 }

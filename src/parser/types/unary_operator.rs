@@ -6,16 +6,3 @@ pub enum UnaryOperator {
     Minus,
     Not,
 }
-
-impl UnaryOperator {
-    // TODO move to context.rs as it is only used there
-    pub fn applies_to(&self, expr_type: &ExpressionType) -> bool {
-        match expr_type {
-            ExpressionType::BuiltIn(TypeQualifier::BangSingle)
-            | ExpressionType::BuiltIn(TypeQualifier::HashDouble)
-            | ExpressionType::BuiltIn(TypeQualifier::PercentInteger)
-            | ExpressionType::BuiltIn(TypeQualifier::AmpersandLong) => true,
-            _ => false,
-        }
-    }
-}

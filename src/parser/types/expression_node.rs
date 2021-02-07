@@ -323,7 +323,6 @@ impl ExpressionNode {
 
 impl HasExpressionType for Expression {
     fn expression_type(&self) -> ExpressionType {
-        // TODO: low priority, remove clone, return references (make global const for the built-in types)
         match self {
             Self::SingleLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::BangSingle),
             Self::DoubleLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::HashDouble),

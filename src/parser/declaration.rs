@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
+use crate::parser::pc_specific::{in_parenthesis_p, keyword_followed_by_whitespace_p, PcSpecific};
 use crate::parser::types::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
@@ -20,8 +20,7 @@ pub fn declaration_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Declare)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DECLARE"))
+    keyword_followed_by_whitespace_p(Keyword::Declare)
         .and_demand(
             function_declaration_p()
                 .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
@@ -35,8 +34,7 @@ pub fn function_declaration_p<R>() -> impl Parser<R, Output = (NameNode, ParamNa
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Function)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FUNCTION"))
+    keyword_followed_by_whitespace_p(Keyword::Function)
         .and_demand(
             name::name_with_dot_p()
                 .with_pos()
@@ -53,8 +51,7 @@ pub fn sub_declaration_p<R>() -> impl Parser<R, Output = (BareNameNode, ParamNam
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Sub)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after SUB"))
+    keyword_followed_by_whitespace_p(Keyword::Sub)
         .and_demand(
             name::bare_name_p()
                 .with_pos()

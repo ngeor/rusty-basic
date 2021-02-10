@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::instruction_generator::{Instruction, InstructionNode};
+use crate::instruction_generator::{Instruction, InstructionNode, Path};
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;
@@ -13,7 +13,7 @@ use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::parser::UserDefinedTypes;
-use crate::variant::{Path, Variant};
+use crate::variant::Variant;
 use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
 use std::collections::VecDeque;
 use std::convert::TryFrom;
@@ -344,8 +344,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 allocation::allocate_user_defined_type(self, user_defined_type_name)
                     .with_err_at(pos)?;
             }
-            Instruction::VarPathName(name) => {
-                var_path::var_path_name(self, name);
+            Instruction::VarPathName(root_path) => {
+                var_path::var_path_name(self, root_path.clone());
             }
             Instruction::VarPathIndex => {
                 var_path::var_path_index(self);

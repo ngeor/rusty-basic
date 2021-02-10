@@ -1,7 +1,10 @@
-use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::parser::{Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier};
+use crate::parser::{
+    Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier, VariableInfo,
+};
+
+use super::post_conversion_linter::PostConversionLinter;
 
 /// Lints built-in functions and subs.
 pub struct BuiltInLinter;
@@ -88,8 +91,9 @@ mod environ_sub {
 }
 
 mod input {
-    use super::*;
     use crate::common::ToErrorEnvelopeNoPos;
+
+    use super::*;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // the first one or two arguments stand for the file number
@@ -145,8 +149,9 @@ mod input {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::assert_linter_err;
+
+        use super::*;
 
         #[test]
         fn test_parenthesis_variable_required() {
@@ -173,6 +178,7 @@ mod input {
 
 mod kill {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_string_argument(args)
     }
@@ -192,7 +198,14 @@ mod lbound {
             element: first,
             pos: first_pos,
         } = args.get(0).unwrap();
-        if let Expression::Variable(_, ExpressionType::Array(_)) = first {
+        if let Expression::Variable(
+            _,
+            VariableInfo {
+                expression_type: ExpressionType::Array(_),
+                ..
+            },
+        ) = first
+        {
             if args.len() == 2 {
                 if args[1].can_cast_to(TypeQualifier::PercentInteger) {
                     Ok(())
@@ -209,9 +222,9 @@ mod lbound {
 }
 
 mod line_input {
-    use super::*;
     use crate::common::ToErrorEnvelopeNoPos;
-    use crate::parser::ExpressionType;
+
+    use super::*;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // the first one or two arguments stand for the file number
@@ -257,7 +270,12 @@ mod line_input {
             pos,
         } = &args[starting_index];
         match var_arg {
-            Expression::Variable(_, expression_type) => match expression_type {
+            Expression::Variable(
+                _,
+                VariableInfo {
+                    expression_type, ..
+                },
+            ) => match expression_type {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString)
                 | ExpressionType::FixedLengthString(_) => {}
                 _ => return Err(QError::TypeMismatch).with_err_at(*pos),
@@ -271,6 +289,7 @@ mod line_input {
 
 mod name {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 2 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
@@ -286,6 +305,7 @@ mod name {
 
 mod open {
     use super::*;
+
     pub fn lint(_args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // not needed because of special parsing
         Ok(())
@@ -294,6 +314,7 @@ mod open {
 
 mod system {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 0 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
@@ -305,6 +326,7 @@ mod system {
 
 mod chr {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_numeric_argument(args)
     }
@@ -312,6 +334,7 @@ mod chr {
 
 mod environ_fn {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_string_argument(args)
     }
@@ -319,6 +342,7 @@ mod environ_fn {
 
 mod eof {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_numeric_argument(args)
     }
@@ -326,6 +350,7 @@ mod eof {
 
 mod instr {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() == 2 {
             require_string_argument(args, 0)?;
@@ -342,6 +367,7 @@ mod instr {
 
 mod len {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
@@ -362,8 +388,9 @@ mod len {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::assert_linter_err;
+
+        use super::*;
 
         #[test]
         fn test_len_integer_expression_error() {
@@ -401,6 +428,7 @@ mod len {
 
 mod mid {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() == 2 {
             require_string_argument(args, 0)?;
@@ -417,6 +445,7 @@ mod mid {
 
 mod str_fn {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_numeric_argument(args)
     }
@@ -424,6 +453,7 @@ mod str_fn {
 
 mod val {
     use super::*;
+
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_string_argument(args)
     }

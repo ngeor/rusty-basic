@@ -44,7 +44,7 @@ impl UserDefinedType {
     }
 
     pub fn demand_element_by_name(&self, element_name: &Name) -> Result<&ElementType, QError> {
-        match self.find_element(element_name.as_ref()) {
+        match self.find_element(element_name.bare_name()) {
             Some(element_type) => {
                 if element_type.can_be_referenced_by_property_name(element_name) {
                     Ok(element_type)

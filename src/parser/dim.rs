@@ -1,6 +1,6 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, PcSpecific};
 use crate::parser::{dim_name, Keyword, Statement};
 
 /// Parses DIM statement
@@ -8,10 +8,12 @@ pub fn dim_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Dim)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DIM"))
+    keyword_followed_by_whitespace_p(Keyword::Dim)
+        .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(dim_name::dim_name_node_p().or_syntax_error("Expected: name after DIM"))
-        .map(|(_, r)| Statement::Dim(r))
+        .map(|((_, opt_shared), dim_name_node)| {
+            Statement::Dim(dim_name_node.map(|dim_name| dim_name.with_shared(opt_shared.is_some())))
+        })
 }
 
 #[cfg(test)]
@@ -28,14 +30,14 @@ mod tests {
             assert_eq!(
                 p,
                 crate::parser::Statement::Dim(
-                    crate::parser::DimName::new(
-                        $name.into(),
-                        crate::parser::DimType::BuiltIn(
+                    crate::parser::DimNameBuilder::new()
+                        .bare_name($name)
+                        .dim_type(crate::parser::DimType::BuiltIn(
                             TypeQualifier::$qualifier,
                             crate::parser::BuiltInStyle::Extended
-                        )
-                    )
-                    .at_rc(1, 5)
+                        ))
+                        .build()
+                        .at_rc(1, 5)
                 )
             );
         };
@@ -73,7 +75,7 @@ mod tests {
                             pos,
                         } = dim_name_node;
                         assert_eq!(pos, Location::new(1, 5));
-                        assert_eq!(dim_name.as_ref().clone(), var_name_bare);
+                        assert_eq!(dim_name.bare_name().clone(), var_name_bare);
                         match dim_name.dim_type() {
                             DimType::UserDefined(Locatable { element, .. }) => {
                                 assert_eq!(element, &var_type_bare);
@@ -125,7 +127,13 @@ mod tests {
             let p = parse(input).demand_single_statement();
             assert_eq!(
                 p,
-                Statement::Dim(DimName::new($name.into(), DimType::Bare).at_rc(1, 5))
+                Statement::Dim(
+                    DimNameBuilder::new()
+                        .bare_name($name)
+                        .dim_type(DimType::Bare)
+                        .build()
+                        .at_rc(1, 5)
+                )
             );
         };
 
@@ -135,11 +143,7 @@ mod tests {
             assert_eq!(
                 p,
                 Statement::Dim(
-                    DimName::new(
-                        $name.into(),
-                        DimType::BuiltIn(TypeQualifier::$qualifier, BuiltInStyle::Compact)
-                    )
-                    .at_rc(1, 5)
+                    DimName::new_compact_local($name, TypeQualifier::$qualifier).at_rc(1, 5)
                 )
             );
         };
@@ -166,9 +170,9 @@ mod tests {
         assert_eq!(
             p,
             Statement::Dim(
-                DimName::new(
-                    "A".into(),
-                    DimType::Array(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::Array(
                         vec![ArrayDimension {
                             lbound: None,
                             ubound: 2.as_lit_expr(1, 8)
@@ -177,9 +181,9 @@ mod tests {
                             TypeQualifier::DollarString,
                             BuiltInStyle::Compact
                         ))
-                    )
-                )
-                .at_rc(1, 5)
+                    ))
+                    .build()
+                    .at_rc(1, 5)
             )
         );
     }
@@ -191,17 +195,17 @@ mod tests {
         assert_eq!(
             p,
             Statement::Dim(
-                DimName::new(
-                    "A".into(),
-                    DimType::Array(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::Array(
                         vec![ArrayDimension {
                             lbound: Some(1.as_lit_expr(1, 7)),
                             ubound: 2.as_lit_expr(1, 12)
                         }],
                         Box::new(DimType::Bare)
-                    )
-                )
-                .at_rc(1, 5)
+                    ))
+                    .build()
+                    .at_rc(1, 5)
             )
         );
     }
@@ -213,9 +217,9 @@ mod tests {
         assert_eq!(
             p,
             Statement::Dim(
-                DimName::new(
-                    "A".into(),
-                    DimType::Array(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::Array(
                         vec![
                             ArrayDimension {
                                 lbound: Some(1.as_lit_expr(1, 7)),
@@ -227,9 +231,9 @@ mod tests {
                             }
                         ],
                         Box::new(DimType::Bare)
-                    )
-                )
-                .at_rc(1, 5)
+                    ))
+                    .build()
+                    .at_rc(1, 5)
             )
         );
     }
@@ -244,11 +248,7 @@ mod tests {
             assert_eq!(
                 program,
                 Statement::Dim(
-                    DimName::new(
-                        "DIM".into(),
-                        DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
-                    )
-                    .at_rc(1, 5)
+                    DimName::new_compact_local("DIM", TypeQualifier::DollarString).at_rc(1, 5)
                 )
             );
         }

@@ -62,7 +62,7 @@ mod tests {
                 )),
                 // FOR I = 0 TO N
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
-                    variable_name: Expression::var("I").at_rc(4, 5),
+                    variable_name: Expression::var_unresolved("I").at_rc(4, 5),
                     lower_bound: 0.as_lit_expr(4, 9),
                     upper_bound: "N".as_var_expr(4, 14),
                     step: None,
@@ -108,7 +108,7 @@ mod tests {
                                 statements: vec![
                                     // Fib = N
                                     Statement::Assignment(
-                                        Expression::var("Fib"),
+                                        Expression::var_unresolved("Fib"),
                                         "N".as_var_expr(10, 15)
                                     )
                                     .at_rc(10, 9)
@@ -118,7 +118,7 @@ mod tests {
                             else_block: Some(vec![
                                 // ELSE Fib = Fib(N - 1) + Fib(N - 2)
                                 Statement::Assignment(
-                                    Expression::var("Fib"),
+                                    Expression::var_unresolved("Fib"),
                                     Expression::BinaryExpression(
                                         Operator::Plus,
                                         Box::new(

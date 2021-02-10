@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::{BareName, BuiltInStyle, DimName, DimType, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, DimName, Name, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
 // ========================================================
@@ -112,10 +112,7 @@ impl From<BuiltInFunction> for DimName {
     fn from(built_in_function: BuiltInFunction) -> Self {
         let qualifier: TypeQualifier = (&built_in_function).into();
         let bare_name: BareName = built_in_function.into();
-        Self::new(
-            bare_name,
-            DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
-        )
+        Self::new_compact_local(bare_name, qualifier)
     }
 }
 
@@ -137,7 +134,7 @@ impl From<&CaseInsensitiveString> for Option<BuiltInFunction> {
 impl TryFrom<&Name> for Option<BuiltInFunction> {
     type Error = QError;
     fn try_from(n: &Name) -> Result<Option<BuiltInFunction>, Self::Error> {
-        let opt_built_in: Option<BuiltInFunction> = n.as_ref().into();
+        let opt_built_in: Option<BuiltInFunction> = n.bare_name().into();
         match opt_built_in {
             Some(b) => match b {
                 BuiltInFunction::Eof

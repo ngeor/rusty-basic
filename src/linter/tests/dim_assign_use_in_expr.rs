@@ -24,12 +24,12 @@ fn bare() {
         vec![
             TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").at_rc(2, 9))).at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
-                Expression::var_linted("A!"),
+                Expression::var_resolved("A!"),
                 Expression::IntegerLiteral(42).at_rc(3, 9)
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::var_linted("A!").at_rc(4, 11)
+                Expression::var_resolved("A!").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]
@@ -48,12 +48,12 @@ fn compact_string() {
         vec![
             TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 9))).at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
-                Expression::var_linted("A$"),
+                Expression::var_resolved("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 10)
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::var_linted("A$").at_rc(4, 11)
+                Expression::var_resolved("A$").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]
@@ -72,19 +72,20 @@ fn extended_string() {
         vec![
             TopLevelToken::Statement(Statement::Dim(
                 DimName::new(
-                    "A".into(),
-                    DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended)
+                    "A",
+                    DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
+                    false
                 )
                 .at_rc(2, 9)
             ))
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
-                Expression::var_linted("A$"),
+                Expression::var_resolved("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 9)
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Print(PrintNode::one(
-                Expression::var_linted("A$").at_rc(4, 11)
+                Expression::var_resolved("A$").at_rc(4, 11)
             )))
             .at_rc(4, 5)
         ]
@@ -108,23 +109,25 @@ fn user_defined_type() {
         vec![
             TopLevelToken::Statement(Statement::Dim(
                 DimName::new(
-                    "A".into(),
-                    DimType::UserDefined(BareName::from("Card").at_rc(6, 14))
+                    "A",
+                    DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
+                    false
                 )
                 .at_rc(6, 9)
             ))
             .at_rc(6, 5),
             TopLevelToken::Statement(Statement::Dim(
                 DimName::new(
-                    "B".into(),
-                    DimType::UserDefined(BareName::from("Card").at_rc(7, 14))
+                    "B",
+                    DimType::UserDefined(BareName::from("Card").at_rc(7, 14)),
+                    false
                 )
                 .at_rc(7, 9)
             ))
             .at_rc(7, 5),
             TopLevelToken::Statement(Statement::Assignment(
-                Expression::user_defined("A", "Card"),
-                Expression::user_defined("B", "Card").at_rc(8, 9)
+                Expression::var_user_defined("A", "Card"),
+                Expression::var_user_defined("B", "Card").at_rc(8, 9)
             ))
             .at_rc(8, 5)
         ]
@@ -172,14 +175,15 @@ fn user_defined_type_integer_element() {
         input,
         Statement::Dim(
             DimName::new(
-                "A".into(),
-                DimType::UserDefined(BareName::from("Card").at_rc(6, 14))
+                "A",
+                DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
+                false
             )
             .at_rc(6, 9)
         ),
         Statement::Assignment(
             Expression::Property(
-                Box::new(Expression::user_defined("A", "Card")),
+                Box::new(Expression::var_user_defined("A", "Card")),
                 "Value".into(),
                 ExpressionType::BuiltIn(TypeQualifier::PercentInteger)
             ),
@@ -187,7 +191,7 @@ fn user_defined_type_integer_element() {
         ),
         Statement::Print(PrintNode::one(
             Expression::Property(
-                Box::new(Expression::user_defined("A", "Card")),
+                Box::new(Expression::var_user_defined("A", "Card")),
                 "Value".into(),
                 ExpressionType::BuiltIn(TypeQualifier::PercentInteger)
             )
@@ -211,14 +215,15 @@ fn user_defined_type_string_element() {
         input,
         Statement::Dim(
             DimName::new(
-                "A".into(),
-                DimType::UserDefined(BareName::from("Card").at_rc(6, 14))
+                "A",
+                DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
+                false
             )
             .at_rc(6, 9)
         ),
         Statement::Assignment(
             Expression::Property(
-                Box::new(Expression::user_defined("A", "Card")),
+                Box::new(Expression::var_user_defined("A", "Card")),
                 "Suit".into(),
                 ExpressionType::FixedLengthString(9)
             ),
@@ -226,7 +231,7 @@ fn user_defined_type_string_element() {
         ),
         Statement::Print(PrintNode::one(
             Expression::Property(
-                Box::new(Expression::user_defined("A", "Card")),
+                Box::new(Expression::var_user_defined("A", "Card")),
                 "Suit".into(),
                 ExpressionType::FixedLengthString(9)
             )

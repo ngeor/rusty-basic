@@ -20,7 +20,7 @@ pub trait ConstValueResolver {
             Expression::LongLiteral(l) => Ok(Variant::VLong(*l)),
             Expression::Variable(name_expr, _) => {
                 if let Some(qualifier) = name_expr.qualifier() {
-                    match self.get_resolved_constant(name_expr.as_ref()) {
+                    match self.get_resolved_constant(name_expr.bare_name()) {
                         Some(v) => {
                             let v_q = match v {
                                 Variant::VDouble(_) => TypeQualifier::HashDouble,
@@ -41,7 +41,7 @@ pub trait ConstValueResolver {
                         None => Err(QError::InvalidConstant).with_err_no_pos(),
                     }
                 } else {
-                    match self.get_resolved_constant(name_expr.as_ref()) {
+                    match self.get_resolved_constant(name_expr.bare_name()) {
                         Some(v) => Ok(v.clone()),
                         None => Err(QError::InvalidConstant).with_err_no_pos(),
                     }

@@ -1,3 +1,4 @@
+use crate::instruction_generator::Path;
 use crate::interpreter::context::Context;
 use crate::interpreter::input::Input;
 use crate::interpreter::io::FileManager;
@@ -5,7 +6,7 @@ use crate::interpreter::printer::Printer;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
 use crate::parser::UserDefinedTypes;
-use crate::variant::{Path, Variant};
+use crate::variant::Variant;
 use std::collections::VecDeque;
 
 pub trait InterpreterTrait {

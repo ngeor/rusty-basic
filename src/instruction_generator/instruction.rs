@@ -1,6 +1,7 @@
+use super::RootPath;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::parser::{BareName, ExpressionType, Name, ParamName, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, ExpressionType, ParamName, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
 #[derive(Debug, PartialEq)]
@@ -12,7 +13,7 @@ pub enum Instruction {
     // qualified for built-in types.
     // The second step is to write the register A into the variant that the
     // variable path references.
-    VarPathName(Name),
+    VarPathName(RootPath),
 
     VarPathIndex,
 

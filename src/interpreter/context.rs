@@ -99,7 +99,11 @@ impl Context {
     }
 
     pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
-        let (bare_name, dim_type) = dim_name.into_inner();
+        let DimName {
+            bare_name,
+            dim_type,
+            ..
+        } = dim_name;
         match dim_type {
             DimType::BuiltIn(qualifier, _) => {
                 self.set_variable_built_in(bare_name, qualifier, value);
@@ -148,7 +152,7 @@ impl Context {
     }
 
     pub fn get_r_value_by_name(&self, name: &Name) -> Option<&Variant> {
-        let bare_name: &BareName = name.as_ref();
+        let bare_name: &BareName = name.bare_name();
         match name.qualifier() {
             Some(qualifier) => self.variables.get_built_in(bare_name, qualifier),
             None => {
@@ -170,7 +174,24 @@ impl Context {
         self.variables.get_mut(idx)
     }
 
+    /// Gets or creates a variable by the given name.
+    /// If the variable does not exist, it is initialized with 0.
     pub fn get_or_create(&mut self, var_name: Name) -> &mut Variant {
         self.variables.get_or_create(var_name)
+    }
+
+    /// Gets the global (module) context.
+    pub fn global_context(&mut self) -> &mut Self {
+        if self.parent.is_none() {
+            self
+        } else {
+            self.parent.as_mut().unwrap().global_context()
+        }
+    }
+
+    /// Gets or creates a variable by the given name in the global (module) context.
+    /// If the variables does not exist, it is initialized with 0.
+    pub fn get_or_create_global(&mut self, var_name: Name) -> &mut Variant {
+        self.global_context().get_or_create(var_name)
     }
 }

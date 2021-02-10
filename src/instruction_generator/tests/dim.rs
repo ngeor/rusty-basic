@@ -1,6 +1,6 @@
 use crate::common::AtRowCol;
 use crate::instruction_generator::test_utils::*;
-use crate::instruction_generator::Instruction;
+use crate::instruction_generator::{Instruction, RootPath};
 use crate::parser::TypeQualifier;
 
 #[test]
@@ -12,7 +12,11 @@ fn test_declaration_built_in_bare() {
         generate_instructions_str(input),
         [
             Instruction::AllocateBuiltIn(TypeQualifier::BangSingle).at_rc(2, 9),
-            Instruction::VarPathName("X!".into()).at_rc(2, 9),
+            Instruction::VarPathName(RootPath {
+                name: "X!".into(),
+                shared: false
+            })
+            .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]
@@ -28,7 +32,11 @@ fn test_declaration_built_in_qualified() {
         generate_instructions_str(input),
         [
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger).at_rc(2, 9),
-            Instruction::VarPathName("X%".into()).at_rc(2, 9),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            })
+            .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]
@@ -44,7 +52,11 @@ fn test_declaration_built_in_extended() {
         generate_instructions_str(input),
         [
             Instruction::AllocateBuiltIn(TypeQualifier::HashDouble).at_rc(2, 9),
-            Instruction::VarPathName("X#".into()).at_rc(2, 9),
+            Instruction::VarPathName(RootPath {
+                name: "X#".into(),
+                shared: false
+            })
+            .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]
@@ -60,7 +72,11 @@ fn test_declaration_built_in_fixed_length_string() {
         generate_instructions_str(input),
         [
             Instruction::AllocateFixedLengthString(5).at_rc(2, 9),
-            Instruction::VarPathName("X$".into()).at_rc(2, 9),
+            Instruction::VarPathName(RootPath {
+                name: "X$".into(),
+                shared: false
+            })
+            .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]
@@ -80,7 +96,11 @@ fn test_declaration_user_defined() {
         generate_instructions_str(input),
         [
             Instruction::AllocateUserDefined("Card".into()).at_rc(6, 9),
-            Instruction::VarPathName("X".into()).at_rc(6, 9),
+            Instruction::VarPathName(RootPath {
+                name: "X".into(),
+                shared: false
+            })
+            .at_rc(6, 9),
             Instruction::CopyAToVarPath.at_rc(6, 9),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]

@@ -58,8 +58,7 @@ impl<'a> NoDotNamesCheck<DimNameNode, QErrorNode> for DotsLinter<'a> {
 
 impl<'a> NoDotNamesCheck<DimName, QError> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &DimName) -> Result<(), QError> {
-        let bare_name: &BareName = x.as_ref();
-        self.ensure_no_dots(bare_name)
+        self.ensure_no_dots(x.bare_name())
     }
 }
 

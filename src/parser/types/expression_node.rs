@@ -1,11 +1,9 @@
-use crate::built_ins::BuiltInFunction;
-use crate::common::{
-    AtLocation, CanCastTo, HasLocation, Locatable, Location, QError, QErrorNode, ToLocatableError,
-};
-use crate::parser::types::{Name, Operator, UnaryOperator};
-use crate::parser::{ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
-use crate::variant::{Variant, MIN_INTEGER, MIN_LONG};
 use std::convert::TryFrom;
+
+use crate::built_ins::BuiltInFunction;
+use crate::common::*;
+use crate::parser::types::*;
+use crate::variant::{Variant, MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -14,15 +12,15 @@ pub enum Expression {
     StringLiteral(String),
     IntegerLiteral(i32),
     LongLiteral(i64),
-    Variable(Name, ExpressionType),
+    Variable(Name, VariableInfo),
     FunctionCall(Name, ExpressionNodes),
     ArrayElement(
         // the name of the array (unqualified only for user defined types)
         Name,
         // the array indices
         Vec<ExpressionNode>,
-        // the type of the elements
-        ExpressionType,
+        // the type of the elements (shared refers to the array itself)
+        VariableInfo,
     ),
     BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
     BinaryExpression(
@@ -102,19 +100,6 @@ impl TryFrom<Variant> for Expression {
 }
 
 impl Expression {
-    #[cfg(test)]
-    pub fn var(s: &str) -> Self {
-        let name: Name = s.into();
-        Expression::Variable(name, ExpressionType::Unresolved)
-    }
-
-    #[cfg(test)]
-    pub fn var_linted(s: &str) -> Self {
-        let name: Name = s.into();
-        let expression_type = name.expression_type();
-        Expression::Variable(name, expression_type)
-    }
-
     pub fn func(s: &str, args: ExpressionNodes) -> Self {
         let name: Name = s.into();
         Expression::FunctionCall(name, args)
@@ -144,7 +129,7 @@ impl Expression {
             }
             _ => Self::UnaryExpression(
                 UnaryOperator::Minus,
-                Box::new(child.at(pos).simplify_unary_minus_literals()),
+                Box::new(child.simplify_unary_minus_literals().at(pos)),
             ),
         }
     }
@@ -155,23 +140,16 @@ impl Expression {
                 let x: ExpressionNode = *child;
                 match op {
                     UnaryOperator::Minus => Self::unary_minus(x),
-                    _ => Self::UnaryExpression(op, Box::new(x.simplify_unary_minus_literals())),
+                    _ => Self::UnaryExpression(op, Self::simplify_unary_minus_node(x)),
                 }
             }
-            Self::BinaryExpression(op, left, right, old_expression_type) => {
-                let x: ExpressionNode = *left;
-                let y: ExpressionNode = *right;
-                Self::BinaryExpression(
-                    op,
-                    Box::new(x.simplify_unary_minus_literals()),
-                    Box::new(y.simplify_unary_minus_literals()),
-                    old_expression_type,
-                )
-            }
-            Self::Parenthesis(child) => {
-                let x: ExpressionNode = *child;
-                Self::Parenthesis(Box::new(x.simplify_unary_minus_literals()))
-            }
+            Self::BinaryExpression(op, left, right, old_expression_type) => Self::BinaryExpression(
+                op,
+                Self::simplify_boxed_node(left),
+                Self::simplify_boxed_node(right),
+                old_expression_type,
+            ),
+            Self::Parenthesis(child) => Self::Parenthesis(Self::simplify_boxed_node(child)),
             Self::FunctionCall(name, args) => Self::FunctionCall(
                 name,
                 args.into_iter()
@@ -180,6 +158,16 @@ impl Expression {
             ),
             _ => self,
         }
+    }
+
+    fn simplify_boxed_node(child: Box<ExpressionNode>) -> Box<ExpressionNode> {
+        Self::simplify_unary_minus_node(*child)
+    }
+
+    fn simplify_unary_minus_node(child: ExpressionNode) -> Box<ExpressionNode> {
+        let Locatable { element, pos } = child;
+        let simplified = element.simplify_unary_minus_literals();
+        Box::new(simplified.at(pos))
     }
 
     pub fn is_parenthesis(&self) -> bool {
@@ -233,8 +221,24 @@ impl Expression {
     }
 
     #[cfg(test)]
-    pub fn user_defined(name: &str, type_name: &str) -> Self {
-        Expression::Variable(name.into(), ExpressionType::UserDefined(type_name.into()))
+    pub fn var_unresolved(s: &str) -> Self {
+        let name: Name = s.into();
+        Expression::Variable(name, VariableInfo::unresolved())
+    }
+
+    #[cfg(test)]
+    pub fn var_resolved(s: &str) -> Self {
+        let name: Name = s.into();
+        let expression_type = name.expression_type();
+        Expression::Variable(name, VariableInfo::new_local(expression_type))
+    }
+
+    #[cfg(test)]
+    pub fn var_user_defined(name: &str, type_name: &str) -> Self {
+        Expression::Variable(
+            name.into(),
+            VariableInfo::new_local(ExpressionType::UserDefined(type_name.into())),
+        )
     }
 }
 
@@ -325,10 +329,21 @@ impl HasExpressionType for Expression {
             Self::StringLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::DollarString),
             Self::IntegerLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
             Self::LongLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::AmpersandLong),
-            Self::Variable(_, expression_type)
+            Self::Variable(
+                _,
+                VariableInfo {
+                    expression_type, ..
+                },
+            )
             | Self::Property(_, _, expression_type)
             | Self::BinaryExpression(_, _, _, expression_type) => expression_type.clone(),
-            Self::ArrayElement(_, args, expression_type) => {
+            Self::ArrayElement(
+                _,
+                args,
+                VariableInfo {
+                    expression_type, ..
+                },
+            ) => {
                 if args.is_empty() {
                     // this is the entire array
                     ExpressionType::Array(Box::new(expression_type.clone()))
@@ -357,12 +372,5 @@ impl<T: HasExpressionType> CanCastTo<&T> for Expression {
     fn can_cast_to(&self, other: &T) -> bool {
         let other_type_definition = other.expression_type();
         self.expression_type().can_cast_to(&other_type_definition)
-    }
-}
-
-impl From<QualifiedName> for Expression {
-    fn from(var_name: QualifiedName) -> Self {
-        let q = var_name.qualifier;
-        Self::Variable(var_name.into(), ExpressionType::BuiltIn(q))
     }
 }

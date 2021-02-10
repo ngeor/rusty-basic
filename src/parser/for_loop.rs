@@ -1,7 +1,7 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::expression;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
+use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -66,8 +66,7 @@ fn parse_for_p<R>() -> impl Parser<R, Output = (ExpressionNode, ExpressionNode, 
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::For)
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FOR"))
+    keyword_followed_by_whitespace_p(Keyword::For)
         .and_demand(
             expression::word::word_p()
                 .with_pos()
@@ -112,7 +111,7 @@ mod tests {
         assert_eq!(
             result,
             Statement::ForLoop(ForLoopNode {
-                variable_name: Expression::var("I").at_rc(1, 5),
+                variable_name: Expression::var_unresolved("I").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
@@ -131,7 +130,7 @@ mod tests {
         assert_eq!(
             result,
             Statement::ForLoop(ForLoopNode {
-                variable_name: Expression::var("i").at_rc(1, 5),
+                variable_name: Expression::var_unresolved("i").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
@@ -149,7 +148,7 @@ mod tests {
         assert_eq!(
             result,
             Statement::ForLoop(ForLoopNode {
-                variable_name: Expression::var("I").at_rc(1, 5),
+                variable_name: Expression::var_unresolved("I").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
@@ -179,7 +178,7 @@ mod tests {
                     "Before the outer loop".as_lit_expr(1, 7)
                 ))),
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
-                    variable_name: Expression::var("I").at_rc(2, 5),
+                    variable_name: Expression::var_unresolved("I").at_rc(2, 5),
                     lower_bound: 1.as_lit_expr(2, 9),
                     upper_bound: 10.as_lit_expr(2, 14),
                     step: None,
@@ -196,7 +195,7 @@ mod tests {
                         })
                         .at_rc(3, 5),
                         Statement::ForLoop(ForLoopNode {
-                            variable_name: Expression::var("J").at_rc(4, 9),
+                            variable_name: Expression::var_unresolved("J").at_rc(4, 9),
                             lower_bound: 1.as_lit_expr(4, 13),
                             upper_bound: 10.as_lit_expr(4, 18),
                             step: None,
@@ -249,7 +248,7 @@ mod tests {
             result,
             vec![
                 TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
-                    variable_name: Expression::var("I").at_rc(2, 13),
+                    variable_name: Expression::var_unresolved("I").at_rc(2, 13),
                     lower_bound: 1.as_lit_expr(2, 17),
                     upper_bound: 10.as_lit_expr(2, 22),
                     step: None,

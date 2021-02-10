@@ -253,6 +253,7 @@ mod input {
     use crate::built_ins::BuiltInSub;
 
     use super::*;
+    use crate::parser::pc_specific::keyword_followed_by_whitespace_p;
 
     pub fn parse_input_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -262,8 +263,7 @@ mod input {
         // LINE INPUT variable$
         // INPUT #file-number%, variable-list
         // LINE INPUT #file-number%, variable$
-        keyword_p(Keyword::Input)
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after INPUT"))
+        keyword_followed_by_whitespace_p(Keyword::Input)
             .and_opt(parse_file_number_p())
             .and_demand(
                 expression::expression_node_p()
@@ -298,7 +298,7 @@ mod input {
                 result,
                 "INPUT",
                 Expression::IntegerLiteral(0), // no file number
-                Expression::var("A$")
+                Expression::var_unresolved("A$")
             );
         }
 
@@ -310,8 +310,8 @@ mod input {
                 result,
                 "INPUT",
                 Expression::IntegerLiteral(0), // no file number
-                Expression::var("A$"),
-                Expression::var("B")
+                Expression::var_unresolved("A$"),
+                Expression::var_unresolved("B")
             );
         }
 
@@ -342,7 +342,7 @@ mod input {
                 "INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
 
@@ -355,7 +355,7 @@ mod input {
                 "INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(2), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
 
@@ -368,7 +368,7 @@ mod input {
                 "INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(3), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
     }
@@ -378,14 +378,13 @@ mod line_input {
     use crate::built_ins::BuiltInSub;
 
     use super::*;
+    use crate::parser::pc_specific::keyword_pair_p;
 
     pub fn parse_line_input_p<R>() -> impl Parser<R, Output = Statement>
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        keyword_p(Keyword::Line)
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LINE"))
-            .and_demand(keyword_p(Keyword::Input).or_syntax_error("Expected: INPUT"))
+        keyword_pair_p(Keyword::Line, Keyword::Input)
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LINE INPUT"))
             .and_opt(parse_file_number_p())
             .and_demand(
@@ -422,7 +421,7 @@ mod line_input {
                 result,
                 "LINE INPUT",
                 Expression::IntegerLiteral(0), // no file number
-                Expression::var("A$")
+                Expression::var_unresolved("A$")
             );
         }
 
@@ -459,7 +458,7 @@ mod line_input {
                 "LINE INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
 
@@ -472,7 +471,7 @@ mod line_input {
                 "LINE INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(2), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
 
@@ -485,7 +484,7 @@ mod line_input {
                 "LINE INPUT",
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
-                Expression::var("A")
+                Expression::var_unresolved("A")
             );
         }
     }
@@ -514,6 +513,7 @@ mod open {
     use crate::built_ins::BuiltInSub;
 
     use super::*;
+    use crate::parser::pc_specific::{keyword_choice_p, keyword_followed_by_whitespace_p};
 
     pub fn parse_open_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -559,12 +559,9 @@ mod open {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        keyword_p(Keyword::For)
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after FOR"))
+        keyword_followed_by_whitespace_p(Keyword::For)
             .and_demand(
-                keyword_p(Keyword::Append)
-                    .or(keyword_p(Keyword::Input))
-                    .or(keyword_p(Keyword::Output))
+                keyword_choice_p(&[Keyword::Append, Keyword::Input, Keyword::Output])
                     .or_syntax_error("Expected: APPEND, INPUT or OUTPUT")
                     .with_pos(),
             )
@@ -592,8 +589,7 @@ mod open {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        keyword_p(Keyword::Access)
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after ACCESS"))
+        keyword_followed_by_whitespace_p(Keyword::Access)
             .and_demand(
                 keyword_p(Keyword::Read)
                     .with_pos()

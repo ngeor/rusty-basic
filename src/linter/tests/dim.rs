@@ -2,8 +2,8 @@ use crate::assert_linter_err;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
 use crate::parser::{
-    ArrayDimension, BareName, BuiltInStyle, DimName, DimType, Expression, Statement, TopLevelToken,
-    TypeQualifier,
+    ArrayDimension, BareName, BuiltInStyle, DimName, DimNameBuilder, DimType, Expression,
+    Statement, TopLevelToken, TypeQualifier,
 };
 
 #[test]
@@ -150,11 +150,7 @@ fn test_dim_bare() {
     assert_eq!(
         linter_ok("DIM A"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
-            )
-            .at_rc(1, 5)
+            DimName::new_compact_local("A", TypeQualifier::BangSingle).at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -165,11 +161,7 @@ fn test_dim_qualified() {
     assert_eq!(
         linter_ok("DIM A$"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
-            )
-            .at_rc(1, 5)
+            DimName::new_compact_local("A", TypeQualifier::DollarString).at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -180,11 +172,14 @@ fn test_dim_extended_built_in() {
     assert_eq!(
         linter_ok("DIM A AS LONG"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::BuiltIn(TypeQualifier::AmpersandLong, BuiltInStyle::Extended)
-            )
-            .at_rc(1, 5)
+            DimNameBuilder::new()
+                .bare_name("A")
+                .dim_type(DimType::BuiltIn(
+                    TypeQualifier::AmpersandLong,
+                    BuiltInStyle::Extended
+                ))
+                .build()
+                .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -195,11 +190,14 @@ fn test_dim_extended_fixed_length_string() {
     assert_eq!(
         linter_ok("DIM A AS STRING * 5"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::FixedLengthString(Expression::IntegerLiteral(5).at_rc(1, 19), 5)
-            )
-            .at_rc(1, 5)
+            DimNameBuilder::new()
+                .bare_name("A")
+                .dim_type(DimType::FixedLengthString(
+                    Expression::IntegerLiteral(5).at_rc(1, 19),
+                    5
+                ))
+                .build()
+                .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -216,11 +214,11 @@ fn test_dim_extended_user_defined() {
     assert_eq!(
         linter_ok(input),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::UserDefined(BareName::from("Card").at_rc(5, 14))
-            )
-            .at_rc(5, 9)
+            DimNameBuilder::new()
+                .bare_name("A")
+                .dim_type(DimType::UserDefined(BareName::from("Card").at_rc(5, 14)))
+                .build()
+                .at_rc(5, 9)
         ))
         .at_rc(5, 5)]
     );
@@ -231,9 +229,9 @@ fn test_dim_array_bare() {
     assert_eq!(
         linter_ok("DIM A(2)"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::Array(
+            DimNameBuilder::new()
+                .bare_name("A")
+                .dim_type(DimType::Array(
                     vec![ArrayDimension {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
@@ -242,9 +240,9 @@ fn test_dim_array_bare() {
                         TypeQualifier::BangSingle,
                         BuiltInStyle::Compact
                     ))
-                )
-            )
-            .at_rc(1, 5)
+                ))
+                .build()
+                .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -255,9 +253,9 @@ fn test_dim_array_qualified() {
     assert_eq!(
         linter_ok("DIM A$(2)"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::Array(
+            DimNameBuilder::new()
+                .bare_name("A")
+                .dim_type(DimType::Array(
                     vec![ArrayDimension {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 8)
@@ -266,9 +264,9 @@ fn test_dim_array_qualified() {
                         TypeQualifier::DollarString,
                         BuiltInStyle::Compact
                     ))
-                )
-            )
-            .at_rc(1, 5)
+                ))
+                .build()
+                .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -279,9 +277,9 @@ fn test_dim_array_extended_built_in() {
     assert_eq!(
         linter_ok("DIM A(2) AS INTEGER"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::Array(
+            DimNameBuilder::new()
+                .bare_name("A")
+                .dim_type(DimType::Array(
                     vec![ArrayDimension {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
@@ -290,9 +288,9 @@ fn test_dim_array_extended_built_in() {
                         TypeQualifier::PercentInteger,
                         BuiltInStyle::Extended
                     ))
-                )
-            )
-            .at_rc(1, 5)
+                ))
+                .build()
+                .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -303,9 +301,9 @@ fn test_dim_array_extended_fixed_length_string() {
     assert_eq!(
         linter_ok("DIM A(2) AS STRING * 3"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::Array(
+            DimNameBuilder::new()
+                .bare_name("A")
+                .dim_type(DimType::Array(
                     vec![ArrayDimension {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
@@ -314,9 +312,9 @@ fn test_dim_array_extended_fixed_length_string() {
                         Expression::IntegerLiteral(3).at_rc(1, 22),
                         3
                     ))
-                )
-            )
-            .at_rc(1, 5)
+                ))
+                .build()
+                .at_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -333,18 +331,96 @@ fn test_dim_array_extended_user_defined() {
     assert_eq!(
         linter_ok(input),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
-                "A".into(),
-                DimType::Array(
+            DimNameBuilder::new()
+                .bare_name("A")
+                .dim_type(DimType::Array(
                     vec![ArrayDimension {
                         lbound: None,
                         ubound: Expression::IntegerLiteral(2).at_rc(5, 11)
                     }],
                     Box::new(DimType::UserDefined(BareName::from("Card").at_rc(5, 17)))
-                )
-            )
-            .at_rc(5, 9)
+                ))
+                .build()
+                .at_rc(5, 9)
         ))
         .at_rc(5, 5)]
     );
+}
+
+mod dim_shared {
+    use super::*;
+
+    #[test]
+    fn test_dim_shared_in_function_not_allowed() {
+        let program = r#"
+        FUNCTION Test
+            DIM SHARED A
+        END FUNCTION
+        "#;
+        assert_linter_err!(
+            program,
+            QError::syntax_error("SHARED not allowed in subprogram"),
+            3,
+            24
+        );
+    }
+
+    #[test]
+    fn test_dim_shared_in_sub_not_allowed() {
+        let program = r#"
+        SUB Test
+            DIM SHARED A
+        END SUB
+        "#;
+        assert_linter_err!(
+            program,
+            QError::syntax_error("SHARED not allowed in subprogram"),
+            3,
+            24
+        );
+    }
+
+    #[test]
+    fn test_dim_in_function_clash_with_shared_dim() {
+        let program = r#"
+        DIM SHARED A AS STRING
+        FUNCTION Test
+            DIM A AS STRING
+        END FUNCTION
+        "#;
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 17);
+    }
+
+    #[test]
+    fn test_dim_in_sub_clash_with_shared_dim() {
+        let program = r#"
+        DIM SHARED A AS STRING
+        SUB Test
+            DIM A AS STRING
+        END SUB
+        "#;
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 17);
+    }
+
+    #[test]
+    fn test_const_in_function_clash_with_shared_dim() {
+        let program = r#"
+        DIM SHARED A AS STRING
+        FUNCTION Test
+            CONST A = "hello"
+        END FUNCTION
+        "#;
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 19);
+    }
+
+    #[test]
+    fn test_const_in_sub_clash_with_shared_dim() {
+        let program = r#"
+        DIM SHARED A AS STRING
+        SUB Test
+            CONST A = "hello"
+        END SUB
+        "#;
+        assert_linter_err!(program, QError::DuplicateDefinition, 4, 19);
+    }
 }

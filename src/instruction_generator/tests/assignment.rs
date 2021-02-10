@@ -1,6 +1,6 @@
 use crate::common::{AtRowCol, StripLocation};
 use crate::instruction_generator::test_utils::*;
-use crate::instruction_generator::Instruction;
+use crate::instruction_generator::{Instruction, RootPath};
 use crate::parser::TypeQualifier;
 use crate::variant::Variant;
 
@@ -11,12 +11,20 @@ fn test_assignment() {
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::BangSingle).at_rc(1, 1),
-            Instruction::VarPathName("X!".into()).at_rc(1, 1),
+            Instruction::VarPathName(RootPath {
+                name: "X!".into(),
+                shared: false
+            })
+            .at_rc(1, 1),
             Instruction::CopyAToVarPath.at_rc(1, 1),
             // assignment with casting
             Instruction::LoadIntoA(Variant::VInteger(1)).at_rc(1, 5),
             Instruction::Cast(TypeQualifier::BangSingle).at_rc(1, 5),
-            Instruction::VarPathName("X!".into()).at_rc(1, 1),
+            Instruction::VarPathName(RootPath {
+                name: "X!".into(),
+                shared: false
+            })
+            .at_rc(1, 1),
             Instruction::CopyAToVarPath.at_rc(1, 1),
             Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
         ]
@@ -30,11 +38,17 @@ fn test_assignment_no_cast_implicit_variable() {
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             // assign
             Instruction::LoadIntoA(Variant::VInteger(1)),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             Instruction::Halt
         ]
@@ -52,11 +66,17 @@ fn test_assignment_no_cast_explicit_variable() {
         [
             // dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             // assign
             Instruction::LoadIntoA(Variant::VInteger(1)),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             Instruction::Halt
         ]
@@ -74,15 +94,24 @@ fn test_assignment_no_cast_implicit_variable_implicit_dim_is_only_once() {
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             // assign
             Instruction::LoadIntoA(Variant::VInteger(1)),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             // assign
             Instruction::LoadIntoA(Variant::VInteger(2)),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             Instruction::Halt
         ]
@@ -96,7 +125,10 @@ fn test_assignment_binary_plus() {
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             // evaluation of binary expression
             Instruction::LoadIntoA(Variant::VInteger(1)),
@@ -107,7 +139,10 @@ fn test_assignment_binary_plus() {
             Instruction::Plus,
             // assignment with casting
             Instruction::Cast(TypeQualifier::PercentInteger),
-            Instruction::VarPathName("X%".into()),
+            Instruction::VarPathName(RootPath {
+                name: "X%".into(),
+                shared: false
+            }),
             Instruction::CopyAToVarPath,
             Instruction::Halt
         ]

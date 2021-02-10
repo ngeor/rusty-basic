@@ -106,7 +106,7 @@ fn global_const(
     expression_node: &ExpressionNode,
 ) -> Result<(), QErrorNode> {
     let Locatable { element: name, pos } = name_node;
-    let bare_name: &BareName = name.as_ref();
+    let bare_name: &BareName = name.bare_name();
     if global_constants.contains_key(bare_name) {
         return Err(QError::DuplicateDefinition).with_err_at(pos);
     }
@@ -210,7 +210,7 @@ fn validate_element_type_str_len(
         Expression::Variable(name_expr, _) => {
             // only constants allowed
             if let Some(qualifier) = name_expr.qualifier() {
-                match global_constants.get(name_expr.as_ref()) {
+                match global_constants.get(name_expr.bare_name()) {
                     // constant exists
                     Some(const_value) => {
                         match const_value {
@@ -236,7 +236,7 @@ fn validate_element_type_str_len(
                 }
             } else {
                 // bare name constant
-                match global_constants.get(name_expr.as_ref()) {
+                match global_constants.get(name_expr.bare_name()) {
                     // constant exists
                     Some(const_value) => {
                         match const_value {
@@ -303,7 +303,7 @@ impl<T> SubProgramContext<T> {
             pos,
         } = param;
         let bare_name: &BareName = param.as_ref();
-        match param.param_type() {
+        match &param.param_type {
             ParamType::Bare => {
                 let q: TypeQualifier = resolver.resolve(bare_name);
                 Ok(ParamType::BuiltIn(q, BuiltInStyle::Compact))
@@ -344,7 +344,7 @@ impl FunctionContext {
         // conflicting declarations to previous declaration or implementation not okay
         let q_params: ParamTypes = self.parameters(params, resolver, user_defined_types)?;
         let q_name: TypeQualifier = resolver.resolve_name(name).qualifier;
-        let bare_name: &BareName = name.as_ref();
+        let bare_name: &BareName = name.bare_name();
         self.check_implementation_type(bare_name, &q_name, &q_params)
             .with_err_at(pos)?;
         match self.declarations.get(bare_name) {
@@ -375,7 +375,7 @@ impl FunctionContext {
         // name needs to be unique
         let q_params: ParamTypes = self.parameters(params, resolver, user_defined_types)?;
         let q_name: TypeQualifier = resolver.resolve_name(name).qualifier;
-        let bare_name: &BareName = name.as_ref();
+        let bare_name: &BareName = name.bare_name();
         match self.implementations.get(bare_name) {
             Some(_) => Err(QError::DuplicateDefinition).with_err_at(pos),
             None => {

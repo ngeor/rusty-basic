@@ -65,7 +65,7 @@ impl Name {
     }
 
     pub fn qualify(&self, qualifier: TypeQualifier) -> Self {
-        let bare_name: &BareName = self.as_ref();
+        let bare_name: &BareName = self.bare_name();
         Self::new(bare_name.clone(), Some(qualifier))
     }
 
@@ -89,10 +89,8 @@ impl Name {
             _ => panic!("{:?} was not qualified", self),
         }
     }
-}
 
-impl AsRef<BareName> for Name {
-    fn as_ref(&self) -> &BareName {
+    pub fn bare_name(&self) -> &BareName {
         match self {
             Name::Bare(b) => b,
             Name::Qualified(QualifiedName { bare_name, .. }) => bare_name,

@@ -68,7 +68,7 @@ mod tests {
                 .at_rc(1, 9),
                 statements: vec![
                     Statement::Assignment(
-                        Expression::var("A"),
+                        Expression::var_unresolved("A"),
                         Expression::BinaryExpression(
                             Operator::Plus,
                             Box::new("A".as_var_expr(1, 18)),
@@ -189,7 +189,7 @@ mod tests {
                 .at_rc(2, 17),
                 statements: vec![
                     Statement::Assignment(
-                        Expression::var("A"),
+                        Expression::var_unresolved("A"),
                         Expression::BinaryExpression(
                             Operator::Plus,
                             Box::new("A".as_var_expr(3, 17)),

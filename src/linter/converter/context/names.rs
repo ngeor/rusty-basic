@@ -1,25 +1,25 @@
 use crate::common::CaseInsensitiveString;
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::parser::{BareName, Name, TypeQualifier, VariableInfo};
+use crate::parser::{BareName, TypeQualifier, VariableInfo};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};
 
 pub struct Names {
-    compact_name_set: HashMap<BareName, HashSet<TypeQualifier>>,
-    compact_names: HashMap<Name, VariableInfo>,
-    extended_names: HashMap<BareName, VariableInfo>,
-    constants: HashMap<BareName, Variant>,
+    map: HashMap<BareName, NameInfo>,
     current_function_name: Option<BareName>,
     parent: Option<Box<Names>>,
+}
+
+pub enum NameInfo {
+    Constant(Variant),
+    Compact(HashMap<TypeQualifier, VariableInfo>),
+    Extended(VariableInfo),
 }
 
 impl Names {
     pub fn new(parent: Option<Box<Self>>, current_function_name: Option<BareName>) -> Self {
         Self {
-            compact_name_set: HashMap::new(),
-            compact_names: HashMap::new(),
-            extended_names: HashMap::new(),
-            constants: HashMap::new(),
+            map: HashMap::new(),
             current_function_name,
             parent,
         }
@@ -30,22 +30,19 @@ impl Names {
     }
 
     pub fn contains_local_var_or_local_const(&self, bare_name: &BareName) -> bool {
-        self.compact_name_set.contains_key(bare_name)
-            || self.extended_names.contains_key(bare_name)
-            || self.constants.contains_key(bare_name)
+        self.map.contains_key(bare_name)
     }
 
     /// Checks if a new compact variable can be introduced for the given name and qualifier.
     /// This is allowed if the given name is not yet known, or if it is known as a compact
     /// name and the qualifier hasn't been used yet.
     pub fn can_accept_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> bool {
-        if self.extended_names.contains_key(bare_name) || self.constants.contains_key(bare_name) {
-            false
-        } else {
-            match self.compact_name_set.get(bare_name) {
-                Some(qualifiers) => !qualifiers.contains(&qualifier),
-                _ => true,
-            }
+        match self.map.get(bare_name) {
+            Some(name_info) => match name_info {
+                NameInfo::Compact(q_set) => !q_set.contains_key(&qualifier),
+                _ => false,
+            },
+            _ => true,
         }
     }
 
@@ -54,15 +51,8 @@ impl Names {
         bare_name: &BareName,
         qualifier: TypeQualifier,
     ) -> Option<&VariableInfo> {
-        match self.compact_name_set.get(bare_name) {
-            Some(qualifiers) => {
-                if qualifiers.contains(&qualifier) {
-                    let name = Name::new(bare_name.clone(), Some(qualifier));
-                    self.compact_names.get(&name)
-                } else {
-                    None
-                }
-            }
+        match self.map.get(bare_name) {
+            Some(NameInfo::Compact(qualifiers)) => qualifiers.get(&qualifier),
             _ => None,
         }
     }
@@ -113,7 +103,10 @@ impl Names {
     }
 
     fn get_local_extended_var(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        self.extended_names.get(bare_name)
+        match self.map.get(bare_name) {
+            Some(NameInfo::Extended(variable_info)) => Some(variable_info),
+            _ => None,
+        }
     }
 
     pub fn get_extended_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
@@ -137,15 +130,18 @@ impl Names {
     }
 
     pub fn contains_const(&self, bare_name: &BareName) -> bool {
-        self.constants.contains_key(bare_name)
+        self.get_const_value_no_recursion(bare_name).is_some()
     }
 
     pub fn get_const_value_no_recursion(&self, bare_name: &BareName) -> Option<&Variant> {
-        self.constants.get(bare_name)
+        match self.map.get(bare_name) {
+            Some(NameInfo::Constant(v)) => Some(v),
+            _ => None,
+        }
     }
 
     pub fn get_const_value_recursively(&self, bare_name: &BareName) -> Option<&Variant> {
-        match self.constants.get(bare_name) {
+        match self.get_const_value_no_recursion(bare_name) {
             Some(v) => Some(v),
             _ => {
                 if let Some(boxed_parent) = &self.parent {
@@ -173,30 +169,43 @@ impl Names {
         q: TypeQualifier,
         variable_context: VariableInfo,
     ) {
-        self.compact_names
-            .insert(Name::new(bare_name.clone(), Some(q)), variable_context);
-        match self.compact_name_set.get_mut(&bare_name) {
-            Some(s) => {
-                s.insert(q);
+        match self.map.get_mut(&bare_name) {
+            Some(NameInfo::Compact(qualifiers)) => {
+                qualifiers.insert(q, variable_context);
             }
             None => {
-                let mut s: HashSet<TypeQualifier> = HashSet::new();
-                s.insert(q);
-                self.compact_name_set.insert(bare_name, s);
+                let mut qualifiers: HashMap<TypeQualifier, VariableInfo> = HashMap::new();
+                qualifiers.insert(q, variable_context);
+                self.map.insert(bare_name, NameInfo::Compact(qualifiers));
+            }
+            _ => {
+                panic!("Cannot add compact")
             }
         }
     }
 
     pub fn insert_extended(&mut self, bare_name: BareName, variable_context: VariableInfo) {
-        self.extended_names.insert(bare_name, variable_context);
+        self.map
+            .insert(bare_name, NameInfo::Extended(variable_context));
     }
 
     pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
-        self.constants.insert(bare_name, v);
+        self.map.insert(bare_name, NameInfo::Constant(v));
     }
 
     pub fn drain_extended_names_into(&mut self, set: &mut HashSet<BareName>) {
-        set.extend(self.extended_names.drain().map(|(k, _)| k));
+        set.extend(
+            self.map
+                .drain()
+                .filter(|(_, v)| {
+                    if let NameInfo::Extended(_) = v {
+                        true
+                    } else {
+                        false
+                    }
+                })
+                .map(|(k, _)| k),
+        );
     }
 
     pub fn is_in_function(&self, function_name: &BareName) -> bool {
@@ -220,7 +229,7 @@ impl Names {
 
 impl ConstValueResolver for Names {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
-        match self.constants.get(name) {
+        match self.get_const_value_no_recursion(name) {
             Some(v) => Some(v),
             _ => match &self.parent {
                 Some(boxed_parent) => boxed_parent.get_resolved_constant(name),

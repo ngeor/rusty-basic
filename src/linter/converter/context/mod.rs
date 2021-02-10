@@ -456,11 +456,9 @@ pub mod dim_rules {
             if dim_name_node.is_extended() {
                 if ctx
                     .names
-                    .contains_local_var_or_local_const(dim_name_node.bare_name())
-                    || ctx
-                        .names
-                        .get_extended_var_recursively(dim_name_node.bare_name())
-                        .is_some()
+                    .contains_any_locally_or_contains_extended_recursively(
+                        dim_name_node.bare_name(),
+                    )
                 {
                     Err(QError::DuplicateDefinition).with_err_at(dim_name_node)
                 } else {
@@ -470,7 +468,7 @@ pub mod dim_rules {
                 let qualifier = ctx.resolve_name_ref_to_qualifier(dim_name_node);
                 if ctx
                     .names
-                    .can_accept_compact(dim_name_node.bare_name(), qualifier)
+                    .can_insert_compact(dim_name_node.bare_name(), qualifier)
                 {
                     Ok(())
                 } else {
@@ -523,15 +521,6 @@ pub mod const_rules {
         left_side: NameNode,
         right_side: ExpressionNode,
     ) -> Result<(), QErrorNode> {
-        // TODO merge with next rule
-        if ctx
-            .names
-            .get_extended_var_recursively(left_side.bare_name())
-            .is_some()
-        {
-            return Err(QError::DuplicateDefinition).with_err_at(&left_side);
-        }
-
         const_cannot_clash_with_existing_names(ctx, &left_side)?;
         new_const(ctx, left_side, right_side)
     }
@@ -546,7 +535,7 @@ pub mod const_rules {
         } = left_side;
         if ctx
             .names
-            .contains_local_var_or_local_const(const_name.bare_name())
+            .contains_any_locally_or_contains_extended_recursively(const_name.bare_name())
             || ctx.subs.contains_key(const_name.bare_name())
             || ctx.functions.contains_key(const_name.bare_name())
         {

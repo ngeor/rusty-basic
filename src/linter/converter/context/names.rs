@@ -29,31 +29,21 @@ impl Names {
         Self::new(None, None)
     }
 
-    pub fn contains_local_var_or_local_const(&self, bare_name: &BareName) -> bool {
+    /// Returns true if this name is a constant, or an extended variable,
+    /// or a compact variable. In the case of compact variables, multiple may
+    /// exist with the same bare name, e.g. `A$` and `A%`.
+    pub fn contains(&self, bare_name: &BareName) -> bool {
         self.map.contains_key(bare_name)
     }
 
     /// Checks if a new compact variable can be introduced for the given name and qualifier.
     /// This is allowed if the given name is not yet known, or if it is known as a compact
     /// name and the qualifier hasn't been used yet.
-    pub fn can_accept_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> bool {
+    pub fn can_insert_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> bool {
         match self.map.get(bare_name) {
-            Some(name_info) => match name_info {
-                NameInfo::Compact(q_set) => !q_set.contains_key(&qualifier),
-                _ => false,
-            },
+            Some(NameInfo::Compact(qualifiers)) => !qualifiers.contains_key(&qualifier),
+            Some(_) => false,
             _ => true,
-        }
-    }
-
-    fn get_local_compact_var(
-        &self,
-        bare_name: &BareName,
-        qualifier: TypeQualifier,
-    ) -> Option<&VariableInfo> {
-        match self.map.get(bare_name) {
-            Some(NameInfo::Compact(qualifiers)) => qualifiers.get(&qualifier),
-            _ => None,
         }
     }
 
@@ -73,6 +63,17 @@ impl Names {
         }
     }
 
+    fn get_local_compact_var(
+        &self,
+        bare_name: &BareName,
+        qualifier: TypeQualifier,
+    ) -> Option<&VariableInfo> {
+        match self.map.get(bare_name) {
+            Some(NameInfo::Compact(qualifiers)) => qualifiers.get(&qualifier),
+            _ => None,
+        }
+    }
+
     fn get_compact_shared_var_recursively(
         &self,
         bare_name: &BareName,
@@ -84,6 +85,33 @@ impl Names {
                 Some(parent_names) => {
                     parent_names.get_compact_shared_var_recursively(bare_name, qualifier)
                 }
+                _ => None,
+            },
+        }
+    }
+
+    pub fn get_extended_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
+        match self.get_local_extended_var(bare_name) {
+            Some(variable_info) => Some(variable_info),
+            _ => match &self.parent {
+                Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
+                _ => None,
+            },
+        }
+    }
+
+    fn get_local_extended_var(&self, bare_name: &BareName) -> Option<&VariableInfo> {
+        match self.map.get(bare_name) {
+            Some(NameInfo::Extended(variable_info)) => Some(variable_info),
+            _ => None,
+        }
+    }
+
+    fn get_extended_shared_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
+        match Self::require_shared(self.get_local_extended_var(bare_name)) {
+            Some(variable_info) => Some(variable_info),
+            _ => match &self.parent {
+                Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
                 _ => None,
             },
         }
@@ -102,31 +130,11 @@ impl Names {
         }
     }
 
-    fn get_local_extended_var(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match self.map.get(bare_name) {
-            Some(NameInfo::Extended(variable_info)) => Some(variable_info),
-            _ => None,
-        }
-    }
-
-    pub fn get_extended_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match self.get_local_extended_var(bare_name) {
-            Some(variable_info) => Some(variable_info),
-            _ => match &self.parent {
-                Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
-                _ => None,
-            },
-        }
-    }
-
-    fn get_extended_shared_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match Self::require_shared(self.get_local_extended_var(bare_name)) {
-            Some(variable_info) => Some(variable_info),
-            _ => match &self.parent {
-                Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
-                _ => None,
-            },
-        }
+    pub fn contains_any_locally_or_contains_extended_recursively(
+        &self,
+        bare_name: &BareName,
+    ) -> bool {
+        self.contains(bare_name) || self.get_extended_var_recursively(bare_name).is_some()
     }
 
     pub fn contains_const(&self, bare_name: &BareName) -> bool {

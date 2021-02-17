@@ -41,22 +41,26 @@ pub fn run_sub<S: InterpreterTrait>(
     interpreter: &mut S,
 ) -> Result<RunSubResult, QErrorNode> {
     match s {
-        BuiltInSub::Close => close::run(interpreter).map(|_| RunSubResult::default()),
-        BuiltInSub::Environ => environ_sub::run(interpreter).map(|_| RunSubResult::default()),
-        BuiltInSub::Input => input::run(interpreter)
-            .with_err_no_pos()
-            .map(|_| RunSubResult::default()),
-        BuiltInSub::Kill => kill::run(interpreter).map(|_| RunSubResult::default()),
-        BuiltInSub::LineInput => line_input::run(interpreter)
-            .with_err_no_pos()
-            .map(|_| RunSubResult::default()),
-        BuiltInSub::LPrint => todo!("LPT1 printing not implemented yet"),
-        BuiltInSub::Name => name::run(interpreter).map(|_| RunSubResult::default()),
-        BuiltInSub::Open => open::run(interpreter).map(|_| RunSubResult::default()),
-        BuiltInSub::Print => print::run(interpreter)
-            .with_err_no_pos()
-            .map(|_| RunSubResult::default()),
         BuiltInSub::End | BuiltInSub::System => Ok(RunSubResult::new_halt()),
+        _ => run_not_terminating_sub(s, interpreter).map(|_| RunSubResult::default()),
+    }
+}
+
+fn run_not_terminating_sub<S: InterpreterTrait>(
+    s: &BuiltInSub,
+    interpreter: &mut S,
+) -> Result<(), QErrorNode> {
+    match s {
+        BuiltInSub::Close => close::run(interpreter),
+        BuiltInSub::Environ => environ_sub::run(interpreter),
+        BuiltInSub::Input => input::run(interpreter).with_err_no_pos(),
+        BuiltInSub::Kill => kill::run(interpreter),
+        BuiltInSub::LineInput => line_input::run(interpreter).with_err_no_pos(),
+        BuiltInSub::LPrint => todo!("LPT1 printing not implemented yet"),
+        BuiltInSub::Name => name::run(interpreter),
+        BuiltInSub::Open => open::run(interpreter),
+        BuiltInSub::Print => print::run(interpreter).with_err_no_pos(),
+        BuiltInSub::End | BuiltInSub::System => panic!("Should not have been called"),
     }
 }
 

@@ -53,11 +53,13 @@ pub fn generate_instructions(program: ProgramNode) -> Vec<InstructionNode> {
     let (f, s) = collect_parameter_names(&program);
     let mut generator = InstructionGenerator::new(f, s);
     generator.generate_unresolved(program);
-    generator.resolve_instructions();
+    generator.resolve_labels();
     generator.instructions
 }
 
-fn collect_labels(instructions: &Vec<InstructionNode>) -> HashMap<CaseInsensitiveString, usize> {
+fn build_label_to_address_map(
+    instructions: &Vec<InstructionNode>,
+) -> HashMap<CaseInsensitiveString, usize> {
     let mut result: HashMap<CaseInsensitiveString, usize> = HashMap::new();
     for j in 0..instructions.len() {
         if let Instruction::Label(y) = instructions[j].as_ref() {
@@ -134,40 +136,47 @@ impl InstructionGenerator {
         }
     }
 
-    pub fn resolve_instructions(&mut self) {
-        let labels = collect_labels(&self.instructions);
-        // resolve jumps
+    pub fn resolve_labels(&mut self) {
+        let label_to_address = build_label_to_address_map(&self.instructions);
         for instruction_node in self.instructions.iter_mut() {
-            let instruction: &Instruction = instruction_node.as_ref();
-            let pos: Location = instruction_node.pos();
-            match instruction {
-                Instruction::UnresolvedJump(x) => {
-                    *instruction_node = Instruction::Jump(*labels.get(x).unwrap()).at(pos);
-                }
-                Instruction::UnresolvedJumpIfFalse(x) => {
-                    *instruction_node = Instruction::JumpIfFalse(
-                        *labels.get(x).expect(&format!("Label {} not found", x)),
-                    )
-                    .at(pos);
-                }
-                Instruction::SetUnresolvedErrorHandler(x) => {
-                    *instruction_node =
-                        Instruction::SetErrorHandler(*labels.get(x).unwrap()).at(pos);
-                }
-                Instruction::UnresolvedGoSub(x) => {
-                    *instruction_node = Instruction::GoSub(*labels.get(x).unwrap()).at(pos);
-                }
-                Instruction::UnresolvedReturn(opt_label) => match opt_label {
-                    Some(label) => {
-                        *instruction_node =
-                            Instruction::Return(Some(*labels.get(label).unwrap())).at(pos);
-                    }
-                    _ => {
-                        *instruction_node = Instruction::Return(None).at(pos);
-                    }
-                },
-                _ => {}
+            let Locatable {
+                element: instruction,
+                ..
+            } = instruction_node;
+            Self::resolve_label(instruction, &label_to_address);
+        }
+    }
+
+    fn resolve_label(
+        instruction: &mut Instruction,
+        label_to_address: &HashMap<CaseInsensitiveString, usize>,
+    ) {
+        match instruction {
+            Instruction::UnresolvedJump(x) => {
+                *instruction = Instruction::Jump(*label_to_address.get(x).unwrap());
             }
+            Instruction::UnresolvedJumpIfFalse(x) => {
+                *instruction = Instruction::JumpIfFalse(
+                    *label_to_address
+                        .get(x)
+                        .expect(&format!("Label {} not found", x)),
+                );
+            }
+            Instruction::SetUnresolvedErrorHandler(x) => {
+                *instruction = Instruction::SetErrorHandler(*label_to_address.get(x).unwrap());
+            }
+            Instruction::UnresolvedGoSub(x) => {
+                *instruction = Instruction::GoSub(*label_to_address.get(x).unwrap());
+            }
+            Instruction::UnresolvedReturn(opt_label) => match opt_label {
+                Some(label) => {
+                    *instruction = Instruction::Return(Some(*label_to_address.get(label).unwrap()));
+                }
+                _ => {
+                    *instruction = Instruction::Return(None);
+                }
+            },
+            _ => {}
         }
     }
 

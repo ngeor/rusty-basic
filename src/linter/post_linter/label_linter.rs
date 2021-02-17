@@ -13,7 +13,7 @@ pub struct LabelLinter {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum LabelOwner {
+enum LabelOwner {
     Global,
     Sub(BareName),
     Function(QualifiedName),

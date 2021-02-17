@@ -86,6 +86,10 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             Statement::ErrorHandler(l) => Ok((Some(Statement::ErrorHandler(l).at(pos)), vec![])),
             Statement::Label(l) => Ok((Some(Statement::Label(l).at(pos)), vec![])),
             Statement::GoTo(l) => Ok((Some(Statement::GoTo(l).at(pos)), vec![])),
+            Statement::GoSub(l) => Ok((Some(Statement::GoSub(l).at(pos)), vec![])),
+            Statement::Return(opt_label) => {
+                Ok((Some(Statement::Return(opt_label).at(pos)), vec![]))
+            }
             Statement::Dim(dim_name_node) => self
                 .convert_and_collect_implicit_variables(dim_name_node)
                 .map(|(dim_name_node, implicit_vars_in_array_dimensions)| {

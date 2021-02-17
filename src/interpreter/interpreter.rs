@@ -273,6 +273,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 }
             }
             Instruction::Jump(resolved_idx) => {
+                // TODO the -1 can be a problem if we jump to index 0
                 *i = resolved_idx - 1;
             }
             Instruction::BeginCollectArguments => {
@@ -306,7 +307,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                built_ins::run_sub(n, self)?;
+                let run_sub_result = built_ins::run_sub(n, self)?;
+                if run_sub_result.halt {
+                    *exit = true;
+                }
             }
             Instruction::BuiltInFunction(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
@@ -314,6 +318,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::UnresolvedJump(_)
             | Instruction::UnresolvedJumpIfFalse(_)
+            | Instruction::UnresolvedGoSub(_)
+            | Instruction::UnresolvedReturn(_)
             | Instruction::SetUnresolvedErrorHandler(_) => {
                 panic!("Unresolved label {:?} at {:?}", instruction, pos)
             }
@@ -321,12 +327,27 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::Halt => {
                 *exit = true;
             }
-            Instruction::PushRet(addr) => {
-                self.return_address_stack.push(*addr);
+            Instruction::PushRet(address) => {
+                self.return_address_stack.push(*address);
             }
             Instruction::PopRet => {
-                let addr = self.return_address_stack.pop().unwrap();
-                *i = addr - 1;
+                let address = self.return_address_stack.pop().unwrap();
+                *i = address - 1;
+            }
+            Instruction::GoSub(address) => {
+                self.return_address_stack.push(*i);
+                *i = *address - 1;
+            }
+            Instruction::Return(opt_address) => {
+                let address = self.return_address_stack.pop().unwrap();
+                match opt_address {
+                    Some(a) => {
+                        *i = *a - 1;
+                    }
+                    _ => {
+                        *i = address;
+                    }
+                }
             }
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);

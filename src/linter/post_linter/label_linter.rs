@@ -1,62 +1,127 @@
 use super::post_conversion_linter::*;
 use crate::common::*;
-use std::cell::RefCell;
-use std::collections::HashSet;
+use crate::parser::{
+    BareName, FunctionImplementation, ProgramNode, QualifiedName, SubImplementation,
+};
+use std::collections::{HashMap, HashSet};
 
-// TODO get rid of RefCell, make a two pass linter a thing
+#[derive(Default)]
 pub struct LabelLinter {
-    // implemented as RefCell for inner mutability
-    labels: RefCell<HashSet<CaseInsensitiveString>>,
-
-    // pass == 0, collecting labels
-    // pass == 1, ensuring all labels exist
     collecting: bool,
+    labels: HashMap<LabelOwner, HashSet<CaseInsensitiveString>>,
+    current_label_owner: LabelOwner,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum LabelOwner {
+    Global,
+    Sub(BareName),
+    Function(QualifiedName),
+}
+
+impl Default for LabelOwner {
+    fn default() -> Self {
+        Self::Global
+    }
 }
 
 impl LabelLinter {
-    pub fn new() -> Self {
-        Self {
-            labels: RefCell::new(HashSet::new()),
-            collecting: true,
-        }
+    fn do_visit_program(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
+        p.iter()
+            .map(|t| self.visit_top_level_token_node(t))
+            .collect()
     }
 
-    pub fn switch_to_validating_mode(&mut self) {
-        if self.collecting {
-            self.collecting = false
-        } else {
-            panic!("Invalid existing mode")
+    fn contains_label_in_any_scope(&self, label: &CaseInsensitiveString) -> bool {
+        for v in self.labels.values() {
+            if v.contains(label) {
+                return true;
+            }
         }
+        false
     }
 }
 
 impl PostConversionLinter for LabelLinter {
-    fn visit_error_handler(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
-        if self.collecting || self.labels.borrow().contains(label) {
-            Ok(())
-        } else {
-            err_no_pos(QError::LabelNotDefined)
-        }
+    fn visit_program(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
+        self.labels.insert(LabelOwner::Global, HashSet::new());
+        self.collecting = true;
+        self.do_visit_program(p)?;
+        self.collecting = false;
+        self.do_visit_program(p)
     }
 
-    fn visit_label(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+    fn visit_function_implementation(
+        &mut self,
+        f: &FunctionImplementation,
+    ) -> Result<(), QErrorNode> {
+        let Locatable {
+            element: function_name,
+            ..
+        } = f.name.clone();
+        self.current_label_owner = LabelOwner::Function(function_name.demand_qualified());
         if self.collecting {
-            if self.labels.borrow().contains(label) {
-                err_no_pos(QError::DuplicateLabel)
-            } else {
-                self.labels.borrow_mut().insert(label.clone());
-                Ok(())
-            }
+            self.labels
+                .insert(self.current_label_owner.clone(), HashSet::new());
+        }
+        let result = self.visit_statement_nodes(&f.body);
+        self.current_label_owner = LabelOwner::Global;
+        result
+    }
+
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
+        self.current_label_owner = LabelOwner::Sub(s.name.element.clone());
+        if self.collecting {
+            self.labels
+                .insert(self.current_label_owner.clone(), HashSet::new());
+        }
+        let result = self.visit_statement_nodes(&s.body);
+        self.current_label_owner = LabelOwner::Global;
+        result
+    }
+
+    fn visit_error_handler(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+        if self.collecting {
+            return Ok(());
+        }
+
+        let labels = self.labels.get(&self.current_label_owner).unwrap();
+        if labels.contains(label) {
+            Ok(())
         } else {
+            err_no_pos(QError::LabelNotDefined)
+        }
+    }
+
+    fn visit_label(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+        if !self.collecting {
+            return Ok(());
+        }
+
+        if self.contains_label_in_any_scope(label) {
+            err_no_pos(QError::DuplicateLabel)
+        } else {
+            let labels = self.labels.get_mut(&self.current_label_owner).unwrap();
+            labels.insert(label.clone());
             Ok(())
         }
     }
 
-    fn visit_go_to(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
-        if self.collecting || self.labels.borrow().contains(label) {
-            Ok(())
-        } else {
-            err_no_pos(QError::LabelNotDefined)
+    fn visit_go_to(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+        self.visit_error_handler(label)
+    }
+
+    fn visit_go_sub(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+        self.visit_error_handler(label)
+    }
+
+    fn visit_return(
+        &mut self,
+        opt_label: Option<&CaseInsensitiveString>,
+    ) -> Result<(), QErrorNode> {
+        match opt_label {
+            Some(label) => self.visit_error_handler(label),
+            _ => Ok(()),
         }
     }
 }

@@ -83,7 +83,26 @@ where
 }
 
 // Peeks the result by undoing it.
+unary_parser!(Peek);
 
+impl<R, S> Parser<R> for Peek<S>
+where
+    R: Reader + Undo<S::Output>,
+    S: Parser<R>,
+    S::Output: Clone,
+{
+    type Output = S::Output;
+
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, opt_item) = self.0.parse(reader)?;
+        match opt_item {
+            Some(item) => Ok((reader.undo(item.clone()), Some(item))),
+            _ => Ok((reader, None)),
+        }
+    }
+}
+
+/// Peeks the result by undoing it.
 pub struct PeekReaderItem<R: Reader> {
     source: Box<dyn Parser<R, Output = R::Item>>,
 }
@@ -204,6 +223,16 @@ pub trait UnaryParser<R: Reader>: Parser<R> + Sized {
         Self: Parser<R, Output = ((A, B), C)>,
     {
         KeepMiddle::new(self)
+    }
+
+    /// Peeks the result of the source parser by undoing it.
+    fn peek(self) -> Peek<Self>
+    where
+        Self: Parser<R>,
+        Self::Output: Clone,
+        R: Undo<Self::Output>,
+    {
+        Peek::new(self)
     }
 
     /// Peeks the item of the underlying reader by undoing it.

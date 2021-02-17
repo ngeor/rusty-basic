@@ -34,10 +34,16 @@ impl InstructionGenerator {
                 self.push(Instruction::SetUnresolvedErrorHandler(label), pos);
             }
             Statement::Label(name) => {
-                self.push(Instruction::Label(name.clone()), pos);
+                self.push(Instruction::Label(name), pos);
             }
             Statement::GoTo(name) => {
-                self.push(Instruction::UnresolvedJump(name.clone()), pos);
+                self.push(Instruction::UnresolvedJump(name), pos);
+            }
+            Statement::GoSub(label) => {
+                self.push(Instruction::UnresolvedGoSub(label), pos);
+            }
+            Statement::Return(opt_label) => {
+                self.push(Instruction::UnresolvedReturn(opt_label), pos);
             }
             Statement::Comment(_) => {}
             Statement::Dim(d) => {

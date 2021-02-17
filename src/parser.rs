@@ -18,6 +18,7 @@ mod pc;
 mod pc_specific;
 mod select_case;
 pub mod statement;
+mod statement_separator;
 pub mod statements;
 pub mod sub_call;
 mod top_level_token;

@@ -49,11 +49,20 @@ pub enum Instruction {
     NotA,
     And,
     Or,
-    Jump(usize),
-    JumpIfFalse(usize),
+
     Label(CaseInsensitiveString),
+
+    Jump(usize),
     UnresolvedJump(CaseInsensitiveString),
+
+    JumpIfFalse(usize),
     UnresolvedJumpIfFalse(CaseInsensitiveString),
+
+    GoSub(usize),
+    UnresolvedGoSub(CaseInsensitiveString),
+
+    Return(Option<usize>),
+    UnresolvedReturn(Option<CaseInsensitiveString>),
 
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),

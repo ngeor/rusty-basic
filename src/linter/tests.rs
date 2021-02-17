@@ -7,6 +7,7 @@ mod expression;
 mod for_loop;
 mod function_implementation;
 mod go_to;
+mod labels;
 mod select_case;
 mod sub_implementation;
 mod user_defined_type;

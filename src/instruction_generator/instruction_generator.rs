@@ -140,15 +140,33 @@ impl InstructionGenerator {
         for instruction_node in self.instructions.iter_mut() {
             let instruction: &Instruction = instruction_node.as_ref();
             let pos: Location = instruction_node.pos();
-            if let Instruction::UnresolvedJump(x) = instruction {
-                *instruction_node = Instruction::Jump(*labels.get(x).unwrap()).at(pos);
-            } else if let Instruction::UnresolvedJumpIfFalse(x) = instruction {
-                *instruction_node = Instruction::JumpIfFalse(
-                    *labels.get(x).expect(&format!("Label {} not found", x)),
-                )
-                .at(pos);
-            } else if let Instruction::SetUnresolvedErrorHandler(x) = instruction {
-                *instruction_node = Instruction::SetErrorHandler(*labels.get(x).unwrap()).at(pos);
+            match instruction {
+                Instruction::UnresolvedJump(x) => {
+                    *instruction_node = Instruction::Jump(*labels.get(x).unwrap()).at(pos);
+                }
+                Instruction::UnresolvedJumpIfFalse(x) => {
+                    *instruction_node = Instruction::JumpIfFalse(
+                        *labels.get(x).expect(&format!("Label {} not found", x)),
+                    )
+                    .at(pos);
+                }
+                Instruction::SetUnresolvedErrorHandler(x) => {
+                    *instruction_node =
+                        Instruction::SetErrorHandler(*labels.get(x).unwrap()).at(pos);
+                }
+                Instruction::UnresolvedGoSub(x) => {
+                    *instruction_node = Instruction::GoSub(*labels.get(x).unwrap()).at(pos);
+                }
+                Instruction::UnresolvedReturn(opt_label) => match opt_label {
+                    Some(label) => {
+                        *instruction_node =
+                            Instruction::Return(Some(*labels.get(label).unwrap())).at(pos);
+                    }
+                    _ => {
+                        *instruction_node = Instruction::Return(None).at(pos);
+                    }
+                },
+                _ => {}
             }
         }
     }

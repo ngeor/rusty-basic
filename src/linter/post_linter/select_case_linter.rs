@@ -5,7 +5,7 @@ use crate::parser::{CaseExpression, SelectCaseNode};
 pub struct SelectCaseLinter;
 
 impl PostConversionLinter for SelectCaseLinter {
-    fn visit_select_case(&self, select_case_node: &SelectCaseNode) -> Result<(), QErrorNode> {
+    fn visit_select_case(&mut self, select_case_node: &SelectCaseNode) -> Result<(), QErrorNode> {
         for c in select_case_node.case_blocks.iter() {
             match &c.expr {
                 CaseExpression::Simple(expr) => {

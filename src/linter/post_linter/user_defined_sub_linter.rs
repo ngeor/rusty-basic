@@ -9,7 +9,7 @@ pub struct UserDefinedSubLinter<'a> {
 
 impl<'a> PostConversionLinter for UserDefinedSubLinter<'a> {
     fn visit_sub_call(
-        &self,
+        &mut self,
         name: &CaseInsensitiveString,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), QErrorNode> {

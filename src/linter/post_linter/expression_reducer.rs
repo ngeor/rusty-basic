@@ -130,6 +130,8 @@ pub trait ExpressionReducer {
             Statement::ErrorHandler(label) => Ok(Statement::ErrorHandler(label)),
             Statement::Label(label) => Ok(Statement::Label(label)),
             Statement::GoTo(label) => Ok(Statement::GoTo(label)),
+            Statement::GoSub(label) => Ok(Statement::GoSub(label)),
+            Statement::Return(opt_label) => Ok(Statement::Return(opt_label)),
             Statement::Comment(c) => Ok(Statement::Comment(c)),
             Statement::Dim(d) => Ok(Statement::Dim(d)),
         }

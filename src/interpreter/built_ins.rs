@@ -25,18 +25,38 @@ pub fn run_function<S: InterpreterTrait>(
     }
 }
 
-pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QErrorNode> {
+#[derive(Default)]
+pub struct RunSubResult {
+    pub halt: bool,
+}
+
+impl RunSubResult {
+    pub fn new_halt() -> Self {
+        Self { halt: true }
+    }
+}
+
+pub fn run_sub<S: InterpreterTrait>(
+    s: &BuiltInSub,
+    interpreter: &mut S,
+) -> Result<RunSubResult, QErrorNode> {
     match s {
-        BuiltInSub::Close => close::run(interpreter),
-        BuiltInSub::Environ => environ_sub::run(interpreter),
-        BuiltInSub::Input => input::run(interpreter).with_err_no_pos(),
-        BuiltInSub::Kill => kill::run(interpreter),
-        BuiltInSub::LineInput => line_input::run(interpreter).with_err_no_pos(),
+        BuiltInSub::Close => close::run(interpreter).map(|_| RunSubResult::default()),
+        BuiltInSub::Environ => environ_sub::run(interpreter).map(|_| RunSubResult::default()),
+        BuiltInSub::Input => input::run(interpreter)
+            .with_err_no_pos()
+            .map(|_| RunSubResult::default()),
+        BuiltInSub::Kill => kill::run(interpreter).map(|_| RunSubResult::default()),
+        BuiltInSub::LineInput => line_input::run(interpreter)
+            .with_err_no_pos()
+            .map(|_| RunSubResult::default()),
         BuiltInSub::LPrint => todo!("LPT1 printing not implemented yet"),
-        BuiltInSub::Name => name::run(interpreter),
-        BuiltInSub::Open => open::run(interpreter),
-        BuiltInSub::Print => print::run(interpreter).with_err_no_pos(),
-        BuiltInSub::System => system::run(interpreter),
+        BuiltInSub::Name => name::run(interpreter).map(|_| RunSubResult::default()),
+        BuiltInSub::Open => open::run(interpreter).map(|_| RunSubResult::default()),
+        BuiltInSub::Print => print::run(interpreter)
+            .with_err_no_pos()
+            .map(|_| RunSubResult::default()),
+        BuiltInSub::End | BuiltInSub::System => Ok(RunSubResult::new_halt()),
     }
 }
 
@@ -55,6 +75,5 @@ mod mid;
 mod name;
 mod open;
 mod str_fn;
-mod system;
 mod ubound;
 mod val;

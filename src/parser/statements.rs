@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::statement;
+use crate::parser::statement_separator::StatementSeparator;
 use crate::parser::types::*;
 use std::marker::PhantomData;
 
@@ -95,88 +96,3 @@ where
         }
     }
 }
-
-struct StatementSeparator<R> {
-    phantom_reader: PhantomData<R>,
-    comment_mode: bool,
-}
-
-impl<R> StatementSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    pub fn new(comment_mode: bool) -> Self {
-        Self {
-            phantom_reader: PhantomData,
-            comment_mode,
-        }
-    }
-
-    fn parse_comment(&self, reader: R, mut buf: String) -> ReaderResult<R, String, R::Err> {
-        let (reader, opt_item) = eol_separator_p().parse(reader)?;
-        let item = opt_item.unwrap();
-        buf.push_str(item.as_str());
-        Ok((reader, Some(buf)))
-    }
-
-    // <ws>* '\'' (undoing it)
-    // <ws>* ':' <ws*>
-    // <ws>* EOL <ws | eol>*
-    fn parse_non_comment(&self, reader: R, mut buf: String) -> ReaderResult<R, String, R::Err> {
-        let (reader, opt_item) = comment_separator_p()
-            .or(colon_separator_p())
-            .or(eol_separator_p())
-            .parse(reader)?;
-        match opt_item {
-            Some(item) => {
-                buf.push_str(item.as_str());
-                Ok((reader, Some(buf)))
-            }
-            _ => Err((reader, QError::syntax_error("Expected: end-of-statement"))),
-        }
-    }
-}
-
-impl<R> Parser<R> for StatementSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    type Output = String;
-
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        // skip any whitespace, so that the error will hit the first offending character
-        let (reader, opt_buf) = whitespace_p().parse(reader)?;
-        let buf = opt_buf.unwrap_or_default();
-        if self.comment_mode {
-            self.parse_comment(reader, buf)
-        } else {
-            self.parse_non_comment(reader, buf)
-        }
-    }
-}
-
-// '\'' (undoing it)
-fn comment_separator_p<R>() -> impl Parser<R, Output = String>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    item_p('\'').peek_reader_item().map(|ch| {
-        let mut s = String::new();
-        s.push(ch);
-        s
-    })
-}
-
-// ':' <ws>*
-crate::char_sequence_p!(ColonOptWs, colon_separator_p, is_colon, is_whitespace);
-fn is_colon(ch: char) -> bool {
-    ch == ':'
-}
-
-// <eol> < ws | eol >*
-crate::char_sequence_p!(
-    EolFollowedByEolOrWhitespace,
-    eol_separator_p,
-    is_eol,
-    is_eol_or_whitespace
-);

@@ -36,6 +36,10 @@ pub enum Statement {
     ErrorHandler(CaseInsensitiveString),
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
+
+    GoSub(CaseInsensitiveString),
+    Return(Option<CaseInsensitiveString>),
+
     Comment(String),
 
     // some built-ins have special syntax

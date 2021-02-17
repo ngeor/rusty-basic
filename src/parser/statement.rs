@@ -29,6 +29,8 @@ where
         .or(select_case::select_case_p())
         .or(while_wend::while_wend_p())
         .or(statement_go_to_p())
+        .or(statement_go_sub_p())
+        .or(statement_return_p())
         .or(statement_on_error_go_to_p())
         .or(illegal_starting_keywords())
 }
@@ -44,6 +46,8 @@ where
         .or(built_ins::parse_built_in_p())
         .or(sub_call::sub_call_or_assignment_p())
         .or(statement_go_to_p())
+        .or(statement_go_sub_p())
+        .or(statement_return_p())
         .or(statement_on_error_go_to_p())
 }
 
@@ -59,6 +63,8 @@ where
         .or(built_ins::parse_built_in_p())
         .or(sub_call::sub_call_or_assignment_p())
         .or(statement_go_to_p())
+        .or(statement_go_sub_p())
+        .or(statement_return_p())
         .or(statement_on_error_go_to_p())
 }
 
@@ -79,6 +85,24 @@ where
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_demand(bare_name_p().or_syntax_error("Expected: label"))
         .map(|(_, l)| Statement::GoTo(l))
+}
+
+fn statement_go_sub_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_followed_by_whitespace_p(Keyword::GoSub)
+        .and_demand(bare_name_p().or_syntax_error("Expected: label"))
+        .map(|(_, l)| Statement::GoSub(l))
+}
+
+fn statement_return_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_p(Keyword::Return)
+        .and_opt(whitespace_p().and(bare_name_p()).keep_right())
+        .map(|(_, opt_label)| Statement::Return(opt_label))
 }
 
 fn statement_on_error_go_to_p<R>() -> impl Parser<R, Output = Statement>

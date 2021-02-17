@@ -11,7 +11,7 @@ pub struct BuiltInLinter;
 
 impl PostConversionLinter for BuiltInLinter {
     fn visit_built_in_sub_call(
-        &self,
+        &mut self,
         built_in_sub: &BuiltInSub,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), QErrorNode> {
@@ -27,11 +27,11 @@ impl PostConversionLinter for BuiltInLinter {
             BuiltInSub::LPrint | BuiltInSub::Print => {
                 panic!("Should not end up here, handled with Statement(Print)")
             }
-            BuiltInSub::System => system::lint(args),
+            BuiltInSub::End | BuiltInSub::System => zero_args::lint(args),
         }
     }
 
-    fn visit_expression(&self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
         let pos = expr_node.pos();
         let e = expr_node.as_ref();
         match e {
@@ -312,7 +312,7 @@ mod open {
     }
 }
 
-mod system {
+mod zero_args {
     use super::*;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
@@ -448,6 +448,19 @@ mod str_fn {
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_numeric_argument(args)
+    }
+}
+
+mod system {
+    #[cfg(test)]
+    mod tests {
+        use crate::assert_linter_err;
+        use crate::common::QError;
+
+        #[test]
+        fn test_sub_call_system_no_args_allowed() {
+            assert_linter_err!("SYSTEM 42", QError::ArgumentCountMismatch, 1, 1);
+        }
     }
 }
 

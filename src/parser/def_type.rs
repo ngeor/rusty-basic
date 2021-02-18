@@ -77,6 +77,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::{Statement, TopLevelToken};
@@ -141,26 +142,14 @@ mod tests {
 
     #[test]
     fn test_parse_def_int_word_instead_of_letter() {
-        assert_eq!(
-            parse_err("DEFINT HELLO"),
-            QError::syntax_error("No separator: E")
-        );
-        assert_eq!(
-            parse_err("DEFINT HELLO,Z"),
-            QError::syntax_error("No separator: E")
-        );
-        assert_eq!(
-            parse_err("DEFINT A,HELLO"),
-            QError::syntax_error("No separator: E")
-        );
+        assert_parser_err!("DEFINT HELLO", QError::syntax_error("No separator: E"));
+        assert_parser_err!("DEFINT HELLO,Z", QError::syntax_error("No separator: E"));
+        assert_parser_err!("DEFINT A,HELLO", QError::syntax_error("No separator: E"));
     }
 
     #[test]
     fn test_parse_def_int_reverse_range() {
-        assert_eq!(
-            parse_err("DEFINT Z-A"),
-            QError::syntax_error("Invalid letter range")
-        );
+        assert_parser_err!("DEFINT Z-A", QError::syntax_error("Invalid letter range"));
     }
 
     #[test]

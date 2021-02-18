@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::assert_parser_err;
     use crate::common::{AtRowCol, QError};
     use crate::parser::types::*;
 
@@ -190,20 +191,17 @@ mod tests {
 
     #[test]
     fn test_numeric_assignment_to_keyword_not_allowed() {
-        assert_eq!(
-            parse_err("FOR = 42"),
-            QError::syntax_error("Expected: name after FOR")
-        );
+        assert_parser_err!("FOR = 42", QError::syntax_error("Expected: name after FOR"));
     }
 
     #[test]
     fn test_identifier_too_long() {
-        assert_eq!(
-            parse_err("ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN = 42"),
+        assert_parser_err!(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN = 42",
             QError::IdentifierTooLong
         );
-        assert_eq!(
-            parse_err("ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN% = 42"),
+        assert_parser_err!(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN% = 42",
             QError::IdentifierTooLong
         );
     }

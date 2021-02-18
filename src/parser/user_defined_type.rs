@@ -174,6 +174,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assert_parser_err;
     use crate::common::AtRowCol;
     use crate::parser::test_utils::*;
     use crate::parser::types::TopLevelToken;
@@ -243,7 +244,7 @@ mod tests {
         TYPE Card
         END TYPE
         ";
-        assert_eq!(parse_err(input), QError::ElementNotDefined);
+        assert_parser_err!(input, QError::ElementNotDefined);
     }
 
     #[test]
@@ -264,10 +265,7 @@ mod tests {
             END TYPE",
                 e
             );
-            assert_eq!(
-                parse_err(input),
-                QError::syntax_error("Illegal string length")
-            );
+            assert_parser_err!(input, QError::syntax_error("Illegal string length"));
         }
     }
 
@@ -282,10 +280,7 @@ mod tests {
             END TYPE",
                 e
             );
-            assert_eq!(
-                parse_err(input),
-                QError::syntax_error("String length out of range")
-            );
+            assert_parser_err!(input, QError::syntax_error("String length out of range"));
         }
     }
 
@@ -297,7 +292,7 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -308,6 +303,6 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 }

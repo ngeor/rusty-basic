@@ -23,6 +23,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
@@ -114,7 +115,7 @@ mod tests {
     #[test]
     fn test_wend_without_while() {
         let input = "WEND";
-        assert_eq!(parse_err(input), QError::WendWithoutWhile);
+        assert_parser_err!(input, QError::WendWithoutWhile);
     }
 
     #[test]
@@ -123,7 +124,7 @@ mod tests {
         WHILE X > 0
         PRINT X
         "#;
-        assert_eq!(parse_err(input), QError::WhileWithoutWend);
+        assert_parser_err!(input, QError::WhileWithoutWend);
     }
 
     #[test]
@@ -159,12 +160,11 @@ mod tests {
         WHILE X > 0
             PRINT X WEND
         "#;
-        assert_eq!(
-            parse_err_node(input),
-            QErrorNode::Pos(
-                QError::syntax_error("Expected: end-of-statement"),
-                Location::new(3, 21)
-            )
+        assert_parser_err!(
+            input,
+            QError::syntax_error("Expected: end-of-statement"),
+            3,
+            21
         );
     }
 

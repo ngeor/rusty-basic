@@ -851,11 +851,11 @@ crate::char_sequence_p!(Digits, digits_p, is_digit);
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
+    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::{Expression, ExpressionType, Operator, Statement, UnaryOperator};
     use crate::{assert_expression, assert_literal_expression, assert_sub_call};
-
-    use super::super::test_utils::*;
 
     #[test]
     fn test_parse_literals() {
@@ -1339,10 +1339,7 @@ mod tests {
                 ExpressionType::Unresolved
             )
         );
-        assert_eq!(
-            parse_err("PRINT 1AND 2"),
-            QError::syntax_error("No separator: A")
-        );
+        assert_parser_err!("PRINT 1AND 2", QError::syntax_error("No separator: A"));
         assert_expression!(
             "(1 OR 2)AND 3",
             Expression::BinaryExpression(
@@ -1372,10 +1369,7 @@ mod tests {
                 ExpressionType::Unresolved
             )
         );
-        assert_eq!(
-            parse_err("PRINT 1OR 2"),
-            QError::syntax_error("No separator: O")
-        );
+        assert_parser_err!("PRINT 1OR 2", QError::syntax_error("No separator: O"));
         assert_expression!(
             "(1 AND 2)OR 3",
             Expression::BinaryExpression(
@@ -1425,22 +1419,19 @@ mod tests {
         #[test]
         fn test_file_handle_zero() {
             let input = "CLOSE #0";
-            assert_eq!(parse_err(input), QError::BadFileNameOrNumber);
+            assert_parser_err!(input, QError::BadFileNameOrNumber);
         }
 
         #[test]
         fn test_file_handle_overflow() {
             let input = "CLOSE #256";
-            assert_eq!(parse_err(input), QError::BadFileNameOrNumber);
+            assert_parser_err!(input, QError::BadFileNameOrNumber);
         }
 
         #[test]
         fn test_file_handle_negative() {
             let input = "CLOSE #-1";
-            assert_eq!(
-                parse_err(input),
-                QError::syntax_error("Expected: digits after #")
-            );
+            assert_parser_err!(input, QError::syntax_error("Expected: digits after #"));
         }
     }
 
@@ -1449,8 +1440,8 @@ mod tests {
 
         #[test]
         fn test_overflow() {
-            assert_eq!(parse_err("PRINT &H-10"), QError::Overflow);
-            assert_eq!(parse_err("PRINT &H100000000"), QError::Overflow);
+            assert_parser_err!("PRINT &H-10", QError::Overflow);
+            assert_parser_err!("PRINT &H100000000", QError::Overflow);
         }
     }
 
@@ -1459,8 +1450,8 @@ mod tests {
 
         #[test]
         fn test_overflow() {
-            assert_eq!(parse_err("PRINT &O-10"), QError::Overflow);
-            assert_eq!(parse_err("PRINT &O40000000000"), QError::Overflow);
+            assert_parser_err!("PRINT &O-10", QError::Overflow);
+            assert_parser_err!("PRINT &O40000000000", QError::Overflow);
         }
     }
 }

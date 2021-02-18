@@ -20,6 +20,7 @@ where
 mod tests {
     use crate::common::*;
 
+    use crate::assert_parser_err;
     use crate::parser::test_utils::*;
     use crate::parser::types::*;
 
@@ -92,8 +93,8 @@ mod tests {
     #[test]
     fn test_parse_dim_extended_wrong_keyword() {
         let input = "DIM X AS AS";
-        assert_eq!(
-            parse_err(input),
+        assert_parser_err!(
+            input,
             QError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string()
             )
@@ -103,8 +104,8 @@ mod tests {
     #[test]
     fn test_parse_dim_extended_with_qualified_name() {
         let input = "DIM A$ AS STRING";
-        assert_eq!(
-            parse_err(input),
+        assert_parser_err!(
+            input,
             QError::syntax_error("Identifier cannot end with %, &, !, #, or $")
         );
     }
@@ -112,13 +113,13 @@ mod tests {
     #[test]
     fn test_parse_dim_user_defined_too_long() {
         let input = "DIM A AS ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO";
-        assert_eq!(parse_err(input), QError::IdentifierTooLong);
+        assert_parser_err!(input, QError::IdentifierTooLong);
     }
 
     #[test]
     fn test_parse_dim_user_defined_cannot_include_period() {
         let input = "DIM A.B AS Card";
-        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 
     macro_rules! assert_parse_dim_compact {

@@ -4,6 +4,7 @@ use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
 use crate::parser::for_loop;
+use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::name::bare_name_p;
@@ -87,24 +88,6 @@ where
         .map(|(_, l)| Statement::GoTo(l))
 }
 
-fn statement_go_sub_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_followed_by_whitespace_p(Keyword::GoSub)
-        .and_demand(bare_name_p().or_syntax_error("Expected: label"))
-        .map(|(_, l)| Statement::GoSub(l))
-}
-
-fn statement_return_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_p(Keyword::Return)
-        .and_opt(whitespace_p().and(bare_name_p()).keep_right())
-        .map(|(_, opt_label)| Statement::Return(opt_label))
-}
-
 fn statement_on_error_go_to_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -164,12 +147,5 @@ mod tests {
                     .at_rc(1, 3)
             ]
         );
-    }
-
-    // TODO refactor parser tests with sub-folders just like linter
-    // TODO create macro to replace parse_err function
-    #[test]
-    fn go_sub_without_label() {
-        assert_eq!(parse_err("GOSUB "), QError::syntax_error("Expected: label"));
     }
 }

@@ -45,6 +45,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::assert_parser_err;
     use crate::parser::test_utils::*;
 
     use super::*;
@@ -118,10 +119,7 @@ mod tests {
         let input = "
         FUNCTION Echo(X AS STRING * 5)
         END FUNCTION";
-        assert_eq!(
-            parse_err(input),
-            QError::syntax_error("Expected: closing parenthesis")
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
     }
 
     #[test]
@@ -129,10 +127,7 @@ mod tests {
         let input = "
         SUB Echo(X AS STRING * 5)
         END SUB";
-        assert_eq!(
-            parse_err(input),
-            QError::syntax_error("Expected: closing parenthesis")
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
     }
 
     #[test]
@@ -141,7 +136,7 @@ mod tests {
         FUNCTION Echo(X.Y AS Card)
         END FUNCTION
         ";
-        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -150,6 +145,6 @@ mod tests {
         SUB Echo(X.Y AS Card)
         END SUB
         ";
-        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 }

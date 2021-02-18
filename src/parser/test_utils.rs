@@ -186,3 +186,17 @@ macro_rules! assert_literal_expression {
         crate::assert_expression!($left, crate::parser::types::Expression::from($right));
     };
 }
+
+#[macro_export]
+macro_rules! assert_parser_err {
+    ($input:expr, $expected_err:expr) => {
+        assert_eq!(crate::parser::test_utils::parse_err($input), $expected_err);
+    };
+
+    ($input:expr, $expected_err:expr, $row:expr, $col:expr) => {
+        assert_eq!(
+            crate::parser::test_utils::parse_err_node($input),
+            QErrorNode::Pos($expected_err, crate::common::Location::new($row, $col))
+        );
+    };
+}

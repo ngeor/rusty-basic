@@ -1,3 +1,4 @@
+use crate::built_ins::BuiltInSub;
 use crate::common::*;
 use crate::parser::expression;
 use crate::parser::pc::*;
@@ -10,6 +11,7 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     close::parse_close_p()
+        .or(end::parse_end_p())
         .or(input::parse_input_p())
         .or(line_input::parse_line_input_p())
         .or(name::parse_name_p())
@@ -20,7 +22,6 @@ where
 
 mod close {
     use super::*;
-    use crate::built_ins::BuiltInSub;
 
     pub fn parse_close_p<R>() -> impl Parser<R, Output = Statement>
     where
@@ -49,9 +50,9 @@ mod close {
 
     #[cfg(test)]
     mod tests {
-        use crate::parser::test_utils::*;
-
         use super::*;
+        use crate::assert_parser_err;
+        use crate::parser::test_utils::*;
 
         #[test]
         fn test_no_args() {
@@ -116,31 +117,24 @@ mod close {
         #[test]
         fn test_one_file_number_with_hash_no_leading_space() {
             let input = "CLOSE#1";
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("No separator: #"), Location::new(1, 7))
-            );
+            assert_parser_err!(input, QError::syntax_error("No separator: #"), 1, 7);
         }
 
         #[test]
         fn test_one_file_number_with_hash_parenthesis_leading_space() {
             let input = "CLOSE (#1)";
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(
-                    QError::syntax_error("Expected: expression inside parenthesis"),
-                    Location::new(1, 8)
-                )
+            assert_parser_err!(
+                input,
+                QError::syntax_error("Expected: expression inside parenthesis"),
+                1,
+                8
             );
         }
 
         #[test]
         fn test_one_file_number_with_hash_parenthesis_no_leading_space() {
             let input = "CLOSE(#1)";
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("No separator: ("), Location::new(1, 7))
-            );
+            assert_parser_err!(input, QError::syntax_error("No separator: ("), 1, 7);
         }
 
         #[test]
@@ -249,8 +243,93 @@ mod close {
     }
 }
 
+mod end {
+    use super::*;
+    use crate::parser::pc_specific::keyword_choice_p;
+    use crate::parser::statement_separator::EofOrStatementSeparator;
+
+    pub fn parse_end_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::End)
+            .and(
+                opt_whitespace_p(false)
+                    .and(AfterEndSeparator {})
+                    .map(|(l, r)| {
+                        let mut s: String = String::new();
+                        s.push_str(&l);
+                        s.push_str(&r);
+                        s
+                    })
+                    .peek(),
+            )
+            .map(|_| Statement::SubCall(BareName::from(BuiltInSub::End), vec![]))
+    }
+
+    /// Parses the next token after END. If it is one of the valid keywords that
+    /// can follow END, it is undone so that the entire parsing will be undone.
+    /// Otherwise, it demands that we find an end-of-statement terminator.
+    struct AfterEndSeparator {}
+
+    impl<R> Parser<R> for AfterEndSeparator
+    where
+        R: Reader<Item = char, Err = QError>,
+    {
+        type Output = String;
+
+        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+            let (reader, opt_result) = allowed_keywords_after_end().parse(reader)?;
+            match opt_result {
+                Some((_, s)) => {
+                    // undo and return None, as another parser will handle this
+                    Ok((reader.undo(s), None))
+                }
+                _ => {
+                    let (reader, opt_str) = EofOrStatementSeparator::new().parse(reader)?;
+                    match opt_str {
+                        Some(s) => Ok((reader, Some(s))),
+                        _ => {
+                            // error
+                            Err((reader, QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement")))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn allowed_keywords_after_end<R>() -> impl Parser<R, Output = (Keyword, String)>
+    where
+        R: Reader<Item = char>,
+    {
+        keyword_choice_p(&[
+            Keyword::Function,
+            Keyword::If,
+            Keyword::Select,
+            Keyword::Sub,
+            Keyword::Type,
+        ])
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_parser_err;
+
+        #[test]
+        fn test_sub_call_end_no_args_allowed() {
+            assert_parser_err!(
+                "END 42",
+                QError::syntax_error(
+                    "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"
+                )
+            );
+        }
+    }
+}
+
 mod input {
-    use crate::built_ins::BuiltInSub;
 
     use super::*;
     use crate::parser::pc_specific::keyword_followed_by_whitespace_p;
@@ -285,6 +364,7 @@ mod input {
 
     #[cfg(test)]
     mod tests {
+        use crate::assert_parser_err;
         use crate::assert_sub_call;
         use crate::parser::test_utils::*;
 
@@ -318,8 +398,8 @@ mod input {
         #[test]
         fn test_no_whitespace_after_input() {
             let input = "INPUT";
-            assert_eq!(
-                parse_err(input),
+            assert_parser_err!(
+                input,
                 QError::syntax_error("Expected: whitespace after INPUT")
             );
         }
@@ -327,8 +407,8 @@ mod input {
         #[test]
         fn test_no_variable() {
             let input = "INPUT ";
-            assert_eq!(
-                parse_err(input),
+            assert_parser_err!(
+                input,
                 QError::syntax_error("Expected: #file-number or variable")
             );
         }
@@ -375,8 +455,6 @@ mod input {
 }
 
 mod line_input {
-    use crate::built_ins::BuiltInSub;
-
     use super::*;
     use crate::parser::pc_specific::keyword_pair_p;
 
@@ -408,6 +486,7 @@ mod line_input {
 
     #[cfg(test)]
     mod tests {
+        use crate::assert_parser_err;
         use crate::assert_sub_call;
         use crate::parser::test_utils::*;
 
@@ -428,14 +507,14 @@ mod line_input {
         #[test]
         fn test_parse_two_variables() {
             let input = "LINE INPUT A$, B";
-            assert_eq!(parse_err(input), QError::syntax_error("No separator: ,"));
+            assert_parser_err!(input, QError::syntax_error("No separator: ,"));
         }
 
         #[test]
         fn test_no_whitespace_after_input() {
             let input = "LINE INPUT";
-            assert_eq!(
-                parse_err(input),
+            assert_parser_err!(
+                input,
                 QError::syntax_error("Expected: whitespace after LINE INPUT")
             );
         }
@@ -443,8 +522,8 @@ mod line_input {
         #[test]
         fn test_no_variable() {
             let input = "LINE INPUT ";
-            assert_eq!(
-                parse_err(input),
+            assert_parser_err!(
+                input,
                 QError::syntax_error("Expected: #file-number or variable")
             );
         }
@@ -491,7 +570,6 @@ mod line_input {
 }
 
 mod name {
-    use crate::built_ins::BuiltInSub;
     use crate::parser::expression::{back_guarded_expression_node_p, guarded_expression_node_p};
 
     use super::*;
@@ -510,8 +588,6 @@ mod name {
 }
 
 mod open {
-    use crate::built_ins::BuiltInSub;
-
     use super::*;
     use crate::parser::pc_specific::{keyword_choice_p, keyword_followed_by_whitespace_p};
 
@@ -616,9 +692,9 @@ mod open {
 
     #[cfg(test)]
     mod tests {
-        use crate::parser::test_utils::*;
-
         use super::*;
+        use crate::assert_parser_err;
+        use crate::parser::test_utils::*;
 
         #[test]
         fn test_open_for_input_access_read_as_file_handle_with_spaces() {
@@ -749,12 +825,11 @@ mod open {
         #[test]
         fn test_open_access_read_for_input_as_file_handle_with_spaces() {
             let input = r#"OPEN "FILE.TXT" ACCESS READ FOR INPUT AS #1"#;
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(
-                    QError::syntax_error("Expected: AS file-number"),
-                    Location::new(1, 29)
-                )
+            assert_parser_err!(
+                input,
+                QError::syntax_error("Expected: AS file-number"),
+                1,
+                29
             );
         }
     }
@@ -906,9 +981,9 @@ mod print {
 
     #[cfg(test)]
     mod tests {
-        use crate::parser::test_utils::*;
-
         use super::*;
+        use crate::assert_parser_err;
+        use crate::parser::test_utils::*;
 
         #[test]
         fn test_print_no_args() {
@@ -1095,10 +1170,7 @@ mod print {
         #[test]
         fn test_print_file_no_args_no_comma() {
             let input = "PRINT #1";
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("Expected: ,"), Location::new(1, 9))
-            );
+            assert_parser_err!(input, QError::syntax_error("Expected: ,"), 1, 9);
         }
 
         #[test]
@@ -1134,10 +1206,7 @@ mod print {
         #[test]
         fn test_print_file_semicolon_after_file_number_err() {
             let input = "PRINT #1; 42";
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("Expected: ,"), Location::new(1, 9))
-            );
+            assert_parser_err!(input, QError::syntax_error("Expected: ,"), 1, 9);
         }
 
         #[test]
@@ -1232,19 +1301,13 @@ mod print {
         #[test]
         fn test_print_using_no_args_missing_semicolon() {
             let input = "PRINT USING \"#\"";
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("Expected: ;"), Location::new(1, 16))
-            );
+            assert_parser_err!(input, QError::syntax_error("Expected: ;"), 1, 16);
         }
 
         #[test]
         fn test_lprint_using_no_args_missing_semicolon() {
             let input = "LPRINT USING \"#\"";
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(QError::syntax_error("Expected: ;"), Location::new(1, 17))
-            );
+            assert_parser_err!(input, QError::syntax_error("Expected: ;"), 1, 17);
         }
 
         #[test]
@@ -1310,13 +1373,7 @@ mod print {
         #[test]
         fn test_lprint_no_comma_between_expressions_is_error() {
             let input = "LPRINT 1 2";
-            assert_eq!(
-                parse_err_node(input),
-                QErrorNode::Pos(
-                    QError::syntax_error("No separator: 2"),
-                    Location::new(1, 11)
-                )
-            );
+            assert_parser_err!(input, QError::syntax_error("No separator: 2"), 1, 11);
         }
     }
 }

@@ -58,7 +58,7 @@ impl ForNextCounterMatch {
 }
 
 impl PostConversionLinter for ForNextCounterMatch {
-    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
+    fn visit_for_loop(&mut self, f: &ForLoopNode) -> Result<(), QErrorNode> {
         self.visit_statement_nodes(&f.statements)?;
         self.ensure_numeric_variable(f)?;
         self.ensure_for_next_counter_match(f)

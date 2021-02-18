@@ -4,6 +4,7 @@ use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
 use crate::parser::for_loop;
+use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::name::bare_name_p;
@@ -29,6 +30,8 @@ where
         .or(select_case::select_case_p())
         .or(while_wend::while_wend_p())
         .or(statement_go_to_p())
+        .or(statement_go_sub_p())
+        .or(statement_return_p())
         .or(statement_on_error_go_to_p())
         .or(illegal_starting_keywords())
 }
@@ -44,6 +47,8 @@ where
         .or(built_ins::parse_built_in_p())
         .or(sub_call::sub_call_or_assignment_p())
         .or(statement_go_to_p())
+        .or(statement_go_sub_p())
+        .or(statement_return_p())
         .or(statement_on_error_go_to_p())
 }
 
@@ -59,6 +64,8 @@ where
         .or(built_ins::parse_built_in_p())
         .or(sub_call::sub_call_or_assignment_p())
         .or(statement_go_to_p())
+        .or(statement_go_sub_p())
+        .or(statement_return_p())
         .or(statement_on_error_go_to_p())
 }
 

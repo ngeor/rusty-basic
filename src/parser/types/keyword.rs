@@ -45,6 +45,8 @@ pub enum Keyword {
     For,
     /// FUNCTION
     Function,
+    /// GOSUB
+    GoSub,
     /// GOTO
     GoTo,
     /// IF
@@ -79,6 +81,8 @@ pub enum Keyword {
     Print,
     /// READ
     Read,
+    /// RETURN
+    Return,
     /// SELECT
     Select,
     /// SHARED
@@ -126,6 +130,7 @@ const STR_END: &str = "END";
 const STR_ERROR: &str = "ERROR";
 const STR_FOR: &str = "FOR";
 const STR_FUNCTION: &str = "FUNCTION";
+const STR_GO_SUB: &str = "GOSUB";
 const STR_GOTO: &str = "GOTO";
 const STR_IF: &str = "IF";
 const STR_INPUT: &str = "INPUT";
@@ -143,6 +148,7 @@ const STR_OR: &str = "OR";
 const STR_OUTPUT: &str = "OUTPUT";
 const STR_PRINT: &str = "PRINT";
 const STR_READ: &str = "READ";
+const STR_RETURN: &str = "RETURN";
 const STR_SELECT: &str = "SELECT";
 const STR_SHARED: &str = "SHARED";
 const STR_SINGLE: &str = "SINGLE";
@@ -156,7 +162,7 @@ const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 50] = [
+const SORTED_KEYWORDS_STR: [&str; 52] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -178,6 +184,7 @@ const SORTED_KEYWORDS_STR: [&str; 50] = [
     STR_ERROR,
     STR_FOR,
     STR_FUNCTION,
+    STR_GO_SUB,
     STR_GOTO,
     STR_IF,
     STR_INPUT,
@@ -195,6 +202,7 @@ const SORTED_KEYWORDS_STR: [&str; 50] = [
     STR_OUTPUT,
     STR_PRINT,
     STR_READ,
+    STR_RETURN,
     STR_SELECT,
     STR_SHARED,
     STR_SINGLE,
@@ -209,7 +217,7 @@ const SORTED_KEYWORDS_STR: [&str; 50] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 50] = [
+const SORTED_KEYWORDS: [Keyword; 52] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -231,6 +239,7 @@ const SORTED_KEYWORDS: [Keyword; 50] = [
     Keyword::Error,
     Keyword::For,
     Keyword::Function,
+    Keyword::GoSub,
     Keyword::GoTo,
     Keyword::If,
     Keyword::Input,
@@ -248,6 +257,7 @@ const SORTED_KEYWORDS: [Keyword; 50] = [
     Keyword::Output,
     Keyword::Print,
     Keyword::Read,
+    Keyword::Return,
     Keyword::Select,
     Keyword::Shared,
     Keyword::Single,
@@ -286,6 +296,7 @@ impl Keyword {
             Self::Error => STR_ERROR,
             Self::For => STR_FOR,
             Self::Function => STR_FUNCTION,
+            Self::GoSub => STR_GO_SUB,
             Self::GoTo => STR_GOTO,
             Self::If => STR_IF,
             Self::Input => STR_INPUT,
@@ -303,6 +314,7 @@ impl Keyword {
             Self::Output => STR_OUTPUT,
             Self::Print => STR_PRINT,
             Self::Read => STR_READ,
+            Self::Return => STR_RETURN,
             Self::Select => STR_SELECT,
             Self::Shared => STR_SHARED,
             Self::Single => STR_SINGLE,

@@ -156,26 +156,33 @@ impl<'a> NoDotNamesCheck<Expression, QErrorNode> for DotsLinter<'a> {
 }
 
 impl<'a> PostConversionLinter for DotsLinter<'a> {
-    fn visit_function_implementation(&self, f: &FunctionImplementation) -> Result<(), QErrorNode> {
+    fn visit_function_implementation(
+        &mut self,
+        f: &FunctionImplementation,
+    ) -> Result<(), QErrorNode> {
         self.ensure_no_dots(f)?;
         self.visit_statement_nodes(&f.body)
     }
 
-    fn visit_sub_implementation(&self, s: &SubImplementation) -> Result<(), QErrorNode> {
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
         self.ensure_no_dots(s)?;
         self.visit_statement_nodes(&s.body)
     }
 
-    fn visit_dim(&self, d: &DimNameNode) -> Result<(), QErrorNode> {
+    fn visit_dim(&mut self, d: &DimNameNode) -> Result<(), QErrorNode> {
         self.ensure_no_dots(d)
     }
 
-    fn visit_assignment(&self, name: &Expression, v: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn visit_assignment(
+        &mut self,
+        name: &Expression,
+        v: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
         self.ensure_no_dots(name)?;
         self.visit_expression(v)
     }
 
-    fn visit_for_loop(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
+    fn visit_for_loop(&mut self, f: &ForLoopNode) -> Result<(), QErrorNode> {
         // no need to test f.next_counter, as it is the same as variable_name if it exists
         self.ensure_no_dots(&f.variable_name)?;
         self.visit_expression(&f.lower_bound)?;
@@ -187,7 +194,7 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         self.visit_statement_nodes(&f.statements)
     }
 
-    fn visit_expression(&self, e: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn visit_expression(&mut self, e: &ExpressionNode) -> Result<(), QErrorNode> {
         self.ensure_no_dots(e)
     }
 }

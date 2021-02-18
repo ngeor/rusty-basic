@@ -6,6 +6,7 @@ mod expression;
 mod for_loop;
 mod function_call;
 mod function_implementation;
+mod go_sub;
 mod go_to;
 mod if_block;
 mod name_resolution;

@@ -71,6 +71,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
@@ -162,31 +163,25 @@ mod tests {
     #[test]
     fn test_string_fixed_length_function_param_not_allowed() {
         let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
-        assert_eq!(
-            parse_err(input),
-            QError::syntax_error("Expected: closing parenthesis")
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
     }
 
     #[test]
     fn test_string_fixed_length_sub_param_not_allowed() {
         let input = "DECLARE SUB Echo(X AS STRING * 5)";
-        assert_eq!(
-            parse_err(input),
-            QError::syntax_error("Expected: closing parenthesis")
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
     }
 
     #[test]
     fn test_user_defined_function_param_cannot_include_period() {
         let input = "DECLARE FUNCTION Echo(X.Y AS Card)";
-        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 
     #[test]
     fn test_user_defined_sub_param_cannot_include_period() {
         let input = "DECLARE SUB Echo(X.Y AS Card)";
-        assert_eq!(parse_err(input), QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 
     #[test]

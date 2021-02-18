@@ -191,7 +191,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
 }
 
 impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
-    fn visit_expression(&self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
         let Locatable { element: e, pos } = expr_node;
         match e {
             Expression::FunctionCall(n, args) => {

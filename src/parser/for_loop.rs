@@ -101,6 +101,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::types::*;
 
@@ -273,13 +274,11 @@ mod tests {
         FOR I = 0 TO 2STEP 1
         NEXT I
         ";
-        let result = parse_err_node(input);
-        assert_eq!(
-            result,
-            QErrorNode::Pos(
-                QError::syntax_error("Expected: end-of-statement"),
-                Location::new(2, 23),
-            )
+        assert_parser_err!(
+            input,
+            QError::syntax_error("Expected: end-of-statement"),
+            2,
+            23
         );
     }
 }

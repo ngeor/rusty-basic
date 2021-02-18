@@ -35,30 +35,28 @@ fn apply_linters(
     subs: &SubMap,
     names_without_dot: &HashSet<CaseInsensitiveString>,
 ) -> Result<(), QErrorNode> {
-    let linter = for_next_counter_match_linter::ForNextCounterMatch {};
+    let mut linter = for_next_counter_match_linter::ForNextCounterMatch {};
     linter.visit_program(&result)?;
 
-    let linter = dots_linter::DotsLinter { names_without_dot };
+    let mut linter = dots_linter::DotsLinter { names_without_dot };
     linter.visit_program(&result)?;
 
-    let linter = built_in_linter::BuiltInLinter {};
+    let mut linter = built_in_linter::BuiltInLinter {};
     linter.visit_program(&result)?;
 
-    let linter = print_linter::PrintLinter {};
+    let mut linter = print_linter::PrintLinter {};
     linter.visit_program(&result)?;
 
-    let linter = user_defined_function_linter::UserDefinedFunctionLinter { functions };
+    let mut linter = user_defined_function_linter::UserDefinedFunctionLinter { functions };
     linter.visit_program(&result)?;
 
-    let linter = user_defined_sub_linter::UserDefinedSubLinter { subs };
+    let mut linter = user_defined_sub_linter::UserDefinedSubLinter { subs };
     linter.visit_program(&result)?;
 
-    let linter = select_case_linter::SelectCaseLinter {};
+    let mut linter = select_case_linter::SelectCaseLinter {};
     linter.visit_program(&result)?;
 
-    let mut linter = label_linter::LabelLinter::new();
-    linter.visit_program(&result)?;
-    linter.switch_to_validating_mode();
+    let mut linter = label_linter::LabelLinter::default();
     linter.visit_program(&result)?;
     Ok(())
 }

@@ -145,6 +145,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::{
         ConditionalBlockNode, Expression, ExpressionType, IfBlockNode, Operator, Statement,
@@ -463,7 +464,7 @@ end if"#;
     #[test]
     fn test_else_without_if() {
         let input = "ELSE";
-        assert_eq!(parse_err(input), QError::ElseWithoutIf);
+        assert_parser_err!(input, QError::ElseWithoutIf);
     }
 
     #[test]

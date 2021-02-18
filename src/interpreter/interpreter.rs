@@ -47,6 +47,9 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     /// Holds addresses to jump back to
     return_address_stack: Vec<usize>,
 
+    /// Holds addresses to RETURN to after a GOSUB
+    go_sub_address_stack: Vec<usize>,
+
     /// Holds the current call stack
     stacktrace: Vec<Location>,
 
@@ -167,6 +170,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             lpt1,
             context: Context::new(Rc::clone(&rc_user_defined_types)),
             return_address_stack: vec![],
+            go_sub_address_stack: vec![],
             register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
@@ -180,15 +184,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
 
     fn interpret_one(
         &mut self,
-        i: &mut usize,
+        i: usize,
         instruction: &Instruction,
         pos: Location,
-        error_handler: &mut Option<usize>,
-        exit: &mut bool,
+        ctx: &mut InterpretOneContext,
     ) -> Result<(), QErrorNode> {
         match instruction {
             Instruction::SetErrorHandler(idx) => {
-                *error_handler = Some(*idx);
+                ctx.error_handler = Some(*idx);
             }
             Instruction::PushRegisters => {
                 registers::push_registers(self);
@@ -269,11 +272,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let a = self.registers().get_a();
                 let is_true: bool = bool::try_from(a).with_err_at(pos)?;
                 if !is_true {
-                    *i = resolved_idx - 1; // the +1 will happen at the end of the loop
+                    ctx.opt_next_index = Some(*resolved_idx);
                 }
             }
             Instruction::Jump(resolved_idx) => {
-                *i = resolved_idx - 1;
+                ctx.opt_next_index = Some(*resolved_idx);
             }
             Instruction::BeginCollectArguments => {
                 subprogram::begin_collect_arguments(self);
@@ -306,7 +309,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                built_ins::run_sub(n, self)?;
+                let run_sub_result = built_ins::run_sub(n, self)?;
+                if run_sub_result.halt {
+                    ctx.halt = true;
+                }
             }
             Instruction::BuiltInFunction(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
@@ -314,20 +320,37 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::UnresolvedJump(_)
             | Instruction::UnresolvedJumpIfFalse(_)
+            | Instruction::UnresolvedGoSub(_)
+            | Instruction::UnresolvedReturn(_)
             | Instruction::SetUnresolvedErrorHandler(_) => {
                 panic!("Unresolved label {:?} at {:?}", instruction, pos)
             }
             Instruction::Label(_) => (), // no-op
             Instruction::Halt => {
-                *exit = true;
+                ctx.halt = true;
             }
-            Instruction::PushRet(addr) => {
-                self.return_address_stack.push(*addr);
+            Instruction::PushRet(address) => {
+                self.return_address_stack.push(*address);
             }
             Instruction::PopRet => {
-                let addr = self.return_address_stack.pop().unwrap();
-                *i = addr - 1;
+                let address = self.return_address_stack.pop().unwrap();
+                ctx.opt_next_index = Some(address);
             }
+            Instruction::GoSub(address) => {
+                self.go_sub_address_stack.push(i);
+                ctx.opt_next_index = Some(*address);
+            }
+            Instruction::Return(opt_address) => match self.go_sub_address_stack.pop() {
+                Some(address) => {
+                    ctx.opt_next_index = Some(match opt_address {
+                        Some(a) => *a,
+                        _ => address + 1,
+                    });
+                }
+                _ => {
+                    return Err(QError::ReturnWithoutGoSub).with_err_at(pos);
+                }
+            },
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);
             }
@@ -373,16 +396,24 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
 
     pub fn interpret(&mut self, instructions: Vec<InstructionNode>) -> Result<(), QErrorNode> {
         let mut i: usize = 0;
-        let mut error_handler: Option<usize> = None;
-        let mut exit: bool = false;
-        while i < instructions.len() && !exit {
+        let mut ctx: InterpretOneContext = InterpretOneContext {
+            halt: false,
+            error_handler: None,
+            opt_next_index: None,
+        };
+        while i < instructions.len() && !ctx.halt {
             let instruction = instructions[i].as_ref();
             let pos = instructions[i].pos();
-            match self.interpret_one(&mut i, instruction, pos, &mut error_handler, &mut exit) {
-                Ok(_) => {
-                    i += 1;
-                }
-                Err(e) => match error_handler {
+            match self.interpret_one(i, instruction, pos, &mut ctx) {
+                Ok(_) => match ctx.opt_next_index.take() {
+                    Some(next_index) => {
+                        i = next_index;
+                    }
+                    _ => {
+                        i += 1;
+                    }
+                },
+                Err(e) => match ctx.error_handler {
                     Some(error_idx) => {
                         i = error_idx;
                     }
@@ -415,6 +446,21 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         let current_context = self.take_context();
         self.set_context(current_context.pop());
     }
+}
+
+/// Context available to the execution of a single instruction.
+struct InterpretOneContext {
+    /// The instruction handler can set this to `true` in order to terminate
+    /// the problem (done by the `SYSTEM` and `END` built-ins).
+    halt: bool,
+
+    /// The instruction can set a new error handler address (done by
+    /// `ON ERROR GOTO` statement).
+    error_handler: Option<usize>,
+
+    /// The instruction can indicate the next address for the control flow.
+    /// If not set, control flow will resume to the next statement, if any.
+    opt_next_index: Option<usize>,
 }
 
 #[cfg(test)]

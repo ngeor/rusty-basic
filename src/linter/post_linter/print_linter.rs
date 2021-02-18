@@ -5,7 +5,7 @@ use crate::parser::{ExpressionType, HasExpressionType, PrintArg, PrintNode, Type
 pub struct PrintLinter;
 
 impl PostConversionLinter for PrintLinter {
-    fn visit_print_node(&self, print_node: &PrintNode) -> Result<(), QErrorNode> {
+    fn visit_print_node(&mut self, print_node: &PrintNode) -> Result<(), QErrorNode> {
         if let Some(f) = &print_node.format_string {
             if f.expression_type() != ExpressionType::BuiltIn(TypeQualifier::DollarString) {
                 return Err(QError::TypeMismatch).with_err_at(f);

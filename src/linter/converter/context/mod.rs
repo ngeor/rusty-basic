@@ -112,6 +112,10 @@ impl<'a> Context<'a> {
         self.names = current.pop_parent().expect("Stack underflow");
     }
 
+    pub fn is_in_subprogram(&self) -> bool {
+        self.names.is_in_subprogram()
+    }
+
     pub fn names_without_dot(mut self) -> HashSet<BareName> {
         self.names
             .drain_extended_names_into(&mut self.names_without_dot);
@@ -501,7 +505,7 @@ pub mod dim_rules {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_name_node: &DimNameNode) -> Result<(), QErrorNode> {
-            if ctx.names.is_in_subprogram() && dim_name_node.shared {
+            if ctx.is_in_subprogram() && dim_name_node.shared {
                 Err(QError::syntax_error("SHARED not allowed in subprogram"))
                     .with_err_at(dim_name_node)
             } else {

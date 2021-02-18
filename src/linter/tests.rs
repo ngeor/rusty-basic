@@ -6,6 +6,7 @@ mod dim_assign_use_in_expr;
 mod expression;
 mod for_loop;
 mod function_implementation;
+mod go_sub;
 mod go_to;
 mod labels;
 mod select_case;

@@ -165,4 +165,11 @@ mod tests {
             ]
         );
     }
+
+    // TODO refactor parser tests with sub-folders just like linter
+    // TODO create macro to replace parse_err function
+    #[test]
+    fn go_sub_without_label() {
+        assert_eq!(parse_err("GOSUB "), QError::syntax_error("Expected: label"));
+    }
 }

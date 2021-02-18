@@ -47,6 +47,9 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     /// Holds addresses to jump back to
     return_address_stack: Vec<usize>,
 
+    /// Holds addresses to RETURN to after a GOSUB
+    go_sub_address_stack: Vec<usize>,
+
     /// Holds the current call stack
     stacktrace: Vec<Location>,
 
@@ -167,6 +170,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             lpt1,
             context: Context::new(Rc::clone(&rc_user_defined_types)),
             return_address_stack: vec![],
+            go_sub_address_stack: vec![],
             register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
@@ -335,20 +339,22 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 *i = address - 1;
             }
             Instruction::GoSub(address) => {
-                self.return_address_stack.push(*i);
+                self.go_sub_address_stack.push(*i);
                 *i = *address - 1;
             }
-            Instruction::Return(opt_address) => {
-                let address = self.return_address_stack.pop().unwrap();
-                match opt_address {
+            Instruction::Return(opt_address) => match self.go_sub_address_stack.pop() {
+                Some(address) => match opt_address {
                     Some(a) => {
                         *i = *a - 1;
                     }
                     _ => {
                         *i = address;
                     }
+                },
+                _ => {
+                    return Err(QError::ReturnWithoutGoSub).with_err_at(pos);
                 }
-            }
+            },
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);
             }

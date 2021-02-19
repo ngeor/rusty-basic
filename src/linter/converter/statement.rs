@@ -19,6 +19,27 @@ use crate::parser::{
 impl<'a> Converter<StatementNode, StatementNodes> for ConverterImpl<'a> {
     fn convert(&mut self, statement_node: StatementNode) -> Result<StatementNodes, QErrorNode> {
         let mut result: StatementNodes = vec![];
+        self.process_statement_node(statement_node, &mut result)?;
+        Ok(result)
+    }
+}
+
+impl<'a> Converter<StatementNodes, StatementNodes> for ConverterImpl<'a> {
+    fn convert(&mut self, statement_nodes: StatementNodes) -> Result<StatementNodes, QErrorNode> {
+        let mut result: StatementNodes = vec![];
+        for statement_node in statement_nodes {
+            self.process_statement_node(statement_node, &mut result)?;
+        }
+        Ok(result)
+    }
+}
+
+impl<'a> ConverterImpl<'a> {
+    fn process_statement_node(
+        &mut self,
+        statement_node: StatementNode,
+        result: &mut StatementNodes,
+    ) -> Result<(), QErrorNode> {
         let (converted_statement_node, implicit_vars) =
             self.convert_and_collect_implicit_variables(statement_node)?;
         for implicit_var in implicit_vars {
@@ -31,28 +52,7 @@ impl<'a> Converter<StatementNode, StatementNodes> for ConverterImpl<'a> {
         if let Some(s) = converted_statement_node {
             result.push(s);
         }
-        Ok(result)
-    }
-}
-
-impl<'a> Converter<StatementNodes, StatementNodes> for ConverterImpl<'a> {
-    fn convert(&mut self, statement_nodes: StatementNodes) -> Result<StatementNodes, QErrorNode> {
-        let mut result: StatementNodes = vec![];
-        for statement_node in statement_nodes {
-            let (converted_statement_node, implicit_vars) =
-                self.convert_and_collect_implicit_variables(statement_node)?;
-            for implicit_var in implicit_vars {
-                let Locatable {
-                    element: q_name,
-                    pos,
-                } = implicit_var;
-                result.push(Statement::Dim(DimName::from(q_name).at(pos)).at(pos));
-            }
-            if let Some(s) = converted_statement_node {
-                result.push(s);
-            }
-        }
-        Ok(result)
+        Ok(())
     }
 }
 
@@ -68,7 +68,6 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             pos,
         } = statement_node;
         match statement {
-            Statement::Comment(c) => Ok((Some(Statement::Comment(c).at(pos)), vec![])),
             Statement::Assignment(n, e) => self.assignment(n.at(pos), e).map(|(x, y)| (Some(x), y)),
             Statement::Const(n, e) => self.context.on_const(n, e).map(|_| (None, vec![])),
             Statement::SubCall(n, args) => {
@@ -86,10 +85,6 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             Statement::While(c) => self
                 .convert_and_collect_implicit_variables(c)
                 .map(|(c, implicit_vars)| (Some(Statement::While(c).at(pos)), implicit_vars)),
-            Statement::ErrorHandler(l) => Ok((Some(Statement::ErrorHandler(l).at(pos)), vec![])),
-            Statement::Label(l) => Ok((Some(Statement::Label(l).at(pos)), vec![])),
-            Statement::GoTo(l) => Ok((Some(Statement::GoTo(l).at(pos)), vec![])),
-            Statement::GoSub(l) => Ok((Some(Statement::GoSub(l).at(pos)), vec![])),
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && self.context.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
@@ -129,6 +124,7 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                 .convert_and_collect_implicit_variables(print_node)
                 .map(|(p, implicit_vars)| (Some(Statement::Print(p).at(pos)), implicit_vars)),
             Statement::BuiltInSubCall(_, _) => panic!("parser should not have created this"),
+            _ => Ok((Some(statement.at(pos)), vec![])),
         }
     }
 }

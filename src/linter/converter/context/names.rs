@@ -1,3 +1,4 @@
+use super::NameContext;
 use crate::common::CaseInsensitiveString;
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::parser::{BareName, TypeQualifier, VariableInfo};
@@ -225,6 +226,18 @@ impl Names {
 
     pub fn is_in_subprogram(&self) -> bool {
         self.parent.is_some()
+    }
+
+    pub fn get_name_context(&self) -> NameContext {
+        if self.parent.is_some() {
+            if self.current_function_name.is_some() {
+                NameContext::Function
+            } else {
+                NameContext::Sub
+            }
+        } else {
+            NameContext::Global
+        }
     }
 
     pub fn pop_parent(self) -> Option<Self> {

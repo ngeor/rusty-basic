@@ -21,18 +21,16 @@ fn go_sub() {
 
 #[test]
 fn go_sub_inside_sub() {
-    // TODO rewrite this test program to use EXIT SUB when EXIT SUB is implemented
     let input = r#"
     Test
 
     SUB Test
         i% = 1
         GOSUB Alpha
-        IF i% > 1 THEN
-        Alpha:
-            PRINT i%
-            RETURN
-        END IF
+        EXIT SUB
+    Alpha:
+        PRINT i%
+        RETURN
     END SUB
     "#;
     assert_prints!(input, "1");

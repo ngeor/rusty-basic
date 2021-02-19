@@ -45,6 +45,9 @@ impl InstructionGenerator {
             Statement::Return(opt_label) => {
                 self.push(Instruction::UnresolvedReturn(opt_label), pos);
             }
+            Statement::Exit(_) => {
+                self.push(Instruction::PopRet, pos);
+            }
             Statement::Comment(_) => {}
             Statement::Dim(d) => {
                 self.generate_dim_instructions(d);

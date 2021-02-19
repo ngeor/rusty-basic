@@ -1,7 +1,10 @@
 use super::converter::{Converter, ConverterImpl};
 use crate::common::*;
+use crate::linter::converter::context::NameContext;
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
-use crate::parser::{DimName, QualifiedNameNode, Statement, StatementNode, StatementNodes};
+use crate::parser::{
+    DimName, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
+};
 
 // A statement can be expanded into multiple statements to convert implicitly
 // declared variables into explicit.
@@ -16,6 +19,27 @@ use crate::parser::{DimName, QualifiedNameNode, Statement, StatementNode, Statem
 impl<'a> Converter<StatementNode, StatementNodes> for ConverterImpl<'a> {
     fn convert(&mut self, statement_node: StatementNode) -> Result<StatementNodes, QErrorNode> {
         let mut result: StatementNodes = vec![];
+        self.process_statement_node(statement_node, &mut result)?;
+        Ok(result)
+    }
+}
+
+impl<'a> Converter<StatementNodes, StatementNodes> for ConverterImpl<'a> {
+    fn convert(&mut self, statement_nodes: StatementNodes) -> Result<StatementNodes, QErrorNode> {
+        let mut result: StatementNodes = vec![];
+        for statement_node in statement_nodes {
+            self.process_statement_node(statement_node, &mut result)?;
+        }
+        Ok(result)
+    }
+}
+
+impl<'a> ConverterImpl<'a> {
+    fn process_statement_node(
+        &mut self,
+        statement_node: StatementNode,
+        result: &mut StatementNodes,
+    ) -> Result<(), QErrorNode> {
         let (converted_statement_node, implicit_vars) =
             self.convert_and_collect_implicit_variables(statement_node)?;
         for implicit_var in implicit_vars {
@@ -28,28 +52,7 @@ impl<'a> Converter<StatementNode, StatementNodes> for ConverterImpl<'a> {
         if let Some(s) = converted_statement_node {
             result.push(s);
         }
-        Ok(result)
-    }
-}
-
-impl<'a> Converter<StatementNodes, StatementNodes> for ConverterImpl<'a> {
-    fn convert(&mut self, statement_nodes: StatementNodes) -> Result<StatementNodes, QErrorNode> {
-        let mut result: StatementNodes = vec![];
-        for statement_node in statement_nodes {
-            let (converted_statement_node, implicit_vars) =
-                self.convert_and_collect_implicit_variables(statement_node)?;
-            for implicit_var in implicit_vars {
-                let Locatable {
-                    element: q_name,
-                    pos,
-                } = implicit_var;
-                result.push(Statement::Dim(DimName::from(q_name).at(pos)).at(pos));
-            }
-            if let Some(s) = converted_statement_node {
-                result.push(s);
-            }
-        }
-        Ok(result)
+        Ok(())
     }
 }
 
@@ -65,7 +68,6 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             pos,
         } = statement_node;
         match statement {
-            Statement::Comment(c) => Ok((Some(Statement::Comment(c).at(pos)), vec![])),
             Statement::Assignment(n, e) => self.assignment(n.at(pos), e).map(|(x, y)| (Some(x), y)),
             Statement::Const(n, e) => self.context.on_const(n, e).map(|_| (None, vec![])),
             Statement::SubCall(n, args) => {
@@ -83,10 +85,6 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             Statement::While(c) => self
                 .convert_and_collect_implicit_variables(c)
                 .map(|(c, implicit_vars)| (Some(Statement::While(c).at(pos)), implicit_vars)),
-            Statement::ErrorHandler(l) => Ok((Some(Statement::ErrorHandler(l).at(pos)), vec![])),
-            Statement::Label(l) => Ok((Some(Statement::Label(l).at(pos)), vec![])),
-            Statement::GoTo(l) => Ok((Some(Statement::GoTo(l).at(pos)), vec![])),
-            Statement::GoSub(l) => Ok((Some(Statement::GoSub(l).at(pos)), vec![])),
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && self.context.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
@@ -95,6 +93,25 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                     Ok((Some(Statement::Return(opt_label).at(pos)), vec![]))
                 }
             }
+            Statement::Exit(exit_object) => match self.context.get_name_context() {
+                NameContext::Global => {
+                    Err(QError::syntax_error("Illegal outside of subprogram")).with_err_at(pos)
+                }
+                NameContext::Sub => {
+                    if exit_object == ExitObject::Sub {
+                        Ok((Some(Statement::Exit(exit_object).at(pos)), vec![]))
+                    } else {
+                        Err(QError::syntax_error("Illegal inside sub")).with_err_at(pos)
+                    }
+                }
+                NameContext::Function => {
+                    if exit_object == ExitObject::Function {
+                        Ok((Some(Statement::Exit(exit_object).at(pos)), vec![]))
+                    } else {
+                        Err(QError::syntax_error("Illegal inside function")).with_err_at(pos)
+                    }
+                }
+            },
             Statement::Dim(dim_name_node) => self
                 .convert_and_collect_implicit_variables(dim_name_node)
                 .map(|(dim_name_node, implicit_vars_in_array_dimensions)| {
@@ -107,6 +124,7 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                 .convert_and_collect_implicit_variables(print_node)
                 .map(|(p, implicit_vars)| (Some(Statement::Print(p).at(pos)), implicit_vars)),
             Statement::BuiltInSubCall(_, _) => panic!("parser should not have created this"),
+            _ => Ok((Some(statement.at(pos)), vec![])),
         }
     }
 }

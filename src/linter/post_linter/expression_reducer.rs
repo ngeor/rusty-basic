@@ -1,10 +1,6 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::{
-    CaseBlockNode, CaseExpression, ConditionalBlockNode, Expression, ExpressionNode, ForLoopNode,
-    FunctionImplementation, IfBlockNode, PrintArg, PrintNode, ProgramNode, SelectCaseNode,
-    Statement, StatementNode, StatementNodes, SubImplementation, TopLevelToken, TopLevelTokenNode,
-};
+use crate::parser::*;
 
 /// Visits the converted program and transforms it into a different program.
 ///
@@ -127,13 +123,7 @@ pub trait ExpressionReducer {
             Statement::SelectCase(s) => self.visit_select_case(s).map(|x| Statement::SelectCase(x)),
             Statement::ForLoop(f) => self.visit_for_loop(f).map(|x| Statement::ForLoop(x)),
             Statement::While(w) => self.visit_conditional_block(w).map(|x| Statement::While(x)),
-            Statement::ErrorHandler(label) => Ok(Statement::ErrorHandler(label)),
-            Statement::Label(label) => Ok(Statement::Label(label)),
-            Statement::GoTo(label) => Ok(Statement::GoTo(label)),
-            Statement::GoSub(label) => Ok(Statement::GoSub(label)),
-            Statement::Return(opt_label) => Ok(Statement::Return(opt_label)),
-            Statement::Comment(c) => Ok(Statement::Comment(c)),
-            Statement::Dim(d) => Ok(Statement::Dim(d)),
+            _ => Ok(s),
         }
     }
 

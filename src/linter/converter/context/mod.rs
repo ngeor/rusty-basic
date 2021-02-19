@@ -116,6 +116,10 @@ impl<'a> Context<'a> {
         self.names.is_in_subprogram()
     }
 
+    pub fn get_name_context(&self) -> NameContext {
+        self.names.get_name_context()
+    }
+
     pub fn names_without_dot(mut self) -> HashSet<BareName> {
         self.names
             .drain_extended_names_into(&mut self.names_without_dot);
@@ -621,4 +625,11 @@ fn union(
 ) -> Vec<QualifiedNameNode> {
     left.append(&mut right);
     left
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NameContext {
+    Global,
+    Sub,
+    Function,
 }

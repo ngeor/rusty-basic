@@ -3,6 +3,7 @@ use crate::parser::built_ins;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
+use crate::parser::exit::statement_exit_p;
 use crate::parser::for_loop;
 use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
@@ -32,6 +33,7 @@ where
         .or(statement_go_to_p())
         .or(statement_go_sub_p())
         .or(statement_return_p())
+        .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
         .or(illegal_starting_keywords())
 }
@@ -49,6 +51,7 @@ where
         .or(statement_go_to_p())
         .or(statement_go_sub_p())
         .or(statement_return_p())
+        .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
 }
 
@@ -66,6 +69,7 @@ where
         .or(statement_go_to_p())
         .or(statement_go_sub_p())
         .or(statement_return_p())
+        .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
 }
 

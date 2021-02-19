@@ -1,7 +1,10 @@
 use super::converter::{Converter, ConverterImpl};
 use crate::common::*;
+use crate::linter::converter::context::NameContext;
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
-use crate::parser::{DimName, QualifiedNameNode, Statement, StatementNode, StatementNodes};
+use crate::parser::{
+    DimName, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
+};
 
 // A statement can be expanded into multiple statements to convert implicitly
 // declared variables into explicit.
@@ -95,13 +98,25 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                     Ok((Some(Statement::Return(opt_label).at(pos)), vec![]))
                 }
             }
-            Statement::Exit(exit_object) => {
-                if self.context.is_in_subprogram() {
-                    Ok((Some(Statement::Exit(exit_object).at(pos)), vec![]))
-                } else {
+            Statement::Exit(exit_object) => match self.context.get_name_context() {
+                NameContext::Global => {
                     Err(QError::syntax_error("Illegal outside of subprogram")).with_err_at(pos)
                 }
-            }
+                NameContext::Sub => {
+                    if exit_object == ExitObject::Sub {
+                        Ok((Some(Statement::Exit(exit_object).at(pos)), vec![]))
+                    } else {
+                        Err(QError::syntax_error("Illegal inside sub")).with_err_at(pos)
+                    }
+                }
+                NameContext::Function => {
+                    if exit_object == ExitObject::Function {
+                        Ok((Some(Statement::Exit(exit_object).at(pos)), vec![]))
+                    } else {
+                        Err(QError::syntax_error("Illegal inside function")).with_err_at(pos)
+                    }
+                }
+            },
             Statement::Dim(dim_name_node) => self
                 .convert_and_collect_implicit_variables(dim_name_node)
                 .map(|(dim_name_node, implicit_vars_in_array_dimensions)| {

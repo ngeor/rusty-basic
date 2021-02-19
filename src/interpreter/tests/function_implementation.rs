@@ -38,3 +38,19 @@ fn test_function_param_same_as_other_function_allowed() {
     "#;
     assert_prints!(program, "5");
 }
+
+#[test]
+fn exit_function() {
+    let input = r#"
+    PRINT 1
+    A = Hello
+    PRINT A
+
+    FUNCTION Hello
+        Hello = 42
+        EXIT FUNCTION
+        Hello = 41
+    END FUNCTION
+    "#;
+    assert_prints!(input, "1", "42");
+}

@@ -208,3 +208,13 @@ fn exit_sub_not_allowed_in_global_module() {
     ";
     assert_linter_err!(input, QError::syntax_error("Illegal outside of subprogram"));
 }
+
+#[test]
+fn exit_function_not_allowed_in_sub() {
+    let input = "
+    SUB Hello
+    EXIT FUNCTION
+    END SUB
+    ";
+    assert_linter_err!(input, QError::syntax_error("Illegal inside sub"));
+}

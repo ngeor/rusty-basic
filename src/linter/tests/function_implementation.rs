@@ -190,3 +190,21 @@ fn test_user_defined_function_param_clashes_dotted_variable() {
             "#;
     assert_linter_err!(input, QError::DotClash, 9, 17);
 }
+
+#[test]
+fn exit_function_not_allowed_in_global_module() {
+    let input = "
+    EXIT FUNCTION
+    ";
+    assert_linter_err!(input, QError::syntax_error("Illegal outside of subprogram"));
+}
+
+#[test]
+fn exit_sub_not_allowed_in_function() {
+    let input = "
+    FUNCTION Hello
+    EXIT SUB
+    END FUNCTION
+    ";
+    assert_linter_err!(input, QError::syntax_error("Illegal inside function"));
+}

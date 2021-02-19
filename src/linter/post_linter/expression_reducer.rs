@@ -132,6 +132,7 @@ pub trait ExpressionReducer {
             Statement::GoTo(label) => Ok(Statement::GoTo(label)),
             Statement::GoSub(label) => Ok(Statement::GoSub(label)),
             Statement::Return(opt_label) => Ok(Statement::Return(opt_label)),
+            Statement::Exit(exit_object) => Ok(Statement::Exit(exit_object)),
             Statement::Comment(c) => Ok(Statement::Comment(c)),
             Statement::Dim(d) => Ok(Statement::Dim(d)),
         }

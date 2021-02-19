@@ -200,3 +200,11 @@ fn test_sub_variable_dotted_name_clashes_variable_of_user_defined_type_in_other_
             ";
     assert_linter_err!(input, QError::DotClash, 11, 21);
 }
+
+#[test]
+fn exit_sub_not_allowed_in_global_module() {
+    let input = "
+    EXIT SUB
+    ";
+    assert_linter_err!(input, QError::syntax_error("Illegal outside of subprogram"));
+}

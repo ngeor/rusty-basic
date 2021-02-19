@@ -1,10 +1,6 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::{
-    CaseExpression, ConditionalBlockNode, DimNameNode, Expression, ExpressionNode, ForLoopNode,
-    FunctionImplementation, IfBlockNode, PrintArg, PrintNode, ProgramNode, SelectCaseNode,
-    Statement, StatementNode, StatementNodes, SubImplementation, TopLevelToken, TopLevelTokenNode,
-};
+use crate::parser::*;
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.
@@ -73,6 +69,7 @@ pub trait PostConversionLinter {
             Statement::Print(print_node) => self.visit_print_node(print_node),
             Statement::GoSub(label) => self.visit_go_sub(label),
             Statement::Return(opt_label) => self.visit_return(opt_label.as_ref()),
+            Statement::Exit(exit_object) => self.visit_exit(*exit_object),
         }
     }
 
@@ -101,6 +98,10 @@ pub trait PostConversionLinter {
     }
 
     fn visit_return(&mut self, _label: Option<&CaseInsensitiveString>) -> Result<(), QErrorNode> {
+        Ok(())
+    }
+
+    fn visit_exit(&mut self, _exit_object: ExitObject) -> Result<(), QErrorNode> {
         Ok(())
     }
 

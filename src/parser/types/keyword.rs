@@ -41,6 +41,8 @@ pub enum Keyword {
     End,
     /// ERROR
     Error,
+    /// EXIT
+    Exit,
     /// FOR
     For,
     /// FUNCTION
@@ -128,6 +130,7 @@ const STR_ELSE: &str = "ELSE";
 const STR_ELSEIF: &str = "ELSEIF";
 const STR_END: &str = "END";
 const STR_ERROR: &str = "ERROR";
+const STR_EXIT: &str = "EXIT";
 const STR_FOR: &str = "FOR";
 const STR_FUNCTION: &str = "FUNCTION";
 const STR_GO_SUB: &str = "GOSUB";
@@ -162,7 +165,7 @@ const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 52] = [
+const SORTED_KEYWORDS_STR: [&str; 53] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -182,6 +185,7 @@ const SORTED_KEYWORDS_STR: [&str; 52] = [
     STR_ELSEIF,
     STR_END,
     STR_ERROR,
+    STR_EXIT,
     STR_FOR,
     STR_FUNCTION,
     STR_GO_SUB,
@@ -217,7 +221,7 @@ const SORTED_KEYWORDS_STR: [&str; 52] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 52] = [
+const SORTED_KEYWORDS: [Keyword; 53] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -237,6 +241,7 @@ const SORTED_KEYWORDS: [Keyword; 52] = [
     Keyword::ElseIf,
     Keyword::End,
     Keyword::Error,
+    Keyword::Exit,
     Keyword::For,
     Keyword::Function,
     Keyword::GoSub,
@@ -294,6 +299,7 @@ impl Keyword {
             Self::ElseIf => STR_ELSEIF,
             Self::End => STR_END,
             Self::Error => STR_ERROR,
+            Self::Exit => STR_EXIT,
             Self::For => STR_FOR,
             Self::Function => STR_FUNCTION,
             Self::GoSub => STR_GO_SUB,

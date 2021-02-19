@@ -40,10 +40,18 @@ pub enum Statement {
     GoSub(CaseInsensitiveString),
     Return(Option<CaseInsensitiveString>),
 
+    Exit(ExitObject),
+
     Comment(String),
 
     // some built-ins have special syntax
     Print(PrintNode),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExitObject {
+    Function,
+    Sub,
 }
 
 #[derive(Clone, Debug, PartialEq)]

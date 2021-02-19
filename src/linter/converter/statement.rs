@@ -95,6 +95,13 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                     Ok((Some(Statement::Return(opt_label).at(pos)), vec![]))
                 }
             }
+            Statement::Exit(exit_object) => {
+                if self.context.is_in_subprogram() {
+                    Ok((Some(Statement::Exit(exit_object).at(pos)), vec![]))
+                } else {
+                    Err(QError::syntax_error("Illegal outside of subprogram")).with_err_at(pos)
+                }
+            }
             Statement::Dim(dim_name_node) => self
                 .convert_and_collect_implicit_variables(dim_name_node)
                 .map(|(dim_name_node, implicit_vars_in_array_dimensions)| {

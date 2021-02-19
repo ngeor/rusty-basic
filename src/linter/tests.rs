@@ -3,6 +3,7 @@ mod assignment;
 mod constant;
 mod dim;
 mod dim_assign_use_in_expr;
+mod exit_subprogram;
 mod expression;
 mod for_loop;
 mod function_implementation;

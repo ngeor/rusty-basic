@@ -38,19 +38,3 @@ fn test_sub_param_same_as_other_function_allowed() {
     "#;
     assert_prints!(program, "5");
 }
-
-#[test]
-fn exit_sub() {
-    let input = r#"
-    PRINT 1
-    Hello
-    PRINT 2
-
-    SUB Hello
-        PRINT 3
-        EXIT SUB
-        PRINT 4
-    END SUB
-    "#;
-    assert_prints!(input, "1", "3", "2");
-}

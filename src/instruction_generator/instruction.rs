@@ -64,6 +64,11 @@ pub enum Instruction {
     Return(Option<usize>),
     UnresolvedReturn(Option<CaseInsensitiveString>),
 
+    Resume,
+    ResumeNext,
+    UnresolvedResumeLabel(CaseInsensitiveString),
+    ResumeLabel(usize),
+
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
     Halt,

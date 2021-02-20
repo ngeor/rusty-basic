@@ -18,6 +18,7 @@ mod param_name;
 mod parser;
 mod pc;
 mod pc_specific;
+mod resume;
 mod select_case;
 pub mod statement;
 mod statement_separator;

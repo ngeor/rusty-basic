@@ -62,6 +62,8 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     function_result: Option<Variant>,
 
     value_stack: Vec<Variant>,
+
+    last_error_address: Option<usize>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -179,6 +181,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             by_ref_stack: VecDeque::new(),
             function_result: None,
             value_stack: vec![],
+            last_error_address: None,
         }
     }
 
@@ -322,6 +325,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             | Instruction::UnresolvedJumpIfFalse(_)
             | Instruction::UnresolvedGoSub(_)
             | Instruction::UnresolvedReturn(_)
+            | Instruction::UnresolvedResumeLabel(_)
             | Instruction::SetUnresolvedErrorHandler(_) => {
                 panic!("Unresolved label {:?} at {:?}", instruction, pos)
             }
@@ -349,6 +353,35 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 }
                 _ => {
                     return Err(QError::ReturnWithoutGoSub).with_err_at(pos);
+                }
+            },
+            Instruction::Resume => match self.last_error_address.take() {
+                Some(last_error_address) => {
+                    ctx.opt_next_index = Some(last_error_address);
+                }
+                _ => {
+                    // TODO test this
+                    return Err(QError::ResumeWithoutError).with_err_at(pos);
+                }
+            },
+            Instruction::ResumeNext => match self.last_error_address.take() {
+                Some(last_error_address) => {
+                    // TODO is the plus one safe or will it land in the middle of a statement
+                    ctx.opt_next_index = Some(last_error_address + 1);
+                }
+                _ => {
+                    // TODO test this
+                    return Err(QError::ResumeWithoutError).with_err_at(pos);
+                }
+            },
+            Instruction::ResumeLabel(resume_label) => match self.last_error_address.take() {
+                Some(_) => {
+                    // TODO is the plus one safe or will it land in the middle of a statement
+                    ctx.opt_next_index = Some(*resume_label);
+                }
+                _ => {
+                    // TODO test this
+                    return Err(QError::ResumeWithoutError).with_err_at(pos);
                 }
             },
             Instruction::Throw(interpreter_error) => {
@@ -413,14 +446,25 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                         i += 1;
                     }
                 },
-                Err(e) => match ctx.error_handler {
-                    Some(error_idx) => {
-                        i = error_idx;
+                Err(e) => {
+                    // store error address, so we can call RESUME and RESUME NEXT from within the error handler
+                    self.last_error_address = Some(i);
+
+                    // TODO if was in the middle of building arguments to a sub/function, clean up
+
+                    // TODO what if the error handler is in a different sub / probably linter should catch this
+
+                    // TODO if was calling a sub/function, probably needs to cleanup stack (recursively potentially)
+
+                    match ctx.error_handler {
+                        Some(error_idx) => {
+                            i = error_idx;
+                        }
+                        None => {
+                            return Err(e.patch_stacktrace(&self.stacktrace));
+                        }
                     }
-                    None => {
-                        return Err(e.patch_stacktrace(&self.stacktrace));
-                    }
-                },
+                }
             }
         }
         Ok(())
@@ -451,7 +495,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
 /// Context available to the execution of a single instruction.
 struct InterpretOneContext {
     /// The instruction handler can set this to `true` in order to terminate
-    /// the problem (done by the `SYSTEM` and `END` built-ins).
+    /// the program (done by the `SYSTEM` and `END` built-ins).
     halt: bool,
 
     /// The instruction can set a new error handler address (done by

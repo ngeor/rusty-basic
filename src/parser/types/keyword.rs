@@ -83,6 +83,8 @@ pub enum Keyword {
     Print,
     /// READ
     Read,
+    /// RESUME
+    Resume,
     /// RETURN
     Return,
     /// SELECT
@@ -151,6 +153,7 @@ const STR_OR: &str = "OR";
 const STR_OUTPUT: &str = "OUTPUT";
 const STR_PRINT: &str = "PRINT";
 const STR_READ: &str = "READ";
+const STR_RESUME: &str = "RESUME";
 const STR_RETURN: &str = "RETURN";
 const STR_SELECT: &str = "SELECT";
 const STR_SHARED: &str = "SHARED";
@@ -165,7 +168,7 @@ const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 53] = [
+const SORTED_KEYWORDS_STR: [&str; 54] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -206,6 +209,7 @@ const SORTED_KEYWORDS_STR: [&str; 53] = [
     STR_OUTPUT,
     STR_PRINT,
     STR_READ,
+    STR_RESUME,
     STR_RETURN,
     STR_SELECT,
     STR_SHARED,
@@ -221,7 +225,7 @@ const SORTED_KEYWORDS_STR: [&str; 53] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 53] = [
+const SORTED_KEYWORDS: [Keyword; 54] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -262,6 +266,7 @@ const SORTED_KEYWORDS: [Keyword; 53] = [
     Keyword::Output,
     Keyword::Print,
     Keyword::Read,
+    Keyword::Resume,
     Keyword::Return,
     Keyword::Select,
     Keyword::Shared,
@@ -320,6 +325,7 @@ impl Keyword {
             Self::Output => STR_OUTPUT,
             Self::Print => STR_PRINT,
             Self::Read => STR_READ,
+            Self::Resume => STR_RESUME,
             Self::Return => STR_RETURN,
             Self::Select => STR_SELECT,
             Self::Shared => STR_SHARED,

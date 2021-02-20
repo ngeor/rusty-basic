@@ -27,19 +27,19 @@ pub enum Statement {
 
     SubCall(BareName, ExpressionNodes),
     BuiltInSubCall(BuiltInSub, ExpressionNodes),
+
     IfBlock(IfBlockNode),
     SelectCase(SelectCaseNode),
 
     ForLoop(ForLoopNode),
     While(ConditionalBlockNode),
 
-    ErrorHandler(CaseInsensitiveString),
+    OnErrorGoTo(CaseInsensitiveString),
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
-
     GoSub(CaseInsensitiveString),
+    Resume(ResumeOption),
     Return(Option<CaseInsensitiveString>),
-
     Exit(ExitObject),
 
     Comment(String),
@@ -52,6 +52,13 @@ pub enum Statement {
 pub enum ExitObject {
     Function,
     Sub,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ResumeOption {
+    Bare,
+    Next,
+    Label(CaseInsensitiveString),
 }
 
 #[derive(Clone, Debug, PartialEq)]

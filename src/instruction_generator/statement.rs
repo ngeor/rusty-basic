@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator};
 use crate::common::*;
-use crate::parser::{Statement, StatementNode, StatementNodes};
+use crate::parser::{ResumeOption, Statement, StatementNode, StatementNodes};
 
 impl InstructionGenerator {
     pub fn generate_block_instructions(&mut self, block: StatementNodes) {
@@ -30,7 +30,7 @@ impl InstructionGenerator {
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),
             Statement::ForLoop(f) => self.generate_for_loop_instructions(f, pos),
             Statement::While(w) => self.generate_while_instructions(w, pos),
-            Statement::ErrorHandler(label) => {
+            Statement::OnErrorGoTo(label) => {
                 self.push(Instruction::SetUnresolvedErrorHandler(label), pos);
             }
             Statement::Label(name) => {
@@ -42,6 +42,17 @@ impl InstructionGenerator {
             Statement::GoSub(label) => {
                 self.push(Instruction::UnresolvedGoSub(label), pos);
             }
+            Statement::Resume(resume_option) => match resume_option {
+                ResumeOption::Bare => {
+                    self.push(Instruction::Resume, pos);
+                }
+                ResumeOption::Next => {
+                    self.push(Instruction::ResumeNext, pos);
+                }
+                ResumeOption::Label(label) => {
+                    self.push(Instruction::UnresolvedResumeLabel(label), pos);
+                }
+            },
             Statement::Return(opt_label) => {
                 self.push(Instruction::UnresolvedReturn(opt_label), pos);
             }

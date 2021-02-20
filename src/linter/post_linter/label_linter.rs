@@ -1,7 +1,7 @@
 use super::post_conversion_linter::*;
 use crate::common::*;
 use crate::parser::{
-    BareName, FunctionImplementation, ProgramNode, QualifiedName, SubImplementation,
+    BareName, FunctionImplementation, ProgramNode, QualifiedName, ResumeOption, SubImplementation,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -122,6 +122,14 @@ impl PostConversionLinter for LabelLinter {
         match opt_label {
             Some(label) => self.visit_error_handler(label),
             _ => Ok(()),
+        }
+    }
+
+    fn visit_resume(&mut self, resume_option: &ResumeOption) -> Result<(), QErrorNode> {
+        if let ResumeOption::Label(label) = resume_option {
+            self.visit_error_handler(label)
+        } else {
+            Ok(())
         }
     }
 }

@@ -176,6 +176,9 @@ impl InstructionGenerator {
                     *instruction = Instruction::Return(None);
                 }
             },
+            Instruction::UnresolvedResumeLabel(label) => {
+                *instruction = Instruction::ResumeLabel(*label_to_address.get(label).unwrap());
+            }
             _ => {}
         }
     }

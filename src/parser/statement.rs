@@ -11,6 +11,7 @@ use crate::parser::name;
 use crate::parser::name::bare_name_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
+use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
 use crate::parser::sub_call;
 use crate::parser::types::*;
@@ -35,6 +36,7 @@ where
         .or(statement_return_p())
         .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
+        .or(statement_resume_p())
         .or(illegal_starting_keywords())
 }
 
@@ -53,6 +55,7 @@ where
         .or(statement_return_p())
         .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
+        .or(statement_resume_p())
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
@@ -71,6 +74,7 @@ where
         .or(statement_return_p())
         .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
+        .or(statement_resume_p())
 }
 
 fn statement_label_p<R>() -> impl Parser<R, Output = Statement>
@@ -104,7 +108,7 @@ where
             keyword_followed_by_whitespace_p(Keyword::GoTo).or_syntax_error("Expected: GOTO"),
         )
         .and_demand(name::bare_name_p().or_syntax_error("Expected: label"))
-        .map(|(_, l)| Statement::ErrorHandler(l))
+        .map(|(_, l)| Statement::OnErrorGoTo(l))
 }
 
 fn illegal_starting_keywords<R>() -> impl Parser<R, Output = Statement>

@@ -4,6 +4,10 @@ use crate::instruction_generator::AddressOrLabel;
 use crate::parser::{OnErrorOption, ResumeOption, Statement, StatementNode, StatementNodes};
 
 impl InstructionGenerator {
+    pub fn mark_statement_address(&mut self) {
+        self.statement_addresses.push(self.instructions.len());
+    }
+
     pub fn generate_block_instructions(&mut self, block: StatementNodes) {
         for s in block {
             self.generate_statement_node_instructions(s);
@@ -12,7 +16,7 @@ impl InstructionGenerator {
 
     pub fn generate_statement_node_instructions(&mut self, statement_node: StatementNode) {
         // TODO fine tune for comments and other cases
-        self.statement_addresses.push(self.instructions.len());
+        self.mark_statement_address();
         let Locatable {
             element: statement,
             pos,

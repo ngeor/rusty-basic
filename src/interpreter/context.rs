@@ -70,6 +70,15 @@ impl Context {
         }
     }
 
+    pub fn new_clone(&self) -> Self {
+        Self {
+            user_defined_types: Rc::clone(&self.user_defined_types),
+            variables: self.variables.clone(),
+            arguments_stack: ArgumentsStack::new(),
+            parameter_count: 0,
+        }
+    }
+
     pub fn push(&mut self) -> Self {
         let arguments: Arguments = self.arguments_stack.pop();
         let mut variables = Variables::new();
@@ -193,6 +202,17 @@ impl Contexts {
     pub fn push(&mut self) {
         let context = self.context_mut().push();
         self.v.push(context);
+    }
+
+    pub fn push_error_handler_context(&mut self) {
+        let context = self.global_context().new_clone();
+        self.v.push(context);
+    }
+
+    pub fn pop_error_handler_context(&mut self) {
+        let context = self.v.pop().unwrap();
+        let Context { variables, .. } = context;
+        self.global_context_mut().variables = variables;
     }
 
     pub fn pop(&mut self) {

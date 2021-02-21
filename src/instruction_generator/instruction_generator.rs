@@ -100,6 +100,7 @@ impl InstructionGenerator {
         }
 
         // add HALT instruction at end of program to separate from the functions and subs
+        self.mark_statement_address();
         self.push(
             Instruction::Halt,
             Location::new(std::u32::MAX, std::u32::MAX),
@@ -121,6 +122,7 @@ impl InstructionGenerator {
                 // set default value
                 self.push_load(qualifier, pos);
                 self.generate_block_instructions(block);
+                self.mark_statement_address();
                 self.push(Instruction::PopRet, pos);
             } else {
                 panic!("Unexpected bare function name {:?}", function_name);
@@ -134,6 +136,7 @@ impl InstructionGenerator {
             let block = s.body;
             self.sub_label(bare_name, pos);
             self.generate_block_instructions(block);
+            self.mark_statement_address();
             self.push(Instruction::PopRet, pos);
         }
     }

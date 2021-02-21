@@ -363,6 +363,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::Resume => match self.last_error_address.take() {
                 Some(last_error_address) => {
                     ctx.opt_next_index = Some(self.find_current(last_error_address));
+                    self.contexts.pop_error_handler_context();
                 }
                 _ => {
                     // TODO test this
@@ -372,6 +373,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::ResumeNext => match self.last_error_address.take() {
                 Some(last_error_address) => {
                     ctx.opt_next_index = Some(self.find_next(last_error_address));
+                    self.contexts.pop_error_handler_context();
                 }
                 _ => {
                     // TODO test this
@@ -381,6 +383,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::ResumeLabel(resume_label) => match self.last_error_address.take() {
                 Some(_) => {
                     ctx.opt_next_index = Some(resume_label.address());
+                    self.contexts.pop_error_handler_context();
                 }
                 _ => {
                     // TODO test this
@@ -465,6 +468,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     match ctx.error_handler {
                         ErrorHandler::Address(handler_address) => {
                             // store error address, so we can call RESUME and RESUME NEXT from within the error handler
+                            // TODO not good enough if a sub is called and tries to access a DIM SHARED variable
+                            self.contexts.push_error_handler_context();
                             self.last_error_address = Some(i);
                             i = handler_address;
                         }

@@ -1,7 +1,8 @@
 use super::post_conversion_linter::*;
 use crate::common::*;
 use crate::parser::{
-    BareName, FunctionImplementation, ProgramNode, QualifiedName, ResumeOption, SubImplementation,
+    BareName, FunctionImplementation, OnErrorOption, ProgramNode, QualifiedName, ResumeOption,
+    SubImplementation,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -39,6 +40,31 @@ impl LabelLinter {
             }
         }
         false
+    }
+
+    fn ensure_label_is_defined(
+        &self,
+        label: &CaseInsensitiveString,
+        label_owner: &LabelOwner,
+    ) -> Result<(), QErrorNode> {
+        if self.collecting {
+            return Ok(());
+        }
+
+        let labels = self.labels.get(label_owner).unwrap();
+        if labels.contains(label) {
+            Ok(())
+        } else {
+            err_no_pos(QError::LabelNotDefined)
+        }
+    }
+
+    fn ensure_is_global_label(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+        self.ensure_label_is_defined(label, &LabelOwner::Global)
+    }
+
+    fn ensure_is_current_label(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+        self.ensure_label_is_defined(label, &self.current_label_owner)
     }
 }
 
@@ -80,16 +106,10 @@ impl PostConversionLinter for LabelLinter {
         result
     }
 
-    fn visit_error_handler(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
-        if self.collecting {
-            return Ok(());
-        }
-
-        let labels = self.labels.get(&self.current_label_owner).unwrap();
-        if labels.contains(label) {
-            Ok(())
-        } else {
-            err_no_pos(QError::LabelNotDefined)
+    fn visit_error_handler(&mut self, on_error_option: &OnErrorOption) -> Result<(), QErrorNode> {
+        match on_error_option {
+            OnErrorOption::Label(label) => self.ensure_is_global_label(label),
+            _ => Ok(()),
         }
     }
 
@@ -108,11 +128,20 @@ impl PostConversionLinter for LabelLinter {
     }
 
     fn visit_go_to(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
-        self.visit_error_handler(label)
+        self.ensure_is_current_label(label)
     }
 
     fn visit_go_sub(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
-        self.visit_error_handler(label)
+        self.ensure_is_current_label(label)
+    }
+
+    fn visit_resume(&mut self, resume_option: &ResumeOption) -> Result<(), QErrorNode> {
+        if let ResumeOption::Label(label) = resume_option {
+            // TODO probably should also be only global label
+            self.ensure_is_current_label(label)
+        } else {
+            Ok(())
+        }
     }
 
     fn visit_return(
@@ -120,16 +149,8 @@ impl PostConversionLinter for LabelLinter {
         opt_label: Option<&CaseInsensitiveString>,
     ) -> Result<(), QErrorNode> {
         match opt_label {
-            Some(label) => self.visit_error_handler(label),
+            Some(label) => self.ensure_is_current_label(label),
             _ => Ok(()),
-        }
-    }
-
-    fn visit_resume(&mut self, resume_option: &ResumeOption) -> Result<(), QErrorNode> {
-        if let ResumeOption::Label(label) = resume_option {
-            self.visit_error_handler(label)
-        } else {
-            Ok(())
         }
     }
 }

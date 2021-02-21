@@ -14,6 +14,7 @@ mod go_sub;
 mod if_block;
 mod implementation;
 mod name;
+mod on_error;
 mod param_name;
 mod parser;
 mod pc;

@@ -45,16 +45,17 @@ fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
 
 pub struct InstructionGenerator {
     pub instructions: Vec<InstructionNode>,
+    pub statement_addresses: Vec<usize>,
     pub function_context: ParamMap,
     pub sub_context: ParamMap,
 }
 
-pub fn generate_instructions(program: ProgramNode) -> Vec<InstructionNode> {
+pub fn generate_instructions(program: ProgramNode) -> InstructionGenerator {
     let (f, s) = collect_parameter_names(&program);
     let mut generator = InstructionGenerator::new(f, s);
     generator.generate_unresolved(program);
     generator.resolve_labels();
-    generator.instructions
+    generator
 }
 
 fn build_label_to_address_map(
@@ -73,6 +74,7 @@ impl InstructionGenerator {
     pub fn new(function_context: ParamMap, sub_context: ParamMap) -> Self {
         Self {
             instructions: vec![],
+            statement_addresses: vec![],
             function_context,
             sub_context,
         }
@@ -152,32 +154,35 @@ impl InstructionGenerator {
         label_to_address: &HashMap<CaseInsensitiveString, usize>,
     ) {
         match instruction {
-            Instruction::UnresolvedJump(x) => {
-                *instruction = Instruction::Jump(*label_to_address.get(x).unwrap());
+            Instruction::Jump(AddressOrLabel::Unresolved(x)) => {
+                *instruction =
+                    Instruction::Jump(AddressOrLabel::Resolved(*label_to_address.get(x).unwrap()));
             }
-            Instruction::UnresolvedJumpIfFalse(x) => {
-                *instruction = Instruction::JumpIfFalse(
+            Instruction::JumpIfFalse(AddressOrLabel::Unresolved(x)) => {
+                *instruction = Instruction::JumpIfFalse(AddressOrLabel::Resolved(
                     *label_to_address
                         .get(x)
                         .expect(&format!("Label {} not found", x)),
-                );
+                ));
             }
-            Instruction::SetUnresolvedErrorHandler(x) => {
-                *instruction = Instruction::SetErrorHandler(*label_to_address.get(x).unwrap());
+            Instruction::OnErrorGoTo(AddressOrLabel::Unresolved(x)) => {
+                *instruction = Instruction::OnErrorGoTo(AddressOrLabel::Resolved(
+                    *label_to_address.get(x).unwrap(),
+                ));
             }
-            Instruction::UnresolvedGoSub(x) => {
-                *instruction = Instruction::GoSub(*label_to_address.get(x).unwrap());
+            Instruction::GoSub(AddressOrLabel::Unresolved(x)) => {
+                *instruction =
+                    Instruction::GoSub(AddressOrLabel::Resolved(*label_to_address.get(x).unwrap()));
             }
-            Instruction::UnresolvedReturn(opt_label) => match opt_label {
-                Some(label) => {
-                    *instruction = Instruction::Return(Some(*label_to_address.get(label).unwrap()));
-                }
-                _ => {
-                    *instruction = Instruction::Return(None);
-                }
-            },
-            Instruction::UnresolvedResumeLabel(label) => {
-                *instruction = Instruction::ResumeLabel(*label_to_address.get(label).unwrap());
+            Instruction::Return(Some(AddressOrLabel::Unresolved(label))) => {
+                *instruction = Instruction::Return(Some(AddressOrLabel::Resolved(
+                    *label_to_address.get(label).unwrap(),
+                )));
+            }
+            Instruction::ResumeLabel(AddressOrLabel::Unresolved(label)) => {
+                *instruction = Instruction::ResumeLabel(AddressOrLabel::Resolved(
+                    *label_to_address.get(label).unwrap(),
+                ));
             }
             _ => {}
         }
@@ -208,10 +213,8 @@ impl InstructionGenerator {
 
     pub fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
         self.push(
-            Instruction::UnresolvedJumpIfFalse(CaseInsensitiveString::new(format!(
-                "_{}_{:?}",
-                prefix.as_ref(),
-                pos
+            Instruction::JumpIfFalse(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
+                format!("_{}_{:?}", prefix.as_ref(), pos),
             ))),
             pos,
         );
@@ -219,10 +222,8 @@ impl InstructionGenerator {
 
     pub fn jump<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
         self.push(
-            Instruction::UnresolvedJump(CaseInsensitiveString::new(format!(
-                "_{}_{:?}",
-                prefix.as_ref(),
-                pos
+            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
+                format!("_{}_{:?}", prefix.as_ref(), pos),
             ))),
             pos,
         );
@@ -251,9 +252,8 @@ impl InstructionGenerator {
 
     pub fn jump_to_function<S: AsRef<str>>(&mut self, name: S, pos: Location) {
         self.push(
-            Instruction::UnresolvedJump(CaseInsensitiveString::new(format!(
-                ":fun:{}",
-                name.as_ref(),
+            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
+                format!(":fun:{}", name.as_ref(),),
             ))),
             pos,
         );
@@ -271,9 +271,8 @@ impl InstructionGenerator {
 
     pub fn jump_to_sub<S: AsRef<str>>(&mut self, name: S, pos: Location) {
         self.push(
-            Instruction::UnresolvedJump(CaseInsensitiveString::new(format!(
-                ":sub:{}",
-                name.as_ref(),
+            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
+                format!(":sub:{}", name.as_ref(),),
             ))),
             pos,
         );

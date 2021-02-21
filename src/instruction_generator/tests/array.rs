@@ -1,7 +1,7 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtRowCol, StripLocation};
 use crate::instruction_generator::test_utils::*;
-use crate::instruction_generator::{Instruction, RootPath};
+use crate::instruction_generator::{AddressOrLabel, Instruction, RootPath};
 use crate::parser::{BuiltInStyle, ExpressionType, ParamName, ParamType, TypeQualifier};
 use crate::variant::Variant;
 
@@ -195,7 +195,7 @@ fn test_pass_param_to_sub() {
             )),
             Instruction::PushStack,
             Instruction::PushRet(15),
-            Instruction::Jump(21),
+            Instruction::Jump(AddressOrLabel::Resolved(21)),
             Instruction::EnqueueToReturnStack(0),
             Instruction::PopStack,
             Instruction::DequeueFromReturnStack,

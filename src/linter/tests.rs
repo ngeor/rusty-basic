@@ -10,6 +10,7 @@ mod function_implementation;
 mod go_sub;
 mod go_to;
 mod labels;
+mod on_error;
 mod resume;
 mod select_case;
 mod sub_implementation;

@@ -34,7 +34,7 @@ pub enum Statement {
     ForLoop(ForLoopNode),
     While(ConditionalBlockNode),
 
-    OnErrorGoTo(CaseInsensitiveString),
+    OnErrorGoTo(OnErrorOption),
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
     GoSub(CaseInsensitiveString),
@@ -59,6 +59,13 @@ pub enum ResumeOption {
     Bare,
     Next,
     Label(CaseInsensitiveString),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum OnErrorOption {
+    Next,
+    Label(CaseInsensitiveString),
+    Zero,
 }
 
 #[derive(Clone, Debug, PartialEq)]

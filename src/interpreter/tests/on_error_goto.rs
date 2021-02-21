@@ -1,5 +1,7 @@
 use crate::assert_prints;
+use crate::common::{Location, QError, QErrorNode};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::interpreter::test_utils::mock_interpreter2;
 
 #[test]
 fn on_error_go_to_label() {
@@ -24,6 +26,28 @@ fn on_error_go_to_label_with_dots_in_label_name() {
         PRINT "Almost divided by zero"
     "#;
     assert_prints!(input, "Almost divided by zero");
+}
+
+#[test]
+fn reset_error_handler() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    PRINT 1 / 0
+    ON ERROR GOTO 0 ' reset error handler
+    PRINT 1 / 0
+    END
+    ErrTrap:
+        PRINT "oops"
+        RESUME NEXT
+    "#;
+    let (instructions, mut interpreter) = mock_interpreter2(input);
+    let result = interpreter.interpret(instructions);
+    let err = result.unwrap_err();
+    assert_eq!(
+        err,
+        QErrorNode::Pos(QError::DivisionByZero, Location::new(5, 13))
+    );
+    assert_eq!(interpreter.stdout().output(), "oops");
 }
 
 #[test]

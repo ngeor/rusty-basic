@@ -52,22 +52,17 @@ pub enum Instruction {
 
     Label(CaseInsensitiveString),
 
-    Jump(usize),
-    UnresolvedJump(CaseInsensitiveString),
+    Jump(AddressOrLabel),
 
-    JumpIfFalse(usize),
-    UnresolvedJumpIfFalse(CaseInsensitiveString),
+    JumpIfFalse(AddressOrLabel),
 
-    GoSub(usize),
-    UnresolvedGoSub(CaseInsensitiveString),
+    GoSub(AddressOrLabel),
 
-    Return(Option<usize>),
-    UnresolvedReturn(Option<CaseInsensitiveString>),
+    Return(Option<AddressOrLabel>),
 
     Resume,
     ResumeNext,
-    UnresolvedResumeLabel(CaseInsensitiveString),
-    ResumeLabel(usize),
+    ResumeLabel(AddressOrLabel),
 
     BuiltInSub(BuiltInSub),
     BuiltInFunction(BuiltInFunction),
@@ -106,8 +101,9 @@ pub enum Instruction {
 
     Throw(QError),
 
-    SetUnresolvedErrorHandler(CaseInsensitiveString),
-    SetErrorHandler(usize),
+    OnErrorGoTo(AddressOrLabel),
+    OnErrorResumeNext,
+    OnErrorGoToZero,
 
     /// Cast the contents of A into the given type
     Cast(TypeQualifier),
@@ -127,3 +123,19 @@ pub enum Instruction {
 }
 
 pub type InstructionNode = Locatable<Instruction>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum AddressOrLabel {
+    Resolved(usize),
+    Unresolved(CaseInsensitiveString),
+}
+
+impl AddressOrLabel {
+    pub fn address(&self) -> usize {
+        if let Self::Resolved(address) = self {
+            *address
+        } else {
+            panic!("Unresolved label")
+        }
+    }
+}

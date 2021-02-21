@@ -82,7 +82,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_error_handler(&mut self, _label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+    fn visit_error_handler(&mut self, _label: &OnErrorOption) -> Result<(), QErrorNode> {
         Ok(())
     }
 

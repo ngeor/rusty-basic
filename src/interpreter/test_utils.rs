@@ -1,6 +1,6 @@
 use crate::common::*;
-use crate::instruction_generator::generate_instructions;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
+use crate::instruction_generator::{generate_instructions, InstructionGenerator};
 use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::read_input::ReadInputSource;
@@ -17,7 +17,7 @@ pub type MockStdout = WritePrinter<Vec<u8>>;
 pub type MockInterpreter =
     Interpreter<MockStdlib, ReadInputSource<MockStdin>, MockStdout, MockStdout>;
 
-pub fn mock_interpreter(user_defined_types: UserDefinedTypes) -> MockInterpreter {
+fn mock_interpreter(user_defined_types: UserDefinedTypes) -> MockInterpreter {
     let stdlib = MockStdlib::new();
     let stdin = ReadInputSource::new(MockStdin { stdin: vec![] });
     let stdout = WritePrinter::new(vec![]);
@@ -25,17 +25,32 @@ pub fn mock_interpreter(user_defined_types: UserDefinedTypes) -> MockInterpreter
     Interpreter::new(stdlib, stdin, stdout, lpt1, user_defined_types)
 }
 
-pub fn interpret<T>(input: T) -> MockInterpreter
+pub fn mock_interpreter2<T>(input: T) -> (InstructionGenerator, MockInterpreter)
 where
     T: AsRef<[u8]> + 'static,
 {
     let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
     // println!("{:#?}", instructions);
-    let mut interpreter = mock_interpreter(user_defined_types);
+    (instructions, mock_interpreter(user_defined_types))
+}
+
+pub fn interpret<T>(input: T) -> MockInterpreter
+where
+    T: AsRef<[u8]> + 'static,
+{
+    let (instructions, mut interpreter) = mock_interpreter2(input);
     interpreter
         .interpret(instructions)
         .map(|_| interpreter)
         .unwrap()
+}
+
+pub fn interpret_err<T>(input: T) -> QErrorNode
+where
+    T: AsRef<[u8]> + 'static,
+{
+    let (instructions, mut interpreter) = mock_interpreter2(input);
+    interpreter.interpret(instructions).unwrap_err()
 }
 
 pub fn interpret_with_raw_input<T>(input: T, raw_input: &str) -> MockInterpreter
@@ -69,16 +84,6 @@ where
         .interpret(instructions)
         .map(|_| interpreter)
         .unwrap()
-}
-
-pub fn interpret_err<T>(input: T) -> QErrorNode
-where
-    T: AsRef<[u8]> + 'static,
-{
-    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-    // println!("{:#?}", instructions);
-    let mut interpreter = mock_interpreter(user_defined_types);
-    interpreter.interpret(instructions).unwrap_err()
 }
 
 pub fn interpret_file<S>(filename: S) -> Result<MockInterpreter, QErrorNode>

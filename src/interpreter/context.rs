@@ -50,7 +50,6 @@ Example 2:
 
 #[derive(Debug)]
 pub struct Context {
-    parent: Option<Box<Context>>,
     user_defined_types: Rc<UserDefinedTypes>,
     variables: Variables,
 
@@ -64,7 +63,6 @@ pub struct Context {
 impl Context {
     pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
         Self {
-            parent: None,
             user_defined_types,
             variables: Variables::new(),
             arguments_stack: ArgumentsStack::new(),
@@ -72,14 +70,7 @@ impl Context {
         }
     }
 
-    pub fn pop(self) -> Self {
-        match self.parent {
-            Some(p) => *p,
-            None => panic!("Stack underflow"),
-        }
-    }
-
-    pub fn push(mut self) -> Self {
+    pub fn push(&mut self) -> Self {
         let arguments: Arguments = self.arguments_stack.pop();
         let mut variables = Variables::new();
         for (opt_param, arg) in arguments.into_iter() {
@@ -94,7 +85,6 @@ impl Context {
             variables,
             parameter_count,
             arguments_stack: ArgumentsStack::new(),
-            parent: Some(Box::new(self)),
         }
     }
 
@@ -179,19 +169,41 @@ impl Context {
     pub fn get_or_create(&mut self, var_name: Name) -> &mut Variant {
         self.variables.get_or_create(var_name)
     }
+}
 
-    /// Gets the global (module) context.
-    pub fn global_context(&mut self) -> &mut Self {
-        if self.parent.is_none() {
-            self
-        } else {
-            self.parent.as_mut().unwrap().global_context()
-        }
+#[derive(Debug)]
+pub struct Contexts {
+    v: Vec<Context>,
+}
+
+impl Contexts {
+    pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
+        let context = Context::new(user_defined_types);
+        Self { v: vec![context] }
     }
 
-    /// Gets or creates a variable by the given name in the global (module) context.
-    /// If the variables does not exist, it is initialized with 0.
-    pub fn get_or_create_global(&mut self, var_name: Name) -> &mut Variant {
-        self.global_context().get_or_create(var_name)
+    pub fn context(&self) -> &Context {
+        self.v.last().unwrap()
+    }
+
+    pub fn context_mut(&mut self) -> &mut Context {
+        self.v.last_mut().unwrap()
+    }
+
+    pub fn push(&mut self) {
+        let context = self.context_mut().push();
+        self.v.push(context);
+    }
+
+    pub fn pop(&mut self) {
+        self.v.pop();
+    }
+
+    pub fn global_context(&self) -> &Context {
+        self.v.first().unwrap()
+    }
+
+    pub fn global_context_mut(&mut self) -> &mut Context {
+        self.v.first_mut().unwrap()
     }
 }

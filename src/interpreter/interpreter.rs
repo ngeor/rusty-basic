@@ -39,7 +39,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     user_defined_types: Rc<UserDefinedTypes>,
 
     /// Contains variables and constants, collects function/sub arguments.
-    context: Context,
+    contexts: Contexts,
 
     /// Holds the "registers" of the CPU
     register_stack: RegisterStack,
@@ -105,11 +105,15 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     }
 
     fn context(&self) -> &Context {
-        &self.context
+        &self.contexts.context()
     }
 
     fn context_mut(&mut self) -> &mut Context {
-        &mut self.context
+        self.contexts.context_mut()
+    }
+
+    fn global_context_mut(&mut self) -> &mut Context {
+        self.contexts.global_context_mut()
     }
 
     fn registers(&self) -> &Registers {
@@ -172,7 +176,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             stdin,
             stdout,
             lpt1,
-            context: Context::new(Rc::clone(&rc_user_defined_types)),
+            contexts: Contexts::new(Rc::clone(&rc_user_defined_types)),
             return_address_stack: vec![],
             go_sub_address_stack: vec![],
             register_stack: vec![Registers::new()],
@@ -376,7 +380,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             },
             Instruction::ResumeLabel(resume_label) => match self.last_error_address.take() {
                 Some(_) => {
-                    // TODO is the plus one safe or will it land in the middle of a statement
                     ctx.opt_next_index = Some(resume_label.address());
                 }
                 _ => {
@@ -478,25 +481,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         Ok(())
     }
 
-    /// Takes the current context out of the interpreter.
-    /// The interpreter is left with a dummy context.
-    fn take_context(&mut self) -> Context {
-        let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
-        std::mem::replace(&mut self.context, dummy)
-    }
-
-    fn set_context(&mut self, context: Context) {
-        self.context = context;
-    }
-
     fn push_context(&mut self) {
-        let current_context = self.take_context();
-        self.set_context(current_context.push());
+        self.contexts.push();
     }
 
     fn pop_context(&mut self) {
-        let current_context = self.take_context();
-        self.set_context(current_context.pop());
+        self.contexts.pop();
     }
 
     fn find_current(&self, address: usize) -> usize {

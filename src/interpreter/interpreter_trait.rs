@@ -42,6 +42,8 @@ pub trait InterpreterTrait {
     /// Contains variables and constants, collects function/sub arguments.
     fn context_mut(&mut self) -> &mut Context;
 
+    fn global_context_mut(&mut self) -> &mut Context;
+
     /// Holds the "registers" of the CPU
     fn registers(&self) -> &Registers;
 

@@ -62,16 +62,14 @@ impl PrintInterpreter {
         self.should_skip_new_line = true;
     }
 
-    pub fn print_value(
-        &mut self,
-        printer: Box<&dyn Printer>,
-        v: Variant,
-    ) -> Result<(), QError> {
+    pub fn print_value(&mut self, printer: Box<&dyn Printer>, v: Variant) -> Result<(), QError> {
         self.should_skip_new_line = false;
         if self.format_string.is_some() {
             self.print_value_with_format_string(printer, v)
         } else {
-            self.print_value_without_format_string(printer, v).map(|_| ()).map_err(QError::from)
+            self.print_value_without_format_string(printer, v)
+                .map(|_| ())
+                .map_err(QError::from)
         }
     }
 
@@ -89,10 +87,18 @@ impl PrintInterpreter {
 
     fn print_remaining_chars(&mut self, printer: &Box<&dyn Printer>) -> Result<(), QError> {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
-        print_remaining_non_formatting_chars(printer, format_string_chars.as_slice(), &mut self.format_string_idx)
+        print_remaining_non_formatting_chars(
+            printer,
+            format_string_chars.as_slice(),
+            &mut self.format_string_idx,
+        )
     }
 
-    fn print_value_with_format_string(&mut self, printer: Box<&dyn Printer>, v: Variant) -> Result<(), QError> {
+    fn print_value_with_format_string(
+        &mut self,
+        printer: Box<&dyn Printer>,
+        v: Variant,
+    ) -> Result<(), QError> {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
         if format_string_chars.is_empty() {
             return Err(QError::IllegalFunctionCall);
@@ -117,11 +123,14 @@ impl PrintInterpreter {
         )
     }
 
-    fn print_value_without_format_string(&mut self, printer: Box<&dyn Printer>, v: Variant) -> std::io::Result<usize> {
+    fn print_value_without_format_string(
+        &mut self,
+        printer: Box<&dyn Printer>,
+        v: Variant,
+    ) -> std::io::Result<usize> {
         printer.print_variant(&v)
     }
 }
-
 
 fn print_non_formatting_chars(
     printer: &Box<&dyn Printer>,

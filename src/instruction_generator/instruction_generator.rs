@@ -1,4 +1,4 @@
-use super::instruction::*;
+use super::*;
 use crate::common::*;
 use crate::parser::{
     BareName, Expression, ExpressionNode, FunctionImplementation, HasExpressionType, Name,

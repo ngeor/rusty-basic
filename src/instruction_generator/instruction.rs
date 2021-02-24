@@ -1,6 +1,7 @@
 use super::RootPath;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
+use crate::instruction_generator::print::PrintHandle;
 use crate::parser::{BareName, ExpressionType, ParamName, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
@@ -120,6 +121,14 @@ pub enum Instruction {
     AllocateArrayIntoA(ExpressionType),
 
     AllocateUserDefined(BareName),
+
+    PrintSetPrintHandle(PrintHandle),
+    PrintSetFileHandle(FileHandle),
+    PrintSetFormatStringFromA,
+    PrintComma,
+    PrintSemicolon,
+    PrintValueFromA,
+    PrintEnd,
 }
 
 pub type InstructionNode = Locatable<Instruction>;

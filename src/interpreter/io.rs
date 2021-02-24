@@ -68,6 +68,13 @@ impl FileManager {
         Ok(())
     }
 
+    fn try_get_file_info(&self, handle: &FileHandle) -> Result<&FileInfo, QError> {
+        match self.handle_map.get(handle) {
+            Some(f) => Ok(f),
+            None => Err(QError::FileNotFound),
+        }
+    }
+
     fn try_get_file_info_mut(&mut self, handle: &FileHandle) -> Result<&mut FileInfo, QError> {
         match self.handle_map.get_mut(handle) {
             Some(f) => Ok(f),
@@ -86,11 +93,8 @@ impl FileManager {
         }
     }
 
-    pub fn try_get_file_info_output_mut(
-        &mut self,
-        handle: &FileHandle,
-    ) -> Result<&mut FileInfoOutput, QError> {
-        match self.try_get_file_info_mut(handle) {
+    pub fn try_get_file_info_output(&self, handle: &FileHandle) -> Result<&FileInfoOutput, QError> {
+        match self.try_get_file_info(handle) {
             Ok(FileInfo::Output(output)) => Ok(output),
             Ok(FileInfo::Input(_)) => Err(QError::BadFileMode),
             Err(err) => Err(err),

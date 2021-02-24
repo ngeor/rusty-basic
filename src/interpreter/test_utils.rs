@@ -156,8 +156,8 @@ impl MockStdlib {
 impl MockStdout {
     /// Gets the captured output of stdout as-is, without trimming or removing CRLF
     pub fn output_exact(&self) -> String {
-        let bytes = self.inner();
-        String::from_utf8(bytes.clone()).unwrap()
+        let bytes: Vec<u8> = self.inner();
+        String::from_utf8(bytes).unwrap()
     }
 
     /// Gets the captured output of stdout, trimmed and without CRLF

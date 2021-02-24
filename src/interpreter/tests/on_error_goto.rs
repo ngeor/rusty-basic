@@ -164,3 +164,60 @@ fn global_error_handler_has_access_to_variables() {
     "#;
     assert_prints!(input, "101");
 }
+
+#[test]
+fn resume_after_resume_without_error_with_print_after_resume() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    PRINT 1 / 0
+    ErrTrap:
+        PRINT "oops"
+        RESUME NEXT
+        PRINT "bye"
+    "#;
+    assert_prints!(input, "oops", "oops", "oops", "bye");
+}
+
+#[test]
+fn resume_after_resume_without_error_where_resume_is_the_last_statement_of_the_program() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    PRINT 1 / 0
+    ErrTrap:
+        PRINT "oops"
+        RESUME NEXT
+    "#;
+    assert_prints!(input, "oops", "oops", "oops");
+}
+
+#[test]
+fn print_error_in_second_argument() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    PRINT 1, 2 / 0
+    PRINT 3, 4
+    END
+
+    ErrTrap:
+        RESUME NEXT
+    "#;
+    assert_prints!(input, "1             3             4");
+}
+
+#[test]
+fn user_defined_sub_error_in_second_argument() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    MyPrint 1, 2 / 0
+    MyPrint 3, 4
+    END
+
+    ErrTrap:
+        RESUME NEXT
+
+    SUB MyPrint(A, B)
+        PRINT A, B
+    END SUB
+    "#;
+    assert_prints!(input, "3             4");
+}

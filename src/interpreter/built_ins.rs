@@ -1,7 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::interpreter::print;
 use crate::interpreter::stdlib::Stdlib;
 use crate::parser::{ElementType, TypeQualifier, UserDefinedType, UserDefinedTypes};
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
@@ -59,8 +58,9 @@ fn run_not_terminating_sub<S: InterpreterTrait>(
         BuiltInSub::LPrint => todo!("LPT1 printing not implemented yet"),
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
-        BuiltInSub::Print => print::run(interpreter).with_err_no_pos(),
-        BuiltInSub::End | BuiltInSub::System => panic!("Should not have been called"),
+        BuiltInSub::Print | BuiltInSub::End | BuiltInSub::System => {
+            panic!("Should not have been called")
+        }
     }
 }
 

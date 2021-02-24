@@ -1,4 +1,5 @@
 use crate::common::*;
+use crate::instruction_generator::print::PrintHandle;
 use crate::instruction_generator::{Instruction, InstructionGenerator, Path};
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
@@ -7,6 +8,7 @@ use crate::interpreter::input::Input;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::lpt1_write::Lpt1Write;
+use crate::interpreter::print::PrintInterpreter;
 use crate::interpreter::printer::Printer;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
@@ -15,6 +17,7 @@ use crate::interpreter::write_printer::WritePrinter;
 use crate::parser::UserDefinedTypes;
 use crate::variant::Variant;
 use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::rc::Rc;
@@ -66,6 +69,8 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     last_error_address: Option<usize>,
 
     statement_addresses: Vec<usize>,
+
+    print_interpreter: Rc<RefCell<PrintInterpreter>>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -189,6 +194,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             value_stack: vec![],
             last_error_address: None,
             statement_addresses: vec![],
+            print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
         }
     }
 
@@ -429,8 +435,69 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let v = self.value_stack.pop().expect("value_stack underflow!");
                 self.registers_mut().set_a(v);
             }
+            Instruction::PrintSetPrintHandle(print_handle) => {
+                self.print_interpreter
+                    .borrow_mut()
+                    .set_print_handle(*print_handle);
+            }
+            Instruction::PrintSetFileHandle(file_handle) => {
+                self.print_interpreter
+                    .borrow_mut()
+                    .set_file_handle(*file_handle);
+            }
+            Instruction::PrintSetFormatStringFromA => {
+                let encoded_format_string = self.registers().get_a();
+                self.print_interpreter.borrow_mut().set_format_string(
+                    match encoded_format_string {
+                        Variant::VString(s) => Some(s),
+                        _ => None,
+                    },
+                );
+            }
+            Instruction::PrintComma => {
+                let printer = self.choose_printer();
+                self.print_interpreter
+                    .borrow_mut()
+                    .print_comma(printer)
+                    .map_err(QError::from)
+                    .with_err_at(pos)?;
+            }
+            Instruction::PrintSemicolon => {
+                self.print_interpreter.borrow_mut().print_semicolon();
+            }
+            Instruction::PrintValueFromA => {
+                let v = self.registers().get_a();
+                let printer = self.choose_printer();
+                self.print_interpreter
+                    .borrow_mut()
+                    .print_value(printer, v)
+                    .map_err(QError::from)
+                    .with_err_at(pos)?;
+            }
+            Instruction::PrintEnd => {
+                let printer = self.choose_printer();
+                self.print_interpreter
+                    .borrow_mut()
+                    .print_end(printer)
+                    .map_err(QError::from)
+                    .with_err_at(pos)?;
+            }
         }
         Ok(())
+    }
+
+    fn choose_printer(&self) -> Box<&dyn Printer> {
+        let print_handle = self.print_interpreter.borrow().get_print_handle();
+        let file_handle = self.print_interpreter.borrow().get_file_handle();
+        match print_handle {
+            PrintHandle::Print => Box::new(&self.stdout),
+            PrintHandle::LPrint => Box::new(&self.lpt1),
+            PrintHandle::File => Box::new(
+                self.file_manager
+                    .try_get_file_info_output(&file_handle)
+                    .expect("File not found"),
+            ),
+        }
     }
 
     pub fn interpret(
@@ -462,6 +529,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     }
                 },
                 Err(e) => {
+                    // reset PRINT parameters (TODO is it necessary?)
+                    self.print_interpreter.borrow_mut().reset();
                     // TODO if was in the middle of building arguments to a sub/function, clean up
                     // TODO what if the error handler is in a different sub / probably linter should catch this
                     // TODO if was calling a sub/function, probably needs to cleanup stack (recursively potentially)

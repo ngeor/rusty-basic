@@ -4,6 +4,7 @@ use crate::interpreter::printer::Printer;
 use crate::variant::Variant;
 use std::fmt::Display;
 
+/// Handles the PRINT and LPRINT statements.
 #[derive(Debug)]
 pub struct PrintInterpreter {
     print_handle: PrintHandle,

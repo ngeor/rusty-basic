@@ -3,7 +3,7 @@ use crate::instruction_generator::{Instruction, InstructionGenerator};
 use crate::parser::{PrintArg, PrintNode};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PrintHandle {
+pub enum PrinterType {
     Print,
     LPrint,
     File,
@@ -22,15 +22,15 @@ impl InstructionGenerator {
     fn generate_opt_file_handle_instructions(&mut self, print_node: &PrintNode, pos: Location) {
         match print_node.file_number {
             Some(f) => {
-                self.push(Instruction::PrintSetPrintHandle(PrintHandle::File), pos);
+                self.push(Instruction::PrintSetPrinterType(PrinterType::File), pos);
                 self.push(Instruction::PrintSetFileHandle(f), pos);
             }
             None => {
                 self.push(
-                    Instruction::PrintSetPrintHandle(if print_node.lpt1 {
-                        PrintHandle::LPrint
+                    Instruction::PrintSetPrinterType(if print_node.lpt1 {
+                        PrinterType::LPrint
                     } else {
-                        PrintHandle::Print
+                        PrinterType::Print
                     }),
                     pos,
                 );

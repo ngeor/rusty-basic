@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::instruction_generator::print::PrintHandle;
+use crate::instruction_generator::print::PrinterType;
 use crate::interpreter::printer::Printer;
 use crate::variant::Variant;
 use std::fmt::Display;
@@ -7,8 +7,7 @@ use std::fmt::Display;
 /// Handles the PRINT and LPRINT statements.
 #[derive(Debug)]
 pub struct PrintInterpreter {
-    /// TODO rename PrintHandle to something else
-    print_handle: PrintHandle,
+    printer_type: PrinterType,
     file_handle: FileHandle,
     format_string: Option<String>,
     should_skip_new_line: bool,
@@ -18,7 +17,7 @@ pub struct PrintInterpreter {
 impl PrintInterpreter {
     pub fn new() -> Self {
         Self {
-            print_handle: PrintHandle::Print,
+            printer_type: PrinterType::Print,
             file_handle: 0.into(),
             format_string: None,
             should_skip_new_line: false,
@@ -27,19 +26,19 @@ impl PrintInterpreter {
     }
 
     fn reset(&mut self) {
-        self.print_handle = PrintHandle::Print;
+        self.printer_type = PrinterType::Print;
         self.file_handle = 0.into();
         self.format_string = None;
         self.format_string_idx = 0;
     }
 
-    pub fn get_print_handle(&self) -> PrintHandle {
-        self.print_handle
+    pub fn get_printer_type(&self) -> PrinterType {
+        self.printer_type
     }
 
-    pub fn set_print_handle(&mut self, print_handle: PrintHandle) {
+    pub fn set_printer_type(&mut self, printer_type: PrinterType) {
         self.reset();
-        self.print_handle = print_handle;
+        self.printer_type = printer_type;
     }
 
     pub fn get_file_handle(&self) -> FileHandle {

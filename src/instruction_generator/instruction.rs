@@ -1,7 +1,7 @@
 use super::RootPath;
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::instruction_generator::print::PrintHandle;
+use crate::instruction_generator::print::PrinterType;
 use crate::parser::{BareName, ExpressionType, ParamName, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 
@@ -122,7 +122,7 @@ pub enum Instruction {
 
     AllocateUserDefined(BareName),
 
-    PrintSetPrintHandle(PrintHandle),
+    PrintSetPrinterType(PrinterType),
     PrintSetFileHandle(FileHandle),
     PrintSetFormatStringFromA,
     PrintComma,

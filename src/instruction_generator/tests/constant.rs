@@ -1,5 +1,5 @@
 use crate::common::StripLocation;
-use crate::instruction_generator::print::PrintHandle;
+use crate::instruction_generator::print::PrinterType;
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::Instruction;
 use crate::variant::Variant;
@@ -14,7 +14,7 @@ fn test_constant_definition_and_usage_in_print() {
         generate_instructions_str(program).strip_location(),
         [
             // print
-            Instruction::PrintSetPrintHandle(PrintHandle::Print),
+            Instruction::PrintSetPrinterType(PrinterType::Print),
             // no format string
             Instruction::LoadIntoA(Variant::VInteger(0)),
             Instruction::PrintSetFormatStringFromA,

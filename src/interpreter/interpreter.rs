@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::instruction_generator::print::PrintHandle;
+use crate::instruction_generator::print::PrinterType;
 use crate::instruction_generator::{Instruction, InstructionGenerator, Path};
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
@@ -435,10 +435,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let v = self.value_stack.pop().expect("value_stack underflow!");
                 self.registers_mut().set_a(v);
             }
-            Instruction::PrintSetPrintHandle(print_handle) => {
+            Instruction::PrintSetPrinterType(printer_type) => {
                 self.print_interpreter
                     .borrow_mut()
-                    .set_print_handle(*print_handle);
+                    .set_printer_type(*printer_type);
             }
             Instruction::PrintSetFileHandle(file_handle) => {
                 self.print_interpreter
@@ -485,12 +485,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
     }
 
     fn choose_printer(&self) -> Box<&dyn Printer> {
-        let print_handle = self.print_interpreter.borrow().get_print_handle();
+        let printer_type = self.print_interpreter.borrow().get_printer_type();
         let file_handle = self.print_interpreter.borrow().get_file_handle();
-        match print_handle {
-            PrintHandle::Print => Box::new(&self.stdout),
-            PrintHandle::LPrint => Box::new(&self.lpt1),
-            PrintHandle::File => Box::new(
+        match printer_type {
+            PrinterType::Print => Box::new(&self.stdout),
+            PrinterType::LPrint => Box::new(&self.lpt1),
+            PrinterType::File => Box::new(
                 self.file_manager
                     .try_get_file_info_output(&file_handle)
                     .expect("File not found"),

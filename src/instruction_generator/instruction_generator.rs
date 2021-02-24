@@ -7,7 +7,21 @@ use crate::parser::{
 use crate::variant::Variant;
 use std::collections::HashMap;
 
-// pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
+/// Generates instructions for the given program.
+pub fn generate_instructions(program: ProgramNode) -> InstructionGenerator {
+    // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
+    // the parameter names and types are needed
+    let (f, s) = collect_parameter_names(&program);
+    // pass 2 generate with labels still unresolved
+    let mut generator = InstructionGenerator::new(f, s);
+    generator.generate_unresolved(program);
+    // pass 3 resolve labels to addresses
+    generator.resolve_labels();
+    generator
+}
+
+// TODO ^ split 3 passes to distinct modules, do not return the whole InstructionGenerator but only the relevant data,
+// statement_addresses and instructions
 
 type ParamMap = HashMap<CaseInsensitiveString, Vec<ParamName>>;
 
@@ -48,14 +62,6 @@ pub struct InstructionGenerator {
     pub statement_addresses: Vec<usize>,
     pub function_context: ParamMap,
     pub sub_context: ParamMap,
-}
-
-pub fn generate_instructions(program: ProgramNode) -> InstructionGenerator {
-    let (f, s) = collect_parameter_names(&program);
-    let mut generator = InstructionGenerator::new(f, s);
-    generator.generate_unresolved(program);
-    generator.resolve_labels();
-    generator
 }
 
 fn build_label_to_address_map(

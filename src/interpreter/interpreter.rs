@@ -471,7 +471,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.print_interpreter
                     .borrow_mut()
                     .print_value(printer, v)
-                    .map_err(QError::from)
                     .with_err_at(pos)?;
             }
             Instruction::PrintEnd => {
@@ -479,7 +478,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.print_interpreter
                     .borrow_mut()
                     .print_end(printer)
-                    .map_err(QError::from)
                     .with_err_at(pos)?;
             }
         }
@@ -529,8 +527,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     }
                 },
                 Err(e) => {
-                    // reset PRINT parameters (TODO is it necessary?)
-                    self.print_interpreter.borrow_mut().reset();
                     // TODO if was in the middle of building arguments to a sub/function, clean up
                     // TODO what if the error handler is in a different sub / probably linter should catch this
                     // TODO if was calling a sub/function, probably needs to cleanup stack (recursively potentially)

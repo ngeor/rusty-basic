@@ -1,4 +1,4 @@
-use crate::common::FileHandle;
+use crate::common::*;
 use crate::instruction_generator::print::PrintHandle;
 use crate::interpreter::printer::Printer;
 use crate::variant::Variant;
@@ -7,10 +7,12 @@ use std::fmt::Display;
 /// Handles the PRINT and LPRINT statements.
 #[derive(Debug)]
 pub struct PrintInterpreter {
+    /// TODO rename PrintHandle to something else
     print_handle: PrintHandle,
     file_handle: FileHandle,
     format_string: Option<String>,
     should_skip_new_line: bool,
+    format_string_idx: usize,
 }
 
 impl PrintInterpreter {
@@ -20,13 +22,15 @@ impl PrintInterpreter {
             file_handle: 0.into(),
             format_string: None,
             should_skip_new_line: false,
+            format_string_idx: 0,
         }
     }
 
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.print_handle = PrintHandle::Print;
         self.file_handle = 0.into();
         self.format_string = None;
+        self.format_string_idx = 0;
     }
 
     pub fn get_print_handle(&self) -> PrintHandle {
@@ -34,6 +38,7 @@ impl PrintInterpreter {
     }
 
     pub fn set_print_handle(&mut self, print_handle: PrintHandle) {
+        self.reset();
         self.print_handle = print_handle;
     }
 
@@ -62,19 +67,195 @@ impl PrintInterpreter {
         &mut self,
         printer: Box<&dyn Printer>,
         v: Variant,
-    ) -> std::io::Result<usize> {
+    ) -> Result<(), QError> {
         self.should_skip_new_line = false;
-        printer.print_variant(&v)
-    }
-
-    pub fn print_end(&mut self, printer: Box<&dyn Printer>) -> std::io::Result<usize> {
-        if self.should_skip_new_line {
-            self.should_skip_new_line = false;
-            Ok(0)
+        if self.format_string.is_some() {
+            self.print_value_with_format_string(printer, v)
         } else {
-            printer.println()
+            self.print_value_without_format_string(printer, v).map(|_| ()).map_err(QError::from)
         }
     }
+
+    pub fn print_end(&mut self, printer: Box<&dyn Printer>) -> Result<(), QError> {
+        if self.format_string.is_some() {
+            self.print_remaining_chars(&printer)?;
+        }
+        if self.should_skip_new_line {
+            self.should_skip_new_line = false;
+            Ok(())
+        } else {
+            printer.println().map(|_| ()).map_err(QError::from)
+        }
+    }
+
+    fn print_remaining_chars(&mut self, printer: &Box<&dyn Printer>) -> Result<(), QError> {
+        let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
+        print_remaining_non_formatting_chars(printer, format_string_chars.as_slice(), &mut self.format_string_idx)
+    }
+
+    fn print_value_with_format_string(&mut self, printer: Box<&dyn Printer>, v: Variant) -> Result<(), QError> {
+        let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
+        if format_string_chars.is_empty() {
+            return Err(QError::IllegalFunctionCall);
+        }
+
+        // ensure we are in the range of chars
+        self.format_string_idx = self.format_string_idx % format_string_chars.len();
+
+        // copy from format_string until we hit a formatting character
+        print_non_formatting_chars(
+            &printer,
+            format_string_chars.as_slice(),
+            &mut self.format_string_idx,
+        )?;
+
+        // format the argument using the formatting character
+        print_formatting_chars(
+            printer,
+            format_string_chars.as_slice(),
+            &mut self.format_string_idx,
+            v,
+        )
+    }
+
+    fn print_value_without_format_string(&mut self, printer: Box<&dyn Printer>, v: Variant) -> std::io::Result<usize> {
+        printer.print_variant(&v)
+    }
+}
+
+
+fn print_non_formatting_chars(
+    printer: &Box<&dyn Printer>,
+    format_string_chars: &[char],
+    idx: &mut usize,
+) -> Result<(), QError> {
+    // copy from format_string until we hit a formatting character
+    let mut buf: String = String::new();
+    let starting_index = *idx;
+    let mut i = starting_index;
+    while format_string_chars[i] != '#' {
+        buf.push(format_string_chars[i]);
+        i = (i + 1) % format_string_chars.len();
+        if i == starting_index {
+            // looped over to the starting point without encountering a formatting character
+            return Err(QError::IllegalFunctionCall);
+        }
+    }
+    printer.print(buf.as_str())?;
+    *idx = i;
+    Ok(())
+}
+
+fn print_remaining_non_formatting_chars(
+    printer: &Box<&dyn Printer>,
+    format_string_chars: &[char],
+    idx: &mut usize,
+) -> Result<(), QError> {
+    // copy from format_string until we hit a formatting character
+    let mut buf: String = String::new();
+    let starting_index = *idx;
+    let mut i = starting_index;
+    while i < format_string_chars.len() && format_string_chars[i] != '#' {
+        buf.push(format_string_chars[i]);
+        i += 1;
+    }
+    printer.print(buf.as_str())?;
+    *idx = i;
+    Ok(())
+}
+
+fn print_formatting_chars(
+    printer: Box<&dyn Printer>,
+    format_string_chars: &[char],
+    idx: &mut usize,
+    v: Variant,
+) -> Result<(), QError> {
+    let mut integer_digits: usize = 0;
+    while *idx < format_string_chars.len() && format_string_chars[*idx] == '#' {
+        *idx += 1;
+        integer_digits += 1;
+    }
+    if *idx < format_string_chars.len() && format_string_chars[*idx] == '.' {
+        // it has a fractional part too
+        *idx += 1;
+        let mut fraction_digits: usize = 0;
+        while *idx < format_string_chars.len() && format_string_chars[*idx] == '#' {
+            *idx += 1;
+            fraction_digits += 1;
+        }
+        // print dot
+        // print decimal part with rounding
+        match v {
+            Variant::VSingle(f) => {
+                // formatting to a variable precision with rounding https://stackoverflow.com/a/61101531/153258
+                let mut x = format!("{:.1$}", f, fraction_digits);
+                if let Some(dot_index) = x.find('.') {
+                    let mut spaces_to_add: i32 = integer_digits as i32 - dot_index as i32;
+                    while spaces_to_add > 0 {
+                        x.insert(0, ' ');
+                        spaces_to_add -= 1;
+                    }
+                }
+                printer.print(x.as_str())?;
+            }
+            Variant::VDouble(d) => {
+                let mut x = format!("{:.1$}", d, fraction_digits);
+                if let Some(dot_index) = x.find('.') {
+                    let mut spaces_to_add: i32 = integer_digits as i32 - dot_index as i32;
+                    while spaces_to_add > 0 {
+                        x.insert(0, ' ');
+                        spaces_to_add -= 1;
+                    }
+                }
+                printer.print(x.as_str())?;
+            }
+            Variant::VInteger(i) => {
+                let mut x = i.to_string().pad_left(integer_digits);
+                x.push('.');
+                for _i in 0..fraction_digits {
+                    x.push('0');
+                }
+                printer.print(x.as_str())?;
+            }
+            Variant::VLong(l) => {
+                let mut x = l.to_string().pad_left(integer_digits);
+                x.push('.');
+                for _i in 0..fraction_digits {
+                    x.push('0');
+                }
+                printer.print(x.as_str())?;
+            }
+            _ => {
+                return Err(QError::TypeMismatch);
+            }
+        }
+    } else {
+        // just the integer part
+        match v {
+            Variant::VSingle(f) => {
+                let l = f.round() as i64;
+                let x = l.to_string().pad_left(integer_digits);
+                printer.print(x.as_str())?;
+            }
+            Variant::VDouble(d) => {
+                let l = d.round() as i64;
+                let x = l.to_string().pad_left(integer_digits);
+                printer.print(x.as_str())?;
+            }
+            Variant::VInteger(i) => {
+                let x = i.to_string().pad_left(integer_digits);
+                printer.print(x.as_str())?;
+            }
+            Variant::VLong(l) => {
+                let x = l.to_string().pad_left(integer_digits);
+                printer.print(x.as_str())?;
+            }
+            _ => {
+                return Err(QError::TypeMismatch);
+            }
+        }
+    }
+    Ok(())
 }
 
 trait PrintHelper {
@@ -272,7 +453,7 @@ mod tests {
 
     #[test]
     fn test_print_using_empty_format_string_is_error() {
-        assert_interpreter_err!("PRINT USING \"\"; 0", QError::IllegalFunctionCall, 1, 1);
+        assert_interpreter_err!("PRINT USING \"\"; 0", QError::IllegalFunctionCall, 1, 17);
     }
 
     #[test]
@@ -281,18 +462,18 @@ mod tests {
             "PRINT USING \"oops\"; 12",
             QError::IllegalFunctionCall,
             1,
-            1
+            21
         );
     }
 
     #[test]
     fn test_print_using_numeric_format_string_with_string_arg_is_error() {
-        assert_interpreter_err!("PRINT USING \"#.##\"; \"hi\"", QError::TypeMismatch, 1, 1);
+        assert_interpreter_err!("PRINT USING \"#.##\"; \"hi\"", QError::TypeMismatch, 1, 21);
     }
 
     #[test]
     fn test_print_using_integer_format_string_with_string_arg_is_error() {
-        assert_interpreter_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 1);
+        assert_interpreter_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 19);
     }
 
     #[test]

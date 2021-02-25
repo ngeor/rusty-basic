@@ -15,12 +15,16 @@ impl InstructionGenerator {
     }
 
     pub fn generate_statement_node_instructions(&mut self, statement_node: StatementNode) {
-        // TODO fine tune for comments and other cases
-        self.mark_statement_address();
         let Locatable {
             element: statement,
             pos,
         } = statement_node;
+
+        if let Statement::Comment(_) = &statement {
+        } else {
+            self.mark_statement_address();
+        }
+
         match statement {
             Statement::Assignment(left_side, right_side) => {
                 self.generate_assignment_instructions(left_side, right_side, pos)

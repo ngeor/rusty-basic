@@ -6,7 +6,6 @@ mod expression;
 mod for_loop;
 mod function_call;
 mod if_block;
-mod instruction_generator;
 mod label_resolver;
 mod parameter_collector;
 pub mod print;
@@ -22,14 +21,10 @@ mod tests;
 
 use crate::built_ins::*;
 use crate::common::*;
-use crate::instruction_generator::instruction_generator::InstructionGenerator;
 use crate::instruction_generator::label_resolver::LabelResolver;
 use crate::instruction_generator::parameter_collector::{ParameterCollector, SubProgramParameters};
-use crate::parser::{
-    BareName, ExpressionType, Name, ParamName, ProgramNode, QualifiedName, TypeQualifier,
-};
+use crate::parser::*;
 use crate::variant::Variant;
-use print::PrinterType;
 
 /// Generates instructions for the given program.
 pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult {
@@ -234,5 +229,223 @@ impl AddressOrLabel {
         } else {
             panic!("Unresolved label")
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PrinterType {
+    Print,
+    LPrint,
+    File,
+}
+
+struct InstructionGenerator {
+    instructions: Vec<InstructionNode>,
+    statement_addresses: Vec<usize>,
+    sub_program_parameters: SubProgramParameters,
+}
+
+impl InstructionGenerator {
+    fn new(sub_program_parameters: SubProgramParameters) -> Self {
+        Self {
+            instructions: vec![],
+            statement_addresses: vec![],
+            sub_program_parameters,
+        }
+    }
+
+    fn generate_unresolved(&mut self, program: ProgramNode) {
+        let (top_level_statements, functions, subs) = Self::split_program(program);
+        self.visit_top_level_statements(top_level_statements);
+        self.visit_functions(functions);
+        self.visit_subs(subs);
+    }
+
+    fn push(&mut self, i: Instruction, pos: Location) {
+        self.instructions.push(i.at(pos));
+    }
+
+    fn split_program(
+        program: ProgramNode,
+    ) -> (
+        StatementNodes,
+        Vec<Locatable<FunctionImplementation>>,
+        Vec<Locatable<SubImplementation>>,
+    ) {
+        let mut top_level_statements: StatementNodes = vec![];
+        let mut functions: Vec<Locatable<FunctionImplementation>> = vec![];
+        let mut subs: Vec<Locatable<SubImplementation>> = vec![];
+        for Locatable { element, pos } in program {
+            match element {
+                TopLevelToken::Statement(s) => {
+                    top_level_statements.push(s.at(pos));
+                }
+                TopLevelToken::FunctionImplementation(f) => {
+                    functions.push(f.at(pos));
+                }
+                TopLevelToken::SubImplementation(s) => {
+                    subs.push(s.at(pos));
+                }
+                _ => {}
+            }
+        }
+        (top_level_statements, functions, subs)
+    }
+
+    fn visit_top_level_statements(&mut self, statements: StatementNodes) {
+        self.generate_block_instructions(statements);
+
+        // add HALT instruction at end of program to separate from the functions and subs
+        self.mark_statement_address();
+        self.push(
+            Instruction::Halt,
+            Location::new(std::u32::MAX, std::u32::MAX),
+        );
+    }
+
+    fn visit_functions(&mut self, functions: Vec<Locatable<FunctionImplementation>>) {
+        for f in functions {
+            self.visit_function(f);
+        }
+    }
+
+    fn visit_function(&mut self, function_node: Locatable<FunctionImplementation>) {
+        let Locatable {
+            element: function_implementation,
+            pos,
+        } = function_node;
+        let FunctionImplementation { name, body, .. } = function_implementation;
+        let function_name = name.element.demand_qualified();
+        self.function_label(&function_name, pos);
+        // set default value
+        self.push_load(function_name.qualifier, pos);
+        self.sub_program_body(body, pos);
+    }
+
+    fn visit_subs(&mut self, subs: Vec<Locatable<SubImplementation>>) {
+        for s in subs {
+            self.visit_sub(s);
+        }
+    }
+
+    fn visit_sub(&mut self, sub_node: Locatable<SubImplementation>) {
+        let Locatable {
+            element: sub_implementation,
+            pos,
+        } = sub_node;
+        let SubImplementation { name, body, .. } = sub_implementation;
+        self.sub_label(name.as_ref(), pos);
+        self.sub_program_body(body, pos);
+    }
+
+    fn sub_program_body(&mut self, block: StatementNodes, pos: Location) {
+        self.generate_block_instructions(block);
+        // to be able to RESUME NEXT if an error occurs on the last statement
+        self.mark_statement_address();
+        self.push(Instruction::PopRet, pos);
+    }
+
+    /// Adds a Load instruction, converting the given value into a Variant
+    /// and storing it in register A.
+    fn push_load<T>(&mut self, value: T, pos: Location)
+    where
+        Variant: From<T>,
+    {
+        self.push(Instruction::LoadIntoA(value.into()), pos);
+    }
+
+    /// Adds a Load instruction, converting the given value into a Variant
+    /// and storing it in register A, followed by a PushUnnamed instruction.
+    fn push_load_unnamed_arg<T>(&mut self, value: T, pos: Location)
+    where
+        Variant: From<T>,
+    {
+        self.push_load(value, pos);
+        self.push(Instruction::PushAToUnnamedArg, pos);
+    }
+
+    fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
+        self.push(
+            Instruction::JumpIfFalse(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
+                format!("_{}_{:?}", prefix.as_ref(), pos),
+            ))),
+            pos,
+        );
+    }
+
+    fn jump<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
+        self.push(
+            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
+                format!("_{}_{:?}", prefix.as_ref(), pos),
+            ))),
+            pos,
+        );
+    }
+
+    fn label<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
+        self.push(
+            Instruction::Label(CaseInsensitiveString::new(format!(
+                "_{}_{:?}",
+                prefix.as_ref(),
+                pos
+            ))),
+            pos,
+        );
+    }
+
+    fn function_label(&mut self, name: &QualifiedName, pos: Location) {
+        self.push(
+            Instruction::Label(CaseInsensitiveString::new(format!(
+                ":fun:{}",
+                name.bare_name,
+            ))),
+            pos,
+        );
+    }
+
+    fn jump_to_function<S: AsRef<str>>(&mut self, name: S, pos: Location) {
+        self.push(
+            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
+                format!(":fun:{}", name.as_ref(),),
+            ))),
+            pos,
+        );
+    }
+
+    fn sub_label(&mut self, name: &BareName, pos: Location) {
+        self.push(
+            Instruction::Label(CaseInsensitiveString::new(format!(":sub:{}", name,))),
+            pos,
+        );
+    }
+
+    fn jump_to_sub<S: AsRef<str>>(&mut self, name: S, pos: Location) {
+        self.push(
+            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
+                format!(":sub:{}", name.as_ref(),),
+            ))),
+            pos,
+        );
+    }
+
+    fn generate_assignment_instructions(
+        &mut self,
+        l: Expression,
+        r: ExpressionNode,
+        pos: Location,
+    ) {
+        let left_type = l.expression_type();
+        self.generate_expression_instructions_casting(r, left_type);
+        self.generate_store_instructions(l, pos);
+    }
+
+    fn generate_store_instructions(&mut self, l: Expression, pos: Location) {
+        self.generate_path_instructions(l.at(pos));
+        self.push(Instruction::CopyAToVarPath, pos);
+    }
+
+    fn generate_load_instructions(&mut self, l: Expression, pos: Location) {
+        self.generate_path_instructions(l.at(pos));
+        self.push(Instruction::CopyVarPathToA, pos);
     }
 }

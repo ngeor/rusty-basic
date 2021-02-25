@@ -1,7 +1,6 @@
 use crate::common::StripLocation;
-use crate::instruction_generator::print::PrinterType;
 use crate::instruction_generator::test_utils::*;
-use crate::instruction_generator::Instruction;
+use crate::instruction_generator::{Instruction, PrinterType};
 use crate::variant::Variant;
 
 #[test]

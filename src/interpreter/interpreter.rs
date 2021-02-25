@@ -1,6 +1,5 @@
 use crate::common::*;
-use crate::instruction_generator::print::PrinterType;
-use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path};
+use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;

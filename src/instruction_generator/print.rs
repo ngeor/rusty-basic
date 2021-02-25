@@ -1,13 +1,6 @@
 use crate::common::{AtLocation, Locatable, Location};
-use crate::instruction_generator::{Instruction, InstructionGenerator};
+use crate::instruction_generator::{Instruction, InstructionGenerator, PrinterType};
 use crate::parser::{PrintArg, PrintNode};
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PrinterType {
-    Print,
-    LPrint,
-    File,
-}
 
 impl InstructionGenerator {
     pub fn generate_print_instructions(&mut self, print_node: PrintNode, pos: Location) {

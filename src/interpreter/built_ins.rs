@@ -55,10 +55,9 @@ fn run_not_terminating_sub<S: InterpreterTrait>(
         BuiltInSub::Input => input::run(interpreter).with_err_no_pos(),
         BuiltInSub::Kill => kill::run(interpreter),
         BuiltInSub::LineInput => line_input::run(interpreter).with_err_no_pos(),
-        BuiltInSub::LPrint => todo!("LPT1 printing not implemented yet"),
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
-        BuiltInSub::Print | BuiltInSub::End | BuiltInSub::System => {
+        BuiltInSub::End | BuiltInSub::System => {
             panic!("Should not have been called")
         }
     }

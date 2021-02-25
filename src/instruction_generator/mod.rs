@@ -1,17 +1,13 @@
-mod args;
-mod built_in_functions;
-mod built_in_subs;
+mod calls;
 mod dim;
 mod expression;
 mod for_loop;
-mod function_call;
 mod if_block;
 mod label_resolver;
 mod parameter_collector;
 pub mod print;
 mod select_case;
 mod statement;
-mod sub_call;
 mod while_wend;
 
 #[cfg(test)]
@@ -447,5 +443,9 @@ impl InstructionGenerator {
     fn generate_load_instructions(&mut self, l: Expression, pos: Location) {
         self.generate_path_instructions(l.at(pos));
         self.push(Instruction::CopyVarPathToA, pos);
+    }
+
+    fn mark_statement_address(&mut self) {
+        self.statement_addresses.push(self.instructions.len());
     }
 }

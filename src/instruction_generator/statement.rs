@@ -4,10 +4,6 @@ use crate::instruction_generator::AddressOrLabel;
 use crate::parser::{OnErrorOption, ResumeOption, Statement, StatementNode, StatementNodes};
 
 impl InstructionGenerator {
-    pub fn mark_statement_address(&mut self) {
-        self.statement_addresses.push(self.instructions.len());
-    }
-
     pub fn generate_block_instructions(&mut self, block: StatementNodes) {
         for s in block {
             self.generate_statement_node_instructions(s);

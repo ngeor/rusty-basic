@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
-use crate::instruction_generator::{generate_instructions, InstructionGenerator};
+use crate::instruction_generator::{generate_instructions, InstructionGeneratorResult};
 use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::read_input::ReadInputSource;
@@ -25,22 +25,26 @@ fn mock_interpreter(user_defined_types: UserDefinedTypes) -> MockInterpreter {
     Interpreter::new(stdlib, stdin, stdout, lpt1, user_defined_types)
 }
 
-pub fn mock_interpreter2<T>(input: T) -> (InstructionGenerator, MockInterpreter)
+pub fn mock_interpreter2<T>(input: T) -> (InstructionGeneratorResult, MockInterpreter)
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    let (instruction_generator_result, user_defined_types) =
+        generate_instructions_str_with_types(input);
     // println!("{:#?}", instructions);
-    (instructions, mock_interpreter(user_defined_types))
+    (
+        instruction_generator_result,
+        mock_interpreter(user_defined_types),
+    )
 }
 
 pub fn interpret<T>(input: T) -> MockInterpreter
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instructions, mut interpreter) = mock_interpreter2(input);
+    let (instruction_generator_result, mut interpreter) = mock_interpreter2(input);
     interpreter
-        .interpret(instructions)
+        .interpret(instruction_generator_result)
         .map(|_| interpreter)
         .unwrap()
 }
@@ -49,15 +53,18 @@ pub fn interpret_err<T>(input: T) -> QErrorNode
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instructions, mut interpreter) = mock_interpreter2(input);
-    interpreter.interpret(instructions).unwrap_err()
+    let (instruction_generator_result, mut interpreter) = mock_interpreter2(input);
+    interpreter
+        .interpret(instruction_generator_result)
+        .unwrap_err()
 }
 
 pub fn interpret_with_raw_input<T>(input: T, raw_input: &str) -> MockInterpreter
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    let (instruction_generator_result, user_defined_types) =
+        generate_instructions_str_with_types(input);
     // for i in instructions.iter() {
     //     println!("{:?}", i.as_ref());
     // }
@@ -66,7 +73,7 @@ where
         interpreter.stdin().add_next_input(raw_input);
     }
     interpreter
-        .interpret(instructions)
+        .interpret(instruction_generator_result)
         .map(|_| interpreter)
         .unwrap()
 }
@@ -76,12 +83,13 @@ where
     T: AsRef<[u8]> + 'static,
     F: FnMut(&mut MockInterpreter) -> (),
 {
-    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    let (instruction_generator_result, user_defined_types) =
+        generate_instructions_str_with_types(input);
     // println!("{:#?}", instructions);
     let mut interpreter = mock_interpreter(user_defined_types);
     initializer(&mut interpreter);
     interpreter
-        .interpret(instructions)
+        .interpret(instruction_generator_result)
         .map(|_| interpreter)
         .unwrap()
 }
@@ -94,9 +102,11 @@ where
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = linter::lint(program).unwrap();
-    let instructions = generate_instructions(linted_program);
+    let instruction_generator_result = generate_instructions(linted_program);
     let mut interpreter = mock_interpreter(user_defined_types);
-    interpreter.interpret(instructions).map(|_| interpreter)
+    interpreter
+        .interpret(instruction_generator_result)
+        .map(|_| interpreter)
 }
 
 pub fn interpret_file_with_raw_input<S>(
@@ -110,12 +120,14 @@ where
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = linter::lint(program).unwrap();
-    let instructions = generate_instructions(linted_program);
+    let instruction_generator_result = generate_instructions(linted_program);
     let mut interpreter = mock_interpreter(user_defined_types);
     if !raw_input.is_empty() {
         interpreter.stdin().add_next_input(raw_input);
     }
-    interpreter.interpret(instructions).map(|_| interpreter)
+    interpreter
+        .interpret(instruction_generator_result)
+        .map(|_| interpreter)
 }
 
 pub struct MockStdlib {

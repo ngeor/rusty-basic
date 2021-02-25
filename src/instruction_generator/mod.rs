@@ -7,6 +7,8 @@ mod for_loop;
 mod function_call;
 mod if_block;
 mod instruction_generator;
+mod label_resolver;
+mod parameter_collector;
 pub mod print;
 mod select_case;
 mod statement;
@@ -18,13 +20,46 @@ pub mod test_utils;
 #[cfg(test)]
 mod tests;
 
-pub use self::instruction_generator::*;
-
 use crate::built_ins::*;
 use crate::common::*;
-use crate::parser::{BareName, ExpressionType, Name, ParamName, QualifiedName, TypeQualifier};
+use crate::instruction_generator::instruction_generator::InstructionGenerator;
+use crate::instruction_generator::label_resolver::LabelResolver;
+use crate::instruction_generator::parameter_collector::{ParameterCollector, SubProgramParameters};
+use crate::parser::{
+    BareName, ExpressionType, Name, ParamName, ProgramNode, QualifiedName, TypeQualifier,
+};
 use crate::variant::Variant;
 use print::PrinterType;
+
+/// Generates instructions for the given program.
+pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult {
+    // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
+    // the parameter names and types are needed
+    let mut parameter_collector = ParameterCollector::default();
+    parameter_collector.visit(&program);
+    let sub_program_parameters: SubProgramParameters = parameter_collector.into();
+    // pass 2 generate with labels still unresolved
+    let mut generator = InstructionGenerator::new(sub_program_parameters);
+    generator.generate_unresolved(program);
+    let InstructionGenerator {
+        instructions,
+        statement_addresses,
+        ..
+    } = generator;
+    // pass 3 resolve labels to addresses
+    let mut label_resolver = LabelResolver::new(instructions);
+    label_resolver.resolve_labels();
+    let LabelResolver { instructions } = label_resolver;
+    InstructionGeneratorResult {
+        instructions,
+        statement_addresses,
+    }
+}
+
+pub struct InstructionGeneratorResult {
+    pub instructions: Vec<InstructionNode>,
+    pub statement_addresses: Vec<usize>,
+}
 
 #[derive(Debug)]
 pub enum Path {

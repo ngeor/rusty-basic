@@ -17,12 +17,13 @@ fn main() {
     match parser::parse_main_file(f) {
         Ok(program) => match linter::lint(program) {
             Ok((linted_program, user_defined_types)) => {
-                let instructions = instruction_generator::generate_instructions(linted_program);
+                let instruction_generator_result =
+                    instruction_generator::generate_instructions(linted_program);
                 if is_running_in_apache {
                     set_current_dir(&filename); // Note: only needed to make it work inside Apache.
                 }
                 let mut interpreter = new_default_interpreter(user_defined_types);
-                match interpreter.interpret(instructions) {
+                match interpreter.interpret(instruction_generator_result) {
                     Ok(_) => (),
                     Err(e) => eprintln!("Runtime error. {:?}", e),
                 }

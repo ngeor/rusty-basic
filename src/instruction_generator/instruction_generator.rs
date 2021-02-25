@@ -1,109 +1,16 @@
-use super::*;
 use crate::common::*;
+use crate::instruction_generator::parameter_collector::SubProgramParameters;
+use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionNode};
 use crate::parser::{
     BareName, Expression, ExpressionNode, FunctionImplementation, HasExpressionType, Name,
-    ParamName, ProgramNode, QualifiedName, SubImplementation, TopLevelToken,
+    ProgramNode, QualifiedName, SubImplementation, TopLevelToken,
 };
 use crate::variant::Variant;
-use std::collections::HashMap;
-
-/// Generates instructions for the given program.
-pub fn generate_instructions(program: ProgramNode) -> InstructionGenerator {
-    // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
-    // the parameter names and types are needed
-    let mut parameter_collector = ParameterCollector::default();
-    parameter_collector.visit(&program);
-    let sub_program_parameters = parameter_collector.to_sub_program_parameters();
-    // pass 2 generate with labels still unresolved
-    let mut generator = InstructionGenerator::new(sub_program_parameters);
-    generator.generate_unresolved(program);
-    // pass 3 resolve labels to addresses
-    generator.resolve_labels();
-    generator
-}
-
-// TODO ^ split 3 passes to distinct modules, do not return the whole InstructionGenerator but only the relevant data,
-// statement_addresses and instructions
-
-type ParamMap = HashMap<CaseInsensitiveString, Vec<ParamName>>;
-
-#[derive(Default)]
-struct ParameterCollector {
-    functions: ParamMap,
-    subs: ParamMap,
-}
-
-impl ParameterCollector {
-    pub fn visit(&mut self, program: &ProgramNode) {
-        for Locatable { element, .. } in program {
-            self.visit_top_level_token(element);
-        }
-    }
-
-    pub fn to_sub_program_parameters(self) -> SubProgramParameters {
-        SubProgramParameters::new(self.functions, self.subs)
-    }
-
-    fn visit_top_level_token(&mut self, top_level_token: &TopLevelToken) {
-        match top_level_token {
-            TopLevelToken::FunctionImplementation(f) => {
-                self.visit_function_implementation(f);
-            }
-            TopLevelToken::SubImplementation(s) => {
-                self.visit_sub_implementation(s);
-            }
-            _ => {}
-        }
-    }
-
-    fn visit_function_implementation(&mut self, f: &FunctionImplementation) {
-        self.functions.insert(
-            f.name.bare_name().clone(),
-            f.params.clone().strip_location(),
-        );
-    }
-
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) {
-        self.subs
-            .insert(s.name.element.clone(), s.params.clone().strip_location());
-    }
-}
-
-pub struct SubProgramParameters {
-    functions: ParamMap,
-    subs: ParamMap,
-}
-
-impl SubProgramParameters {
-    pub fn new(functions: ParamMap, subs: ParamMap) -> Self {
-        Self { functions, subs }
-    }
-
-    pub fn get_function_parameters(&self, name: &BareName) -> &Vec<ParamName> {
-        self.functions.get(name).unwrap()
-    }
-
-    pub fn get_sub_parameters(&self, name: &BareName) -> &Vec<ParamName> {
-        self.subs.get(name).unwrap()
-    }
-}
 
 pub struct InstructionGenerator {
     pub instructions: Vec<InstructionNode>,
     pub statement_addresses: Vec<usize>,
     pub sub_program_parameters: SubProgramParameters,
-}
-
-fn build_label_to_address_map(
-    instructions: &Vec<InstructionNode>,
-) -> HashMap<CaseInsensitiveString, usize> {
-    let mut result: HashMap<CaseInsensitiveString, usize> = HashMap::new();
-    for j in 0..instructions.len() {
-        if let Instruction::Label(y) = instructions[j].as_ref() {
-            result.insert(y.clone(), j);
-        }
-    }
-    result
 }
 
 impl InstructionGenerator {
@@ -173,56 +80,6 @@ impl InstructionGenerator {
             self.generate_block_instructions(block);
             self.mark_statement_address();
             self.push(Instruction::PopRet, pos);
-        }
-    }
-
-    pub fn resolve_labels(&mut self) {
-        let label_to_address = build_label_to_address_map(&self.instructions);
-        for instruction_node in self.instructions.iter_mut() {
-            let Locatable {
-                element: instruction,
-                ..
-            } = instruction_node;
-            Self::resolve_label(instruction, &label_to_address);
-        }
-    }
-
-    fn resolve_label(
-        instruction: &mut Instruction,
-        label_to_address: &HashMap<CaseInsensitiveString, usize>,
-    ) {
-        match instruction {
-            Instruction::Jump(AddressOrLabel::Unresolved(x)) => {
-                *instruction =
-                    Instruction::Jump(AddressOrLabel::Resolved(*label_to_address.get(x).unwrap()));
-            }
-            Instruction::JumpIfFalse(AddressOrLabel::Unresolved(x)) => {
-                *instruction = Instruction::JumpIfFalse(AddressOrLabel::Resolved(
-                    *label_to_address
-                        .get(x)
-                        .expect(&format!("Label {} not found", x)),
-                ));
-            }
-            Instruction::OnErrorGoTo(AddressOrLabel::Unresolved(x)) => {
-                *instruction = Instruction::OnErrorGoTo(AddressOrLabel::Resolved(
-                    *label_to_address.get(x).unwrap(),
-                ));
-            }
-            Instruction::GoSub(AddressOrLabel::Unresolved(x)) => {
-                *instruction =
-                    Instruction::GoSub(AddressOrLabel::Resolved(*label_to_address.get(x).unwrap()));
-            }
-            Instruction::Return(Some(AddressOrLabel::Unresolved(label))) => {
-                *instruction = Instruction::Return(Some(AddressOrLabel::Resolved(
-                    *label_to_address.get(label).unwrap(),
-                )));
-            }
-            Instruction::ResumeLabel(AddressOrLabel::Unresolved(label)) => {
-                *instruction = Instruction::ResumeLabel(AddressOrLabel::Resolved(
-                    *label_to_address.get(label).unwrap(),
-                ));
-            }
-            _ => {}
         }
     }
 

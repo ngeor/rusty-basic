@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::instruction_generator::print::PrinterType;
-use crate::instruction_generator::{Instruction, InstructionGenerator, Path};
+use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path};
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;
@@ -500,13 +500,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
 
     pub fn interpret(
         &mut self,
-        instruction_generator: InstructionGenerator,
+        instruction_generator_result: InstructionGeneratorResult,
     ) -> Result<(), QErrorNode> {
-        let InstructionGenerator {
+        let InstructionGeneratorResult {
             instructions,
             statement_addresses,
-            ..
-        } = instruction_generator;
+        } = instruction_generator_result;
         self.statement_addresses = statement_addresses;
         let mut i: usize = 0;
         let mut ctx: InterpretOneContext = InterpretOneContext {

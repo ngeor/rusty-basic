@@ -1,8 +1,12 @@
-use crate::instruction_generator::{generate_instructions, InstructionGenerator, InstructionNode};
+use crate::instruction_generator::{
+    generate_instructions, InstructionGeneratorResult, InstructionNode,
+};
 use crate::linter::lint;
 use crate::parser::{parse_main_str, UserDefinedTypes};
 
-pub fn generate_instructions_str_with_types<T>(input: T) -> (InstructionGenerator, UserDefinedTypes)
+pub fn generate_instructions_str_with_types<T>(
+    input: T,
+) -> (InstructionGeneratorResult, UserDefinedTypes)
 where
     T: AsRef<[u8]> + 'static,
 {

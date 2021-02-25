@@ -11,7 +11,11 @@ impl InstructionGenerator {
         let Locatable { element: name, pos } = function_name;
         let qualified_name = name.demand_qualified();
         let bare_name: &BareName = qualified_name.as_ref();
-        let function_parameters = self.function_context.get(bare_name).unwrap().clone();
+        // cloning to fight the borrow checker
+        let function_parameters = self
+            .sub_program_parameters
+            .get_function_parameters(bare_name)
+            .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
         self.push(Instruction::PushStack, pos);
         let idx = self.instructions.len();

@@ -9,7 +9,11 @@ impl InstructionGenerator {
         args: Vec<ExpressionNode>,
     ) {
         let Locatable { element: name, pos } = name_node;
-        let sub_impl_parameters = self.sub_context.get(&name).unwrap().clone();
+        // cloning to fight the borrow checker
+        let sub_impl_parameters = self
+            .sub_program_parameters
+            .get_sub_parameters(&name)
+            .clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
         self.push(Instruction::PushStack, pos);
         let idx = self.instructions.len();

@@ -11,9 +11,11 @@ use std::collections::HashMap;
 pub fn generate_instructions(program: ProgramNode) -> InstructionGenerator {
     // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
     // the parameter names and types are needed
-    let (f, s) = collect_parameter_names(&program);
+    let mut parameter_collector = ParameterCollector::default();
+    parameter_collector.visit(&program);
+    let sub_program_parameters = parameter_collector.to_sub_program_parameters();
     // pass 2 generate with labels still unresolved
-    let mut generator = InstructionGenerator::new(f, s);
+    let mut generator = InstructionGenerator::new(sub_program_parameters);
     generator.generate_unresolved(program);
     // pass 3 resolve labels to addresses
     generator.resolve_labels();
@@ -25,43 +27,71 @@ pub fn generate_instructions(program: ProgramNode) -> InstructionGenerator {
 
 type ParamMap = HashMap<CaseInsensitiveString, Vec<ParamName>>;
 
-fn collect_parameter_names(program: &ProgramNode) -> (ParamMap, ParamMap) {
-    let mut functions: ParamMap = HashMap::new();
-    let mut subs: ParamMap = HashMap::new();
+#[derive(Default)]
+struct ParameterCollector {
+    functions: ParamMap,
+    subs: ParamMap,
+}
 
-    for top_level_token_node in program {
-        let top_level_token = top_level_token_node.as_ref();
-        match top_level_token {
-            TopLevelToken::FunctionImplementation(f) => {
-                let FunctionImplementation {
-                    name: Locatable { element: name, .. },
-                    params,
-                    ..
-                } = f;
-                let bare_name: &BareName = name.bare_name();
-                functions.insert(
-                    bare_name.clone(),
-                    params.iter().map(|p| p.as_ref().clone()).collect(),
-                );
-            }
-            TopLevelToken::SubImplementation(s) => {
-                subs.insert(
-                    s.name.clone().strip_location(),
-                    s.params.clone().strip_location(),
-                );
-            }
-            _ => (),
+impl ParameterCollector {
+    pub fn visit(&mut self, program: &ProgramNode) {
+        for Locatable { element, .. } in program {
+            self.visit_top_level_token(element);
         }
     }
 
-    (functions, subs)
+    pub fn to_sub_program_parameters(self) -> SubProgramParameters {
+        SubProgramParameters::new(self.functions, self.subs)
+    }
+
+    fn visit_top_level_token(&mut self, top_level_token: &TopLevelToken) {
+        match top_level_token {
+            TopLevelToken::FunctionImplementation(f) => {
+                self.visit_function_implementation(f);
+            }
+            TopLevelToken::SubImplementation(s) => {
+                self.visit_sub_implementation(s);
+            }
+            _ => {}
+        }
+    }
+
+    fn visit_function_implementation(&mut self, f: &FunctionImplementation) {
+        self.functions.insert(
+            f.name.bare_name().clone(),
+            f.params.clone().strip_location(),
+        );
+    }
+
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) {
+        self.subs
+            .insert(s.name.element.clone(), s.params.clone().strip_location());
+    }
+}
+
+pub struct SubProgramParameters {
+    functions: ParamMap,
+    subs: ParamMap,
+}
+
+impl SubProgramParameters {
+    pub fn new(functions: ParamMap, subs: ParamMap) -> Self {
+        Self { functions, subs }
+    }
+
+    pub fn get_function_parameters(&self, name: &BareName) -> &Vec<ParamName> {
+        self.functions.get(name).unwrap()
+    }
+
+    pub fn get_sub_parameters(&self, name: &BareName) -> &Vec<ParamName> {
+        self.subs.get(name).unwrap()
+    }
 }
 
 pub struct InstructionGenerator {
     pub instructions: Vec<InstructionNode>,
     pub statement_addresses: Vec<usize>,
-    pub function_context: ParamMap,
-    pub sub_context: ParamMap,
+    pub sub_program_parameters: SubProgramParameters,
 }
 
 fn build_label_to_address_map(
@@ -77,12 +107,11 @@ fn build_label_to_address_map(
 }
 
 impl InstructionGenerator {
-    pub fn new(function_context: ParamMap, sub_context: ParamMap) -> Self {
+    pub fn new(sub_program_parameters: SubProgramParameters) -> Self {
         Self {
             instructions: vec![],
             statement_addresses: vec![],
-            function_context,
-            sub_context,
+            sub_program_parameters,
         }
     }
 

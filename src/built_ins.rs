@@ -199,38 +199,32 @@ fn demand_unqualified(
 #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum BuiltInSub {
     Close,
-    End,
     Environ,
     Input,
     Kill,
     LineInput,
     Name,
     Open,
-    System,
 }
 
-const SORTED_BUILT_IN_SUBS: [BuiltInSub; 9] = [
+const SORTED_BUILT_IN_SUBS: [BuiltInSub; 7] = [
     BuiltInSub::Close,
-    BuiltInSub::End,
     BuiltInSub::Environ,
     BuiltInSub::Input,
     BuiltInSub::Kill,
     BuiltInSub::LineInput,
     BuiltInSub::Name,
     BuiltInSub::Open,
-    BuiltInSub::System,
 ];
 
-const SORTED_BUILT_IN_SUB_NAMES: [&str; 9] = [
+const SORTED_BUILT_IN_SUB_NAMES: [&str; 7] = [
     "CLOSE",
-    "END",
     "ENVIRON",
     "INPUT",
     "KILL",
     "LINE INPUT",
     "NAME",
     "OPEN",
-    "SYSTEM",
 ];
 
 // BuiltInSub -> &str

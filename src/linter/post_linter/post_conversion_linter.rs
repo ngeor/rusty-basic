@@ -71,6 +71,7 @@ pub trait PostConversionLinter {
             Statement::Resume(resume_option) => self.visit_resume(resume_option),
             Statement::Return(opt_label) => self.visit_return(opt_label.as_ref()),
             Statement::Exit(exit_object) => self.visit_exit(*exit_object),
+            Statement::End | Statement::System => Ok(()),
         }
     }
 

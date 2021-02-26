@@ -330,10 +330,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                let run_sub_result = built_ins::run_sub(n, self)?;
-                if run_sub_result.halt {
-                    ctx.halt = true;
-                }
+                built_ins::run_sub(n, self)?;
             }
             Instruction::BuiltInFunction(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack

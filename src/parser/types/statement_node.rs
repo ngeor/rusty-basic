@@ -44,8 +44,10 @@ pub enum Statement {
 
     Comment(String),
 
-    // some built-ins have special syntax
     Print(PrintNode),
+
+    End,
+    System,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

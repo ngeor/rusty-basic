@@ -24,7 +24,6 @@ impl PostConversionLinter for BuiltInLinter {
             BuiltInSub::LineInput => line_input::lint(args),
             BuiltInSub::Name => name::lint(args),
             BuiltInSub::Open => open::lint(args),
-            BuiltInSub::End | BuiltInSub::System => zero_args::lint(args),
         }
     }
 
@@ -309,18 +308,6 @@ mod open {
     }
 }
 
-mod zero_args {
-    use super::*;
-
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        if args.len() != 0 {
-            Err(QError::ArgumentCountMismatch).with_err_no_pos()
-        } else {
-            Ok(())
-        }
-    }
-}
-
 mod chr {
     use super::*;
 
@@ -445,19 +432,6 @@ mod str_fn {
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         require_single_numeric_argument(args)
-    }
-}
-
-mod system {
-    #[cfg(test)]
-    mod tests {
-        use crate::assert_linter_err;
-        use crate::common::QError;
-
-        #[test]
-        fn test_sub_call_system_no_args_allowed() {
-            assert_linter_err!("SYSTEM 42", QError::ArgumentCountMismatch, 1, 1);
-        }
     }
 }
 

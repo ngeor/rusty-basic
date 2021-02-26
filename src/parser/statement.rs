@@ -38,6 +38,8 @@ where
         .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
         .or(statement_resume_p())
+        .or(end::parse_end_p())
+        .or(system::parse_system_p())
         .or(illegal_starting_keywords())
 }
 
@@ -57,6 +59,8 @@ where
         .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
         .or(statement_resume_p())
+        .or(end::parse_end_p())
+        .or(system::parse_system_p())
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
@@ -76,6 +80,8 @@ where
         .or(statement_exit_p())
         .or(statement_on_error_go_to_p())
         .or(statement_resume_p())
+        .or(end::parse_end_p())
+        .or(system::parse_system_p())
 }
 
 fn statement_label_p<R>() -> impl Parser<R, Output = Statement>
@@ -108,6 +114,133 @@ where
             Keyword::Else => Err(QError::ElseWithoutIf),
             _ => panic!("Parser should not have parsed {}", k),
         })
+}
+
+mod end {
+    use super::*;
+    use crate::parser::pc_specific::keyword_choice_p;
+    use crate::parser::statement_separator::EofOrStatementSeparator;
+
+    pub fn parse_end_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::End)
+            .and(
+                opt_whitespace_p(false)
+                    .and(AfterEndSeparator {})
+                    .map(|(l, r)| {
+                        let mut s: String = String::new();
+                        s.push_str(&l);
+                        s.push_str(&r);
+                        s
+                    })
+                    .peek(),
+            )
+            .map(|_| Statement::End)
+    }
+
+    /// Parses the next token after END. If it is one of the valid keywords that
+    /// can follow END, it is undone so that the entire parsing will be undone.
+    /// Otherwise, it demands that we find an end-of-statement terminator.
+    struct AfterEndSeparator {}
+
+    impl<R> Parser<R> for AfterEndSeparator
+    where
+        R: Reader<Item = char, Err = QError>,
+    {
+        type Output = String;
+
+        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+            let (reader, opt_result) = allowed_keywords_after_end().parse(reader)?;
+            match opt_result {
+                Some((_, s)) => {
+                    // undo and return None, as another parser will handle this
+                    Ok((reader.undo(s), None))
+                }
+                _ => {
+                    let (reader, opt_str) = EofOrStatementSeparator::new().parse(reader)?;
+                    match opt_str {
+                        Some(s) => Ok((reader, Some(s))),
+                        _ => {
+                            // error
+                            Err((reader, QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement")))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn allowed_keywords_after_end<R>() -> impl Parser<R, Output = (Keyword, String)>
+    where
+        R: Reader<Item = char>,
+    {
+        keyword_choice_p(&[
+            Keyword::Function,
+            Keyword::If,
+            Keyword::Select,
+            Keyword::Sub,
+            Keyword::Type,
+        ])
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_parser_err;
+
+        #[test]
+        fn test_sub_call_end_no_args_allowed() {
+            assert_parser_err!(
+                "END 42",
+                QError::syntax_error(
+                    "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"
+                )
+            );
+        }
+    }
+}
+
+mod system {
+    use super::*;
+    use crate::parser::statement_separator::EofOrStatementSeparator;
+
+    pub fn parse_system_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::System)
+            .and_demand(
+                opt_whitespace_p(false)
+                    .and(EofOrStatementSeparator::new())
+                    .map(|(l, r)| {
+                        let mut s: String = String::new();
+                        s.push_str(&l);
+                        s.push_str(&r);
+                        s
+                    })
+                    .peek()
+                    .or_syntax_error("Expected: end-of-statement"),
+            )
+            .map(|_| Statement::System)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::assert_parser_err;
+        use crate::common::*;
+
+        #[test]
+        fn test_sub_call_system_no_args_allowed() {
+            assert_parser_err!(
+                "SYSTEM 42",
+                QError::syntax_error("Expected: end-of-statement"),
+                1,
+                7
+            );
+        }
+    }
 }
 
 #[cfg(test)]

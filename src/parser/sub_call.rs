@@ -191,7 +191,7 @@ mod tests {
                 TopLevelToken::Statement(Statement::Print(PrintNode::one(
                     "Hello, world!".as_lit_expr(1, 7)
                 ))),
-                TopLevelToken::Statement(Statement::SubCall("SYSTEM".into(), vec![])),
+                TopLevelToken::Statement(Statement::System),
             ],
         );
     }

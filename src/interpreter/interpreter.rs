@@ -67,8 +67,6 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
 
     last_error_address: Option<usize>,
 
-    statement_addresses: Vec<usize>,
-
     print_interpreter: Rc<RefCell<PrintInterpreter>>,
 }
 
@@ -192,7 +190,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             function_result: None,
             value_stack: vec![],
             last_error_address: None,
-            statement_addresses: vec![],
             print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
         }
     }
@@ -364,7 +361,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             },
             Instruction::Resume => match self.last_error_address.take() {
                 Some(last_error_address) => {
-                    ctx.opt_next_index = Some(self.find_current(last_error_address));
+                    ctx.opt_next_index = Some(
+                        ctx.nearest_statement_finder
+                            .find_current(last_error_address),
+                    );
                     self.contexts.pop_error_handler_context();
                 }
                 _ => {
@@ -374,7 +374,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             },
             Instruction::ResumeNext => match self.last_error_address.take() {
                 Some(last_error_address) => {
-                    ctx.opt_next_index = Some(self.find_next(last_error_address));
+                    ctx.opt_next_index =
+                        Some(ctx.nearest_statement_finder.find_next(last_error_address));
                     self.contexts.pop_error_handler_context();
                 }
                 _ => {
@@ -502,12 +503,12 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             instructions,
             statement_addresses,
         } = instruction_generator_result;
-        self.statement_addresses = statement_addresses;
         let mut i: usize = 0;
         let mut ctx: InterpretOneContext = InterpretOneContext {
             halt: false,
             error_handler: ErrorHandler::None,
             opt_next_index: None,
+            nearest_statement_finder: NearestStatementFinder::new(statement_addresses),
         };
         while i < instructions.len() && !ctx.halt {
             let instruction = instructions[i].as_ref();
@@ -534,7 +535,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                             i = handler_address;
                         }
                         ErrorHandler::Next => {
-                            i = self.find_next(i);
+                            i = ctx.nearest_statement_finder.find_next(i);
                         }
                         ErrorHandler::None => {
                             return Err(e.patch_stacktrace(&self.stacktrace));
@@ -553,26 +554,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
     fn pop_context(&mut self) {
         self.contexts.pop();
     }
-
-    fn find_current(&self, address: usize) -> usize {
-        for i in 0..self.statement_addresses.len() {
-            let idx = self.statement_addresses[i];
-            if idx > address {
-                return self.statement_addresses[i - 1];
-            }
-        }
-        *self.statement_addresses.last().unwrap()
-    }
-
-    fn find_next(&self, address: usize) -> usize {
-        for i in 0..self.statement_addresses.len() {
-            let idx = self.statement_addresses[i];
-            if idx > address {
-                return self.statement_addresses[i];
-            }
-        }
-        usize::MAX
-    }
 }
 
 /// Context available to the execution of a single instruction.
@@ -588,6 +569,8 @@ struct InterpretOneContext {
     /// The instruction can indicate the next address for the control flow.
     /// If not set, control flow will resume to the next statement, if any.
     opt_next_index: Option<usize>,
+
+    nearest_statement_finder: NearestStatementFinder,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -595,6 +578,44 @@ enum ErrorHandler {
     None,
     Next,
     Address(usize),
+}
+
+struct NearestStatementFinder {
+    statement_addresses: Vec<usize>,
+}
+
+impl NearestStatementFinder {
+    pub fn new(statement_addresses: Vec<usize>) -> Self {
+        Self {
+            statement_addresses,
+        }
+    }
+
+    pub fn find_current(&self, address: usize) -> usize {
+        match self.statement_addresses.binary_search(&address) {
+            Ok(_) => address,
+            Err(would_be_index) => {
+                if would_be_index >= 1 {
+                    self.statement_addresses[would_be_index - 1]
+                } else {
+                    panic!("should never happen")
+                }
+            }
+        }
+    }
+
+    pub fn find_next(&self, address: usize) -> usize {
+        match self.statement_addresses.binary_search(&address) {
+            Ok(existing_index) => {
+                if existing_index == self.statement_addresses.len() - 1 {
+                    1 + self.statement_addresses[existing_index]
+                } else {
+                    self.statement_addresses[existing_index + 1]
+                }
+            }
+            Err(would_be_index) => self.statement_addresses[would_be_index],
+        }
+    }
 }
 
 #[cfg(test)]

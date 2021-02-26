@@ -2,7 +2,7 @@ use crate::parser::{BareName, Name, ParamName, ParamType, QualifiedName, TypeQua
 use crate::variant::{Variant, V_FALSE};
 use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Variables {
     name_to_index: HashMap<Name, usize>,
     values: Vec<Variant>,

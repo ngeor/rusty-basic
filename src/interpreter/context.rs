@@ -70,15 +70,6 @@ impl Context {
         }
     }
 
-    pub fn new_clone(&self) -> Self {
-        Self {
-            user_defined_types: Rc::clone(&self.user_defined_types),
-            variables: self.variables.clone(),
-            arguments_stack: ArgumentsStack::new(),
-            parameter_count: 0,
-        }
-    }
-
     pub fn push(&mut self) -> Self {
         let arguments: Arguments = self.arguments_stack.pop();
         let mut variables = Variables::new();
@@ -182,37 +173,41 @@ impl Context {
 
 #[derive(Debug)]
 pub struct Contexts {
-    v: Vec<Context>,
+    v: Vec<Option<Context>>,
 }
 
 impl Contexts {
     pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
         let context = Context::new(user_defined_types);
-        Self { v: vec![context] }
+        Self { v: vec![Some(context)] }
     }
 
     pub fn context(&self) -> &Context {
-        self.v.last().unwrap()
+        match self.v.last().unwrap() {
+            Some(ctx) => ctx,
+            _ => self.global_context()
+        }
     }
 
     pub fn context_mut(&mut self) -> &mut Context {
-        self.v.last_mut().unwrap()
+        if self.v.last().unwrap().is_some() {
+            self.v.last_mut().unwrap().as_mut().unwrap()
+        } else {
+            self.global_context_mut()
+        }
     }
 
     pub fn push(&mut self) {
         let context = self.context_mut().push();
-        self.v.push(context);
+        self.v.push(Some(context));
     }
 
     pub fn push_error_handler_context(&mut self) {
-        let context = self.global_context().new_clone();
-        self.v.push(context);
+        self.v.push(None);
     }
 
     pub fn pop_error_handler_context(&mut self) {
-        let context = self.v.pop().unwrap();
-        let Context { variables, .. } = context;
-        self.global_context_mut().variables = variables;
+        self.pop();
     }
 
     pub fn pop(&mut self) {
@@ -220,10 +215,10 @@ impl Contexts {
     }
 
     pub fn global_context(&self) -> &Context {
-        self.v.first().unwrap()
+        self.v.first().unwrap().as_ref().unwrap()
     }
 
     pub fn global_context_mut(&mut self) -> &mut Context {
-        self.v.first_mut().unwrap()
+        self.v.first_mut().unwrap().as_mut().unwrap()
     }
 }

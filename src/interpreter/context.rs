@@ -48,6 +48,9 @@ Example 2:
     Call Hello
 */
 
+// TODO state machine to understand context better, perhaps with the state pattern as in the rust docs
+// TODO maybe instead of Variables have some sort of VariableReference class pointing to a VariableManager with an index
+
 #[derive(Debug)]
 pub struct Context {
     user_defined_types: Rc<UserDefinedTypes>,
@@ -55,9 +58,6 @@ pub struct Context {
 
     /// Preparing arguments for the next call
     arguments_stack: ArgumentsStack,
-
-    /// The number of parameters of this context.
-    parameter_count: usize,
 }
 
 impl Context {
@@ -66,7 +66,6 @@ impl Context {
             user_defined_types,
             variables: Variables::new(),
             arguments_stack: ArgumentsStack::new(),
-            parameter_count: 0, // root context, no parameters
         }
     }
 
@@ -79,11 +78,9 @@ impl Context {
                 None => variables.insert_unnamed(arg),
             }
         }
-        let parameter_count = variables.len();
         Self {
             user_defined_types: Rc::clone(&self.user_defined_types),
             variables,
-            parameter_count,
             arguments_stack: ArgumentsStack::new(),
         }
     }
@@ -152,8 +149,11 @@ impl Context {
         }
     }
 
-    pub fn parameter_count(&self) -> usize {
-        self.parameter_count
+    /// Gets the number of variables in the context.
+    /// For built-in subs / functions, this is equivalent to the number of
+    /// parameters they were called with.
+    pub fn variables_len(&self) -> usize {
+        self.variables.len()
     }
 
     pub fn get(&self, idx: usize) -> Option<&Variant> {
@@ -179,13 +179,15 @@ pub struct Contexts {
 impl Contexts {
     pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
         let context = Context::new(user_defined_types);
-        Self { v: vec![Some(context)] }
+        Self {
+            v: vec![Some(context)],
+        }
     }
 
     pub fn context(&self) -> &Context {
         match self.v.last().unwrap() {
             Some(ctx) => ctx,
-            _ => self.global_context()
+            _ => self.global_context(),
         }
     }
 

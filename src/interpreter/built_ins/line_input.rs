@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let mut file_handle: FileHandle = FileHandle::default();
     let mut has_file_handle = false;
-    for idx in 0..interpreter.context().parameter_count() {
+    for idx in 0..interpreter.context().variables_len() {
         let v = interpreter.context().get(idx).unwrap();
         match v {
             Variant::VInteger(f) => {

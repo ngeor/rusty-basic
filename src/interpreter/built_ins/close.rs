@@ -2,7 +2,7 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let file_handles: Vec<FileHandle> = (0..interpreter.context().parameter_count())
+    let file_handles: Vec<FileHandle> = (0..interpreter.context().variables_len())
         .map(|idx| interpreter.context().get(idx).unwrap())
         .map(|v| v.try_into())
         .collect::<Result<Vec<FileHandle>, QError>>()

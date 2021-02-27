@@ -52,6 +52,7 @@ impl InstructionGenerator {
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_function(bare_name, pos);
+        // TODO find different way for by ref args
         // stash by-ref variables
         self.generate_stash_by_ref_args(&args);
         // stash function name

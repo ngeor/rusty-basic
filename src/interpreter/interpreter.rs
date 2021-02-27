@@ -38,7 +38,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     lpt1: TLpt1,
 
     /// Holds the definition of user defined types
-    user_defined_types: Rc<UserDefinedTypes>,
+    user_defined_types: UserDefinedTypes,
 
     /// Contains variables and constants, collects function/sub arguments.
     contexts: Contexts,
@@ -103,7 +103,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     }
 
     fn user_defined_types(&self) -> &UserDefinedTypes {
-        self.user_defined_types.as_ref()
+        &self.user_defined_types
     }
 
     fn context(&self) -> &Context {
@@ -172,19 +172,18 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         lpt1: TLpt1,
         user_defined_types: UserDefinedTypes,
     ) -> Self {
-        let rc_user_defined_types = Rc::new(user_defined_types);
         Interpreter {
             stdlib,
             stdin,
             stdout,
             lpt1,
-            contexts: Contexts::new(Rc::clone(&rc_user_defined_types)),
+            contexts: Contexts::new(),
             return_address_stack: vec![],
             go_sub_address_stack: vec![],
             register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
-            user_defined_types: Rc::clone(&rc_user_defined_types),
+            user_defined_types,
             var_path_stack: VecDeque::new(),
             by_ref_stack: VecDeque::new(),
             function_result: None,

@@ -3,10 +3,8 @@ use crate::interpreter::arguments_stack::ArgumentsStack;
 use crate::interpreter::variables::Variables;
 use crate::parser::{
     BareName, DimName, DimType, ExpressionType, HasExpressionType, Name, TypeQualifier,
-    UserDefinedTypes,
 };
 use crate::variant::Variant;
-use std::rc::Rc;
 
 /*
 
@@ -59,7 +57,6 @@ Example 2:
 
 #[derive(Debug)]
 pub struct Context {
-    user_defined_types: Rc<UserDefinedTypes>,
     variables: Variables,
 
     /// Preparing arguments for the next call
@@ -67,9 +64,8 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
+    pub fn new() -> Self {
         Self {
-            user_defined_types,
             variables: Variables::new(),
             arguments_stack: ArgumentsStack::new(),
         }
@@ -85,7 +81,6 @@ impl Context {
             }
         }
         Self {
-            user_defined_types: Rc::clone(&self.user_defined_types),
             variables,
             arguments_stack: ArgumentsStack::new(),
         }
@@ -180,8 +175,8 @@ pub struct Contexts {
 }
 
 impl Contexts {
-    pub fn new(user_defined_types: Rc<UserDefinedTypes>) -> Self {
-        let context = Context::new(user_defined_types);
+    pub fn new() -> Self {
+        let context = Context::new();
         Self {
             v: vec![Some(context)],
         }

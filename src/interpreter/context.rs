@@ -51,6 +51,12 @@ Example 2:
 // TODO state machine to understand context better, perhaps with the state pattern as in the rust docs
 // TODO maybe instead of Variables have some sort of VariableReference class pointing to a VariableManager with an index
 
+// Context
+//      |--> Argument Context (can use variables of parent context in read-only mode)
+//                              has a vec of future arguments for the sub call
+//               |--^^ (recursively stacked for nested sub calls)
+//           |--> Child Context (has its own variables, initialized by the argument context stack)
+
 #[derive(Debug)]
 pub struct Context {
     user_defined_types: Rc<UserDefinedTypes>,
@@ -130,14 +136,11 @@ impl Context {
         self.variables.insert_user_defined(bare_name, value);
     }
 
-    // ========================================================
-    // used to be ArgsContext
-    // ========================================================
-
     pub fn arguments_stack(&mut self) -> &mut ArgumentsStack {
         &mut self.arguments_stack
     }
 
+    #[deprecated]
     pub fn get_r_value_by_name(&self, name: &Name) -> Option<&Variant> {
         let bare_name: &BareName = name.bare_name();
         match name.qualifier() {

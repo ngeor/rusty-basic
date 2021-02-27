@@ -402,6 +402,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::AllocateFixedLengthString(len) => {
                 allocation::allocate_fixed_length_string(self, *len).with_err_at(pos)?;
             }
+            // TODO instructions should only accept simple types as arguments
             Instruction::AllocateArrayIntoA(element_type) => {
                 allocation::allocate_array(self, element_type).with_err_at(pos)?;
             }

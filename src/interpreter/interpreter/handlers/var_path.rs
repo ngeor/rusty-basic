@@ -63,7 +63,7 @@ fn resolve_some_name_ptr_mut<T: InterpreterTrait>(
             let ctx = if shared {
                 interpreter.global_context_mut()
             } else {
-                interpreter.context_mut()
+                interpreter.context_mut().get_variables_mut()
             };
             Ok(ctx.get_or_create(name))
         }

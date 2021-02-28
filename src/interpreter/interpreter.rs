@@ -12,6 +12,7 @@ use crate::interpreter::printer::Printer;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
+use crate::interpreter::variables::Variables;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::parser::UserDefinedTypes;
 use crate::variant::Variant;
@@ -41,7 +42,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     user_defined_types: UserDefinedTypes,
 
     /// Contains variables and constants, collects function/sub arguments.
-    contexts: Contexts,
+    context: Context,
 
     /// Holds the "registers" of the CPU
     register_stack: RegisterStack,
@@ -107,15 +108,15 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     }
 
     fn context(&self) -> &Context {
-        &self.contexts.context()
+        &self.context
     }
 
     fn context_mut(&mut self) -> &mut Context {
-        self.contexts.context_mut()
+        &mut self.context
     }
 
-    fn global_context_mut(&mut self) -> &mut Context {
-        self.contexts.global_context_mut()
+    fn global_context_mut(&mut self) -> &mut Variables {
+        self.context.global_state_mut()
     }
 
     fn registers(&self) -> &Registers {
@@ -177,7 +178,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             stdin,
             stdout,
             lpt1,
-            contexts: Contexts::new(),
+            context: Context::new(),
             return_address_stack: vec![],
             go_sub_address_stack: vec![],
             register_stack: vec![Registers::new()],
@@ -299,11 +300,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 subprogram::begin_collect_arguments(self);
             }
             Instruction::PushStack => {
-                self.push_context();
+                self.context.stop_collecting_arguments();
                 self.stacktrace.insert(0, pos);
             }
             Instruction::PopStack => {
-                self.pop_context();
+                self.context.pop();
                 self.stacktrace.remove(0);
             }
             Instruction::EnqueueToReturnStack(idx) => {
@@ -364,7 +365,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                         ctx.nearest_statement_finder
                             .find_current(last_error_address),
                     );
-                    self.contexts.pop_error_handler_context();
+                    self.context.pop();
                 }
                 _ => {
                     // TODO test this
@@ -375,7 +376,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 Some(last_error_address) => {
                     ctx.opt_next_index =
                         Some(ctx.nearest_statement_finder.find_next(last_error_address));
-                    self.contexts.pop_error_handler_context();
+                    self.context.pop();
                 }
                 _ => {
                     // TODO test this
@@ -385,7 +386,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::ResumeLabel(resume_label) => match self.last_error_address.take() {
                 Some(_) => {
                     ctx.opt_next_index = Some(resume_label.address());
-                    self.contexts.pop_error_handler_context();
+                    self.context.pop();
                 }
                 _ => {
                     // TODO test this
@@ -530,7 +531,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                         ErrorHandler::Address(handler_address) => {
                             // store error address, so we can call RESUME and RESUME NEXT from within the error handler
                             // TODO not good enough if a sub is called and tries to access a DIM SHARED variable
-                            self.contexts.push_error_handler_context();
+                            self.context.push_error_handler_context();
                             self.last_error_address = Some(i);
                             i = handler_address;
                         }
@@ -545,14 +546,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
         }
         Ok(())
-    }
-
-    fn push_context(&mut self) {
-        self.contexts.push();
-    }
-
-    fn pop_context(&mut self) {
-        self.contexts.pop();
     }
 }
 

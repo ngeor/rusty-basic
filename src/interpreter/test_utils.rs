@@ -218,10 +218,10 @@ impl Stdlib for MockStdlib {
 }
 
 impl MockInterpreter {
-    #[deprecated]
+    // TODO remove this
     pub fn get_variable_str(&self, name: &str) -> Variant {
         let name = Name::from(name);
-        self.context().get_r_value_by_name(&name).unwrap().clone()
+        self.context().get_by_name(&name)
     }
 }
 

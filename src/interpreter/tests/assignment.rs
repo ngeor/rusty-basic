@@ -10,8 +10,8 @@ macro_rules! assert_assign_ok {
         let interpreter = interpret($program);
         let name = crate::parser::Name::from($expected_variable_name);
         assert_eq!(
-            interpreter.context().get_r_value_by_name(&name).unwrap(),
-            &crate::variant::Variant::from($expected_value)
+            interpreter.context().get_by_name(&name),
+            crate::variant::Variant::from($expected_value)
         );
     };
 }

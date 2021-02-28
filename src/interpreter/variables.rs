@@ -1,4 +1,7 @@
-use crate::parser::{BareName, Name, ParamName, ParamType, QualifiedName, TypeQualifier};
+use crate::parser::{
+    BareName, DimName, DimType, ExpressionType, HasExpressionType, Name, ParamName, ParamType,
+    QualifiedName, TypeQualifier,
+};
 use crate::variant::{Variant, V_FALSE};
 use std::collections::HashMap;
 
@@ -65,6 +68,38 @@ impl Variables {
         }
     }
 
+    pub fn insert_dim(&mut self, dim_name: DimName, value: Variant) {
+        let DimName {
+            bare_name,
+            dim_type,
+            ..
+        } = dim_name;
+        match dim_type {
+            DimType::BuiltIn(qualifier, _) => {
+                self.insert_built_in(bare_name, qualifier, value);
+            }
+            DimType::FixedLengthString(_, _) => {
+                self.insert_built_in(bare_name, TypeQualifier::DollarString, value);
+            }
+            DimType::UserDefined(_) => {
+                self.insert_user_defined(bare_name, value);
+            }
+            DimType::Array(_, box_element_type) => {
+                let element_type = box_element_type.expression_type();
+                match element_type {
+                    ExpressionType::BuiltIn(q) => {
+                        self.insert_built_in(bare_name, q, value);
+                    }
+                    ExpressionType::FixedLengthString(_) => {
+                        self.insert_built_in(bare_name, TypeQualifier::DollarString, value);
+                    }
+                    _ => self.insert_user_defined(bare_name, value),
+                }
+            }
+            DimType::Bare => panic!("Unresolved type"),
+        }
+    }
+
     pub fn get_or_create(&mut self, name: Name) -> &mut Variant {
         match self.name_to_index.get(&name) {
             Some(idx) => self.values.get_mut(*idx).expect("Should have variable"),
@@ -100,7 +135,7 @@ impl Variables {
         self.get_by_name(&bare_name.clone().into())
     }
 
-    fn get_by_name(&self, name: &Name) -> Option<&Variant> {
+    pub fn get_by_name(&self, name: &Name) -> Option<&Variant> {
         self.name_to_index.get(name).and_then(|idx| self.get(*idx))
     }
 

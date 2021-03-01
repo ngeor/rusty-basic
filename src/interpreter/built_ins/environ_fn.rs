@@ -3,12 +3,7 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let env_var_name: &String = interpreter
-        .context()
-        .get(0)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
+    let env_var_name: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
     let result = interpreter.stdlib().get_env_var(env_var_name);
     interpreter
         .context_mut()

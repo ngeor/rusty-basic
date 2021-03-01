@@ -4,7 +4,7 @@ use super::*;
 use crate::common::Locatable;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let v: &Variant = interpreter.context().get(0).unwrap();
+    let v: &Variant = &interpreter.context()[0];
     let len: i32 = match v {
         Variant::VSingle(_) => 4,
         Variant::VDouble(_) => 8,

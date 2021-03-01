@@ -5,9 +5,9 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let a: &Variant = interpreter.context().get(0).unwrap();
-    let b: &Variant = interpreter.context().get(1).unwrap();
-    let result: i32 = match interpreter.context().get(2) {
+    let a: &Variant = &interpreter.context()[0];
+    let b: &Variant = &interpreter.context()[1];
+    let result: i32 = match interpreter.context().variables().get(2) {
         Some(c) => do_instr(
             a.try_into().with_err_no_pos()?,
             b.try_into().with_err_no_pos()?,

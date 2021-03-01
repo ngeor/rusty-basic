@@ -6,11 +6,7 @@ pub fn begin_collect_arguments<T: InterpreterTrait>(interpreter: &mut T) {
 }
 
 pub fn enqueue_to_return_stack<T: InterpreterTrait>(interpreter: &mut T, idx: &usize) {
-    let v = interpreter
-        .context()
-        .get(*idx)
-        .expect("Should have value")
-        .clone();
+    let v = interpreter.context()[*idx].clone();
     interpreter.by_ref_stack().push_back(v);
 }
 
@@ -27,7 +23,11 @@ pub fn stash_function_return_value<T: InterpreterTrait>(
     function_name: &QualifiedName,
 ) {
     let name: Name = Name::Qualified(function_name.clone());
-    let v = interpreter.context_mut().get_or_create(name).clone();
+    let v = interpreter
+        .context_mut()
+        .variables_mut()
+        .get_or_create(name)
+        .clone();
     interpreter.set_function_result(v);
 }
 

@@ -86,26 +86,9 @@ impl Context {
             .expect("Expected state with arguments")
     }
 
-    // TODO the remaining public functions are from Variables, maybe not expose them or move them into a trait if needed
-
-    pub fn get(&self, idx: usize) -> Option<&Variant> {
-        self.variables().get(idx)
-    }
-
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
-        self.variables_mut().get_mut(idx)
-    }
-
+    #[deprecated]
     pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
         self.variables_mut().insert_dim(dim_name, value);
-    }
-
-    pub fn variables_len(&self) -> usize {
-        self.variables().len()
-    }
-
-    pub fn get_or_create(&mut self, var_name: Name) -> &mut Variant {
-        self.variables_mut().get_or_create(var_name)
     }
 
     #[cfg(test)]
@@ -189,5 +172,23 @@ impl State {
                 None
             },
         }
+    }
+}
+
+impl std::ops::Index<usize> for Context {
+    type Output = Variant;
+
+    fn index(&self, index: usize) -> &Variant {
+        self.variables()
+            .get(index)
+            .expect("Variable not found at requested index")
+    }
+}
+
+impl std::ops::IndexMut<usize> for Context {
+    fn index_mut(&mut self, index: usize) -> &mut Variant {
+        self.variables_mut()
+            .get_mut(index)
+            .expect("Variable not found at requested index")
     }
 }

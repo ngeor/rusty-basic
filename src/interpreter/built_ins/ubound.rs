@@ -2,8 +2,8 @@ use super::*;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let v: Variant = interpreter.context().get(0).unwrap().clone();
-    let dimension: i32 = match interpreter.context().get(1) {
+    let v: Variant = interpreter.context()[0].clone();
+    let dimension: i32 = match interpreter.context().variables().get(1) {
         Some(v) => v
             .clone()
             .cast(TypeQualifier::PercentInteger)

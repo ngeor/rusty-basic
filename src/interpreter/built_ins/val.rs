@@ -3,12 +3,7 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let v: &String = interpreter
-        .context()
-        .get(0)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
+    let v: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
     let result: Variant = val(v).with_err_no_pos()?;
     interpreter
         .context_mut()

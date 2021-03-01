@@ -3,7 +3,7 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let v: &Variant = interpreter.context().get(0).unwrap();
+    let v: &Variant = &interpreter.context()[0];
     let result = match v {
         Variant::VSingle(f) => format!("{}", f),
         Variant::VDouble(f) => format!("{}", f),

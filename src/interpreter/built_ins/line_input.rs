@@ -9,8 +9,8 @@ use std::convert::TryFrom;
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let mut file_handle: FileHandle = FileHandle::default();
     let mut has_file_handle = false;
-    for idx in 0..interpreter.context().variables_len() {
-        let v = interpreter.context().get(idx).unwrap();
+    for idx in 0..interpreter.context().variables().len() {
+        let v = &interpreter.context()[idx];
         match v {
             Variant::VInteger(f) => {
                 if idx == 0 {
@@ -57,7 +57,7 @@ fn line_input_one_file<S: InterpreterTrait>(
         .file_manager()
         .try_get_file_info_input_mut(file_handle)?;
     let s = file_input.line_input()?;
-    *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
+    interpreter.context_mut()[idx] = Variant::VString(s);
     Ok(())
 }
 
@@ -66,7 +66,7 @@ fn line_input_one_stdin<S: InterpreterTrait>(
     idx: usize,
 ) -> Result<(), QError> {
     let s = interpreter.stdin().input()?;
-    *interpreter.context_mut().get_mut(idx).unwrap() = Variant::VString(s);
+    interpreter.context_mut()[idx] = Variant::VString(s);
     Ok(())
 }
 

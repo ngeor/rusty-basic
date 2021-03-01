@@ -11,19 +11,14 @@ use super::*;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let file_name: String = interpreter.context().get(0).unwrap().to_string();
-    let file_mode: FileMode = i32::try_from(interpreter.context().get(1).unwrap())
+    let file_name: String = (&interpreter.context()[0]).to_string();
+    let file_mode: FileMode = i32::try_from(&interpreter.context()[1])
         .with_err_no_pos()?
         .into();
-    let file_access: FileAccess = i32::try_from(interpreter.context().get(2).unwrap())
+    let file_access: FileAccess = i32::try_from(&interpreter.context()[2])
         .with_err_no_pos()?
         .into();
-    let file_handle: FileHandle = interpreter
-        .context()
-        .get(3)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
+    let file_handle: FileHandle = (&interpreter.context()[3]).try_into().with_err_no_pos()?;
     interpreter
         .file_manager()
         .open(file_handle, &file_name, file_mode, file_access)

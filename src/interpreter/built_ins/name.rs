@@ -4,18 +4,8 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let old_file_name: &String = interpreter
-        .context()
-        .get(0)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
-    let new_file_name: &String = interpreter
-        .context()
-        .get(1)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
+    let old_file_name: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
+    let new_file_name: &String = (&interpreter.context()[1]).try_into().with_err_no_pos()?;
     std::fs::rename(old_file_name, new_file_name)
         .map_err(|e| e.into())
         .with_err_no_pos()

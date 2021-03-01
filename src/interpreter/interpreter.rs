@@ -115,8 +115,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
         &mut self.context
     }
 
-    fn global_context_mut(&mut self) -> &mut Variables {
-        self.context.global_state_mut()
+    fn global_variables_mut(&mut self) -> &mut Variables {
+        self.context.global_variables_mut()
     }
 
     fn registers(&self) -> &Registers {

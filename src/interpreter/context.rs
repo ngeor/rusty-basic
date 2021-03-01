@@ -2,77 +2,118 @@ use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
 use crate::parser::{DimName, Name};
 use crate::variant::Variant;
+use std::collections::HashMap;
 
 pub struct Context {
     states: Vec<State>,
     memory_blocks: Vec<Variables>,
+    // memory block index -> count
+    memory_block_ref_count: HashMap<usize, usize>,
 }
 
 impl Context {
     pub fn new() -> Self {
         let global_variables = Variables::new();
         let memory_blocks = vec![global_variables];
-        let root_state = State::new_normal(0);
+        let root_state = State::new(0, false);
         let states = vec![root_state];
+        let mut memory_block_ref_count: HashMap<usize, usize> = HashMap::new();
+        memory_block_ref_count.insert(0, 1);
         Self {
             states,
             memory_blocks,
+            memory_block_ref_count,
         }
     }
 
-    fn current_memory_block_index(&self) -> usize {
-        self.state().idx
-    }
-
     pub fn begin_collecting_arguments(&mut self) {
-        let current_memory_block_index: usize = self.current_memory_block_index();
         // build argument state that shares memory with the last context
-        self.states
-            .push(State::new_arguments(current_memory_block_index));
+        let current_memory_block_index: usize = self.current_memory_block_index();
+        self.do_push_existing(current_memory_block_index, true);
     }
 
     pub fn stop_collecting_arguments(&mut self) {
         // current state must be argument collecting state
-        let last_context = self.states.pop().expect("Empty states!");
-        let arguments = last_context.arguments.expect("Expected argument state");
-        let variables = Self::arguments_to_variables(arguments);
-        // push state as last on the list
-        let next_memory_block_index = self.memory_blocks.len();
-        let new_state = State::new_normal(next_memory_block_index);
-        self.memory_blocks.push(variables);
-        self.states.push(new_state);
-    }
-
-    fn arguments_to_variables(arguments: Arguments) -> Variables {
-        let mut variables: Variables = Variables::new();
-        for (opt_param, arg) in arguments.into_iter() {
-            match opt_param {
-                Some(param_name) => variables.insert_param(param_name, arg),
-                None => variables.insert_unnamed(arg),
-            }
-        }
-        variables
+        let arguments = self.do_pop().arguments.expect("Expected argument state");
+        let variables = Variables::from(arguments);
+        self.do_push_new(variables);
     }
 
     pub fn pop(&mut self) {
-        let state = self.states.pop().expect("Empty states!");
+        let state = self.do_pop();
         if state.arguments.is_some() {
             // must be NormalState (if array indices, use the drop array method)
             panic!("Expected normal state");
         }
-        // TODO use some reference counting here
-        // was it pointing to the last? but do not drop global module state
-        if state.idx + 1 == self.memory_blocks.len() && self.memory_blocks.len() > 1 {
-            self.memory_blocks.pop().expect("Empty variables");
-        }
     }
 
     pub fn push_error_handler_context(&mut self) {
-        // TODO drop all ArgumentState until we hit the first NormalState
-        // build new NormalState referencing the global memory
-        let new_state = State::new_normal(0);
-        // push as last
-        self.states.push(new_state);
+        // drop all ArgumentState until we hit the first NormalState
+        while self.states.last().unwrap().arguments.is_some() {
+            self.do_pop();
+        }
+        self.do_push_existing(0, false);
+    }
+
+    // needed due to DIM SHARED
+    pub fn global_variables_mut(&mut self) -> &mut Variables {
+        self.memory_blocks.first_mut().unwrap()
+    }
+
+    pub fn variables(&self) -> &Variables {
+        self.memory_blocks
+            .get(self.current_memory_block_index())
+            .expect("internal error")
+    }
+
+    pub fn variables_mut(&mut self) -> &mut Variables {
+        let current_memory_block_index = self.current_memory_block_index();
+        self.memory_blocks
+            .get_mut(current_memory_block_index)
+            .expect("internal error")
+    }
+
+    pub fn arguments_mut(&mut self) -> &mut Arguments {
+        self.state_mut()
+            .arguments
+            .as_mut()
+            .expect("Not collecting arguments!")
+    }
+
+    pub fn drop_arguments_for_array_allocation(&mut self) -> Arguments {
+        self.do_pop()
+            .arguments
+            .expect("Expected state with arguments")
+    }
+
+    // TODO the remaining public functions are from Variables, maybe not expose them or move them into a trait if needed
+
+    pub fn get(&self, idx: usize) -> Option<&Variant> {
+        self.variables().get(idx)
+    }
+
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
+        self.variables_mut().get_mut(idx)
+    }
+
+    pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
+        self.variables_mut().insert_dim(dim_name, value);
+    }
+
+    pub fn variables_len(&self) -> usize {
+        self.variables().len()
+    }
+
+    pub fn get_or_create(&mut self, var_name: Name) -> &mut Variant {
+        self.variables_mut().get_or_create(var_name)
+    }
+
+    #[cfg(test)]
+    pub fn get_by_name(&self, name: &Name) -> Variant {
+        self.variables()
+            .get_by_name(name)
+            .map(Clone::clone)
+            .expect("Variable not found")
     }
 
     fn state(&self) -> &State {
@@ -83,83 +124,70 @@ impl Context {
         self.states.last_mut().expect("Empty states!")
     }
 
-    // needed due to DIM SHARED
-    pub fn global_state_mut(&mut self) -> &mut Variables {
-        self.memory_blocks.first_mut().unwrap()
+    fn current_memory_block_index(&self) -> usize {
+        self.state().memory_block_index
     }
 
-    fn get_variables(&self) -> &Variables {
-        self.memory_blocks
-            .get(self.current_memory_block_index())
-            .expect("internal error")
+    fn do_push_new(&mut self, variables: Variables) {
+        let next_memory_block_index = self.memory_blocks.len();
+        self.memory_blocks.push(variables);
+        self.do_push_existing(next_memory_block_index, false);
     }
 
-    pub fn get_variables_mut(&mut self) -> &mut Variables {
-        let current_memory_block_index = self.current_memory_block_index();
-        self.memory_blocks
-            .get_mut(current_memory_block_index)
-            .expect("internal error")
+    fn do_push_existing(&mut self, memory_block_index: usize, arguments: bool) {
+        let state = State::new(memory_block_index, arguments);
+        self.states.push(state);
+        self.increase_ref_count(memory_block_index);
     }
 
-    pub fn get_arguments_mut(&mut self) -> &mut Arguments {
-        self.state_mut()
-            .arguments
-            .as_mut()
-            .expect("Not collecting arguments!")
+    fn do_pop(&mut self) -> State {
+        let state = self.states.pop().expect("States underflow");
+        let removed_from_rc = self.decrease_ref_count(state.memory_block_index);
+        if removed_from_rc {
+            self.memory_blocks.remove(state.memory_block_index);
+        }
+        state
     }
 
-    pub fn drop_arguments_for_array_allocation(&mut self) -> Arguments {
-        self.states.pop().unwrap().arguments.unwrap()
+    fn increase_ref_count(&mut self, memory_block_index: usize) {
+        let existing_count = match self.memory_block_ref_count.get(&memory_block_index) {
+            Some(c) => *c,
+            _ => 0,
+        };
+        self.memory_block_ref_count
+            .insert(memory_block_index, existing_count + 1);
     }
 
-    // TODO the remaining functions are from Variables, maybe not expose them or move them into a trait if needed
-
-    pub fn get(&self, idx: usize) -> Option<&Variant> {
-        self.get_variables().get(idx)
-    }
-
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
-        self.get_variables_mut().get_mut(idx)
-    }
-
-    pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
-        self.get_variables_mut().insert_dim(dim_name, value);
-    }
-
-    pub fn variables_len(&self) -> usize {
-        self.get_variables().len()
-    }
-
-    pub fn get_or_create(&mut self, var_name: Name) -> &mut Variant {
-        self.get_variables_mut().get_or_create(var_name)
-    }
-
-    #[cfg(test)]
-    pub fn get_by_name(&self, name: &Name) -> Variant {
-        self.get_variables()
-            .get_by_name(name)
-            .map(Clone::clone)
-            .expect("Variable not found")
+    fn decrease_ref_count(&mut self, memory_block_index: usize) -> bool {
+        let count: usize = *self
+            .memory_block_ref_count
+            .get(&memory_block_index)
+            .expect("Should already have a ref count");
+        if count <= 1 {
+            self.memory_block_ref_count.remove(&memory_block_index);
+            true
+        } else {
+            self.memory_block_ref_count
+                .insert(memory_block_index, count - 1);
+            false
+        }
     }
 }
 
 struct State {
-    idx: usize,
+    memory_block_index: usize,
     arguments: Option<Arguments>,
 }
 
 impl State {
-    pub fn new_normal(idx: usize) -> Self {
+    pub fn new(memory_block_index: usize, collecting_arguments: bool) -> Self {
         Self {
-            idx,
-            arguments: None,
-        }
-    }
-
-    pub fn new_arguments(idx: usize) -> Self {
-        Self {
-            idx,
-            arguments: Some(Arguments::new()),
+            memory_block_index,
+            arguments: if collecting_arguments {
+                Some(Arguments::new())
+            } else {
+                None
+            },
         }
     }
 }

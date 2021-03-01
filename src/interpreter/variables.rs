@@ -1,3 +1,4 @@
+use crate::interpreter::arguments::Arguments;
 use crate::parser::{
     BareName, DimName, DimType, ExpressionType, HasExpressionType, Name, ParamName, ParamType,
     QualifiedName, TypeQualifier,
@@ -145,5 +146,18 @@ impl Variables {
 
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
         self.values.get_mut(idx)
+    }
+}
+
+impl From<Arguments> for Variables {
+    fn from(arguments: Arguments) -> Self {
+        let mut variables: Self = Self::new();
+        for (opt_param, arg) in arguments.into_iter() {
+            match opt_param {
+                Some(param_name) => variables.insert_param(param_name, arg),
+                None => variables.insert_unnamed(arg),
+            }
+        }
+        variables
     }
 }

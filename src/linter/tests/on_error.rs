@@ -16,7 +16,7 @@ fn on_error_must_use_global_label() {
         ON ERROR GOTO ErrTrap
         EXIT SUB
         ErrTrap:
-            RESUME NEXT
+            SYSTEM
     END SUB
     "#;
     assert_linter_err!(input, QError::LabelNotDefined, 3, 9);

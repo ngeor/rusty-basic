@@ -34,7 +34,7 @@ pub enum Statement {
     ForLoop(ForLoopNode),
     While(ConditionalBlockNode),
 
-    OnErrorGoTo(OnErrorOption),
+    OnError(OnErrorOption),
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
     GoSub(CaseInsensitiveString),

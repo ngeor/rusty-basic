@@ -37,7 +37,7 @@ impl InstructionGenerator {
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),
             Statement::ForLoop(f) => self.generate_for_loop_instructions(f, pos),
             Statement::While(w) => self.generate_while_instructions(w, pos),
-            Statement::OnErrorGoTo(on_error_option) => match on_error_option {
+            Statement::OnError(on_error_option) => match on_error_option {
                 OnErrorOption::Label(label) => {
                     self.push(
                         Instruction::OnErrorGoTo(AddressOrLabel::Unresolved(label)),

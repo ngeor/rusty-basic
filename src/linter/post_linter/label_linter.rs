@@ -106,7 +106,7 @@ impl PostConversionLinter for LabelLinter {
         result
     }
 
-    fn visit_error_handler(&mut self, on_error_option: &OnErrorOption) -> Result<(), QErrorNode> {
+    fn visit_on_error(&mut self, on_error_option: &OnErrorOption) -> Result<(), QErrorNode> {
         match on_error_option {
             OnErrorOption::Label(label) => self.ensure_is_global_label(label),
             _ => Ok(()),
@@ -137,7 +137,6 @@ impl PostConversionLinter for LabelLinter {
 
     fn visit_resume(&mut self, resume_option: &ResumeOption) -> Result<(), QErrorNode> {
         if let ResumeOption::Label(label) = resume_option {
-            // TODO probably should also be only global label
             self.ensure_is_current_label(label)
         } else {
             Ok(())

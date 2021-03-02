@@ -61,7 +61,7 @@ pub trait PostConversionLinter {
             Statement::SelectCase(s) => self.visit_select_case(s),
             Statement::ForLoop(f) => self.visit_for_loop(f),
             Statement::While(w) => self.visit_conditional_block(w),
-            Statement::OnErrorGoTo(label) => self.visit_error_handler(label),
+            Statement::OnError(on_error_option) => self.visit_on_error(on_error_option),
             Statement::Label(label) => self.visit_label(label),
             Statement::GoTo(label) => self.visit_go_to(label),
             Statement::Comment(c) => self.visit_comment(c),
@@ -83,7 +83,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_error_handler(&mut self, _label: &OnErrorOption) -> Result<(), QErrorNode> {
+    fn visit_on_error(&mut self, _on_error_option: &OnErrorOption) -> Result<(), QErrorNode> {
         Ok(())
     }
 

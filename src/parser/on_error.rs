@@ -16,7 +16,7 @@ where
                 .or(goto())
                 .or_syntax_error("Expected: GOTO or RESUME"),
         )
-        .map(|(_, r)| Statement::OnErrorGoTo(r))
+        .map(|(_, r)| Statement::OnError(r))
 }
 
 fn next<R>() -> impl Parser<R, Output = OnErrorOption>

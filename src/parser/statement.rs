@@ -22,24 +22,12 @@ pub fn statement_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    dim::dim_p()
-        .or(constant::constant_p())
-        .or(comment::comment_p())
-        .or(built_ins::parse_built_in_p())
-        .or(statement_label_p())
-        .or(sub_call::sub_call_or_assignment_p())
+    statement_label_p()
+        .or(single_line_statement_p())
         .or(if_block::if_block_p())
         .or(for_loop::for_loop_p())
         .or(select_case::select_case_p())
         .or(while_wend::while_wend_p())
-        .or(statement_go_to_p())
-        .or(statement_go_sub_p())
-        .or(statement_return_p())
-        .or(statement_exit_p())
-        .or(statement_on_error_go_to_p())
-        .or(statement_resume_p())
-        .or(end::parse_end_p())
-        .or(system::parse_system_p())
         .or(illegal_starting_keywords())
 }
 
@@ -69,19 +57,7 @@ pub fn single_line_statement_p<R>() -> impl Parser<R, Output = Statement>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    comment::comment_p()
-        .or(dim::dim_p())
-        .or(constant::constant_p())
-        .or(built_ins::parse_built_in_p())
-        .or(sub_call::sub_call_or_assignment_p())
-        .or(statement_go_to_p())
-        .or(statement_go_sub_p())
-        .or(statement_return_p())
-        .or(statement_exit_p())
-        .or(statement_on_error_go_to_p())
-        .or(statement_resume_p())
-        .or(end::parse_end_p())
-        .or(system::parse_system_p())
+    comment::comment_p().or(single_line_non_comment_statement_p())
 }
 
 fn statement_label_p<R>() -> impl Parser<R, Output = Statement>

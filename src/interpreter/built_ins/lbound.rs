@@ -2,8 +2,8 @@ use super::*;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let v: Variant = interpreter.context().get(0).unwrap().clone();
-    let dimension: i32 = match interpreter.context().get(1) {
+    let v: Variant = interpreter.context()[0].clone();
+    let dimension: i32 = match interpreter.context().variables().get(1) {
         Some(v) => v
             .clone()
             .cast(TypeQualifier::PercentInteger)
@@ -17,9 +17,10 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         match v {
             Variant::VArray(a) => match a.get_dimensions((dimension - 1) as usize) {
                 Some((lower, _)) => {
-                    interpreter
-                        .context_mut()
-                        .set_variable(BuiltInFunction::LBound.into(), Variant::VInteger(*lower));
+                    interpreter.context_mut().set_built_in_function_result(
+                        BuiltInFunction::LBound,
+                        Variant::VInteger(*lower),
+                    );
                     Ok(())
                 }
                 _ => Err(QError::SubscriptOutOfRange).with_err_no_pos(),

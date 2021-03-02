@@ -11,7 +11,6 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     close::parse_close_p()
-        .or(end::parse_end_p())
         .or(input::parse_input_p())
         .or(line_input::parse_line_input_p())
         .or(name::parse_name_p())
@@ -237,92 +236,6 @@ mod close {
                 Statement::SubCall(
                     "CLOSE".into(),
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
-                )
-            );
-        }
-    }
-}
-
-mod end {
-    use super::*;
-    use crate::parser::pc_specific::keyword_choice_p;
-    use crate::parser::statement_separator::EofOrStatementSeparator;
-
-    pub fn parse_end_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::End)
-            .and(
-                opt_whitespace_p(false)
-                    .and(AfterEndSeparator {})
-                    .map(|(l, r)| {
-                        let mut s: String = String::new();
-                        s.push_str(&l);
-                        s.push_str(&r);
-                        s
-                    })
-                    .peek(),
-            )
-            .map(|_| Statement::SubCall(BareName::from(BuiltInSub::End), vec![]))
-    }
-
-    /// Parses the next token after END. If it is one of the valid keywords that
-    /// can follow END, it is undone so that the entire parsing will be undone.
-    /// Otherwise, it demands that we find an end-of-statement terminator.
-    struct AfterEndSeparator {}
-
-    impl<R> Parser<R> for AfterEndSeparator
-    where
-        R: Reader<Item = char, Err = QError>,
-    {
-        type Output = String;
-
-        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-            let (reader, opt_result) = allowed_keywords_after_end().parse(reader)?;
-            match opt_result {
-                Some((_, s)) => {
-                    // undo and return None, as another parser will handle this
-                    Ok((reader.undo(s), None))
-                }
-                _ => {
-                    let (reader, opt_str) = EofOrStatementSeparator::new().parse(reader)?;
-                    match opt_str {
-                        Some(s) => Ok((reader, Some(s))),
-                        _ => {
-                            // error
-                            Err((reader, QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement")))
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fn allowed_keywords_after_end<R>() -> impl Parser<R, Output = (Keyword, String)>
-    where
-        R: Reader<Item = char>,
-    {
-        keyword_choice_p(&[
-            Keyword::Function,
-            Keyword::If,
-            Keyword::Select,
-            Keyword::Sub,
-            Keyword::Type,
-        ])
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use crate::assert_parser_err;
-
-        #[test]
-        fn test_sub_call_end_no_args_allowed() {
-            assert_parser_err!(
-                "END 42",
-                QError::syntax_error(
-                    "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"
                 )
             );
         }

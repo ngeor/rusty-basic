@@ -1,18 +1,14 @@
 // CHR$(ascii-code%) returns the text representation of the given ascii code
 use super::*;
+use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let i: i32 = interpreter
-        .context()
-        .get(0)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
+    let i: i32 = i32::try_from(&interpreter.context()[0]).with_err_no_pos()?;
     let mut s: String = String::new();
     s.push((i as u8) as char);
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::Chr.into(), s.into());
+        .set_built_in_function_result(BuiltInFunction::Chr, s);
     Ok(())
 }
 

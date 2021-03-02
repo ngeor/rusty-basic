@@ -3,12 +3,7 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let file_name: &String = interpreter
-        .context()
-        .get(0)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
+    let file_name: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
     std::fs::remove_file(file_name)
         .map_err(|e| e.into())
         .with_err_no_pos()

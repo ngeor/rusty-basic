@@ -1,7 +1,6 @@
-use crate::built_ins::BuiltInSub;
 use crate::common::{AtRowCol, StripLocation};
 use crate::instruction_generator::test_utils::*;
-use crate::instruction_generator::{Instruction, RootPath};
+use crate::instruction_generator::{AddressOrLabel, Instruction, PrinterType, RootPath};
 use crate::parser::{BuiltInStyle, ExpressionType, ParamName, ParamType, TypeQualifier};
 use crate::variant::Variant;
 
@@ -127,13 +126,9 @@ fn test_assign_and_print_one_element() {
             Instruction::PopValueStackIntoA,
             Instruction::CopyAToVarPath,
             // print it
-            Instruction::BeginCollectArguments,
+            Instruction::PrintSetPrinterType(PrinterType::Print),
             Instruction::LoadIntoA(Variant::VInteger(0)),
-            Instruction::PushAToUnnamedArg,
-            Instruction::LoadIntoA(Variant::VInteger(0)),
-            Instruction::PushAToUnnamedArg,
-            Instruction::LoadIntoA(Variant::VInteger(0)),
-            Instruction::PushAToUnnamedArg,
+            Instruction::PrintSetFormatStringFromA,
             Instruction::VarPathName(RootPath {
                 name: "A!".into(),
                 shared: false
@@ -143,10 +138,8 @@ fn test_assign_and_print_one_element() {
             Instruction::VarPathIndex,
             Instruction::PopValueStackIntoA,
             Instruction::CopyVarPathToA,
-            Instruction::PushAToUnnamedArg,
-            Instruction::PushStack,
-            Instruction::BuiltInSub(BuiltInSub::Print),
-            Instruction::PopStack,
+            Instruction::PrintValueFromA,
+            Instruction::PrintEnd,
             Instruction::Halt,
         ]
     );
@@ -195,7 +188,7 @@ fn test_pass_param_to_sub() {
             )),
             Instruction::PushStack,
             Instruction::PushRet(15),
-            Instruction::Jump(21),
+            Instruction::Jump(AddressOrLabel::Resolved(21)),
             Instruction::EnqueueToReturnStack(0),
             Instruction::PopStack,
             Instruction::DequeueFromReturnStack,

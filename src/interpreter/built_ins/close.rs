@@ -1,10 +1,11 @@
 // CLOSE
 use super::*;
+use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let file_handles: Vec<FileHandle> = (0..interpreter.context().parameter_count())
-        .map(|idx| interpreter.context().get(idx).unwrap())
-        .map(|v| v.try_into())
+    let file_handles: Vec<FileHandle> = (0..interpreter.context().variables().len())
+        .map(|idx| &interpreter.context()[idx])
+        .map(FileHandle::try_from)
         .collect::<Result<Vec<FileHandle>, QError>>()
         .with_err_no_pos()?;
     if file_handles.is_empty() {

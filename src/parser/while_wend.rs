@@ -49,7 +49,7 @@ mod tests {
                     ExpressionType::Unresolved
                 )
                 .at_rc(2, 17),
-                statements: vec![Statement::SubCall(BareName::from("SYSTEM"), vec![]).at_rc(3, 13)]
+                statements: vec![Statement::System.at_rc(3, 13)]
             })
         );
     }
@@ -101,7 +101,7 @@ mod tests {
                     condition: "A".as_var_expr(2, 15),
                     statements: vec![
                         Statement::Comment(" keep looping".to_string()).at_rc(2, 20),
-                        Statement::SubCall(BareName::from("SYSTEM"), vec![]).at_rc(3, 13),
+                        Statement::System.at_rc(3, 13),
                         Statement::Comment(" exit".to_string()).at_rc(3, 20)
                     ]
                 }))

@@ -1,236 +1,139 @@
-use crate::common::{FileHandle, QError, StringUtils};
-use crate::instruction_generator::print::{PrintArgType, PrintHandle};
-use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::common::*;
+use crate::instruction_generator::PrinterType;
 use crate::interpreter::printer::Printer;
 use crate::variant::Variant;
-use std::collections::VecDeque;
-use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let parameter_count = interpreter.context().parameter_count();
-    // get all args (cloned) to fight the borrow checker
-    let mut args: VecDeque<Variant> = (0..parameter_count)
-        .map(|i| interpreter.context().get(i).unwrap().clone())
-        .collect();
-    let (print_handle, file_handle) = decode_print_handle(&mut args)?;
-    let opt_format_string: Option<String> = decode_format_string(&mut args)?.clone();
-    let mut printer = PrinterWrapper {
-        interpreter,
-        print_handle,
-        file_handle,
-    };
-    match opt_format_string {
-        Some(format_string) => print_with_format_string(&mut printer, &mut args, format_string),
-        _ => print_without_format_string(&mut printer, &mut args),
-    }
-}
-
-fn decode_print_handle(args: &mut VecDeque<Variant>) -> Result<(PrintHandle, FileHandle), QError> {
-    let print_handle = PrintHandle::try_from(
-        args.pop_front()
-            .expect("Should have print handle parameter"),
-    )?;
-    let file_handle = if let PrintHandle::File = print_handle {
-        FileHandle::try_from(args.pop_front().expect("Should have file handle parameter"))?
-    } else {
-        FileHandle::default()
-    };
-    Ok((print_handle, file_handle))
-}
-
-fn decode_format_string(args: &mut VecDeque<Variant>) -> Result<Option<String>, QError> {
-    let has_format_string: bool = args
-        .pop_front()
-        .expect("Expected flag parameter for format string")
-        .try_into()?;
-    if has_format_string {
-        let v: Variant = args.pop_front().expect("Expected format string parameter");
-        v.try_into().map(|x| Some(x))
-    } else {
-        Ok(None)
-    }
-}
-
-fn decode_print_arg(args: &mut VecDeque<Variant>) -> Result<PrintVal, QError> {
-    let print_arg_type =
-        PrintArgType::try_from(args.pop_front().expect("Expected print arg type parameter"))?;
-    match print_arg_type {
-        PrintArgType::Expression => {
-            let v = args.pop_front().expect("Expected expression parameter");
-            Ok(PrintVal::Value(v))
-        }
-        PrintArgType::Comma => Ok(PrintVal::Comma),
-        PrintArgType::Semicolon => Ok(PrintVal::Semicolon),
-    }
-}
-
-struct PrinterWrapper<'a, S> {
-    interpreter: &'a mut S,
-    print_handle: PrintHandle,
+/// Handles the PRINT and LPRINT statements.
+#[derive(Debug)]
+pub struct PrintInterpreter {
+    printer_type: PrinterType,
     file_handle: FileHandle,
+    format_string: Option<String>,
+    should_skip_new_line: bool,
+    format_string_idx: usize,
 }
 
-impl<'a, S: InterpreterTrait> Printer for PrinterWrapper<'a, S> {
-    fn print(&mut self, s: &str) -> std::io::Result<usize> {
-        match self.print_handle {
-            PrintHandle::File => self
-                .interpreter
-                .file_manager()
-                .try_get_file_info_output_mut(&self.file_handle)
-                .expect("Expected file handle")
-                .print(s),
-            PrintHandle::LPrint => self.interpreter.lpt1().print(s),
-            PrintHandle::Print => self.interpreter.stdout().print(s),
+impl PrintInterpreter {
+    pub fn new() -> Self {
+        Self {
+            printer_type: PrinterType::Print,
+            file_handle: 0.into(),
+            format_string: None,
+            should_skip_new_line: false,
+            format_string_idx: 0,
         }
     }
 
-    fn println(&mut self) -> std::io::Result<usize> {
-        match self.print_handle {
-            PrintHandle::File => self
-                .interpreter
-                .file_manager()
-                .try_get_file_info_output_mut(&self.file_handle)
-                .expect("Expected file handle")
-                .println(),
-            PrintHandle::LPrint => self.interpreter.lpt1().println(),
-            PrintHandle::Print => self.interpreter.stdout().println(),
+    fn reset(&mut self) {
+        self.printer_type = PrinterType::Print;
+        self.file_handle = 0.into();
+        self.format_string = None;
+        self.format_string_idx = 0;
+    }
+
+    pub fn get_printer_type(&self) -> PrinterType {
+        self.printer_type
+    }
+
+    pub fn set_printer_type(&mut self, printer_type: PrinterType) {
+        self.reset();
+        self.printer_type = printer_type;
+    }
+
+    pub fn get_file_handle(&self) -> FileHandle {
+        self.file_handle
+    }
+
+    pub fn set_file_handle(&mut self, file_handle: FileHandle) {
+        self.file_handle = file_handle;
+    }
+
+    pub fn set_format_string(&mut self, format_string: Option<String>) {
+        self.format_string = format_string;
+    }
+
+    pub fn print_comma(&mut self, printer: Box<&dyn Printer>) -> std::io::Result<usize> {
+        self.should_skip_new_line = true;
+        printer.move_to_next_print_zone()
+    }
+
+    pub fn print_semicolon(&mut self) {
+        self.should_skip_new_line = true;
+    }
+
+    pub fn print_value(&mut self, printer: Box<&dyn Printer>, v: Variant) -> Result<(), QError> {
+        self.should_skip_new_line = false;
+        if self.format_string.is_some() {
+            self.print_value_with_format_string(printer, v)
+        } else {
+            self.print_value_without_format_string(printer, v)
+                .map(|_| ())
+                .map_err(QError::from)
         }
     }
 
-    fn move_to_next_print_zone(&mut self) -> std::io::Result<usize> {
-        match self.print_handle {
-            PrintHandle::File => self
-                .interpreter
-                .file_manager()
-                .try_get_file_info_output_mut(&self.file_handle)
-                .expect("Expected file handle")
-                .move_to_next_print_zone(),
-            PrintHandle::LPrint => self.interpreter.lpt1().move_to_next_print_zone(),
-            PrintHandle::Print => self.interpreter.stdout().move_to_next_print_zone(),
+    pub fn print_end(&mut self, printer: Box<&dyn Printer>) -> Result<(), QError> {
+        if self.format_string.is_some() {
+            self.print_remaining_chars(&printer)?;
         }
-    }
-}
-
-enum PrintVal {
-    Comma,
-    Semicolon,
-    NewLine,
-    Value(Variant),
-}
-
-fn print_number<T: Printer, V: Display>(
-    printer: &mut T,
-    number: V,
-    leading_space: bool,
-) -> std::io::Result<usize> {
-    let s: String = if leading_space {
-        format!(" {} ", number)
-    } else {
-        format!("{} ", number)
-    };
-    printer.print(s.as_str())
-}
-
-impl PrintVal {
-    fn print<T: Printer>(&self, printer: &mut T) -> std::io::Result<usize> {
-        match self {
-            Self::Comma => printer.move_to_next_print_zone(),
-            Self::Semicolon => Ok(0),
-            Self::NewLine => printer.println(),
-            Self::Value(v) => match v {
-                Variant::VSingle(f) => print_number(printer, f, *f >= 0.0),
-                Variant::VDouble(d) => print_number(printer, d, *d >= 0.0),
-                Variant::VString(s) => printer.print(s),
-                Variant::VInteger(i) => print_number(printer, i, *i >= 0),
-                Variant::VLong(l) => print_number(printer, l, *l >= 0),
-                Variant::VArray(_) | Variant::VUserDefined(_) => panic!(
-                    "Cannot print user defined type {:?}, linter should have caught this",
-                    v
-                ),
-            },
-        }
-    }
-}
-
-fn print_without_format_string<T: Printer>(
-    printer: &mut T,
-    args: &mut VecDeque<Variant>,
-) -> Result<(), QError> {
-    let mut print_val: PrintVal = PrintVal::NewLine;
-
-    while !args.is_empty() {
-        print_val = decode_print_arg(args)?;
-        print_val.print(printer)?;
-    }
-
-    // print new line?
-    match print_val {
-        PrintVal::NewLine | PrintVal::Value(_) => {
-            printer.println()?;
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
-fn print_with_format_string<T: Printer>(
-    printer: &mut T,
-    args: &mut VecDeque<Variant>,
-    format_string: String,
-) -> Result<(), QError> {
-    let mut print_new_line = true;
-    let format_string_chars: Vec<char> = format_string.chars().collect();
-    if format_string_chars.is_empty() {
-        return Err(QError::IllegalFunctionCall);
-    }
-    let mut format_string_idx: usize = 0;
-
-    while !args.is_empty() {
-        print_new_line = false;
-        match decode_print_arg(args)? {
-            PrintVal::Comma => {
-                printer.move_to_next_print_zone()?;
-            }
-            PrintVal::Value(v) => {
-                print_new_line = true;
-
-                // copy from format_string until we hit a formatting character
-                format_string_idx = format_string_idx % format_string_chars.len();
-                print_non_formatting_chars(
-                    printer,
-                    format_string_chars.as_slice(),
-                    &mut format_string_idx,
-                )?;
-
-                // format the argument using the formatting character
-                print_formatting_chars(
-                    printer,
-                    format_string_chars.as_slice(),
-                    &mut format_string_idx,
-                    v,
-                )?;
-            }
-            _ => {}
+        if self.should_skip_new_line {
+            self.should_skip_new_line = false;
+            Ok(())
+        } else {
+            printer.println().map(|_| ()).map_err(QError::from)
         }
     }
 
-    // copy from format_string until we hit a formatting character
-    print_remaining_non_formatting_chars(
-        printer,
-        format_string_chars.as_slice(),
-        &mut format_string_idx,
-    )?;
-
-    // print new line?
-    if print_new_line {
-        printer.println()?;
+    fn print_remaining_chars(&mut self, printer: &Box<&dyn Printer>) -> Result<(), QError> {
+        let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
+        print_remaining_non_formatting_chars(
+            printer,
+            format_string_chars.as_slice(),
+            &mut self.format_string_idx,
+        )
     }
-    Ok(())
+
+    fn print_value_with_format_string(
+        &mut self,
+        printer: Box<&dyn Printer>,
+        v: Variant,
+    ) -> Result<(), QError> {
+        let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
+        if format_string_chars.is_empty() {
+            return Err(QError::IllegalFunctionCall);
+        }
+
+        // ensure we are in the range of chars
+        self.format_string_idx = self.format_string_idx % format_string_chars.len();
+
+        // copy from format_string until we hit a formatting character
+        print_non_formatting_chars(
+            &printer,
+            format_string_chars.as_slice(),
+            &mut self.format_string_idx,
+        )?;
+
+        // format the argument using the formatting character
+        print_formatting_chars(
+            printer,
+            format_string_chars.as_slice(),
+            &mut self.format_string_idx,
+            v,
+        )
+    }
+
+    fn print_value_without_format_string(
+        &mut self,
+        printer: Box<&dyn Printer>,
+        v: Variant,
+    ) -> std::io::Result<usize> {
+        printer.print_variant(&v)
+    }
 }
 
-fn print_non_formatting_chars<T: Printer>(
-    printer: &mut T,
+fn print_non_formatting_chars(
+    printer: &Box<&dyn Printer>,
     format_string_chars: &[char],
     idx: &mut usize,
 ) -> Result<(), QError> {
@@ -251,8 +154,8 @@ fn print_non_formatting_chars<T: Printer>(
     Ok(())
 }
 
-fn print_remaining_non_formatting_chars<T: Printer>(
-    printer: &mut T,
+fn print_remaining_non_formatting_chars(
+    printer: &Box<&dyn Printer>,
     format_string_chars: &[char],
     idx: &mut usize,
 ) -> Result<(), QError> {
@@ -269,8 +172,8 @@ fn print_remaining_non_formatting_chars<T: Printer>(
     Ok(())
 }
 
-fn print_formatting_chars<T: Printer>(
-    printer: &mut T,
+fn print_formatting_chars(
+    printer: Box<&dyn Printer>,
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
@@ -361,6 +264,37 @@ fn print_formatting_chars<T: Printer>(
         }
     }
     Ok(())
+}
+
+trait PrintHelper {
+    fn print_number<V: Display>(&self, number: V, leading_space: bool) -> std::io::Result<usize>;
+
+    fn print_variant(&self, v: &Variant) -> std::io::Result<usize>;
+}
+
+impl<T: Printer + ?Sized> PrintHelper for T {
+    fn print_number<V: Display>(&self, number: V, leading_space: bool) -> std::io::Result<usize> {
+        let s: String = if leading_space {
+            format!(" {} ", number)
+        } else {
+            format!("{} ", number)
+        };
+        self.print(s.as_str())
+    }
+
+    fn print_variant(&self, v: &Variant) -> std::io::Result<usize> {
+        match v {
+            Variant::VSingle(f) => self.print_number(f, *f >= 0.0),
+            Variant::VDouble(d) => self.print_number(d, *d >= 0.0),
+            Variant::VString(s) => self.print(s),
+            Variant::VInteger(i) => self.print_number(i, *i >= 0),
+            Variant::VLong(l) => self.print_number(l, *l >= 0),
+            Variant::VArray(_) | Variant::VUserDefined(_) => panic!(
+                "Cannot print user defined type {:?}, linter should have caught this",
+                v
+            ),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -527,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_print_using_empty_format_string_is_error() {
-        assert_interpreter_err!("PRINT USING \"\"; 0", QError::IllegalFunctionCall, 1, 1);
+        assert_interpreter_err!("PRINT USING \"\"; 0", QError::IllegalFunctionCall, 1, 17);
     }
 
     #[test]
@@ -536,18 +470,18 @@ mod tests {
             "PRINT USING \"oops\"; 12",
             QError::IllegalFunctionCall,
             1,
-            1
+            21
         );
     }
 
     #[test]
     fn test_print_using_numeric_format_string_with_string_arg_is_error() {
-        assert_interpreter_err!("PRINT USING \"#.##\"; \"hi\"", QError::TypeMismatch, 1, 1);
+        assert_interpreter_err!("PRINT USING \"#.##\"; \"hi\"", QError::TypeMismatch, 1, 21);
     }
 
     #[test]
     fn test_print_using_integer_format_string_with_string_arg_is_error() {
-        assert_interpreter_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 1);
+        assert_interpreter_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 19);
     }
 
     #[test]

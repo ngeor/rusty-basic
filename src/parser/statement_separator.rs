@@ -89,15 +89,15 @@ crate::char_sequence_p!(
 
 /// A parser that succeeds on EOF, EOL, colon and comment.
 /// Does not undo anything.
-pub struct EofOrStatementSeparator {}
+pub struct EofOrStatementSeparator<R>(PhantomData<R>);
 
-impl EofOrStatementSeparator {
+impl<R> EofOrStatementSeparator<R> {
     pub fn new() -> Self {
-        Self {}
+        Self(PhantomData)
     }
 }
 
-impl<R> Parser<R> for EofOrStatementSeparator
+impl<R> Parser<R> for EofOrStatementSeparator<R>
 where
     R: Reader<Item = char>,
 {

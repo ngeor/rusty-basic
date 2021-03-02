@@ -93,6 +93,13 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                     Ok((Some(Statement::Return(opt_label).at(pos)), vec![]))
                 }
             }
+            Statement::Resume(resume_option) => {
+                if self.context.is_in_subprogram() {
+                    Err(QError::syntax_error("Illegal in subprogram")).with_err_at(pos)
+                } else {
+                    Ok((Some(Statement::Resume(resume_option).at(pos)), vec![]))
+                }
+            }
             Statement::Exit(exit_object) => match self.context.get_name_context() {
                 NameContext::Global => {
                     Err(QError::syntax_error("Illegal outside of subprogram")).with_err_at(pos)

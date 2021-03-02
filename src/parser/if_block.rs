@@ -197,7 +197,7 @@ mod tests {
                     else_if_blocks: vec![],
                     else_block: None
                 })),
-                TopLevelToken::Statement(Statement::SubCall("SYSTEM".into(), vec![]))
+                TopLevelToken::Statement(Statement::System)
             ]
         );
     }

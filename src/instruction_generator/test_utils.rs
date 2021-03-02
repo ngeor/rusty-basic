@@ -1,8 +1,12 @@
-use crate::instruction_generator::{generate_instructions, InstructionNode};
+use crate::instruction_generator::{
+    generate_instructions, InstructionGeneratorResult, InstructionNode,
+};
 use crate::linter::lint;
 use crate::parser::{parse_main_str, UserDefinedTypes};
 
-pub fn generate_instructions_str_with_types<T>(input: T) -> (Vec<InstructionNode>, UserDefinedTypes)
+pub fn generate_instructions_str_with_types<T>(
+    input: T,
+) -> (InstructionGeneratorResult, UserDefinedTypes)
 where
     T: AsRef<[u8]> + 'static,
 {
@@ -16,5 +20,5 @@ where
     T: AsRef<[u8]> + 'static,
 {
     let (instruction_nodes, _) = generate_instructions_str_with_types(input);
-    instruction_nodes
+    instruction_nodes.instructions
 }

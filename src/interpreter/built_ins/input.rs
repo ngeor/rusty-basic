@@ -18,8 +18,8 @@ use std::convert::TryFrom;
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let mut file_handle: FileHandle = FileHandle::default();
     let mut has_file_handle = false;
-    for idx in 0..interpreter.context().parameter_count() {
-        let v = interpreter.context().get(idx).unwrap();
+    for idx in 0..interpreter.context().variables().len() {
+        let v: &Variant = &interpreter.context()[idx];
         match v {
             Variant::VInteger(f) => {
                 if idx == 0 {
@@ -49,24 +49,34 @@ fn do_input_one_var<S: InterpreterTrait>(
     idx: usize,
     file_handle: FileHandle,
 ) -> Result<(), QError> {
-    let raw_input: String = if file_handle.is_valid() {
-        let file_input = interpreter
-            .file_manager()
-            .try_get_file_info_input_mut(&file_handle)?;
-        file_input.input()?
-    } else {
-        interpreter.stdin().input()?
-    };
-    let existing_value = interpreter.context_mut().get_mut(idx).unwrap();
-    let temp: &Variant = existing_value;
-    let q: TypeQualifier = temp.try_into()?;
-    *existing_value = match q {
+    let raw_input: String = raw_input(interpreter, file_handle)?;
+    let q: TypeQualifier = qualifier(interpreter, idx)?;
+    let new_value: Variant = match q {
         TypeQualifier::BangSingle => Variant::from(parse_single_input(raw_input)?),
         TypeQualifier::DollarString => Variant::from(raw_input),
         TypeQualifier::PercentInteger => Variant::from(parse_int_input(raw_input)?),
         _ => todo!("INPUT type {} not supported yet", q),
     };
+    interpreter.context_mut()[idx] = new_value;
     Ok(())
+}
+
+fn raw_input<S: InterpreterTrait>(
+    interpreter: &mut S,
+    file_handle: FileHandle,
+) -> Result<String, QError> {
+    if file_handle.is_valid() {
+        let file_input = interpreter
+            .file_manager()
+            .try_get_file_info_input(&file_handle)?;
+        file_input.input().map_err(QError::from)
+    } else {
+        interpreter.stdin().input().map_err(QError::from)
+    }
+}
+
+fn qualifier<S: InterpreterTrait>(interpreter: &S, idx: usize) -> Result<TypeQualifier, QError> {
+    TypeQualifier::try_from(&interpreter.context()[idx])
 }
 
 fn parse_single_input(s: String) -> Result<f32, QError> {

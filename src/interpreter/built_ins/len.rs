@@ -4,7 +4,7 @@ use super::*;
 use crate::common::Locatable;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let v: &Variant = interpreter.context().get(0).unwrap();
+    let v: &Variant = &interpreter.context()[0];
     let len: i32 = match v {
         Variant::VSingle(_) => 4,
         Variant::VDouble(_) => 8,
@@ -26,7 +26,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     };
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::Len.into(), len.into());
+        .set_built_in_function_result(BuiltInFunction::Len, len);
     Ok(())
 }
 

@@ -6,26 +6,16 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let s: &String = interpreter
-        .context()
-        .get(0)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
-    let start: i32 = interpreter
-        .context()
-        .get(1)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
-    let length: Option<i32> = match interpreter.context().get(2) {
+    let s: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
+    let start: i32 = (&interpreter.context()[1]).try_into().with_err_no_pos()?;
+    let length: Option<i32> = match interpreter.context().variables().get(2) {
         Some(v) => Some(v.try_into().with_err_no_pos()?),
         None => None,
     };
     let result: String = do_mid(s, start, length)?;
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::Mid.into(), result.into());
+        .set_built_in_function_result(BuiltInFunction::Mid, result);
     Ok(())
 }
 

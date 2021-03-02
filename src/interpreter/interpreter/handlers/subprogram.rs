@@ -2,18 +2,11 @@ use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::parser::{Name, ParamName, QualifiedName};
 
 pub fn begin_collect_arguments<T: InterpreterTrait>(interpreter: &mut T) {
-    interpreter
-        .context_mut()
-        .arguments_stack()
-        .begin_collect_arguments();
+    interpreter.context_mut().begin_collecting_arguments();
 }
 
 pub fn enqueue_to_return_stack<T: InterpreterTrait>(interpreter: &mut T, idx: &usize) {
-    let v = interpreter
-        .context()
-        .get(*idx)
-        .expect("Should have value")
-        .clone();
+    let v = interpreter.context()[*idx].clone();
     interpreter.by_ref_stack().push_back(v);
 }
 
@@ -30,7 +23,11 @@ pub fn stash_function_return_value<T: InterpreterTrait>(
     function_name: &QualifiedName,
 ) {
     let name: Name = Name::Qualified(function_name.clone());
-    let v = interpreter.context_mut().get_or_create(name).clone();
+    let v = interpreter
+        .context_mut()
+        .variables_mut()
+        .get_or_create(name)
+        .clone();
     interpreter.set_function_result(v);
 }
 
@@ -43,13 +40,13 @@ pub fn un_stash_function_return_value<T: InterpreterTrait>(interpreter: &mut T) 
 
 pub fn push_a_to_unnamed_arg<T: InterpreterTrait>(interpreter: &mut T) {
     let v = interpreter.registers().get_a();
-    interpreter.context_mut().arguments_stack().push_unnamed(v);
+    interpreter.context_mut().arguments_mut().push_unnamed(v);
 }
 
 pub fn push_a_to_named_arg<T: InterpreterTrait>(interpreter: &mut T, param_name: &ParamName) {
     let v = interpreter.registers().get_a();
     interpreter
         .context_mut()
-        .arguments_stack()
+        .arguments_mut()
         .push_named(param_name.clone(), v);
 }

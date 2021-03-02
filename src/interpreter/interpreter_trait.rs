@@ -5,6 +5,7 @@ use crate::interpreter::io::FileManager;
 use crate::interpreter::printer::Printer;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
+use crate::interpreter::variables::Variables;
 use crate::parser::UserDefinedTypes;
 use crate::variant::Variant;
 use std::collections::VecDeque;
@@ -41,6 +42,8 @@ pub trait InterpreterTrait {
 
     /// Contains variables and constants, collects function/sub arguments.
     fn context_mut(&mut self) -> &mut Context;
+
+    fn global_variables_mut(&mut self) -> &mut Variables;
 
     /// Holds the "registers" of the CPU
     fn registers(&self) -> &Registers;

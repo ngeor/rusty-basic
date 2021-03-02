@@ -60,11 +60,12 @@ fn resolve_some_name_ptr_mut<T: InterpreterTrait>(
 ) -> Result<&mut Variant, QError> {
     match name_ptr {
         Path::Root(RootPath { name, shared }) => {
-            if shared {
-                Ok(interpreter.context_mut().get_or_create_global(name))
+            let variables = if shared {
+                interpreter.global_variables_mut()
             } else {
-                Ok(interpreter.context_mut().get_or_create(name))
-            }
+                interpreter.context_mut().variables_mut()
+            };
+            Ok(variables.get_or_create(name))
         }
         Path::ArrayElement(parent_name_ptr, indices) => {
             let parent_variant = resolve_some_name_ptr_mut(interpreter, *parent_name_ptr)?;

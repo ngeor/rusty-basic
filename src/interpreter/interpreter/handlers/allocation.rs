@@ -27,10 +27,10 @@ pub fn allocate_array<T: InterpreterTrait>(
     interpreter: &mut T,
     element_type: &ExpressionType,
 ) -> Result<(), QError> {
-    let r_args: Result<Vec<i32>, QError> = interpreter
+    let arguments = interpreter
         .context_mut()
-        .arguments_stack()
-        .pop()
+        .drop_arguments_for_array_allocation();
+    let r_args: Result<Vec<i32>, QError> = arguments
         .into_iter()
         .map(|(_, v)| v)
         .map(|v| i32::try_from(v))

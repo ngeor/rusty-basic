@@ -83,6 +83,8 @@ pub enum Keyword {
     Print,
     /// READ
     Read,
+    /// RESUME
+    Resume,
     /// RETURN
     Return,
     /// SELECT
@@ -97,6 +99,8 @@ pub enum Keyword {
     String_,
     /// SUB
     Sub,
+    /// SYSTEM
+    System,
     /// THEN
     Then,
     /// TO
@@ -151,6 +155,7 @@ const STR_OR: &str = "OR";
 const STR_OUTPUT: &str = "OUTPUT";
 const STR_PRINT: &str = "PRINT";
 const STR_READ: &str = "READ";
+const STR_RESUME: &str = "RESUME";
 const STR_RETURN: &str = "RETURN";
 const STR_SELECT: &str = "SELECT";
 const STR_SHARED: &str = "SHARED";
@@ -158,6 +163,7 @@ const STR_SINGLE: &str = "SINGLE";
 const STR_STEP: &str = "STEP";
 const STR_STRING: &str = "STRING";
 const STR_SUB: &str = "SUB";
+const STR_SYSTEM: &str = "SYSTEM";
 const STR_THEN: &str = "THEN";
 const STR_TO: &str = "TO";
 const STR_TYPE: &str = "TYPE";
@@ -165,7 +171,7 @@ const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 53] = [
+const SORTED_KEYWORDS_STR: [&str; 55] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -206,6 +212,7 @@ const SORTED_KEYWORDS_STR: [&str; 53] = [
     STR_OUTPUT,
     STR_PRINT,
     STR_READ,
+    STR_RESUME,
     STR_RETURN,
     STR_SELECT,
     STR_SHARED,
@@ -213,6 +220,7 @@ const SORTED_KEYWORDS_STR: [&str; 53] = [
     STR_STEP,
     STR_STRING,
     STR_SUB,
+    STR_SYSTEM,
     STR_THEN,
     STR_TO,
     STR_TYPE,
@@ -221,7 +229,7 @@ const SORTED_KEYWORDS_STR: [&str; 53] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 53] = [
+const SORTED_KEYWORDS: [Keyword; 55] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -262,6 +270,7 @@ const SORTED_KEYWORDS: [Keyword; 53] = [
     Keyword::Output,
     Keyword::Print,
     Keyword::Read,
+    Keyword::Resume,
     Keyword::Return,
     Keyword::Select,
     Keyword::Shared,
@@ -269,6 +278,7 @@ const SORTED_KEYWORDS: [Keyword; 53] = [
     Keyword::Step,
     Keyword::String_,
     Keyword::Sub,
+    Keyword::System,
     Keyword::Then,
     Keyword::To,
     Keyword::Type,
@@ -320,6 +330,7 @@ impl Keyword {
             Self::Output => STR_OUTPUT,
             Self::Print => STR_PRINT,
             Self::Read => STR_READ,
+            Self::Resume => STR_RESUME,
             Self::Return => STR_RETURN,
             Self::Select => STR_SELECT,
             Self::Shared => STR_SHARED,
@@ -327,6 +338,7 @@ impl Keyword {
             Self::Step => STR_STEP,
             Self::String_ => STR_STRING,
             Self::Sub => STR_SUB,
+            Self::System => STR_SYSTEM,
             Self::Then => STR_THEN,
             Self::To => STR_TO,
             Self::Type => STR_TYPE,

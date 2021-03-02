@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::instruction_generator::{Instruction, InstructionNode, Path};
+use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;
@@ -7,14 +7,17 @@ use crate::interpreter::input::Input;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::FileManager;
 use crate::interpreter::lpt1_write::Lpt1Write;
+use crate::interpreter::print::PrintInterpreter;
 use crate::interpreter::printer::Printer;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::stdlib::Stdlib;
+use crate::interpreter::variables::Variables;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::parser::UserDefinedTypes;
 use crate::variant::Variant;
 use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::rc::Rc;
@@ -36,7 +39,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     lpt1: TLpt1,
 
     /// Holds the definition of user defined types
-    user_defined_types: Rc<UserDefinedTypes>,
+    user_defined_types: UserDefinedTypes,
 
     /// Contains variables and constants, collects function/sub arguments.
     context: Context,
@@ -62,6 +65,10 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     function_result: Option<Variant>,
 
     value_stack: Vec<Variant>,
+
+    last_error_address: Option<usize>,
+
+    print_interpreter: Rc<RefCell<PrintInterpreter>>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -97,7 +104,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     }
 
     fn user_defined_types(&self) -> &UserDefinedTypes {
-        self.user_defined_types.as_ref()
+        &self.user_defined_types
     }
 
     fn context(&self) -> &Context {
@@ -106,6 +113,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
 
     fn context_mut(&mut self) -> &mut Context {
         &mut self.context
+    }
+
+    fn global_variables_mut(&mut self) -> &mut Variables {
+        self.context.global_variables_mut()
     }
 
     fn registers(&self) -> &Registers {
@@ -162,23 +173,24 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         lpt1: TLpt1,
         user_defined_types: UserDefinedTypes,
     ) -> Self {
-        let rc_user_defined_types = Rc::new(user_defined_types);
         Interpreter {
             stdlib,
             stdin,
             stdout,
             lpt1,
-            context: Context::new(Rc::clone(&rc_user_defined_types)),
+            context: Context::new(),
             return_address_stack: vec![],
             go_sub_address_stack: vec![],
             register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
-            user_defined_types: Rc::clone(&rc_user_defined_types),
+            user_defined_types,
             var_path_stack: VecDeque::new(),
             by_ref_stack: VecDeque::new(),
             function_result: None,
             value_stack: vec![],
+            last_error_address: None,
+            print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
         }
     }
 
@@ -190,8 +202,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         ctx: &mut InterpretOneContext,
     ) -> Result<(), QErrorNode> {
         match instruction {
-            Instruction::SetErrorHandler(idx) => {
-                ctx.error_handler = Some(*idx);
+            Instruction::OnErrorGoTo(address_or_label) => {
+                ctx.error_handler = ErrorHandler::Address(address_or_label.address());
+            }
+            Instruction::OnErrorResumeNext => {
+                ctx.error_handler = ErrorHandler::Next;
+            }
+            Instruction::OnErrorGoToZero => {
+                ctx.error_handler = ErrorHandler::None;
             }
             Instruction::PushRegisters => {
                 registers::push_registers(self);
@@ -268,25 +286,25 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::Or => {
                 logical::or(self).with_err_at(pos)?;
             }
-            Instruction::JumpIfFalse(resolved_idx) => {
+            Instruction::JumpIfFalse(address_or_label) => {
                 let a = self.registers().get_a();
                 let is_true: bool = bool::try_from(a).with_err_at(pos)?;
                 if !is_true {
-                    ctx.opt_next_index = Some(*resolved_idx);
+                    ctx.opt_next_index = Some(address_or_label.address());
                 }
             }
-            Instruction::Jump(resolved_idx) => {
-                ctx.opt_next_index = Some(*resolved_idx);
+            Instruction::Jump(address_or_label) => {
+                ctx.opt_next_index = Some(address_or_label.address());
             }
             Instruction::BeginCollectArguments => {
                 subprogram::begin_collect_arguments(self);
             }
             Instruction::PushStack => {
-                self.push_context();
+                self.context.stop_collecting_arguments();
                 self.stacktrace.insert(0, pos);
             }
             Instruction::PopStack => {
-                self.pop_context();
+                self.context.pop();
                 self.stacktrace.remove(0);
             }
             Instruction::EnqueueToReturnStack(idx) => {
@@ -309,21 +327,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::BuiltInSub(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                let run_sub_result = built_ins::run_sub(n, self)?;
-                if run_sub_result.halt {
-                    ctx.halt = true;
-                }
+                built_ins::run_sub(n, self)?;
             }
             Instruction::BuiltInFunction(n) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
                 built_ins::run_function(n, self)?;
-            }
-            Instruction::UnresolvedJump(_)
-            | Instruction::UnresolvedJumpIfFalse(_)
-            | Instruction::UnresolvedGoSub(_)
-            | Instruction::UnresolvedReturn(_)
-            | Instruction::SetUnresolvedErrorHandler(_) => {
-                panic!("Unresolved label {:?} at {:?}", instruction, pos)
             }
             Instruction::Label(_) => (), // no-op
             Instruction::Halt => {
@@ -336,19 +344,53 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let address = self.return_address_stack.pop().unwrap();
                 ctx.opt_next_index = Some(address);
             }
-            Instruction::GoSub(address) => {
+            Instruction::GoSub(address_or_label) => {
                 self.go_sub_address_stack.push(i);
-                ctx.opt_next_index = Some(*address);
+                ctx.opt_next_index = Some(address_or_label.address());
             }
             Instruction::Return(opt_address) => match self.go_sub_address_stack.pop() {
                 Some(address) => {
                     ctx.opt_next_index = Some(match opt_address {
-                        Some(a) => *a,
+                        Some(address_or_label) => address_or_label.address(),
                         _ => address + 1,
                     });
                 }
                 _ => {
                     return Err(QError::ReturnWithoutGoSub).with_err_at(pos);
+                }
+            },
+            Instruction::Resume => match self.last_error_address.take() {
+                Some(last_error_address) => {
+                    ctx.opt_next_index = Some(
+                        ctx.nearest_statement_finder
+                            .find_current(last_error_address),
+                    );
+                    self.context.pop();
+                }
+                _ => {
+                    // TODO test this
+                    return Err(QError::ResumeWithoutError).with_err_at(pos);
+                }
+            },
+            Instruction::ResumeNext => match self.last_error_address.take() {
+                Some(last_error_address) => {
+                    ctx.opt_next_index =
+                        Some(ctx.nearest_statement_finder.find_next(last_error_address));
+                    self.context.pop();
+                }
+                _ => {
+                    // TODO test this
+                    return Err(QError::ResumeWithoutError).with_err_at(pos);
+                }
+            },
+            Instruction::ResumeLabel(resume_label) => match self.last_error_address.take() {
+                Some(_) => {
+                    ctx.opt_next_index = Some(resume_label.address());
+                    self.context.pop();
+                }
+                _ => {
+                    // TODO test this
+                    return Err(QError::ResumeWithoutError).with_err_at(pos);
                 }
             },
             Instruction::Throw(interpreter_error) => {
@@ -360,6 +402,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::AllocateFixedLengthString(len) => {
                 allocation::allocate_fixed_length_string(self, *len).with_err_at(pos)?;
             }
+            // TODO instructions should only accept simple types as arguments
             Instruction::AllocateArrayIntoA(element_type) => {
                 allocation::allocate_array(self, element_type).with_err_at(pos)?;
             }
@@ -390,16 +433,83 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 let v = self.value_stack.pop().expect("value_stack underflow!");
                 self.registers_mut().set_a(v);
             }
+            Instruction::PrintSetPrinterType(printer_type) => {
+                self.print_interpreter
+                    .borrow_mut()
+                    .set_printer_type(*printer_type);
+            }
+            Instruction::PrintSetFileHandle(file_handle) => {
+                self.print_interpreter
+                    .borrow_mut()
+                    .set_file_handle(*file_handle);
+            }
+            Instruction::PrintSetFormatStringFromA => {
+                let encoded_format_string = self.registers().get_a();
+                self.print_interpreter.borrow_mut().set_format_string(
+                    match encoded_format_string {
+                        Variant::VString(s) => Some(s),
+                        _ => None,
+                    },
+                );
+            }
+            Instruction::PrintComma => {
+                let printer = self.choose_printer();
+                self.print_interpreter
+                    .borrow_mut()
+                    .print_comma(printer)
+                    .map_err(QError::from)
+                    .with_err_at(pos)?;
+            }
+            Instruction::PrintSemicolon => {
+                self.print_interpreter.borrow_mut().print_semicolon();
+            }
+            Instruction::PrintValueFromA => {
+                let v = self.registers().get_a();
+                let printer = self.choose_printer();
+                self.print_interpreter
+                    .borrow_mut()
+                    .print_value(printer, v)
+                    .with_err_at(pos)?;
+            }
+            Instruction::PrintEnd => {
+                let printer = self.choose_printer();
+                self.print_interpreter
+                    .borrow_mut()
+                    .print_end(printer)
+                    .with_err_at(pos)?;
+            }
         }
         Ok(())
     }
 
-    pub fn interpret(&mut self, instructions: Vec<InstructionNode>) -> Result<(), QErrorNode> {
+    fn choose_printer(&self) -> Box<&dyn Printer> {
+        let printer_type = self.print_interpreter.borrow().get_printer_type();
+        let file_handle = self.print_interpreter.borrow().get_file_handle();
+        match printer_type {
+            PrinterType::Print => Box::new(&self.stdout),
+            PrinterType::LPrint => Box::new(&self.lpt1),
+            PrinterType::File => Box::new(
+                self.file_manager
+                    .try_get_file_info_output(&file_handle)
+                    .expect("File not found"),
+            ),
+        }
+    }
+
+    pub fn interpret(
+        &mut self,
+        instruction_generator_result: InstructionGeneratorResult,
+    ) -> Result<(), QErrorNode> {
+        let InstructionGeneratorResult {
+            instructions,
+            statement_addresses,
+        } = instruction_generator_result;
         let mut i: usize = 0;
         let mut ctx: InterpretOneContext = InterpretOneContext {
             halt: false,
-            error_handler: None,
+            error_handler: ErrorHandler::None,
             opt_next_index: None,
+            nearest_statement_finder: NearestStatementFinder::new(statement_addresses),
         };
         while i < instructions.len() && !ctx.halt {
             let instruction = instructions[i].as_ref();
@@ -413,54 +523,88 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                         i += 1;
                     }
                 },
-                Err(e) => match ctx.error_handler {
-                    Some(error_idx) => {
-                        i = error_idx;
+                Err(e) => {
+                    match ctx.error_handler {
+                        ErrorHandler::Address(handler_address) => {
+                            // store error address, so we can call RESUME and RESUME NEXT from within the error handler
+                            self.context.push_error_handler_context();
+                            self.last_error_address = Some(i);
+                            i = handler_address;
+                        }
+                        ErrorHandler::Next => {
+                            i = ctx.nearest_statement_finder.find_next(i);
+                        }
+                        ErrorHandler::None => {
+                            return Err(e.patch_stacktrace(&self.stacktrace));
+                        }
                     }
-                    None => {
-                        return Err(e.patch_stacktrace(&self.stacktrace));
-                    }
-                },
+                }
             }
         }
         Ok(())
-    }
-
-    /// Takes the current context out of the interpreter.
-    /// The interpreter is left with a dummy context.
-    fn take_context(&mut self) -> Context {
-        let dummy = Context::new(std::rc::Rc::clone(&self.user_defined_types));
-        std::mem::replace(&mut self.context, dummy)
-    }
-
-    fn set_context(&mut self, context: Context) {
-        self.context = context;
-    }
-
-    fn push_context(&mut self) {
-        let current_context = self.take_context();
-        self.set_context(current_context.push());
-    }
-
-    fn pop_context(&mut self) {
-        let current_context = self.take_context();
-        self.set_context(current_context.pop());
     }
 }
 
 /// Context available to the execution of a single instruction.
 struct InterpretOneContext {
     /// The instruction handler can set this to `true` in order to terminate
-    /// the problem (done by the `SYSTEM` and `END` built-ins).
+    /// the program (done by the `SYSTEM` and `END` built-ins).
     halt: bool,
 
     /// The instruction can set a new error handler address (done by
     /// `ON ERROR GOTO` statement).
-    error_handler: Option<usize>,
+    error_handler: ErrorHandler,
 
     /// The instruction can indicate the next address for the control flow.
     /// If not set, control flow will resume to the next statement, if any.
     opt_next_index: Option<usize>,
+
+    nearest_statement_finder: NearestStatementFinder,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ErrorHandler {
+    None,
+    Next,
+    Address(usize),
+}
+
+struct NearestStatementFinder {
+    statement_addresses: Vec<usize>,
+}
+
+impl NearestStatementFinder {
+    pub fn new(statement_addresses: Vec<usize>) -> Self {
+        Self {
+            statement_addresses,
+        }
+    }
+
+    pub fn find_current(&self, address: usize) -> usize {
+        match self.statement_addresses.binary_search(&address) {
+            Ok(_) => address,
+            Err(would_be_index) => {
+                if would_be_index >= 1 {
+                    self.statement_addresses[would_be_index - 1]
+                } else {
+                    panic!("should never happen")
+                }
+            }
+        }
+    }
+
+    pub fn find_next(&self, address: usize) -> usize {
+        match self.statement_addresses.binary_search(&address) {
+            Ok(existing_index) => {
+                if existing_index == self.statement_addresses.len() - 1 {
+                    1 + self.statement_addresses[existing_index]
+                } else {
+                    self.statement_addresses[existing_index + 1]
+                }
+            }
+            Err(would_be_index) => self.statement_addresses[would_be_index],
+        }
+    }
 }
 
 #[cfg(test)]

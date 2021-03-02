@@ -61,15 +61,17 @@ pub trait PostConversionLinter {
             Statement::SelectCase(s) => self.visit_select_case(s),
             Statement::ForLoop(f) => self.visit_for_loop(f),
             Statement::While(w) => self.visit_conditional_block(w),
-            Statement::ErrorHandler(label) => self.visit_error_handler(label),
+            Statement::OnError(on_error_option) => self.visit_on_error(on_error_option),
             Statement::Label(label) => self.visit_label(label),
             Statement::GoTo(label) => self.visit_go_to(label),
             Statement::Comment(c) => self.visit_comment(c),
             Statement::Dim(d) => self.visit_dim(d),
             Statement::Print(print_node) => self.visit_print_node(print_node),
             Statement::GoSub(label) => self.visit_go_sub(label),
+            Statement::Resume(resume_option) => self.visit_resume(resume_option),
             Statement::Return(opt_label) => self.visit_return(opt_label.as_ref()),
             Statement::Exit(exit_object) => self.visit_exit(*exit_object),
+            Statement::End | Statement::System => Ok(()),
         }
     }
 
@@ -81,7 +83,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_error_handler(&mut self, _label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+    fn visit_on_error(&mut self, _on_error_option: &OnErrorOption) -> Result<(), QErrorNode> {
         Ok(())
     }
 
@@ -94,6 +96,10 @@ pub trait PostConversionLinter {
     }
 
     fn visit_go_sub(&mut self, _label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+        Ok(())
+    }
+
+    fn visit_resume(&mut self, _resume_option: &ResumeOption) -> Result<(), QErrorNode> {
         Ok(())
     }
 

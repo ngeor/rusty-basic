@@ -1,7 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{FileAccess, FileHandle, FileMode, QError, QErrorNode, ToErrorEnvelopeNoPos};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::interpreter::print;
 use crate::interpreter::stdlib::Stdlib;
 use crate::parser::{ElementType, TypeQualifier, UserDefinedType, UserDefinedTypes};
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
@@ -25,42 +24,15 @@ pub fn run_function<S: InterpreterTrait>(
     }
 }
 
-#[derive(Default)]
-pub struct RunSubResult {
-    pub halt: bool,
-}
-
-impl RunSubResult {
-    pub fn new_halt() -> Self {
-        Self { halt: true }
-    }
-}
-
-pub fn run_sub<S: InterpreterTrait>(
-    s: &BuiltInSub,
-    interpreter: &mut S,
-) -> Result<RunSubResult, QErrorNode> {
-    match s {
-        BuiltInSub::End | BuiltInSub::System => Ok(RunSubResult::new_halt()),
-        _ => run_not_terminating_sub(s, interpreter).map(|_| RunSubResult::default()),
-    }
-}
-
-fn run_not_terminating_sub<S: InterpreterTrait>(
-    s: &BuiltInSub,
-    interpreter: &mut S,
-) -> Result<(), QErrorNode> {
+pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QErrorNode> {
     match s {
         BuiltInSub::Close => close::run(interpreter),
         BuiltInSub::Environ => environ_sub::run(interpreter),
         BuiltInSub::Input => input::run(interpreter).with_err_no_pos(),
         BuiltInSub::Kill => kill::run(interpreter),
         BuiltInSub::LineInput => line_input::run(interpreter).with_err_no_pos(),
-        BuiltInSub::LPrint => todo!("LPT1 printing not implemented yet"),
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
-        BuiltInSub::Print => print::run(interpreter).with_err_no_pos(),
-        BuiltInSub::End | BuiltInSub::System => panic!("Should not have been called"),
     }
 }
 

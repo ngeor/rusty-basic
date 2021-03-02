@@ -1,6 +1,6 @@
 use crate::common::*;
-use crate::instruction_generator::generate_instructions;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
+use crate::instruction_generator::{generate_instructions, InstructionGeneratorResult};
 use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::read_input::ReadInputSource;
@@ -17,7 +17,9 @@ pub type MockStdout = WritePrinter<Vec<u8>>;
 pub type MockInterpreter =
     Interpreter<MockStdlib, ReadInputSource<MockStdin>, MockStdout, MockStdout>;
 
-pub fn mock_interpreter(user_defined_types: UserDefinedTypes) -> MockInterpreter {
+fn mock_interpreter_for_user_defined_types(
+    user_defined_types: UserDefinedTypes,
+) -> MockInterpreter {
     let stdlib = MockStdlib::new();
     let stdin = ReadInputSource::new(MockStdin { stdin: vec![] });
     let stdout = WritePrinter::new(vec![]);
@@ -25,33 +27,55 @@ pub fn mock_interpreter(user_defined_types: UserDefinedTypes) -> MockInterpreter
     Interpreter::new(stdlib, stdin, stdout, lpt1, user_defined_types)
 }
 
+pub fn mock_interpreter_for_input<T>(input: T) -> (InstructionGeneratorResult, MockInterpreter)
+where
+    T: AsRef<[u8]> + 'static,
+{
+    let (instruction_generator_result, user_defined_types) =
+        generate_instructions_str_with_types(input);
+    // println!("{:#?}", instructions);
+    (
+        instruction_generator_result,
+        mock_interpreter_for_user_defined_types(user_defined_types),
+    )
+}
+
 pub fn interpret<T>(input: T) -> MockInterpreter
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-    // println!("{:#?}", instructions);
-    let mut interpreter = mock_interpreter(user_defined_types);
+    let (instruction_generator_result, mut interpreter) = mock_interpreter_for_input(input);
     interpreter
-        .interpret(instructions)
+        .interpret(instruction_generator_result)
         .map(|_| interpreter)
         .unwrap()
+}
+
+pub fn interpret_err<T>(input: T) -> QErrorNode
+where
+    T: AsRef<[u8]> + 'static,
+{
+    let (instruction_generator_result, mut interpreter) = mock_interpreter_for_input(input);
+    interpreter
+        .interpret(instruction_generator_result)
+        .unwrap_err()
 }
 
 pub fn interpret_with_raw_input<T>(input: T, raw_input: &str) -> MockInterpreter
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    let (instruction_generator_result, user_defined_types) =
+        generate_instructions_str_with_types(input);
     // for i in instructions.iter() {
     //     println!("{:?}", i.as_ref());
     // }
-    let mut interpreter = mock_interpreter(user_defined_types);
+    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
     if !raw_input.is_empty() {
         interpreter.stdin().add_next_input(raw_input);
     }
     interpreter
-        .interpret(instructions)
+        .interpret(instruction_generator_result)
         .map(|_| interpreter)
         .unwrap()
 }
@@ -61,24 +85,15 @@ where
     T: AsRef<[u8]> + 'static,
     F: FnMut(&mut MockInterpreter) -> (),
 {
-    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
+    let (instruction_generator_result, user_defined_types) =
+        generate_instructions_str_with_types(input);
     // println!("{:#?}", instructions);
-    let mut interpreter = mock_interpreter(user_defined_types);
+    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
     initializer(&mut interpreter);
     interpreter
-        .interpret(instructions)
+        .interpret(instruction_generator_result)
         .map(|_| interpreter)
         .unwrap()
-}
-
-pub fn interpret_err<T>(input: T) -> QErrorNode
-where
-    T: AsRef<[u8]> + 'static,
-{
-    let (instructions, user_defined_types) = generate_instructions_str_with_types(input);
-    // println!("{:#?}", instructions);
-    let mut interpreter = mock_interpreter(user_defined_types);
-    interpreter.interpret(instructions).unwrap_err()
 }
 
 pub fn interpret_file<S>(filename: S) -> Result<MockInterpreter, QErrorNode>
@@ -89,9 +104,11 @@ where
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = linter::lint(program).unwrap();
-    let instructions = generate_instructions(linted_program);
-    let mut interpreter = mock_interpreter(user_defined_types);
-    interpreter.interpret(instructions).map(|_| interpreter)
+    let instruction_generator_result = generate_instructions(linted_program);
+    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
+    interpreter
+        .interpret(instruction_generator_result)
+        .map(|_| interpreter)
 }
 
 pub fn interpret_file_with_raw_input<S>(
@@ -105,12 +122,14 @@ where
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = linter::lint(program).unwrap();
-    let instructions = generate_instructions(linted_program);
-    let mut interpreter = mock_interpreter(user_defined_types);
+    let instruction_generator_result = generate_instructions(linted_program);
+    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
     if !raw_input.is_empty() {
         interpreter.stdin().add_next_input(raw_input);
     }
-    interpreter.interpret(instructions).map(|_| interpreter)
+    interpreter
+        .interpret(instruction_generator_result)
+        .map(|_| interpreter)
 }
 
 pub struct MockStdlib {
@@ -151,8 +170,8 @@ impl MockStdlib {
 impl MockStdout {
     /// Gets the captured output of stdout as-is, without trimming or removing CRLF
     pub fn output_exact(&self) -> String {
-        let bytes = self.inner();
-        String::from_utf8(bytes.clone()).unwrap()
+        let bytes: Vec<u8> = self.inner();
+        String::from_utf8(bytes).unwrap()
     }
 
     /// Gets the captured output of stdout, trimmed and without CRLF
@@ -201,9 +220,10 @@ impl Stdlib for MockStdlib {
 }
 
 impl MockInterpreter {
+    // TODO remove this
     pub fn get_variable_str(&self, name: &str) -> Variant {
         let name = Name::from(name);
-        self.context().get_r_value_by_name(&name).unwrap().clone()
+        self.context().get_by_name(&name)
     }
 }
 

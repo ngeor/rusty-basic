@@ -1,18 +1,14 @@
-use super::{Instruction, InstructionGenerator};
+use super::InstructionGenerator;
 use crate::common::*;
 use crate::parser::ConditionalBlockNode;
 
 impl InstructionGenerator {
     pub fn generate_while_instructions(&mut self, w: ConditionalBlockNode, pos: Location) {
-        let start_idx = self.instructions.len();
-        // evaluate condition into register A
+        self.label("while", pos);
         self.generate_expression_instructions(w.condition);
-        let jump_if_false_idx = self.instructions.len();
-        self.push(Instruction::JumpIfFalse(0), pos); // will determine soon
+        self.jump_if_false("wend", pos);
         self.generate_block_instructions(w.statements);
-        self.push(Instruction::Jump(start_idx), pos);
-        let exit_idx = self.instructions.len();
-        self.instructions[jump_if_false_idx] = Instruction::JumpIfFalse(exit_idx).at(pos);
-        // patch jump statement with correct index
+        self.jump("while", pos);
+        self.label("wend", pos);
     }
 }

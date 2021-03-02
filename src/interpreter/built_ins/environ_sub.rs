@@ -3,12 +3,7 @@
 use super::*;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let s: &String = interpreter
-        .context()
-        .get(0)
-        .unwrap()
-        .try_into()
-        .with_err_no_pos()?;
+    let s: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
     let parts: Vec<&str> = s.split("=").collect();
     if parts.len() != 2 {
         Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()

@@ -1,7 +1,7 @@
 use crate::assert_prints;
 use crate::common::{Location, QError, QErrorNode};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::interpreter::test_utils::mock_interpreter2;
+use crate::interpreter::test_utils::mock_interpreter_for_input;
 
 #[test]
 fn on_error_go_to_label() {
@@ -40,7 +40,7 @@ fn reset_error_handler() {
         PRINT "oops"
         RESUME NEXT
     "#;
-    let (instructions, mut interpreter) = mock_interpreter2(input);
+    let (instructions, mut interpreter) = mock_interpreter_for_input(input);
     let result = interpreter.interpret(instructions);
     let err = result.unwrap_err();
     assert_eq!(

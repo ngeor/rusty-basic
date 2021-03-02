@@ -55,7 +55,7 @@ fn line_input_one_file<S: InterpreterTrait>(
 ) -> Result<(), QError> {
     let file_input = interpreter
         .file_manager()
-        .try_get_file_info_input_mut(file_handle)?;
+        .try_get_file_info_input(file_handle)?;
     let s = file_input.line_input()?;
     interpreter.context_mut()[idx] = Variant::VString(s);
     Ok(())

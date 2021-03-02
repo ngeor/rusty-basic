@@ -7,7 +7,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let file_handle: FileHandle = FileHandle::try_from(&interpreter.context()[0])?;
     let file_input = interpreter
         .file_manager()
-        .try_get_file_info_input_mut(&file_handle)?;
+        .try_get_file_info_input(&file_handle)?;
     let is_eof: bool = file_input.eof()?;
     interpreter
         .context_mut()

@@ -10,7 +10,6 @@ use crate::parser::UserDefinedTypes;
 use crate::variant::Variant;
 use std::collections::VecDeque;
 
-// TODO remove trait
 pub trait InterpreterTrait {
     type TStdlib: Stdlib;
     type TStdIn: Input;

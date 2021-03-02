@@ -68,7 +68,7 @@ fn raw_input<S: InterpreterTrait>(
     if file_handle.is_valid() {
         let file_input = interpreter
             .file_manager()
-            .try_get_file_info_input_mut(&file_handle)?;
+            .try_get_file_info_input(&file_handle)?;
         file_input.input().map_err(QError::from)
     } else {
         interpreter.stdin().input().map_err(QError::from)

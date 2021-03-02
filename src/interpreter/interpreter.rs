@@ -524,13 +524,9 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     }
                 },
                 Err(e) => {
-                    // TODO if was in the middle of building arguments to a sub/function, clean up
-                    // TODO what if the error handler is in a different sub / probably linter should catch this
-                    // TODO if was calling a sub/function, probably needs to cleanup stack (recursively potentially)
                     match ctx.error_handler {
                         ErrorHandler::Address(handler_address) => {
                             // store error address, so we can call RESUME and RESUME NEXT from within the error handler
-                            // TODO not good enough if a sub is called and tries to access a DIM SHARED variable
                             self.context.push_error_handler_context();
                             self.last_error_address = Some(i);
                             i = handler_address;

@@ -15,7 +15,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let result: String = do_mid(s, start, length)?;
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::Mid.into(), result.into());
+        .set_built_in_function_result(BuiltInFunction::Mid, result);
     Ok(())
 }
 

@@ -7,7 +7,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let result = interpreter.stdlib().get_env_var(env_var_name);
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::Environ.into(), result.into());
+        .set_built_in_function_result(BuiltInFunction::Environ, result);
     Ok(())
 }
 

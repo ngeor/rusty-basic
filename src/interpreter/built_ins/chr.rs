@@ -8,7 +8,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     s.push((i as u8) as char);
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::Chr.into(), s.into());
+        .set_built_in_function_result(BuiltInFunction::Chr, s);
     Ok(())
 }
 

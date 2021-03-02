@@ -11,6 +11,6 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let is_eof: bool = file_input.eof()?;
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::Eof.into(), is_eof.into());
+        .set_built_in_function_result(BuiltInFunction::Eof, is_eof);
     Ok(())
 }

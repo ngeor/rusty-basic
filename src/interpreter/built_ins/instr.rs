@@ -21,7 +21,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     };
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::InStr.into(), result.into());
+        .set_built_in_function_result(BuiltInFunction::InStr, result);
     Ok(())
 }
 

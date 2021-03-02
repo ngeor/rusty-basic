@@ -7,7 +7,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let result: Variant = val(v).with_err_no_pos()?;
     interpreter
         .context_mut()
-        .set_variable(BuiltInFunction::Val.into(), result.into());
+        .set_built_in_function_result(BuiltInFunction::Val, result);
     Ok(())
 }
 

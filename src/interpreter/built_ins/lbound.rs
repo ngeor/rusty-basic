@@ -17,9 +17,10 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         match v {
             Variant::VArray(a) => match a.get_dimensions((dimension - 1) as usize) {
                 Some((lower, _)) => {
-                    interpreter
-                        .context_mut()
-                        .set_variable(BuiltInFunction::LBound.into(), Variant::VInteger(*lower));
+                    interpreter.context_mut().set_built_in_function_result(
+                        BuiltInFunction::LBound,
+                        Variant::VInteger(*lower),
+                    );
                     Ok(())
                 }
                 _ => Err(QError::SubscriptOutOfRange).with_err_no_pos(),

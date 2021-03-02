@@ -1,6 +1,7 @@
+use crate::built_ins::BuiltInFunction;
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
-use crate::parser::{DimName, Name};
+use crate::parser::{BareName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
@@ -86,13 +87,18 @@ impl Context {
             .expect("Expected state with arguments")
     }
 
-    #[deprecated]
-    pub fn set_variable(&mut self, dim_name: DimName, value: Variant) {
-        self.variables_mut().insert_dim(dim_name, value);
+    pub fn set_built_in_function_result<V>(&mut self, built_in_function: BuiltInFunction, value: V)
+    where
+        Variant: From<V>,
+    {
+        let q: TypeQualifier = TypeQualifier::from(&built_in_function);
+        let bare_name: BareName = BareName::from(built_in_function);
+        self.variables_mut()
+            .insert_built_in(bare_name, q, Variant::from(value));
     }
 
     #[cfg(test)]
-    pub fn get_by_name(&self, name: &Name) -> Variant {
+    pub fn get_by_name(&self, name: &crate::parser::Name) -> Variant {
         self.variables()
             .get_by_name(name)
             .map(Clone::clone)

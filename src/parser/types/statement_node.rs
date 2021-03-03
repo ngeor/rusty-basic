@@ -107,7 +107,7 @@ pub struct SelectCaseNode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CaseBlockNode {
-    pub expr: CaseExpression,
+    pub expression_list: Vec<CaseExpression>,
     pub statements: StatementNodes,
 }
 

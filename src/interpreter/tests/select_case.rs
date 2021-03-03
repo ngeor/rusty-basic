@@ -186,3 +186,37 @@ fn test_select_case_is_no_whitespace() {
     "#;
     assert_prints!(input, "more than five");
 }
+
+#[test]
+fn multi_expr_first_expr_of_second_block_matches() {
+    let input = r#"
+    SELECT CASE 7
+        CASE 1, 2
+            PRINT "one or two"
+        CASE 7, 8
+            PRINT "seven or eight"
+        CASE 10, 11
+            PRINT "ten or eleven"
+        CASE ELSE
+            PRINT "else"
+    END SELECT
+    "#;
+    assert_prints!(input, "seven or eight");
+}
+
+#[test]
+fn multi_expr_second_expr_of_second_block_matches() {
+    let input = r#"
+    SELECT CASE 8
+        CASE 1, 2
+            PRINT "one or two"
+        CASE 7, 8
+            PRINT "seven or eight"
+        CASE 10, 11
+            PRINT "ten or eleven"
+        CASE ELSE
+            PRINT "else"
+    END SELECT
+    "#;
+    assert_prints!(input, "seven or eight");
+}

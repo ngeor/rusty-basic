@@ -206,9 +206,17 @@ pub trait ExpressionReducer {
     }
 
     fn visit_case_block(&mut self, s: CaseBlockNode) -> Result<CaseBlockNode, QErrorNode> {
+        let CaseBlockNode {
+            expression_list,
+            statements,
+        } = s;
+        let expression_list: Vec<CaseExpression> = expression_list
+            .into_iter()
+            .map(|case_expr| self.visit_case_expression(case_expr))
+            .collect::<Result<Vec<CaseExpression>, QErrorNode>>()?;
         Ok(CaseBlockNode {
-            expr: self.visit_case_expression(s.expr)?,
-            statements: self.visit_statement_nodes(s.statements)?,
+            expression_list,
+            statements: self.visit_statement_nodes(statements)?,
         })
     }
 

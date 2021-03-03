@@ -158,20 +158,22 @@ pub trait PostConversionLinter {
 
     fn visit_select_case(&mut self, s: &SelectCaseNode) -> Result<(), QErrorNode> {
         self.visit_expression(&s.expr)?;
-        for c in s.case_blocks.iter() {
-            match &c.expr {
-                CaseExpression::Simple(e) => {
-                    self.visit_expression(e)?;
-                }
-                CaseExpression::Is(_, e) => {
-                    self.visit_expression(e)?;
-                }
-                CaseExpression::Range(from, to) => {
-                    self.visit_expression(from)?;
-                    self.visit_expression(to)?;
+        for case_block_node in s.case_blocks.iter() {
+            for case_expr in &case_block_node.expression_list {
+                match case_expr {
+                    CaseExpression::Simple(e) => {
+                        self.visit_expression(e)?;
+                    }
+                    CaseExpression::Is(_, e) => {
+                        self.visit_expression(e)?;
+                    }
+                    CaseExpression::Range(from, to) => {
+                        self.visit_expression(from)?;
+                        self.visit_expression(to)?;
+                    }
                 }
             }
-            self.visit_statement_nodes(&c.statements)?;
+            self.visit_statement_nodes(&case_block_node.statements)?;
         }
         match &s.else_block {
             Some(x) => self.visit_statement_nodes(x),

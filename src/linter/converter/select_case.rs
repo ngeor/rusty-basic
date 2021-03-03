@@ -32,10 +32,11 @@ impl<'a> ConverterWithImplicitVariables<CaseBlockNode, CaseBlockNode> for Conver
         &mut self,
         a: CaseBlockNode,
     ) -> Result<(CaseBlockNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let (expr, implicit_vars_expr) = self.convert_and_collect_implicit_variables(a.expr)?;
+        let (expr, implicit_vars_expr) =
+            self.convert_and_collect_implicit_variables(a.expression_list)?;
         Ok((
             CaseBlockNode {
-                expr,
+                expression_list: expr,
                 statements: self.convert(a.statements)?,
             },
             implicit_vars_expr,

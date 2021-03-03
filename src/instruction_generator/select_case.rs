@@ -23,16 +23,16 @@ impl InstructionGenerator {
         for case_block in s.case_blocks {
             self.label(format!("case{}", idx), pos);
             let next_case_label = next_case_label(case_blocks_len, has_else, idx);
-            match case_block.expr {
-                CaseExpression::Simple(e) => {
-                    self.generate_case_expr_simple(e, next_case_label.as_str(), pos);
-                }
-                CaseExpression::Is(op, e) => {
-                    self.generate_case_expr_is(op, e, next_case_label.as_str(), pos);
-                }
-                CaseExpression::Range(from, to) => {
-                    self.generate_case_expr_range(from, to, next_case_label.as_str(), pos);
-                }
+            let is_multi_expr = case_block.expression_list.len() > 1;
+            self.generate_case_expressions(
+                case_block.expression_list,
+                next_case_label.as_str(),
+                pos,
+                idx,
+            );
+            // if we have a multi-expr CASE, we need a label marker for the CASE block statements to jump to
+            if is_multi_expr {
+                self.label(format!("case-statements{}", idx), pos);
             }
             self.generate_block_instructions(case_block.statements);
             self.jump("end-select", pos);
@@ -47,6 +47,61 @@ impl InstructionGenerator {
         }
         self.push(Instruction::PopValueStackIntoA, pos);
         self.label("end-select", pos);
+    }
+
+    fn generate_case_expressions(
+        &mut self,
+        case_expressions: Vec<CaseExpression>,
+        next_case_label: &str,
+        pos: Location,
+        idx: usize,
+    ) {
+        let expressions_len = case_expressions.len();
+        if expressions_len > 1 {
+            let opt_true_label = Some(format!("case-statements{}", idx));
+            let mut i: usize = 0;
+            for case_expr in case_expressions {
+                let is_last = i + 1 == expressions_len;
+                if i > 0 {
+                    let inner_label = format!("case-multi-expr-{}-{}", idx, i);
+                    self.label(inner_label, pos);
+                }
+                let n = if is_last {
+                    next_case_label.to_owned()
+                } else {
+                    format!("case-multi-expr-{}-{}", idx, i + 1)
+                };
+                self.generate_case_expression(case_expr, &n, pos, opt_true_label.as_ref());
+                i += 1;
+            }
+        } else {
+            for case_expr in case_expressions {
+                self.generate_case_expression(case_expr, next_case_label, pos, None);
+            }
+        }
+    }
+
+    fn generate_case_expression(
+        &mut self,
+        case_expression: CaseExpression,
+        next_case_label: &str,
+        pos: Location,
+        opt_true_label: Option<&String>,
+    ) {
+        match case_expression {
+            CaseExpression::Simple(e) => {
+                self.generate_case_expr_simple(e, next_case_label, pos);
+            }
+            CaseExpression::Is(op, e) => {
+                self.generate_case_expr_is(op, e, next_case_label, pos);
+            }
+            CaseExpression::Range(from, to) => {
+                self.generate_case_expr_range(from, to, next_case_label, pos);
+            }
+        }
+        if let Some(prefix) = opt_true_label {
+            self.jump(prefix, pos);
+        }
     }
 
     fn generate_case_expr_simple(

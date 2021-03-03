@@ -5,6 +5,7 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, keyword_pair_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
+use std::marker::PhantomData;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -24,36 +25,22 @@ where
 {
     select_case_expr_p()
         .and_opt(comment::comments_and_whitespace_p())
-        .and_opt(case_any_many())
+        .and_opt(case_blocks())
+        .and_opt(case_else())
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Select))
-        .map(|(((expr, inline_comments), r), _)| {
-            let mut case_blocks: Vec<CaseBlockNode> = vec![];
-            let mut else_block: Option<StatementNodes> = None;
-            for (opt_case_expr, s) in r.unwrap_or_default() {
-                match opt_case_expr {
-                    ExprOrElse::Expr(case_expr) => {
-                        case_blocks.push(CaseBlockNode {
-                            expr: case_expr,
-                            statements: s,
-                        });
-                    }
-                    ExprOrElse::Else => {
-                        if else_block.is_some() {
-                            panic!("Multiple case else blocks");
-                        }
-                        else_block = Some(s);
-                    }
-                }
-            }
-            Statement::SelectCase(SelectCaseNode {
-                expr,
-                case_blocks,
-                else_block,
-                inline_comments: inline_comments.unwrap_or_default(),
-            })
-        })
+        .map(
+            |((((expr, opt_inline_comments), opt_blocks), else_block), _)| {
+                Statement::SelectCase(SelectCaseNode {
+                    expr,
+                    case_blocks: opt_blocks.unwrap_or_default(),
+                    else_block,
+                    inline_comments: opt_inline_comments.unwrap_or_default(),
+                })
+            },
+        )
 }
 
+/// Parses the `SELECT CASE expression` part
 fn select_case_expr_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -66,114 +53,182 @@ where
         .keep_right()
 }
 
-enum ExprOrElse {
-    Expr(CaseExpression),
-    Else,
-}
+// SELECT CASE expr
+// ' comments and whitespace...
+// [CASE case-expression-list
+// statements]*
+// [CASE ELSE
+// statements]?
+// END SELECT
+//
+// case-expression-list := case-expression [, case-expression ]*
+// case-expression := is-expression | range-expression | expression
+// is-expression := IS rel-op expression
+// range-expression := expression TO expression
+//
+// For case-expression-list, the first element needs to be "guarded" (preceded by whitespace or parenthesis)
+// but the remaining elements are already guarded by comma.
+//
+// For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_any_many<R>() -> impl Parser<R, Output = Vec<(ExprOrElse, StatementNodes)>>
+fn case_blocks<R>() -> impl Parser<R, Output = Vec<CaseBlockNode>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    case_any().one_or_more_looking_back(|(expr_or_else, _)| {
-        CaseAnyLookingBack(if let ExprOrElse::Expr(_) = expr_or_else {
-            true
-        } else {
-            false
-        })
-    })
+    CaseBlockParser::<R>::new().one_or_more()
 }
 
-struct CaseAnyLookingBack(bool);
+struct CaseBlockParser<R>(PhantomData<R>);
 
-impl<R> Parser<R> for CaseAnyLookingBack
+impl<R> Parser<R> for CaseBlockParser<R>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    type Output = (ExprOrElse, StatementNodes);
+    type Output = CaseBlockNode;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        if self.0 {
-            case_any().parse(reader)
+        // CASE
+        let (reader, result) = keyword_p(Keyword::Case)
+            .and_opt(whitespace_p())
+            .map(|((_, l), r)| {
+                let mut temp: String = String::new();
+                temp.push_str(l.as_str());
+                temp.push_str(r.unwrap_or_default().as_str());
+                temp
+            })
+            .parse(reader)?;
+        if result.is_none() {
+            return Ok((reader, None));
+        }
+        let case_ws_str: String = result.unwrap_or_default();
+        let (reader, result) = Self::continue_after_case().parse(reader)?;
+        if result.is_some() {
+            Ok((reader, result))
         } else {
-            Ok((reader, None))
+            Ok((reader.undo(case_ws_str), result))
         }
     }
 }
 
-fn case_any<R>() -> impl Parser<R, Output = (ExprOrElse, StatementNodes)>
+impl<R> CaseBlockParser<R>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    keyword_p(Keyword::Case)
-        .and_demand(
-            case_else()
-                .and_demand(statements::zero_or_more_statements_p(keyword_p(
-                    Keyword::Else,
-                )))
-                .or(case_is().and_demand(statements::zero_or_more_statements_p(
-                    keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
-                )))
-                .or(
-                    simple_or_range_p().and_demand(statements::zero_or_more_statements_p(
-                        keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
-                    )),
-                )
-                .or_syntax_error("Expected: ELSE, IS, expression"),
-        )
-        .keep_right()
+    fn new() -> Self {
+        Self(PhantomData)
+    }
+
+    fn continue_after_case() -> impl Parser<R, Output = CaseBlockNode> {
+        case_expression_list()
+            .and_demand(statements::zero_or_more_statements_p(
+                keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
+            ))
+            .map(|(expression_list, statements)| CaseBlockNode {
+                expression_list,
+                statements,
+            })
+    }
 }
 
-fn case_else<R>() -> impl Parser<R, Output = ExprOrElse>
+fn case_expression_list<R>() -> impl Parser<R, Output = Vec<CaseExpression>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    whitespace_p()
-        .and(keyword_p(Keyword::Else))
-        .map(|_| ExprOrElse::Else)
+    CaseExpressionParser::new().csv()
 }
 
-fn case_is<R>() -> impl Parser<R, Output = ExprOrElse>
+struct CaseExpressionParser<R>(PhantomData<R>);
+
+impl<R> Parser<R> for CaseExpressionParser<R>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    whitespace_p()
-        .and(keyword_p(Keyword::Is))
-        .and_opt(whitespace_p())
-        .and_demand(
-            expression::relational_operator_p().or_syntax_error("Expected: Operator after IS"),
-        )
-        .and_opt(whitespace_p())
-        .and_demand(
-            expression::expression_node_p()
-                .or_syntax_error("Expected: expression after IS operator"),
-        )
-        .map(|(((_, op), _), r)| ExprOrElse::Expr(CaseExpression::Is(op.strip_location(), r)))
+    type Output = CaseExpression;
+
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, result) = keyword_p(Keyword::Else).peek().parse(reader)?;
+        if result.is_some() {
+            return Ok((reader, None));
+        }
+
+        Self::case_is()
+            .or(SimpleOrRangeParser::new())
+            .or_syntax_error("Expected: IS or expression")
+            .parse(reader)
+    }
 }
 
-fn simple_or_range_p<R>() -> impl Parser<R, Output = ExprOrElse>
+impl<R> CaseExpressionParser<R>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    expression::guarded_expression_node_p()
-        .and_opt_factory(range_p)
-        .map(|(l, opt_r)| match opt_r {
-            Some(r) => ExprOrElse::Expr(CaseExpression::Range(l, r)),
-            _ => ExprOrElse::Expr(CaseExpression::Simple(l)),
-        })
+    fn new() -> Self {
+        Self(PhantomData)
+    }
+
+    fn case_is() -> impl Parser<R, Output = CaseExpression> {
+        keyword_p(Keyword::Is)
+            .and_opt(whitespace_p())
+            .and_demand(
+                expression::relational_operator_p().or_syntax_error("Expected: Operator after IS"),
+            )
+            .and_opt(whitespace_p())
+            .and_demand(
+                expression::expression_node_p()
+                    .or_syntax_error("Expected: expression after IS operator"),
+            )
+            .map(|(((_, op), _), r)| CaseExpression::Is(op.strip_location(), r))
+    }
 }
 
-fn range_p<R>(first_expr_ref: &ExpressionNode) -> impl Parser<R, Output = ExpressionNode>
+struct SimpleOrRangeParser<R>(PhantomData<R>);
+
+impl<R> Parser<R> for SimpleOrRangeParser<R>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    let parenthesis = first_expr_ref.is_parenthesis();
-    opt_whitespace_p(!parenthesis)
-        .and(keyword_p(Keyword::To))
-        .and_demand(
-            expression::guarded_expression_node_p()
-                .or_syntax_error("Expected: expression after TO"),
-        )
+    type Output = CaseExpression;
+
+    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let (reader, expr) = expression::expression_node_p().parse(reader)?;
+        match expr {
+            Some(expr) => {
+                let parenthesis = expr.is_parenthesis();
+                let (reader, result) = opt_whitespace_p(!parenthesis)
+                    .and(keyword_p(Keyword::To))
+                    .parse(reader)?;
+                match result {
+                    Some(_) => {
+                        let (reader, second_expr) = expression::guarded_expression_node_p()
+                            .or_syntax_error("Expected: expression after TO")
+                            .parse(reader)?;
+                        Ok((
+                            reader,
+                            Some(CaseExpression::Range(expr, second_expr.unwrap())),
+                        ))
+                    }
+                    None => Ok((reader, Some(CaseExpression::Simple(expr)))),
+                }
+            }
+            _ => Ok((reader, None)),
+        }
+    }
+}
+
+impl<R> SimpleOrRangeParser<R> {
+    fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+fn case_else<R>() -> impl Parser<R, Output = StatementNodes>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_pair_p(Keyword::Case, Keyword::Else)
+        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+            Keyword::End,
+        )))
         .keep_right()
 }
 
@@ -202,7 +257,7 @@ mod tests {
                     expr: "X".as_var_expr(2, 21),
                     inline_comments: vec![" testing for x".to_string().at_rc(2, 23)],
                     case_blocks: vec![CaseBlockNode {
-                        expr: CaseExpression::Simple(1.as_lit_expr(3, 14)),
+                        expression_list: vec![CaseExpression::Simple(1.as_lit_expr(3, 14))],
                         statements: vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(3, 23),
                             Statement::SubCall("Flint".into(), vec!["One".as_lit_expr(4, 15)])
@@ -265,7 +320,7 @@ mod tests {
                         " first case".to_string().at_rc(3, 9)
                     ],
                     case_blocks: vec![CaseBlockNode {
-                        expr: CaseExpression::Simple(1.as_lit_expr(4, 14)),
+                        expression_list: vec![CaseExpression::Simple(1.as_lit_expr(4, 14))],
                         statements: vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(4, 23),
                             Statement::SubCall("Flint".into(), vec!["One".as_lit_expr(5, 15)])

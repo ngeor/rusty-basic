@@ -246,3 +246,17 @@ fn test_dot_in_sub_param_name() {
     "#;
     assert_prints!(program, "Hello there");
 }
+
+#[test]
+fn static_sub_preserves_values_between_calls() {
+    let program = r#"
+    Hello
+    Hello
+
+    SUB Hello STATIC
+        A = A + 1
+        PRINT A
+    END SUB
+    "#;
+    assert_prints!(program, "1", "2");
+}

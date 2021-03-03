@@ -93,6 +93,8 @@ pub enum Keyword {
     Shared,
     /// SINGLE
     Single,
+    /// STATIC
+    Static,
     /// STEP
     Step,
     /// STRING
@@ -160,6 +162,7 @@ const STR_RETURN: &str = "RETURN";
 const STR_SELECT: &str = "SELECT";
 const STR_SHARED: &str = "SHARED";
 const STR_SINGLE: &str = "SINGLE";
+const STR_STATIC: &str = "STATIC";
 const STR_STEP: &str = "STEP";
 const STR_STRING: &str = "STRING";
 const STR_SUB: &str = "SUB";
@@ -171,7 +174,7 @@ const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 55] = [
+const SORTED_KEYWORDS_STR: [&str; 56] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -217,6 +220,7 @@ const SORTED_KEYWORDS_STR: [&str; 55] = [
     STR_SELECT,
     STR_SHARED,
     STR_SINGLE,
+    STR_STATIC,
     STR_STEP,
     STR_STRING,
     STR_SUB,
@@ -229,7 +233,7 @@ const SORTED_KEYWORDS_STR: [&str; 55] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 55] = [
+const SORTED_KEYWORDS: [Keyword; 56] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -275,6 +279,7 @@ const SORTED_KEYWORDS: [Keyword; 55] = [
     Keyword::Select,
     Keyword::Shared,
     Keyword::Single,
+    Keyword::Static,
     Keyword::Step,
     Keyword::String_,
     Keyword::Sub,
@@ -335,6 +340,7 @@ impl Keyword {
             Self::Select => STR_SELECT,
             Self::Shared => STR_SHARED,
             Self::Single => STR_SINGLE,
+            Self::Static => STR_STATIC,
             Self::Step => STR_STEP,
             Self::String_ => STR_STRING,
             Self::Sub => STR_SUB,

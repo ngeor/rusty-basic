@@ -159,25 +159,37 @@ pub trait PostConversionLinter {
     fn visit_select_case(&mut self, s: &SelectCaseNode) -> Result<(), QErrorNode> {
         self.visit_expression(&s.expr)?;
         for case_block_node in s.case_blocks.iter() {
-            for case_expr in &case_block_node.expression_list {
-                match case_expr {
-                    CaseExpression::Simple(e) => {
-                        self.visit_expression(e)?;
-                    }
-                    CaseExpression::Is(_, e) => {
-                        self.visit_expression(e)?;
-                    }
-                    CaseExpression::Range(from, to) => {
-                        self.visit_expression(from)?;
-                        self.visit_expression(to)?;
-                    }
-                }
-            }
-            self.visit_statement_nodes(&case_block_node.statements)?;
+            self.visit_case_block(case_block_node, &s.expr)?;
         }
         match &s.else_block {
             Some(x) => self.visit_statement_nodes(x),
             None => Ok(()),
+        }
+    }
+
+    fn visit_case_block(
+        &mut self,
+        case_block_node: &CaseBlockNode,
+        select_expr: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
+        for case_expr in &case_block_node.expression_list {
+            self.visit_case_expression(case_expr, select_expr)?;
+        }
+        self.visit_statement_nodes(&case_block_node.statements)
+    }
+
+    fn visit_case_expression(
+        &mut self,
+        case_expr: &CaseExpression,
+        _select_expr: &ExpressionNode,
+    ) -> Result<(), QErrorNode> {
+        match case_expr {
+            CaseExpression::Simple(e) => self.visit_expression(e),
+            CaseExpression::Is(_, e) => self.visit_expression(e),
+            CaseExpression::Range(from, to) => {
+                self.visit_expression(from)?;
+                self.visit_expression(to)
+            }
         }
     }
 

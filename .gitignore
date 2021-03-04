@@ -1,4 +1,4 @@
 .idea/
 target/
 tarpaulin-report.html
-.vscode/
+.vscode/settings.json

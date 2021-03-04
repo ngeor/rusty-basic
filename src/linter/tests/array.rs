@@ -67,7 +67,8 @@ fn test_sub_with_array_parameter() {
                 )))
             )
             .at_rc(2, 14)],
-            body: vec![]
+            body: vec![],
+            is_static: false
         })
         .at_rc(2, 5)]
     );
@@ -148,7 +149,8 @@ fn test_passing_array_parameter_with_parenthesis() {
                         .at_rc(7, 14)
                     )
                     .at_rc(7, 9)
-                ]
+                ],
+                is_static: false
             })
             .at_rc(6, 5)
         ]

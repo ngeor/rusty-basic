@@ -151,7 +151,8 @@ mod tests {
                     params: vec![ParamName::new("X".into(), ParamType::Bare).at_rc(3, 23)],
                     body: vec![
                         Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)
-                    ]
+                    ],
+                    is_static: false
                 })
                 .at_rc(3, 9),
                 TopLevelToken::Statement(Statement::Comment(" End of implementation".to_string()))
@@ -217,7 +218,8 @@ mod tests {
                         )))
                     )
                     .at_rc(3, 23)],
-                    body: vec![]
+                    body: vec![],
+                    is_static: false
                 })
                 .at_rc(3, 9),
             ]

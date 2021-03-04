@@ -56,6 +56,7 @@ pub trait ExpressionReducer {
             name: f.name,
             params: f.params,
             body: self.visit_statement_nodes(f.body)?,
+            is_static: f.is_static,
         })
     }
 
@@ -67,6 +68,7 @@ pub trait ExpressionReducer {
             name: s.name,
             params: s.params,
             body: self.visit_statement_nodes(s.body)?,
+            is_static: s.is_static,
         })
     }
 

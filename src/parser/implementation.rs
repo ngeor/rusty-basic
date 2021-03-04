@@ -25,7 +25,12 @@ where
         )))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Function))
         .map(|(((name, params), body), _)| {
-            TopLevelToken::FunctionImplementation(FunctionImplementation { name, params, body })
+            TopLevelToken::FunctionImplementation(FunctionImplementation {
+                name,
+                params,
+                body,
+                is_static: false,
+            })
         })
 }
 
@@ -39,7 +44,12 @@ where
         )))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Sub))
         .map(|(((name, params), body), _)| {
-            TopLevelToken::SubImplementation(SubImplementation { name, params, body })
+            TopLevelToken::SubImplementation(SubImplementation {
+                name,
+                params,
+                body,
+                is_static: false,
+            })
         })
 }
 
@@ -76,7 +86,8 @@ mod tests {
                     )
                     .at(Location::new(3, 21))
                 )
-                .at_rc(3, 13)]
+                .at_rc(3, 13)],
+                is_static: false
             })
             .at_rc(2, 9)
         );
@@ -108,7 +119,8 @@ mod tests {
                     )
                     .at_rc(3, 21)
                 )
-                .at_rc(3, 13)]
+                .at_rc(3, 13)],
+                is_static: false
             })
             .at_rc(2, 9)
         );

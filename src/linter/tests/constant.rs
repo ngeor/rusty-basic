@@ -138,7 +138,8 @@ fn test_constant_definition_and_usage_in_sub_call_arg() {
                     ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
                 )
                 .at_rc(5, 15)],
-                body: vec![]
+                body: vec![],
+                is_static: false
             })
             .at_rc(5, 5)
         ]

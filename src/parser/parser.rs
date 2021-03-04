@@ -155,7 +155,8 @@ mod tests {
                             ])
                         })
                         .at_rc(9, 5)
-                    ]
+                    ],
+                    is_static: false
                 }),
             ],
         );

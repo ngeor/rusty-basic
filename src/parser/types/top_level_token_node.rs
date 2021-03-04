@@ -1,8 +1,8 @@
 use super::{
-    BareNameNode, DefType, NameNode, ParamNameNodes, Statement, StatementNodes, UserDefinedType,
+    BareName, BareNameNode, DefType, Name, NameNode, ParamName, ParamNameNodes, Statement,
+    StatementNodes, UserDefinedType,
 };
 use crate::common::*;
-use crate::parser::ParamName;
 
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
@@ -38,15 +38,13 @@ impl From<Statement> for TopLevelToken {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SubImplementation {
-    pub name: BareNameNode,
+pub struct SubprogramImplementation<T> {
+    pub name: Locatable<T>,
     pub params: Vec<Locatable<ParamName>>,
     pub body: StatementNodes,
+    pub is_static: bool,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct FunctionImplementation {
-    pub name: NameNode,
-    pub params: Vec<Locatable<ParamName>>,
-    pub body: StatementNodes,
-}
+pub type SubImplementation = SubprogramImplementation<BareName>;
+
+pub type FunctionImplementation = SubprogramImplementation<Name>;

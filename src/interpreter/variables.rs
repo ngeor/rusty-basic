@@ -147,17 +147,21 @@ impl Variables {
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
         self.values.get_mut(idx)
     }
+
+    pub fn apply_arguments(&mut self, arguments: Arguments) {
+        for (opt_param, arg) in arguments.into_iter() {
+            match opt_param {
+                Some(param_name) => self.insert_param(param_name, arg),
+                None => self.insert_unnamed(arg),
+            }
+        }
+    }
 }
 
 impl From<Arguments> for Variables {
     fn from(arguments: Arguments) -> Self {
         let mut variables: Self = Self::new();
-        for (opt_param, arg) in arguments.into_iter() {
-            match opt_param {
-                Some(param_name) => variables.insert_param(param_name, arg),
-                None => variables.insert_unnamed(arg),
-            }
-        }
+        variables.apply_arguments(arguments);
         variables
     }
 }

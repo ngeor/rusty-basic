@@ -18,7 +18,8 @@ mod tests;
 use crate::built_ins::*;
 use crate::common::*;
 use crate::instruction_generator::label_resolver::LabelResolver;
-use crate::instruction_generator::parameter_collector::{ParameterCollector, SubProgramParameters};
+use crate::instruction_generator::parameter_collector::{ParameterCollector, SubprogramParameters};
+use crate::interpreter::context::SubprogramName;
 use crate::parser::*;
 use crate::variant::Variant;
 
@@ -28,9 +29,9 @@ pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult
     // the parameter names and types are needed
     let mut parameter_collector = ParameterCollector::default();
     parameter_collector.visit(&program);
-    let sub_program_parameters: SubProgramParameters = parameter_collector.into();
+    let subprogram_parameters: SubprogramParameters = parameter_collector.into();
     // pass 2 generate with labels still unresolved
-    let mut generator = InstructionGenerator::new(sub_program_parameters);
+    let mut generator = InstructionGenerator::new(subprogram_parameters);
     generator.generate_unresolved(program);
     let InstructionGenerator {
         instructions,
@@ -171,6 +172,7 @@ pub enum Instruction {
     PushAToUnnamedArg,
 
     PushStack,
+    PushStaticStack(SubprogramName),
     PopStack,
 
     EnqueueToReturnStack(usize),
@@ -238,15 +240,15 @@ pub enum PrinterType {
 struct InstructionGenerator {
     instructions: Vec<InstructionNode>,
     statement_addresses: Vec<usize>,
-    sub_program_parameters: SubProgramParameters,
+    subprogram_parameters: SubprogramParameters,
 }
 
 impl InstructionGenerator {
-    fn new(sub_program_parameters: SubProgramParameters) -> Self {
+    fn new(subprogram_parameters: SubprogramParameters) -> Self {
         Self {
             instructions: vec![],
             statement_addresses: vec![],
-            sub_program_parameters,
+            subprogram_parameters,
         }
     }
 
@@ -315,7 +317,7 @@ impl InstructionGenerator {
         self.function_label(&function_name, pos);
         // set default value
         self.push_load(function_name.qualifier, pos);
-        self.sub_program_body(body, pos);
+        self.subprogram_body(body, pos);
     }
 
     fn visit_subs(&mut self, subs: Vec<Locatable<SubImplementation>>) {
@@ -331,10 +333,10 @@ impl InstructionGenerator {
         } = sub_node;
         let SubImplementation { name, body, .. } = sub_implementation;
         self.sub_label(name.as_ref(), pos);
-        self.sub_program_body(body, pos);
+        self.subprogram_body(body, pos);
     }
 
-    fn sub_program_body(&mut self, block: StatementNodes, pos: Location) {
+    fn subprogram_body(&mut self, block: StatementNodes, pos: Location) {
         self.generate_block_instructions(block);
         // to be able to RESUME NEXT if an error occurs on the last statement
         self.mark_statement_address();
@@ -399,6 +401,7 @@ impl InstructionGenerator {
         );
     }
 
+    // TODO accept qualified name
     fn jump_to_function<S: AsRef<str>>(&mut self, name: S, pos: Location) {
         self.push(
             Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(

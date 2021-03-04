@@ -260,3 +260,17 @@ fn static_sub_preserves_values_between_calls() {
     "#;
     assert_prints!(program, "1", "2");
 }
+
+#[test]
+fn static_sub_with_arguments() {
+    let program = r#"
+    Hello 1
+    Hello 2
+
+    SUB Hello(B) STATIC
+        A = A + B
+        PRINT A
+    END SUB
+    "#;
+    assert_prints!(program, "1", "3");
+}

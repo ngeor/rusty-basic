@@ -1,6 +1,7 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{AtLocation, Locatable, Location};
 use crate::instruction_generator::{Instruction, InstructionGenerator};
+use crate::interpreter::context::SubprogramName;
 use crate::parser::*;
 
 impl InstructionGenerator {
@@ -44,10 +45,11 @@ impl InstructionGenerator {
         let bare_name: &BareName = qualified_name.as_ref();
         // cloning to fight the borrow checker
         let function_parameters = self
-            .sub_program_parameters
-            .get_function_parameters(bare_name)
+            .subprogram_parameters
+            .get_function_parameters(&qualified_name)
             .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
+        // TODO is it static?
         self.push(Instruction::PushStack, pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
@@ -58,6 +60,7 @@ impl InstructionGenerator {
         // stash function name
         self.generate_stash_function_return_value(qualified_name, pos);
         // switch to parent context
+        // TODO is it static?
         self.push(Instruction::PopStack, pos);
         // un-stash by-ref variables
         self.generate_un_stash_by_ref_args(&args);
@@ -72,16 +75,23 @@ impl InstructionGenerator {
     ) {
         let Locatable { element: name, pos } = name_node;
         // cloning to fight the borrow checker
-        let sub_impl_parameters = self
-            .sub_program_parameters
-            .get_sub_parameters(&name)
-            .clone();
+        let sub_impl_parameters = self.subprogram_parameters.get_sub_parameters(&name).clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
-        self.push(Instruction::PushStack, pos);
+        // TODO is it static?
+        let is_static = self.subprogram_parameters.get_sub_info(&name).is_static;
+        if is_static {
+            self.push(
+                Instruction::PushStaticStack(SubprogramName::Sub(name.clone())),
+                pos,
+            );
+        } else {
+            self.push(Instruction::PushStack, pos);
+        }
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_sub(name, pos);
         self.generate_stash_by_ref_args(&args);
+        // TODO is it static?
         self.push(Instruction::PopStack, pos);
         self.generate_un_stash_by_ref_args(&args);
     }

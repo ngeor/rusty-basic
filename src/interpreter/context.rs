@@ -1,29 +1,64 @@
 use crate::built_ins::BuiltInFunction;
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, QualifiedName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum SubprogramName {
+    Function(QualifiedName),
+    Sub(BareName),
+}
+
+#[derive(Debug)]
+pub struct MemoryBlock {
+    variables: Variables,
+    ref_count: usize,
+    is_static: bool,
+}
+
+impl MemoryBlock {
+    fn increase_ref_count(&mut self) {
+        self.ref_count += 1;
+    }
+
+    fn decrease_ref_count(&mut self) -> bool {
+        if self.ref_count > 1 {
+            // decrease ref count
+            self.ref_count -= 1;
+            // indicate it cannot be removed
+            false
+        } else {
+            // it can be removed only if it is not static
+            !self.is_static
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Context {
     states: Vec<State>,
-    memory_blocks: Vec<Variables>,
-    // memory block index -> count
-    memory_block_ref_count: HashMap<usize, usize>,
+    memory_blocks: Vec<MemoryBlock>,
+    // static memory blocks (for STATIC function/sub)
+    static_memory_blocks: HashMap<SubprogramName, usize>,
 }
 
 impl Context {
     pub fn new() -> Self {
         let global_variables = Variables::new();
-        let memory_blocks = vec![global_variables];
+        let global_memory_block = MemoryBlock {
+            variables: global_variables,
+            ref_count: 1,
+            is_static: false,
+        };
+        let memory_blocks = vec![global_memory_block];
         let root_state = State::new(0, false);
         let states = vec![root_state];
-        let mut memory_block_ref_count: HashMap<usize, usize> = HashMap::new();
-        memory_block_ref_count.insert(0, 1);
         Self {
             states,
             memory_blocks,
-            memory_block_ref_count,
+            static_memory_blocks: HashMap::new(),
         }
     }
 
@@ -38,6 +73,26 @@ impl Context {
         let arguments = self.do_pop().arguments.expect("Expected argument state");
         let variables = Variables::from(arguments);
         self.do_push_new(variables);
+    }
+
+    pub fn stop_collecting_arguments_static(&mut self, subprogram_name: SubprogramName) {
+        // current state must be argument collecting state
+        let arguments = self.do_pop().arguments.expect("Expected argument state");
+        // ensure memory block for this subprogram
+        if !self.static_memory_blocks.contains_key(&subprogram_name) {
+            let variables = Variables::from(arguments);
+            let memory_block_index = self.memory_blocks.len();
+            self.do_push_new(variables);
+            self.memory_blocks[memory_block_index].is_static = true;
+            self.static_memory_blocks
+                .insert(subprogram_name, memory_block_index);
+        } else {
+            let memory_block_index = *self.static_memory_blocks.get(&subprogram_name).unwrap();
+            self.memory_blocks[memory_block_index]
+                .variables
+                .apply_arguments(arguments);
+            self.do_push_existing(memory_block_index, false);
+        }
     }
 
     pub fn pop(&mut self) {
@@ -58,20 +113,24 @@ impl Context {
 
     // needed due to DIM SHARED
     pub fn global_variables_mut(&mut self) -> &mut Variables {
-        self.memory_blocks.first_mut().unwrap()
+        &mut self.memory_blocks.first_mut().unwrap().variables
     }
 
     pub fn variables(&self) -> &Variables {
-        self.memory_blocks
+        &self
+            .memory_blocks
             .get(self.current_memory_block_index())
             .expect("internal error")
+            .variables
     }
 
     pub fn variables_mut(&mut self) -> &mut Variables {
         let current_memory_block_index = self.current_memory_block_index();
-        self.memory_blocks
+        &mut self
+            .memory_blocks
             .get_mut(current_memory_block_index)
             .expect("internal error")
+            .variables
     }
 
     pub fn arguments_mut(&mut self) -> &mut Arguments {
@@ -119,7 +178,12 @@ impl Context {
 
     fn do_push_new(&mut self, variables: Variables) {
         let next_memory_block_index = self.memory_blocks.len();
-        self.memory_blocks.push(variables);
+        let memory_block = MemoryBlock {
+            variables,
+            ref_count: 1,
+            is_static: false,
+        };
+        self.memory_blocks.push(memory_block);
         self.do_push_existing(next_memory_block_index, false);
     }
 
@@ -139,30 +203,15 @@ impl Context {
     }
 
     fn increase_ref_count(&mut self, memory_block_index: usize) {
-        let existing_count = match self.memory_block_ref_count.get(&memory_block_index) {
-            Some(c) => *c,
-            _ => 0,
-        };
-        self.memory_block_ref_count
-            .insert(memory_block_index, existing_count + 1);
+        self.memory_blocks[memory_block_index].increase_ref_count();
     }
 
     fn decrease_ref_count(&mut self, memory_block_index: usize) -> bool {
-        let count: usize = *self
-            .memory_block_ref_count
-            .get(&memory_block_index)
-            .expect("Should already have a ref count");
-        if count <= 1 {
-            self.memory_block_ref_count.remove(&memory_block_index);
-            true
-        } else {
-            self.memory_block_ref_count
-                .insert(memory_block_index, count - 1);
-            false
-        }
+        self.memory_blocks[memory_block_index].decrease_ref_count()
     }
 }
 
+#[derive(Debug)]
 struct State {
     memory_block_index: usize,
     arguments: Option<Arguments>,

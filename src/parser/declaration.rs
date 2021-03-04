@@ -2,7 +2,9 @@ use crate::common::*;
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{in_parenthesis_p, keyword_followed_by_whitespace_p, PcSpecific};
+use crate::parser::pc_specific::{
+    in_parenthesis_p, keyword_followed_by_whitespace_p, keyword_p, PcSpecific,
+};
 use crate::parser::types::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
@@ -20,17 +22,18 @@ pub fn declaration_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
+    // TODO is static allowed in a declaration?
     keyword_followed_by_whitespace_p(Keyword::Declare)
         .and_demand(
             function_declaration_p()
-                .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
-                .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
+                .map(|(n, p, _)| TopLevelToken::FunctionDeclaration(n, p))
+                .or(sub_declaration_p().map(|(n, p, _)| TopLevelToken::SubDeclaration(n, p)))
                 .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
         )
         .keep_right()
 }
 
-pub fn function_declaration_p<R>() -> impl Parser<R, Output = (NameNode, ParamNameNodes)>
+pub fn function_declaration_p<R>() -> impl Parser<R, Output = (NameNode, ParamNameNodes, bool)>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
@@ -42,12 +45,17 @@ where
         )
         .and_opt(whitespace_p())
         .and_opt(declaration_parameters_p())
-        .map(|(((_, function_name_node), _), opt_p)| {
-            (function_name_node, opt_p.unwrap_or_default())
+        .and_opt(keyword_p(Keyword::Static).preceded_by_opt_ws())
+        .map(|((((_, function_name_node), _), opt_p), opt_static)| {
+            (
+                function_name_node,
+                opt_p.unwrap_or_default(),
+                opt_static.is_some(),
+            )
         })
 }
 
-pub fn sub_declaration_p<R>() -> impl Parser<R, Output = (BareNameNode, ParamNameNodes)>
+pub fn sub_declaration_p<R>() -> impl Parser<R, Output = (BareNameNode, ParamNameNodes, bool)>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
@@ -59,7 +67,14 @@ where
         )
         .and_opt(whitespace_p())
         .and_opt(declaration_parameters_p())
-        .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
+        .and_opt(keyword_p(Keyword::Static).preceded_by_opt_ws())
+        .map(|((((_, sub_name_node), _), opt_p), opt_static)| {
+            (
+                sub_name_node,
+                opt_p.unwrap_or_default(),
+                opt_static.is_some(),
+            )
+        })
 }
 
 fn declaration_parameters_p<R>() -> impl Parser<R, Output = ParamNameNodes>

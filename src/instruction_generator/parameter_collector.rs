@@ -1,15 +1,32 @@
-use crate::common::{Locatable, StripLocation};
+use crate::common::Locatable;
 use crate::parser::{
-    BareName, FunctionImplementation, ParamName, ProgramNode, SubImplementation, TopLevelToken,
+    BareName, FunctionImplementation, ParamName, ProgramNode, QualifiedName, SubImplementation,
+    SubprogramImplementation, TopLevelToken,
 };
 use std::collections::HashMap;
 
-type ParamMap = HashMap<BareName, Vec<ParamName>>;
+// TODO rename module and classes as it doesn't just collect parameters anymore
+
+pub struct SubprogramInfo {
+    pub params: Vec<ParamName>,
+    pub is_static: bool,
+}
+
+impl SubprogramInfo {
+    fn new_from_subprogram_ref<T>(x: &SubprogramImplementation<T>) -> Self {
+        let mut params: Vec<ParamName> = vec![];
+        for Locatable { element, .. } in &x.params {
+            params.push(element.clone());
+        }
+        let is_static = x.is_static;
+        Self { params, is_static }
+    }
+}
 
 #[derive(Default)]
 pub struct ParameterCollector {
-    functions: ParamMap,
-    subs: ParamMap,
+    functions: HashMap<QualifiedName, SubprogramInfo>,
+    subs: HashMap<BareName, SubprogramInfo>,
 }
 
 impl ParameterCollector {
@@ -32,40 +49,47 @@ impl ParameterCollector {
     }
 
     fn visit_function_implementation(&mut self, f: &FunctionImplementation) {
-        self.functions.insert(
-            f.name.bare_name().clone(),
-            f.params.clone().strip_location(),
-        );
+        let function_name = f.name.element.clone().demand_qualified();
+        self.functions
+            .insert(function_name, SubprogramInfo::new_from_subprogram_ref(f));
     }
 
     fn visit_sub_implementation(&mut self, s: &SubImplementation) {
+        let sub_name = s.name.element.clone();
         self.subs
-            .insert(s.name.element.clone(), s.params.clone().strip_location());
+            .insert(sub_name, SubprogramInfo::new_from_subprogram_ref(s));
     }
 }
 
-pub struct SubProgramParameters {
-    functions: ParamMap,
-    subs: ParamMap,
+pub struct SubprogramParameters {
+    functions: HashMap<QualifiedName, SubprogramInfo>,
+    subs: HashMap<BareName, SubprogramInfo>,
 }
 
-impl SubProgramParameters {
-    pub fn new(functions: ParamMap, subs: ParamMap) -> Self {
+impl SubprogramParameters {
+    pub fn new(
+        functions: HashMap<QualifiedName, SubprogramInfo>,
+        subs: HashMap<BareName, SubprogramInfo>,
+    ) -> Self {
         Self { functions, subs }
     }
 
-    pub fn get_function_parameters(&self, name: &BareName) -> &Vec<ParamName> {
-        self.functions.get(name).unwrap()
+    pub fn get_function_parameters(&self, name: &QualifiedName) -> &Vec<ParamName> {
+        &self.functions.get(name).expect("Function not found").params
     }
 
     pub fn get_sub_parameters(&self, name: &BareName) -> &Vec<ParamName> {
-        self.subs.get(name).unwrap()
+        &self.get_sub_info(name).params
+    }
+
+    pub fn get_sub_info(&self, name: &BareName) -> &SubprogramInfo {
+        self.subs.get(name).expect("Sub not found")
     }
 }
 
-impl From<ParameterCollector> for SubProgramParameters {
+impl From<ParameterCollector> for SubprogramParameters {
     fn from(parameter_collector: ParameterCollector) -> Self {
         let ParameterCollector { functions, subs } = parameter_collector;
-        SubProgramParameters::new(functions, subs)
+        SubprogramParameters::new(functions, subs)
     }
 }

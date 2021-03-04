@@ -303,6 +303,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.context.stop_collecting_arguments();
                 self.stacktrace.insert(0, pos);
             }
+            Instruction::PushStaticStack(subprogram_name) => {
+                self.context
+                    .stop_collecting_arguments_static(subprogram_name.clone());
+                self.stacktrace.insert(0, pos);
+            }
             Instruction::PopStack => {
                 self.context.pop();
                 self.stacktrace.remove(0);

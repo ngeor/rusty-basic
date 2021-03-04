@@ -24,12 +24,12 @@ where
             Keyword::End,
         )))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Function))
-        .map(|(((name, params), body), _)| {
+        .map(|(((name, params, is_static), body), _)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation {
                 name,
                 params,
                 body,
-                is_static: false,
+                is_static,
             })
         })
 }
@@ -43,12 +43,12 @@ where
             Keyword::End,
         )))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Sub))
-        .map(|(((name, params), body), _)| {
+        .map(|(((name, params, is_static), body), _)| {
             TopLevelToken::SubImplementation(SubImplementation {
                 name,
                 params,
                 body,
-                is_static: false,
+                is_static,
             })
         })
 }

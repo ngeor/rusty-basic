@@ -54,6 +54,9 @@ impl InstructionGenerator {
                 self.push(Instruction::CopyAToVarPath, pos);
             }
             DimType::BuiltIn(q, _) => {
+                // TODO do not re-allocate if it is already present in the context, because then it was a STATIC variable
+                // e.g. Instruction::IsVariableMissing -> A
+                // e.g. Instruction::JumpIfFalse end-of-allocation
                 self.push(Instruction::AllocateBuiltIn(q), pos);
                 self.push(
                     Instruction::VarPathName(RootPath {

@@ -7,6 +7,21 @@ use crate::parser::{
 
 impl InstructionGenerator {
     pub fn generate_dim_instructions(&mut self, dim_name_node: DimNameNode) {
+        // check if it is already defined to prevent re-allocation of STATIC variables
+        let is_in_static_subprogram = match self.current_subprogram.as_ref() {
+            Some(subprogram_name) => {
+                self.subprogram_parameters
+                    .get_subprogram_info(subprogram_name)
+                    .is_static
+            }
+            _ => false,
+        };
+        if is_in_static_subprogram {
+            self.push(
+                Instruction::IsVariableDefined(dim_name_node.element.clone()),
+                dim_name_node.pos(),
+            );
+        }
         let Locatable {
             element:
                 DimName {
@@ -16,6 +31,11 @@ impl InstructionGenerator {
                 },
             pos,
         } = dim_name_node;
+        if is_in_static_subprogram {
+            self.jump_if_false("begin-dim", pos);
+            self.jump("end-dim", pos);
+            self.label("begin-dim", pos);
+        }
         match dim_type {
             DimType::Array(array_dimensions, box_element_type) => {
                 self.push(Instruction::BeginCollectArguments, pos);
@@ -54,9 +74,6 @@ impl InstructionGenerator {
                 self.push(Instruction::CopyAToVarPath, pos);
             }
             DimType::BuiltIn(q, _) => {
-                // TODO do not re-allocate if it is already present in the context, because then it was a STATIC variable
-                // e.g. Instruction::IsVariableMissing -> A
-                // e.g. Instruction::JumpIfFalse end-of-allocation
                 self.push(Instruction::AllocateBuiltIn(q), pos);
                 self.push(
                     Instruction::VarPathName(RootPath {
@@ -96,6 +113,9 @@ impl InstructionGenerator {
                 self.push(Instruction::CopyAToVarPath, pos);
             }
             DimType::Bare => panic!("Unresolved type"),
+        }
+        if is_in_static_subprogram {
+            self.label("end-dim", pos);
         }
     }
 }

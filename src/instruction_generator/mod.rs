@@ -210,6 +210,10 @@ pub enum Instruction {
     PrintSemicolon,
     PrintValueFromA,
     PrintEnd,
+
+    /// Checks if a variable is defined (used to prevent re-allocation of variables in STATIC functions/subs).
+    /// If the variable is already present, it will set the A register to true, otherwise to false.
+    IsVariableDefined(DimName),
 }
 
 pub type InstructionNode = Locatable<Instruction>;
@@ -241,6 +245,7 @@ struct InstructionGenerator {
     instructions: Vec<InstructionNode>,
     statement_addresses: Vec<usize>,
     subprogram_parameters: SubprogramParameters,
+    current_subprogram: Option<SubprogramName>,
 }
 
 impl InstructionGenerator {
@@ -249,6 +254,7 @@ impl InstructionGenerator {
             instructions: vec![],
             statement_addresses: vec![],
             subprogram_parameters,
+            current_subprogram: None,
         }
     }
 
@@ -314,6 +320,7 @@ impl InstructionGenerator {
         } = function_node;
         let FunctionImplementation { name, body, .. } = function_implementation;
         let function_name = name.element.demand_qualified();
+        self.current_subprogram = Some(SubprogramName::Function(function_name.clone()));
         self.function_label(&function_name, pos);
         // set default value
         self.push_load(function_name.qualifier, pos);
@@ -331,8 +338,13 @@ impl InstructionGenerator {
             element: sub_implementation,
             pos,
         } = sub_node;
-        let SubImplementation { name, body, .. } = sub_implementation;
-        self.sub_label(name.as_ref(), pos);
+        let SubImplementation {
+            name: Locatable { element: name, .. },
+            body,
+            ..
+        } = sub_implementation;
+        self.current_subprogram = Some(SubprogramName::Sub(name.clone()));
+        self.sub_label(&name, pos);
         self.subprogram_body(body, pos);
     }
 

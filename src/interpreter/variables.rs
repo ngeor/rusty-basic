@@ -156,6 +156,16 @@ impl Variables {
             }
         }
     }
+
+    pub fn get_by_dim_name(&self, dim_name: &DimName) -> Option<&Variant> {
+        match dim_name.dim_type() {
+            DimType::BuiltIn(q, _) => self.get_built_in(dim_name.bare_name(), *q),
+            _ => {
+                // TODO fix this
+                None
+            }
+        }
+    }
 }
 
 impl From<Arguments> for Variables {

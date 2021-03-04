@@ -1,4 +1,5 @@
 use crate::common::Locatable;
+use crate::interpreter::context::SubprogramName;
 use crate::parser::{
     BareName, FunctionImplementation, ParamName, ProgramNode, QualifiedName, SubImplementation,
     SubprogramImplementation, TopLevelToken,
@@ -84,6 +85,16 @@ impl SubprogramParameters {
 
     pub fn get_sub_info(&self, name: &BareName) -> &SubprogramInfo {
         self.subs.get(name).expect("Sub not found")
+    }
+
+    pub fn get_subprogram_info(&self, subprogram_name: &SubprogramName) -> &SubprogramInfo {
+        match subprogram_name {
+            SubprogramName::Sub(sub_name) => self.subs.get(sub_name).expect("Sub not found"),
+            SubprogramName::Function(function_name) => self
+                .functions
+                .get(function_name)
+                .expect("Function not found"),
+        }
     }
 }
 

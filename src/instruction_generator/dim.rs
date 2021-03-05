@@ -28,7 +28,7 @@ impl InstructionGenerator {
     fn is_in_static_subprogram(&self) -> bool {
         match &self.current_subprogram {
             Some(subprogram_name) => {
-                self.subprogram_parameters
+                self.subprogram_info_repository
                     .get_subprogram_info(subprogram_name)
                     .is_static
             }

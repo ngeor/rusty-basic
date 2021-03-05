@@ -2,8 +2,6 @@ use crate::common::Locatable;
 use crate::parser::*;
 use std::collections::HashMap;
 
-// TODO rename module and classes as it doesn't just collect parameters anymore
-
 pub struct SubprogramInfo {
     pub params: Vec<ParamName>,
     pub is_static: bool,
@@ -21,12 +19,12 @@ impl SubprogramInfo {
 }
 
 #[derive(Default)]
-pub struct ParameterCollector {
+pub struct SubprogramInfoCollector {
     functions: HashMap<QualifiedName, SubprogramInfo>,
     subs: HashMap<BareName, SubprogramInfo>,
 }
 
-impl ParameterCollector {
+impl SubprogramInfoCollector {
     pub fn visit(&mut self, program: &ProgramNode) {
         for Locatable { element, .. } in program {
             self.visit_top_level_token(element);
@@ -58,12 +56,13 @@ impl ParameterCollector {
     }
 }
 
-pub struct SubprogramParameters {
+pub struct SubprogramInfoRepository {
+    // TODO use only one map HashMap<SubprogramName, SubprogramInfo>
     functions: HashMap<QualifiedName, SubprogramInfo>,
     subs: HashMap<BareName, SubprogramInfo>,
 }
 
-impl SubprogramParameters {
+impl SubprogramInfoRepository {
     pub fn new(
         functions: HashMap<QualifiedName, SubprogramInfo>,
         subs: HashMap<BareName, SubprogramInfo>,
@@ -94,9 +93,9 @@ impl SubprogramParameters {
     }
 }
 
-impl From<ParameterCollector> for SubprogramParameters {
-    fn from(parameter_collector: ParameterCollector) -> Self {
-        let ParameterCollector { functions, subs } = parameter_collector;
-        SubprogramParameters::new(functions, subs)
+impl From<SubprogramInfoCollector> for SubprogramInfoRepository {
+    fn from(parameter_collector: SubprogramInfoCollector) -> Self {
+        let SubprogramInfoCollector { functions, subs } = parameter_collector;
+        SubprogramInfoRepository::new(functions, subs)
     }
 }

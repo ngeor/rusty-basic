@@ -43,7 +43,7 @@ impl InstructionGenerator {
         let qualified_name = name.demand_qualified();
         // cloning to fight the borrow checker
         let function_parameters = self
-            .subprogram_parameters
+            .subprogram_info_repository
             .get_function_parameters(&qualified_name)
             .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
@@ -72,7 +72,10 @@ impl InstructionGenerator {
     ) {
         let Locatable { element: name, pos } = name_node;
         // cloning to fight the borrow checker
-        let sub_impl_parameters = self.subprogram_parameters.get_sub_parameters(&name).clone();
+        let sub_impl_parameters = self
+            .subprogram_info_repository
+            .get_sub_parameters(&name)
+            .clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
         let subprogram_name = SubprogramName::Sub(name.clone());
         self.push_stack(subprogram_name.clone(), pos);
@@ -164,7 +167,7 @@ impl InstructionGenerator {
 
     fn push_stack(&mut self, subprogram_name: SubprogramName, pos: Location) {
         if self
-            .subprogram_parameters
+            .subprogram_info_repository
             .get_subprogram_info(&subprogram_name)
             .is_static
         {

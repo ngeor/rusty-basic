@@ -4,10 +4,10 @@ mod expression;
 mod for_loop;
 mod if_block;
 mod label_resolver;
-mod parameter_collector;
 pub mod print;
 mod select_case;
 mod statement;
+mod subprogram_info;
 mod while_wend;
 
 #[cfg(test)]
@@ -18,7 +18,9 @@ mod tests;
 use crate::built_ins::*;
 use crate::common::*;
 use crate::instruction_generator::label_resolver::LabelResolver;
-use crate::instruction_generator::parameter_collector::{ParameterCollector, SubprogramParameters};
+use crate::instruction_generator::subprogram_info::{
+    SubprogramInfoCollector, SubprogramInfoRepository,
+};
 use crate::parser::*;
 use crate::variant::Variant;
 
@@ -26,9 +28,9 @@ use crate::variant::Variant;
 pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult {
     // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
     // the parameter names and types are needed
-    let mut parameter_collector = ParameterCollector::default();
-    parameter_collector.visit(&program);
-    let subprogram_parameters: SubprogramParameters = parameter_collector.into();
+    let mut subprogram_info_collector = SubprogramInfoCollector::default();
+    subprogram_info_collector.visit(&program);
+    let subprogram_parameters: SubprogramInfoRepository = subprogram_info_collector.into();
     // pass 2 generate with labels still unresolved
     let mut generator = InstructionGenerator::new(subprogram_parameters);
     generator.generate_unresolved(program);
@@ -243,16 +245,16 @@ pub enum PrinterType {
 struct InstructionGenerator {
     instructions: Vec<InstructionNode>,
     statement_addresses: Vec<usize>,
-    subprogram_parameters: SubprogramParameters,
+    subprogram_info_repository: SubprogramInfoRepository,
     current_subprogram: Option<SubprogramName>,
 }
 
 impl InstructionGenerator {
-    fn new(subprogram_parameters: SubprogramParameters) -> Self {
+    fn new(subprogram_info_repository: SubprogramInfoRepository) -> Self {
         Self {
             instructions: vec![],
             statement_addresses: vec![],
-            subprogram_parameters,
+            subprogram_info_repository,
             current_subprogram: None,
         }
     }

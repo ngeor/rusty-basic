@@ -1,9 +1,5 @@
 use crate::common::Locatable;
-use crate::interpreter::context::SubprogramName;
-use crate::parser::{
-    BareName, FunctionImplementation, ParamName, ProgramNode, QualifiedName, SubImplementation,
-    SubprogramImplementation, TopLevelToken,
-};
+use crate::parser::*;
 use std::collections::HashMap;
 
 // TODO rename module and classes as it doesn't just collect parameters anymore

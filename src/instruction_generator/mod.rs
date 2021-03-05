@@ -19,7 +19,6 @@ use crate::built_ins::*;
 use crate::common::*;
 use crate::instruction_generator::label_resolver::LabelResolver;
 use crate::instruction_generator::parameter_collector::{ParameterCollector, SubprogramParameters};
-use crate::interpreter::context::SubprogramName;
 use crate::parser::*;
 use crate::variant::Variant;
 
@@ -320,8 +319,7 @@ impl InstructionGenerator {
         } = function_node;
         let FunctionImplementation { name, body, .. } = function_implementation;
         let function_name = name.element.demand_qualified();
-        self.current_subprogram = Some(SubprogramName::Function(function_name.clone()));
-        self.function_label(&function_name, pos);
+        self.mark_current_subprogram(SubprogramName::Function(function_name.clone()), pos);
         // set default value
         self.push_load(function_name.qualifier, pos);
         self.subprogram_body(body, pos);
@@ -343,9 +341,16 @@ impl InstructionGenerator {
             body,
             ..
         } = sub_implementation;
-        self.current_subprogram = Some(SubprogramName::Sub(name.clone()));
-        self.sub_label(&name, pos);
+        self.mark_current_subprogram(SubprogramName::Sub(name.clone()), pos);
         self.subprogram_body(body, pos);
+    }
+
+    fn mark_current_subprogram(&mut self, subprogram: SubprogramName, pos: Location) {
+        self.push(
+            Instruction::Label(CaseInsensitiveString::new(subprogram.to_string())),
+            pos,
+        );
+        self.current_subprogram = Some(subprogram);
     }
 
     fn subprogram_body(&mut self, block: StatementNodes, pos: Location) {
@@ -398,42 +403,6 @@ impl InstructionGenerator {
                 "_{}_{:?}",
                 prefix.as_ref(),
                 pos
-            ))),
-            pos,
-        );
-    }
-
-    fn function_label(&mut self, name: &QualifiedName, pos: Location) {
-        self.push(
-            Instruction::Label(CaseInsensitiveString::new(format!(
-                ":fun:{}",
-                name.bare_name,
-            ))),
-            pos,
-        );
-    }
-
-    // TODO accept qualified name
-    fn jump_to_function<S: AsRef<str>>(&mut self, name: S, pos: Location) {
-        self.push(
-            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
-                format!(":fun:{}", name.as_ref(),),
-            ))),
-            pos,
-        );
-    }
-
-    fn sub_label(&mut self, name: &BareName, pos: Location) {
-        self.push(
-            Instruction::Label(CaseInsensitiveString::new(format!(":sub:{}", name,))),
-            pos,
-        );
-    }
-
-    fn jump_to_sub<S: AsRef<str>>(&mut self, name: S, pos: Location) {
-        self.push(
-            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
-                format!(":sub:{}", name.as_ref(),),
             ))),
             pos,
         );

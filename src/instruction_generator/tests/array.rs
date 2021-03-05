@@ -199,7 +199,7 @@ fn test_pass_param_to_sub() {
             Instruction::CopyAToVarPath,
             Instruction::Halt,
             // sub implementation
-            Instruction::Label(":sub:Menu".into()),
+            Instruction::Label(".S.Menu".into()),
             Instruction::PopRet,
         ]
     );

@@ -50,14 +50,14 @@ impl TryFrom<&str> for QualifiedName {
 
 impl std::fmt::Debug for QualifiedName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self.bare_name, f)?;
-        std::fmt::Debug::fmt(&self.qualifier, f)
+        std::fmt::Display::fmt(self, f)
     }
 }
 
 impl std::fmt::Display for QualifiedName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, f)
+        std::fmt::Display::fmt(&self.bare_name, f)?;
+        std::fmt::Display::fmt(&self.qualifier, f)
     }
 }
 

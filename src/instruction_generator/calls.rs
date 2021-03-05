@@ -1,7 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{AtLocation, Locatable, Location};
-use crate::instruction_generator::{Instruction, InstructionGenerator};
-use crate::interpreter::context::SubprogramName;
+use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};
 use crate::parser::*;
 
 impl InstructionGenerator {
@@ -42,17 +41,17 @@ impl InstructionGenerator {
     ) {
         let Locatable { element: name, pos } = function_name;
         let qualified_name = name.demand_qualified();
-        let bare_name: &BareName = qualified_name.as_ref();
         // cloning to fight the borrow checker
         let function_parameters = self
             .subprogram_parameters
             .get_function_parameters(&qualified_name)
             .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
-        self.push_stack(SubprogramName::Function(qualified_name.clone()), pos);
+        let subprogram_name = SubprogramName::Function(qualified_name.clone());
+        self.push_stack(subprogram_name.clone(), pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
-        self.jump_to_function(bare_name, pos);
+        self.jump_to_subprogram(&subprogram_name, pos);
         // TODO find different way for by ref args
         // stash by-ref variables
         self.generate_stash_by_ref_args(&args);
@@ -75,10 +74,11 @@ impl InstructionGenerator {
         // cloning to fight the borrow checker
         let sub_impl_parameters = self.subprogram_parameters.get_sub_parameters(&name).clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
-        self.push_stack(SubprogramName::Sub(name.clone()), pos);
+        let subprogram_name = SubprogramName::Sub(name.clone());
+        self.push_stack(subprogram_name.clone(), pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos); // points to "generate_stash_by_ref_args"
-        self.jump_to_sub(name, pos);
+        self.jump_to_subprogram(&subprogram_name, pos);
         self.generate_stash_by_ref_args(&args);
         self.push(Instruction::PopStack, pos);
         self.generate_un_stash_by_ref_args(&args);
@@ -172,5 +172,10 @@ impl InstructionGenerator {
         } else {
             self.push(Instruction::PushStack, pos);
         }
+    }
+
+    fn jump_to_subprogram(&mut self, subprogram_name: &SubprogramName, pos: Location) {
+        let label: BareName = BareName::new(subprogram_name.to_string());
+        self.push(Instruction::Jump(AddressOrLabel::Unresolved(label)), pos);
     }
 }

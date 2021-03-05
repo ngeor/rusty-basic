@@ -1,15 +1,9 @@
 use crate::built_ins::BuiltInFunction;
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
-use crate::parser::{BareName, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, SubprogramName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum SubprogramName {
-    Function(QualifiedName),
-    Sub(BareName),
-}
 
 #[derive(Debug)]
 pub struct MemoryBlock {

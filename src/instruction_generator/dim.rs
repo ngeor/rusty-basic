@@ -7,35 +7,41 @@ use crate::parser::{
 
 impl InstructionGenerator {
     pub fn generate_dim_instructions(&mut self, dim_name_node: DimNameNode) {
+        let Locatable {
+            element: dim_name,
+            pos,
+        } = dim_name_node;
         // check if it is already defined to prevent re-allocation of STATIC variables
-        let is_in_static_subprogram = match self.current_subprogram.as_ref() {
+        let is_in_static_subprogram = self.is_in_static_subprogram();
+        if is_in_static_subprogram {
+            self.push(Instruction::IsVariableDefined(dim_name.clone()), pos);
+            self.jump_if_false("begin-dim", pos);
+            self.jump("end-dim", pos);
+            self.label("begin-dim", pos);
+            self.generate_dim_name(dim_name, pos);
+            self.label("end-dim", pos);
+        } else {
+            self.generate_dim_name(dim_name, pos);
+        }
+    }
+
+    fn is_in_static_subprogram(&self) -> bool {
+        match &self.current_subprogram {
             Some(subprogram_name) => {
                 self.subprogram_parameters
                     .get_subprogram_info(subprogram_name)
                     .is_static
             }
             _ => false,
-        };
-        if is_in_static_subprogram {
-            self.push(
-                Instruction::IsVariableDefined(dim_name_node.element.clone()),
-                dim_name_node.pos(),
-            );
         }
-        let Locatable {
-            element:
-                DimName {
-                    bare_name,
-                    dim_type,
-                    shared,
-                },
-            pos,
-        } = dim_name_node;
-        if is_in_static_subprogram {
-            self.jump_if_false("begin-dim", pos);
-            self.jump("end-dim", pos);
-            self.label("begin-dim", pos);
-        }
+    }
+
+    fn generate_dim_name(&mut self, dim_name: DimName, pos: Location) {
+        let DimName {
+            bare_name,
+            dim_type,
+            shared,
+        } = dim_name;
         match dim_type {
             DimType::Array(array_dimensions, box_element_type) => {
                 self.push(Instruction::BeginCollectArguments, pos);
@@ -113,9 +119,6 @@ impl InstructionGenerator {
                 self.push(Instruction::CopyAToVarPath, pos);
             }
             DimType::Bare => panic!("Unresolved type"),
-        }
-        if is_in_static_subprogram {
-            self.label("end-dim", pos);
         }
     }
 }

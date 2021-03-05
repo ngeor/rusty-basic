@@ -182,3 +182,17 @@ fn test_dot_in_function_name_even_if_it_is_a_keyword() {
     "#;
     assert_prints!(program, "ABC");
 }
+
+#[test]
+fn static_function() {
+    let program = r#"
+    PRINT Add(1)
+    PRINT Add(2)
+
+    FUNCTION Add(Y) STATIC
+        X = X + 1 + Y
+        Add = X
+    END FUNCTION
+    "#;
+    assert_prints!(program, "2", "5");
+}

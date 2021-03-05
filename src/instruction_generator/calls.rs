@@ -49,8 +49,7 @@ impl InstructionGenerator {
             .get_function_parameters(&qualified_name)
             .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
-        // TODO is it static?
-        self.push(Instruction::PushStack, pos);
+        self.push_stack(SubprogramName::Function(qualified_name.clone()), pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
         self.jump_to_function(bare_name, pos);
@@ -60,7 +59,6 @@ impl InstructionGenerator {
         // stash function name
         self.generate_stash_function_return_value(qualified_name, pos);
         // switch to parent context
-        // TODO is it static?
         self.push(Instruction::PopStack, pos);
         // un-stash by-ref variables
         self.generate_un_stash_by_ref_args(&args);
@@ -77,21 +75,11 @@ impl InstructionGenerator {
         // cloning to fight the borrow checker
         let sub_impl_parameters = self.subprogram_parameters.get_sub_parameters(&name).clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
-        // TODO is it static?
-        let is_static = self.subprogram_parameters.get_sub_info(&name).is_static;
-        if is_static {
-            self.push(
-                Instruction::PushStaticStack(SubprogramName::Sub(name.clone())),
-                pos,
-            );
-        } else {
-            self.push(Instruction::PushStack, pos);
-        }
+        self.push_stack(SubprogramName::Sub(name.clone()), pos);
         let idx = self.instructions.len();
-        self.push(Instruction::PushRet(idx + 2), pos);
+        self.push(Instruction::PushRet(idx + 2), pos); // points to "generate_stash_by_ref_args"
         self.jump_to_sub(name, pos);
         self.generate_stash_by_ref_args(&args);
-        // TODO is it static?
         self.push(Instruction::PopStack, pos);
         self.generate_un_stash_by_ref_args(&args);
     }
@@ -171,6 +159,18 @@ impl InstructionGenerator {
     fn generate_fix_string_length(&mut self, arg: &Expression, pos: Location) {
         if let ExpressionType::FixedLengthString(l) = arg.expression_type() {
             self.push(Instruction::FixLength(l), pos);
+        }
+    }
+
+    fn push_stack(&mut self, subprogram_name: SubprogramName, pos: Location) {
+        if self
+            .subprogram_parameters
+            .get_subprogram_info(&subprogram_name)
+            .is_static
+        {
+            self.push(Instruction::PushStaticStack(subprogram_name), pos);
+        } else {
+            self.push(Instruction::PushStack, pos);
         }
     }
 }

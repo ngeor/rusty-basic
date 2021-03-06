@@ -248,13 +248,14 @@ impl<'a> Context<'a> {
         Ok(param_name.at(pos))
     }
 
+    /// Gets the function qualifier of the function identified by the given bare name.
+    /// If no such function exists, returns `None`.
     fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
-        match self.functions.get(bare_name) {
-            Some(Locatable {
-                element: (q, _), ..
-            }) => Some(*q),
-            _ => None,
-        }
+        self.functions.get(bare_name).map(
+            |Locatable {
+                 element: (q, _), ..
+             }| *q,
+        )
     }
 }
 
@@ -455,16 +456,15 @@ pub mod dim_rules {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {
-            for Locatable {
-                element: DimName { bare_name, .. },
-                pos,
-            } in &dim_list.variables
-            {
-                if ctx.subs.contains_key(bare_name) {
-                    return Err(QError::DuplicateDefinition).with_err_at(*pos);
-                }
+            match dim_list.variables.iter().find(
+                |Locatable {
+                     element: DimName { bare_name, .. },
+                     ..
+                 }| ctx.subs.contains_key(bare_name),
+            ) {
+                Some(dim_name_node) => Err(QError::DuplicateDefinition).with_err_at(dim_name_node),
+                _ => Ok(()),
             }
-            Ok(())
         }
     }
 
@@ -472,16 +472,15 @@ pub mod dim_rules {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {
-            for Locatable {
-                element: DimName { bare_name, .. },
-                pos,
-            } in &dim_list.variables
-            {
-                if ctx.functions.contains_key(bare_name) {
-                    return Err(QError::DuplicateDefinition).with_err_at(*pos);
-                }
+            match dim_list.variables.iter().find(
+                |Locatable {
+                     element: DimName { bare_name, .. },
+                     ..
+                 }| ctx.functions.contains_key(bare_name),
+            ) {
+                Some(dim_name_node) => Err(QError::DuplicateDefinition).with_err_at(dim_name_node),
+                _ => Ok(()),
             }
-            Ok(())
         }
     }
 

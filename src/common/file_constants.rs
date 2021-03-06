@@ -76,12 +76,6 @@ impl From<u8> for FileHandle {
     }
 }
 
-impl From<FileHandle> for u8 {
-    fn from(file_handle: FileHandle) -> u8 {
-        file_handle.0
-    }
-}
-
 impl From<FileHandle> for i32 {
     fn from(file_handle: FileHandle) -> i32 {
         file_handle.0 as i32
@@ -97,11 +91,5 @@ impl TryFrom<i32> for FileHandle {
         } else {
             Err(QError::BadFileNameOrNumber)
         }
-    }
-}
-
-impl std::fmt::Display for FileHandle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "#{}", self.0)
     }
 }

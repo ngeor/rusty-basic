@@ -52,22 +52,6 @@ impl<T> Locatable<T> {
         Locatable { element, pos }
     }
 
-    pub fn from_locatable<U>(other: Locatable<U>) -> Self
-    where
-        T: From<U>,
-    {
-        let Locatable { element, pos } = other;
-        let mapped: T = T::from(element);
-        Self::new(mapped, pos)
-    }
-
-    pub fn into_locatable<U>(self) -> Locatable<U>
-    where
-        U: From<T>,
-    {
-        Locatable::from_locatable(self)
-    }
-
     pub fn map<F, U>(self, op: F) -> Locatable<U>
     where
         F: FnOnce(T) -> U,
@@ -84,12 +68,6 @@ impl<T> Locatable<T> {
 impl<T> AsRef<T> for Locatable<T> {
     fn as_ref(&self) -> &T {
         &self.element
-    }
-}
-
-impl<T: AsRef<str>> AsRef<str> for Locatable<T> {
-    fn as_ref(&self) -> &str {
-        self.element.as_ref()
     }
 }
 
@@ -149,13 +127,6 @@ pub trait HasLocation {
 impl<T> HasLocation for Locatable<T> {
     fn pos(&self) -> Location {
         self.pos
-    }
-}
-
-impl<T: HasLocation> HasLocation for Box<T> {
-    fn pos(&self) -> Location {
-        let inside_the_box: &T = self;
-        inside_the_box.pos()
     }
 }
 

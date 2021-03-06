@@ -404,8 +404,8 @@ impl From<bool> for Variant {
 
 impl From<FileHandle> for Variant {
     fn from(file_handle: FileHandle) -> Variant {
-        let file_number: u8 = file_handle.into();
-        Variant::VInteger(file_number as i32)
+        let file_number: i32 = file_handle.into();
+        Variant::VInteger(file_number)
     }
 }
 

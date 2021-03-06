@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::{BareName, DimName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{Name, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
 // ========================================================
@@ -58,12 +58,6 @@ impl AsRef<str> for BuiltInFunction {
     }
 }
 
-impl std::fmt::Display for BuiltInFunction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, f)
-    }
-}
-
 // BuiltInFunction -> CaseInsensitiveString
 
 impl From<BuiltInFunction> for CaseInsensitiveString {
@@ -97,16 +91,6 @@ impl From<BuiltInFunction> for QualifiedName {
     fn from(built_in_function: BuiltInFunction) -> Self {
         let qualifier: TypeQualifier = (&built_in_function).into();
         Self::new(built_in_function.into(), qualifier)
-    }
-}
-
-// BuiltInFunction -> DimName
-
-impl From<BuiltInFunction> for DimName {
-    fn from(built_in_function: BuiltInFunction) -> Self {
-        let qualifier: TypeQualifier = (&built_in_function).into();
-        let bare_name: BareName = built_in_function.into();
-        Self::new_compact_local(bare_name, qualifier)
     }
 }
 
@@ -229,12 +213,6 @@ impl AsRef<str> for BuiltInSub {
             .binary_search(self)
             .expect("Missing built-in sub!");
         SORTED_BUILT_IN_SUB_NAMES[idx]
-    }
-}
-
-impl std::fmt::Display for BuiltInSub {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())
     }
 }
 

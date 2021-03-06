@@ -23,10 +23,10 @@ impl Visitor<(DimNameNode, bool)> for InstructionGenerator {
         // check if it is already defined to prevent re-allocation of STATIC variables
         let is_in_static_subprogram = self.is_in_static_subprogram();
         if is_in_static_subprogram {
-            self.push(
-                Instruction::IsVariableDefined(dim_name.clone(), shared),
-                pos,
-            );
+            if shared {
+                panic!("Should not be possible to have a SHARED variable inside a function/sub");
+            }
+            self.push(Instruction::IsVariableDefined(dim_name.clone()), pos);
             self.jump_if_false("begin-dim", pos);
             self.jump("end-dim", pos);
             self.label("begin-dim", pos);

@@ -483,12 +483,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     .print_end(printer)
                     .with_err_at(pos)?;
             }
-            Instruction::IsVariableDefined(dim_name, shared) => {
-                let variables = if *shared {
-                    self.context.global_variables_mut()
-                } else {
-                    self.context.variables()
-                };
+            Instruction::IsVariableDefined(dim_name) => {
+                let variables = self.context.variables();
                 let is_variable_defined = variables.get_by_dim_name(&dim_name).is_some();
                 self.registers_mut().set_a(is_variable_defined.into());
             }

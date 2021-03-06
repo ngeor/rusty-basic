@@ -3,7 +3,7 @@ use crate::common::*;
 use crate::linter::converter::context::NameContext;
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
 use crate::parser::{
-    DimName, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
+    DimList, DimName, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
 };
 
 // A statement can be expanded into multiple statements to convert implicitly
@@ -47,7 +47,13 @@ impl<'a> ConverterImpl<'a> {
                 element: q_name,
                 pos,
             } = implicit_var;
-            result.push(Statement::Dim(DimName::from(q_name).at(pos)).at(pos));
+            result.push(
+                Statement::Dim(DimList {
+                    variables: vec![DimName::from(q_name).at(pos)],
+                    shared: false,
+                })
+                .at(pos),
+            );
         }
         if let Some(s) = converted_statement_node {
             result.push(s);
@@ -119,14 +125,14 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                     }
                 }
             },
-            Statement::Dim(dim_name_node) => self
-                .convert_and_collect_implicit_variables(dim_name_node)
-                .map(|(dim_name_node, implicit_vars_in_array_dimensions)| {
+            Statement::Dim(dim_list) => self.convert_and_collect_implicit_variables(dim_list).map(
+                |(dim_list, implicit_vars_in_array_dimensions)| {
                     (
-                        Some(Statement::Dim(dim_name_node).at(pos)),
+                        Some(Statement::Dim(dim_list).at(pos)),
                         implicit_vars_in_array_dimensions,
                     )
-                }),
+                },
+            ),
             Statement::Print(print_node) => self
                 .convert_and_collect_implicit_variables(print_node)
                 .map(|(p, implicit_vars)| (Some(Statement::Print(p).at(pos)), implicit_vars)),

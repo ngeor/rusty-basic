@@ -150,7 +150,9 @@ fn test_dim_bare() {
     assert_eq!(
         linter_ok("DIM A"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new_compact_local("A", TypeQualifier::BangSingle).at_rc(1, 5)
+            DimName::new_compact_local("A", TypeQualifier::BangSingle)
+                .at_rc(1, 5)
+                .into_list()
         ))
         .at_rc(1, 1)]
     );
@@ -161,7 +163,9 @@ fn test_dim_qualified() {
     assert_eq!(
         linter_ok("DIM A$"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new_compact_local("A", TypeQualifier::DollarString).at_rc(1, 5)
+            DimName::new_compact_local("A", TypeQualifier::DollarString)
+                .at_rc(1, 5)
+                .into_list()
         ))
         .at_rc(1, 1)]
     );
@@ -180,6 +184,7 @@ fn test_dim_extended_built_in() {
                 ))
                 .build()
                 .at_rc(1, 5)
+                .into_list()
         ))
         .at_rc(1, 1)]
     );
@@ -198,6 +203,7 @@ fn test_dim_extended_fixed_length_string() {
                 ))
                 .build()
                 .at_rc(1, 5)
+                .into_list()
         ))
         .at_rc(1, 1)]
     );
@@ -219,6 +225,7 @@ fn test_dim_extended_user_defined() {
                 .dim_type(DimType::UserDefined(BareName::from("Card").at_rc(5, 14)))
                 .build()
                 .at_rc(5, 9)
+                .into_list()
         ))
         .at_rc(5, 5)]
     );
@@ -243,6 +250,7 @@ fn test_dim_array_bare() {
                 ))
                 .build()
                 .at_rc(1, 5)
+                .into_list()
         ))
         .at_rc(1, 1)]
     );
@@ -267,6 +275,7 @@ fn test_dim_array_qualified() {
                 ))
                 .build()
                 .at_rc(1, 5)
+                .into_list()
         ))
         .at_rc(1, 1)]
     );
@@ -291,6 +300,7 @@ fn test_dim_array_extended_built_in() {
                 ))
                 .build()
                 .at_rc(1, 5)
+                .into_list()
         ))
         .at_rc(1, 1)]
     );
@@ -315,6 +325,7 @@ fn test_dim_array_extended_fixed_length_string() {
                 ))
                 .build()
                 .at_rc(1, 5)
+                .into_list()
         ))
         .at_rc(1, 1)]
     );
@@ -342,6 +353,7 @@ fn test_dim_array_extended_user_defined() {
                 ))
                 .build()
                 .at_rc(5, 9)
+                .into_list()
         ))
         .at_rc(5, 5)]
     );

@@ -65,7 +65,7 @@ pub trait PostConversionLinter {
             Statement::Label(label) => self.visit_label(label),
             Statement::GoTo(label) => self.visit_go_to(label),
             Statement::Comment(c) => self.visit_comment(c),
-            Statement::Dim(d) => self.visit_dim(d),
+            Statement::Dim(dim_list) => self.visit_dim(dim_list),
             Statement::Print(print_node) => self.visit_print_node(print_node),
             Statement::GoSub(label) => self.visit_go_sub(label),
             Statement::Resume(resume_option) => self.visit_resume(resume_option),
@@ -79,7 +79,7 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_dim(&mut self, _d: &DimNameNode) -> Result<(), QErrorNode> {
+    fn visit_dim(&mut self, _dim_list: &DimList) -> Result<(), QErrorNode> {
         Ok(())
     }
 

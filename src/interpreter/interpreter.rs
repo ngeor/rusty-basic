@@ -483,9 +483,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     .print_end(printer)
                     .with_err_at(pos)?;
             }
-            Instruction::IsVariableDefined(dim_name) => {
-                let shared = dim_name.shared;
-                let variables = if shared {
+            Instruction::IsVariableDefined(dim_name, shared) => {
+                let variables = if *shared {
                     self.context.global_variables_mut()
                 } else {
                     self.context.variables()

@@ -84,8 +84,8 @@ impl InstructionGenerator {
                 self.push(Instruction::PopRet, pos);
             }
             Statement::Comment(_) => {}
-            Statement::Dim(d) => {
-                self.generate_dim_instructions(d);
+            Statement::Dim(dim_list) => {
+                self.generate_dim_instructions(dim_list);
             }
             Statement::End | Statement::System => {
                 self.push(Instruction::Halt, pos);

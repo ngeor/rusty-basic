@@ -57,6 +57,17 @@ fn test_dim_string_fixed_length_length_declared_as_const() {
     assert_prints!(program, "12345");
 }
 
+#[test]
+fn test_multi_dim() {
+    let program = r#"
+    DIM A AS STRING, B AS STRING
+    A = "hello"
+    B = "bye"
+    PRINT A, B
+    "#;
+    assert_prints!(program, "hello         bye");
+}
+
 mod dim_shared {
     use super::*;
 

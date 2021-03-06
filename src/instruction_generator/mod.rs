@@ -215,7 +215,7 @@ pub enum Instruction {
 
     /// Checks if a variable is defined (used to prevent re-allocation of variables in STATIC functions/subs).
     /// If the variable is already present, it will set the A register to true, otherwise to false.
-    IsVariableDefined(DimName),
+    IsVariableDefined(DimName, bool),
 }
 
 pub type InstructionNode = Locatable<Instruction>;

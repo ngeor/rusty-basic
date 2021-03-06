@@ -1,9 +1,7 @@
-use super::{
-    BareName, DimNameNode, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator,
-    PrintNode,
-};
+use super::{BareName, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator, PrintNode};
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
+use crate::parser::DimNameNodes;
 
 pub type StatementNode = Locatable<Statement>;
 pub type StatementNodes = Vec<StatementNode>;
@@ -23,7 +21,10 @@ pub enum Statement {
     /// DIM A AS STRING (without length)
     /// DIM A AS STRING * 4 (with fixed length)
     /// DIM A AS UserDefinedType
-    Dim(DimNameNode),
+    /// DIM SHARED A
+    /// DIM A(1 TO 2)
+    /// DIM A, B, C
+    Dim(DimList),
 
     SubCall(BareName, ExpressionNodes),
     BuiltInSubCall(BuiltInSub, ExpressionNodes),
@@ -48,6 +49,12 @@ pub enum Statement {
 
     End,
     System,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DimList {
+    pub shared: bool,
+    pub variables: DimNameNodes,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

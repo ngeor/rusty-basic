@@ -22,7 +22,8 @@ fn bare() {
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").at_rc(2, 9))).at_rc(2, 5),
+            TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").at_rc(2, 9).into_list()))
+                .at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::var_resolved("A!"),
                 Expression::IntegerLiteral(42).at_rc(3, 9)
@@ -46,7 +47,8 @@ fn compact_string() {
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 9))).at_rc(2, 5),
+            TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").at_rc(2, 9).into_list()))
+                .at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::var_resolved("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 10)
@@ -74,9 +76,9 @@ fn extended_string() {
                 DimName::new(
                     "A",
                     DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
-                    false
                 )
                 .at_rc(2, 9)
+                .into_list()
             ))
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::Assignment(
@@ -111,18 +113,18 @@ fn user_defined_type() {
                 DimName::new(
                     "A",
                     DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
-                    false
                 )
                 .at_rc(6, 9)
+                .into_list()
             ))
             .at_rc(6, 5),
             TopLevelToken::Statement(Statement::Dim(
                 DimName::new(
                     "B",
                     DimType::UserDefined(BareName::from("Card").at_rc(7, 14)),
-                    false
                 )
                 .at_rc(7, 9)
+                .into_list()
             ))
             .at_rc(7, 5),
             TopLevelToken::Statement(Statement::Assignment(
@@ -177,9 +179,9 @@ fn user_defined_type_integer_element() {
             DimName::new(
                 "A",
                 DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
-                false
             )
             .at_rc(6, 9)
+            .into_list()
         ),
         Statement::Assignment(
             Expression::Property(
@@ -217,9 +219,9 @@ fn user_defined_type_string_element() {
             DimName::new(
                 "A",
                 DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
-                false
             )
             .at_rc(6, 9)
+            .into_list()
         ),
         Statement::Assignment(
             Expression::Property(

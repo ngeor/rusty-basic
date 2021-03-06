@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
 use crate::parser::{
-    BareName, BareNameNode, DimName, DimNameNode, Expression, ExpressionNode, ForLoopNode,
+    BareName, BareNameNode, DimList, DimName, DimNameNode, Expression, ExpressionNode, ForLoopNode,
     FunctionImplementation, Name, NameNode, ParamName, QualifiedName, QualifiedNameNode,
     SubImplementation,
 };
@@ -169,8 +169,12 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         self.visit_statement_nodes(&s.body)
     }
 
-    fn visit_dim(&mut self, d: &DimNameNode) -> Result<(), QErrorNode> {
-        self.ensure_no_dots(d)
+    fn visit_dim(&mut self, dim_list: &DimList) -> Result<(), QErrorNode> {
+        dim_list
+            .variables
+            .iter()
+            .map(|dim_name_node| self.ensure_no_dots(dim_name_node))
+            .collect()
     }
 
     fn visit_assignment(

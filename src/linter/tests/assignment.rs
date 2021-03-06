@@ -61,7 +61,11 @@ fn assign_integer_to_extended_string() {
 fn test_assign_binary_plus() {
     assert_linter_ok_top_level_statements!(
         "X% = 1 + 2.1",
-        Statement::Dim(DimName::new_compact_local("X", TypeQualifier::PercentInteger).at_rc(1, 1)),
+        Statement::Dim(
+            DimName::new_compact_local("X", TypeQualifier::PercentInteger)
+                .at_rc(1, 1)
+                .into_list()
+        ),
         Statement::Assignment(
             Expression::var_resolved("X%"),
             Expression::BinaryExpression(
@@ -79,7 +83,11 @@ fn test_assign_binary_plus() {
 fn test_possible_property_folded_back_to_variable() {
     assert_linter_ok_top_level_statements!(
         "A.B = 12",
-        Statement::Dim(DimName::new_compact_local("A.B", TypeQualifier::BangSingle).at_rc(1, 1)),
+        Statement::Dim(
+            DimName::new_compact_local("A.B", TypeQualifier::BangSingle)
+                .at_rc(1, 1)
+                .into_list()
+        ),
         Statement::Assignment(
             Expression::var_resolved("A.B!".into()),
             Expression::IntegerLiteral(12).at_rc(1, 7),

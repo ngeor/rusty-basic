@@ -6,7 +6,6 @@ use std::convert::TryFrom;
 pub struct DimName {
     pub bare_name: BareName,
     pub dim_type: DimType,
-    pub shared: bool,
 }
 
 pub type DimNameNode = Locatable<DimName>;
@@ -20,18 +19,16 @@ impl DimName {
         Self {
             bare_name: BareName::from(bare_name),
             dim_type: DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
-            shared: false,
         }
     }
 
-    pub fn new<T>(bare_name: T, dim_type: DimType, shared: bool) -> Self
+    pub fn new<T>(bare_name: T, dim_type: DimType) -> Self
     where
         BareName: From<T>,
     {
         Self {
             bare_name: BareName::from(bare_name),
             dim_type,
-            shared,
         }
     }
 
@@ -41,10 +38,6 @@ impl DimName {
 
     pub fn dim_type(&self) -> &DimType {
         &self.dim_type
-    }
-
-    pub fn is_shared(&self) -> bool {
-        self.shared
     }
 
     pub fn is_bare(&self) -> bool {
@@ -59,27 +52,11 @@ impl DimName {
         }
     }
 
-    pub fn with_shared(self, shared: bool) -> Self {
-        let Self {
-            bare_name,
-            dim_type,
-            ..
-        } = self;
-        Self {
-            bare_name,
-            dim_type,
-            shared,
-        }
-    }
-
     pub fn with_dim_type(self, dim_type: DimType) -> Self {
-        let Self {
-            bare_name, shared, ..
-        } = self;
+        let Self { bare_name, .. } = self;
         Self {
             bare_name,
             dim_type,
-            shared,
         }
     }
 
@@ -156,7 +133,6 @@ impl<'a> From<&'a DimNameNode> for NameRef<'a> {
 pub struct DimNameBuilder {
     pub bare_name: Option<BareName>,
     pub dim_type: Option<DimType>,
-    pub shared: bool,
 }
 
 impl DimNameBuilder {
@@ -177,12 +153,18 @@ impl DimNameBuilder {
         self
     }
 
-    pub fn shared(mut self, shared: bool) -> Self {
-        self.shared = shared;
-        self
-    }
-
     pub fn build(self) -> DimName {
-        DimName::new(self.bare_name.unwrap(), self.dim_type.unwrap(), self.shared)
+        DimName::new(self.bare_name.unwrap(), self.dim_type.unwrap())
+    }
+}
+
+#[cfg(test)]
+impl DimNameNode {
+    #[cfg(test)]
+    pub fn into_list(self) -> DimList {
+        DimList {
+            shared: false,
+            variables: vec![self],
+        }
     }
 }

@@ -1,27 +1,38 @@
 use super::{Instruction, InstructionGenerator, RootPath};
 use crate::common::*;
 use crate::parser::{
-    ArrayDimension, DimName, DimNameNode, DimType, ExpressionType, HasExpressionType, Name,
-    TypeQualifier,
+    ArrayDimension, DimList, DimName, DimNameNode, DimType, ExpressionType, HasExpressionType,
+    Name, TypeQualifier,
 };
 
 impl InstructionGenerator {
-    pub fn generate_dim_instructions(&mut self, dim_name_node: DimNameNode) {
+    pub fn generate_dim_instructions(&mut self, dim_list: DimList) {
+        let DimList { shared, variables } = dim_list;
+        for dim_name_node in variables {
+            self.generate_dim_name_instructions(dim_name_node, shared);
+        }
+    }
+
+    fn generate_dim_name_instructions(&mut self, dim_name_node: DimNameNode, shared: bool) {
         let Locatable {
             element: dim_name,
             pos,
         } = dim_name_node;
+
         // check if it is already defined to prevent re-allocation of STATIC variables
         let is_in_static_subprogram = self.is_in_static_subprogram();
         if is_in_static_subprogram {
-            self.push(Instruction::IsVariableDefined(dim_name.clone()), pos);
+            self.push(
+                Instruction::IsVariableDefined(dim_name.clone(), shared),
+                pos,
+            );
             self.jump_if_false("begin-dim", pos);
             self.jump("end-dim", pos);
             self.label("begin-dim", pos);
-            self.generate_dim_name(dim_name, pos);
+            self.generate_dim_name(dim_name, shared, pos);
             self.label("end-dim", pos);
         } else {
-            self.generate_dim_name(dim_name, pos);
+            self.generate_dim_name(dim_name, shared, pos);
         }
     }
 
@@ -36,11 +47,10 @@ impl InstructionGenerator {
         }
     }
 
-    fn generate_dim_name(&mut self, dim_name: DimName, pos: Location) {
+    fn generate_dim_name(&mut self, dim_name: DimName, shared: bool, pos: Location) {
         let DimName {
             bare_name,
             dim_type,
-            shared,
         } = dim_name;
         match dim_type {
             DimType::Array(array_dimensions, box_element_type) => {

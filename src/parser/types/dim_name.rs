@@ -114,25 +114,6 @@ impl TryFrom<&DimName> for TypeQualifier {
     }
 }
 
-impl<'a> From<&'a DimName> for NameRef<'a> {
-    fn from(dim_name: &'a DimName) -> Self {
-        let DimName {
-            bare_name,
-            dim_type,
-            ..
-        } = dim_name;
-        let opt_q: Option<TypeQualifier> = dim_type.into();
-        NameRef { bare_name, opt_q }
-    }
-}
-
-impl<'a> From<&'a DimNameNode> for NameRef<'a> {
-    fn from(dim_name_node: &'a DimNameNode) -> Self {
-        let dim_name: &DimName = dim_name_node.as_ref();
-        dim_name.into()
-    }
-}
-
 #[derive(Default)]
 pub struct DimNameBuilder {
     pub bare_name: Option<BareName>,

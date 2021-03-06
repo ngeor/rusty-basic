@@ -493,7 +493,7 @@ pub mod dim_rules {
                     if dim_name_node.is_extended() {
                         return Err(QError::DuplicateDefinition).with_err_at(dim_name_node);
                     } else {
-                        let q = ctx.resolve_name_ref_to_qualifier(dim_name_node);
+                        let q = ctx.resolve_dim_name_node_to_qualifier(dim_name_node);
                         // for some reason you can have a FUNCTION Add(Add)
                         if q != func_qualifier {
                             return Err(QError::DuplicateDefinition).with_err_at(dim_name_node);
@@ -520,7 +520,7 @@ pub mod dim_rules {
                         return Err(QError::DuplicateDefinition).with_err_at(dim_name_node);
                     }
                 } else {
-                    let qualifier = ctx.resolve_name_ref_to_qualifier(dim_name_node);
+                    let qualifier = ctx.resolve_dim_name_node_to_qualifier(dim_name_node);
                     if !ctx
                         .names
                         .can_insert_compact(dim_name_node.bare_name(), qualifier)

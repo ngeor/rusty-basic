@@ -12,32 +12,6 @@ pub enum ErrorEnvelope<T> {
 }
 
 impl<T> ErrorEnvelope<T> {
-    /// Returns the topmost error
-    pub fn pos(&self) -> Option<Location> {
-        match self {
-            Self::NoPos(_) => None,
-            Self::Pos(_, pos) => Some(*pos),
-            Self::Stacktrace(_, s) => {
-                if s.is_empty() {
-                    None
-                } else {
-                    Some(s[0])
-                }
-            }
-        }
-    }
-
-    pub fn map<F, U>(self, f: F) -> ErrorEnvelope<U>
-    where
-        F: Fn(T) -> U,
-    {
-        match self {
-            Self::NoPos(x) => ErrorEnvelope::NoPos(f(x)),
-            Self::Pos(x, pos) => ErrorEnvelope::Pos(f(x), pos),
-            Self::Stacktrace(x, s) => ErrorEnvelope::Stacktrace(f(x), s),
-        }
-    }
-
     pub fn into_err(self) -> T {
         match self {
             Self::NoPos(t) | Self::Pos(t, _) | Self::Stacktrace(t, _) => t,
@@ -69,14 +43,6 @@ impl<T> ErrorEnvelope<T> {
             Self::Pos(body, v_old.pop().unwrap())
         } else {
             Self::Stacktrace(body, v_old)
-        }
-    }
-}
-
-impl<T> AsRef<T> for ErrorEnvelope<T> {
-    fn as_ref(&self) -> &T {
-        match self {
-            Self::NoPos(t) | Self::Pos(t, _) | Self::Stacktrace(t, _) => t,
         }
     }
 }

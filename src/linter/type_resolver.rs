@@ -1,4 +1,4 @@
-use crate::parser::{BareName, Name, NameRef, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, DimName, DimNameNode, Name, QualifiedName, TypeQualifier};
 
 pub trait TypeResolver {
     fn resolve_char(&self, ch: char) -> TypeQualifier;
@@ -33,33 +33,18 @@ pub trait TypeResolver {
         }
     }
 
-    fn resolve_name_ref_to_qualifier<'a, T>(&self, name: T) -> TypeQualifier
-    where
-        NameRef<'a>: From<T>,
-    {
-        let x = NameRef::from(name);
-        match x.opt_q {
-            Some(q) => q,
-            _ => self.resolve(x.bare_name),
-        }
-    }
-
-    fn resolve_name_to_name_ref<'a>(&self, name: &'a Name) -> NameRef<'a> {
-        match name {
-            Name::Bare(bare_name) => {
-                let qualifier = self.resolve(bare_name);
-                NameRef {
-                    bare_name,
-                    opt_q: Some(qualifier),
-                }
-            }
-            Name::Qualified(QualifiedName {
+    fn resolve_dim_name_node_to_qualifier(&self, dim_name_node: &DimNameNode) -> TypeQualifier {
+        let DimNameNode {
+            element: DimName {
                 bare_name,
-                qualifier,
-            }) => NameRef {
-                bare_name,
-                opt_q: Some(*qualifier),
+                dim_type,
             },
+            ..
+        } = dim_name_node;
+        let opt_q: Option<TypeQualifier> = dim_type.into();
+        match opt_q {
+            Some(q) => q,
+            _ => self.resolve(bare_name),
         }
     }
 }

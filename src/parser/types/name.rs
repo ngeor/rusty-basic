@@ -151,17 +151,8 @@ impl HasExpressionType for Name {
     }
 }
 
-//
-// NameNode
-//
-
+/// A [Name] with location information.
 pub type NameNode = Locatable<Name>;
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct NameRef<'a> {
-    pub bare_name: &'a BareName,
-    pub opt_q: Option<TypeQualifier>,
-}
 
 #[cfg(test)]
 mod tests {

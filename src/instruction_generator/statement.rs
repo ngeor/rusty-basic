@@ -1,16 +1,17 @@
-use super::{Instruction, InstructionGenerator};
+use super::{AddressOrLabel, Instruction, InstructionGenerator, Visitor};
 use crate::common::*;
-use crate::instruction_generator::AddressOrLabel;
 use crate::parser::{OnErrorOption, ResumeOption, Statement, StatementNode, StatementNodes};
 
-impl InstructionGenerator {
-    pub fn generate_block_instructions(&mut self, block: StatementNodes) {
+impl Visitor<StatementNodes> for InstructionGenerator {
+    fn visit(&mut self, block: StatementNodes) {
         for s in block {
-            self.generate_statement_node_instructions(s);
+            self.visit(s);
         }
     }
+}
 
-    pub fn generate_statement_node_instructions(&mut self, statement_node: StatementNode) {
+impl Visitor<StatementNode> for InstructionGenerator {
+    fn visit(&mut self, statement_node: StatementNode) {
         let Locatable {
             element: statement,
             pos,
@@ -84,8 +85,8 @@ impl InstructionGenerator {
                 self.push(Instruction::PopRet, pos);
             }
             Statement::Comment(_) => {}
-            Statement::Dim(d) => {
-                self.generate_dim_instructions(d);
+            Statement::Dim(dim_list) => {
+                self.visit(dim_list);
             }
             Statement::End | Statement::System => {
                 self.push(Instruction::Halt, pos);

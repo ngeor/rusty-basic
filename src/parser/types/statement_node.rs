@@ -1,5 +1,5 @@
 use super::{
-    BareName, DimNameNode, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator,
+    BareName, DimNameNodes, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator,
     PrintNode,
 };
 use crate::built_ins::BuiltInSub;
@@ -23,7 +23,10 @@ pub enum Statement {
     /// DIM A AS STRING (without length)
     /// DIM A AS STRING * 4 (with fixed length)
     /// DIM A AS UserDefinedType
-    Dim(DimNameNode),
+    /// DIM SHARED A
+    /// DIM A(1 TO 2)
+    /// DIM A, B, C
+    Dim(DimList),
 
     SubCall(BareName, ExpressionNodes),
     BuiltInSubCall(BuiltInSub, ExpressionNodes),
@@ -48,6 +51,17 @@ pub enum Statement {
 
     End,
     System,
+}
+
+/// A list of variables defined in a DIM statement.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DimList {
+    /// Specifies if the variables are shared. Can only be used on the global
+    /// module. If shared, the variables are available in functions/subs.
+    pub shared: bool,
+
+    /// The variables defined in the DIM statement.
+    pub variables: DimNameNodes,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

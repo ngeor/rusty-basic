@@ -299,7 +299,7 @@ impl InstructionGenerator {
     }
 
     fn visit_top_level_statements(&mut self, statements: StatementNodes) {
-        self.generate_block_instructions(statements);
+        self.visit(statements);
 
         // add HALT instruction at end of program to separate from the functions and subs
         self.mark_statement_address();
@@ -357,7 +357,7 @@ impl InstructionGenerator {
     }
 
     fn subprogram_body(&mut self, block: StatementNodes, pos: Location) {
-        self.generate_block_instructions(block);
+        self.visit(block);
         // to be able to RESUME NEXT if an error occurs on the last statement
         self.mark_statement_address();
         self.push(Instruction::PopRet, pos);
@@ -453,4 +453,8 @@ impl InstructionGenerator {
         };
         BareName::new(s)
     }
+}
+
+pub trait Visitor<T> {
+    fn visit(&mut self, item: T);
 }

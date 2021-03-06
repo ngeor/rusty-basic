@@ -1,7 +1,7 @@
 use crate::common::{HasLocation, QError};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, PcSpecific};
-use crate::parser::{dim_name, Keyword, Statement};
+use crate::parser::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement
 pub fn dim_p<R>() -> impl Parser<R, Output = Statement>
@@ -10,9 +10,16 @@ where
 {
     keyword_followed_by_whitespace_p(Keyword::Dim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
-        .and_demand(dim_name::dim_name_node_p().or_syntax_error("Expected: name after DIM"))
-        .map(|((_, opt_shared), dim_name_node)| {
-            Statement::Dim(dim_name_node.map(|dim_name| dim_name.with_shared(opt_shared.is_some())))
+        .and_demand(
+            dim_name::dim_name_node_p()
+                .csv()
+                .or_syntax_error("Expected: name after DIM"),
+        )
+        .map(|((_, opt_shared), variables)| {
+            Statement::Dim(DimList {
+                shared: opt_shared.is_some(),
+                variables,
+            })
         })
 }
 
@@ -30,16 +37,17 @@ mod tests {
             let p = parse(input).demand_single_statement();
             assert_eq!(
                 p,
-                crate::parser::Statement::Dim(
-                    crate::parser::DimNameBuilder::new()
+                crate::parser::Statement::Dim(crate::parser::DimList {
+                    shared: false,
+                    variables: vec![crate::parser::DimNameBuilder::new()
                         .bare_name($name)
                         .dim_type(crate::parser::DimType::BuiltIn(
                             TypeQualifier::$qualifier,
                             crate::parser::BuiltInStyle::Extended
                         ))
                         .build()
-                        .at_rc(1, 5)
-                )
+                        .at_rc(1, 5)]
+                })
             );
         };
     }
@@ -70,11 +78,11 @@ mod tests {
                 let var_name_bare: BareName = (*var_name).into();
                 let var_type_bare: BareName = (*var_type).into();
                 match p {
-                    Statement::Dim(dim_name_node) => {
+                    Statement::Dim(mut dim_list) => {
                         let Locatable {
                             element: dim_name,
                             pos,
-                        } = dim_name_node;
+                        } = dim_list.variables.pop().unwrap();
                         assert_eq!(pos, Location::new(1, 5));
                         assert_eq!(dim_name.bare_name().clone(), var_name_bare);
                         match dim_name.dim_type() {
@@ -132,8 +140,7 @@ mod tests {
                     DimNameBuilder::new()
                         .bare_name($name)
                         .dim_type(DimType::Bare)
-                        .build()
-                        .at_rc(1, 5)
+                        .build_list_rc(1, 5)
                 )
             );
         };
@@ -144,7 +151,7 @@ mod tests {
             assert_eq!(
                 p,
                 Statement::Dim(
-                    DimName::new_compact_local($name, TypeQualifier::$qualifier).at_rc(1, 5)
+                    DimName::new_compact_local($name, TypeQualifier::$qualifier).into_list_rc(1, 5)
                 )
             );
         };
@@ -183,8 +190,7 @@ mod tests {
                             BuiltInStyle::Compact
                         ))
                     ))
-                    .build()
-                    .at_rc(1, 5)
+                    .build_list_rc(1, 5)
             )
         );
     }
@@ -205,8 +211,7 @@ mod tests {
                         }],
                         Box::new(DimType::Bare)
                     ))
-                    .build()
-                    .at_rc(1, 5)
+                    .build_list_rc(1, 5)
             )
         );
     }
@@ -233,8 +238,7 @@ mod tests {
                         ],
                         Box::new(DimType::Bare)
                     ))
-                    .build()
-                    .at_rc(1, 5)
+                    .build_list_rc(1, 5)
             )
         );
     }
@@ -249,7 +253,8 @@ mod tests {
             assert_eq!(
                 program,
                 Statement::Dim(
-                    DimName::new_compact_local("DIM", TypeQualifier::DollarString).at_rc(1, 5)
+                    DimName::new_compact_local("DIM", TypeQualifier::DollarString)
+                        .into_list_rc(1, 5)
                 )
             );
         }

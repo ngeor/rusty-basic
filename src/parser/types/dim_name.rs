@@ -6,7 +6,6 @@ use std::convert::TryFrom;
 pub struct DimName {
     pub bare_name: BareName,
     pub dim_type: DimType,
-    pub shared: bool,
 }
 
 pub type DimNameNode = Locatable<DimName>;
@@ -20,18 +19,16 @@ impl DimName {
         Self {
             bare_name: BareName::from(bare_name),
             dim_type: DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
-            shared: false,
         }
     }
 
-    pub fn new<T>(bare_name: T, dim_type: DimType, shared: bool) -> Self
+    pub fn new<T>(bare_name: T, dim_type: DimType) -> Self
     where
         BareName: From<T>,
     {
         Self {
             bare_name: BareName::from(bare_name),
             dim_type,
-            shared,
         }
     }
 
@@ -41,10 +38,6 @@ impl DimName {
 
     pub fn dim_type(&self) -> &DimType {
         &self.dim_type
-    }
-
-    pub fn is_shared(&self) -> bool {
-        self.shared
     }
 
     pub fn is_bare(&self) -> bool {
@@ -59,28 +52,16 @@ impl DimName {
         }
     }
 
-    pub fn with_shared(self, shared: bool) -> Self {
-        let Self {
-            bare_name,
-            dim_type,
-            ..
-        } = self;
-        Self {
-            bare_name,
-            dim_type,
-            shared,
+    pub fn into_list(self, pos: Location) -> DimList {
+        DimList {
+            shared: false,
+            variables: vec![self.at(pos)],
         }
     }
 
-    pub fn with_dim_type(self, dim_type: DimType) -> Self {
-        let Self {
-            bare_name, shared, ..
-        } = self;
-        Self {
-            bare_name,
-            dim_type,
-            shared,
-        }
+    #[cfg(test)]
+    pub fn into_list_rc(self, row: u32, col: u32) -> DimList {
+        self.into_list(Location::new(row, col))
     }
 
     #[cfg(test)]
@@ -133,30 +114,10 @@ impl TryFrom<&DimName> for TypeQualifier {
     }
 }
 
-impl<'a> From<&'a DimName> for NameRef<'a> {
-    fn from(dim_name: &'a DimName) -> Self {
-        let DimName {
-            bare_name,
-            dim_type,
-            ..
-        } = dim_name;
-        let opt_q: Option<TypeQualifier> = dim_type.into();
-        NameRef { bare_name, opt_q }
-    }
-}
-
-impl<'a> From<&'a DimNameNode> for NameRef<'a> {
-    fn from(dim_name_node: &'a DimNameNode) -> Self {
-        let dim_name: &DimName = dim_name_node.as_ref();
-        dim_name.into()
-    }
-}
-
 #[derive(Default)]
 pub struct DimNameBuilder {
     pub bare_name: Option<BareName>,
     pub dim_type: Option<DimType>,
-    pub shared: bool,
 }
 
 impl DimNameBuilder {
@@ -177,12 +138,19 @@ impl DimNameBuilder {
         self
     }
 
-    pub fn shared(mut self, shared: bool) -> Self {
-        self.shared = shared;
-        self
+    pub fn build(self) -> DimName {
+        DimName::new(self.bare_name.unwrap(), self.dim_type.unwrap())
     }
 
-    pub fn build(self) -> DimName {
-        DimName::new(self.bare_name.unwrap(), self.dim_type.unwrap(), self.shared)
+    pub fn build_list(self, pos: Location) -> DimList {
+        DimList {
+            shared: false,
+            variables: vec![self.build().at(pos)],
+        }
+    }
+
+    #[cfg(test)]
+    pub fn build_list_rc(self, row: u32, col: u32) -> DimList {
+        self.build_list(Location::new(row, col))
     }
 }

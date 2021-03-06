@@ -150,7 +150,7 @@ fn test_dim_bare() {
     assert_eq!(
         linter_ok("DIM A"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new_compact_local("A", TypeQualifier::BangSingle).at_rc(1, 5)
+            DimName::new_compact_local("A", TypeQualifier::BangSingle).into_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -161,7 +161,7 @@ fn test_dim_qualified() {
     assert_eq!(
         linter_ok("DIM A$"),
         vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new_compact_local("A", TypeQualifier::DollarString).at_rc(1, 5)
+            DimName::new_compact_local("A", TypeQualifier::DollarString).into_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -178,8 +178,7 @@ fn test_dim_extended_built_in() {
                     TypeQualifier::AmpersandLong,
                     BuiltInStyle::Extended
                 ))
-                .build()
-                .at_rc(1, 5)
+                .build_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -196,8 +195,7 @@ fn test_dim_extended_fixed_length_string() {
                     Expression::IntegerLiteral(5).at_rc(1, 19),
                     5
                 ))
-                .build()
-                .at_rc(1, 5)
+                .build_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -217,8 +215,7 @@ fn test_dim_extended_user_defined() {
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::UserDefined(BareName::from("Card").at_rc(5, 14)))
-                .build()
-                .at_rc(5, 9)
+                .build_list_rc(5, 9)
         ))
         .at_rc(5, 5)]
     );
@@ -241,8 +238,7 @@ fn test_dim_array_bare() {
                         BuiltInStyle::Compact
                     ))
                 ))
-                .build()
-                .at_rc(1, 5)
+                .build_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -265,8 +261,7 @@ fn test_dim_array_qualified() {
                         BuiltInStyle::Compact
                     ))
                 ))
-                .build()
-                .at_rc(1, 5)
+                .build_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -289,8 +284,7 @@ fn test_dim_array_extended_built_in() {
                         BuiltInStyle::Extended
                     ))
                 ))
-                .build()
-                .at_rc(1, 5)
+                .build_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -313,8 +307,7 @@ fn test_dim_array_extended_fixed_length_string() {
                         3
                     ))
                 ))
-                .build()
-                .at_rc(1, 5)
+                .build_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -340,8 +333,7 @@ fn test_dim_array_extended_user_defined() {
                     }],
                     Box::new(DimType::UserDefined(BareName::from("Card").at_rc(5, 17)))
                 ))
-                .build()
-                .at_rc(5, 9)
+                .build_list_rc(5, 9)
         ))
         .at_rc(5, 5)]
     );

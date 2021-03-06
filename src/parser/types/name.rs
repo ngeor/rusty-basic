@@ -178,4 +178,10 @@ mod tests {
             ))
         );
     }
+
+    #[test]
+    fn test_to_string() {
+        assert_eq!(Name::from("Foo").to_string(), "Foo");
+        assert_eq!(Name::from("age%").to_string(), "age%");
+    }
 }

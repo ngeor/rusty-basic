@@ -21,6 +21,7 @@ use crate::instruction_generator::label_resolver::LabelResolver;
 use crate::instruction_generator::subprogram_info::{
     SubprogramInfoCollector, SubprogramInfoRepository,
 };
+use crate::linter::SubprogramName;
 use crate::parser::*;
 use crate::variant::Variant;
 
@@ -347,12 +348,12 @@ impl InstructionGenerator {
         self.subprogram_body(body, pos);
     }
 
-    fn mark_current_subprogram(&mut self, subprogram: SubprogramName, pos: Location) {
+    fn mark_current_subprogram(&mut self, subprogram_name: SubprogramName, pos: Location) {
         self.push(
-            Instruction::Label(CaseInsensitiveString::new(subprogram.to_string())),
+            Instruction::Label(Self::format_subprogram_label(&subprogram_name)),
             pos,
         );
-        self.current_subprogram = Some(subprogram);
+        self.current_subprogram = Some(subprogram_name);
     }
 
     fn subprogram_body(&mut self, block: StatementNodes, pos: Location) {
@@ -433,5 +434,23 @@ impl InstructionGenerator {
 
     fn mark_statement_address(&mut self) {
         self.statement_addresses.push(self.instructions.len());
+    }
+
+    fn format_subprogram_label(subprogram_name: &SubprogramName) -> BareName {
+        let s: String = match subprogram_name {
+            SubprogramName::Function(function_name) => {
+                let mut s: String = String::new();
+                s.push_str(":fun:");
+                s.push_str(&function_name.to_string());
+                s
+            }
+            SubprogramName::Sub(sub_name) => {
+                let mut s: String = String::new();
+                s.push_str(":sub:");
+                s.push_str(sub_name.as_ref());
+                s
+            }
+        };
+        BareName::new(s)
     }
 }

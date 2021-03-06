@@ -1,6 +1,7 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{AtLocation, Locatable, Location};
 use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};
+use crate::linter::SubprogramName;
 use crate::parser::*;
 
 impl InstructionGenerator {
@@ -178,7 +179,7 @@ impl InstructionGenerator {
     }
 
     fn jump_to_subprogram(&mut self, subprogram_name: &SubprogramName, pos: Location) {
-        let label: BareName = BareName::new(subprogram_name.to_string());
+        let label: BareName = Self::format_subprogram_label(subprogram_name);
         self.push(Instruction::Jump(AddressOrLabel::Unresolved(label)), pos);
     }
 }

@@ -1,7 +1,8 @@
 use crate::built_ins::BuiltInFunction;
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
-use crate::parser::{BareName, SubprogramName, TypeQualifier};
+use crate::linter::SubprogramName;
+use crate::parser::{BareName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
 

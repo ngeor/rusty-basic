@@ -1,7 +1,9 @@
-use super::{BareName, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator, PrintNode};
+use super::{
+    BareName, DimNameNodes, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator,
+    PrintNode,
+};
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
-use crate::parser::DimNameNodes;
 
 pub type StatementNode = Locatable<Statement>;
 pub type StatementNodes = Vec<StatementNode>;
@@ -51,9 +53,14 @@ pub enum Statement {
     System,
 }
 
+/// A list of variables defined in a DIM statement.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DimList {
+    /// Specifies if the variables are shared. Can only be used on the global
+    /// module. If shared, the variables are available in functions/subs.
     pub shared: bool,
+
+    /// The variables defined in the DIM statement.
     pub variables: DimNameNodes,
 }
 

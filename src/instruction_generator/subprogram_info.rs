@@ -3,26 +3,30 @@ use crate::linter::SubprogramName;
 use crate::parser::*;
 use std::collections::HashMap;
 
+/// Holds information about a subprogram that is needed at runtime.
 pub struct SubprogramInfo {
+    /// The parameters of a subprogram.
     pub params: Vec<ParamName>,
+
+    /// Specifies if the subprogram is static. Static subprograms preserve
+    /// their variables between calls.
     pub is_static: bool,
 }
 
 impl SubprogramInfo {
-    fn new_from_subprogram_ref<T>(x: &SubprogramImplementation<T>) -> Self {
+    fn new<T>(subprogram_implementation: &SubprogramImplementation<T>) -> Self {
         let mut params: Vec<ParamName> = vec![];
-        for Locatable { element, .. } in &x.params {
+        for Locatable { element, .. } in &subprogram_implementation.params {
             params.push(element.clone());
         }
-        let is_static = x.is_static;
+        let is_static = subprogram_implementation.is_static;
         Self { params, is_static }
     }
 }
 
 #[derive(Default)]
 pub struct SubprogramInfoCollector {
-    functions: HashMap<QualifiedName, SubprogramInfo>,
-    subs: HashMap<BareName, SubprogramInfo>,
+    map: HashMap<SubprogramName, SubprogramInfo>,
 }
 
 impl SubprogramInfoCollector {
@@ -46,57 +50,36 @@ impl SubprogramInfoCollector {
 
     fn visit_function_implementation(&mut self, f: &FunctionImplementation) {
         let function_name = f.name.element.clone().demand_qualified();
-        self.functions
-            .insert(function_name, SubprogramInfo::new_from_subprogram_ref(f));
+        let subprogram_name = SubprogramName::Function(function_name);
+        self.map.insert(subprogram_name, SubprogramInfo::new(f));
     }
 
     fn visit_sub_implementation(&mut self, s: &SubImplementation) {
         let sub_name = s.name.element.clone();
-        self.subs
-            .insert(sub_name, SubprogramInfo::new_from_subprogram_ref(s));
+        let subprogram_name = SubprogramName::Sub(sub_name);
+        self.map.insert(subprogram_name, SubprogramInfo::new(s));
     }
 }
 
 pub struct SubprogramInfoRepository {
-    // TODO use only one map HashMap<SubprogramName, SubprogramInfo>
-    functions: HashMap<QualifiedName, SubprogramInfo>,
-    subs: HashMap<BareName, SubprogramInfo>,
+    map: HashMap<SubprogramName, SubprogramInfo>,
 }
 
 impl SubprogramInfoRepository {
-    pub fn new(
-        functions: HashMap<QualifiedName, SubprogramInfo>,
-        subs: HashMap<BareName, SubprogramInfo>,
-    ) -> Self {
-        Self { functions, subs }
-    }
-
-    pub fn get_function_parameters(&self, name: &QualifiedName) -> &Vec<ParamName> {
-        &self.functions.get(name).expect("Function not found").params
-    }
-
-    pub fn get_sub_parameters(&self, name: &BareName) -> &Vec<ParamName> {
-        &self.get_sub_info(name).params
-    }
-
-    pub fn get_sub_info(&self, name: &BareName) -> &SubprogramInfo {
-        self.subs.get(name).expect("Sub not found")
+    pub fn new(map: HashMap<SubprogramName, SubprogramInfo>) -> Self {
+        Self { map }
     }
 
     pub fn get_subprogram_info(&self, subprogram_name: &SubprogramName) -> &SubprogramInfo {
-        match subprogram_name {
-            SubprogramName::Sub(sub_name) => self.subs.get(sub_name).expect("Sub not found"),
-            SubprogramName::Function(function_name) => self
-                .functions
-                .get(function_name)
-                .expect("Function not found"),
-        }
+        self.map
+            .get(subprogram_name)
+            .expect("Function/Sub not found")
     }
 }
 
 impl From<SubprogramInfoCollector> for SubprogramInfoRepository {
-    fn from(parameter_collector: SubprogramInfoCollector) -> Self {
-        let SubprogramInfoCollector { functions, subs } = parameter_collector;
-        SubprogramInfoRepository::new(functions, subs)
+    fn from(subprogram_info_collector: SubprogramInfoCollector) -> Self {
+        let SubprogramInfoCollector { map } = subprogram_info_collector;
+        SubprogramInfoRepository::new(map)
     }
 }

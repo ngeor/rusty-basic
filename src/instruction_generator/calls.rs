@@ -42,13 +42,14 @@ impl InstructionGenerator {
     ) {
         let Locatable { element: name, pos } = function_name;
         let qualified_name = name.demand_qualified();
+        let subprogram_name = SubprogramName::Function(qualified_name.clone());
         // cloning to fight the borrow checker
-        let function_parameters = self
+        let function_parameters: Vec<ParamName> = self
             .subprogram_info_repository
-            .get_function_parameters(&qualified_name)
+            .get_subprogram_info(&subprogram_name)
+            .params
             .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
-        let subprogram_name = SubprogramName::Function(qualified_name.clone());
         self.push_stack(subprogram_name.clone(), pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
@@ -72,13 +73,14 @@ impl InstructionGenerator {
         args: Vec<ExpressionNode>,
     ) {
         let Locatable { element: name, pos } = name_node;
+        let subprogram_name = SubprogramName::Sub(name.clone());
         // cloning to fight the borrow checker
-        let sub_impl_parameters = self
+        let sub_impl_parameters: Vec<ParamName> = self
             .subprogram_info_repository
-            .get_sub_parameters(&name)
+            .get_subprogram_info(&subprogram_name)
+            .params
             .clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
-        let subprogram_name = SubprogramName::Sub(name.clone());
         self.push_stack(subprogram_name.clone(), pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos); // points to "generate_stash_by_ref_args"

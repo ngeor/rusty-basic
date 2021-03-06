@@ -1,4 +1,4 @@
-use super::{Instruction, InstructionGenerator};
+use super::{Instruction, InstructionGenerator, Visitor};
 use crate::common::*;
 use crate::parser::{
     CaseBlockNode, CaseExpression, ExpressionNode, Operator, SelectCaseNode, StatementNodes,
@@ -53,7 +53,7 @@ impl InstructionGenerator {
                 self.label(labels::case_statements(case_block_index), pos);
             }
             // run matched CASE block statements
-            self.generate_block_instructions(case_block.statements);
+            self.visit(case_block.statements);
             // jump out of SELECT
             self.jump(labels::end_select(), pos);
             case_block_index += 1;
@@ -63,7 +63,7 @@ impl InstructionGenerator {
     fn generate_else_block(&mut self, else_block: Option<StatementNodes>, pos: Location) {
         if let Some(e) = else_block {
             self.label(labels::case_else(), pos);
-            self.generate_block_instructions(e);
+            self.visit(e);
         }
     }
 

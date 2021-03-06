@@ -1,4 +1,4 @@
-use super::{Instruction, InstructionGenerator};
+use super::{Instruction, InstructionGenerator, Visitor};
 use crate::common::*;
 use crate::parser::{Expression, ForLoopNode, HasExpressionType, StatementNodes};
 
@@ -124,7 +124,7 @@ impl InstructionGenerator {
 
         self.push(Instruction::PushRegisters, pos);
         // run loop body
-        self.generate_block_instructions(statements);
+        self.visit(statements);
         self.push(Instruction::PopRegisters, pos);
 
         // increment step

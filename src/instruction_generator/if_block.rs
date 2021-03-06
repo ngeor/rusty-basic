@@ -1,4 +1,4 @@
-use super::InstructionGenerator;
+use super::{InstructionGenerator, Visitor};
 use crate::common::*;
 use crate::parser::IfBlockNode;
 
@@ -28,7 +28,7 @@ impl InstructionGenerator {
         self.jump_if_false(next_label, pos);
 
         // if true, run statements and jump out
-        self.generate_block_instructions(if_block.statements);
+        self.visit(if_block.statements);
         self.jump("end-if", pos);
 
         for i in 0..else_if_blocks.len() {
@@ -49,14 +49,14 @@ impl InstructionGenerator {
             self.jump_if_false(next_label, pos);
 
             // if true, run statements and jump out
-            self.generate_block_instructions(else_if_block.statements);
+            self.visit(else_if_block.statements);
             self.jump("end-if", pos);
         }
 
         match else_block {
             Some(e) => {
                 self.label("else", pos);
-                self.generate_block_instructions(e);
+                self.visit(e);
             }
             None => (),
         }

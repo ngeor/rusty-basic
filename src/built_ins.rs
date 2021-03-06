@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 // BuiltInFunction
 // ========================================================
 
-#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum BuiltInFunction {
     /// CHR$
     Chr,
@@ -55,12 +55,6 @@ impl AsRef<str> for BuiltInFunction {
             .binary_search(self)
             .expect("Missing built-in function!");
         SORTED_BUILT_IN_FUNCTION_NAMES[idx]
-    }
-}
-
-impl std::fmt::Debug for BuiltInFunction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())
     }
 }
 
@@ -196,7 +190,7 @@ fn demand_unqualified(
 // BuiltInSub
 // ========================================================
 
-#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum BuiltInSub {
     Close,
     Environ,
@@ -238,15 +232,9 @@ impl AsRef<str> for BuiltInSub {
     }
 }
 
-impl std::fmt::Debug for BuiltInSub {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())
-    }
-}
-
 impl std::fmt::Display for BuiltInSub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, f)
+        f.write_str(self.as_ref())
     }
 }
 

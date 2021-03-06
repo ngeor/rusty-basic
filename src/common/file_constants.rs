@@ -61,7 +61,7 @@ impl From<i32> for FileAccess {
     }
 }
 
-#[derive(Clone, Copy, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FileHandle(u8);
 
 impl FileHandle {
@@ -100,14 +100,8 @@ impl TryFrom<i32> for FileHandle {
     }
 }
 
-impl std::fmt::Debug for FileHandle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "#{}", self.0)
-    }
-}
-
 impl std::fmt::Display for FileHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, f)
+        write!(f, "#{}", self.0)
     }
 }

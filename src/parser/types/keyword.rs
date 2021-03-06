@@ -1,7 +1,7 @@
 use crate::common::CmpIgnoreAsciiCase;
 use std::str::FromStr;
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Keyword {
     /// ACCESS
     Access,
@@ -352,12 +352,6 @@ impl Keyword {
             Self::Wend => STR_WEND,
             Self::While => STR_WHILE,
         }
-    }
-}
-
-impl std::fmt::Debug for Keyword {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self, f)
     }
 }
 

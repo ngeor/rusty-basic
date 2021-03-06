@@ -2,7 +2,9 @@ use crate::common::{Locatable, QError};
 use crate::parser::types::{BareName, TypeQualifier};
 use std::convert::TryFrom;
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+/// A qualified name is a bare name followed by a built-in type qualifier.
+/// Example: `name$`, `age%`.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QualifiedName {
     pub bare_name: BareName,
     pub qualifier: TypeQualifier,
@@ -48,12 +50,6 @@ impl TryFrom<&str> for QualifiedName {
     }
 }
 
-impl std::fmt::Debug for QualifiedName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self, f)
-    }
-}
-
 impl std::fmt::Display for QualifiedName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.bare_name, f)?;
@@ -61,8 +57,5 @@ impl std::fmt::Display for QualifiedName {
     }
 }
 
-//
-// QualifiedNameNode
-//
-
+/// A [QualifiedName] with location information.
 pub type QualifiedNameNode = Locatable<QualifiedName>;

@@ -263,12 +263,12 @@ fn validate_element_type_str_len(
     }
 }
 
-struct SubProgramContext<T> {
+struct SubprogramContext<T> {
     declarations: HashMap<CaseInsensitiveString, Locatable<T>>,
     implementations: HashMap<CaseInsensitiveString, Locatable<T>>,
 }
 
-impl<T> SubProgramContext<T> {
+impl<T> SubprogramContext<T> {
     pub fn new() -> Self {
         Self {
             declarations: HashMap::new(),
@@ -328,7 +328,7 @@ impl<T> SubProgramContext<T> {
     }
 }
 
-type FunctionContext = SubProgramContext<FunctionSignature>;
+type FunctionContext = SubprogramContext<FunctionSignature>;
 
 impl FunctionContext {
     pub fn add_declaration(
@@ -446,7 +446,7 @@ impl FunctionContext {
     }
 }
 
-type SubContext = SubProgramContext<SubSignature>;
+type SubContext = SubprogramContext<SubSignature>;
 
 impl SubContext {
     pub fn add_declaration(

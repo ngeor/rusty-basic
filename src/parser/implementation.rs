@@ -19,13 +19,19 @@ fn function_implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    declaration::function_declaration_p()
+    static_declaration_p(declaration::function_declaration_p())
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::End,
         )))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Function))
-        .map(|(((name, params), body), _)| {
-            TopLevelToken::FunctionImplementation(FunctionImplementation { name, params, body })
+        .keep_left()
+        .map(|(((name, params), is_static), body)| {
+            TopLevelToken::FunctionImplementation(FunctionImplementation {
+                name,
+                params,
+                body,
+                is_static,
+            })
         })
 }
 
@@ -33,14 +39,30 @@ fn sub_implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    declaration::sub_declaration_p()
+    static_declaration_p(declaration::sub_declaration_p())
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::End,
         )))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Sub))
-        .map(|(((name, params), body), _)| {
-            TopLevelToken::SubImplementation(SubImplementation { name, params, body })
+        .keep_left()
+        .map(|(((name, params), is_static), body)| {
+            TopLevelToken::SubImplementation(SubImplementation {
+                name,
+                params,
+                body,
+                is_static,
+            })
         })
+}
+
+fn static_declaration_p<R, P, T>(parser: P) -> impl Parser<R, Output = (T, bool)>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    P: Parser<R, Output = T> + 'static,
+{
+    parser
+        .and_opt(keyword_p(Keyword::Static).preceded_by_opt_ws())
+        .map(|(l, r)| (l, r.is_some()))
 }
 
 #[cfg(test)]
@@ -76,7 +98,8 @@ mod tests {
                     )
                     .at(Location::new(3, 21))
                 )
-                .at_rc(3, 13)]
+                .at_rc(3, 13)],
+                is_static: false
             })
             .at_rc(2, 9)
         );
@@ -108,7 +131,8 @@ mod tests {
                     )
                     .at_rc(3, 21)
                 )
-                .at_rc(3, 13)]
+                .at_rc(3, 13)],
+                is_static: false
             })
             .at_rc(2, 9)
         );

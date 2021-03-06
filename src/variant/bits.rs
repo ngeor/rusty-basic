@@ -2,7 +2,7 @@ use crate::common::QError;
 use crate::variant::{INT_BITS, LONG_BITS};
 use std::fmt::Write;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BitVec {
     v: Vec<bool>,
 }
@@ -199,12 +199,6 @@ pub fn qb_or(a: i32, b: i32) -> i32 {
     let b_bits: BitVec = b.into();
     let result = a_bits | b_bits;
     result.into()
-}
-
-impl std::fmt::Debug for BitVec {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self, f)
-    }
 }
 
 impl std::fmt::Display for BitVec {

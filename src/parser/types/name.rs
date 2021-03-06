@@ -3,7 +3,7 @@ use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
 use crate::parser::{ExpressionType, HasExpressionType};
 use std::convert::TryFrom;
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Name {
     Bare(BareName),
     Qualified(QualifiedName),
@@ -133,18 +133,12 @@ impl From<QualifiedName> for Name {
     }
 }
 
-impl std::fmt::Debug for Name {
+impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Bare(bare_name) => bare_name.fmt(f),
             Self::Qualified(qualified_name) => qualified_name.fmt(f),
         }
-    }
-}
-
-impl std::fmt::Display for Name {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, f)
     }
 }
 
@@ -183,5 +177,11 @@ mod tests {
                 TypeQualifier::PercentInteger
             ))
         );
+    }
+
+    #[test]
+    fn test_to_string() {
+        assert_eq!(Name::from("Foo").to_string(), "Foo");
+        assert_eq!(Name::from("age%").to_string(), "age%");
     }
 }

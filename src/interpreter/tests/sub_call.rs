@@ -246,3 +246,130 @@ fn test_dot_in_sub_param_name() {
     "#;
     assert_prints!(program, "Hello there");
 }
+
+mod static_sub {
+    use super::*;
+
+    #[test]
+    fn static_sub_preserves_values_between_calls() {
+        let program = r#"
+        Hello
+        Hello
+
+        SUB Hello STATIC
+            A = A + 1
+            PRINT A
+        END SUB
+        "#;
+        assert_prints!(program, "1", "2");
+    }
+
+    #[test]
+    fn regular_sub_does_not_preserve_values_between_calls() {
+        let program = r#"
+        Hello
+        Hello
+
+        SUB Hello
+            A = A + 1
+            PRINT A
+        END SUB
+        "#;
+        assert_prints!(program, "1", "1");
+    }
+
+    #[test]
+    fn static_sub_with_arguments() {
+        let program = r#"
+        Hello 1
+        Hello 2
+
+        SUB Hello(B) STATIC
+            A = A + B
+            PRINT A
+        END SUB
+        "#;
+        assert_prints!(program, "1", "3");
+    }
+
+    #[test]
+    fn fixed_length_string_append() {
+        let program = r#"
+        Hello
+        Hello
+
+        SUB Hello STATIC
+            DIM A AS STRING * 5
+            A = A + "!"
+            PRINT A
+        END SUB
+        "#;
+        assert_prints!(program, "", "");
+    }
+
+    #[test]
+    fn fixed_length_string_prepend() {
+        let program = r#"
+        Hello
+        Hello
+
+        SUB Hello STATIC
+            DIM A AS STRING * 5
+            A = "!" + A
+            PRINT A
+        END SUB
+        "#;
+        assert_prints!(program, "!", "!!");
+    }
+
+    #[test]
+    fn user_defined_type() {
+        let program = r#"
+        TYPE Card
+            Value AS INTEGER
+        END TYPE
+        Hello
+        Hello
+
+        SUB Hello STATIC
+            DIM A AS Card
+            A.Value = A.Value + 1
+            PRINT A.Value
+        END SUB
+        "#;
+        assert_prints!(program, "1", "2");
+    }
+
+    #[test]
+    fn array_built_in() {
+        let program = r#"
+        Hello
+        Hello
+
+        SUB Hello STATIC
+            DIM A(2) AS INTEGER
+            A(1) = A(1) + 1
+            PRINT A(1)
+        END SUB
+        "#;
+        assert_prints!(program, "1", "2");
+    }
+
+    #[test]
+    fn array_user_defined_type() {
+        let program = r#"
+        TYPE Card
+            Value AS INTEGER
+        END TYPE
+        Hello
+        Hello
+
+        SUB Hello STATIC
+            DIM A(2) AS Card
+            A(1).Value = A(1).Value + 1
+            PRINT A(1).Value
+        END SUB
+        "#;
+        assert_prints!(program, "1", "2");
+    }
+}

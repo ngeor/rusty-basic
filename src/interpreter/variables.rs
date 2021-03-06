@@ -1,7 +1,6 @@
 use crate::interpreter::arguments::Arguments;
 use crate::parser::{
-    BareName, DimName, DimType, ExpressionType, HasExpressionType, Name, ParamName, ParamType,
-    QualifiedName, TypeQualifier,
+    BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
 };
 use crate::variant::{Variant, V_FALSE};
 use std::collections::HashMap;
@@ -75,6 +74,10 @@ impl Variables {
             dim_type,
             ..
         } = dim_name;
+        self.insert_dim_internal(bare_name, dim_type, value);
+    }
+
+    fn insert_dim_internal(&mut self, bare_name: BareName, dim_type: DimType, value: Variant) {
         match dim_type {
             DimType::BuiltIn(qualifier, _) => {
                 self.insert_built_in(bare_name, qualifier, value);
@@ -86,16 +89,7 @@ impl Variables {
                 self.insert_user_defined(bare_name, value);
             }
             DimType::Array(_, box_element_type) => {
-                let element_type = box_element_type.expression_type();
-                match element_type {
-                    ExpressionType::BuiltIn(q) => {
-                        self.insert_built_in(bare_name, q, value);
-                    }
-                    ExpressionType::FixedLengthString(_) => {
-                        self.insert_built_in(bare_name, TypeQualifier::DollarString, value);
-                    }
-                    _ => self.insert_user_defined(bare_name, value),
-                }
+                self.insert_dim_internal(bare_name, *box_element_type, value);
             }
             DimType::Bare => panic!("Unresolved type"),
         }
@@ -147,17 +141,43 @@ impl Variables {
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
         self.values.get_mut(idx)
     }
+
+    pub fn apply_arguments(&mut self, arguments: Arguments) {
+        for (opt_param, arg) in arguments.into_iter() {
+            match opt_param {
+                Some(param_name) => self.insert_param(param_name, arg),
+                None => self.insert_unnamed(arg),
+            }
+        }
+    }
+
+    pub fn get_by_dim_name(&self, dim_name: &DimName) -> Option<&Variant> {
+        self.get_by_dim_name_internal(dim_name.bare_name(), dim_name.dim_type())
+    }
+
+    fn get_by_dim_name_internal(
+        &self,
+        bare_name: &BareName,
+        dim_type: &DimType,
+    ) -> Option<&Variant> {
+        match dim_type {
+            DimType::BuiltIn(q, _) => self.get_built_in(bare_name, *q),
+            DimType::FixedLengthString(_, _) => {
+                self.get_built_in(bare_name, TypeQualifier::DollarString)
+            }
+            DimType::UserDefined(_) => self.get_user_defined(bare_name),
+            DimType::Array(_, box_dim_type) => {
+                self.get_by_dim_name_internal(bare_name, box_dim_type.as_ref())
+            }
+            DimType::Bare => panic!("Unresolved dim"),
+        }
+    }
 }
 
 impl From<Arguments> for Variables {
     fn from(arguments: Arguments) -> Self {
         let mut variables: Self = Self::new();
-        for (opt_param, arg) in arguments.into_iter() {
-            match opt_param {
-                Some(param_name) => variables.insert_param(param_name, arg),
-                None => variables.insert_unnamed(arg),
-            }
-        }
+        variables.apply_arguments(arguments);
         variables
     }
 }

@@ -250,8 +250,9 @@ mod tests {
                         "ENVIRON".into(),
                         vec!["FOO=BAR".as_lit_expr(5, 21)]
                     )
-                    .at_rc(5, 13)]
-                },)
+                    .at_rc(5, 13)],
+                    is_static: false
+                })
             ]
         );
     }
@@ -323,7 +324,8 @@ mod tests {
                         )
                         .at_rc(5, 24)]
                     )
-                    .at_rc(5, 13)]
+                    .at_rc(5, 13)],
+                    is_static: false
                 })
             ]
         );

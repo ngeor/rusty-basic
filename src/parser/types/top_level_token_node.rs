@@ -1,8 +1,8 @@
 use super::{
-    BareNameNode, DefType, NameNode, ParamNameNodes, Statement, StatementNodes, UserDefinedType,
+    BareName, BareNameNode, DefType, Name, NameNode, ParamName, ParamNameNodes, Statement,
+    StatementNodes, UserDefinedType,
 };
 use crate::common::*;
-use crate::parser::ParamName;
 
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
@@ -37,16 +37,30 @@ impl From<Statement> for TopLevelToken {
     }
 }
 
+/// The implementation of a subprogram (FUNCTION or SUB).
 #[derive(Clone, Debug, PartialEq)]
-pub struct SubImplementation {
-    pub name: BareNameNode,
+pub struct SubprogramImplementation<T> {
+    /// The name of the subprogram.
+    /// It can be [BareName] for SUBs or [Name] for FUNCTIONs.
+    pub name: Locatable<T>,
+
+    /// The parameters of the subprogram.
     pub params: Vec<Locatable<ParamName>>,
+
+    /// The body (statements) of the subprogram.
     pub body: StatementNodes,
+
+    /// Determines if the subprogram is static. Static subprograms retain their
+    /// variable values between calls.
+    pub is_static: bool,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct FunctionImplementation {
-    pub name: NameNode,
-    pub params: Vec<Locatable<ParamName>>,
-    pub body: StatementNodes,
-}
+/// The implementation of a SUB.
+/// The name type is [BareName] as SUBs don't have a return type.
+pub type SubImplementation = SubprogramImplementation<BareName>;
+
+/// The implementation of a FUNCTION.
+/// Functions have a built-in return type.
+/// The name type is [Name] because the name is not resolved yet.
+/// After linting, the name will be resolved.
+pub type FunctionImplementation = SubprogramImplementation<Name>;

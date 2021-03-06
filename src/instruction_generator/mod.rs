@@ -4,10 +4,10 @@ mod expression;
 mod for_loop;
 mod if_block;
 mod label_resolver;
-mod parameter_collector;
 pub mod print;
 mod select_case;
 mod statement;
+mod subprogram_info;
 mod while_wend;
 
 #[cfg(test)]
@@ -18,7 +18,10 @@ mod tests;
 use crate::built_ins::*;
 use crate::common::*;
 use crate::instruction_generator::label_resolver::LabelResolver;
-use crate::instruction_generator::parameter_collector::{ParameterCollector, SubProgramParameters};
+use crate::instruction_generator::subprogram_info::{
+    SubprogramInfoCollector, SubprogramInfoRepository,
+};
+use crate::linter::SubprogramName;
 use crate::parser::*;
 use crate::variant::Variant;
 
@@ -26,11 +29,11 @@ use crate::variant::Variant;
 pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult {
     // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
     // the parameter names and types are needed
-    let mut parameter_collector = ParameterCollector::default();
-    parameter_collector.visit(&program);
-    let sub_program_parameters: SubProgramParameters = parameter_collector.into();
+    let mut subprogram_info_collector = SubprogramInfoCollector::default();
+    subprogram_info_collector.visit(&program);
+    let subprogram_parameters: SubprogramInfoRepository = subprogram_info_collector.into();
     // pass 2 generate with labels still unresolved
-    let mut generator = InstructionGenerator::new(sub_program_parameters);
+    let mut generator = InstructionGenerator::new(subprogram_parameters);
     generator.generate_unresolved(program);
     let InstructionGenerator {
         instructions,
@@ -171,6 +174,7 @@ pub enum Instruction {
     PushAToUnnamedArg,
 
     PushStack,
+    PushStaticStack(SubprogramName),
     PopStack,
 
     EnqueueToReturnStack(usize),
@@ -208,6 +212,10 @@ pub enum Instruction {
     PrintSemicolon,
     PrintValueFromA,
     PrintEnd,
+
+    /// Checks if a variable is defined (used to prevent re-allocation of variables in STATIC functions/subs).
+    /// If the variable is already present, it will set the A register to true, otherwise to false.
+    IsVariableDefined(DimName),
 }
 
 pub type InstructionNode = Locatable<Instruction>;
@@ -238,15 +246,17 @@ pub enum PrinterType {
 struct InstructionGenerator {
     instructions: Vec<InstructionNode>,
     statement_addresses: Vec<usize>,
-    sub_program_parameters: SubProgramParameters,
+    subprogram_info_repository: SubprogramInfoRepository,
+    current_subprogram: Option<SubprogramName>,
 }
 
 impl InstructionGenerator {
-    fn new(sub_program_parameters: SubProgramParameters) -> Self {
+    fn new(subprogram_info_repository: SubprogramInfoRepository) -> Self {
         Self {
             instructions: vec![],
             statement_addresses: vec![],
-            sub_program_parameters,
+            subprogram_info_repository,
+            current_subprogram: None,
         }
     }
 
@@ -312,10 +322,10 @@ impl InstructionGenerator {
         } = function_node;
         let FunctionImplementation { name, body, .. } = function_implementation;
         let function_name = name.element.demand_qualified();
-        self.function_label(&function_name, pos);
+        self.mark_current_subprogram(SubprogramName::Function(function_name.clone()), pos);
         // set default value
         self.push_load(function_name.qualifier, pos);
-        self.sub_program_body(body, pos);
+        self.subprogram_body(body, pos);
     }
 
     fn visit_subs(&mut self, subs: Vec<Locatable<SubImplementation>>) {
@@ -329,12 +339,24 @@ impl InstructionGenerator {
             element: sub_implementation,
             pos,
         } = sub_node;
-        let SubImplementation { name, body, .. } = sub_implementation;
-        self.sub_label(name.as_ref(), pos);
-        self.sub_program_body(body, pos);
+        let SubImplementation {
+            name: Locatable { element: name, .. },
+            body,
+            ..
+        } = sub_implementation;
+        self.mark_current_subprogram(SubprogramName::Sub(name.clone()), pos);
+        self.subprogram_body(body, pos);
     }
 
-    fn sub_program_body(&mut self, block: StatementNodes, pos: Location) {
+    fn mark_current_subprogram(&mut self, subprogram_name: SubprogramName, pos: Location) {
+        self.push(
+            Instruction::Label(Self::format_subprogram_label(&subprogram_name)),
+            pos,
+        );
+        self.current_subprogram = Some(subprogram_name);
+    }
+
+    fn subprogram_body(&mut self, block: StatementNodes, pos: Location) {
         self.generate_block_instructions(block);
         // to be able to RESUME NEXT if an error occurs on the last statement
         self.mark_statement_address();
@@ -389,41 +411,6 @@ impl InstructionGenerator {
         );
     }
 
-    fn function_label(&mut self, name: &QualifiedName, pos: Location) {
-        self.push(
-            Instruction::Label(CaseInsensitiveString::new(format!(
-                ":fun:{}",
-                name.bare_name,
-            ))),
-            pos,
-        );
-    }
-
-    fn jump_to_function<S: AsRef<str>>(&mut self, name: S, pos: Location) {
-        self.push(
-            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
-                format!(":fun:{}", name.as_ref(),),
-            ))),
-            pos,
-        );
-    }
-
-    fn sub_label(&mut self, name: &BareName, pos: Location) {
-        self.push(
-            Instruction::Label(CaseInsensitiveString::new(format!(":sub:{}", name,))),
-            pos,
-        );
-    }
-
-    fn jump_to_sub<S: AsRef<str>>(&mut self, name: S, pos: Location) {
-        self.push(
-            Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
-                format!(":sub:{}", name.as_ref(),),
-            ))),
-            pos,
-        );
-    }
-
     fn generate_assignment_instructions(
         &mut self,
         l: Expression,
@@ -447,5 +434,23 @@ impl InstructionGenerator {
 
     fn mark_statement_address(&mut self) {
         self.statement_addresses.push(self.instructions.len());
+    }
+
+    fn format_subprogram_label(subprogram_name: &SubprogramName) -> BareName {
+        let s: String = match subprogram_name {
+            SubprogramName::Function(function_name) => {
+                let mut s: String = String::new();
+                s.push_str(":fun:");
+                s.push_str(&function_name.to_string());
+                s
+            }
+            SubprogramName::Sub(sub_name) => {
+                let mut s: String = String::new();
+                s.push_str(":sub:");
+                s.push_str(sub_name.as_ref());
+                s
+            }
+        };
+        BareName::new(s)
     }
 }

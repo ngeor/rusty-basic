@@ -1,6 +1,6 @@
 use crate::common::{AtLocation, Locatable, QErrorNode};
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::parser::{FunctionImplementation, SubImplementation, TopLevelToken, TopLevelTokenNode};
+use crate::parser::{TopLevelToken, TopLevelTokenNode};
 
 // Vec because:
 // 1. we filter out DefType and UserDefinedType
@@ -22,15 +22,11 @@ impl<'a> Converter<TopLevelTokenNode, Vec<TopLevelTokenNode>> for ConverterImpl<
             TopLevelToken::FunctionDeclaration(_, _) | TopLevelToken::SubDeclaration(_, _) => {
                 Ok(vec![])
             }
-            TopLevelToken::FunctionImplementation(FunctionImplementation {
-                name,
-                params,
-                body,
-            }) => self
-                .convert_function_implementation(name, params, body)
+            TopLevelToken::FunctionImplementation(function_implementation) => self
+                .convert_function_implementation(function_implementation)
                 .map(|top_level_token| vec![top_level_token.at(pos)]),
-            TopLevelToken::SubImplementation(SubImplementation { name, params, body }) => self
-                .convert_sub_implementation(name, params, body)
+            TopLevelToken::SubImplementation(sub_implementation) => self
+                .convert_sub_implementation(sub_implementation)
                 .map(|top_level_token| vec![top_level_token.at(pos)]),
             TopLevelToken::Statement(statement) => {
                 let statement_node = statement.at(pos);

@@ -1,21 +1,24 @@
 use crate::common::QErrorNode;
 use crate::linter::converter::converter::{Converter, ConverterImpl};
-use crate::parser::{
-    BareNameNode, ParamNameNodes, StatementNodes, SubImplementation, TopLevelToken,
-};
+use crate::parser::{SubImplementation, TopLevelToken};
 
 impl<'a> ConverterImpl<'a> {
     pub fn convert_sub_implementation(
         &mut self,
-        sub_name_node: BareNameNode,
-        params: ParamNameNodes,
-        block: StatementNodes,
+        sub_implementation: SubImplementation,
     ) -> Result<TopLevelToken, QErrorNode> {
+        let SubImplementation {
+            name,
+            params,
+            body,
+            is_static,
+        } = sub_implementation;
         let mapped_params = self.context.push_sub_context(params)?;
         let mapped = TopLevelToken::SubImplementation(SubImplementation {
-            name: sub_name_node,
+            name,
             params: mapped_params,
-            body: self.convert(block)?,
+            body: self.convert(body)?,
+            is_static,
         });
         self.context.pop_context();
         Ok(mapped)

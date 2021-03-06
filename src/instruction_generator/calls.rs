@@ -1,6 +1,7 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::{AtLocation, Locatable, Location};
-use crate::instruction_generator::{Instruction, InstructionGenerator};
+use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};
+use crate::linter::SubprogramName;
 use crate::parser::*;
 
 impl InstructionGenerator {
@@ -41,17 +42,18 @@ impl InstructionGenerator {
     ) {
         let Locatable { element: name, pos } = function_name;
         let qualified_name = name.demand_qualified();
-        let bare_name: &BareName = qualified_name.as_ref();
+        let subprogram_name = SubprogramName::Function(qualified_name.clone());
         // cloning to fight the borrow checker
-        let function_parameters = self
-            .sub_program_parameters
-            .get_function_parameters(bare_name)
+        let function_parameters: Vec<ParamName> = self
+            .subprogram_info_repository
+            .get_subprogram_info(&subprogram_name)
+            .params
             .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
-        self.push(Instruction::PushStack, pos);
+        self.push_stack(subprogram_name.clone(), pos);
         let idx = self.instructions.len();
         self.push(Instruction::PushRet(idx + 2), pos);
-        self.jump_to_function(bare_name, pos);
+        self.jump_to_subprogram(&subprogram_name, pos);
         // TODO find different way for by ref args
         // stash by-ref variables
         self.generate_stash_by_ref_args(&args);
@@ -71,16 +73,18 @@ impl InstructionGenerator {
         args: Vec<ExpressionNode>,
     ) {
         let Locatable { element: name, pos } = name_node;
+        let subprogram_name = SubprogramName::Sub(name.clone());
         // cloning to fight the borrow checker
-        let sub_impl_parameters = self
-            .sub_program_parameters
-            .get_sub_parameters(&name)
+        let sub_impl_parameters: Vec<ParamName> = self
+            .subprogram_info_repository
+            .get_subprogram_info(&subprogram_name)
+            .params
             .clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
-        self.push(Instruction::PushStack, pos);
+        self.push_stack(subprogram_name.clone(), pos);
         let idx = self.instructions.len();
-        self.push(Instruction::PushRet(idx + 2), pos);
-        self.jump_to_sub(name, pos);
+        self.push(Instruction::PushRet(idx + 2), pos); // points to "generate_stash_by_ref_args"
+        self.jump_to_subprogram(&subprogram_name, pos);
         self.generate_stash_by_ref_args(&args);
         self.push(Instruction::PopStack, pos);
         self.generate_un_stash_by_ref_args(&args);
@@ -162,5 +166,22 @@ impl InstructionGenerator {
         if let ExpressionType::FixedLengthString(l) = arg.expression_type() {
             self.push(Instruction::FixLength(l), pos);
         }
+    }
+
+    fn push_stack(&mut self, subprogram_name: SubprogramName, pos: Location) {
+        if self
+            .subprogram_info_repository
+            .get_subprogram_info(&subprogram_name)
+            .is_static
+        {
+            self.push(Instruction::PushStaticStack(subprogram_name), pos);
+        } else {
+            self.push(Instruction::PushStack, pos);
+        }
+    }
+
+    fn jump_to_subprogram(&mut self, subprogram_name: &SubprogramName, pos: Location) {
+        let label: BareName = Self::format_subprogram_label(subprogram_name);
+        self.push(Instruction::Jump(AddressOrLabel::Unresolved(label)), pos);
     }
 }

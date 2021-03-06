@@ -7,31 +7,6 @@ use crate::variant::Variant;
 use std::collections::HashMap;
 
 #[derive(Debug)]
-pub struct MemoryBlock {
-    variables: Variables,
-    ref_count: usize,
-    is_static: bool,
-}
-
-impl MemoryBlock {
-    fn increase_ref_count(&mut self) {
-        self.ref_count += 1;
-    }
-
-    fn decrease_ref_count(&mut self) -> bool {
-        if self.ref_count > 1 {
-            // decrease ref count
-            self.ref_count -= 1;
-            // indicate it cannot be removed
-            false
-        } else {
-            // it can be removed only if it is not static
-            !self.is_static
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct Context {
     states: Vec<State>,
     memory_blocks: Vec<MemoryBlock>,
@@ -42,11 +17,7 @@ pub struct Context {
 impl Context {
     pub fn new() -> Self {
         let global_variables = Variables::new();
-        let global_memory_block = MemoryBlock {
-            variables: global_variables,
-            ref_count: 1,
-            is_static: false,
-        };
+        let global_memory_block = MemoryBlock::new(global_variables, false);
         let memory_blocks = vec![global_memory_block];
         let root_state = State::new(0, false);
         let states = vec![root_state];
@@ -67,26 +38,27 @@ impl Context {
         // current state must be argument collecting state
         let arguments = self.do_pop().arguments.expect("Expected argument state");
         let variables = Variables::from(arguments);
-        self.do_push_new(variables);
+        self.do_push_new(variables, false);
     }
 
     pub fn stop_collecting_arguments_static(&mut self, subprogram_name: SubprogramName) {
         // current state must be argument collecting state
         let arguments = self.do_pop().arguments.expect("Expected argument state");
         // ensure memory block for this subprogram
-        if !self.static_memory_blocks.contains_key(&subprogram_name) {
-            let variables = Variables::from(arguments);
-            let memory_block_index = self.memory_blocks.len();
-            self.do_push_new(variables);
-            self.memory_blocks[memory_block_index].is_static = true;
-            self.static_memory_blocks
-                .insert(subprogram_name, memory_block_index);
-        } else {
-            let memory_block_index = *self.static_memory_blocks.get(&subprogram_name).unwrap();
-            self.memory_blocks[memory_block_index]
-                .variables
-                .apply_arguments(arguments);
-            self.do_push_existing(memory_block_index, false);
+        match self.static_memory_blocks.get(&subprogram_name) {
+            Some(existing_memory_block_index) => {
+                let memory_block_index = *existing_memory_block_index;
+                self.memory_blocks[memory_block_index]
+                    .variables
+                    .apply_arguments(arguments);
+                self.do_push_existing(memory_block_index, false);
+            }
+            _ => {
+                let variables = Variables::from(arguments);
+                let memory_block_index = self.do_push_new(variables, true);
+                self.static_memory_blocks
+                    .insert(subprogram_name, memory_block_index);
+            }
         }
     }
 
@@ -171,15 +143,12 @@ impl Context {
         self.state().memory_block_index
     }
 
-    fn do_push_new(&mut self, variables: Variables) {
+    fn do_push_new(&mut self, variables: Variables, is_static: bool) -> usize {
         let next_memory_block_index = self.memory_blocks.len();
-        let memory_block = MemoryBlock {
-            variables,
-            ref_count: 1,
-            is_static: false,
-        };
+        let memory_block = MemoryBlock::new(variables, is_static);
         self.memory_blocks.push(memory_block);
         self.do_push_existing(next_memory_block_index, false);
+        next_memory_block_index
     }
 
     fn do_push_existing(&mut self, memory_block_index: usize, arguments: bool) {
@@ -206,6 +175,24 @@ impl Context {
     }
 }
 
+impl std::ops::Index<usize> for Context {
+    type Output = Variant;
+
+    fn index(&self, index: usize) -> &Variant {
+        self.variables()
+            .get(index)
+            .expect("Variable not found at requested index")
+    }
+}
+
+impl std::ops::IndexMut<usize> for Context {
+    fn index_mut(&mut self, index: usize) -> &mut Variant {
+        self.variables_mut()
+            .get_mut(index)
+            .expect("Variable not found at requested index")
+    }
+}
+
 #[derive(Debug)]
 struct State {
     memory_block_index: usize,
@@ -225,20 +212,50 @@ impl State {
     }
 }
 
-impl std::ops::Index<usize> for Context {
-    type Output = Variant;
+/// Represents a memory area local to a sub/function call.
+/// The global memory block is assigned to the global module and
+/// is also re-used by the global error handler (if one exists).
+/// Each function/sub call gets a new memory block which is discarded when
+/// the function/sub exits. Static function/subs retain their memory block
+/// between calls.
+#[derive(Debug)]
+pub struct MemoryBlock {
+    /// The variables in the memory block.
+    variables: Variables,
 
-    fn index(&self, index: usize) -> &Variant {
-        self.variables()
-            .get(index)
-            .expect("Variable not found at requested index")
-    }
+    /// A reference counter that indicates how many context states are using
+    /// this memory block. A memory block is re-used while evaluating the arguments
+    /// of a function/sub call and also when the error handler is invoked.
+    ref_count: usize,
+
+    /// Determines if this memory block belongs to a static function/sub, which
+    /// means it should not be discarded even if the reference counter would
+    /// normally indicate so.
+    is_static: bool,
 }
 
-impl std::ops::IndexMut<usize> for Context {
-    fn index_mut(&mut self, index: usize) -> &mut Variant {
-        self.variables_mut()
-            .get_mut(index)
-            .expect("Variable not found at requested index")
+impl MemoryBlock {
+    fn new(variables: Variables, is_static: bool) -> Self {
+        Self {
+            variables,
+            ref_count: 1,
+            is_static,
+        }
+    }
+
+    fn increase_ref_count(&mut self) {
+        self.ref_count += 1;
+    }
+
+    fn decrease_ref_count(&mut self) -> bool {
+        if self.ref_count > 1 {
+            // decrease ref count
+            self.ref_count -= 1;
+            // indicate it cannot be removed
+            false
+        } else {
+            // it can be removed only if it is not static
+            !self.is_static
+        }
     }
 }

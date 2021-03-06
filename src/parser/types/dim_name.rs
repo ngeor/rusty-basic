@@ -156,6 +156,13 @@ impl DimNameBuilder {
     pub fn build(self) -> DimName {
         DimName::new(self.bare_name.unwrap(), self.dim_type.unwrap())
     }
+
+    pub fn build_list(self, pos: Location) -> DimList {
+        DimList {
+            shared: false,
+            variables: vec![self.build().at(pos)],
+        }
+    }
 }
 
 #[cfg(test)]

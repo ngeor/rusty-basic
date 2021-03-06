@@ -139,7 +139,7 @@ impl Context {
         self.states.last_mut().expect("Empty states!")
     }
 
-    fn current_memory_block_index(&self) -> usize {
+    pub fn current_memory_block_index(&self) -> usize {
         self.state().memory_block_index
     }
 

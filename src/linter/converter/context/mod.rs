@@ -212,6 +212,7 @@ impl<'a> Context<'a> {
         &mut self,
         param_name_node: ParamNameNode,
     ) -> Result<ParamNameNode, QErrorNode> {
+        // destruct param_name_node
         let Locatable {
             element:
                 ParamName {
@@ -220,33 +221,31 @@ impl<'a> Context<'a> {
                 },
             pos,
         } = param_name_node;
+        // construct dim_list
         let dim_type = DimType::from(param_type);
-        let dim_name_node: DimNameNode = DimNameBuilder::new()
+        let dim_list: DimList = DimNameBuilder::new()
             .bare_name(bare_name)
             .dim_type(dim_type)
-            .build()
-            .at(pos);
-        let dim_list = DimList {
-            shared: false,
-            variables: vec![dim_name_node],
-        };
+            .build_list(pos);
+        // convert
         let (mut converted_dim_list, implicits) = dim_rules::on_dim(self, dim_list, true)?;
-        if implicits.is_empty() {
-            let Locatable {
-                element:
-                    DimName {
-                        bare_name,
-                        dim_type,
-                        ..
-                    },
-                pos,
-            } = converted_dim_list.variables.pop().unwrap();
-            let param_type = ParamType::from(dim_type);
-            let param_name = ParamName::new(bare_name, param_type);
-            Ok(param_name.at(pos))
-        } else {
-            panic!("Should not have introduced implicit variables via parameter")
-        }
+        debug_assert!(
+            implicits.is_empty(),
+            "Should not have introduced implicit variables via parameter"
+        );
+        let Locatable {
+            element: DimName {
+                bare_name,
+                dim_type,
+            },
+            ..
+        } = converted_dim_list
+            .variables
+            .pop()
+            .expect("Should have one converted variable");
+        let param_type = ParamType::from(dim_type);
+        let param_name = ParamName::new(bare_name, param_type);
+        Ok(param_name.at(pos))
     }
 
     fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
@@ -276,7 +275,7 @@ pub mod dim_rules {
         is_param: bool,
     ) -> Result<(DimList, Vec<QualifiedNameNode>), QErrorNode> {
         validate(ctx, &dim_list, is_param)?;
-        new_var(ctx, dim_list)
+        new_var::new_var(ctx, dim_list)
     }
 
     fn validate(ctx: &Context, dim_list: &I, is_param: bool) -> Result<(), QErrorNode> {
@@ -291,21 +290,39 @@ pub mod dim_rules {
         shared_not_allowed_in_subprogram::validate(ctx, dim_list)
     }
 
-    fn new_var(ctx: &mut Context, input: I) -> Result<O, QErrorNode> {
-        let (converted_input, implicit_vars) = new_var_not_adding_to_context(ctx, input)?;
-        // add to context
-        let DimList { shared, variables } = &converted_input;
-        for Locatable {
-            element: DimName {
-                bare_name,
-                dim_type,
-            },
-            pos,
-        } in variables
-        {
+    mod new_var {
+        use super::*;
+
+        pub fn new_var(ctx: &mut Context, input: I) -> Result<O, QErrorNode> {
+            let (converted_input, implicit_vars) = new_var_not_adding_to_context(ctx, input)?;
+            add_to_context(ctx, &converted_input)?;
+            Ok((converted_input, implicit_vars))
+        }
+
+        fn add_to_context(ctx: &mut Context, converted_input: &I) -> Result<(), QErrorNode> {
+            let DimList { shared, variables } = &converted_input;
+            variables
+                .iter()
+                .map(|dim_name_node| add_one_to_context(ctx, dim_name_node, *shared))
+                .collect()
+        }
+
+        fn add_one_to_context(
+            ctx: &mut Context,
+            dim_name_node: &DimNameNode,
+            shared: bool,
+        ) -> Result<(), QErrorNode> {
+            let DimNameNode {
+                element:
+                    DimName {
+                        bare_name,
+                        dim_type,
+                    },
+                pos,
+            } = dim_name_node;
             let variable_context = VariableInfo {
                 expression_type: dim_type.expression_type(),
-                shared: *shared,
+                shared,
             };
             if dim_type.is_extended() {
                 ctx.names
@@ -315,123 +332,126 @@ pub mod dim_rules {
                 ctx.names
                     .insert_compact(bare_name.clone(), q, variable_context);
             }
+            Ok(())
         }
-        Ok((converted_input, implicit_vars))
-    }
 
-    fn new_var_not_adding_to_context(ctx: &mut Context, input: I) -> Result<O, QErrorNode> {
-        let DimList { shared, variables } = input;
-        let mut converted_variables: DimNameNodes = vec![];
-        let mut implicit_variables: Vec<QualifiedNameNode> = vec![];
-        for variable in variables {
-            let (converted_variable, some_implicit_variables) =
-                new_var_not_adding_to_context_one(ctx, variable, shared)?;
-            converted_variables.push(converted_variable);
-            implicit_variables = union(implicit_variables, some_implicit_variables);
+        fn new_var_not_adding_to_context(ctx: &mut Context, input: I) -> Result<O, QErrorNode> {
+            let DimList { shared, variables } = input;
+            let mut converted_variables: DimNameNodes = vec![];
+            let mut implicit_variables: Vec<QualifiedNameNode> = vec![];
+            for variable in variables {
+                let (converted_variable, some_implicit_variables) =
+                    new_var_not_adding_to_context_one(ctx, variable, shared)?;
+                converted_variables.push(converted_variable);
+                implicit_variables = union(implicit_variables, some_implicit_variables);
+            }
+            Ok((
+                DimList {
+                    shared,
+                    variables: converted_variables,
+                },
+                implicit_variables,
+            ))
         }
-        Ok((
-            DimList {
-                shared,
-                variables: converted_variables,
-            },
-            implicit_variables,
-        ))
-    }
 
-    fn new_var_not_adding_to_context_one(
-        ctx: &mut Context,
-        input: DimNameNode,
-        shared: bool,
-    ) -> Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let Locatable {
-            element: DimName {
-                bare_name,
-                dim_type,
-            },
-            pos,
-        } = input;
-        match dim_type {
-            DimType::Bare => {
-                let qualifier = ctx.resolve(&bare_name);
-                let dim_type = DimType::BuiltIn(qualifier, BuiltInStyle::Compact);
-                let converted_dim_name = DimName::new(bare_name, dim_type);
-                Ok((converted_dim_name.at(pos), vec![]))
-            }
-            DimType::BuiltIn(q, built_in_style) => {
-                let result = DimName::new(bare_name, DimType::BuiltIn(q, built_in_style)).at(pos);
-                Ok((result, vec![]))
-            }
-            DimType::FixedLengthString(len_expr, _) => {
-                let v = ctx.names.resolve_const_value_node(&len_expr)?;
-                if let Variant::VInteger(len) = v {
-                    if len > 1 && len < MAX_INTEGER {
-                        let result = DimName::new(
-                            bare_name,
-                            DimType::FixedLengthString(
-                                Expression::IntegerLiteral(len).at(&len_expr),
-                                len as u16,
-                            ),
-                        )
-                        .at(pos);
-                        Ok((result, vec![]))
-                    } else {
-                        Err(QError::OutOfStringSpace).with_err_at(&len_expr)
-                    }
-                } else {
-                    Err(QError::TypeMismatch).with_err_at(&len_expr)
-                }
-            }
-            DimType::UserDefined(user_defined_type_name_node) => {
-                let result =
-                    DimName::new(bare_name, DimType::UserDefined(user_defined_type_name_node))
-                        .at(pos);
-                Ok((result, vec![]))
-            }
-            DimType::Array(dimensions, boxed_element_type) => {
-                // dimensions
-                let mut converted_dimensions: ArrayDimensions = vec![];
-                let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
-                for dimension in dimensions {
-                    let ArrayDimension {
-                        lbound: opt_lbound,
-                        ubound,
-                    } = dimension;
-                    let (converted_lbound, implicit_vars_lbound) = match opt_lbound {
-                        Some(lbound) => ctx
-                            .on_expression(lbound, ExprContext::Default)
-                            .map(|(x, y)| (Some(x), y))?,
-                        _ => (None, vec![]),
-                    };
-                    let (converted_ubound, implicit_vars_ubound) =
-                        ctx.on_expression(ubound, ExprContext::Default)?;
-                    converted_dimensions.push(ArrayDimension {
-                        lbound: converted_lbound,
-                        ubound: converted_ubound,
-                    });
-                    implicit_vars = union(implicit_vars, implicit_vars_lbound);
-                    implicit_vars = union(implicit_vars, implicit_vars_ubound);
-                }
-                // dim_type
-                let element_dim_type = *boxed_element_type;
-                let element_dim_name = DimName::new(bare_name.clone(), element_dim_type).at(pos);
-                let (
-                    Locatable {
-                        element: DimName { dim_type, .. },
-                        ..
+        fn new_var_not_adding_to_context_one(
+            ctx: &mut Context,
+            input: DimNameNode,
+            shared: bool,
+        ) -> Result<(DimNameNode, Vec<QualifiedNameNode>), QErrorNode> {
+            let Locatable {
+                element:
+                    DimName {
+                        bare_name,
+                        dim_type,
                     },
-                    implicits,
-                ) = new_var_not_adding_to_context_one(ctx, element_dim_name, shared)?;
-                implicit_vars = union(implicit_vars, implicits);
-                let array_dim_type = DimType::Array(converted_dimensions, Box::new(dim_type));
-                Ok((
-                    DimName::new(bare_name, array_dim_type).at(pos),
-                    implicit_vars,
-                ))
+                pos,
+            } = input;
+            match dim_type {
+                DimType::Bare => {
+                    let qualifier = ctx.resolve(&bare_name);
+                    let dim_type = DimType::BuiltIn(qualifier, BuiltInStyle::Compact);
+                    let converted_dim_name = DimName::new(bare_name, dim_type);
+                    Ok((converted_dim_name.at(pos), vec![]))
+                }
+                DimType::BuiltIn(q, built_in_style) => {
+                    let result =
+                        DimName::new(bare_name, DimType::BuiltIn(q, built_in_style)).at(pos);
+                    Ok((result, vec![]))
+                }
+                DimType::FixedLengthString(len_expr, _) => {
+                    let v = ctx.names.resolve_const_value_node(&len_expr)?;
+                    if let Variant::VInteger(len) = v {
+                        if len > 1 && len < MAX_INTEGER {
+                            let result = DimName::new(
+                                bare_name,
+                                DimType::FixedLengthString(
+                                    Expression::IntegerLiteral(len).at(&len_expr),
+                                    len as u16,
+                                ),
+                            )
+                            .at(pos);
+                            Ok((result, vec![]))
+                        } else {
+                            Err(QError::OutOfStringSpace).with_err_at(&len_expr)
+                        }
+                    } else {
+                        Err(QError::TypeMismatch).with_err_at(&len_expr)
+                    }
+                }
+                DimType::UserDefined(user_defined_type_name_node) => {
+                    let result =
+                        DimName::new(bare_name, DimType::UserDefined(user_defined_type_name_node))
+                            .at(pos);
+                    Ok((result, vec![]))
+                }
+                DimType::Array(dimensions, boxed_element_type) => {
+                    // dimensions
+                    let mut converted_dimensions: ArrayDimensions = vec![];
+                    let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
+                    for dimension in dimensions {
+                        let ArrayDimension {
+                            lbound: opt_lbound,
+                            ubound,
+                        } = dimension;
+                        let (converted_lbound, implicit_vars_lbound) = match opt_lbound {
+                            Some(lbound) => ctx
+                                .on_expression(lbound, ExprContext::Default)
+                                .map(|(x, y)| (Some(x), y))?,
+                            _ => (None, vec![]),
+                        };
+                        let (converted_ubound, implicit_vars_ubound) =
+                            ctx.on_expression(ubound, ExprContext::Default)?;
+                        converted_dimensions.push(ArrayDimension {
+                            lbound: converted_lbound,
+                            ubound: converted_ubound,
+                        });
+                        implicit_vars = union(implicit_vars, implicit_vars_lbound);
+                        implicit_vars = union(implicit_vars, implicit_vars_ubound);
+                    }
+                    // dim_type
+                    let element_dim_type = *boxed_element_type;
+                    let element_dim_name =
+                        DimName::new(bare_name.clone(), element_dim_type).at(pos);
+                    let (
+                        Locatable {
+                            element: DimName { dim_type, .. },
+                            ..
+                        },
+                        implicits,
+                    ) = new_var_not_adding_to_context_one(ctx, element_dim_name, shared)?;
+                    implicit_vars = union(implicit_vars, implicits);
+                    let array_dim_type = DimType::Array(converted_dimensions, Box::new(dim_type));
+                    Ok((
+                        DimName::new(bare_name, array_dim_type).at(pos),
+                        implicit_vars,
+                    ))
+                }
             }
         }
     }
 
-    pub mod cannot_clash_with_subs {
+    mod cannot_clash_with_subs {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {
@@ -448,7 +468,7 @@ pub mod dim_rules {
         }
     }
 
-    pub mod cannot_clash_with_functions {
+    mod cannot_clash_with_functions {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {
@@ -465,7 +485,7 @@ pub mod dim_rules {
         }
     }
 
-    pub mod cannot_clash_with_functions_param {
+    mod cannot_clash_with_functions_param {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {
@@ -486,7 +506,7 @@ pub mod dim_rules {
         }
     }
 
-    pub mod cannot_clash_with_existing_names {
+    mod cannot_clash_with_existing_names {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {
@@ -515,7 +535,7 @@ pub mod dim_rules {
         }
     }
 
-    pub mod user_defined_type_must_exist {
+    mod user_defined_type_must_exist {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {
@@ -534,7 +554,7 @@ pub mod dim_rules {
         }
     }
 
-    pub mod shared_not_allowed_in_subprogram {
+    mod shared_not_allowed_in_subprogram {
         use super::*;
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {

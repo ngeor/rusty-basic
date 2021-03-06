@@ -140,9 +140,7 @@ mod tests {
                     DimNameBuilder::new()
                         .bare_name($name)
                         .dim_type(DimType::Bare)
-                        .build()
-                        .at_rc(1, 5)
-                        .into_list()
+                        .build_list_rc(1, 5)
                 )
             );
         };
@@ -153,9 +151,7 @@ mod tests {
             assert_eq!(
                 p,
                 Statement::Dim(
-                    DimName::new_compact_local($name, TypeQualifier::$qualifier)
-                        .at_rc(1, 5)
-                        .into_list()
+                    DimName::new_compact_local($name, TypeQualifier::$qualifier).into_list_rc(1, 5)
                 )
             );
         };
@@ -194,9 +190,7 @@ mod tests {
                             BuiltInStyle::Compact
                         ))
                     ))
-                    .build()
-                    .at_rc(1, 5)
-                    .into_list()
+                    .build_list_rc(1, 5)
             )
         );
     }
@@ -217,9 +211,7 @@ mod tests {
                         }],
                         Box::new(DimType::Bare)
                     ))
-                    .build()
-                    .at_rc(1, 5)
-                    .into_list()
+                    .build_list_rc(1, 5)
             )
         );
     }
@@ -246,9 +238,7 @@ mod tests {
                         ],
                         Box::new(DimType::Bare)
                     ))
-                    .build()
-                    .at_rc(1, 5)
-                    .into_list()
+                    .build_list_rc(1, 5)
             )
         );
     }
@@ -264,8 +254,7 @@ mod tests {
                 program,
                 Statement::Dim(
                     DimName::new_compact_local("DIM", TypeQualifier::DollarString)
-                        .at_rc(1, 5)
-                        .into_list()
+                        .into_list_rc(1, 5)
                 )
             );
         }

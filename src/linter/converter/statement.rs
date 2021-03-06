@@ -3,7 +3,7 @@ use crate::common::*;
 use crate::linter::converter::context::NameContext;
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
 use crate::parser::{
-    DimList, DimName, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
+    DimName, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
 };
 
 // A statement can be expanded into multiple statements to convert implicitly
@@ -47,13 +47,7 @@ impl<'a> ConverterImpl<'a> {
                 element: q_name,
                 pos,
             } = implicit_var;
-            result.push(
-                Statement::Dim(DimList {
-                    variables: vec![DimName::from(q_name).at(pos)],
-                    shared: false,
-                })
-                .at(pos),
-            );
+            result.push(Statement::Dim(DimName::from(q_name).into_list(pos)).at(pos));
         }
         if let Some(s) = converted_statement_node {
             result.push(s);

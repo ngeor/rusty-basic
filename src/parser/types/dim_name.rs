@@ -52,12 +52,16 @@ impl DimName {
         }
     }
 
-    pub fn with_dim_type(self, dim_type: DimType) -> Self {
-        let Self { bare_name, .. } = self;
-        Self {
-            bare_name,
-            dim_type,
+    pub fn into_list(self, pos: Location) -> DimList {
+        DimList {
+            shared: false,
+            variables: vec![self.at(pos)],
         }
+    }
+
+    #[cfg(test)]
+    pub fn into_list_rc(self, row: u32, col: u32) -> DimList {
+        self.into_list(Location::new(row, col))
     }
 
     #[cfg(test)]
@@ -163,15 +167,9 @@ impl DimNameBuilder {
             variables: vec![self.build().at(pos)],
         }
     }
-}
 
-#[cfg(test)]
-impl DimNameNode {
     #[cfg(test)]
-    pub fn into_list(self) -> DimList {
-        DimList {
-            shared: false,
-            variables: vec![self],
-        }
+    pub fn build_list_rc(self, row: u32, col: u32) -> DimList {
+        self.build_list(Location::new(row, col))
     }
 }

@@ -41,8 +41,7 @@ fn test_dim_array() {
                     ))
                 ),
             )
-            .at_rc(2, 9)
-            .into_list()
+            .into_list_rc(2, 9)
         ))
         .at_rc(2, 5),]
     );
@@ -102,9 +101,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                             BuiltInStyle::Compact
                         ))
                     ))
-                    .build()
-                    .at_rc(2, 9)
-                    .into_list()
+                    .build_list_rc(2, 9)
             ))
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::SubCall(
@@ -133,8 +130,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                 body: vec![
                     Statement::Dim(
                         DimName::new_compact_local("X", TypeQualifier::DollarString)
-                            .at_rc(7, 9)
-                            .into_list()
+                            .into_list_rc(7, 9)
                     )
                     .at_rc(7, 9),
                     Statement::Assignment(
@@ -183,14 +179,11 @@ fn test_passing_array_without_parenthesis() {
                         ))
                     ))
                     .build()
-                    .at_rc(2, 9)
-                    .into_list()
+                    .into_list_rc(2, 9)
             ))
             .at_rc(2, 5),
             TopLevelToken::Statement(Statement::Dim(
-                DimName::new_compact_local("X", TypeQualifier::BangSingle)
-                    .at_rc(3, 5)
-                    .into_list()
+                DimName::new_compact_local("X", TypeQualifier::BangSingle).into_list_rc(3, 5)
             ))
             .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Assignment(

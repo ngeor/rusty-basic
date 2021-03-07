@@ -1,14 +1,15 @@
-pub mod built_in_linter;
-pub mod dots_linter;
-pub mod expression_reducer;
-pub mod for_next_counter_match_linter;
-pub mod label_linter;
-pub mod post_conversion_linter;
-pub mod print_linter;
-pub mod select_case_linter;
-pub mod undefined_function_reducer;
-pub mod user_defined_function_linter;
-pub mod user_defined_sub_linter;
+mod built_in_linter;
+mod condition_type_linter;
+mod dots_linter;
+mod expression_reducer;
+mod for_next_counter_match_linter;
+mod label_linter;
+mod post_conversion_linter;
+mod print_linter;
+mod select_case_linter;
+mod undefined_function_reducer;
+mod user_defined_function_linter;
+mod user_defined_sub_linter;
 
 use crate::common::{CaseInsensitiveString, QErrorNode};
 use crate::linter::post_linter::expression_reducer::ExpressionReducer;
@@ -54,6 +55,9 @@ fn apply_linters(
     linter.visit_program(&result)?;
 
     let mut linter = select_case_linter::SelectCaseLinter {};
+    linter.visit_program(&result)?;
+
+    let mut linter = condition_type_linter::ConditionTypeLinter {};
     linter.visit_program(&result)?;
 
     let mut linter = label_linter::LabelLinter::default();

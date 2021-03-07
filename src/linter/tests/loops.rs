@@ -32,3 +32,21 @@ fn test_for_loop_var_name_cannot_include_period_if_variable_of_user_defined_type
     "#;
     assert_linter_err!(input, QError::DotClash, 5, 9);
 }
+
+#[test]
+fn do_loop_condition_cannot_be_string() {
+    let input = r#"
+    DO WHILE A$
+    LOOP
+    "#;
+    assert_linter_err!(input, QError::TypeMismatch, 2, 14);
+}
+
+#[test]
+fn while_condition_cannot_be_string() {
+    let input = r#"
+    WHILE A$
+    WEND
+    "#;
+    assert_linter_err!(input, QError::TypeMismatch, 2, 11);
+}

@@ -11,7 +11,7 @@ mod go_to;
 mod if_block;
 mod loops;
 mod name_resolution;
-mod on_error_goto;
+mod on_error;
 mod select_case;
 mod sub_call;
 mod sub_implementation;

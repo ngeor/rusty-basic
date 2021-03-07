@@ -11,6 +11,7 @@ impl InstructionGenerator {
         self.generate_expression_instructions(w.condition);
         self.jump_if_false("wend", pos);
         self.visit(w.statements);
+        self.mark_statement_address(); // to be able to resume on error
         self.jump("while", pos);
         self.label("wend", pos);
     }
@@ -134,9 +135,14 @@ impl InstructionGenerator {
         }
         self.jump_if_false("out-of-for", pos);
 
+        // push registers
         self.push(Instruction::PushRegisters, pos);
+
         // run loop body
         self.visit(statements);
+
+        // to be able to resume after an error at the last statement and then pop registers
+        self.mark_statement_address();
         self.push(Instruction::PopRegisters, pos);
 
         // increment step
@@ -181,6 +187,7 @@ impl InstructionGenerator {
         }
         self.jump_if_false("loop", pos);
         self.visit(statements);
+        self.mark_statement_address(); // to be able to resume on error
         self.jump("do", pos);
         self.label("loop", pos);
     }
@@ -194,6 +201,7 @@ impl InstructionGenerator {
     ) {
         self.label("do", pos);
         self.visit(statements);
+        self.mark_statement_address(); // to be able to resume on error
         self.generate_expression_instructions(condition);
         if kind == DoLoopConditionKind::Until {
             self.push(Instruction::NotA, pos);

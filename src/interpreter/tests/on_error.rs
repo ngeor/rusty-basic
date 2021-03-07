@@ -222,4 +222,65 @@ fn user_defined_sub_error_in_second_argument() {
     assert_prints!(input, "3             4");
 }
 
-// TODO add RESUME NEXT tests with loops to see it goes to the next iteration of the loop
+#[test]
+fn resume_at_end_of_for_loop() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    FOR I = 1 TO 3
+        PRINT I / (I - 1)
+    NEXT
+    END
+
+    ErrTrap:
+        RESUME NEXT
+    "#;
+    assert_prints!(input, "2", "1.5");
+}
+
+#[test]
+fn resume_at_end_of_while_wend() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    WHILE I < 3
+        I = I + 1
+        PRINT I / (I - 1)
+    WEND
+    END
+
+    ErrTrap:
+        RESUME NEXT
+    "#;
+    assert_prints!(input, "2", "1.5");
+}
+
+#[test]
+fn resume_at_end_of_do_while_loop() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    DO WHILE I < 3
+        I = I + 1
+        PRINT I / (I - 1)
+    LOOP
+    END
+
+    ErrTrap:
+        RESUME NEXT
+    "#;
+    assert_prints!(input, "2", "1.5");
+}
+
+#[test]
+fn resume_at_end_of_do_loop_while() {
+    let input = r#"
+    ON ERROR GOTO ErrTrap
+    DO
+        I = I + 1
+        PRINT I / (I - 1)
+    LOOP WHILE I < 3
+    END
+
+    ErrTrap:
+        RESUME NEXT
+    "#;
+    assert_prints!(input, "2", "1.5");
+}

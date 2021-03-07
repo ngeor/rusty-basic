@@ -31,6 +31,8 @@ pub enum Keyword {
     DefStr,
     /// DIM
     Dim,
+    // DO
+    Do,
     /// DOUBLE
     Double,
     /// ELSE
@@ -63,6 +65,8 @@ pub enum Keyword {
     Line,
     /// LONG
     Long,
+    /// LOOP
+    Loop,
     /// LPRINT
     LPrint,
     /// NAME
@@ -109,6 +113,8 @@ pub enum Keyword {
     To,
     /// TYPE
     Type,
+    /// UNTIL
+    Until,
     /// USING
     Using,
     /// WEND
@@ -131,6 +137,7 @@ const STR_DEFLNG: &str = "DEFLNG";
 const STR_DEFSNG: &str = "DEFSNG";
 const STR_DEFSTR: &str = "DEFSTR";
 const STR_DIM: &str = "DIM";
+const STR_DO: &str = "DO";
 const STR_DOUBLE: &str = "DOUBLE";
 const STR_ELSE: &str = "ELSE";
 const STR_ELSEIF: &str = "ELSEIF";
@@ -147,6 +154,7 @@ const STR_INTEGER: &str = "INTEGER";
 const STR_IS: &str = "IS";
 const STR_LINE: &str = "LINE";
 const STR_LONG: &str = "LONG";
+const STR_LOOP: &str = "LOOP";
 const STR_LPRINT: &str = "LPRINT";
 const STR_NAME: &str = "NAME";
 const STR_NEXT: &str = "NEXT";
@@ -170,11 +178,12 @@ const STR_SYSTEM: &str = "SYSTEM";
 const STR_THEN: &str = "THEN";
 const STR_TO: &str = "TO";
 const STR_TYPE: &str = "TYPE";
+const STR_UNTIL: &str = "UNTIL";
 const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 56] = [
+const SORTED_KEYWORDS_STR: [&str; 59] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -189,6 +198,7 @@ const SORTED_KEYWORDS_STR: [&str; 56] = [
     STR_DEFSNG,
     STR_DEFSTR,
     STR_DIM,
+    STR_DO,
     STR_DOUBLE,
     STR_ELSE,
     STR_ELSEIF,
@@ -205,6 +215,7 @@ const SORTED_KEYWORDS_STR: [&str; 56] = [
     STR_IS,
     STR_LINE,
     STR_LONG,
+    STR_LOOP,
     STR_LPRINT,
     STR_NAME,
     STR_NEXT,
@@ -228,12 +239,13 @@ const SORTED_KEYWORDS_STR: [&str; 56] = [
     STR_THEN,
     STR_TO,
     STR_TYPE,
+    STR_UNTIL,
     STR_USING,
     STR_WEND,
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 56] = [
+const SORTED_KEYWORDS: [Keyword; 59] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -248,6 +260,7 @@ const SORTED_KEYWORDS: [Keyword; 56] = [
     Keyword::DefSng,
     Keyword::DefStr,
     Keyword::Dim,
+    Keyword::Do,
     Keyword::Double,
     Keyword::Else,
     Keyword::ElseIf,
@@ -264,6 +277,7 @@ const SORTED_KEYWORDS: [Keyword; 56] = [
     Keyword::Is,
     Keyword::Line,
     Keyword::Long,
+    Keyword::Loop,
     Keyword::LPrint,
     Keyword::Name,
     Keyword::Next,
@@ -287,6 +301,7 @@ const SORTED_KEYWORDS: [Keyword; 56] = [
     Keyword::Then,
     Keyword::To,
     Keyword::Type,
+    Keyword::Until,
     Keyword::Using,
     Keyword::Wend,
     Keyword::While,
@@ -309,6 +324,7 @@ impl Keyword {
             Self::DefSng => STR_DEFSNG,
             Self::DefStr => STR_DEFSTR,
             Self::Dim => STR_DIM,
+            Self::Do => STR_DO,
             Self::Double => STR_DOUBLE,
             Self::Else => STR_ELSE,
             Self::ElseIf => STR_ELSEIF,
@@ -325,6 +341,7 @@ impl Keyword {
             Self::Is => STR_IS,
             Self::Line => STR_LINE,
             Self::Long => STR_LONG,
+            Self::Loop => STR_LOOP,
             Self::LPrint => STR_LPRINT,
             Self::Name => STR_NAME,
             Self::Next => STR_NEXT,
@@ -348,6 +365,7 @@ impl Keyword {
             Self::Then => STR_THEN,
             Self::To => STR_TO,
             Self::Type => STR_TYPE,
+            Self::Until => STR_UNTIL,
             Self::Using => STR_USING,
             Self::Wend => STR_WEND,
             Self::While => STR_WHILE,

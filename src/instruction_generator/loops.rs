@@ -1,8 +1,21 @@
 use super::{Instruction, InstructionGenerator, Visitor};
 use crate::common::*;
-use crate::parser::{Expression, ForLoopNode, HasExpressionType, StatementNodes};
+use crate::parser::{
+    ConditionalBlockNode, DoLoopConditionKind, DoLoopConditionPosition, DoLoopNode, Expression,
+    ExpressionNode, ForLoopNode, HasExpressionType, StatementNodes,
+};
 
 impl InstructionGenerator {
+    pub fn generate_while_instructions(&mut self, w: ConditionalBlockNode, pos: Location) {
+        self.label("while", pos);
+        self.generate_expression_instructions(w.condition);
+        self.jump_if_false("wend", pos);
+        self.visit(w.statements);
+        self.mark_statement_address(); // to be able to resume on error
+        self.jump("while", pos);
+        self.label("wend", pos);
+    }
+
     fn store_counter(&mut self, counter_var: &Expression, pos: Location) {
         self.generate_store_instructions(counter_var.clone(), pos);
     }
@@ -122,9 +135,14 @@ impl InstructionGenerator {
         }
         self.jump_if_false("out-of-for", pos);
 
+        // push registers
         self.push(Instruction::PushRegisters, pos);
+
         // run loop body
         self.visit(statements);
+
+        // to be able to resume after an error at the last statement and then pop registers
+        self.mark_statement_address();
         self.push(Instruction::PopRegisters, pos);
 
         // increment step
@@ -136,5 +154,60 @@ impl InstructionGenerator {
 
         // back to loop
         self.jump(loop_label, pos);
+    }
+
+    pub fn generate_do_loop_instructions(&mut self, do_loop_node: DoLoopNode, pos: Location) {
+        let DoLoopNode {
+            condition,
+            statements,
+            position,
+            kind,
+        } = do_loop_node;
+        match position {
+            DoLoopConditionPosition::Top => {
+                self.generate_do_loop_top(condition, statements, kind, pos)
+            }
+            DoLoopConditionPosition::Bottom => {
+                self.generate_do_loop_bottom(condition, statements, kind, pos)
+            }
+        }
+    }
+
+    fn generate_do_loop_top(
+        &mut self,
+        condition: ExpressionNode,
+        statements: StatementNodes,
+        kind: DoLoopConditionKind,
+        pos: Location,
+    ) {
+        self.label("do", pos);
+        self.generate_expression_instructions(condition);
+        if kind == DoLoopConditionKind::Until {
+            self.push(Instruction::NotA, pos);
+        }
+        self.jump_if_false("loop", pos);
+        self.visit(statements);
+        self.mark_statement_address(); // to be able to resume on error
+        self.jump("do", pos);
+        self.label("loop", pos);
+    }
+
+    fn generate_do_loop_bottom(
+        &mut self,
+        condition: ExpressionNode,
+        statements: StatementNodes,
+        kind: DoLoopConditionKind,
+        pos: Location,
+    ) {
+        self.label("do", pos);
+        self.visit(statements);
+        self.mark_statement_address(); // to be able to resume on error
+        self.generate_expression_instructions(condition);
+        if kind == DoLoopConditionKind::Until {
+            self.push(Instruction::NotA, pos);
+        }
+        self.jump_if_false("loop", pos);
+        self.jump("do", pos);
+        self.label("loop", pos);
     }
 }

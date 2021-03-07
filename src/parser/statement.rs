@@ -3,6 +3,7 @@ use crate::parser::built_ins;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
+use crate::parser::do_loop;
 use crate::parser::exit::statement_exit_p;
 use crate::parser::for_loop;
 use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
@@ -28,6 +29,7 @@ where
         .or(for_loop::for_loop_p())
         .or(select_case::select_case_p())
         .or(while_wend::while_wend_p())
+        .or(do_loop::do_loop_p())
         .or(illegal_starting_keywords())
 }
 
@@ -88,6 +90,7 @@ where
         .and_then(|(k, _)| match k {
             Keyword::Wend => Err(QError::WendWithoutWhile),
             Keyword::Else => Err(QError::ElseWithoutIf),
+            Keyword::Loop => Err(QError::syntax_error("LOOP without DO")),
             _ => panic!("Parser should not have parsed {}", k),
         })
 }

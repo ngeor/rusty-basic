@@ -118,14 +118,25 @@ pub trait ExpressionReducer {
                         Statement::BuiltInSubCall(reduced_name, reduced_expr)
                     })
             }
-            Statement::Print(p) => self
-                .visit_print_node(p)
-                .map(|reduced_p| Statement::Print(reduced_p)),
-            Statement::IfBlock(i) => self.visit_if_block(i).map(|x| Statement::IfBlock(x)),
-            Statement::SelectCase(s) => self.visit_select_case(s).map(|x| Statement::SelectCase(x)),
-            Statement::ForLoop(f) => self.visit_for_loop(f).map(|x| Statement::ForLoop(x)),
-            Statement::While(w) => self.visit_conditional_block(w).map(|x| Statement::While(x)),
-            _ => Ok(s),
+            Statement::Print(p) => self.visit_print_node(p).map(Statement::Print),
+            Statement::IfBlock(i) => self.visit_if_block(i).map(Statement::IfBlock),
+            Statement::SelectCase(s) => self.visit_select_case(s).map(Statement::SelectCase),
+            Statement::ForLoop(f) => self.visit_for_loop(f).map(Statement::ForLoop),
+            Statement::While(w) => self.visit_conditional_block(w).map(Statement::While),
+            Statement::DoLoop(do_loop_node) => {
+                self.visit_do_loop(do_loop_node).map(Statement::DoLoop)
+            }
+            Statement::Dim(_)
+            | Statement::OnError(_)
+            | Statement::Label(_)
+            | Statement::GoTo(_)
+            | Statement::GoSub(_)
+            | Statement::Resume(_)
+            | Statement::Return(_)
+            | Statement::Exit(_)
+            | Statement::Comment(_)
+            | Statement::End
+            | Statement::System => Ok(s),
         }
     }
 
@@ -235,6 +246,15 @@ pub trait ExpressionReducer {
                     .map(|y| CaseExpression::Range(x, y))
             }),
         }
+    }
+
+    fn visit_do_loop(&mut self, do_loop: DoLoopNode) -> Result<DoLoopNode, QErrorNode> {
+        Ok(DoLoopNode {
+            condition: self.visit_expression_node(do_loop.condition)?,
+            statements: self.visit_statement_nodes(do_loop.statements)?,
+            position: do_loop.position,
+            kind: do_loop.kind,
+        })
     }
 
     fn visit_conditional_block(

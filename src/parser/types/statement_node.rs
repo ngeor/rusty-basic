@@ -36,6 +36,7 @@ pub enum Statement {
 
     ForLoop(ForLoopNode),
     While(ConditionalBlockNode),
+    DoLoop(DoLoopNode),
 
     OnError(OnErrorOption),
     Label(CaseInsensitiveString),
@@ -130,4 +131,33 @@ pub enum CaseExpression {
     Simple(ExpressionNode),
     Is(Operator, ExpressionNode),
     Range(ExpressionNode, ExpressionNode),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DoLoopNode {
+    pub condition: ExpressionNode,
+    pub statements: StatementNodes,
+    pub position: DoLoopConditionPosition,
+    pub kind: DoLoopConditionKind,
+}
+
+/// Indicates where the condition expression of
+/// the DO LOOP is located.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DoLoopConditionPosition {
+    /// The condition is placed after the DO keyword, e.g.
+    /// DO WHILE A > 0 ... LOOP
+    Top,
+
+    /// The condition is placed after the LOOP keyword, e.g.
+    /// DO ... LOOP WHILE A > 0
+    Bottom,
+}
+
+/// Specifies if a DO LOOP is using an
+/// UNTIL or WHILE in its condition.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DoLoopConditionKind {
+    Until,
+    While,
 }

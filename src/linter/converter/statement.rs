@@ -1,9 +1,9 @@
 use super::converter::{Converter, ConverterImpl};
 use crate::common::*;
-use crate::linter::converter::context::NameContext;
+use crate::linter::converter::context::{ExprContext, NameContext};
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
 use crate::parser::{
-    DimName, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
+    DimName, DoLoopNode, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
 };
 
 // A statement can be expanded into multiple statements to convert implicitly
@@ -85,6 +85,9 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             Statement::While(c) => self
                 .convert_and_collect_implicit_variables(c)
                 .map(|(c, implicit_vars)| (Some(Statement::While(c).at(pos)), implicit_vars)),
+            Statement::DoLoop(do_loop_node) => self
+                .convert_and_collect_implicit_variables(do_loop_node)
+                .map(|(x, implicit_vars)| (Some(Statement::DoLoop(x).at(pos)), implicit_vars)),
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && self.context.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
@@ -131,7 +134,40 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                 .convert_and_collect_implicit_variables(print_node)
                 .map(|(p, implicit_vars)| (Some(Statement::Print(p).at(pos)), implicit_vars)),
             Statement::BuiltInSubCall(_, _) => panic!("parser should not have created this"),
-            _ => Ok((Some(statement.at(pos)), vec![])),
+            Statement::OnError(_)
+            | Statement::Label(_)
+            | Statement::GoTo(_)
+            | Statement::GoSub(_)
+            | Statement::Comment(_)
+            | Statement::End
+            | Statement::System => Ok((Some(statement.at(pos)), vec![])),
         }
+    }
+}
+
+impl<'a> ConverterWithImplicitVariables<DoLoopNode, DoLoopNode> for ConverterImpl<'a> {
+    fn convert_and_collect_implicit_variables(
+        &mut self,
+        do_loop_node: DoLoopNode,
+    ) -> Result<(DoLoopNode, Vec<QualifiedNameNode>), QErrorNode> {
+        let DoLoopNode {
+            condition,
+            statements,
+            position,
+            kind,
+        } = do_loop_node;
+        let (condition, implicit_vars) = self
+            .context
+            .on_expression(condition, ExprContext::Default)?;
+        let statements = self.convert(statements)?;
+        Ok((
+            DoLoopNode {
+                condition,
+                statements,
+                position,
+                kind,
+            },
+            implicit_vars,
+        ))
     }
 }

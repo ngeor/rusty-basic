@@ -221,3 +221,5 @@ fn user_defined_sub_error_in_second_argument() {
     "#;
     assert_prints!(input, "3             4");
 }
+
+// TODO add RESUME NEXT tests with loops to see it goes to the next iteration of the loop

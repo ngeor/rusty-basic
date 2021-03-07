@@ -7,6 +7,7 @@ mod declaration;
 mod def_type;
 mod dim;
 mod dim_name;
+mod do_loop;
 mod exit;
 pub mod expression;
 mod for_loop;

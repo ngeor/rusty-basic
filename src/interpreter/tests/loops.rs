@@ -1,6 +1,7 @@
 use crate::assert_has_variable;
 use crate::assert_prints;
 use crate::assert_prints_exact;
+use crate::assert_prints_nothing;
 use crate::common::*;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
@@ -160,4 +161,86 @@ fn test_for_loop_assigning_to_function_name() {
     END FUNCTION
     ";
     assert_prints!(input, "6");
+}
+
+#[test]
+fn test_while_wend() {
+    let input = "
+    A = 1
+    WHILE A < 5
+        PRINT A
+        A = A + 1
+    WEND
+    ";
+    assert_prints!(input, "1", "2", "3", "4");
+}
+
+#[test]
+fn do_while_condition_loop() {
+    let input = r#"
+    DO WHILE A < 3
+        PRINT A
+        A = A + 1
+    LOOP
+    "#;
+    assert_prints!(input, "0", "1", "2");
+}
+
+#[test]
+fn do_until_condition_loop() {
+    let input = r#"
+    A = 1
+    DO UNTIL A > 3
+        PRINT A
+        A = A + 1
+    LOOP
+    "#;
+    assert_prints!(input, "1", "2", "3");
+}
+
+#[test]
+fn do_loop_while_condition() {
+    let input = r#"
+    DO
+        PRINT A
+        A = A + 1
+    LOOP WHILE A < 3
+    "#;
+    assert_prints!(input, "0", "1", "2");
+}
+
+#[test]
+fn do_loop_until_condition() {
+    let input = r#"
+    A = 1
+    DO
+        PRINT A
+        A = A + 1
+    LOOP UNTIL A > 3
+    "#;
+    assert_prints!(input, "1", "2", "3");
+}
+
+#[test]
+fn do_while_condition_does_not_enter_loop_if_false() {
+    let input = r#"
+    A = 5
+    DO WHILE A < 3
+        PRINT A
+        A = A + 1
+    LOOP
+    "#;
+    assert_prints_nothing!(input);
+}
+
+#[test]
+fn do_loop_while_condition_enter_loop_if_false() {
+    let input = r#"
+    A = 5
+    DO
+        PRINT A
+        A = A + 1
+    LOOP WHILE A < 3
+    "#;
+    assert_prints!(input, "5");
 }

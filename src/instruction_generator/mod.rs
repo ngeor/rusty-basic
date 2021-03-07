@@ -1,14 +1,13 @@
 mod calls;
 mod dim;
 mod expression;
-mod for_loop;
 mod if_block;
 mod label_resolver;
+mod loops;
 pub mod print;
 mod select_case;
 mod statement;
 mod subprogram_info;
-mod while_wend;
 
 #[cfg(test)]
 pub mod test_utils;

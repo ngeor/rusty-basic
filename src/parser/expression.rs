@@ -772,6 +772,7 @@ where
     relational_operator_p()
         .preceded_by_opt_ws()
         .or(arithmetic_op_p().with_pos().preceded_by_opt_ws())
+        .or(modulo_op_p(had_parenthesis_before))
         .or(and_or_p(
             had_parenthesis_before,
             Keyword::And,
@@ -804,6 +805,15 @@ where
         '/' => Operator::Divide,
         _ => panic!("Parser should not have parsed this"),
     })
+}
+
+fn modulo_op_p<R>(had_parenthesis_before: bool) -> impl Parser<R, Output = Locatable<Operator>>
+where
+    R: Reader<Item = char> + HasLocation + 'static,
+{
+    opt_whitespace_p(!had_parenthesis_before)
+        .and(keyword_p(Keyword::Mod).map(|_| Operator::Modulo).with_pos())
+        .keep_right()
 }
 
 fn lte_p<R>() -> impl Parser<R, Output = Operator>

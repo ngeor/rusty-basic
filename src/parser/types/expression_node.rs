@@ -262,7 +262,9 @@ impl ExpressionNode {
                 let should_flip = op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
                     || op.is_relational() && r_op.is_binary()
                     || op == Operator::And && *r_op == Operator::Or
-                    || (op == Operator::Multiply || op == Operator::Divide)
+                    || (op == Operator::Multiply
+                        || op == Operator::Divide
+                        || op == Operator::Modulo)
                         && (*r_op == Operator::Plus || *r_op == Operator::Minus);
                 if should_flip {
                     Expression::BinaryExpression(

@@ -320,6 +320,43 @@ impl Variant {
         }
     }
 
+    pub fn modulo(self, other: Self) -> Result<Self, QError> {
+        let round_left = self.round()?;
+        let round_right = other.round()?;
+        if round_right.is_approximately_zero()? {
+            Err(QError::DivisionByZero)
+        } else {
+            match round_left {
+                Variant::VInteger(i_left) => match round_right {
+                    Variant::VInteger(i_right) => Ok(Variant::VInteger(i_left % i_right)),
+                    Variant::VLong(_) => Err(QError::Overflow),
+                    _ => Err(QError::TypeMismatch),
+                },
+                Variant::VLong(_) => Err(QError::Overflow),
+                _ => Err(QError::TypeMismatch),
+            }
+        }
+    }
+
+    fn round(self) -> Result<Self, QError> {
+        match self {
+            Variant::VSingle(f) => Ok(f.round().fit_to_type()),
+            Variant::VDouble(d) => Ok(d.round().fit_to_type()),
+            Variant::VInteger(_) | Variant::VLong(_) => Ok(self),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+
+    fn is_approximately_zero(&self) -> Result<bool, QError> {
+        match self {
+            Variant::VSingle(f) => Ok((*f).approximate_eq(0)),
+            Variant::VDouble(d) => Ok((*d).approximate_eq(0)),
+            Variant::VInteger(i) => Ok(*i == 0),
+            Variant::VLong(l) => Ok(*l == 0),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+
     pub fn and(self, other: Self) -> Result<Self, QError> {
         match self {
             Variant::VInteger(a) => match other {

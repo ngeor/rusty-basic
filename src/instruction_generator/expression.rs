@@ -63,6 +63,7 @@ impl InstructionGenerator {
                     Operator::Minus => self.push(Instruction::Minus, pos),
                     Operator::Multiply => self.push(Instruction::Multiply, pos),
                     Operator::Divide => self.push(Instruction::Divide, pos),
+                    Operator::Modulo => self.push(Instruction::Modulo, pos),
                     Operator::Less => self.push(Instruction::Less, pos),
                     Operator::LessOrEqual => self.push(Instruction::LessOrEqual, pos),
                     Operator::Equal => self.push(Instruction::Equal, pos),

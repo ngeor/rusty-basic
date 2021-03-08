@@ -84,6 +84,7 @@ pub trait ConstValueResolver {
                     Operator::Minus => v_left.minus(v_right).with_err_at(*pos),
                     Operator::Multiply => v_left.multiply(v_right).with_err_at(*pos),
                     Operator::Divide => v_left.divide(v_right).with_err_at(*pos),
+                    Operator::Modulo => v_left.modulo(v_right).with_err_at(*pos),
                     Operator::And => v_left.and(v_right).with_err_at(*pos),
                     Operator::Or => v_left.or(v_right).with_err_at(*pos),
                 }

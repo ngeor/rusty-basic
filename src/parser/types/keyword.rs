@@ -69,6 +69,8 @@ pub enum Keyword {
     Loop,
     /// LPRINT
     LPrint,
+    /// MOD
+    Mod,
     /// NAME
     Name,
     /// NEXT
@@ -156,6 +158,7 @@ const STR_LINE: &str = "LINE";
 const STR_LONG: &str = "LONG";
 const STR_LOOP: &str = "LOOP";
 const STR_LPRINT: &str = "LPRINT";
+const STR_MOD: &str = "MOD";
 const STR_NAME: &str = "NAME";
 const STR_NEXT: &str = "NEXT";
 const STR_NOT: &str = "NOT";
@@ -183,7 +186,7 @@ const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 59] = [
+const SORTED_KEYWORDS_STR: [&str; 60] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -217,6 +220,7 @@ const SORTED_KEYWORDS_STR: [&str; 59] = [
     STR_LONG,
     STR_LOOP,
     STR_LPRINT,
+    STR_MOD,
     STR_NAME,
     STR_NEXT,
     STR_NOT,
@@ -245,7 +249,7 @@ const SORTED_KEYWORDS_STR: [&str; 59] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 59] = [
+const SORTED_KEYWORDS: [Keyword; 60] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -279,6 +283,7 @@ const SORTED_KEYWORDS: [Keyword; 59] = [
     Keyword::Long,
     Keyword::Loop,
     Keyword::LPrint,
+    Keyword::Mod,
     Keyword::Name,
     Keyword::Next,
     Keyword::Not,
@@ -343,6 +348,7 @@ impl Keyword {
             Self::Long => STR_LONG,
             Self::Loop => STR_LOOP,
             Self::LPrint => STR_LPRINT,
+            Self::Mod => STR_MOD,
             Self::Name => STR_NAME,
             Self::Next => STR_NEXT,
             Self::Not => STR_NOT,

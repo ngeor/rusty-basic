@@ -142,6 +142,24 @@ mod divide {
     }
 }
 
+mod modulo {
+    use super::*;
+
+    #[test]
+    fn modulo_rounding() {
+        assert_prints!("PRINT 19 MOD 6.7", "5");
+    }
+
+    #[test]
+    fn modulo_priority() {
+        assert_prints!("PRINT 5 MOD 4", "1");
+        assert_prints!("PRINT 5 MOD 3 + 1", "3");
+        assert_prints!("PRINT 1 + 5 MOD 3", "3");
+        assert_prints!("PRINT 10 MOD 2", "0");
+        assert_prints!("PRINT 10 MOD 2 * 2", "2");
+    }
+}
+
 mod unary_minus {
     use super::*;
 

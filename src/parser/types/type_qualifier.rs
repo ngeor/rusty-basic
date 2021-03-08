@@ -73,6 +73,7 @@ impl TypeQualifier {
                 }
             }
             // 1b. minus, multiply, divide -> if we can cast self to right, and we're not a string, that's the result
+            // MOD is covered later in logical operators because it's similar logic
             Operator::Minus | Operator::Multiply | Operator::Divide => {
                 self.bigger_numeric_type(&right)
             }
@@ -90,9 +91,9 @@ impl TypeQualifier {
                     None
                 }
             }
-            // 3. binary operators
+            // 3. logical operators, modulo operator
             //    they only work if both sides are cast-able to integer, which is also the result type
-            Operator::And | Operator::Or => {
+            Operator::And | Operator::Or | Operator::Modulo => {
                 if self.can_cast_to(TypeQualifier::PercentInteger)
                     && right.can_cast_to(TypeQualifier::PercentInteger)
                 {

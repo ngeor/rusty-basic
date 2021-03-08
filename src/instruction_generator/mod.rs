@@ -121,6 +121,7 @@ pub enum Instruction {
     Minus,
     Multiply,
     Divide,
+    Modulo,
     Less,
     LessOrEqual,
     Equal,

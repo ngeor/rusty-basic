@@ -18,6 +18,10 @@ pub fn divide<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
     reduce_a_b_into_a(interpreter, |a, b| a.divide(b))
 }
 
+pub fn modulo<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+    reduce_a_b_into_a(interpreter, |a, b| a.modulo(b))
+}
+
 fn reduce_a_b_into_a<T: InterpreterTrait, F>(interpreter: &mut T, f: F) -> Result<(), QError>
 where
     F: FnOnce(Variant, Variant) -> Result<Variant, QError>,

@@ -256,6 +256,9 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::Divide => {
                 math::divide(self).with_err_at(pos)?;
             }
+            Instruction::Modulo => {
+                math::modulo(self).with_err_at(pos)?;
+            }
             Instruction::NegateA => {
                 logical::negate_a(self).with_err_at(pos)?;
             }

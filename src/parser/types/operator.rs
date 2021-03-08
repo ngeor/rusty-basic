@@ -12,6 +12,7 @@ pub enum Operator {
     Minus,
     Multiply,
     Divide,
+    Modulo,
     // binary
     And,
     Or,
@@ -32,7 +33,7 @@ impl Operator {
 
     pub fn is_arithmetic(&self) -> bool {
         match self {
-            Self::Plus | Self::Minus | Self::Multiply | Self::Divide => true,
+            Self::Plus | Self::Minus | Self::Multiply | Self::Divide | Self::Modulo => true,
             _ => false,
         }
     }

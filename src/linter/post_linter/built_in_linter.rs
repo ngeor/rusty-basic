@@ -396,17 +396,6 @@ mod len {
             let program = r#"PRINT LEN("a", "b")"#;
             assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
         }
-
-        #[test]
-        fn test_len_must_be_unqualified() {
-            let program = r#"PRINT LEN!("hello")"#;
-            assert_linter_err!(
-                program,
-                QError::syntax_error("Function Len must be unqualified"),
-                1,
-                7
-            );
-        }
     }
 }
 

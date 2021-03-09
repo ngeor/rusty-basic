@@ -108,6 +108,7 @@ where
 {
     string_literal::string_literal_p()
         .with_pos()
+        .or(built_in_function_call::built_in_function_call_p().with_pos())
         .or(word::word_p().with_pos())
         .or(number_literal::number_literal_p())
         .or(number_literal::float_without_leading_zero_p())
@@ -762,6 +763,30 @@ pub mod word {
                 }
             }
         }
+    }
+}
+
+// needed for built-in functions that are also keywords (e.g. LEN), so they
+// cannot be parsed by the `word` module.
+mod built_in_function_call {
+    use super::*;
+    use crate::built_ins::BuiltInFunction;
+
+    pub fn built_in_function_call_p<R>() -> impl Parser<R, Output = Expression>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::Len)
+            .and_demand(
+                in_parenthesis_p(
+                    lazy_expression_node_p()
+                        .csv()
+                        .or_syntax_error("Expected: variable"),
+                )
+                .or_syntax_error("Expected: ("),
+            )
+            .keep_right()
+            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }
 }
 
@@ -1462,6 +1487,22 @@ mod tests {
         fn test_overflow() {
             assert_parser_err!("PRINT &O-10", QError::Overflow);
             assert_parser_err!("PRINT &O40000000000", QError::Overflow);
+        }
+    }
+
+    mod len {
+        use super::*;
+
+        #[test]
+        fn len_in_print_must_be_unqualified() {
+            let program = r#"PRINT LEN!("hello")"#;
+            assert_parser_err!(program, QError::syntax_error("Expected: ("), 1, 10);
+        }
+
+        #[test]
+        fn len_in_assignment_must_be_unqualified() {
+            let program = r#"A = LEN!("hello")"#;
+            assert_parser_err!(program, QError::syntax_error("Expected: ("), 1, 8);
         }
     }
 }

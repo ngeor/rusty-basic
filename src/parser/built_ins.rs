@@ -522,7 +522,7 @@ mod open {
                         BuiltInSub::Open.into(),
                         vec![
                             file_name,
-                            map_opt_locatable_enum(opt_file_mode, FileMode::Input),
+                            map_opt_locatable_enum(opt_file_mode, FileMode::Random),
                             map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
                             file_number,
                         ],
@@ -536,11 +536,18 @@ mod open {
         fallback: T,
     ) -> ExpressionNode
     where
-        i32: From<T>,
+        u8: From<T>,
     {
         opt_locatable_enum
-            .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
-            .unwrap_or_else(|| Expression::IntegerLiteral(fallback.into()).at(Location::start()))
+            .map(|Locatable { element, pos }| u8_to_expr(element).at(pos))
+            .unwrap_or_else(|| u8_to_expr(fallback).at(Location::start()))
+    }
+
+    fn u8_to_expr<T>(x: T) -> Expression
+    where
+        u8: From<T>,
+    {
+        Expression::IntegerLiteral(u8::from(x) as i32)
     }
 
     // FOR <ws+> INPUT <ws+>
@@ -550,9 +557,14 @@ mod open {
     {
         keyword_followed_by_whitespace_p(Keyword::For)
             .and_demand(
-                keyword_choice_p(&[Keyword::Append, Keyword::Input, Keyword::Output])
-                    .or_syntax_error("Expected: APPEND, INPUT or OUTPUT")
-                    .with_pos(),
+                keyword_choice_p(&[
+                    Keyword::Append,
+                    Keyword::Input,
+                    Keyword::Output,
+                    Keyword::Random,
+                ])
+                .or_syntax_error("Expected: APPEND, INPUT or OUTPUT")
+                .with_pos(),
             )
             .keep_right()
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after file mode"))
@@ -566,6 +578,7 @@ mod open {
                         Keyword::Append => FileMode::Append,
                         Keyword::Input => FileMode::Input,
                         Keyword::Output => FileMode::Output,
+                        Keyword::Random => FileMode::Random,
                         _ => panic!("Parser should not have parsed {}", file_mode),
                     })
                     .at(pos)
@@ -619,8 +632,8 @@ mod open {
                     "OPEN".into(),
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 21),
-                        1.as_lit_expr(1, 34),
+                        FILE_MODE_INPUT.as_lit_expr(1, 21),
+                        FILE_ACCESS_READ.as_lit_expr(1, 34),
                         1.as_lit_expr(1, 42)
                     ]
                 )
@@ -637,8 +650,8 @@ mod open {
                     "OPEN".into(),
                     vec![
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
-                        1.as_lit_expr(1, 21),
-                        1.as_lit_expr(1, 34),
+                        FILE_MODE_INPUT.as_lit_expr(1, 21),
+                        FILE_ACCESS_READ.as_lit_expr(1, 34),
                         Expression::Parenthesis(Box::new(1.as_lit_expr(1, 42))).at_rc(1, 41)
                     ]
                 )
@@ -655,8 +668,8 @@ mod open {
                     "OPEN".into(),
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 21),
-                        0.as_lit_expr(1, 1),
+                        FILE_MODE_INPUT.as_lit_expr(1, 21),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
                         1.as_lit_expr(1, 30)
                     ]
                 )
@@ -673,8 +686,8 @@ mod open {
                     "OPEN".into(),
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 1),
-                        1.as_lit_expr(1, 24),
+                        FILE_MODE_RANDOM.as_lit_expr(1, 1),
+                        FILE_ACCESS_READ.as_lit_expr(1, 24),
                         1.as_lit_expr(1, 32),
                     ]
                 )
@@ -691,8 +704,8 @@ mod open {
                     "OPEN".into(),
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 1),
-                        0.as_lit_expr(1, 1),
+                        FILE_MODE_RANDOM.as_lit_expr(1, 1),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
                         1.as_lit_expr(1, 20)
                     ]
                 )
@@ -709,8 +722,8 @@ mod open {
                     "OPEN".into(),
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 1),
-                        0.as_lit_expr(1, 1),
+                        FILE_MODE_RANDOM.as_lit_expr(1, 1),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
                         Expression::IntegerLiteral(1).at_rc(1, 20)
                     ]
                 )
@@ -727,8 +740,8 @@ mod open {
                     "OPEN".into(),
                     vec![
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
-                        1.as_lit_expr(1, 1),
-                        0.as_lit_expr(1, 1),
+                        FILE_MODE_RANDOM.as_lit_expr(1, 1),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
                         Expression::Parenthesis(Box::new(1.as_lit_expr(1, 20))).at_rc(1, 19)
                     ]
                 )

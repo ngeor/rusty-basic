@@ -109,6 +109,12 @@ impl ExpressionNodeLiteralFactory for &str {
     }
 }
 
+impl ExpressionNodeLiteralFactory for u8 {
+    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
+        Expression::IntegerLiteral(*self as i32).at_rc(row, col)
+    }
+}
+
 impl ExpressionNodeLiteralFactory for i32 {
     fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
         Expression::IntegerLiteral(*self).at_rc(row, col)

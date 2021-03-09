@@ -12,10 +12,10 @@ use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let file_name: String = (&interpreter.context()[0]).to_string();
-    let file_mode: FileMode = i32::try_from(&interpreter.context()[1])
+    let file_mode: FileMode = u8::try_from(&interpreter.context()[1])
         .with_err_no_pos()?
         .into();
-    let file_access: FileAccess = i32::try_from(&interpreter.context()[2])
+    let file_access: FileAccess = u8::try_from(&interpreter.context()[2])
         .with_err_no_pos()?
         .into();
     let file_handle: FileHandle = (&interpreter.context()[3]).try_into().with_err_no_pos()?;
@@ -33,6 +33,12 @@ mod tests {
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::*;
 
+    fn read_and_remove(filename: &str) -> String {
+        let contents = std::fs::read_to_string(filename).unwrap_or_default();
+        std::fs::remove_file(filename).unwrap_or_default();
+        contents
+    }
+
     #[test]
     fn test_can_create_file() {
         std::fs::remove_file("TEST1.TXT").unwrap_or(());
@@ -42,8 +48,7 @@ mod tests {
         CLOSE #1
         "#;
         interpret(input);
-        let contents = std::fs::read_to_string("TEST1.TXT").unwrap_or("".to_string());
-        std::fs::remove_file("TEST1.TXT").unwrap_or(());
+        let contents = read_and_remove("TEST1.TXT");
         assert_eq!("Hello, world\r\n", contents);
     }
 
@@ -61,7 +66,7 @@ mod tests {
         CLOSE #1
         "#;
         interpret(input);
-        let contents = std::fs::read_to_string("TEST2B.TXT").unwrap_or("".to_string());
+        let contents = read_and_remove("TEST2B.TXT");
         std::fs::remove_file("TEST2A.TXT").unwrap_or(());
         std::fs::remove_file("TEST2B.TXT").unwrap_or(());
         assert_eq!("Hello, world\r\n", contents);
@@ -96,9 +101,8 @@ mod tests {
         CLOSE #1
         "#;
         interpret(input);
-        let read_result = std::fs::read_to_string("test_can_write_file_append_mode.TXT");
-        std::fs::remove_file("test_can_write_file_append_mode.TXT").unwrap_or(());
-        assert_eq!(read_result.unwrap(), "Hello, world\r\nHello, again\r\n");
+        let read_result = read_and_remove("test_can_write_file_append_mode.TXT");
+        assert_eq!(read_result, "Hello, world\r\nHello, again\r\n");
     }
 
     #[test]
@@ -119,5 +123,20 @@ mod tests {
         "#;
         assert_interpreter_err!(input, QError::FileAlreadyOpen, 3, 9);
         std::fs::remove_file("a.txt").unwrap_or(());
+    }
+
+    #[test]
+    fn open_random_file() {
+        let input = r#"
+        OPEN "open_random_file.txt" FOR RANDOM AS #1 LEN = 64
+        FIELD #1, 10 AS FirstName$, 20 AS LastName$
+        LSET FirstName$ = "Nikos"
+        LSET LastName$ = "Georgiou"
+        PUT #1, 1
+        CLOSE
+        "#;
+        interpret(input);
+        let contents = read_and_remove("open_random_file.txt");
+        assert_eq!(contents, "Nikos     Georgiou            ");
     }
 }

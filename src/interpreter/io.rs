@@ -44,6 +44,9 @@ impl FileManager {
         }
 
         match file_mode {
+            FileMode::Random => {
+                todo!()
+            }
             FileMode::Input => {
                 let file = File::open(file_name)?;
                 self.handle_map.insert(

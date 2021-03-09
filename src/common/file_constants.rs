@@ -3,29 +3,38 @@ use std::convert::TryFrom;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum FileMode {
+    Append,
     Input,
     Output,
-    Append,
+    Random,
 }
 
-impl From<FileMode> for i32 {
-    fn from(f: FileMode) -> i32 {
+pub const FILE_MODE_APPEND: u8 = 1;
+pub const FILE_MODE_INPUT: u8 = 2;
+pub const FILE_MODE_OUTPUT: u8 = 3;
+pub const FILE_MODE_RANDOM: u8 = 4;
+
+impl From<FileMode> for u8 {
+    fn from(f: FileMode) -> u8 {
         match f {
-            FileMode::Input => 1,
-            FileMode::Output => 2,
-            FileMode::Append => 3,
+            FileMode::Append => FILE_MODE_APPEND,
+            FileMode::Input => FILE_MODE_INPUT,
+            FileMode::Output => FILE_MODE_OUTPUT,
+            FileMode::Random => FILE_MODE_RANDOM,
         }
     }
 }
 
-impl From<i32> for FileMode {
-    fn from(i: i32) -> FileMode {
-        if i == 1 {
-            FileMode::Input
-        } else if i == 2 {
-            FileMode::Output
-        } else if i == 3 {
+impl From<u8> for FileMode {
+    fn from(i: u8) -> FileMode {
+        if i == FILE_MODE_APPEND {
             FileMode::Append
+        } else if i == FILE_MODE_INPUT {
+            FileMode::Input
+        } else if i == FILE_MODE_OUTPUT {
+            FileMode::Output
+        } else if i == FILE_MODE_RANDOM {
+            FileMode::Random
         } else {
             panic!("Unsupported file mode {}", i)
         }
@@ -39,21 +48,25 @@ pub enum FileAccess {
     Write,
 }
 
-impl From<FileAccess> for i32 {
-    fn from(f: FileAccess) -> i32 {
+pub const FILE_ACCESS_UNSPECIFIED: u8 = 0;
+pub const FILE_ACCESS_READ: u8 = 1;
+pub const FILE_ACCESS_WRITE: u8 = 2;
+
+impl From<FileAccess> for u8 {
+    fn from(f: FileAccess) -> u8 {
         match f {
-            FileAccess::Unspecified => 0,
-            FileAccess::Read => 1,
-            FileAccess::Write => 2,
+            FileAccess::Unspecified => FILE_ACCESS_UNSPECIFIED,
+            FileAccess::Read => FILE_ACCESS_READ,
+            FileAccess::Write => FILE_ACCESS_WRITE,
         }
     }
 }
 
-impl From<i32> for FileAccess {
-    fn from(i: i32) -> FileAccess {
-        if i == 1 {
+impl From<u8> for FileAccess {
+    fn from(i: u8) -> FileAccess {
+        if i == FILE_ACCESS_READ {
             FileAccess::Read
-        } else if i == 2 {
+        } else if i == FILE_ACCESS_WRITE {
             FileAccess::Write
         } else {
             FileAccess::Unspecified

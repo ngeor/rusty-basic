@@ -13,6 +13,7 @@ use crate::parser::name::bare_name_p;
 use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
+use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
 use crate::parser::sub_call;
@@ -42,6 +43,8 @@ where
     dim::dim_p()
         .or(constant::constant_p())
         .or(built_ins::parse_built_in_p())
+        .or(print::parse_print_p())
+        .or(print::parse_lprint_p())
         .or(sub_call::sub_call_or_assignment_p())
         .or(statement_go_to_p())
         .or(statement_go_sub_p())

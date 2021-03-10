@@ -34,6 +34,9 @@ impl Visitor<StatementNode> for InstructionGenerator {
             Statement::Print(print_node) => {
                 self.generate_print_instructions(print_node, pos);
             }
+            Statement::Field(_field_node) => {
+                todo!()
+            }
             Statement::IfBlock(i) => self.generate_if_block_instructions(i, pos),
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),
             Statement::ForLoop(f) => self.generate_for_loop_instructions(f, pos),

@@ -1,6 +1,6 @@
 use super::{
-    BareName, DimNameNodes, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator,
-    PrintNode,
+    BareName, DimNameNode, DimNameNodes, Expression, ExpressionNode, ExpressionNodes, NameNode,
+    Operator, PrintNode,
 };
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
@@ -10,6 +10,8 @@ pub type StatementNodes = Vec<StatementNode>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
+    Comment(String),
+
     // A = 42
     // A.Hello = 42 at the parser state it is not known if this is a member variable or not
     // A$ = "hello"
@@ -31,27 +33,41 @@ pub enum Statement {
     SubCall(BareName, ExpressionNodes),
     BuiltInSubCall(BuiltInSub, ExpressionNodes),
 
+    /*
+     * Decision flow
+     */
     IfBlock(IfBlockNode),
     SelectCase(SelectCaseNode),
 
+    /*
+     * Loops
+     */
     ForLoop(ForLoopNode),
     While(ConditionalBlockNode),
     DoLoop(DoLoopNode),
 
-    OnError(OnErrorOption),
+    /*
+     * Unstructured flow control
+     */
     Label(CaseInsensitiveString),
     GoTo(CaseInsensitiveString),
-    GoSub(CaseInsensitiveString),
+
+    OnError(OnErrorOption),
     Resume(ResumeOption),
+
+    GoSub(CaseInsensitiveString),
     Return(Option<CaseInsensitiveString>),
+
     Exit(ExitObject),
-
-    Comment(String),
-
-    Print(PrintNode),
 
     End,
     System,
+
+    /*
+     * Special statements
+     */
+    Print(PrintNode),
+    Field(FieldNode),
 }
 
 /// A list of variables defined in a DIM statement.
@@ -160,4 +176,16 @@ pub enum DoLoopConditionPosition {
 pub enum DoLoopConditionKind {
     Until,
     While,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FieldNode {
+    pub file_number: FileHandle,
+    pub fields: Vec<FieldItem>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FieldItem {
+    pub width: ExpressionNode,
+    pub name: DimNameNode,
 }

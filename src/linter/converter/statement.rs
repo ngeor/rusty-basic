@@ -133,6 +133,7 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             Statement::Print(print_node) => self
                 .convert_and_collect_implicit_variables(print_node)
                 .map(|(p, implicit_vars)| (Some(Statement::Print(p).at(pos)), implicit_vars)),
+            Statement::Field(_field_node) => todo!(),
             Statement::BuiltInSubCall(_, _) => panic!("parser should not have created this"),
             Statement::OnError(_)
             | Statement::Label(_)

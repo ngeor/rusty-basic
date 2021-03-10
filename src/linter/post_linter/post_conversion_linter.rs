@@ -68,6 +68,7 @@ pub trait PostConversionLinter {
             Statement::Comment(c) => self.visit_comment(c),
             Statement::Dim(dim_list) => self.visit_dim(dim_list),
             Statement::Print(print_node) => self.visit_print_node(print_node),
+            Statement::Field(_field_node) => todo!(),
             Statement::GoSub(label) => self.visit_go_sub(label),
             Statement::Resume(resume_option) => self.visit_resume(resume_option),
             Statement::Return(opt_label) => self.visit_return(opt_label.as_ref()),

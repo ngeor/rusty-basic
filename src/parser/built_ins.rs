@@ -502,6 +502,7 @@ mod name {
 
 mod open {
     use super::*;
+    use crate::parser::expression::guarded_expression_node_p;
     use crate::parser::pc_specific::{keyword_choice_p, keyword_followed_by_whitespace_p};
 
     pub fn parse_open_p<R>() -> impl Parser<R, Output = Statement>
@@ -516,8 +517,9 @@ mod open {
             .and_opt(parse_open_mode_p())
             .and_opt(parse_open_access_p())
             .and_demand(parse_file_number_p().or_syntax_error("Expected: AS file-number"))
+            .and_opt(parse_len_p())
             .map(
-                |((((_, file_name), opt_file_mode), opt_file_access), file_number)| {
+                |(((((_, file_name), opt_file_mode), opt_file_access), file_number), opt_len)| {
                     Statement::SubCall(
                         BuiltInSub::Open.into(),
                         vec![
@@ -525,29 +527,11 @@ mod open {
                             map_opt_locatable_enum(opt_file_mode, FileMode::Random),
                             map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
                             file_number,
+                            map_opt_len(opt_len),
                         ],
                     )
                 },
             )
-    }
-
-    fn map_opt_locatable_enum<T>(
-        opt_locatable_enum: Option<Locatable<T>>,
-        fallback: T,
-    ) -> ExpressionNode
-    where
-        u8: From<T>,
-    {
-        opt_locatable_enum
-            .map(|Locatable { element, pos }| u8_to_expr(element).at(pos))
-            .unwrap_or_else(|| u8_to_expr(fallback).at(Location::start()))
-    }
-
-    fn u8_to_expr<T>(x: T) -> Expression
-    where
-        u8: From<T>,
-    {
-        Expression::IntegerLiteral(u8::from(x) as i32)
     }
 
     // FOR <ws+> INPUT <ws+>
@@ -616,6 +600,49 @@ mod open {
             .keep_right()
     }
 
+    fn parse_len_p<R>() -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        whitespace_p()
+            .and(keyword_p(Keyword::Len))
+            .and_demand(
+                item_p('=')
+                    .preceded_by_opt_ws()
+                    .or_syntax_error("Expected: = after LEN"),
+            )
+            .and_demand(
+                guarded_expression_node_p().or_syntax_error("Expected: expression after LEN ="),
+            )
+            .keep_right()
+    }
+
+    fn map_opt_locatable_enum<T>(
+        opt_locatable_enum: Option<Locatable<T>>,
+        fallback: T,
+    ) -> ExpressionNode
+    where
+        u8: From<T>,
+    {
+        opt_locatable_enum
+            .map(|Locatable { element, pos }| u8_to_expr(element).at(pos))
+            .unwrap_or_else(|| u8_to_expr(fallback).at(Location::start()))
+    }
+
+    fn u8_to_expr<T>(x: T) -> Expression
+    where
+        u8: From<T>,
+    {
+        Expression::IntegerLiteral(u8::from(x) as i32)
+    }
+
+    fn map_opt_len(opt_len: Option<ExpressionNode>) -> ExpressionNode {
+        match opt_len {
+            Some(expr) => expr,
+            _ => Expression::IntegerLiteral(0).at(Location::start()),
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -634,7 +661,8 @@ mod open {
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_INPUT.as_lit_expr(1, 21),
                         FILE_ACCESS_READ.as_lit_expr(1, 34),
-                        1.as_lit_expr(1, 42)
+                        1.as_lit_expr(1, 42),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -652,7 +680,8 @@ mod open {
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
                         FILE_MODE_INPUT.as_lit_expr(1, 21),
                         FILE_ACCESS_READ.as_lit_expr(1, 34),
-                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 42))).at_rc(1, 41)
+                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 42))).at_rc(1, 41),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -670,7 +699,8 @@ mod open {
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_INPUT.as_lit_expr(1, 21),
                         FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
-                        1.as_lit_expr(1, 30)
+                        1.as_lit_expr(1, 30),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -689,6 +719,7 @@ mod open {
                         FILE_MODE_RANDOM.as_lit_expr(1, 1),
                         FILE_ACCESS_READ.as_lit_expr(1, 24),
                         1.as_lit_expr(1, 32),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -706,7 +737,8 @@ mod open {
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_RANDOM.as_lit_expr(1, 1),
                         FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
-                        1.as_lit_expr(1, 20)
+                        1.as_lit_expr(1, 20),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -724,7 +756,8 @@ mod open {
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_RANDOM.as_lit_expr(1, 1),
                         FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
-                        Expression::IntegerLiteral(1).at_rc(1, 20)
+                        Expression::IntegerLiteral(1).at_rc(1, 20),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -742,7 +775,8 @@ mod open {
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
                         FILE_MODE_RANDOM.as_lit_expr(1, 1),
                         FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
-                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 20))).at_rc(1, 19)
+                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 20))).at_rc(1, 19),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -756,6 +790,25 @@ mod open {
                 QError::syntax_error("Expected: AS file-number"),
                 1,
                 29
+            );
+        }
+
+        #[test]
+        fn test_open_random_explicit_len() {
+            let input = r#"OPEN "A.TXT" FOR RANDOM AS #1 LEN = 64"#;
+            let statement = parse(input).demand_single_statement();
+            assert_eq!(
+                statement,
+                Statement::SubCall(
+                    "OPEN".into(),
+                    vec![
+                        "A.TXT".as_lit_expr(1, 6),
+                        FILE_MODE_RANDOM.as_lit_expr(1, 18),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
+                        1.as_lit_expr(1, 28),
+                        64.as_lit_expr(1, 37) // rec-len%
+                    ]
+                )
             );
         }
     }

@@ -37,6 +37,15 @@ impl Visitor<StatementNode> for InstructionGenerator {
             Statement::Field(_field_node) => {
                 todo!()
             }
+            Statement::Get(_get_node) => {
+                todo!()
+            }
+            Statement::Put(_put_node) => {
+                todo!()
+            }
+            Statement::LSet(_lset_node) => {
+                todo!()
+            }
             Statement::IfBlock(i) => self.generate_if_block_instructions(i, pos),
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),
             Statement::ForLoop(f) => self.generate_for_loop_instructions(f, pos),

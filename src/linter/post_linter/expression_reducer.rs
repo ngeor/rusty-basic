@@ -120,6 +120,15 @@ pub trait ExpressionReducer {
             }
             Statement::Print(p) => self.visit_print_node(p).map(Statement::Print),
             Statement::Field(_field_node) => todo!(),
+            Statement::Get(_get_node) => {
+                todo!()
+            }
+            Statement::Put(_put_node) => {
+                todo!()
+            }
+            Statement::LSet(_lset_node) => {
+                todo!()
+            }
             Statement::IfBlock(i) => self.visit_if_block(i).map(Statement::IfBlock),
             Statement::SelectCase(s) => self.visit_select_case(s).map(Statement::SelectCase),
             Statement::ForLoop(f) => self.visit_for_loop(f).map(Statement::ForLoop),

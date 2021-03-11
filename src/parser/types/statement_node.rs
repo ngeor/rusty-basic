@@ -68,6 +68,9 @@ pub enum Statement {
      */
     Print(PrintNode),
     Field(FieldNode),
+    LSet(LSetNode),
+    Get(GetPutNode),
+    Put(GetPutNode),
 }
 
 /// A list of variables defined in a DIM statement.
@@ -188,4 +191,17 @@ pub struct FieldNode {
 pub struct FieldItem {
     pub width: ExpressionNode,
     pub name: NameNode,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LSetNode {
+    pub name: NameNode,
+    pub expr: ExpressionNode,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct GetPutNode {
+    pub file_number: Locatable<FileHandle>,
+    pub record_number: Option<ExpressionNode>, // must be LONG
+    pub variable: Option<ExpressionNode>,
 }

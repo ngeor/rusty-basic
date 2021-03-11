@@ -1,6 +1,6 @@
 use super::{
-    BareName, DimNameNode, DimNameNodes, Expression, ExpressionNode, ExpressionNodes, NameNode,
-    Operator, PrintNode,
+    BareName, DimNameNodes, Expression, ExpressionNode, ExpressionNodes, NameNode, Operator,
+    PrintNode,
 };
 use crate::built_ins::BuiltInSub;
 use crate::common::*;
@@ -180,12 +180,12 @@ pub enum DoLoopConditionKind {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FieldNode {
-    pub file_number: FileHandle,
+    pub file_number: Locatable<FileHandle>,
     pub fields: Vec<FieldItem>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FieldItem {
     pub width: ExpressionNode,
-    pub name: DimNameNode,
+    pub name: NameNode,
 }

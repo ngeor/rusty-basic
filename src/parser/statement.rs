@@ -45,6 +45,7 @@ where
         .or(built_ins::parse_built_in_p())
         .or(print::parse_print_p())
         .or(print::parse_lprint_p())
+        .or(field::parse_field_p())
         .or(sub_call::sub_call_or_assignment_p())
         .or(statement_go_to_p())
         .or(statement_go_sub_p())
@@ -96,6 +97,63 @@ where
             Keyword::Loop => Err(QError::syntax_error("LOOP without DO")),
             _ => panic!("Parser should not have parsed {}", k),
         })
+}
+
+mod field {
+    use super::*;
+    use crate::parser::expression;
+
+    pub fn parse_field_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::Field)
+            .and_demand(field_node_p().or_syntax_error("Expected: file number after FIELD"))
+            .keep_right()
+            .map(Statement::Field)
+    }
+
+    fn field_node_p<R>() -> impl Parser<R, Output = FieldNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        whitespace_p()
+            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
+            .and_demand(
+                item_p(',')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: ,"),
+            )
+            .and_demand(
+                field_item_p()
+                    .csv()
+                    .or_syntax_error("Expected: field width"),
+            )
+            .map(|(((_, file_number), _), fields)| FieldNode {
+                file_number,
+                fields,
+            })
+    }
+
+    fn field_item_p<R>() -> impl Parser<R, Output = FieldItem>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        expression::expression_node_p()
+            // TODO AS does not need leading whitespace if expression has parenthesis
+            // TODO solve this not by peeking the previous but with a new expression:: function
+            .and_demand(
+                keyword_p(Keyword::As)
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: AS"),
+            )
+            .and_demand(
+                name::name_with_dot_p()
+                    .with_pos()
+                    .or_syntax_error("Expected: variable name"),
+            )
+            .map(|((width, _), name)| FieldItem { width, name })
+    }
 }
 
 mod end {

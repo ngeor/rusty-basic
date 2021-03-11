@@ -46,6 +46,9 @@ where
         .or(print::parse_print_p())
         .or(print::parse_lprint_p())
         .or(field::parse_field_p())
+        .or(lset::parse_lset_p())
+        .or(get::parse_get_p())
+        .or(put::parse_put_p())
         .or(sub_call::sub_call_or_assignment_p())
         .or(statement_go_to_p())
         .or(statement_go_sub_p())
@@ -153,6 +156,82 @@ mod field {
                     .or_syntax_error("Expected: variable name"),
             )
             .map(|((width, _), name)| FieldItem { width, name })
+    }
+}
+
+mod lset {
+    use super::*;
+    use crate::parser::expression;
+
+    pub fn parse_lset_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_followed_by_whitespace_p(Keyword::LSet)
+            .and_demand(
+                name::name_with_dot_p()
+                    .with_pos()
+                    .or_syntax_error("Expected: variable after LSET"),
+            )
+            .and_demand(
+                item_p('=')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: ="),
+            )
+            .and_demand(expression::expression_node_p().or_syntax_error("Expected: expression"))
+            .map(|(((_, name), _), expr)| Statement::LSet(LSetNode { name, expr }))
+    }
+}
+
+mod get {
+    use super::*;
+    use crate::parser::expression;
+
+    pub fn parse_get_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_followed_by_whitespace_p(Keyword::Get)
+            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
+            .and_demand(
+                item_p(',')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: ,"),
+            )
+            .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
+            .map(|(((_, file_number), _), r)| {
+                Statement::Get(GetPutNode {
+                    file_number,
+                    record_number: Some(r),
+                    variable: None,
+                })
+            })
+    }
+}
+
+mod put {
+    use super::*;
+    use crate::parser::expression;
+
+    pub fn parse_put_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_followed_by_whitespace_p(Keyword::Put)
+            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
+            .and_demand(
+                item_p(',')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: ,"),
+            )
+            .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
+            .map(|(((_, file_number), _), r)| {
+                Statement::Put(GetPutNode {
+                    file_number,
+                    record_number: Some(r),
+                    variable: None,
+                })
+            })
     }
 }
 

@@ -68,16 +68,11 @@ pub trait PostConversionLinter {
             Statement::Comment(c) => self.visit_comment(c),
             Statement::Dim(dim_list) => self.visit_dim(dim_list),
             Statement::Print(print_node) => self.visit_print_node(print_node),
-            Statement::Field(_field_node) => todo!(),
-            Statement::Get(_get_node) => {
-                todo!()
+            Statement::Field(field_node) => self.visit_field_node(field_node),
+            Statement::Get(get_put_node) | Statement::Put(get_put_node) => {
+                self.visit_get_put_node(get_put_node)
             }
-            Statement::Put(_put_node) => {
-                todo!()
-            }
-            Statement::LSet(_lset_node) => {
-                todo!()
-            }
+            Statement::LSet(lset_node) => self.visit_lset_node(lset_node),
             Statement::GoSub(label) => self.visit_go_sub(label),
             Statement::Resume(resume_option) => self.visit_resume(resume_option),
             Statement::Return(opt_label) => self.visit_return(opt_label.as_ref()),
@@ -235,6 +230,18 @@ pub trait PostConversionLinter {
                 _ => {}
             }
         }
+        Ok(())
+    }
+
+    fn visit_field_node(&mut self, _field_node: &FieldNode) -> Result<(), QErrorNode> {
+        Ok(())
+    }
+
+    fn visit_get_put_node(&mut self, _get_put_node: &GetPutNode) -> Result<(), QErrorNode> {
+        Ok(())
+    }
+
+    fn visit_lset_node(&mut self, _lset_node: &LSetNode) -> Result<(), QErrorNode> {
         Ok(())
     }
 }

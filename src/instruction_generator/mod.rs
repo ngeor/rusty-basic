@@ -464,6 +464,5 @@ pub trait Visitor<T> {
 pub enum InternalBuiltInSub {
     Field,
     Get,
-    LSet,
     Put,
 }

@@ -161,6 +161,7 @@ mod field {
 
 mod lset {
     use super::*;
+    use crate::built_ins::BuiltInSub;
     use crate::parser::expression;
 
     pub fn parse_lset_p<R>() -> impl Parser<R, Output = Statement>
@@ -179,7 +180,23 @@ mod lset {
                     .or_syntax_error("Expected: ="),
             )
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: expression"))
-            .map(|(((_, name), _), expr)| Statement::LSet(LSetNode { name, expr }))
+            .map(|(((_, name_node), _), value_expr_node)| {
+                Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_node, value_expr_node))
+            })
+    }
+
+    fn build_args(name_node: NameNode, value_expr_node: ExpressionNode) -> ExpressionNodes {
+        let Locatable { element: name, pos } = name_node;
+        let variable_name: String = name.bare_name().as_ref().to_owned();
+        let name_expr_node = Expression::Variable(name, VariableInfo::unresolved()).at(pos);
+        vec![
+            // pass the name of the variable as a special argument
+            Expression::StringLiteral(variable_name).at(pos),
+            // pass the variable itself (ByRef) to be able to write to it
+            name_expr_node,
+            // pass the value to assign to the variable
+            value_expr_node,
+        ]
     }
 }
 

@@ -174,65 +174,32 @@ fn demand_unqualified(
 // BuiltInSub
 // ========================================================
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BuiltInSub {
     Close,
     Environ,
     Input,
     Kill,
     LineInput,
+    LSet,
     Name,
     Open,
 }
 
-const SORTED_BUILT_IN_SUBS: [BuiltInSub; 7] = [
-    BuiltInSub::Close,
-    BuiltInSub::Environ,
-    BuiltInSub::Input,
-    BuiltInSub::Kill,
-    BuiltInSub::LineInput,
-    BuiltInSub::Name,
-    BuiltInSub::Open,
-];
-
-const SORTED_BUILT_IN_SUB_NAMES: [&str; 7] = [
-    "CLOSE",
-    "ENVIRON",
-    "INPUT",
-    "KILL",
-    "LINE INPUT",
-    "NAME",
-    "OPEN",
-];
-
-// BuiltInSub -> &str
-
-impl AsRef<str> for BuiltInSub {
-    fn as_ref(&self) -> &str {
-        let idx = SORTED_BUILT_IN_SUBS
-            .binary_search(self)
-            .expect("Missing built-in sub!");
-        SORTED_BUILT_IN_SUB_NAMES[idx]
-    }
-}
-
-// BuiltInSub -> CaseInsensitiveString
-
-impl From<BuiltInSub> for CaseInsensitiveString {
-    fn from(x: BuiltInSub) -> Self {
-        Self::from(x.as_ref())
-    }
-}
-
-// CaseInsensitiveString -> BuiltInSub
-
-impl From<&CaseInsensitiveString> for Option<BuiltInSub> {
-    fn from(s: &CaseInsensitiveString) -> Option<BuiltInSub> {
-        match SORTED_BUILT_IN_SUB_NAMES
-            .binary_search_by(|p| CmpIgnoreAsciiCase::compare_ignore_ascii_case(*p, s.as_ref()))
-        {
-            Ok(idx) => Some(SORTED_BUILT_IN_SUBS[idx]),
-            Err(_) => None,
+impl BuiltInSub {
+    /// Parses a built-in sub name which isn't implemented with a keyword.
+    /// This sub would appear as a user defined SUB on the parser layer.
+    ///
+    /// Some statements are implemented a built-in subs (e.g. `CLOSE`, `OPEN`), but
+    /// they can't hit this function, as they are represented by keywords and are
+    /// parsed by custom parsers.
+    pub fn parse_non_keyword_sub(s: &str) -> Option<BuiltInSub> {
+        if s.eq_ignore_ascii_case("Environ") {
+            Some(BuiltInSub::Environ)
+        } else if s.eq_ignore_ascii_case("Kill") {
+            Some(BuiltInSub::Kill)
+        } else {
+            None
         }
     }
 }

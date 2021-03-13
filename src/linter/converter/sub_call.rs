@@ -16,7 +16,7 @@ impl<'a> ConverterImpl<'a> {
             element: sub_name,
             pos,
         } = sub_name_node;
-        let opt_built_in: Option<BuiltInSub> = (&sub_name).into();
+        let opt_built_in: Option<BuiltInSub> = BuiltInSub::parse_non_keyword_sub(sub_name.as_ref());
         match opt_built_in {
             Some(b) => Ok((
                 Statement::BuiltInSubCall(b, converted_args).at(pos),

@@ -122,7 +122,6 @@ pub trait ExpressionReducer {
             Statement::Field(field_node) => self.visit_field_node(field_node).map(Statement::Field),
             Statement::Get(get_node) => self.visit_get_put_node(get_node).map(Statement::Get),
             Statement::Put(put_node) => self.visit_get_put_node(put_node).map(Statement::Put),
-            Statement::LSet(lset_node) => self.visit_lset_node(lset_node).map(Statement::LSet),
             Statement::IfBlock(i) => self.visit_if_block(i).map(Statement::IfBlock),
             Statement::SelectCase(s) => self.visit_select_case(s).map(Statement::SelectCase),
             Statement::ForLoop(f) => self.visit_for_loop(f).map(Statement::ForLoop),
@@ -324,10 +323,6 @@ pub trait ExpressionReducer {
 
     fn visit_field_node(&mut self, field_node: FieldNode) -> Result<FieldNode, QErrorNode> {
         Ok(field_node)
-    }
-
-    fn visit_lset_node(&mut self, lset_node: LSetNode) -> Result<LSetNode, QErrorNode> {
-        Ok(lset_node)
     }
 
     fn visit_get_put_node(&mut self, get_put_node: GetPutNode) -> Result<GetPutNode, QErrorNode> {

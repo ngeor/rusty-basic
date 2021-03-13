@@ -33,8 +33,23 @@ pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Resu
         BuiltInSub::Input => input::run(interpreter).with_err_no_pos(),
         BuiltInSub::Kill => kill::run(interpreter),
         BuiltInSub::LineInput => line_input::run(interpreter).with_err_no_pos(),
+        BuiltInSub::LSet => lset::run(interpreter).with_err_no_pos(),
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
+    }
+}
+
+mod lset {
+    use super::*;
+
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+        let name = String::try_from(interpreter.context()[0].clone())?;
+        let value = interpreter.context()[2].clone();
+        // find which file number is associated with this name and find the width
+        // also marks that field index as current for the next PUT operation
+        interpreter.file_manager().lookup_width(&name)?;
+        interpreter.context_mut()[1] = value;
+        Ok(())
     }
 }
 
@@ -99,33 +114,6 @@ pub fn rub_internal_built_in_sub<S: InterpreterTrait>(
                     start += width_usize;
                 }
             }
-            Ok(())
-        }
-        InternalBuiltInSub::LSet => {
-            let name = String::try_from(interpreter.context()[0].clone()).with_err_no_pos()?;
-            let value = interpreter.context()[1].clone();
-            // drop back to the original context to be able to write to the variables
-            interpreter.pop_context();
-            // find which file number is associated with this name and find the width
-            // also marks that field index as current for the next PUT operation
-            interpreter
-                .file_manager()
-                .lookup_width(&name)
-                .with_err_no_pos()?;
-            let bare_name = BareName::from(name);
-            debug_assert!(
-                interpreter
-                    .context()
-                    .variables()
-                    .get_built_in(&bare_name, TypeQualifier::DollarString)
-                    .is_some(),
-                "LSET could not find variable in current context"
-            );
-            interpreter.context_mut().variables_mut().insert_built_in(
-                bare_name,
-                TypeQualifier::DollarString,
-                value,
-            );
             Ok(())
         }
         InternalBuiltInSub::Put => {

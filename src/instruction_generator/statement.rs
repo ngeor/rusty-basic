@@ -1,8 +1,8 @@
 use super::{AddressOrLabel, Instruction, InstructionGenerator, InternalBuiltInSub, Visitor};
 use crate::common::*;
 use crate::parser::{
-    FieldItem, FieldNode, GetPutNode, LSetNode, OnErrorOption, ResumeOption, Statement,
-    StatementNode, StatementNodes,
+    FieldItem, FieldNode, GetPutNode, OnErrorOption, ResumeOption, Statement, StatementNode,
+    StatementNodes,
 };
 
 impl Visitor<StatementNodes> for InstructionGenerator {
@@ -100,18 +100,6 @@ impl Visitor<StatementNode> for InstructionGenerator {
                     pos,
                 );
                 // pop stack happens internally in the sub
-            }
-            Statement::LSet(LSetNode { name, expr }) => {
-                self.push(Instruction::BeginCollectArguments, pos);
-                self.push_load_unnamed_arg(String::from(name.bare_name().clone()), name.pos);
-                self.generate_expression_instructions(expr);
-                self.push(Instruction::PushAToUnnamedArg, pos);
-                self.push(Instruction::PushStack, pos);
-                self.push(
-                    Instruction::InternalBuiltInSub(InternalBuiltInSub::LSet),
-                    pos,
-                );
-                // pop stack happens internally in LSET
             }
             Statement::IfBlock(i) => self.generate_if_block_instructions(i, pos),
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),

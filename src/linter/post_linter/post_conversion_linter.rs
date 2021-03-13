@@ -72,7 +72,6 @@ pub trait PostConversionLinter {
             Statement::Get(get_put_node) | Statement::Put(get_put_node) => {
                 self.visit_get_put_node(get_put_node)
             }
-            Statement::LSet(lset_node) => self.visit_lset_node(lset_node),
             Statement::GoSub(label) => self.visit_go_sub(label),
             Statement::Resume(resume_option) => self.visit_resume(resume_option),
             Statement::Return(opt_label) => self.visit_return(opt_label.as_ref()),
@@ -238,10 +237,6 @@ pub trait PostConversionLinter {
     }
 
     fn visit_get_put_node(&mut self, _get_put_node: &GetPutNode) -> Result<(), QErrorNode> {
-        Ok(())
-    }
-
-    fn visit_lset_node(&mut self, _lset_node: &LSetNode) -> Result<(), QErrorNode> {
         Ok(())
     }
 }

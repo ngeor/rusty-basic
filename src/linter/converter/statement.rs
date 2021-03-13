@@ -4,8 +4,7 @@ use crate::linter::converter::context::{ExprContext, NameContext};
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
 use crate::parser::{
     DimName, DoLoopNode, ExitObject, Expression, ExpressionType, FieldItem, FieldNode, GetPutNode,
-    LSetNode, QualifiedNameNode, Statement, StatementNode, StatementNodes, TypeQualifier,
-    VariableInfo,
+    QualifiedNameNode, Statement, StatementNode, StatementNodes, TypeQualifier, VariableInfo,
 };
 
 // A statement can be expanded into multiple statements to convert implicitly
@@ -154,11 +153,6 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             Statement::Put(put_node) => self.convert_and_collect_implicit_variables(put_node).map(
                 |(put_node, implicit_vars)| (Some(Statement::Put(put_node).at(pos)), implicit_vars),
             ),
-            Statement::LSet(lset_node) => self
-                .convert_and_collect_implicit_variables(lset_node)
-                .map(|(lset_node, implicit_vars)| {
-                    (Some(Statement::LSet(lset_node).at(pos)), implicit_vars)
-                }),
             Statement::OnError(_)
             | Statement::Label(_)
             | Statement::GoTo(_)
@@ -261,59 +255,6 @@ impl<'a> ConverterWithImplicitVariables<FieldNode, FieldNode> for ConverterImpl<
             },
             implicit_vars,
         ))
-    }
-}
-
-impl<'a> ConverterWithImplicitVariables<LSetNode, LSetNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        lset_node: LSetNode,
-    ) -> Result<(LSetNode, Vec<QualifiedNameNode>), QErrorNode> {
-        let LSetNode {
-            name: Locatable { element: name, pos },
-            expr,
-        } = lset_node;
-        let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
-        // convert expr
-        let (expr, mut expr_implicits) = self.context.on_expression(expr, ExprContext::Default)?;
-        implicit_vars.append(&mut expr_implicits);
-        // convert name
-        // TODO reuse this from FIELD
-        let name_expr = Expression::Variable(name, VariableInfo::unresolved()).at(pos);
-        let (
-            Locatable {
-                element: converted_expr,
-                pos,
-            },
-            mut name_implicits,
-        ) = self
-            .context
-            .on_expression(name_expr, ExprContext::Assignment)?;
-        implicit_vars.append(&mut name_implicits);
-        match converted_expr {
-            Expression::Variable(
-                converted_name,
-                VariableInfo {
-                    expression_type,
-                    shared,
-                },
-            ) => {
-                debug_assert!(!shared, "LSET var should not be SHARED");
-                if expression_type != ExpressionType::BuiltIn(TypeQualifier::DollarString) {
-                    return Err(QError::TypeMismatch).with_err_at(pos);
-                }
-                Ok((
-                    LSetNode {
-                        name: converted_name.at(pos),
-                        expr,
-                    },
-                    implicit_vars,
-                ))
-            }
-            _ => {
-                panic!("Unexpected result in converting LSET variable at {:?}", pos);
-            }
-        }
     }
 }
 

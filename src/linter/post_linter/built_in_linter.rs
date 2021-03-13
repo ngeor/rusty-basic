@@ -22,6 +22,7 @@ impl PostConversionLinter for BuiltInLinter {
             BuiltInSub::Input => input::lint(args),
             BuiltInSub::Kill => kill::lint(args),
             BuiltInSub::LineInput => line_input::lint(args),
+            BuiltInSub::LSet => lset::lint(args),
             BuiltInSub::Name => name::lint(args),
             BuiltInSub::Open => open::lint(args),
         }
@@ -279,6 +280,44 @@ mod line_input {
             _ => return Err(QError::TypeMismatch).with_err_at(*pos),
         }
 
+        Ok(())
+    }
+}
+
+mod lset {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // the parser should produce 3 arguments:
+        // the variable name, as a string literal
+        // the variable itself, a ByRef string variable
+        // a string expression to assign to
+        if args.len() != 3 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        if !args[0].can_cast_to(TypeQualifier::DollarString) {
+            return Err(QError::ArgumentTypeMismatch).with_err_at(&args[0]);
+        }
+        match args[1].as_ref() {
+            Expression::Variable(
+                _,
+                VariableInfo {
+                    expression_type, ..
+                },
+            ) => {
+                // TODO ensure LSET is operating on variables previously used by FIELD in this scope
+                if let ExpressionType::BuiltIn(TypeQualifier::DollarString) = expression_type {
+                } else {
+                    return Err(QError::ArgumentTypeMismatch).with_err_at(&args[1]);
+                }
+            }
+            _ => {
+                return Err(QError::VariableRequired).with_err_at(&args[1]);
+            }
+        }
+        if !args[2].can_cast_to(TypeQualifier::DollarString) {
+            return Err(QError::ArgumentTypeMismatch).with_err_at(&args[0]);
+        }
         Ok(())
     }
 }

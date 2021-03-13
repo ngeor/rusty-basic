@@ -1,6 +1,6 @@
 use super::fit::FitToType;
 use super::UserDefinedTypeValue;
-use crate::common::{FileHandle, QError};
+use crate::common::{FileHandle, QError, TryAsRef, TryRefInto};
 use crate::parser::TypeQualifier;
 use crate::variant::casting::QBNumberCast;
 use crate::variant::{qb_and, qb_or, VArray};
@@ -594,21 +594,31 @@ impl TryFrom<Variant> for u8 {
     }
 }
 
-impl TryFrom<&Variant> for FileHandle {
+impl TryRefInto<FileHandle> for Variant {
     type Error = QError;
 
-    fn try_from(v: &Variant) -> Result<Self, Self::Error> {
-        let i: i32 = v.try_cast()?;
+    fn try_ref_into(&self) -> Result<FileHandle, Self::Error> {
+        let i: i32 = self.try_ref_into()?;
         FileHandle::try_from(i)
     }
 }
 
-impl TryFrom<Variant> for FileHandle {
+impl TryRefInto<i32> for Variant {
     type Error = QError;
 
-    fn try_from(v: Variant) -> Result<Self, Self::Error> {
-        let i: i32 = v.try_cast()?;
-        FileHandle::try_from(i)
+    fn try_ref_into(&self) -> Result<i32, Self::Error> {
+        self.try_cast()
+    }
+}
+
+impl TryAsRef<String> for Variant {
+    type Error = QError;
+
+    fn try_as_ref(&self) -> Result<&String, Self::Error> {
+        match self {
+            Self::VString(s) => Ok(s),
+            _ => Err(QError::TypeMismatch),
+        }
     }
 }
 

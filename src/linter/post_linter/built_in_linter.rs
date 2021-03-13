@@ -153,15 +153,8 @@ mod input {
         } = args[0]
         {
             // must have a file number
-            if let Locatable {
-                element: Expression::IntegerLiteral(_),
-                ..
-            } = args[1]
-            {
-                has_file_number = true;
-            } else {
-                panic!("parser sent unexpected arguments");
-            }
+            require_integer_argument(args, 1)?;
+            has_file_number = true;
         } else {
             panic!("parser sent unexpected arguments");
         }

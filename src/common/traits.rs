@@ -1,5 +1,4 @@
 /// Generic traits
-use super::Locatable;
 
 /// Checks if a type can be cast into another type.
 pub trait CanCastTo<T> {
@@ -7,11 +6,14 @@ pub trait CanCastTo<T> {
     fn can_cast_to(&self, other: T) -> bool;
 }
 
-impl<T, U> CanCastTo<U> for Locatable<T>
-where
-    T: CanCastTo<U>,
-{
-    fn can_cast_to(&self, other: U) -> bool {
-        self.as_ref().can_cast_to(other)
-    }
+/// Tries to convert the current type into type `T`.
+pub trait TryRefInto<T> {
+    type Error;
+    fn try_ref_into(&self) -> Result<T, Self::Error>;
+}
+
+/// Tries to get a reference from the current type into type `T`.
+pub trait TryAsRef<T> {
+    type Error;
+    fn try_as_ref(&self) -> Result<&T, Self::Error>;
 }

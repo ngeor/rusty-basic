@@ -1,12 +1,12 @@
 use super::*;
-use crate::common::FileHandle;
+use crate::common::{FileHandle, TryRefInto};
 use crate::interpreter::io::Field;
 use crate::parser::{BareName, TypeQualifier};
 use crate::variant::Variant;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let handle: FileHandle = FileHandle::try_from(&interpreter.context()[0])?;
+    let handle: FileHandle = interpreter.context()[0].try_ref_into()?;
     let record_number = i32::try_from(&interpreter.context()[1])?;
     let file_info = interpreter.file_manager().try_get_file_info_mut(&handle)?;
     let mut record_contents = String::new();

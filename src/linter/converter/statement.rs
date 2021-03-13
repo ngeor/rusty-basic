@@ -75,6 +75,14 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             Statement::SubCall(n, args) => {
                 self.sub_call(n.at(pos), args).map(|(x, y)| (Some(x), y))
             }
+            Statement::BuiltInSubCall(built_in_sub, args) => {
+                let (converted_args, implicits) =
+                    self.context.on_expressions(args, ExprContext::Parameter)?;
+                Ok((
+                    Some(Statement::BuiltInSubCall(built_in_sub, converted_args).at(pos)),
+                    implicits,
+                ))
+            }
             Statement::IfBlock(i) => self
                 .convert_and_collect_implicit_variables(i)
                 .map(|(i, implicit_vars)| (Some(Statement::IfBlock(i).at(pos)), implicit_vars)),
@@ -151,7 +159,6 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                 .map(|(lset_node, implicit_vars)| {
                     (Some(Statement::LSet(lset_node).at(pos)), implicit_vars)
                 }),
-            Statement::BuiltInSubCall(_, _) => panic!("parser should not have created this"),
             Statement::OnError(_)
             | Statement::Label(_)
             | Statement::GoTo(_)

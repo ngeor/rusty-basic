@@ -30,6 +30,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::types::*;
 
@@ -53,8 +54,8 @@ mod tests {
                     "Enter the number of fibonacci to calculate".as_lit_expr(2, 7)
                 ))),
                 // INPUT N
-                TopLevelToken::Statement(Statement::SubCall(
-                    BareName::from("INPUT"),
+                TopLevelToken::Statement(Statement::BuiltInSubCall(
+                    BuiltInSub::Input,
                     vec![
                         0.as_lit_expr(1, 1), // no file number
                         "N".as_var_expr(3, 7)

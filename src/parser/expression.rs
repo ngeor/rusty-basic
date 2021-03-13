@@ -890,7 +890,7 @@ mod tests {
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::{Expression, ExpressionType, Operator, Statement, UnaryOperator};
-    use crate::{assert_expression, assert_literal_expression, assert_sub_call};
+    use crate::{assert_expression, assert_literal_expression};
 
     #[test]
     fn test_parse_literals() {
@@ -1430,25 +1430,25 @@ mod tests {
     mod file_handle {
         use super::*;
 
-        #[test]
-        fn test_file_handle_one() {
-            let input = "CLOSE #1";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(1));
+        macro_rules! assert_file_handle {
+            ($input:expr, $expected_file_handle:expr) => {
+                let result: Statement = parse($input).demand_single_statement();
+                match result {
+                    Statement::BuiltInSubCall(_, args) => {
+                        assert_eq!(args[0], Expression::IntegerLiteral($expected_file_handle));
+                    }
+                    _ => {
+                        panic!("Expected built-in sub call");
+                    }
+                }
+            };
         }
 
         #[test]
-        fn test_file_handle_two() {
-            let input = "CLOSE #2";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(2));
-        }
-
-        #[test]
-        fn test_file_handle_max() {
-            let input = "CLOSE #255";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(255));
+        fn test_valid_file_handles() {
+            assert_file_handle!("CLOSE #1", 1);
+            assert_file_handle!("CLOSE #2", 2);
+            assert_file_handle!("CLOSE #255", 255); // max value
         }
 
         #[test]

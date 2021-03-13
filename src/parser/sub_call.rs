@@ -137,6 +137,7 @@ mod tests {
     };
 
     use super::super::test_utils::*;
+    use crate::built_ins::BuiltInSub;
 
     #[test]
     fn test_parse_sub_call_no_args() {
@@ -202,8 +203,8 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::SubCall(
-                    "INPUT".into(),
+                TopLevelToken::Statement(Statement::BuiltInSubCall(
+                    BuiltInSub::Input,
                     vec![
                         0.as_lit_expr(1, 1), // no file number
                         "N".as_var_expr(1, 7)
@@ -327,31 +328,6 @@ mod tests {
                     .at_rc(5, 13)],
                     is_static: false
                 })
-            ]
-        );
-    }
-
-    #[test]
-    fn test_close_file_handle() {
-        let input = "CLOSE #1";
-        let program = parse(input).demand_single_statement();
-        assert_sub_call!(program, "CLOSE", Expression::IntegerLiteral(1));
-    }
-
-    #[test]
-    fn test_inline_comment() {
-        let input = "CLOSE #1 ' closes the file";
-        let program = parse(input);
-        assert_eq!(
-            program,
-            vec![
-                TopLevelToken::Statement(Statement::SubCall(
-                    "CLOSE".into(),
-                    vec![1.as_lit_expr(1, 7)]
-                ))
-                .at_rc(1, 1),
-                TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))
-                    .at_rc(1, 10)
             ]
         );
     }

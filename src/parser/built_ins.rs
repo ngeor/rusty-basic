@@ -41,7 +41,7 @@ mod close {
                     args.push(first);
                     args.extend(opt_remaining.unwrap_or_default());
                 }
-                Statement::SubCall(BuiltInSub::Close.into(), args)
+                Statement::BuiltInSubCall(BuiltInSub::Close, args)
             })
     }
 
@@ -55,7 +55,10 @@ mod close {
         fn test_no_args() {
             let input = "CLOSE";
             let statement = parse(input).demand_single_statement();
-            assert_eq!(statement, Statement::SubCall("CLOSE".into(), vec![]));
+            assert_eq!(
+                statement,
+                Statement::BuiltInSubCall(BuiltInSub::Close, vec![])
+            );
         }
 
         #[test]
@@ -64,7 +67,7 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall("CLOSE".into(), vec![1.as_lit_expr(1, 7)])
+                Statement::BuiltInSubCall(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
             );
         }
 
@@ -81,8 +84,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![Expression::Parenthesis(Box::new(1.as_lit_expr(1, 8))).at_rc(1, 7)]
                 )
             );
@@ -94,8 +97,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![Expression::Parenthesis(Box::new(1.as_lit_expr(1, 7))).at_rc(1, 6)]
                 )
             );
@@ -107,7 +110,7 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall("CLOSE".into(), vec![1.as_lit_expr(1, 7)])
+                Statement::BuiltInSubCall(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
             );
         }
 
@@ -140,8 +143,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
                 )
             );
@@ -153,8 +156,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
                 )
             );
@@ -166,8 +169,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
                 )
             );
@@ -179,8 +182,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 9)]
                 )
             );
@@ -192,8 +195,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
                 )
             );
@@ -205,8 +208,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
                 )
             );
@@ -218,8 +221,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 12)]
                 )
             );
@@ -231,10 +234,28 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
                 )
+            );
+        }
+
+        #[test]
+        fn test_close_inline_comment() {
+            let input = "CLOSE #1 ' closes the file";
+            let program = parse(input);
+            assert_eq!(
+                program,
+                vec![
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Close,
+                        vec![1.as_lit_expr(1, 7)]
+                    ))
+                    .at_rc(1, 1),
+                    TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))
+                        .at_rc(1, 10)
+                ]
             );
         }
     }
@@ -269,14 +290,14 @@ mod input {
                     args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
                 }
                 args.extend(variables);
-                Statement::SubCall(BuiltInSub::Input.into(), args)
+                Statement::BuiltInSubCall(BuiltInSub::Input, args)
             })
     }
 
     #[cfg(test)]
     mod tests {
+        use crate::assert_built_in_sub_call;
         use crate::assert_parser_err;
-        use crate::assert_sub_call;
         use crate::parser::test_utils::*;
 
         use super::*;
@@ -284,10 +305,9 @@ mod input {
         #[test]
         fn test_parse_one_variable() {
             let input = "INPUT A$";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(0), // no file number
                 Expression::var_unresolved("A$")
             );
@@ -296,10 +316,9 @@ mod input {
         #[test]
         fn test_parse_two_variables() {
             let input = "INPUT A$, B";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(0), // no file number
                 Expression::var_unresolved("A$"),
                 Expression::var_unresolved("B")
@@ -327,10 +346,9 @@ mod input {
         #[test]
         fn test_file_hash_one_variable_space_after_comma() {
             let input = "INPUT #1, A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::var_unresolved("A")
@@ -340,10 +358,9 @@ mod input {
         #[test]
         fn test_file_hash_one_variable_no_comma() {
             let input = "INPUT #2,A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(2), // file number
                 Expression::var_unresolved("A")
@@ -353,10 +370,9 @@ mod input {
         #[test]
         fn test_file_hash_one_variable_space_before_comma() {
             let input = "INPUT #3 ,A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(3), // file number
                 Expression::var_unresolved("A")
@@ -391,14 +407,14 @@ mod line_input {
                 }
                 // add the LINE INPUT variable
                 args.push(variable);
-                Statement::SubCall(BuiltInSub::LineInput.into(), args)
+                Statement::BuiltInSubCall(BuiltInSub::LineInput, args)
             })
     }
 
     #[cfg(test)]
     mod tests {
+        use crate::assert_built_in_sub_call;
         use crate::assert_parser_err;
-        use crate::assert_sub_call;
         use crate::parser::test_utils::*;
 
         use super::*;
@@ -406,10 +422,9 @@ mod line_input {
         #[test]
         fn test_parse_one_variable() {
             let input = "LINE INPUT A$";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::LineInput,
                 Expression::IntegerLiteral(0), // no file number
                 Expression::var_unresolved("A$")
             );
@@ -442,10 +457,9 @@ mod line_input {
         #[test]
         fn test_file_hash_one_variable_space_after_comma() {
             let input = "LINE INPUT #1, A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::LineInput,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::var_unresolved("A")
@@ -455,10 +469,9 @@ mod line_input {
         #[test]
         fn test_file_hash_one_variable_no_comma() {
             let input = "LINE INPUT #2,A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::LineInput,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(2), // file number
                 Expression::var_unresolved("A")
@@ -468,10 +481,9 @@ mod line_input {
         #[test]
         fn test_file_hash_one_variable_space_before_comma() {
             let input = "LINE INPUT #1 ,A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::LineInput,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::var_unresolved("A")
@@ -494,7 +506,7 @@ mod name {
             .and_demand(keyword_p(Keyword::As).or_syntax_error("Expected: AS"))
             .keep_middle()
             .and_demand(guarded_expression_node_p().or_syntax_error("Expected: new file name"))
-            .map(|(l, r)| Statement::SubCall(BuiltInSub::Name.into(), vec![l, r]))
+            .map(|(l, r)| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]))
     }
 }
 
@@ -518,8 +530,8 @@ mod open {
             .and_opt(parse_len_p())
             .map(
                 |(((((_, file_name), opt_file_mode), opt_file_access), file_number), opt_len)| {
-                    Statement::SubCall(
-                        BuiltInSub::Open.into(),
+                    Statement::BuiltInSubCall(
+                        BuiltInSub::Open,
                         vec![
                             file_name,
                             map_opt_locatable_enum(opt_file_mode, FileMode::Random),
@@ -653,8 +665,8 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_INPUT.as_lit_expr(1, 21),
@@ -672,8 +684,8 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
                         FILE_MODE_INPUT.as_lit_expr(1, 21),
@@ -691,8 +703,8 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_INPUT.as_lit_expr(1, 21),
@@ -710,8 +722,8 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_RANDOM.as_lit_expr(1, 1),
@@ -729,8 +741,8 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_RANDOM.as_lit_expr(1, 1),
@@ -748,8 +760,8 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
                         FILE_MODE_RANDOM.as_lit_expr(1, 1),
@@ -767,8 +779,8 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
                         FILE_MODE_RANDOM.as_lit_expr(1, 1),
@@ -797,8 +809,8 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "A.TXT".as_lit_expr(1, 6),
                         FILE_MODE_RANDOM.as_lit_expr(1, 18),

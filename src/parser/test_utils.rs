@@ -179,6 +179,32 @@ macro_rules! assert_sub_call {
 }
 
 #[macro_export]
+macro_rules! assert_built_in_sub_call {
+    ($input: expr, $expected_name: expr) => {
+        let result = parse($input).demand_single_statement();
+        match result {
+            Statement::BuiltInSubCall(actual_name, actual_args) => {
+                assert_eq!(actual_name, $expected_name);
+                assert!(actual_args.is_empty(), "Expected no args");
+            }
+            _ => panic!("Expected built-in sub call {:?}", $expected_name)
+        }
+    };
+
+    ($input: expr, $expected_name: expr, $($arg: expr),+) => {
+        let result = parse($input).demand_single_statement();
+        match result {
+            Statement::BuiltInSubCall(actual_name, actual_args) => {
+                assert_eq!(actual_name, $expected_name);
+                let actual_args_no_loc: Vec<crate::parser::types::Expression> = actual_args.into_iter().map(|x| x.strip_location()).collect();
+                assert_eq!(actual_args_no_loc, vec![$($arg),+]);
+            }
+            _ => panic!("Expected built-in sub call {:?}", $expected_name)
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! assert_expression {
     ($left:expr, $right:expr) => {
         let program = parse(format!("Flint {}", $left)).demand_single_statement();

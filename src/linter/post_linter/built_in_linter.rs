@@ -19,12 +19,15 @@ impl PostConversionLinter for BuiltInLinter {
         match built_in_sub {
             BuiltInSub::Close => close::lint(args),
             BuiltInSub::Environ => environ_sub::lint(args),
+            BuiltInSub::Field => todo!(),
+            BuiltInSub::Get => todo!(),
             BuiltInSub::Input => input::lint(args),
             BuiltInSub::Kill => kill::lint(args),
             BuiltInSub::LineInput => line_input::lint(args),
             BuiltInSub::LSet => lset::lint(args),
             BuiltInSub::Name => name::lint(args),
             BuiltInSub::Open => open::lint(args),
+            BuiltInSub::Put => todo!(),
         }
     }
 

@@ -178,12 +178,15 @@ fn demand_unqualified(
 pub enum BuiltInSub {
     Close,
     Environ,
+    Field,
+    Get,
     Input,
     Kill,
     LineInput,
     LSet,
     Name,
     Open,
+    Put,
 }
 
 impl BuiltInSub {

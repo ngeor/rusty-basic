@@ -1,9 +1,6 @@
-use super::{AddressOrLabel, Instruction, InstructionGenerator, InternalBuiltInSub, Visitor};
+use super::{AddressOrLabel, Instruction, InstructionGenerator, Visitor};
 use crate::common::*;
-use crate::parser::{
-    FieldItem, FieldNode, GetPutNode, OnErrorOption, ResumeOption, Statement, StatementNode,
-    StatementNodes,
-};
+use crate::parser::{OnErrorOption, ResumeOption, Statement, StatementNode, StatementNodes};
 
 impl Visitor<StatementNodes> for InstructionGenerator {
     fn visit(&mut self, block: StatementNodes) {
@@ -36,70 +33,6 @@ impl Visitor<StatementNode> for InstructionGenerator {
             }
             Statement::Print(print_node) => {
                 self.generate_print_instructions(print_node, pos);
-            }
-            Statement::Field(FieldNode {
-                file_number:
-                    Locatable {
-                        element: file_number,
-                        ..
-                    },
-                fields,
-            }) => {
-                self.push(Instruction::BeginCollectArguments, pos);
-                self.push_load_unnamed_arg(file_number, pos);
-                for FieldItem { width, name } in fields {
-                    // calculate width into A
-                    self.generate_expression_instructions(width);
-                    self.push(Instruction::PushAToUnnamedArg, pos);
-                    // push bare name into A
-                    self.push_load_unnamed_arg(String::from(name.bare_name().clone()), name.pos);
-                }
-                self.push(Instruction::PushStack, pos);
-                self.push(
-                    Instruction::InternalBuiltInSub(InternalBuiltInSub::Field),
-                    pos,
-                );
-                self.push(Instruction::PopStack, pos);
-            }
-            Statement::Get(GetPutNode {
-                file_number:
-                    Locatable {
-                        element: file_number,
-                        ..
-                    },
-                record_number,
-                ..
-            }) => {
-                self.push(Instruction::BeginCollectArguments, pos);
-                self.push_load_unnamed_arg(file_number, pos);
-                self.generate_expression_instructions(record_number.unwrap());
-                self.push(Instruction::PushAToUnnamedArg, pos);
-                self.push(Instruction::PushStack, pos);
-                self.push(
-                    Instruction::InternalBuiltInSub(InternalBuiltInSub::Get),
-                    pos,
-                );
-                self.push(Instruction::PopStack, pos);
-            }
-            Statement::Put(GetPutNode {
-                file_number:
-                    Locatable {
-                        element: file_number,
-                        ..
-                    },
-                record_number,
-                ..
-            }) => {
-                self.push(Instruction::BeginCollectArguments, pos);
-                self.push_load_unnamed_arg(file_number, pos);
-                self.generate_expression_instructions(record_number.unwrap());
-                self.push(Instruction::PushAToUnnamedArg, pos);
-                self.push(Instruction::PushStack, pos);
-                self.push(
-                    Instruction::InternalBuiltInSub(InternalBuiltInSub::Put),
-                    pos,
-                );
-                self.push(Instruction::PopStack, pos);
             }
             Statement::IfBlock(i) => self.generate_if_block_instructions(i, pos),
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),

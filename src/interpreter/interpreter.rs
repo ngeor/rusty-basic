@@ -337,10 +337,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
                 built_ins::run_sub(s, self)?;
             }
-            Instruction::InternalBuiltInSub(s) => {
-                // patching error pos because some built-in subs drop the stack
-                built_ins::rub_internal_built_in_sub(s, self).patch_err_pos(pos)?;
-            }
             Instruction::BuiltInFunction(f) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
                 built_ins::run_function(f, self)?;

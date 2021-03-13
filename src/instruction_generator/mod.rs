@@ -148,7 +148,6 @@ pub enum Instruction {
     ResumeLabel(AddressOrLabel),
 
     BuiltInSub(BuiltInSub),
-    InternalBuiltInSub(InternalBuiltInSub),
     BuiltInFunction(BuiltInFunction),
     Halt,
 
@@ -458,11 +457,4 @@ impl InstructionGenerator {
 
 pub trait Visitor<T> {
     fn visit(&mut self, item: T);
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum InternalBuiltInSub {
-    Field,
-    Get,
-    Put,
 }

@@ -67,9 +67,6 @@ pub enum Statement {
      * Special statements
      */
     Print(PrintNode),
-    Field(FieldNode),
-    Get(GetPutNode),
-    Put(GetPutNode),
 }
 
 /// A list of variables defined in a DIM statement.
@@ -178,23 +175,4 @@ pub enum DoLoopConditionPosition {
 pub enum DoLoopConditionKind {
     Until,
     While,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct FieldNode {
-    pub file_number: Locatable<FileHandle>,
-    pub fields: Vec<FieldItem>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct FieldItem {
-    pub width: ExpressionNode,
-    pub name: NameNode,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct GetPutNode {
-    pub file_number: Locatable<FileHandle>,
-    pub record_number: Option<ExpressionNode>, // must be LONG
-    pub variable: Option<ExpressionNode>,
 }

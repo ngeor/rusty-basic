@@ -19,15 +19,15 @@ impl PostConversionLinter for BuiltInLinter {
         match built_in_sub {
             BuiltInSub::Close => close::lint(args),
             BuiltInSub::Environ => environ_sub::lint(args),
-            BuiltInSub::Field => todo!(),
-            BuiltInSub::Get => todo!(),
+            BuiltInSub::Field => field::lint(args),
+            BuiltInSub::Get => get::lint(args),
             BuiltInSub::Input => input::lint(args),
             BuiltInSub::Kill => kill::lint(args),
             BuiltInSub::LineInput => line_input::lint(args),
             BuiltInSub::LSet => lset::lint(args),
             BuiltInSub::Name => name::lint(args),
             BuiltInSub::Open => open::lint(args),
-            BuiltInSub::Put => todo!(),
+            BuiltInSub::Put => put::lint(args),
         }
     }
 
@@ -87,6 +87,43 @@ mod environ_sub {
         } else {
             Ok(())
         }
+    }
+}
+
+mod field {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // needs to be 1 + N*3 args, N >= 1
+        // first is the file number
+        // then the fields: width, variable name, variable
+        if args.len() < 4 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        if (args.len() - 1) % 3 != 0 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        require_integer_argument(args, 0)?;
+        let mut i: usize = 1;
+        while i < args.len() {
+            require_integer_argument(args, i)?;
+            require_string_argument(args, i + 1)?;
+            require_string_variable(args, i + 2)?;
+            i += 3;
+        }
+        Ok(())
+    }
+}
+
+mod get {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        if args.len() != 2 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        require_integer_argument(args, 0)?;
+        require_integer_argument(args, 1)
     }
 }
 
@@ -298,30 +335,10 @@ mod lset {
         if args.len() != 3 {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
-        if !args[0].can_cast_to(TypeQualifier::DollarString) {
-            return Err(QError::ArgumentTypeMismatch).with_err_at(&args[0]);
-        }
-        match args[1].as_ref() {
-            Expression::Variable(
-                _,
-                VariableInfo {
-                    expression_type, ..
-                },
-            ) => {
-                // TODO ensure LSET is operating on variables previously used by FIELD in this scope
-                if let ExpressionType::BuiltIn(TypeQualifier::DollarString) = expression_type {
-                } else {
-                    return Err(QError::ArgumentTypeMismatch).with_err_at(&args[1]);
-                }
-            }
-            _ => {
-                return Err(QError::VariableRequired).with_err_at(&args[1]);
-            }
-        }
-        if !args[2].can_cast_to(TypeQualifier::DollarString) {
-            return Err(QError::ArgumentTypeMismatch).with_err_at(&args[0]);
-        }
-        Ok(())
+        require_string_argument(args, 0)?;
+        // TODO ensure LSET is operating on variables previously used by FIELD in this scope
+        require_string_variable(args, 1)?;
+        require_string_argument(args, 2)
     }
 }
 
@@ -377,6 +394,14 @@ mod open {
             let program = r#"OPEN "a.txt" AS #1 LEN = "hi""#;
             assert_linter_err!(program, QError::ArgumentTypeMismatch, 1, 26);
         }
+    }
+}
+
+mod put {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        super::get::lint(args)
     }
 }
 
@@ -542,5 +567,19 @@ fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<()
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
+    }
+}
+
+fn require_string_variable(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
+    match args[idx].as_ref() {
+        Expression::Variable(
+            _,
+            VariableInfo {
+                expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
+                ..
+            },
+        ) => Ok(()),
+        Expression::Variable(_, _) => Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx]),
+        _ => Err(QError::VariableRequired).with_err_at(&args[idx]),
     }
 }

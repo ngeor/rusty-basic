@@ -104,6 +104,7 @@ where
 
 mod field {
     use super::*;
+    use crate::built_ins::BuiltInSub;
     use crate::parser::expression;
 
     pub fn parse_field_p<R>() -> impl Parser<R, Output = Statement>
@@ -113,10 +114,9 @@ mod field {
         keyword_p(Keyword::Field)
             .and_demand(field_node_p().or_syntax_error("Expected: file number after FIELD"))
             .keep_right()
-            .map(Statement::Field)
     }
 
-    fn field_node_p<R>() -> impl Parser<R, Output = FieldNode>
+    fn field_node_p<R>() -> impl Parser<R, Output = Statement>
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
@@ -132,18 +132,17 @@ mod field {
                     .csv()
                     .or_syntax_error("Expected: field width"),
             )
-            .map(|(((_, file_number), _), fields)| FieldNode {
-                file_number,
-                fields,
+            .map(|(((_, file_number), _), fields)| {
+                Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
             })
     }
 
-    fn field_item_p<R>() -> impl Parser<R, Output = FieldItem>
+    fn field_item_p<R>() -> impl Parser<R, Output = (ExpressionNode, NameNode)>
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         expression::expression_node_p()
-            // TODO AS does not need leading whitespace if expression has parenthesis
+            // TODO 'AS' does not need leading whitespace if expression has parenthesis
             // TODO solve this not by peeking the previous but with a new expression:: function
             .and_demand(
                 keyword_p(Keyword::As)
@@ -155,7 +154,23 @@ mod field {
                     .with_pos()
                     .or_syntax_error("Expected: variable name"),
             )
-            .map(|((width, _), name)| FieldItem { width, name })
+            .map(|((width, _), name)| (width, name))
+    }
+
+    fn build_args(
+        file_number: Locatable<FileHandle>,
+        fields: Vec<(ExpressionNode, NameNode)>,
+    ) -> ExpressionNodes {
+        let mut args: ExpressionNodes = vec![];
+        args.push(file_number.map(|x| Expression::IntegerLiteral(x.into())));
+        for (width, Locatable { element: name, pos }) in fields {
+            args.push(width);
+            let variable_name: String = name.bare_name().as_ref().to_string();
+            args.push(Expression::StringLiteral(variable_name).at(pos));
+            // to lint the variable, not used at runtime
+            args.push(Expression::Variable(name, VariableInfo::unresolved()).at(pos));
+        }
+        args
     }
 }
 
@@ -202,6 +217,7 @@ mod lset {
 
 mod get {
     use super::*;
+    use crate::built_ins::BuiltInSub;
     use crate::parser::expression;
 
     pub fn parse_get_p<R>() -> impl Parser<R, Output = Statement>
@@ -217,17 +233,17 @@ mod get {
             )
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
             .map(|(((_, file_number), _), r)| {
-                Statement::Get(GetPutNode {
-                    file_number,
-                    record_number: Some(r),
-                    variable: None,
-                })
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Get,
+                    vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],
+                )
             })
     }
 }
 
 mod put {
     use super::*;
+    use crate::built_ins::BuiltInSub;
     use crate::parser::expression;
 
     pub fn parse_put_p<R>() -> impl Parser<R, Output = Statement>
@@ -243,11 +259,10 @@ mod put {
             )
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
             .map(|(((_, file_number), _), r)| {
-                Statement::Put(GetPutNode {
-                    file_number,
-                    record_number: Some(r),
-                    variable: None,
-                })
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Put,
+                    vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],
+                )
             })
     }
 }

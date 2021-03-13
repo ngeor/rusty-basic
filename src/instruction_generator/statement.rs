@@ -79,7 +79,7 @@ impl Visitor<StatementNode> for InstructionGenerator {
                     Instruction::InternalBuiltInSub(InternalBuiltInSub::Get),
                     pos,
                 );
-                // pop stack happens internally in the sub
+                self.push(Instruction::PopStack, pos);
             }
             Statement::Put(GetPutNode {
                 file_number:
@@ -99,7 +99,7 @@ impl Visitor<StatementNode> for InstructionGenerator {
                     Instruction::InternalBuiltInSub(InternalBuiltInSub::Put),
                     pos,
                 );
-                // pop stack happens internally in the sub
+                self.push(Instruction::PopStack, pos);
             }
             Statement::IfBlock(i) => self.generate_if_block_instructions(i, pos),
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),

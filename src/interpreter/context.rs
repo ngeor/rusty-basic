@@ -91,11 +91,39 @@ impl Context {
             .variables
     }
 
+    pub fn caller_variables(&self) -> &Variables {
+        debug_assert!(self.states.len() >= 2);
+        let caller_state = self
+            .states
+            .get(self.states.len() - 2)
+            .expect("Should have caller state");
+        let memory_block_index = caller_state.memory_block_index;
+        &self
+            .memory_blocks
+            .get(memory_block_index)
+            .expect("internal error")
+            .variables
+    }
+
     pub fn variables_mut(&mut self) -> &mut Variables {
         let current_memory_block_index = self.current_memory_block_index();
         &mut self
             .memory_blocks
             .get_mut(current_memory_block_index)
+            .expect("internal error")
+            .variables
+    }
+
+    pub fn caller_variables_mut(&mut self) -> &mut Variables {
+        debug_assert!(self.states.len() >= 2);
+        let caller_state = self
+            .states
+            .get(self.states.len() - 2)
+            .expect("Should have caller state");
+        let memory_block_index = caller_state.memory_block_index;
+        &mut self
+            .memory_blocks
+            .get_mut(memory_block_index)
             .expect("internal error")
             .variables
     }

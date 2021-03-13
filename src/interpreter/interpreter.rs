@@ -146,11 +146,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     fn var_path_stack(&mut self) -> &mut VecDeque<Path> {
         &mut self.var_path_stack
     }
-
-    fn pop_context(&mut self) {
-        self.context.pop();
-        self.stacktrace.remove(0);
-    }
 }
 
 pub type DefaultInterpreter = Interpreter<
@@ -317,7 +312,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.stacktrace.insert(0, pos);
             }
             Instruction::PopStack => {
-                self.pop_context();
+                self.context.pop();
+                self.stacktrace.remove(0);
             }
             Instruction::EnqueueToReturnStack(idx) => {
                 subprogram::enqueue_to_return_stack(self, idx);

@@ -80,7 +80,6 @@ pub fn rub_internal_built_in_sub<S: InterpreterTrait>(
         InternalBuiltInSub::Get => {
             let handle = FileHandle::try_from(&interpreter.context()[0]).with_err_no_pos()?;
             let record_number = i32::try_from(&interpreter.context()[1]).with_err_no_pos()?;
-            interpreter.pop_context();
             let file_info = interpreter
                 .file_manager()
                 .try_get_file_info_mut(&handle)
@@ -104,12 +103,11 @@ pub fn rub_internal_built_in_sub<S: InterpreterTrait>(
                         }
                     }
                     let v = Variant::VString(s);
-                    // set variable
-                    interpreter.context_mut().variables_mut().insert_built_in(
-                        BareName::from(name),
-                        TypeQualifier::DollarString,
-                        v,
-                    );
+                    // set variable in parent context, because we're inside the context of the built-in sub
+                    interpreter
+                        .context_mut()
+                        .caller_variables_mut()
+                        .insert_built_in(BareName::from(name), TypeQualifier::DollarString, v);
                     // shift to next offset
                     start += width_usize;
                 }
@@ -119,7 +117,6 @@ pub fn rub_internal_built_in_sub<S: InterpreterTrait>(
         InternalBuiltInSub::Put => {
             let handle = FileHandle::try_from(&interpreter.context()[0]).with_err_no_pos()?;
             let record_number = i32::try_from(&interpreter.context()[1]).with_err_no_pos()?;
-            interpreter.pop_context();
             let file_info = interpreter
                 .file_manager()
                 .try_get_file_info_mut(&handle)
@@ -136,7 +133,7 @@ pub fn rub_internal_built_in_sub<S: InterpreterTrait>(
                 let width_usize: usize = width as usize;
                 let v = interpreter
                     .context()
-                    .variables()
+                    .caller_variables()
                     .get_built_in(&BareName::from(name.as_str()), TypeQualifier::DollarString)
                     .ok_or(QError::VariableRequired)
                     .with_err_no_pos()?;

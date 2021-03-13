@@ -60,9 +60,4 @@ pub trait InterpreterTrait {
     fn set_function_result(&mut self, v: Variant);
 
     fn var_path_stack(&mut self) -> &mut VecDeque<Path>;
-
-    /// Pops the current context. Exposed via the trait only for built-ins like
-    /// LSET that need to drop back to the original context after collecting their
-    /// arguments.
-    fn pop_context(&mut self);
 }

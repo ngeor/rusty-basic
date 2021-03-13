@@ -19,9 +19,16 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
         .with_err_no_pos()?
         .into();
     let file_handle: FileHandle = (&interpreter.context()[3]).try_into().with_err_no_pos()?;
+    let rec_len: i32 = (&interpreter.context()[4]).try_into().with_err_no_pos()?;
     interpreter
         .file_manager()
-        .open(file_handle, &file_name, file_mode, file_access)
+        .open(
+            file_handle,
+            &file_name,
+            file_mode,
+            file_access,
+            rec_len as usize,
+        )
         .with_err_no_pos()
 }
 
@@ -126,9 +133,9 @@ mod tests {
     }
 
     #[test]
-    fn open_random_file() {
+    fn open_random_file_field_lset_put() {
         let input = r#"
-        OPEN "open_random_file.txt" FOR RANDOM AS #1 LEN = 64
+        OPEN "rnd1.txt" FOR RANDOM AS #1 LEN = 64
         FIELD #1, 10 AS FirstName$, 20 AS LastName$
         LSET FirstName$ = "Nikos"
         LSET LastName$ = "Georgiou"
@@ -136,7 +143,27 @@ mod tests {
         CLOSE
         "#;
         interpret(input);
-        let contents = read_and_remove("open_random_file.txt");
-        assert_eq!(contents, "Nikos     Georgiou            ");
+        let contents = read_and_remove("rnd1.txt");
+        assert_eq!(contents, "Nikos\0\0\0\0\0Georgiou\0\0\0\0\0\0\0\0\0\0\0\0");
+    }
+
+    #[test]
+    fn open_random_file_field_lset_put_get() {
+        let input = r#"
+        OPEN "rnd2.txt" FOR RANDOM AS #1 LEN = 15
+        FIELD #1, 10 AS FirstName$, 5 AS LastName$
+        LSET FirstName$ = "Nikos"
+        LSET LastName$ = "Georgiou"
+        PUT #1, 1
+        LSET FirstName$ = "Someone"
+        LSET LastName$ = "Else"
+        PUT #1, 2
+        GET #1, 1
+        PRINT FirstName$; LastName$
+        CLOSE
+        "#;
+        assert_prints!(input, "NikosGeorg");
+        let contents = read_and_remove("rnd2.txt");
+        assert_eq!(contents, "Nikos\0\0\0\0\0GeorgSomeone\0\0\0Else\0");
     }
 }

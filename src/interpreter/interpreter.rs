@@ -146,6 +146,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     fn var_path_stack(&mut self) -> &mut VecDeque<Path> {
         &mut self.var_path_stack
     }
+
+    fn pop_context(&mut self) {
+        self.context.pop();
+        self.stacktrace.remove(0);
+    }
 }
 
 pub type DefaultInterpreter = Interpreter<
@@ -312,8 +317,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.stacktrace.insert(0, pos);
             }
             Instruction::PopStack => {
-                self.context.pop();
-                self.stacktrace.remove(0);
+                self.pop_context();
             }
             Instruction::EnqueueToReturnStack(idx) => {
                 subprogram::enqueue_to_return_stack(self, idx);
@@ -333,13 +337,17 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::PushNamed(param_name) => {
                 subprogram::push_a_to_named_arg(self, param_name);
             }
-            Instruction::BuiltInSub(n) => {
+            Instruction::BuiltInSub(s) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                built_ins::run_sub(n, self)?;
+                built_ins::run_sub(s, self)?;
             }
-            Instruction::BuiltInFunction(n) => {
+            Instruction::InternalBuiltInSub(s) => {
+                // patching error pos because some built-in subs drop the stack
+                built_ins::rub_internal_built_in_sub(s, self).patch_err_pos(pos)?;
+            }
+            Instruction::BuiltInFunction(f) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                built_ins::run_function(n, self)?;
+                built_ins::run_function(f, self)?;
             }
             Instruction::Label(_) => (), // no-op
             Instruction::Halt => {

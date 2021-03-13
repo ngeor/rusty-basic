@@ -12,7 +12,7 @@
 // after the user presses the Enter key.
 
 use super::*;
-use crate::common::{FileHandle, QError};
+use crate::common::FileHandle;
 use crate::interpreter::input::Input;
 use crate::parser::TypeQualifier;
 use crate::variant::Variant;

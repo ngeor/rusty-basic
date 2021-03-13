@@ -11,26 +11,19 @@ use super::*;
 use crate::common::{FileAccess, FileHandle, FileMode};
 use std::convert::{TryFrom, TryInto};
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let file_name: String = (&interpreter.context()[0]).to_string();
-    let file_mode: FileMode = u8::try_from(&interpreter.context()[1])
-        .with_err_no_pos()?
-        .into();
-    let file_access: FileAccess = u8::try_from(&interpreter.context()[2])
-        .with_err_no_pos()?
-        .into();
-    let file_handle: FileHandle = (&interpreter.context()[3]).try_into().with_err_no_pos()?;
-    let rec_len: i32 = (&interpreter.context()[4]).try_into().with_err_no_pos()?;
-    interpreter
-        .file_manager()
-        .open(
-            file_handle,
-            &file_name,
-            file_mode,
-            file_access,
-            rec_len as usize,
-        )
-        .with_err_no_pos()
+    let file_mode: FileMode = u8::try_from(&interpreter.context()[1])?.into();
+    let file_access: FileAccess = u8::try_from(&interpreter.context()[2])?.into();
+    let file_handle: FileHandle = (&interpreter.context()[3]).try_into()?;
+    let rec_len: i32 = (&interpreter.context()[4]).try_into()?;
+    interpreter.file_manager().open(
+        file_handle,
+        &file_name,
+        file_mode,
+        file_access,
+        rec_len as usize,
+    )
 }
 
 #[cfg(test)]

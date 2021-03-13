@@ -1,6 +1,6 @@
 // EOF(file-number%) -> checks if the end of file has been reached
 use super::*;
-use crate::common::{FileHandle, QError};
+use crate::common::FileHandle;
 use crate::interpreter::input::Input;
 use std::convert::TryFrom;
 

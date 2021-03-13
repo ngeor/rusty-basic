@@ -4,14 +4,13 @@
 // MID$(str_var$, start%[, length%]) = str_expr$
 // if the length is omitted, returns or replaces all remaining characters
 use super::*;
-use crate::common::QError;
 use std::convert::TryInto;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let s: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
-    let start: i32 = (&interpreter.context()[1]).try_into().with_err_no_pos()?;
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+    let s: &String = (&interpreter.context()[0]).try_into()?;
+    let start: i32 = (&interpreter.context()[1]).try_into()?;
     let length: Option<i32> = match interpreter.context().variables().get(2) {
-        Some(v) => Some(v.try_into().with_err_no_pos()?),
+        Some(v) => Some(v.try_into()?),
         None => None,
     };
     let result: String = do_mid(s, start, length)?;
@@ -21,15 +20,15 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     Ok(())
 }
 
-fn do_mid(s: &String, start: i32, opt_length: Option<i32>) -> Result<String, QErrorNode> {
+fn do_mid(s: &String, start: i32, opt_length: Option<i32>) -> Result<String, QError> {
     if start <= 0 {
-        Err(QError::IllegalFunctionCall).with_err_no_pos()
+        Err(QError::IllegalFunctionCall)
     } else {
         let start_idx: usize = (start - 1) as usize;
         match opt_length {
             Some(length) => {
                 if length < 0 {
-                    Err(QError::IllegalFunctionCall).with_err_no_pos()
+                    Err(QError::IllegalFunctionCall)
                 } else {
                     let end: usize = if start_idx + (length as usize) > s.len() {
                         s.len()

@@ -1,7 +1,6 @@
 // ENVIRON str-expr$ -> sets the variable.
 // Parameter must be in the form of name=value or name value (TODO support the latter)
 use super::*;
-use crate::common::QError;
 use crate::interpreter::stdlib::Stdlib;
 use std::convert::TryInto;
 

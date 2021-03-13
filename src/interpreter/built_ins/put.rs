@@ -1,5 +1,5 @@
 use super::*;
-use crate::common::{FileHandle, QError};
+use crate::common::FileHandle;
 use crate::interpreter::io::Field;
 use crate::parser::{BareName, TypeQualifier};
 use crate::variant::Variant;

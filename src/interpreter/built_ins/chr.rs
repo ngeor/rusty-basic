@@ -2,8 +2,8 @@
 use super::*;
 use std::convert::TryFrom;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let i: i32 = i32::try_from(&interpreter.context()[0]).with_err_no_pos()?;
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+    let i: i32 = i32::try_from(&interpreter.context()[0])?;
     let mut s: String = String::new();
     s.push((i as u8) as char);
     interpreter

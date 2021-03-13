@@ -1,13 +1,12 @@
 // VAL(str-expr$) converts a string representation of a number to a number.
 
 use super::*;
-use crate::common::QError;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
 use std::convert::TryInto;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let v: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
-    let result: Variant = val(v).with_err_no_pos()?;
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+    let v: &String = (&interpreter.context()[0]).try_into()?;
+    let result: Variant = val(v)?;
     interpreter
         .context_mut()
         .set_built_in_function_result(BuiltInFunction::Val, result);

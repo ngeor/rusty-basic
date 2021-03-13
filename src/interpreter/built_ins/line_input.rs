@@ -3,7 +3,7 @@
 // LINE INPUT #file-number%, variable$
 
 use super::*;
-use crate::common::{FileHandle, QError};
+use crate::common::FileHandle;
 use crate::interpreter::input::Input;
 use crate::variant::Variant;
 use std::convert::TryFrom;

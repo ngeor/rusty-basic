@@ -3,11 +3,9 @@
 use super::*;
 use std::convert::TryInto;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let file_name: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
-    std::fs::remove_file(file_name)
-        .map_err(|e| e.into())
-        .with_err_no_pos()
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+    let file_name: &String = (&interpreter.context()[0]).try_into()?;
+    std::fs::remove_file(file_name).map_err(QError::from)
 }
 
 #[cfg(test)]

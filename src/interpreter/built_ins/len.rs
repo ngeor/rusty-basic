@@ -1,7 +1,10 @@
 // LEN(str_expr$) -> number of characters in string
 // LEN(variable) -> number of bytes required to store a variable
 use super::*;
-use crate::common::Locatable;
+use crate::common::{Locatable, QError};
+use crate::parser::{ElementType, UserDefinedType, UserDefinedTypes};
+use crate::variant::Variant;
+use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let v: &Variant = &interpreter.context()[0];

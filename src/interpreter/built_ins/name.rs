@@ -2,6 +2,7 @@
 // Renames a file or directory.
 
 use super::*;
+use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let old_file_name: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;

@@ -4,6 +4,8 @@
 // MID$(str_var$, start%[, length%]) = str_expr$
 // if the length is omitted, returns or replaces all remaining characters
 use super::*;
+use crate::common::QError;
+use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let s: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;

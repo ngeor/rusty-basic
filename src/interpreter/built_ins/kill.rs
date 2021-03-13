@@ -1,6 +1,7 @@
 // KILL file-spec$ -> deletes files from disk
 
 use super::*;
+use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let file_name: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;

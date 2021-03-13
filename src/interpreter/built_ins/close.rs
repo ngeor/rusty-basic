@@ -1,5 +1,6 @@
 // CLOSE
 use super::*;
+use crate::common::{FileHandle, QError};
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {

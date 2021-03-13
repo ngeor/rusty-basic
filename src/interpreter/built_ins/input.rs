@@ -12,7 +12,10 @@
 // after the user presses the Enter key.
 
 use super::*;
+use crate::common::{FileHandle, QError};
 use crate::interpreter::input::Input;
+use crate::parser::TypeQualifier;
+use crate::variant::Variant;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {

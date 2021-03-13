@@ -8,7 +8,8 @@
 //           For sequential files, the number of characters buffered (default is 512 bytes)
 
 use super::*;
-use std::convert::TryFrom;
+use crate::common::{FileAccess, FileHandle, FileMode};
+use std::convert::{TryFrom, TryInto};
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let file_name: String = (&interpreter.context()[0]).to_string();

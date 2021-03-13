@@ -1,4 +1,7 @@
 use super::*;
+use crate::common::QError;
+use crate::parser::TypeQualifier;
+use crate::variant::Variant;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {

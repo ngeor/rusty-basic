@@ -1,12 +1,15 @@
 // ENVIRON str-expr$ -> sets the variable.
 // Parameter must be in the form of name=value or name value (TODO support the latter)
 use super::*;
+use crate::common::QError;
+use crate::interpreter::stdlib::Stdlib;
+use std::convert::TryInto;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let s: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+    let s: &String = (&interpreter.context()[0]).try_into()?;
     let parts: Vec<&str> = s.split("=").collect();
     if parts.len() != 2 {
-        Err(QError::from("Invalid expression. Must be name=value.")).with_err_no_pos()
+        Err(QError::from("Invalid expression. Must be name=value."))
     } else {
         let name = parts[0].to_string();
         let value = parts[1].to_string();

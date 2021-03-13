@@ -3,6 +3,9 @@
 // returns the first occurrence of needle$ inside hay$
 
 use super::*;
+use crate::common::QError;
+use crate::variant::Variant;
+use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     let a: &Variant = &interpreter.context()[0];

@@ -3,7 +3,9 @@
 // LINE INPUT #file-number%, variable$
 
 use super::*;
+use crate::common::{FileHandle, QError};
 use crate::interpreter::input::Input;
+use crate::variant::Variant;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {

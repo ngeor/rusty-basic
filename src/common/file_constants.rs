@@ -48,9 +48,9 @@ pub enum FileAccess {
     Write,
 }
 
-pub const FILE_ACCESS_UNSPECIFIED: u8 = 0;
-pub const FILE_ACCESS_READ: u8 = 1;
-pub const FILE_ACCESS_WRITE: u8 = 2;
+pub const FILE_ACCESS_UNSPECIFIED: u8 = 1;
+pub const FILE_ACCESS_READ: u8 = 2;
+pub const FILE_ACCESS_WRITE: u8 = 3;
 
 impl From<FileAccess> for u8 {
     fn from(f: FileAccess) -> u8 {
@@ -64,12 +64,14 @@ impl From<FileAccess> for u8 {
 
 impl From<u8> for FileAccess {
     fn from(i: u8) -> FileAccess {
-        if i == FILE_ACCESS_READ {
+        if i == FILE_ACCESS_UNSPECIFIED {
+            FileAccess::Unspecified
+        } else if i == FILE_ACCESS_READ {
             FileAccess::Read
         } else if i == FILE_ACCESS_WRITE {
             FileAccess::Write
         } else {
-            FileAccess::Unspecified
+            panic!("Unsupported file access {}", i)
         }
     }
 }
@@ -104,5 +106,64 @@ impl TryFrom<i32> for FileHandle {
         } else {
             Err(QError::BadFileNameOrNumber)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_file_mode_u8_conversion() {
+        let file_modes = [
+            FileMode::Append,
+            FileMode::Input,
+            FileMode::Output,
+            FileMode::Random,
+        ];
+        let numeric_values = [
+            FILE_MODE_APPEND,
+            FILE_MODE_INPUT,
+            FILE_MODE_OUTPUT,
+            FILE_MODE_RANDOM,
+        ];
+        assert_eq!(file_modes.len(), numeric_values.len());
+        assert!(!file_modes.is_empty());
+        for i in 0..file_modes.len() {
+            assert_eq!(u8::from(file_modes[i]), numeric_values[i]);
+            assert_eq!(FileMode::from(numeric_values[i]), file_modes[i]);
+            assert!(numeric_values[i] > 0);
+            if i > 0 {
+                assert!(numeric_values[i] > numeric_values[i - 1]);
+            }
+        }
+    }
+
+    #[should_panic]
+    #[test]
+    fn test_zero_file_mode_should_panic() {
+        FileMode::from(0);
+    }
+
+    #[test]
+    fn test_file_access_u8_conversion() {
+        let file_accesses = [FileAccess::Unspecified, FileAccess::Read, FileAccess::Write];
+        let numeric_values = [FILE_ACCESS_UNSPECIFIED, FILE_ACCESS_READ, FILE_ACCESS_WRITE];
+        assert_eq!(file_accesses.len(), numeric_values.len());
+        assert!(!file_accesses.is_empty());
+        for i in 0..file_accesses.len() {
+            assert_eq!(u8::from(file_accesses[i]), numeric_values[i]);
+            assert_eq!(FileAccess::from(numeric_values[i]), file_accesses[i]);
+            assert!(numeric_values[i] > 0);
+            if i > 0 {
+                assert!(numeric_values[i] > numeric_values[i - 1]);
+            }
+        }
+    }
+
+    #[should_panic]
+    #[test]
+    fn test_zero_file_access_should_panic() {
+        FileAccess::from(0);
     }
 }

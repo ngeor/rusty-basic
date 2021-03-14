@@ -12,8 +12,8 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let field_list = file_info
         .get_current_field_list()
         .ok_or(QError::BadFileMode)?
-        .clone();
-    // convert the variables into a string
+        .clone(); // TODO fighting the borrow checker
+                  // convert the variables into a string
     for Field { width, name } in field_list {
         let bare_name: BareName = BareName::from(name.as_str());
         let v = interpreter

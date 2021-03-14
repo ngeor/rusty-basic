@@ -123,7 +123,7 @@ mod get {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
         require_integer_argument(args, 0)?;
-        require_integer_argument(args, 1)
+        require_long_argument(args, 1)
     }
 }
 
@@ -557,6 +557,14 @@ fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(),
 
 fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
     if !args[idx].can_cast_to(TypeQualifier::PercentInteger) {
+        Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
+    } else {
+        Ok(())
+    }
+}
+
+fn require_long_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
+    if !args[idx].can_cast_to(TypeQualifier::AmpersandLong) {
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())

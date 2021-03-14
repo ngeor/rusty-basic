@@ -1,11 +1,11 @@
 use super::*;
-use crate::common::{FileHandle, TryRefInto};
+use crate::common::FileHandle;
 use crate::interpreter::io::Field;
 use crate::parser::{BareName, TypeQualifier};
 use crate::variant::Variant;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let handle: FileHandle = interpreter.context()[0].try_ref_into()?;
+    let handle: FileHandle = to_file_handle(&interpreter.context()[0])?;
     let record_number: usize = get_record_number(&interpreter.context()[1])?;
     let file_info = interpreter.file_manager().try_get_file_info_mut(&handle)?;
     let field_lists: Vec<Vec<Field>> = file_info.get_field_lists().clone(); // TODO fighting the borrow checker
@@ -27,15 +27,6 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         }
     }
     Ok(())
-}
-
-pub fn get_record_number(v: &Variant) -> Result<usize, QError> {
-    let record_number_as_long: i64 = v.try_ref_into()?;
-    if record_number_as_long <= 0 {
-        Err(QError::BadRecordNumber)
-    } else {
-        Ok(record_number_as_long as usize)
-    }
 }
 
 fn from_ascii(bytes: &[u8]) -> String {

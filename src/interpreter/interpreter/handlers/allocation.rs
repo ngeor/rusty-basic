@@ -1,8 +1,7 @@
 use crate::common::{QError, StringUtils};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::parser::{BareName, ExpressionType, TypeQualifier, UserDefinedTypes};
-use crate::variant::{UserDefinedTypeValue, VArray, Variant};
-use std::convert::TryFrom;
+use crate::variant::{QBNumberCast, UserDefinedTypeValue, VArray, Variant};
 
 pub fn allocate_built_in<T: InterpreterTrait>(
     interpreter: &mut T,
@@ -31,9 +30,9 @@ pub fn allocate_array<T: InterpreterTrait>(
         .context_mut()
         .drop_arguments_for_array_allocation();
     let r_args: Result<Vec<i32>, QError> = arguments
-        .into_iter()
+        .iter()
         .map(|(_, v)| v)
-        .map(|v| i32::try_from(v))
+        .map(QBNumberCast::try_cast)
         .collect();
     let args = r_args?;
     let mut dimensions: Vec<(i32, i32)> = vec![];

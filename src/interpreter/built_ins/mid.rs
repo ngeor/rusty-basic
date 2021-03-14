@@ -4,13 +4,13 @@
 // MID$(str_var$, start%[, length%]) = str_expr$
 // if the length is omitted, returns or replaces all remaining characters
 use super::*;
-use std::convert::TryInto;
+use crate::variant::QBNumberCast;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let s: &String = (&interpreter.context()[0]).try_into()?;
-    let start: i32 = (&interpreter.context()[1]).try_into()?;
+    let s: &str = interpreter.context()[0].to_str_unchecked();
+    let start: i32 = interpreter.context()[1].try_cast()?;
     let length: Option<i32> = match interpreter.context().variables().get(2) {
-        Some(v) => Some(v.try_into()?),
+        Some(v) => Some(v.try_cast()?),
         None => None,
     };
     let result: String = do_mid(s, start, length)?;
@@ -20,7 +20,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     Ok(())
 }
 
-fn do_mid(s: &String, start: i32, opt_length: Option<i32>) -> Result<String, QError> {
+fn do_mid(s: &str, start: i32, opt_length: Option<i32>) -> Result<String, QError> {
     if start <= 0 {
         Err(QError::IllegalFunctionCall)
     } else {

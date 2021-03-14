@@ -8,22 +8,42 @@
 //           For sequential files, the number of characters buffered (default is 512 bytes)
 
 use super::*;
-use crate::common::{FileAccess, FileHandle, FileMode, TryRefInto};
-use std::convert::{TryFrom, TryInto};
+use crate::common::{FileAccess, FileHandle, FileMode};
+use crate::variant::{QBNumberCast, Variant};
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let file_name: String = (&interpreter.context()[0]).to_string();
-    let file_mode: FileMode = u8::try_from(&interpreter.context()[1])?.into();
-    let file_access: FileAccess = u8::try_from(&interpreter.context()[2])?.into();
-    let file_handle: FileHandle = interpreter.context()[3].try_ref_into()?;
-    let rec_len: i32 = (&interpreter.context()[4]).try_into()?;
-    interpreter.file_manager().open(
-        file_handle,
-        &file_name,
-        file_mode,
-        file_access,
-        rec_len as usize,
-    )
+    let file_name: String = interpreter.context()[0].to_str_unchecked().to_owned(); // TODO fighting borrow checker
+    let file_mode: FileMode = to_file_mode(&interpreter.context()[1]);
+    let file_access: FileAccess = to_file_access(&interpreter.context()[2]);
+    let file_handle: FileHandle = to_file_handle(&interpreter.context()[3])?;
+    let rec_len: usize = to_record_length(&interpreter.context()[4])?;
+    interpreter
+        .file_manager()
+        .open(file_handle, &file_name, file_mode, file_access, rec_len)
+}
+
+fn to_file_mode(v: &Variant) -> FileMode {
+    let i: i32 = v
+        .try_cast()
+        .expect("Internal FileMode argument should be valid");
+    FileMode::from(i as u8)
+}
+
+fn to_file_access(v: &Variant) -> FileAccess {
+    let i: i32 = v
+        .try_cast()
+        .expect("Internal FileAccess argument should be valid");
+    FileAccess::from(i as u8)
+}
+
+fn to_record_length(v: &Variant) -> Result<usize, QError> {
+    let i: i32 = v.try_cast()?;
+    if i < 0 {
+        // TODO make 0 invalid too, now 0 means no value
+        Err(QError::BadRecordLength)
+    } else {
+        Ok(i as usize)
+    }
 }
 
 #[cfg(test)]

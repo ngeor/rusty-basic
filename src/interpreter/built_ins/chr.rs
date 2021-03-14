@@ -1,9 +1,9 @@
 // CHR$(ascii-code%) returns the text representation of the given ascii code
 use super::*;
-use std::convert::TryFrom;
+use crate::variant::QBNumberCast;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let i: i32 = i32::try_from(&interpreter.context()[0])?;
+    let i: i32 = interpreter.context()[0].try_cast()?;
     let mut s: String = String::new();
     s.push((i as u8) as char);
     interpreter

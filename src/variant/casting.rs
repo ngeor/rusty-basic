@@ -1,7 +1,7 @@
 use crate::common::QError;
 use crate::parser::TypeQualifier;
 use crate::variant;
-use crate::variant::Variant;
+use crate::variant::{QBNumberCast, Variant};
 
 // ========================================================
 // variant casting
@@ -13,10 +13,6 @@ use crate::variant::Variant;
 //    NOTE: currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes Inf and NaN. This is a bug and will be fixed.
 // 3. casting from an integer to float will produce the floating point representation of the integer, rounded if necessary (rounding to nearest, ties to even)
 // 4. casting from an f64 to an f32 will produce the closest possible value (rounding to nearest, ties to even)
-
-pub trait QBNumberCast<T> {
-    fn try_cast(&self) -> Result<T, QError>;
-}
 
 impl QBNumberCast<f64> for f32 {
     fn try_cast(&self) -> Result<f64, QError> {

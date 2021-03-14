@@ -1,6 +1,8 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
-use crate::common::QError;
+use crate::common::{FileHandle, QError};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::variant::{QBNumberCast, Variant};
+use std::convert::TryFrom;
 
 pub fn run_function<S: InterpreterTrait>(
     f: &BuiltInFunction,
@@ -33,6 +35,20 @@ pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Resu
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
         BuiltInSub::Put => put::run(interpreter),
+    }
+}
+
+fn to_file_handle(v: &Variant) -> Result<FileHandle, QError> {
+    let i: i32 = v.try_cast()?;
+    FileHandle::try_from(i)
+}
+
+fn get_record_number(v: &Variant) -> Result<usize, QError> {
+    let record_number_as_long: i64 = v.try_cast()?;
+    if record_number_as_long <= 0 {
+        Err(QError::BadRecordNumber)
+    } else {
+        Ok(record_number_as_long as usize)
     }
 }
 

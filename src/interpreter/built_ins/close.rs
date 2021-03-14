@@ -1,13 +1,13 @@
 // CLOSE
 use super::*;
-use crate::common::{FileHandle, TryRefInto};
+use crate::common::FileHandle;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let file_handles: Vec<FileHandle> = interpreter
         .context()
         .variables()
         .iter()
-        .map(TryRefInto::try_ref_into)
+        .map(to_file_handle)
         .collect::<Result<Vec<FileHandle>, QError>>()?;
     if file_handles.is_empty() {
         interpreter.file_manager().close_all();

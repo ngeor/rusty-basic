@@ -207,7 +207,7 @@ impl Stdlib for MockStdlib {
         println!("would have exited")
     }
 
-    fn get_env_var(&self, name: &String) -> String {
+    fn get_env_var(&self, name: &str) -> String {
         match self.env.get(name) {
             Some(x) => x.clone(),
             None => String::new(),

@@ -2,10 +2,9 @@
 
 use super::*;
 use crate::variant::{Variant, MAX_INTEGER, MAX_LONG};
-use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let v: &String = (&interpreter.context()[0]).try_into()?;
+    let v: &str = interpreter.context()[0].to_str_unchecked();
     let result: Variant = val(v)?;
     interpreter
         .context_mut()
@@ -13,7 +12,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     Ok(())
 }
 
-fn val(s: &String) -> Result<Variant, QError> {
+fn val(s: &str) -> Result<Variant, QError> {
     let mut is_positive = true;
     let mut value: f64 = 0.0;
     let mut fraction_power: i32 = 0;

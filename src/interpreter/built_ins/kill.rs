@@ -1,10 +1,9 @@
 // KILL file-spec$ -> deletes files from disk
 
 use super::*;
-use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let file_name: &String = (&interpreter.context()[0]).try_into()?;
+    let file_name: &str = interpreter.context()[0].to_str_unchecked();
     std::fs::remove_file(file_name).map_err(QError::from)
 }
 

@@ -15,11 +15,10 @@ use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::variables::Variables;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::parser::UserDefinedTypes;
-use crate::variant::Variant;
+use crate::variant::{QBNumberCast, Variant};
 use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::convert::TryFrom;
 use std::rc::Rc;
 
 pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
@@ -291,7 +290,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::JumpIfFalse(address_or_label) => {
                 let a = self.registers().get_a();
-                let is_true: bool = bool::try_from(a).with_err_at(pos)?;
+                let is_true: bool = a.try_cast().with_err_at(pos)?;
                 if !is_true {
                     ctx.opt_next_index = Some(address_or_label.address());
                 }

@@ -1,15 +1,10 @@
 use super::*;
-use crate::parser::TypeQualifier;
-use crate::variant::Variant;
-use std::convert::TryFrom;
+use crate::variant::{QBNumberCast, Variant};
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let v: Variant = interpreter.context()[0].clone();
     let dimension: i32 = match interpreter.context().variables().get(1) {
-        Some(v) => v
-            .clone()
-            .cast(TypeQualifier::PercentInteger)
-            .and_then(|v| i32::try_from(v))?,
+        Some(v) => v.try_cast()?,
         _ => 1,
     };
     if dimension <= 0 {

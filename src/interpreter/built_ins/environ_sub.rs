@@ -2,10 +2,9 @@
 // Parameter must be in the form of name=value or name value (TODO support the latter)
 use super::*;
 use crate::interpreter::stdlib::Stdlib;
-use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let s: &String = (&interpreter.context()[0]).try_into()?;
+    let s: &str = interpreter.context()[0].to_str_unchecked();
     let parts: Vec<&str> = s.split("=").collect();
     if parts.len() != 2 {
         Err(QError::from("Invalid expression. Must be name=value."))

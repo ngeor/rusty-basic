@@ -2,10 +2,9 @@
 // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
 use super::*;
 use crate::interpreter::stdlib::Stdlib;
-use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let env_var_name: &String = (&interpreter.context()[0]).try_into()?;
+    let env_var_name: &str = interpreter.context()[0].to_str_unchecked();
     let result = interpreter.stdlib().get_env_var(env_var_name);
     interpreter
         .context_mut()

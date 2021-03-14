@@ -2,11 +2,10 @@
 // Renames a file or directory.
 
 use super::*;
-use std::convert::TryInto;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let old_file_name: &String = (&interpreter.context()[0]).try_into()?;
-    let new_file_name: &String = (&interpreter.context()[1]).try_into()?;
+    let old_file_name: &str = interpreter.context()[0].to_str_unchecked();
+    let new_file_name: &str = interpreter.context()[1].to_str_unchecked();
     std::fs::rename(old_file_name, new_file_name).map_err(QError::from)
 }
 

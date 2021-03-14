@@ -2,8 +2,7 @@ use crate::common::QError;
 use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::parser::BareName;
-use crate::variant::Variant;
-use std::convert::TryFrom;
+use crate::variant::{QBNumberCast, Variant};
 
 pub fn var_path_name<T: InterpreterTrait>(interpreter: &mut T, root_path: RootPath) {
     interpreter
@@ -82,7 +81,7 @@ fn resolve_array_mut(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Vari
     match v {
         Variant::VArray(v_array) => {
             let int_indices: Result<Vec<i32>, QError> =
-                indices.into_iter().map(|v| i32::try_from(v)).collect();
+                indices.iter().map(QBNumberCast::try_cast).collect();
             v_array.get_element_mut(int_indices?)
         }
         _ => panic!("Expected array, found {:?}", v),

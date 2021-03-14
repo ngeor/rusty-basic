@@ -4,6 +4,7 @@ use crate::parser::{
 };
 use crate::variant::{Variant, V_FALSE};
 use std::collections::HashMap;
+use std::slice::Iter;
 
 #[derive(Debug)]
 pub struct Variables {
@@ -118,8 +119,14 @@ impl Variables {
         }
     }
 
+    /// Gets the number of variables in this object.
     pub fn len(&self) -> usize {
         self.values.len()
+    }
+
+    /// Gets an iterator that returns the variables in this object.
+    pub fn iter(&self) -> Iter<Variant> {
+        self.values.iter()
     }
 
     pub fn get_built_in(&self, bare_name: &BareName, qualifier: TypeQualifier) -> Option<&Variant> {

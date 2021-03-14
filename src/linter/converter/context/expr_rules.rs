@@ -580,6 +580,24 @@ mod property {
     }
 }
 
+fn functions_must_have_arguments(args: &ExpressionNodes, pos: Location) -> Result<(), QErrorNode> {
+    if args.is_empty() {
+        Err(QError::syntax_error(
+            "Cannot have function call without arguments",
+        ))
+        .with_err_at(pos)
+    } else {
+        Ok(())
+    }
+}
+
+fn convert_function_args(
+    ctx: &mut Context,
+    args: ExpressionNodes,
+) -> Result<(ExpressionNodes, Vec<QualifiedNameNode>), QErrorNode> {
+    ctx.on_expressions(args, ExprContext::Parameter)
+}
+
 mod built_in_function {
     use super::*;
     pub fn convert(
@@ -588,17 +606,8 @@ mod built_in_function {
         args: ExpressionNodes,
         pos: Location,
     ) -> R {
-        // now validate we have arguments
-        if args.is_empty() {
-            return Err(QError::syntax_error(
-                "Cannot have function call without arguments",
-            ))
-            .with_err_at(pos);
-        }
-
-        // convert args
-        let (converted_args, implicit_vars) = ctx.on_expressions(args, ExprContext::Parameter)?;
-        // is it built-in function?
+        functions_must_have_arguments(&args, pos)?;
+        let (converted_args, implicit_vars) = convert_function_args(ctx, args)?;
         let converted_expr = Expression::BuiltInFunctionCall(built_in_function, converted_args);
         Ok((converted_expr.at(pos), implicit_vars))
     }
@@ -623,19 +632,14 @@ mod function {
         }
 
         // now validate we have arguments
-        if args.is_empty() {
-            return Err(QError::syntax_error(
-                "Cannot have function call without arguments",
-            ))
-            .with_err_at(pos);
-        }
+        functions_must_have_arguments(&args, pos)?;
         // continue with built-in/user defined functions
         resolve_function(ctx, name, args, pos)
     }
 
     fn resolve_function(ctx: &mut Context, name: Name, args: ExpressionNodes, pos: Location) -> R {
         // convert args
-        let (converted_args, implicit_vars) = ctx.on_expressions(args, ExprContext::Parameter)?;
+        let (converted_args, implicit_vars) = convert_function_args(ctx, args)?;
         // is it built-in function?
         let converted_expr = match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
             Some(built_in_function) => {

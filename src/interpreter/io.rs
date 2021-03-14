@@ -192,15 +192,15 @@ impl FileManager {
         Ok(())
     }
 
-    pub fn lookup_width(&mut self, name: &str) -> Result<usize, QError> {
+    pub fn mark_current_field_list(&mut self, variable_name: &str) -> Result<(), QError> {
         for file_info in self.handle_map.values_mut() {
             for i in 0..file_info.field_lists.len() {
                 let field_list = &file_info.field_lists[i];
                 for field in field_list {
-                    if field.name == name {
+                    if field.name == variable_name {
                         // found it
                         file_info.current_field_list_index = Some(i);
-                        return Ok(field.width as usize);
+                        return Ok(());
                     }
                 }
             }

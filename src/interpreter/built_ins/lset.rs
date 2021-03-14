@@ -6,7 +6,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let value: Variant = interpreter.context()[2].clone();
     // find which file number is associated with this name and find the width
     // also marks that field index as current for the next PUT operation
-    interpreter.file_manager().lookup_width(&name)?;
+    interpreter.file_manager().mark_current_field_list(&name)?;
     interpreter.context_mut()[1] = value;
     Ok(())
 }

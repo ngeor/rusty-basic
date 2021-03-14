@@ -138,7 +138,12 @@ mod close {
         #[test]
         fn test_one_file_number_with_hash_parenthesis_no_leading_space() {
             let input = "CLOSE(#1)";
-            assert_parser_err!(input, QError::syntax_error("No separator: ("), 1, 7);
+            assert_parser_err!(
+                input,
+                QError::syntax_error("Expected: expression inside parenthesis"),
+                1,
+                7
+            );
         }
 
         #[test]

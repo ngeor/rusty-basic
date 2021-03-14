@@ -42,7 +42,7 @@ where
             expression::back_guarded_expression_node_p()
                 .or_syntax_error("Expected: expression after IF"),
         )
-        .and_demand(keyword_p(Keyword::Then))
+        .and_demand(keyword_p(Keyword::Then).or_syntax_error("Expected: THEN"))
         .keep_middle()
 }
 
@@ -523,6 +523,44 @@ end if"#;
                 .at_rc(7, 13),])
             }))
             .at_rc(2, 9),]
+        );
+    }
+
+    #[test]
+    fn test_if_expr_left_parenthesis() {
+        let input = r#"
+        IF (A + B) >= C THEN
+            BEEP
+        END IF
+        "#;
+        let statement = parse(input).demand_single_statement();
+        assert_eq!(
+            statement,
+            Statement::IfBlock(IfBlockNode {
+                if_block: ConditionalBlockNode {
+                    condition: Expression::BinaryExpression(
+                        Operator::GreaterOrEqual,
+                        Box::new(
+                            Expression::Parenthesis(Box::new(
+                                Expression::BinaryExpression(
+                                    Operator::Plus,
+                                    Box::new("A".as_var_expr(2, 13)),
+                                    Box::new("B".as_var_expr(2, 17)),
+                                    ExpressionType::Unresolved
+                                )
+                                .at_rc(2, 15)
+                            ))
+                            .at_rc(2, 12)
+                        ),
+                        Box::new("C".as_var_expr(2, 23)),
+                        ExpressionType::Unresolved
+                    )
+                    .at_rc(2, 20),
+                    statements: vec![Statement::SubCall("BEEP".into(), vec![]).at_rc(3, 13)]
+                },
+                else_if_blocks: vec![],
+                else_block: None
+            })
         );
     }
 }

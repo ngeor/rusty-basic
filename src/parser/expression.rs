@@ -34,36 +34,19 @@ pub fn guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
-    // the order is important because if there is whitespace we can pick up any expression
-    // ws+ expr
     // ws* ( expr )
-    guarded_whitespace_expression_node_p().or(guarded_parenthesis_expression_node_p())
-}
-
-fn guarded_parenthesis_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    opt_whitespace_p(false)
-        .and(item_p('(').with_pos())
-        .and(lazy_expression_node_p())
-        .and_demand(
-            item_p(')')
-                .preceded_by_opt_ws()
-                .or_syntax_error("Expected: )"),
-        )
-        .keep_left()
-        .map(|((_, left_parenthesis), child)| {
-            Expression::Parenthesis(Box::new(child)).at(left_parenthesis.pos)
-        })
-}
-
-fn guarded_whitespace_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
     // ws+ expr
-    whitespace_p().and(lazy_expression_node_p()).keep_right()
+    opt_whitespace_p(false)
+        .and(lazy_expression_node_p())
+        .and_then(|(l, r)| {
+            if r.is_parenthesis() || !l.is_empty() {
+                Ok(r)
+            } else {
+                Err(QError::syntax_error(
+                    "Expected: whitespace before expression",
+                ))
+            }
+        })
 }
 
 pub fn back_guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
@@ -72,9 +55,18 @@ where
 {
     // ws* ( expr )
     // ws+ expr ws+
-    guarded_parenthesis_expression_node_p().or(guarded_whitespace_expression_node_p()
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after expression"))
-        .keep_left())
+    opt_whitespace_p(false)
+        .and(lazy_expression_node_p())
+        .and_opt(whitespace_p())
+        .and_then(|((l, expr), r)| {
+            if expr.is_parenthesis() || (!l.is_empty() && !r.unwrap_or_default().is_empty()) {
+                Ok(expr)
+            } else {
+                Err(QError::syntax_error(
+                    "Expected: whitespace around expression",
+                ))
+            }
+        })
 }
 
 /// Parses an expression

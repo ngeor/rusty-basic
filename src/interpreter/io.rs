@@ -205,7 +205,10 @@ impl FileManager {
                 }
             }
         }
-        Err(QError::VariableRequired) // whatever
+        Err(QError::Other(format!(
+            "Variable {} not used in FIELD",
+            variable_name
+        )))
     }
 }
 

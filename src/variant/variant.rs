@@ -603,10 +603,22 @@ impl TryRefInto<FileHandle> for Variant {
     }
 }
 
+/// Try to convert the variant to a QBasic integer.
+/// Casting is allowed.
+/// Result is i32 for Rust but will return overflow error if it exceeds
+/// the QBasic boundaries for the integer definition.
 impl TryRefInto<i32> for Variant {
     type Error = QError;
 
     fn try_ref_into(&self) -> Result<i32, Self::Error> {
+        self.try_cast()
+    }
+}
+
+impl TryRefInto<i64> for Variant {
+    type Error = QError;
+
+    fn try_ref_into(&self) -> Result<i64, Self::Error> {
         self.try_cast()
     }
 }

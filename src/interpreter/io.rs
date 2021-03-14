@@ -211,6 +211,6 @@ impl FileManager {
 
 #[derive(Clone)]
 pub struct Field {
-    pub width: i32,
+    pub width: usize,
     pub name: String,
 }

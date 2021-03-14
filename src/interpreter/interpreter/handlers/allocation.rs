@@ -70,7 +70,7 @@ pub fn allocate_user_defined_type<T: InterpreterTrait>(
 fn allocate_array_element(element_type: &ExpressionType, types: &UserDefinedTypes) -> Variant {
     match element_type {
         ExpressionType::BuiltIn(q) => Variant::from(*q),
-        ExpressionType::FixedLengthString(len) => String::new().fix_length(*len as usize).into(),
+        ExpressionType::FixedLengthString(len) => "".fix_length(*len as usize).into(),
         ExpressionType::UserDefined(type_name) => {
             Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
         }

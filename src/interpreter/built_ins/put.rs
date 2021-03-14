@@ -1,12 +1,11 @@
 use super::*;
-use crate::common::FileHandle;
+use crate::common::{FileHandle, StringUtils};
 use crate::interpreter::io::Field;
 use crate::parser::{BareName, TypeQualifier};
-use crate::variant::Variant;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let handle: FileHandle = to_file_handle(&interpreter.context()[0])?;
-    let record_number = get_record_number(&interpreter.context()[1])?;
+    let record_number: usize = get_record_number(&interpreter.context()[1])?;
     let file_info = interpreter.file_manager().try_get_file_info_mut(&handle)?;
     let mut record_contents = String::new();
     // get the current field list
@@ -22,17 +21,8 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
             .caller_variables()
             .get_built_in(&bare_name, TypeQualifier::DollarString)
             .ok_or(QError::VariableRequired)?;
-        if let Variant::VString(v_s) = v {
-            for i in 0..width {
-                if i < v_s.len() {
-                    record_contents.push(v_s.chars().skip(i).take(1).next().unwrap() as char);
-                } else {
-                    record_contents.push('\0');
-                }
-            }
-        } else {
-            return Err(QError::VariableRequired);
-        }
+        let s = v.to_str_unchecked().fix_length_with_char(width, '\0');
+        record_contents.push_str(s.as_str());
     }
     let file_info = interpreter.file_manager().try_get_file_info_mut(&handle)?;
     file_info.put_record(record_number, record_contents.as_bytes())?;

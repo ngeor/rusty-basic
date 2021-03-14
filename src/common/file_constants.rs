@@ -14,6 +14,9 @@ pub const FILE_MODE_INPUT: u8 = 2;
 pub const FILE_MODE_OUTPUT: u8 = 3;
 pub const FILE_MODE_RANDOM: u8 = 4;
 
+// TODO get rid of the u8 here for all types (only the public api, internally it can still use u8 if needed)
+// TODO move these outside the common module
+
 impl From<FileMode> for u8 {
     fn from(f: FileMode) -> u8 {
         match f {

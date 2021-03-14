@@ -189,6 +189,8 @@ pub enum BuiltInSub {
     Put,
 }
 
+// TODO try again self-contained modules per built-in sub that take care of parsing/linting/etc in one module
+
 impl BuiltInSub {
     /// Parses a built-in sub name which isn't implemented with a keyword.
     /// This sub would appear as a user defined SUB on the parser layer.

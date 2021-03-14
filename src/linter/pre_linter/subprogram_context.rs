@@ -544,7 +544,7 @@ impl SubContext {
         }
 
         for (k, v) in self.implementations.iter() {
-            let opt_built_in: Option<BuiltInSub> = k.into();
+            let opt_built_in: Option<BuiltInSub> = BuiltInSub::parse_non_keyword_sub(k.as_ref());
             if opt_built_in.is_some() {
                 return Err(QError::DuplicateDefinition).with_err_at(v);
             }

@@ -2,8 +2,11 @@
 // LEN(variable) -> number of bytes required to store a variable
 use super::*;
 use crate::common::Locatable;
+use crate::parser::{ElementType, UserDefinedType, UserDefinedTypes};
+use crate::variant::Variant;
+use std::convert::TryInto;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let v: &Variant = &interpreter.context()[0];
     let len: i32 = match v {
         Variant::VSingle(_) => 4,
@@ -21,7 +24,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
             sum as i32
         }
         Variant::VArray(_) => {
-            return Err(QError::ArgumentTypeMismatch).with_err_no_pos();
+            return Err(QError::ArgumentTypeMismatch);
         }
     };
     interpreter

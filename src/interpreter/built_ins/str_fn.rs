@@ -1,8 +1,9 @@
 // STR$(numeric-expression) returns a string representation of a number
 
 use super::*;
+use crate::variant::Variant;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let v: &Variant = &interpreter.context()[0];
     let result = match v {
         Variant::VSingle(f) => format!("{}", f),

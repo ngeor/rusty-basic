@@ -108,6 +108,7 @@ where
 {
     string_literal::string_literal_p()
         .with_pos()
+        .or(built_in_function_call::built_in_function_call_p().with_pos())
         .or(word::word_p().with_pos())
         .or(number_literal::number_literal_p())
         .or(number_literal::float_without_leading_zero_p())
@@ -765,6 +766,30 @@ pub mod word {
     }
 }
 
+// needed for built-in functions that are also keywords (e.g. LEN), so they
+// cannot be parsed by the `word` module.
+mod built_in_function_call {
+    use super::*;
+    use crate::built_ins::BuiltInFunction;
+
+    pub fn built_in_function_call_p<R>() -> impl Parser<R, Output = Expression>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::Len)
+            .and_demand(
+                in_parenthesis_p(
+                    lazy_expression_node_p()
+                        .csv()
+                        .or_syntax_error("Expected: variable"),
+                )
+                .or_syntax_error("Expected: ("),
+            )
+            .keep_right()
+            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
+    }
+}
+
 fn operator_p<R>(had_parenthesis_before: bool) -> impl Parser<R, Output = Locatable<Operator>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -865,7 +890,7 @@ mod tests {
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::{Expression, ExpressionType, Operator, Statement, UnaryOperator};
-    use crate::{assert_expression, assert_literal_expression, assert_sub_call};
+    use crate::{assert_expression, assert_literal_expression};
 
     #[test]
     fn test_parse_literals() {
@@ -1405,25 +1430,25 @@ mod tests {
     mod file_handle {
         use super::*;
 
-        #[test]
-        fn test_file_handle_one() {
-            let input = "CLOSE #1";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(1));
+        macro_rules! assert_file_handle {
+            ($input:expr, $expected_file_handle:expr) => {
+                let result: Statement = parse($input).demand_single_statement();
+                match result {
+                    Statement::BuiltInSubCall(_, args) => {
+                        assert_eq!(args[0], Expression::IntegerLiteral($expected_file_handle));
+                    }
+                    _ => {
+                        panic!("Expected built-in sub call");
+                    }
+                }
+            };
         }
 
         #[test]
-        fn test_file_handle_two() {
-            let input = "CLOSE #2";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(2));
-        }
-
-        #[test]
-        fn test_file_handle_max() {
-            let input = "CLOSE #255";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(result, "CLOSE", Expression::IntegerLiteral(255));
+        fn test_valid_file_handles() {
+            assert_file_handle!("CLOSE #1", 1);
+            assert_file_handle!("CLOSE #2", 2);
+            assert_file_handle!("CLOSE #255", 255); // max value
         }
 
         #[test]
@@ -1462,6 +1487,22 @@ mod tests {
         fn test_overflow() {
             assert_parser_err!("PRINT &O-10", QError::Overflow);
             assert_parser_err!("PRINT &O40000000000", QError::Overflow);
+        }
+    }
+
+    mod len {
+        use super::*;
+
+        #[test]
+        fn len_in_print_must_be_unqualified() {
+            let program = r#"PRINT LEN!("hello")"#;
+            assert_parser_err!(program, QError::syntax_error("Expected: ("), 1, 10);
+        }
+
+        #[test]
+        fn len_in_assignment_must_be_unqualified() {
+            let program = r#"A = LEN!("hello")"#;
+            assert_parser_err!(program, QError::syntax_error("Expected: ("), 1, 8);
         }
     }
 }

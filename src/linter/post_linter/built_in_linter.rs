@@ -19,11 +19,15 @@ impl PostConversionLinter for BuiltInLinter {
         match built_in_sub {
             BuiltInSub::Close => close::lint(args),
             BuiltInSub::Environ => environ_sub::lint(args),
+            BuiltInSub::Field => field::lint(args),
+            BuiltInSub::Get => get::lint(args),
             BuiltInSub::Input => input::lint(args),
             BuiltInSub::Kill => kill::lint(args),
             BuiltInSub::LineInput => line_input::lint(args),
+            BuiltInSub::LSet => lset::lint(args),
             BuiltInSub::Name => name::lint(args),
             BuiltInSub::Open => open::lint(args),
+            BuiltInSub::Put => put::lint(args),
         }
     }
 
@@ -86,6 +90,43 @@ mod environ_sub {
     }
 }
 
+mod field {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // needs to be 1 + N*3 args, N >= 1
+        // first is the file number
+        // then the fields: width, variable name, variable
+        if args.len() < 4 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        if (args.len() - 1) % 3 != 0 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        require_integer_argument(args, 0)?;
+        let mut i: usize = 1;
+        while i < args.len() {
+            require_integer_argument(args, i)?;
+            require_string_argument(args, i + 1)?;
+            require_string_variable(args, i + 2)?;
+            i += 3;
+        }
+        Ok(())
+    }
+}
+
+mod get {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        if args.len() != 2 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        require_integer_argument(args, 0)?;
+        require_long_argument(args, 1)
+    }
+}
+
 mod input {
     use crate::common::ToErrorEnvelopeNoPos;
 
@@ -112,15 +153,8 @@ mod input {
         } = args[0]
         {
             // must have a file number
-            if let Locatable {
-                element: Expression::IntegerLiteral(_),
-                ..
-            } = args[1]
-            {
-                has_file_number = true;
-            } else {
-                panic!("parser sent unexpected arguments");
-            }
+            require_integer_argument(args, 1)?;
+            has_file_number = true;
         } else {
             panic!("parser sent unexpected arguments");
         }
@@ -283,6 +317,24 @@ mod line_input {
     }
 }
 
+mod lset {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // the parser should produce 3 arguments:
+        // the variable name, as a string literal
+        // the variable itself, a ByRef string variable
+        // a string expression to assign to
+        if args.len() != 3 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        require_string_argument(args, 0)?;
+        // TODO ensure LSET is operating on variables previously used by FIELD in this scope
+        require_string_variable(args, 1)?;
+        require_string_argument(args, 2)
+    }
+}
+
 mod name {
     use super::*;
 
@@ -302,9 +354,47 @@ mod name {
 mod open {
     use super::*;
 
-    pub fn lint(_args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        // not needed because of special parsing
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // must have 5 arguments:
+        // filename
+        // file mode
+        // file access
+        // file number
+        // rec len
+        if args.len() != 5 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        require_string_argument(args, 0)?;
+        for i in 1..args.len() {
+            require_integer_argument(args, i)?;
+        }
         Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::assert_linter_err;
+
+        #[test]
+        fn test_open_filename_must_be_string() {
+            let program = "OPEN 42 AS #1";
+            assert_linter_err!(program, QError::ArgumentTypeMismatch, 1, 6);
+        }
+
+        #[test]
+        fn test_rec_len_must_be_numeric() {
+            let program = r#"OPEN "a.txt" AS #1 LEN = "hi""#;
+            assert_linter_err!(program, QError::ArgumentTypeMismatch, 1, 26);
+        }
+    }
+}
+
+mod put {
+    use super::*;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        super::get::lint(args)
     }
 }
 
@@ -396,17 +486,6 @@ mod len {
             let program = r#"PRINT LEN("a", "b")"#;
             assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
         }
-
-        #[test]
-        fn test_len_must_be_unqualified() {
-            let program = r#"PRINT LEN!("hello")"#;
-            assert_linter_err!(
-                program,
-                QError::syntax_error("Function Len must be unqualified"),
-                1,
-                7
-            );
-        }
     }
 }
 
@@ -481,5 +560,27 @@ fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<()
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {
         Ok(())
+    }
+}
+
+fn require_long_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
+    if !args[idx].can_cast_to(TypeQualifier::AmpersandLong) {
+        Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
+    } else {
+        Ok(())
+    }
+}
+
+fn require_string_variable(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
+    match args[idx].as_ref() {
+        Expression::Variable(
+            _,
+            VariableInfo {
+                expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
+                ..
+            },
+        ) => Ok(()),
+        Expression::Variable(_, _) => Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx]),
+        _ => Err(QError::VariableRequired).with_err_at(&args[idx]),
     }
 }

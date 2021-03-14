@@ -15,8 +15,10 @@ where
         .or(line_input::parse_line_input_p())
         .or(name::parse_name_p())
         .or(open::parse_open_p())
-        .or(print::parse_print_p())
-        .or(print::parse_lprint_p())
+        .or(field::parse_field_p())
+        .or(lset::parse_lset_p())
+        .or(get::parse_get_p())
+        .or(put::parse_put_p())
 }
 
 mod close {
@@ -43,7 +45,7 @@ mod close {
                     args.push(first);
                     args.extend(opt_remaining.unwrap_or_default());
                 }
-                Statement::SubCall(BuiltInSub::Close.into(), args)
+                Statement::BuiltInSubCall(BuiltInSub::Close, args)
             })
     }
 
@@ -57,7 +59,10 @@ mod close {
         fn test_no_args() {
             let input = "CLOSE";
             let statement = parse(input).demand_single_statement();
-            assert_eq!(statement, Statement::SubCall("CLOSE".into(), vec![]));
+            assert_eq!(
+                statement,
+                Statement::BuiltInSubCall(BuiltInSub::Close, vec![])
+            );
         }
 
         #[test]
@@ -66,7 +71,7 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall("CLOSE".into(), vec![1.as_lit_expr(1, 7)])
+                Statement::BuiltInSubCall(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
             );
         }
 
@@ -83,8 +88,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![Expression::Parenthesis(Box::new(1.as_lit_expr(1, 8))).at_rc(1, 7)]
                 )
             );
@@ -96,8 +101,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![Expression::Parenthesis(Box::new(1.as_lit_expr(1, 7))).at_rc(1, 6)]
                 )
             );
@@ -109,7 +114,7 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall("CLOSE".into(), vec![1.as_lit_expr(1, 7)])
+                Statement::BuiltInSubCall(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
             );
         }
 
@@ -142,8 +147,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
                 )
             );
@@ -155,8 +160,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
                 )
             );
@@ -168,8 +173,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
                 )
             );
@@ -181,8 +186,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 9)]
                 )
             );
@@ -194,8 +199,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
                 )
             );
@@ -207,8 +212,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
                 )
             );
@@ -220,8 +225,8 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 12)]
                 )
             );
@@ -233,10 +238,28 @@ mod close {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "CLOSE".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
                 )
+            );
+        }
+
+        #[test]
+        fn test_close_inline_comment() {
+            let input = "CLOSE #1 ' closes the file";
+            let program = parse(input);
+            assert_eq!(
+                program,
+                vec![
+                    TopLevelToken::Statement(Statement::BuiltInSubCall(
+                        BuiltInSub::Close,
+                        vec![1.as_lit_expr(1, 7)]
+                    ))
+                    .at_rc(1, 1),
+                    TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))
+                        .at_rc(1, 10)
+                ]
             );
         }
     }
@@ -256,7 +279,7 @@ mod input {
         // INPUT #file-number%, variable-list
         // LINE INPUT #file-number%, variable$
         keyword_followed_by_whitespace_p(Keyword::Input)
-            .and_opt(parse_file_number_p())
+            .and_opt(file_handle_comma_p())
             .and_demand(
                 expression::expression_node_p()
                     .csv()
@@ -271,14 +294,14 @@ mod input {
                     args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
                 }
                 args.extend(variables);
-                Statement::SubCall(BuiltInSub::Input.into(), args)
+                Statement::BuiltInSubCall(BuiltInSub::Input, args)
             })
     }
 
     #[cfg(test)]
     mod tests {
+        use crate::assert_built_in_sub_call;
         use crate::assert_parser_err;
-        use crate::assert_sub_call;
         use crate::parser::test_utils::*;
 
         use super::*;
@@ -286,10 +309,9 @@ mod input {
         #[test]
         fn test_parse_one_variable() {
             let input = "INPUT A$";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(0), // no file number
                 Expression::var_unresolved("A$")
             );
@@ -298,10 +320,9 @@ mod input {
         #[test]
         fn test_parse_two_variables() {
             let input = "INPUT A$, B";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(0), // no file number
                 Expression::var_unresolved("A$"),
                 Expression::var_unresolved("B")
@@ -329,10 +350,9 @@ mod input {
         #[test]
         fn test_file_hash_one_variable_space_after_comma() {
             let input = "INPUT #1, A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::var_unresolved("A")
@@ -342,10 +362,9 @@ mod input {
         #[test]
         fn test_file_hash_one_variable_no_comma() {
             let input = "INPUT #2,A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(2), // file number
                 Expression::var_unresolved("A")
@@ -355,10 +374,9 @@ mod input {
         #[test]
         fn test_file_hash_one_variable_space_before_comma() {
             let input = "INPUT #3 ,A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::Input,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(3), // file number
                 Expression::var_unresolved("A")
@@ -377,7 +395,7 @@ mod line_input {
     {
         keyword_pair_p(Keyword::Line, Keyword::Input)
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LINE INPUT"))
-            .and_opt(parse_file_number_p())
+            .and_opt(file_handle_comma_p())
             .and_demand(
                 expression::expression_node_p()
                     .or_syntax_error("Expected: #file-number or variable"),
@@ -393,14 +411,14 @@ mod line_input {
                 }
                 // add the LINE INPUT variable
                 args.push(variable);
-                Statement::SubCall(BuiltInSub::LineInput.into(), args)
+                Statement::BuiltInSubCall(BuiltInSub::LineInput, args)
             })
     }
 
     #[cfg(test)]
     mod tests {
+        use crate::assert_built_in_sub_call;
         use crate::assert_parser_err;
-        use crate::assert_sub_call;
         use crate::parser::test_utils::*;
 
         use super::*;
@@ -408,10 +426,9 @@ mod line_input {
         #[test]
         fn test_parse_one_variable() {
             let input = "LINE INPUT A$";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::LineInput,
                 Expression::IntegerLiteral(0), // no file number
                 Expression::var_unresolved("A$")
             );
@@ -444,10 +461,9 @@ mod line_input {
         #[test]
         fn test_file_hash_one_variable_space_after_comma() {
             let input = "LINE INPUT #1, A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::LineInput,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::var_unresolved("A")
@@ -457,10 +473,9 @@ mod line_input {
         #[test]
         fn test_file_hash_one_variable_no_comma() {
             let input = "LINE INPUT #2,A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::LineInput,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(2), // file number
                 Expression::var_unresolved("A")
@@ -470,10 +485,9 @@ mod line_input {
         #[test]
         fn test_file_hash_one_variable_space_before_comma() {
             let input = "LINE INPUT #1 ,A";
-            let result = parse(input).demand_single_statement();
-            assert_sub_call!(
-                result,
-                "LINE INPUT",
+            assert_built_in_sub_call!(
+                input,
+                BuiltInSub::LineInput,
                 Expression::IntegerLiteral(1), // has file number
                 Expression::IntegerLiteral(1), // file number
                 Expression::var_unresolved("A")
@@ -496,12 +510,13 @@ mod name {
             .and_demand(keyword_p(Keyword::As).or_syntax_error("Expected: AS"))
             .keep_middle()
             .and_demand(guarded_expression_node_p().or_syntax_error("Expected: new file name"))
-            .map(|(l, r)| Statement::SubCall(BuiltInSub::Name.into(), vec![l, r]))
+            .map(|(l, r)| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]))
     }
 }
 
 mod open {
     use super::*;
+    use crate::parser::expression::guarded_expression_node_p;
     use crate::parser::pc_specific::{keyword_choice_p, keyword_followed_by_whitespace_p};
 
     pub fn parse_open_p<R>() -> impl Parser<R, Output = Statement>
@@ -516,31 +531,21 @@ mod open {
             .and_opt(parse_open_mode_p())
             .and_opt(parse_open_access_p())
             .and_demand(parse_file_number_p().or_syntax_error("Expected: AS file-number"))
+            .and_opt(parse_len_p())
             .map(
-                |((((_, file_name), opt_file_mode), opt_file_access), file_number)| {
-                    Statement::SubCall(
-                        BuiltInSub::Open.into(),
+                |(((((_, file_name), opt_file_mode), opt_file_access), file_number), opt_len)| {
+                    Statement::BuiltInSubCall(
+                        BuiltInSub::Open,
                         vec![
                             file_name,
-                            map_opt_locatable_enum(opt_file_mode, FileMode::Input),
+                            map_opt_locatable_enum(opt_file_mode, FileMode::Random),
                             map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
                             file_number,
+                            map_opt_len(opt_len),
                         ],
                     )
                 },
             )
-    }
-
-    fn map_opt_locatable_enum<T>(
-        opt_locatable_enum: Option<Locatable<T>>,
-        fallback: T,
-    ) -> ExpressionNode
-    where
-        i32: From<T>,
-    {
-        opt_locatable_enum
-            .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
-            .unwrap_or_else(|| Expression::IntegerLiteral(fallback.into()).at(Location::start()))
     }
 
     // FOR <ws+> INPUT <ws+>
@@ -550,9 +555,14 @@ mod open {
     {
         keyword_followed_by_whitespace_p(Keyword::For)
             .and_demand(
-                keyword_choice_p(&[Keyword::Append, Keyword::Input, Keyword::Output])
-                    .or_syntax_error("Expected: APPEND, INPUT or OUTPUT")
-                    .with_pos(),
+                keyword_choice_p(&[
+                    Keyword::Append,
+                    Keyword::Input,
+                    Keyword::Output,
+                    Keyword::Random,
+                ])
+                .or_syntax_error("Expected: APPEND, INPUT or OUTPUT")
+                .with_pos(),
             )
             .keep_right()
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after file mode"))
@@ -566,6 +576,7 @@ mod open {
                         Keyword::Append => FileMode::Append,
                         Keyword::Input => FileMode::Input,
                         Keyword::Output => FileMode::Output,
+                        Keyword::Random => FileMode::Random,
                         _ => panic!("Parser should not have parsed {}", file_mode),
                     })
                     .at(pos)
@@ -603,6 +614,49 @@ mod open {
             .keep_right()
     }
 
+    fn parse_len_p<R>() -> impl Parser<R, Output = ExpressionNode>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        whitespace_p()
+            .and(keyword_p(Keyword::Len))
+            .and_demand(
+                item_p('=')
+                    .preceded_by_opt_ws()
+                    .or_syntax_error("Expected: = after LEN"),
+            )
+            .and_demand(
+                guarded_expression_node_p().or_syntax_error("Expected: expression after LEN ="),
+            )
+            .keep_right()
+    }
+
+    fn map_opt_locatable_enum<T>(
+        opt_locatable_enum: Option<Locatable<T>>,
+        fallback: T,
+    ) -> ExpressionNode
+    where
+        u8: From<T>,
+    {
+        opt_locatable_enum
+            .map(|Locatable { element, pos }| u8_to_expr(element).at(pos))
+            .unwrap_or_else(|| u8_to_expr(fallback).at(Location::start()))
+    }
+
+    fn u8_to_expr<T>(x: T) -> Expression
+    where
+        u8: From<T>,
+    {
+        Expression::IntegerLiteral(u8::from(x) as i32)
+    }
+
+    fn map_opt_len(opt_len: Option<ExpressionNode>) -> ExpressionNode {
+        match opt_len {
+            Some(expr) => expr,
+            _ => Expression::IntegerLiteral(0).at(Location::start()),
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -615,13 +669,14 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 21),
-                        1.as_lit_expr(1, 34),
-                        1.as_lit_expr(1, 42)
+                        FILE_MODE_INPUT.as_lit_expr(1, 21),
+                        FILE_ACCESS_READ.as_lit_expr(1, 34),
+                        1.as_lit_expr(1, 42),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -633,13 +688,14 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
-                        1.as_lit_expr(1, 21),
-                        1.as_lit_expr(1, 34),
-                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 42))).at_rc(1, 41)
+                        FILE_MODE_INPUT.as_lit_expr(1, 21),
+                        FILE_ACCESS_READ.as_lit_expr(1, 34),
+                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 42))).at_rc(1, 41),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -651,13 +707,14 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 21),
-                        0.as_lit_expr(1, 1),
-                        1.as_lit_expr(1, 30)
+                        FILE_MODE_INPUT.as_lit_expr(1, 21),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
+                        1.as_lit_expr(1, 30),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -669,13 +726,14 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 1),
-                        1.as_lit_expr(1, 24),
+                        FILE_MODE_RANDOM.as_lit_expr(1, 1),
+                        FILE_ACCESS_READ.as_lit_expr(1, 24),
                         1.as_lit_expr(1, 32),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -687,13 +745,14 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 1),
-                        0.as_lit_expr(1, 1),
-                        1.as_lit_expr(1, 20)
+                        FILE_MODE_RANDOM.as_lit_expr(1, 1),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
+                        1.as_lit_expr(1, 20),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -705,13 +764,14 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         "FILE.TXT".as_lit_expr(1, 6),
-                        1.as_lit_expr(1, 1),
-                        0.as_lit_expr(1, 1),
-                        Expression::IntegerLiteral(1).at_rc(1, 20)
+                        FILE_MODE_RANDOM.as_lit_expr(1, 1),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
+                        Expression::IntegerLiteral(1).at_rc(1, 20),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -723,13 +783,14 @@ mod open {
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::SubCall(
-                    "OPEN".into(),
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
                     vec![
                         Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
-                        1.as_lit_expr(1, 1),
-                        0.as_lit_expr(1, 1),
-                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 20))).at_rc(1, 19)
+                        FILE_MODE_RANDOM.as_lit_expr(1, 1),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
+                        Expression::Parenthesis(Box::new(1.as_lit_expr(1, 20))).at_rc(1, 19),
+                        0.as_lit_expr(1, 1) // rec-len%
                     ]
                 )
             );
@@ -745,548 +806,24 @@ mod open {
                 29
             );
         }
-    }
-}
-
-mod print {
-    use super::*;
-
-    pub fn parse_print_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Print)
-            .and_opt(parse_file_number_p())
-            .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
-            .and_opt_factory(|((_, opt_file_number), opt_using)|
-                 // we're just past PRINT. No need for space for ; or , but we need it for expressions
-                first_print_arg_p( opt_file_number.is_none() && opt_using.is_none()).one_or_more_looking_back(|prev_arg| {
-                    PrintArgLookingBack {
-                        prev_print_arg_was_expression: prev_arg.is_expression(),
-                    }
-                })
-            )
-            .map(|(((_,opt_file_number), format_string), opt_args)| {
-                Statement::Print(PrintNode {
-                    file_number: opt_file_number.map(|x| x.element),
-                    lpt1: false,
-                    format_string,
-                    args: opt_args.unwrap_or_default(),
-                })
-            })
-    }
-
-    pub fn parse_lprint_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::LPrint)
-            .and_opt(using_p(true))
-            .and_opt_factory(|(_keyword, opt_using)| {
-                // we're just past LPRINT. No need for space for ; or , but we need it for expressions
-                first_print_arg_p(opt_using.is_none()).one_or_more_looking_back(|prev_arg| {
-                    PrintArgLookingBack {
-                        prev_print_arg_was_expression: prev_arg.is_expression(),
-                    }
-                })
-            })
-            .map(|((_, format_string), opt_args)| {
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: true,
-                    format_string,
-                    args: opt_args.unwrap_or_default(),
-                })
-            })
-    }
-
-    fn using_p<R>(needs_leading_whitespace: bool) -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        opt_whitespace_p(needs_leading_whitespace)
-            .and(keyword_p(Keyword::Using))
-            .and_demand(
-                expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: expression after USING"),
-            )
-            .and_demand(item_p(';').or_syntax_error("Expected: ;"))
-            .keep_left()
-            .keep_right()
-    }
-
-    fn first_print_arg_p<R>(
-        needs_leading_whitespace_for_expression: bool,
-    ) -> impl Parser<R, Output = PrintArg>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        FirstPrintArg {
-            needs_leading_whitespace_for_expression,
-        }
-    }
-
-    struct FirstPrintArg {
-        needs_leading_whitespace_for_expression: bool,
-    }
-
-    impl<R> Parser<R> for FirstPrintArg
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        type Output = PrintArg;
-
-        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-            if self.needs_leading_whitespace_for_expression {
-                semicolon_or_comma_as_print_arg_p()
-                    .preceded_by_opt_ws()
-                    .or(expression::guarded_expression_node_p().map(|e| PrintArg::Expression(e)))
-                    .parse(reader)
-            } else {
-                any_print_arg_p().preceded_by_opt_ws().parse(reader)
-            }
-        }
-    }
-
-    fn any_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        semicolon_or_comma_as_print_arg_p()
-            .or(expression::expression_node_p().map(|e| PrintArg::Expression(e)))
-    }
-
-    fn semicolon_or_comma_as_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation,
-    {
-        any_p()
-            .filter_reader_item(|ch| ch == ';' || ch == ',')
-            .map(|ch| match ch {
-                ';' => PrintArg::Semicolon,
-                ',' => PrintArg::Comma,
-                _ => panic!("Parser should not have parsed {}", ch),
-            })
-    }
-
-    struct PrintArgLookingBack {
-        prev_print_arg_was_expression: bool,
-    }
-
-    impl<R> Parser<R> for PrintArgLookingBack
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        type Output = PrintArg;
-
-        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-            if self.prev_print_arg_was_expression {
-                // only comma or semicolon is allowed
-                semicolon_or_comma_as_print_arg_p()
-                    .preceded_by_opt_ws()
-                    .parse(reader)
-            } else {
-                // everything is allowed
-                any_print_arg_p().preceded_by_opt_ws().parse(reader)
-            }
-        }
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use crate::assert_parser_err;
-        use crate::parser::test_utils::*;
 
         #[test]
-        fn test_print_no_args() {
-            let input = "PRINT";
+        fn test_open_random_explicit_len() {
+            let input = r#"OPEN "A.TXT" FOR RANDOM AS #1 LEN = 64"#;
             let statement = parse(input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_no_other_args_only_trailing_comma_space_variations() {
-            let variations = ["PRINT,", "PRINT ,"];
-            for input in &variations {
-                let statement = parse(*input).demand_single_statement();
-                assert_eq!(
-                    statement,
-                    Statement::Print(PrintNode {
-                        file_number: None,
-                        lpt1: false,
-                        format_string: None,
-                        args: vec![PrintArg::Comma]
-                    })
-                );
-            }
-        }
-
-        #[test]
-        fn test_print_no_other_args_only_trailing_semicolon_space_variations() {
-            let variations = ["PRINT;", "PRINT ;"];
-            for input in &variations {
-                let statement = parse(*input).demand_single_statement();
-                assert_eq!(
-                    statement,
-                    Statement::Print(PrintNode {
-                        file_number: None,
-                        lpt1: false,
-                        format_string: None,
-                        args: vec![PrintArg::Semicolon]
-                    })
-                );
-            }
-        }
-
-        #[test]
-        fn test_print_leading_comma_numeric_arg_space_variations() {
-            let variations = ["PRINT,1", "PRINT ,1", "PRINT, 1", "PRINT , 1"];
-            for input in &variations {
-                let statement = parse(*input).demand_single_statement();
-                match statement {
-                    Statement::Print(print_node) => {
-                        assert_eq!(print_node.file_number, None);
-                        assert_eq!(print_node.lpt1, false);
-                        assert_eq!(print_node.format_string, None);
-                        assert_eq!(print_node.args[0], PrintArg::Comma);
-                        match print_node.args[1] {
-                            PrintArg::Expression(Locatable {
-                                element: Expression::IntegerLiteral(1),
-                                ..
-                            }) => {}
-                            _ => panic!("Argument mismatch"),
-                        }
-                        assert_eq!(print_node.args.len(), 2);
-                    }
-                    _ => panic!("{} did not yield a PrintNode", input),
-                }
-            }
-        }
-
-        #[test]
-        fn test_print_leading_semicolon_numeric_arg_space_variations() {
-            let variations = ["PRINT;1", "PRINT ;1", "PRINT; 1", "PRINT ; 1"];
-            for input in &variations {
-                let statement = parse(*input).demand_single_statement();
-                match statement {
-                    Statement::Print(print_node) => {
-                        assert_eq!(print_node.file_number, None);
-                        assert_eq!(print_node.lpt1, false);
-                        assert_eq!(print_node.format_string, None);
-                        assert_eq!(print_node.args[0], PrintArg::Semicolon);
-                        match print_node.args[1] {
-                            PrintArg::Expression(Locatable {
-                                element: Expression::IntegerLiteral(1),
-                                ..
-                            }) => {}
-                            _ => panic!("Argument mismatch"),
-                        }
-                        assert_eq!(print_node.args.len(), 2);
-                    }
-                    _ => panic!("{} did not yield a PrintNode", input),
-                }
-            }
-        }
-
-        #[test]
-        fn test_lprint_no_args() {
-            let input = "LPRINT";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: true,
-                    format_string: None,
-                    args: vec![]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_one_arg() {
-            let input = "PRINT 42";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 7))]
-                })
-            );
-        }
-
-        #[test]
-        fn test_lprint_one_arg() {
-            let input = "LPRINT 42";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: true,
-                    format_string: None,
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 8))]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_two_args() {
-            let input = "PRINT 42, A";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![
-                        PrintArg::Expression(42.as_lit_expr(1, 7)),
-                        PrintArg::Comma,
-                        PrintArg::Expression("A".as_var_expr(1, 11))
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
+                    vec![
+                        "A.TXT".as_lit_expr(1, 6),
+                        FILE_MODE_RANDOM.as_lit_expr(1, 18),
+                        FILE_ACCESS_UNSPECIFIED.as_lit_expr(1, 1),
+                        1.as_lit_expr(1, 28),
+                        64.as_lit_expr(1, 37) // rec-len%
                     ]
-                })
+                )
             );
-        }
-
-        #[test]
-        fn test_lprint_two_args() {
-            let input = "LPRINT 42, A";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: true,
-                    format_string: None,
-                    args: vec![
-                        PrintArg::Expression(42.as_lit_expr(1, 8)),
-                        PrintArg::Comma,
-                        PrintArg::Expression("A".as_var_expr(1, 12))
-                    ]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_file_no_args_no_comma() {
-            let input = "PRINT #1";
-            assert_parser_err!(input, QError::syntax_error("Expected: ,"), 1, 9);
-        }
-
-        #[test]
-        fn test_print_file_no_args() {
-            let input = "PRINT #1,";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: Some(FileHandle::from(1)),
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_file_one_arg() {
-            let input = "PRINT #1, 42";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: Some(FileHandle::from(1)),
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 11))]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_file_semicolon_after_file_number_err() {
-            let input = "PRINT #1; 42";
-            assert_parser_err!(input, QError::syntax_error("Expected: ,"), 1, 9);
-        }
-
-        #[test]
-        fn test_print_file_two_args() {
-            let input = "PRINT #1, A, B";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: Some(FileHandle::from(1)),
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![
-                        PrintArg::Expression("A".as_var_expr(1, 11)),
-                        PrintArg::Comma,
-                        PrintArg::Expression("B".as_var_expr(1, 14))
-                    ]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_file_leading_comma() {
-            let input = "PRINT #1,, A, B";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: Some(FileHandle::from(1)),
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![
-                        PrintArg::Comma,
-                        PrintArg::Expression("A".as_var_expr(1, 12)),
-                        PrintArg::Comma,
-                        PrintArg::Expression("B".as_var_expr(1, 15))
-                    ]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_file_leading_semicolon() {
-            let input = "PRINT #1,; A, B";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: Some(FileHandle::from(1)),
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![
-                        PrintArg::Semicolon,
-                        PrintArg::Expression("A".as_var_expr(1, 12)),
-                        PrintArg::Comma,
-                        PrintArg::Expression("B".as_var_expr(1, 15))
-                    ]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_using_no_args() {
-            let input = "PRINT USING \"#\";";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: false,
-                    format_string: Some("#".as_lit_expr(1, 13)),
-                    args: vec![]
-                })
-            );
-        }
-
-        #[test]
-        fn test_lprint_using_no_args() {
-            let input = "LPRINT USING \"#\";";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: true,
-                    format_string: Some("#".as_lit_expr(1, 14)),
-                    args: vec![]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_using_no_args_missing_semicolon() {
-            let input = "PRINT USING \"#\"";
-            assert_parser_err!(input, QError::syntax_error("Expected: ;"), 1, 16);
-        }
-
-        #[test]
-        fn test_lprint_using_no_args_missing_semicolon() {
-            let input = "LPRINT USING \"#\"";
-            assert_parser_err!(input, QError::syntax_error("Expected: ;"), 1, 17);
-        }
-
-        #[test]
-        fn test_print_using_one_arg() {
-            let input = "PRINT USING \"#\"; 42";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: false,
-                    format_string: Some("#".as_lit_expr(1, 13)),
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 18))]
-                })
-            );
-        }
-
-        #[test]
-        fn test_lprint_using_one_arg() {
-            let input = "LPRINT USING \"#\"; 42";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: None,
-                    lpt1: true,
-                    format_string: Some("#".as_lit_expr(1, 14)),
-                    args: vec![PrintArg::Expression(42.as_lit_expr(1, 19))]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_file_using_no_args() {
-            let input = "PRINT #1, USING \"#\";";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: Some(FileHandle::from(1)),
-                    lpt1: false,
-                    format_string: Some("#".as_lit_expr(1, 17)),
-                    args: vec![]
-                })
-            );
-        }
-
-        #[test]
-        fn test_print_file_using_one_arg() {
-            let input = "PRINT #1, USING \"#\"; 3.14";
-            let statement = parse(input).demand_single_statement();
-            assert_eq!(
-                statement,
-                Statement::Print(PrintNode {
-                    file_number: Some(FileHandle::from(1)),
-                    lpt1: false,
-                    format_string: Some("#".as_lit_expr(1, 17)),
-                    args: vec![PrintArg::Expression(3.14_f32.as_lit_expr(1, 22))]
-                })
-            );
-        }
-
-        #[test]
-        fn test_lprint_no_comma_between_expressions_is_error() {
-            let input = "LPRINT 1 2";
-            assert_parser_err!(input, QError::syntax_error("No separator: 2"), 1, 11);
         }
     }
 }
@@ -1300,12 +837,11 @@ where
         .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
 }
 
-fn parse_file_number_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
+fn file_handle_comma_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     expression::file_handle_p()
-        .preceded_by_opt_ws()
         .and_demand(
             item_p(',')
                 .surrounded_by_opt_ws()
@@ -1329,4 +865,179 @@ where
         .and(file_handle_as_expression_node_p())
         .keep_right()
         .or(expression::guarded_expression_node_p())
+}
+
+mod field {
+    use crate::built_ins::BuiltInSub;
+    use crate::common::*;
+    use crate::parser::expression::{expression_node_p, file_handle_p};
+    use crate::parser::name::name_with_dot_p;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::types::*;
+
+    pub fn parse_field_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_p(Keyword::Field)
+            .and_demand(field_node_p().or_syntax_error("Expected: file number after FIELD"))
+            .keep_right()
+    }
+
+    fn field_node_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        whitespace_p()
+            .and_demand(file_handle_p().or_syntax_error("Expected: file-number"))
+            .and_demand(
+                item_p(',')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: ,"),
+            )
+            .and_demand(
+                field_item_p()
+                    .csv()
+                    .or_syntax_error("Expected: field width"),
+            )
+            .map(|(((_, file_number), _), fields)| {
+                Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
+            })
+    }
+
+    fn field_item_p<R>() -> impl Parser<R, Output = (ExpressionNode, NameNode)>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        expression_node_p()
+            // TODO 'AS' does not need leading whitespace if expression has parenthesis
+            // TODO solve this not by peeking the previous but with a new expression:: function
+            .and_demand(
+                keyword_p(Keyword::As)
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: AS"),
+            )
+            .and_demand(
+                name_with_dot_p()
+                    .with_pos()
+                    .or_syntax_error("Expected: variable name"),
+            )
+            .map(|((width, _), name)| (width, name))
+    }
+
+    fn build_args(
+        file_number: Locatable<FileHandle>,
+        fields: Vec<(ExpressionNode, NameNode)>,
+    ) -> ExpressionNodes {
+        let mut args: ExpressionNodes = vec![];
+        args.push(file_number.map(|x| Expression::IntegerLiteral(x.into())));
+        for (width, Locatable { element: name, pos }) in fields {
+            args.push(width);
+            let variable_name: String = name.bare_name().as_ref().to_string();
+            args.push(Expression::StringLiteral(variable_name).at(pos));
+            // to lint the variable, not used at runtime
+            args.push(Expression::Variable(name, VariableInfo::unresolved()).at(pos));
+        }
+        args
+    }
+}
+
+mod lset {
+    use crate::built_ins::BuiltInSub;
+    use crate::common::*;
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::name::name_with_dot_p;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::types::*;
+
+    pub fn parse_lset_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_followed_by_whitespace_p(Keyword::LSet)
+            .and_demand(
+                name_with_dot_p()
+                    .with_pos()
+                    .or_syntax_error("Expected: variable after LSET"),
+            )
+            .and_demand(
+                item_p('=')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: ="),
+            )
+            .and_demand(expression_node_p().or_syntax_error("Expected: expression"))
+            .map(|(((_, name_node), _), value_expr_node)| {
+                Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_node, value_expr_node))
+            })
+    }
+
+    fn build_args(name_node: NameNode, value_expr_node: ExpressionNode) -> ExpressionNodes {
+        let Locatable { element: name, pos } = name_node;
+        let variable_name: String = name.bare_name().as_ref().to_owned();
+        let name_expr_node = Expression::Variable(name, VariableInfo::unresolved()).at(pos);
+        vec![
+            // pass the name of the variable as a special argument
+            Expression::StringLiteral(variable_name).at(pos),
+            // pass the variable itself (ByRef) to be able to write to it
+            name_expr_node,
+            // pass the value to assign to the variable
+            value_expr_node,
+        ]
+    }
+}
+
+mod get {
+    use super::*;
+    use crate::built_ins::BuiltInSub;
+    use crate::parser::expression;
+    use crate::parser::pc_specific::keyword_followed_by_whitespace_p;
+
+    pub fn parse_get_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_followed_by_whitespace_p(Keyword::Get)
+            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
+            .and_demand(
+                item_p(',')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: ,"),
+            )
+            .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
+            .map(|(((_, file_number), _), r)| {
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Get,
+                    vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],
+                )
+            })
+    }
+}
+
+mod put {
+    use super::*;
+    use crate::built_ins::BuiltInSub;
+    use crate::parser::expression;
+    use crate::parser::pc_specific::keyword_followed_by_whitespace_p;
+
+    pub fn parse_put_p<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        keyword_followed_by_whitespace_p(Keyword::Put)
+            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
+            .and_demand(
+                item_p(',')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: ,"),
+            )
+            .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
+            .map(|(((_, file_number), _), r)| {
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Put,
+                    vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],
+                )
+            })
+    }
 }

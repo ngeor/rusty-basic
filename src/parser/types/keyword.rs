@@ -45,10 +45,14 @@ pub enum Keyword {
     Error,
     /// EXIT
     Exit,
+    /// FIELD
+    Field,
     /// FOR
     For,
     /// FUNCTION
     Function,
+    /// GET
+    Get,
     /// GOSUB
     GoSub,
     /// GOTO
@@ -61,6 +65,8 @@ pub enum Keyword {
     Integer,
     /// IS
     Is,
+    /// LEN
+    Len,
     /// LINE
     Line,
     /// LONG
@@ -69,6 +75,8 @@ pub enum Keyword {
     Loop,
     /// LPRINT
     LPrint,
+    /// LSET
+    LSet,
     /// MOD
     Mod,
     /// NAME
@@ -87,6 +95,10 @@ pub enum Keyword {
     Output,
     /// PRINT
     Print,
+    /// PUT
+    Put,
+    /// RANDOM
+    Random,
     /// READ
     Read,
     /// RESUME
@@ -146,18 +158,22 @@ const STR_ELSEIF: &str = "ELSEIF";
 const STR_END: &str = "END";
 const STR_ERROR: &str = "ERROR";
 const STR_EXIT: &str = "EXIT";
+const STR_FIELD: &str = "FIELD";
 const STR_FOR: &str = "FOR";
 const STR_FUNCTION: &str = "FUNCTION";
+const STR_GET: &str = "GET";
 const STR_GO_SUB: &str = "GOSUB";
 const STR_GOTO: &str = "GOTO";
 const STR_IF: &str = "IF";
 const STR_INPUT: &str = "INPUT";
 const STR_INTEGER: &str = "INTEGER";
 const STR_IS: &str = "IS";
+const STR_LEN: &str = "LEN";
 const STR_LINE: &str = "LINE";
 const STR_LONG: &str = "LONG";
 const STR_LOOP: &str = "LOOP";
 const STR_LPRINT: &str = "LPRINT";
+const STR_LSET: &str = "LSET";
 const STR_MOD: &str = "MOD";
 const STR_NAME: &str = "NAME";
 const STR_NEXT: &str = "NEXT";
@@ -167,6 +183,8 @@ const STR_OPEN: &str = "OPEN";
 const STR_OR: &str = "OR";
 const STR_OUTPUT: &str = "OUTPUT";
 const STR_PRINT: &str = "PRINT";
+const STR_PUT: &str = "PUT";
+const STR_RANDOM: &str = "RANDOM";
 const STR_READ: &str = "READ";
 const STR_RESUME: &str = "RESUME";
 const STR_RETURN: &str = "RETURN";
@@ -186,7 +204,7 @@ const STR_USING: &str = "USING";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 60] = [
+const SORTED_KEYWORDS_STR: [&str; 66] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -208,18 +226,22 @@ const SORTED_KEYWORDS_STR: [&str; 60] = [
     STR_END,
     STR_ERROR,
     STR_EXIT,
+    STR_FIELD,
     STR_FOR,
     STR_FUNCTION,
+    STR_GET,
     STR_GO_SUB,
     STR_GOTO,
     STR_IF,
     STR_INPUT,
     STR_INTEGER,
     STR_IS,
+    STR_LEN,
     STR_LINE,
     STR_LONG,
     STR_LOOP,
     STR_LPRINT,
+    STR_LSET,
     STR_MOD,
     STR_NAME,
     STR_NEXT,
@@ -229,6 +251,8 @@ const SORTED_KEYWORDS_STR: [&str; 60] = [
     STR_OR,
     STR_OUTPUT,
     STR_PRINT,
+    STR_PUT,
+    STR_RANDOM,
     STR_READ,
     STR_RESUME,
     STR_RETURN,
@@ -249,7 +273,7 @@ const SORTED_KEYWORDS_STR: [&str; 60] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 60] = [
+const SORTED_KEYWORDS: [Keyword; 66] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -271,18 +295,22 @@ const SORTED_KEYWORDS: [Keyword; 60] = [
     Keyword::End,
     Keyword::Error,
     Keyword::Exit,
+    Keyword::Field,
     Keyword::For,
     Keyword::Function,
+    Keyword::Get,
     Keyword::GoSub,
     Keyword::GoTo,
     Keyword::If,
     Keyword::Input,
     Keyword::Integer,
     Keyword::Is,
+    Keyword::Len,
     Keyword::Line,
     Keyword::Long,
     Keyword::Loop,
     Keyword::LPrint,
+    Keyword::LSet,
     Keyword::Mod,
     Keyword::Name,
     Keyword::Next,
@@ -292,6 +320,8 @@ const SORTED_KEYWORDS: [Keyword; 60] = [
     Keyword::Or,
     Keyword::Output,
     Keyword::Print,
+    Keyword::Put,
+    Keyword::Random,
     Keyword::Read,
     Keyword::Resume,
     Keyword::Return,
@@ -336,18 +366,22 @@ impl Keyword {
             Self::End => STR_END,
             Self::Error => STR_ERROR,
             Self::Exit => STR_EXIT,
+            Self::Field => STR_FIELD,
             Self::For => STR_FOR,
             Self::Function => STR_FUNCTION,
+            Self::Get => STR_GET,
             Self::GoSub => STR_GO_SUB,
             Self::GoTo => STR_GOTO,
             Self::If => STR_IF,
             Self::Input => STR_INPUT,
             Self::Integer => STR_INTEGER,
             Self::Is => STR_IS,
+            Self::Len => STR_LEN,
             Self::Line => STR_LINE,
             Self::Long => STR_LONG,
             Self::Loop => STR_LOOP,
             Self::LPrint => STR_LPRINT,
+            Self::LSet => STR_LSET,
             Self::Mod => STR_MOD,
             Self::Name => STR_NAME,
             Self::Next => STR_NEXT,
@@ -357,6 +391,8 @@ impl Keyword {
             Self::Or => STR_OR,
             Self::Output => STR_OUTPUT,
             Self::Print => STR_PRINT,
+            Self::Put => STR_PUT,
+            Self::Random => STR_RANDOM,
             Self::Read => STR_READ,
             Self::Resume => STR_RESUME,
             Self::Return => STR_RETURN,

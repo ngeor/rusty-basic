@@ -109,6 +109,12 @@ impl ExpressionNodeLiteralFactory for &str {
     }
 }
 
+impl ExpressionNodeLiteralFactory for u8 {
+    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
+        Expression::IntegerLiteral(*self as i32).at_rc(row, col)
+    }
+}
+
 impl ExpressionNodeLiteralFactory for i32 {
     fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
         Expression::IntegerLiteral(*self).at_rc(row, col)
@@ -168,6 +174,32 @@ macro_rules! assert_sub_call {
                 assert_eq!(actual_args_no_loc, vec![$($arg),+]);
             }
             _ => panic!("Expected SubCall")
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! assert_built_in_sub_call {
+    ($input: expr, $expected_name: expr) => {
+        let result = parse($input).demand_single_statement();
+        match result {
+            Statement::BuiltInSubCall(actual_name, actual_args) => {
+                assert_eq!(actual_name, $expected_name);
+                assert!(actual_args.is_empty(), "Expected no args");
+            }
+            _ => panic!("Expected built-in sub call {:?}", $expected_name)
+        }
+    };
+
+    ($input: expr, $expected_name: expr, $($arg: expr),+) => {
+        let result = parse($input).demand_single_statement();
+        match result {
+            Statement::BuiltInSubCall(actual_name, actual_args) => {
+                assert_eq!(actual_name, $expected_name);
+                let actual_args_no_loc: Vec<crate::parser::types::Expression> = actual_args.into_iter().map(|x| x.strip_location()).collect();
+                assert_eq!(actual_args_no_loc, vec![$($arg),+]);
+            }
+            _ => panic!("Expected built-in sub call {:?}", $expected_name)
         }
     };
 }

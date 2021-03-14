@@ -1,15 +1,21 @@
 use std::cmp::Ordering;
+use std::str::Chars;
 
 // CaseInsensitiveString
 
 #[derive(Clone, Debug)]
 pub struct CaseInsensitiveString {
+    // TODO experiment with making this an enum Borrowed(&str)/Owned(String)
     inner: String,
 }
 
 impl CaseInsensitiveString {
-    pub fn new(value: String) -> CaseInsensitiveString {
-        CaseInsensitiveString { inner: value }
+    pub fn new(value: String) -> Self {
+        Self { inner: value }
+    }
+
+    pub fn chars(&self) -> Chars<'_> {
+        self.inner.chars()
     }
 
     /// Checks if the string contains the given character, case insensitively.
@@ -23,7 +29,7 @@ impl CaseInsensitiveString {
     /// assert_eq!(CaseInsensitiveString::from("a#").contains('b'), false);
     /// ```
     pub fn contains(&self, needle: char) -> bool {
-        for c in self.inner.chars() {
+        for c in self.chars() {
             if c.to_ascii_uppercase() == needle.to_ascii_uppercase() {
                 return true;
             }
@@ -45,9 +51,9 @@ impl CaseInsensitiveString {
     /// assert!(!CaseInsensitiveString::from("abc").starts_with(&CaseInsensitiveString::from("abcd")));
     /// ```
     pub fn starts_with(&self, needle: &Self) -> bool {
-        let n: Vec<char> = needle.inner.chars().collect();
+        let n: Vec<char> = needle.chars().collect();
         let mut i = 0;
-        for c in self.inner.chars() {
+        for c in self.chars() {
             if i < n.len() && c.to_ascii_uppercase() == n[i].to_ascii_uppercase() {
                 i += 1;
             } else {

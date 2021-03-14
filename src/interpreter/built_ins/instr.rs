@@ -3,21 +3,14 @@
 // returns the first occurrence of needle$ inside hay$
 
 use super::*;
+use crate::variant::{QBNumberCast, Variant};
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let a: &Variant = &interpreter.context()[0];
     let b: &Variant = &interpreter.context()[1];
     let result: i32 = match interpreter.context().variables().get(2) {
-        Some(c) => do_instr(
-            a.try_into().with_err_no_pos()?,
-            b.try_into().with_err_no_pos()?,
-            c.try_into().with_err_no_pos()?,
-        )?,
-        None => do_instr(
-            1,
-            a.try_into().with_err_no_pos()?,
-            b.try_into().with_err_no_pos()?,
-        )?,
+        Some(c) => do_instr(a.try_cast()?, b.to_str_unchecked(), c.to_str_unchecked())?,
+        None => do_instr(1, a.to_str_unchecked(), b.to_str_unchecked())?,
     };
     interpreter
         .context_mut()
@@ -25,9 +18,9 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
     Ok(())
 }
 
-fn do_instr(start: i32, hay: &String, needle: &String) -> Result<i32, QErrorNode> {
+fn do_instr(start: i32, hay: &str, needle: &str) -> Result<i32, QError> {
     if start <= 0 {
-        Err(QError::IllegalFunctionCall).with_err_no_pos()
+        Err(QError::IllegalFunctionCall)
     } else if hay.is_empty() {
         Ok(0)
     } else if needle.is_empty() {

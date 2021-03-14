@@ -1,18 +1,14 @@
 use super::*;
-use std::convert::TryFrom;
+use crate::variant::{QBNumberCast, Variant};
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let v: Variant = interpreter.context()[0].clone();
     let dimension: i32 = match interpreter.context().variables().get(1) {
-        Some(v) => v
-            .clone()
-            .cast(TypeQualifier::PercentInteger)
-            .and_then(|v| i32::try_from(v))
-            .with_err_no_pos()?,
+        Some(v) => v.try_cast()?,
         _ => 1,
     };
     if dimension <= 0 {
-        Err(QError::SubscriptOutOfRange).with_err_no_pos()
+        Err(QError::SubscriptOutOfRange)
     } else {
         match v {
             Variant::VArray(a) => match a.get_dimensions((dimension - 1) as usize) {
@@ -23,9 +19,9 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
                     );
                     Ok(())
                 }
-                _ => Err(QError::SubscriptOutOfRange).with_err_no_pos(),
+                _ => Err(QError::SubscriptOutOfRange),
             },
-            _ => Err(QError::ArgumentTypeMismatch).with_err_no_pos(),
+            _ => Err(QError::ArgumentTypeMismatch),
         }
     }
 }

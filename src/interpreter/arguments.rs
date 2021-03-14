@@ -1,5 +1,6 @@
 use crate::parser::ParamName;
 use crate::variant::Variant;
+use std::slice::Iter;
 use std::vec::IntoIter;
 
 #[derive(Debug)]
@@ -18,6 +19,10 @@ impl Arguments {
 
     pub fn push_named(&mut self, parameter_name: ParamName, arg: Variant) {
         self.v.push((Some(parameter_name), arg));
+    }
+
+    pub fn iter(&self) -> Iter<(Option<ParamName>, Variant)> {
+        self.v.iter()
     }
 
     pub fn into_iter(self) -> IntoIter<(Option<ParamName>, Variant)> {

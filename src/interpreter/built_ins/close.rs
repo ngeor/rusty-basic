@@ -1,13 +1,14 @@
 // CLOSE
 use super::*;
-use std::convert::TryFrom;
+use crate::common::FileHandle;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let file_handles: Vec<FileHandle> = (0..interpreter.context().variables().len())
-        .map(|idx| &interpreter.context()[idx])
-        .map(FileHandle::try_from)
-        .collect::<Result<Vec<FileHandle>, QError>>()
-        .with_err_no_pos()?;
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+    let file_handles: Vec<FileHandle> = interpreter
+        .context()
+        .variables()
+        .iter()
+        .map(to_file_handle)
+        .collect::<Result<Vec<FileHandle>, QError>>()?;
     if file_handles.is_empty() {
         interpreter.file_manager().close_all();
     } else {

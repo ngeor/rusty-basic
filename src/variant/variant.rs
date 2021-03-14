@@ -1,11 +1,10 @@
 use super::fit::FitToType;
 use super::UserDefinedTypeValue;
-use crate::common::{FileHandle, QError};
+use crate::common::QError;
 use crate::parser::TypeQualifier;
-use crate::variant::casting::QBNumberCast;
-use crate::variant::{qb_and, qb_or, VArray};
+use crate::variant::{qb_and, qb_or, QBNumberCast, VArray};
 use std::cmp::Ordering;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::fmt::Display;
 
 #[derive(Clone, Debug)]
@@ -387,6 +386,58 @@ impl PartialEq for Variant {
     }
 }
 
+impl Display for Variant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Variant::VSingle(n) => write!(f, "{}", n),
+            Variant::VDouble(n) => write!(f, "{}", n),
+            Variant::VString(s) => write!(f, "{}", s),
+            Variant::VInteger(n) => write!(f, "{}", n),
+            Variant::VLong(n) => write!(f, "{}", n),
+            _ => Err(std::fmt::Error),
+        }
+    }
+}
+
+// ========================================================
+// Creating the default variant
+// ========================================================
+
+impl From<TypeQualifier> for Variant {
+    fn from(type_qualifier: TypeQualifier) -> Self {
+        match type_qualifier {
+            TypeQualifier::BangSingle => Self::VSingle(0.0),
+            TypeQualifier::HashDouble => Self::VDouble(0.0),
+            TypeQualifier::DollarString => Self::VString(String::new()),
+            TypeQualifier::PercentInteger => Self::VInteger(0),
+            TypeQualifier::AmpersandLong => Self::VLong(0),
+        }
+    }
+}
+
+// ========================================================
+// Try to get a type qualifier
+// ========================================================
+
+impl TryFrom<&Variant> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
+        match value {
+            Variant::VSingle(_) => Ok(TypeQualifier::BangSingle),
+            Variant::VDouble(_) => Ok(TypeQualifier::HashDouble),
+            Variant::VString(_) => Ok(TypeQualifier::DollarString),
+            Variant::VInteger(_) => Ok(TypeQualifier::PercentInteger),
+            Variant::VLong(_) => Ok(TypeQualifier::AmpersandLong),
+            _ => Err(QError::TypeMismatch),
+        }
+    }
+}
+
+// ========================================================
+// Convert from standard types to Variant
+// ========================================================
+
 impl From<f32> for Variant {
     fn from(f: f32) -> Self {
         Variant::VSingle(f)
@@ -408,12 +459,6 @@ impl From<String> for Variant {
 impl From<&str> for Variant {
     fn from(s: &str) -> Self {
         Variant::VString(s.to_string())
-    }
-}
-
-impl From<u8> for Variant {
-    fn from(i: u8) -> Self {
-        Variant::VInteger(i as i32)
     }
 }
 
@@ -439,176 +484,33 @@ impl From<bool> for Variant {
     }
 }
 
-impl From<FileHandle> for Variant {
-    fn from(file_handle: FileHandle) -> Variant {
-        let file_number: i32 = file_handle.into();
-        Variant::VInteger(file_number)
+// ========================================================
+// Convert from Variant to standard types
+// ========================================================
+
+impl Variant {
+    /// Gets a `str` reference from this Variant.
+    ///
+    /// Panics if the variant is not of string type.
+    ///
+    /// Use it only at runtime if the linter has guaranteed the type.
+    pub fn to_str_unchecked(&self) -> &str {
+        match self {
+            Variant::VString(s) => s,
+            _ => panic!("Variant was not a string {:?}", self),
+        }
     }
 }
 
-impl TryFrom<&Variant> for bool {
-    type Error = QError;
-
-    fn try_from(value: &Variant) -> Result<bool, QError> {
-        match value {
+impl QBNumberCast<bool> for Variant {
+    fn try_cast(&self) -> Result<bool, QError> {
+        match self {
             Variant::VSingle(n) => Ok(*n != 0.0),
             Variant::VDouble(n) => Ok(*n != 0.0),
             Variant::VInteger(n) => Ok(*n != 0),
             Variant::VLong(n) => Ok(*n != 0),
             _ => Err(QError::TypeMismatch),
         }
-    }
-}
-
-impl TryFrom<Variant> for bool {
-    type Error = QError;
-
-    fn try_from(value: Variant) -> Result<bool, QError> {
-        bool::try_from(&value)
-    }
-}
-
-impl Display for Variant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Variant::VSingle(n) => write!(f, "{}", n),
-            Variant::VDouble(n) => write!(f, "{}", n),
-            Variant::VString(s) => write!(f, "{}", s),
-            Variant::VInteger(n) => write!(f, "{}", n),
-            Variant::VLong(n) => write!(f, "{}", n),
-            _ => Err(std::fmt::Error),
-        }
-    }
-}
-
-// ========================================================
-// Creating the default variant
-// ========================================================
-
-impl From<&TypeQualifier> for Variant {
-    fn from(type_qualifier: &TypeQualifier) -> Self {
-        match type_qualifier {
-            TypeQualifier::BangSingle => Self::VSingle(0.0),
-            TypeQualifier::HashDouble => Self::VDouble(0.0),
-            TypeQualifier::DollarString => Self::VString(String::new()),
-            TypeQualifier::PercentInteger => Self::VInteger(0),
-            TypeQualifier::AmpersandLong => Self::VLong(0),
-        }
-    }
-}
-
-impl From<TypeQualifier> for Variant {
-    fn from(type_qualifier: TypeQualifier) -> Self {
-        Variant::from(&type_qualifier)
-    }
-}
-
-// ========================================================
-// Try to get a type qualifier
-// ========================================================
-
-impl TryFrom<&Variant> for TypeQualifier {
-    type Error = QError;
-
-    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
-        match value {
-            Variant::VSingle(_) => Ok(TypeQualifier::BangSingle),
-            Variant::VDouble(_) => Ok(TypeQualifier::HashDouble),
-            Variant::VString(_) => Ok(TypeQualifier::DollarString),
-            Variant::VInteger(_) => Ok(TypeQualifier::PercentInteger),
-            Variant::VLong(_) => Ok(TypeQualifier::AmpersandLong),
-            _ => Err(QError::TypeMismatch),
-        }
-    }
-}
-
-// ========================================================
-// Convert from Variant to standard types (without casting)
-// ========================================================
-
-impl<'a> TryFrom<&'a Variant> for &'a String {
-    type Error = QError;
-
-    fn try_from(value: &'a Variant) -> Result<Self, Self::Error> {
-        match value {
-            Variant::VString(s) => Ok(s),
-            _ => Err(QError::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Variant> for String {
-    type Error = QError;
-
-    fn try_from(value: Variant) -> Result<Self, Self::Error> {
-        match value {
-            Variant::VString(s) => Ok(s),
-            _ => Err(QError::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<&Variant> for i32 {
-    type Error = QError;
-
-    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
-        match value {
-            Variant::VInteger(i) => Ok(*i),
-            _ => Err(QError::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Variant> for i32 {
-    type Error = QError;
-
-    fn try_from(value: Variant) -> Result<Self, Self::Error> {
-        match value {
-            Variant::VInteger(i) => Ok(i),
-            _ => Err(QError::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<&Variant> for u8 {
-    type Error = QError;
-    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
-        let i: i32 = value.try_into()?;
-        if i >= 0 && i <= 255 {
-            Ok(i as u8)
-        } else {
-            Err(QError::Overflow)
-        }
-    }
-}
-
-impl TryFrom<Variant> for u8 {
-    type Error = QError;
-    fn try_from(value: Variant) -> Result<Self, Self::Error> {
-        let i: i32 = value.try_into()?;
-        if i >= 0 && i <= 255 {
-            Ok(i as u8)
-        } else {
-            Err(QError::Overflow)
-        }
-    }
-}
-
-impl TryFrom<&Variant> for FileHandle {
-    type Error = QError;
-
-    fn try_from(v: &Variant) -> Result<Self, Self::Error> {
-        let i: i32 = v.try_cast()?;
-        FileHandle::try_from(i)
-    }
-}
-
-impl TryFrom<Variant> for FileHandle {
-    type Error = QError;
-
-    fn try_from(v: Variant) -> Result<Self, Self::Error> {
-        let i: i32 = v.try_cast()?;
-        FileHandle::try_from(i)
     }
 }
 
@@ -655,18 +557,22 @@ mod tests {
 
         #[test]
         fn test_bool_try_from() {
-            assert_eq!(true, bool::try_from(Variant::from(1.0_f32)).unwrap());
-            assert_eq!(false, bool::try_from(Variant::from(0.0_f32)).unwrap());
-            assert_eq!(true, bool::try_from(Variant::from(1.0)).unwrap());
-            assert_eq!(false, bool::try_from(Variant::from(0.0)).unwrap());
-            bool::try_from(Variant::from("hi")).expect_err("should not convert from string");
-            bool::try_from(Variant::from("")).expect_err("should not convert from string");
-            assert_eq!(true, bool::try_from(Variant::from(42)).unwrap());
-            assert_eq!(false, bool::try_from(Variant::from(0)).unwrap());
-            assert_eq!(true, bool::try_from(Variant::from(42_i64)).unwrap());
-            assert_eq!(false, bool::try_from(Variant::from(0_i64)).unwrap());
-            assert_eq!(true, bool::try_from(V_TRUE).unwrap());
-            assert_eq!(false, bool::try_from(V_FALSE).unwrap());
+            assert_eq!(true, bool_try_from(Variant::from(1.0_f32)).unwrap());
+            assert_eq!(false, bool_try_from(Variant::from(0.0_f32)).unwrap());
+            assert_eq!(true, bool_try_from(Variant::from(1.0)).unwrap());
+            assert_eq!(false, bool_try_from(Variant::from(0.0)).unwrap());
+            bool_try_from(Variant::from("hi")).expect_err("should not convert from string");
+            bool_try_from(Variant::from("")).expect_err("should not convert from string");
+            assert_eq!(true, bool_try_from(Variant::from(42)).unwrap());
+            assert_eq!(false, bool_try_from(Variant::from(0)).unwrap());
+            assert_eq!(true, bool_try_from(Variant::from(42_i64)).unwrap());
+            assert_eq!(false, bool_try_from(Variant::from(0_i64)).unwrap());
+            assert_eq!(true, bool_try_from(V_TRUE).unwrap());
+            assert_eq!(false, bool_try_from(V_FALSE).unwrap());
+        }
+
+        fn bool_try_from(v: Variant) -> Result<bool, QError> {
+            v.try_cast()
         }
     }
 

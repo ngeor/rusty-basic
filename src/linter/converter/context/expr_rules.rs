@@ -25,19 +25,19 @@ pub fn on_expression(
         Expression::LongLiteral(l) => ok_no_implicits(Expression::LongLiteral(l), pos),
         // parenthesis
         Expression::Parenthesis(box_child) => {
-            parenthesis_v2::convert(ctx, box_child, expr_context, pos)
+            parenthesis::convert(ctx, box_child, expr_context, pos)
         }
         // unary
         Expression::UnaryExpression(unary_operator, box_child) => {
-            unary_v2::convert(ctx, unary_operator, box_child, expr_context, pos)
+            unary::convert(ctx, unary_operator, box_child, expr_context, pos)
         }
         // binary
         Expression::BinaryExpression(binary_operator, left, right, _expr_type) => {
-            binary_v2::convert(ctx, binary_operator, left, right, expr_context, pos)
+            binary::convert(ctx, binary_operator, left, right, expr_context, pos)
         }
         // variables
         Expression::Variable(name, variable_info) => {
-            variable_v2::convert(ctx, name, variable_info, expr_context, pos)
+            variable::convert(ctx, name, variable_info, expr_context, pos)
         }
         Expression::ArrayElement(_name, _indices, _variable_info) => {
             panic!(
@@ -45,14 +45,14 @@ pub fn on_expression(
             )
         }
         Expression::Property(box_left_side, property_name, _expr_type) => {
-            property_v2::convert(ctx, box_left_side, property_name, expr_context, pos)
+            property::convert(ctx, box_left_side, property_name, expr_context, pos)
         }
         // function call
         Expression::FunctionCall(name, args) => {
-            function_v2::convert(ctx, name, args, expr_context, pos)
+            function::convert(ctx, name, args, expr_context, pos)
         }
-        Expression::BuiltInFunctionCall(_built_in_function, _args) => {
-            panic!("Parser is not supposed to produce any BuiltInFunctionCall expressions, only FunctionCall")
+        Expression::BuiltInFunctionCall(built_in_function, args) => {
+            built_in_function::convert(ctx, built_in_function, args, pos)
         }
     }
 }
@@ -61,7 +61,7 @@ fn ok_no_implicits(expr: Expression, pos: Location) -> R {
     Ok((expr.at(pos), vec![]))
 }
 
-pub mod parenthesis_v2 {
+mod parenthesis {
     use super::*;
 
     pub fn convert(
@@ -77,7 +77,7 @@ pub mod parenthesis_v2 {
     }
 }
 
-pub mod unary_v2 {
+mod unary {
     use super::*;
     pub fn convert(
         ctx: &mut Context,
@@ -109,7 +109,7 @@ pub mod unary_v2 {
     }
 }
 
-pub mod binary_v2 {
+mod binary {
     use super::*;
     pub fn convert(
         ctx: &mut Context,
@@ -127,7 +127,7 @@ pub mod binary_v2 {
     }
 }
 
-pub mod variable_v2 {
+mod variable {
     use super::*;
 
     pub fn convert(
@@ -376,9 +376,9 @@ pub mod variable_v2 {
     }
 }
 
-pub mod property_v2 {
+mod property {
     use super::*;
-    use crate::linter::converter::context::expr_rules::variable_v2::{
+    use crate::linter::converter::context::expr_rules::variable::{
         add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
         VarAsUserDefinedFunctionCall, VarResolve,
     };
@@ -580,7 +580,40 @@ pub mod property_v2 {
     }
 }
 
-pub mod function_v2 {
+fn functions_must_have_arguments(args: &ExpressionNodes, pos: Location) -> Result<(), QErrorNode> {
+    if args.is_empty() {
+        Err(QError::syntax_error(
+            "Cannot have function call without arguments",
+        ))
+        .with_err_at(pos)
+    } else {
+        Ok(())
+    }
+}
+
+fn convert_function_args(
+    ctx: &mut Context,
+    args: ExpressionNodes,
+) -> Result<(ExpressionNodes, Vec<QualifiedNameNode>), QErrorNode> {
+    ctx.on_expressions(args, ExprContext::Parameter)
+}
+
+mod built_in_function {
+    use super::*;
+    pub fn convert(
+        ctx: &mut Context,
+        built_in_function: BuiltInFunction,
+        args: ExpressionNodes,
+        pos: Location,
+    ) -> R {
+        functions_must_have_arguments(&args, pos)?;
+        let (converted_args, implicit_vars) = convert_function_args(ctx, args)?;
+        let converted_expr = Expression::BuiltInFunctionCall(built_in_function, converted_args);
+        Ok((converted_expr.at(pos), implicit_vars))
+    }
+}
+
+mod function {
     use super::*;
     pub fn convert(
         ctx: &mut Context,
@@ -599,19 +632,14 @@ pub mod function_v2 {
         }
 
         // now validate we have arguments
-        if args.is_empty() {
-            return Err(QError::syntax_error(
-                "Cannot have function call without arguments",
-            ))
-            .with_err_at(pos);
-        }
+        functions_must_have_arguments(&args, pos)?;
         // continue with built-in/user defined functions
         resolve_function(ctx, name, args, pos)
     }
 
     fn resolve_function(ctx: &mut Context, name: Name, args: ExpressionNodes, pos: Location) -> R {
         // convert args
-        let (converted_args, implicit_vars) = ctx.on_expressions(args, ExprContext::Parameter)?;
+        let (converted_args, implicit_vars) = convert_function_args(ctx, args)?;
         // is it built-in function?
         let converted_expr = match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
             Some(built_in_function) => {

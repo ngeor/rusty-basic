@@ -1,9 +1,10 @@
 // ENVIRON$ (env-variable$) -> returns the variable
 // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
 use super::*;
+use crate::interpreter::stdlib::Stdlib;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QErrorNode> {
-    let env_var_name: &String = (&interpreter.context()[0]).try_into().with_err_no_pos()?;
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+    let env_var_name: &str = interpreter.context()[0].to_str_unchecked();
     let result = interpreter.stdlib().get_env_var(env_var_name);
     interpreter
         .context_mut()

@@ -4,7 +4,7 @@ pub mod context;
 mod default_stdlib;
 mod input;
 pub mod interpreter;
-mod interpreter_trait;
+pub mod interpreter_trait;
 mod io;
 mod lpt1_write;
 mod print;

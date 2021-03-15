@@ -187,9 +187,8 @@ pub enum BuiltInSub {
     Name,
     Open,
     Put,
+    ViewPrint,
 }
-
-// TODO try again self-contained modules per built-in sub that take care of parsing/linting/etc in one module
 
 impl BuiltInSub {
     /// Parses a built-in sub name which isn't implemented with a keyword.
@@ -208,3 +207,5 @@ impl BuiltInSub {
         }
     }
 }
+
+pub mod view_print;

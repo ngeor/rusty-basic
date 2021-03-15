@@ -19,6 +19,7 @@ where
         .or(lset::parse_lset_p())
         .or(get::parse_get_p())
         .or(put::parse_put_p())
+        .or(crate::built_ins::view_print::parser::parse())
 }
 
 mod close {

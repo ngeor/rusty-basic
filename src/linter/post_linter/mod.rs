@@ -1,4 +1,4 @@
-mod built_in_linter;
+pub mod built_in_linter;
 mod condition_type_linter;
 mod dots_linter;
 mod expression_reducer;

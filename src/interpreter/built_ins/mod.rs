@@ -35,6 +35,7 @@ pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Resu
         BuiltInSub::Name => name::run(interpreter),
         BuiltInSub::Open => open::run(interpreter),
         BuiltInSub::Put => put::run(interpreter),
+        BuiltInSub::ViewPrint => crate::built_ins::view_print::interpreter::run(interpreter),
     }
 }
 

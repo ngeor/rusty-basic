@@ -28,6 +28,7 @@ impl PostConversionLinter for BuiltInLinter {
             BuiltInSub::Name => name::lint(args),
             BuiltInSub::Open => open::lint(args),
             BuiltInSub::Put => put::lint(args),
+            BuiltInSub::ViewPrint => crate::built_ins::view_print::linter::lint(args),
         }
     }
 
@@ -555,7 +556,7 @@ fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(),
     }
 }
 
-fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
+pub fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
     if !args[idx].can_cast_to(TypeQualifier::PercentInteger) {
         Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
     } else {

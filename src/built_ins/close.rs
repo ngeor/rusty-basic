@@ -37,6 +37,9 @@ pub mod linter {
     use crate::parser::ExpressionNode;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        for i in 0..args.len() {
+            args.require_integer_argument(i)?;
+        }
         Ok(())
     }
 }

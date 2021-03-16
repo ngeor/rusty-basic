@@ -32,7 +32,7 @@ pub mod linter {
     use crate::parser::ExpressionNode;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        Ok(())
+        super::super::get::linter::lint(args)
     }
 }
 

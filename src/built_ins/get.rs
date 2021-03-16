@@ -32,7 +32,11 @@ pub mod linter {
     use crate::parser::ExpressionNode;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        Ok(())
+        if args.len() != 2 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        args.require_integer_argument(0)?;
+        args.require_long_argument(1)
     }
 }
 

@@ -231,6 +231,32 @@ pub mod parser {
     }
 }
 
+pub mod linter {
+    use crate::built_ins::BuiltInSub;
+    use crate::common::QErrorNode;
+    use crate::parser::ExpressionNodes;
+
+    pub fn lint_sub_call(
+        built_in_sub: &BuiltInSub,
+        args: &ExpressionNodes,
+    ) -> Result<(), QErrorNode> {
+        match built_in_sub {
+            BuiltInSub::Close => crate::built_ins::close::linter::lint(args),
+            BuiltInSub::Environ => crate::built_ins::environ_sub::linter::lint(args),
+            BuiltInSub::Field => crate::built_ins::field::linter::lint(args),
+            BuiltInSub::Get => crate::built_ins::get::linter::lint(args),
+            BuiltInSub::Input => crate::built_ins::input::linter::lint(args),
+            BuiltInSub::Kill => crate::built_ins::kill::linter::lint(args),
+            BuiltInSub::LineInput => crate::built_ins::line_input::linter::lint(args),
+            BuiltInSub::LSet => crate::built_ins::lset::linter::lint(args),
+            BuiltInSub::Name => crate::built_ins::name::linter::lint(args),
+            BuiltInSub::Open => crate::built_ins::open::linter::lint(args),
+            BuiltInSub::Put => crate::built_ins::put::linter::lint(args),
+            BuiltInSub::ViewPrint => crate::built_ins::view_print::linter::lint(args),
+        }
+    }
+}
+
 pub mod close;
 pub mod environ_sub;
 pub mod field;

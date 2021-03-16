@@ -33,11 +33,67 @@ pub mod parser {
 }
 
 pub mod linter {
-    use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
+    use crate::common::*;
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::{Expression, ExpressionNode, ExpressionType, TypeQualifier, VariableInfo};
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        // the first one or two arguments stand for the file number
+        // if the first argument is 0, no file handle
+        // if the first argument is 1, the second is the file handle
+
+        if args.len() <= 1 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+        let mut has_file_number: bool = false;
+        if let Locatable {
+            element: Expression::IntegerLiteral(0),
+            ..
+        } = args[0]
+        {
+            // does not have a file number
+        } else if let Locatable {
+            element: Expression::IntegerLiteral(1),
+            ..
+        } = args[0]
+        {
+            // must have a file number
+            if let Locatable {
+                element: Expression::IntegerLiteral(_),
+                ..
+            } = args[1]
+            {
+                has_file_number = true;
+            } else {
+                panic!("parser sent unexpected arguments");
+            }
+        } else {
+            panic!("parser sent unexpected arguments");
+        }
+
+        let starting_index = if has_file_number { 2 } else { 1 };
+        if args.len() != starting_index + 1 {
+            return Err(QError::ArgumentCountMismatch).with_err_no_pos();
+        }
+
+        let Locatable {
+            element: var_arg,
+            pos,
+        } = &args[starting_index];
+        match var_arg {
+            Expression::Variable(
+                _,
+                VariableInfo {
+                    expression_type, ..
+                },
+            ) => match expression_type {
+                ExpressionType::BuiltIn(TypeQualifier::DollarString)
+                | ExpressionType::FixedLengthString(_) => {}
+                _ => return Err(QError::TypeMismatch).with_err_at(*pos),
+            },
+            _ => return Err(QError::TypeMismatch).with_err_at(*pos),
+        }
+
         Ok(())
     }
 }

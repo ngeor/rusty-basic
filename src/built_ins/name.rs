@@ -29,7 +29,12 @@ pub mod linter {
     use crate::parser::ExpressionNode;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        Ok(())
+        if args.len() != 2 {
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        } else {
+            args.require_string_argument(0)?;
+            args.require_string_argument(1)
+        }
     }
 }
 

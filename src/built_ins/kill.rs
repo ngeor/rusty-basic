@@ -19,7 +19,7 @@ pub mod linter {
     use crate::parser::ExpressionNode;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        Ok(())
+        args.require_one_string_argument()
     }
 }
 

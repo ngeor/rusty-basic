@@ -1,11 +1,9 @@
 use crate::instruction_generator::Path;
 use crate::interpreter::context::Context;
-use crate::interpreter::input::Input;
-use crate::interpreter::io::FileManager;
-use crate::interpreter::printer::Printer;
+use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::registers::{RegisterStack, Registers};
-use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::variables::Variables;
+use crate::interpreter::Stdlib;
 use crate::parser::UserDefinedTypes;
 use crate::variant::Variant;
 use std::collections::VecDeque;

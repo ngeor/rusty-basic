@@ -1,4 +1,4 @@
-use crate::interpreter::stdlib::Stdlib;
+use crate::interpreter::Stdlib;
 
 pub struct DefaultStdlib {}
 

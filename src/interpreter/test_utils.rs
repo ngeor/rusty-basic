@@ -4,8 +4,8 @@ use crate::instruction_generator::{generate_instructions, InstructionGeneratorRe
 use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::read_input::ReadInputSource;
-use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::write_printer::WritePrinter;
+use crate::interpreter::Stdlib;
 use crate::linter;
 use crate::parser::{parse_main_file, Name, UserDefinedTypes};
 use crate::variant::Variant;

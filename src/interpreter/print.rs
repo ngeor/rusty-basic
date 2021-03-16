@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::instruction_generator::PrinterType;
-use crate::interpreter::printer::Printer;
+use crate::interpreter::io::Printer;
 use crate::variant::Variant;
 use std::fmt::Display;
 

@@ -1,7 +1,7 @@
 // ENVIRON$ (env-variable$) -> returns the variable
 // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
 use super::*;
-use crate::interpreter::stdlib::Stdlib;
+use crate::interpreter::Stdlib;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let env_var_name: &str = interpreter.context()[0].to_str_unchecked();
@@ -18,8 +18,8 @@ mod tests {
     use crate::assert_linter_err;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::interpreter::stdlib::Stdlib;
     use crate::interpreter::test_utils::*;
+    use crate::interpreter::Stdlib;
 
     #[test]
     fn test_function_call_environ() {

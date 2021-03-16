@@ -1,4 +1,4 @@
-use crate::interpreter::input::Input;
+use crate::interpreter::io::Input;
 use std::cell::RefCell;
 use std::io::{ErrorKind, Read};
 

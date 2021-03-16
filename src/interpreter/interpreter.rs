@@ -3,17 +3,15 @@ use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path
 use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;
-use crate::interpreter::input::Input;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::interpreter::io::FileManager;
+use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::lpt1_write::Lpt1Write;
 use crate::interpreter::print::PrintInterpreter;
-use crate::interpreter::printer::Printer;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
-use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::variables::Variables;
 use crate::interpreter::write_printer::WritePrinter;
+use crate::interpreter::Stdlib;
 use crate::parser::UserDefinedTypes;
 use crate::variant::{QBNumberCast, Variant};
 use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
@@ -334,7 +332,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::BuiltInSub(s) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                built_ins::run_sub(s, self).with_err_no_pos()?;
+                crate::built_ins::interpreter::run_sub(s, self).with_err_no_pos()?;
             }
             Instruction::BuiltInFunction(f) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack

@@ -257,6 +257,29 @@ pub mod linter {
     }
 }
 
+pub mod interpreter {
+    use crate::built_ins::BuiltInSub;
+    use crate::common::QError;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
+
+    pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QError> {
+        match s {
+            BuiltInSub::Close => crate::built_ins::close::interpreter::run(interpreter),
+            BuiltInSub::Environ => crate::built_ins::environ_sub::interpreter::run(interpreter),
+            BuiltInSub::Field => crate::built_ins::field::interpreter::run(interpreter),
+            BuiltInSub::Get => crate::built_ins::get::interpreter::run(interpreter),
+            BuiltInSub::Input => crate::built_ins::input::interpreter::run(interpreter),
+            BuiltInSub::Kill => crate::built_ins::kill::interpreter::run(interpreter),
+            BuiltInSub::LineInput => crate::built_ins::line_input::interpreter::run(interpreter),
+            BuiltInSub::LSet => crate::built_ins::lset::interpreter::run(interpreter),
+            BuiltInSub::Name => crate::built_ins::name::interpreter::run(interpreter),
+            BuiltInSub::Open => crate::built_ins::open::interpreter::run(interpreter),
+            BuiltInSub::Put => crate::built_ins::put::interpreter::run(interpreter),
+            BuiltInSub::ViewPrint => crate::built_ins::view_print::interpreter::run(interpreter),
+        }
+    }
+}
+
 pub mod close;
 pub mod environ_sub;
 pub mod field;

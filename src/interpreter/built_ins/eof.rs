@@ -1,7 +1,8 @@
 // EOF(file-number%) -> checks if the end of file has been reached
 use super::*;
 use crate::common::FileHandle;
-use crate::interpreter::input::Input;
+use crate::interpreter::io::Input;
+use crate::interpreter::utils::to_file_handle;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let file_handle: FileHandle = to_file_handle(&interpreter.context()[0])?;

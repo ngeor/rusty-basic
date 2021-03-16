@@ -1,8 +1,6 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
-use crate::parser::{
-    Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier, VariableInfo,
-};
+use crate::parser::{Expression, ExpressionNode, ExpressionType, TypeQualifier, VariableInfo};
 
 use super::post_conversion_linter::PostConversionLinter;
 
@@ -68,10 +66,11 @@ fn lint(built_in: &BuiltInFunction, args: &Vec<ExpressionNode>) -> Result<(), QE
 
 mod close {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
-            require_integer_argument(args, i)?;
+            args.require_integer_argument(i)?;
         }
         Ok(())
     }
@@ -93,6 +92,7 @@ mod environ_sub {
 
 mod field {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // needs to be 1 + N*3 args, N >= 1
@@ -104,12 +104,12 @@ mod field {
         if (args.len() - 1) % 3 != 0 {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
-        require_integer_argument(args, 0)?;
+        args.require_integer_argument(0)?;
         let mut i: usize = 1;
         while i < args.len() {
-            require_integer_argument(args, i)?;
-            require_string_argument(args, i + 1)?;
-            require_string_variable(args, i + 2)?;
+            args.require_integer_argument(i)?;
+            args.require_string_argument(i + 1)?;
+            args.require_string_variable(i + 2)?;
             i += 3;
         }
         Ok(())
@@ -118,13 +118,14 @@ mod field {
 
 mod get {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 2 {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
-        require_integer_argument(args, 0)?;
-        require_long_argument(args, 1)
+        args.require_integer_argument(0)?;
+        args.require_long_argument(1)
     }
 }
 
@@ -132,6 +133,7 @@ mod input {
     use crate::common::ToErrorEnvelopeNoPos;
 
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // the first one or two arguments stand for the file number
@@ -154,7 +156,7 @@ mod input {
         } = args[0]
         {
             // must have a file number
-            require_integer_argument(args, 1)?;
+            args.require_integer_argument(1)?;
             has_file_number = true;
         } else {
             panic!("parser sent unexpected arguments");
@@ -209,9 +211,10 @@ mod input {
 
 mod kill {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        require_single_string_argument(args)
+        args.require_one_string_argument()
     }
 }
 
@@ -320,6 +323,7 @@ mod line_input {
 
 mod lset {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // the parser should produce 3 arguments:
@@ -329,10 +333,10 @@ mod lset {
         if args.len() != 3 {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
-        require_string_argument(args, 0)?;
+        args.require_string_argument(0)?;
         // TODO ensure LSET is operating on variables previously used by FIELD in this scope
-        require_string_variable(args, 1)?;
-        require_string_argument(args, 2)
+        args.require_string_variable(1)?;
+        args.require_string_argument(2)
     }
 }
 
@@ -354,6 +358,7 @@ mod name {
 
 mod open {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // must have 5 arguments:
@@ -365,9 +370,9 @@ mod open {
         if args.len() != 5 {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
-        require_string_argument(args, 0)?;
+        args.require_string_argument(0)?;
         for i in 1..args.len() {
-            require_integer_argument(args, i)?;
+            args.require_integer_argument(i)?;
         }
         Ok(())
     }
@@ -401,39 +406,43 @@ mod put {
 
 mod chr {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        require_single_numeric_argument(args)
+        args.require_one_numeric_argument()
     }
 }
 
 mod environ_fn {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        require_single_string_argument(args)
+        args.require_one_string_argument()
     }
 }
 
 mod eof {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        require_single_numeric_argument(args)
+        args.require_one_numeric_argument()
     }
 }
 
 mod instr {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() == 2 {
-            require_string_argument(args, 0)?;
-            require_string_argument(args, 1)
+            args.require_string_argument(0)?;
+            args.require_string_argument(1)
         } else if args.len() == 3 {
-            require_integer_argument(args, 0)?;
-            require_string_argument(args, 1)?;
-            require_string_argument(args, 2)
+            args.require_integer_argument(0)?;
+            args.require_string_argument(1)?;
+            args.require_string_argument(2)
         } else {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         }
@@ -492,15 +501,16 @@ mod len {
 
 mod mid {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() == 2 {
-            require_string_argument(args, 0)?;
-            require_integer_argument(args, 1)
+            args.require_string_argument(0)?;
+            args.require_integer_argument(1)
         } else if args.len() == 3 {
-            require_string_argument(args, 0)?;
-            require_integer_argument(args, 1)?;
-            require_integer_argument(args, 2)
+            args.require_string_argument(0)?;
+            args.require_integer_argument(1)?;
+            args.require_integer_argument(2)
         } else {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         }
@@ -509,79 +519,18 @@ mod mid {
 
 mod str_fn {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        require_single_numeric_argument(args)
+        args.require_one_numeric_argument()
     }
 }
 
 mod val {
     use super::*;
+    use crate::linter::arg_validation::ArgValidation;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        require_single_string_argument(args)
-    }
-}
-
-fn require_single_numeric_argument(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-    if args.len() != 1 {
-        Err(QError::ArgumentCountMismatch).with_err_no_pos()
-    } else {
-        match args[0].expression_type() {
-            ExpressionType::BuiltIn(q) => {
-                if q == TypeQualifier::DollarString {
-                    Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
-                } else {
-                    Ok(())
-                }
-            }
-            _ => Err(QError::ArgumentTypeMismatch).with_err_at(&args[0]),
-        }
-    }
-}
-
-fn require_single_string_argument(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-    if args.len() != 1 {
-        Err(QError::ArgumentCountMismatch).with_err_no_pos()
-    } else {
-        require_string_argument(args, 0)
-    }
-}
-
-fn require_string_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    if !args[idx].can_cast_to(TypeQualifier::DollarString) {
-        Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
-    } else {
-        Ok(())
-    }
-}
-
-pub fn require_integer_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    if !args[idx].can_cast_to(TypeQualifier::PercentInteger) {
-        Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
-    } else {
-        Ok(())
-    }
-}
-
-fn require_long_argument(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    if !args[idx].can_cast_to(TypeQualifier::AmpersandLong) {
-        Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx])
-    } else {
-        Ok(())
-    }
-}
-
-fn require_string_variable(args: &Vec<ExpressionNode>, idx: usize) -> Result<(), QErrorNode> {
-    match args[idx].as_ref() {
-        Expression::Variable(
-            _,
-            VariableInfo {
-                expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
-                ..
-            },
-        ) => Ok(()),
-        Expression::Variable(_, _) => Err(QError::ArgumentTypeMismatch).with_err_at(&args[idx]),
-        _ => Err(QError::VariableRequired).with_err_at(&args[idx]),
+        args.require_one_string_argument()
     }
 }

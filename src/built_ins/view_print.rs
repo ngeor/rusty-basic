@@ -32,15 +32,15 @@ pub mod parser {
 
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
-    use crate::linter::post_linter::built_in_linter::require_integer_argument;
+    use crate::linter::arg_validation::ArgValidation;
     use crate::parser::ExpressionNode;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.is_empty() {
             Ok(())
         } else if args.len() == 2 {
-            require_integer_argument(args, 0)?;
-            require_integer_argument(args, 1)
+            args.require_integer_argument(0)?;
+            args.require_integer_argument(1)
         } else {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         }

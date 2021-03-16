@@ -208,4 +208,38 @@ impl BuiltInSub {
     }
 }
 
+pub mod parser {
+    use crate::common::*;
+    use crate::parser::pc::*;
+    use crate::parser::Statement;
+
+    /// Parses built-in subs which have a special syntax.
+    pub fn parse<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        crate::built_ins::close::parser::parse()
+            .or(crate::built_ins::input::parser::parse())
+            .or(crate::built_ins::line_input::parser::parse())
+            .or(crate::built_ins::name::parser::parse())
+            .or(crate::built_ins::open::parser::parse())
+            .or(crate::built_ins::field::parser::parse())
+            .or(crate::built_ins::lset::parser::parse())
+            .or(crate::built_ins::get::parser::parse())
+            .or(crate::built_ins::put::parser::parse())
+            .or(crate::built_ins::view_print::parser::parse())
+    }
+}
+
+pub mod close;
+pub mod environ_sub;
+pub mod field;
+pub mod get;
+pub mod input;
+pub mod kill;
+pub mod line_input;
+pub mod lset;
+pub mod name;
+pub mod open;
+pub mod put;
 pub mod view_print;

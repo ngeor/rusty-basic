@@ -154,6 +154,22 @@ where
         )
 }
 
+/// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
+pub fn file_handle_as_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    file_handle_p()
+        .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
+}
+
+pub fn file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    file_handle_as_expression_node_p().or(expression_node_p())
+}
+
 pub fn parenthesis_p<R>() -> impl Parser<R, Output = Expression>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -162,6 +178,29 @@ where
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
     .map(|child| Expression::Parenthesis(Box::new(child)))
+}
+
+pub fn file_handle_comma_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    file_handle_p()
+        .and_demand(
+            item_p(',')
+                .surrounded_by_opt_ws()
+                .or_syntax_error("Expected: ,"),
+        )
+        .keep_left()
+}
+
+pub fn guarded_file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    whitespace_p()
+        .and(file_handle_as_expression_node_p())
+        .keep_right()
+        .or(guarded_expression_node_p())
 }
 
 mod string_literal {

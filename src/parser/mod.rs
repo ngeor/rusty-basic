@@ -1,5 +1,4 @@
 mod assignment;
-mod built_ins;
 pub mod char_reader;
 mod comment;
 mod constant;
@@ -14,7 +13,7 @@ mod for_loop;
 mod go_sub;
 mod if_block;
 mod implementation;
-mod name;
+pub mod name;
 mod on_error;
 mod param_name;
 pub mod pc;

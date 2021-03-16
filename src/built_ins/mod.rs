@@ -280,15 +280,16 @@ pub mod interpreter {
     }
 }
 
-pub mod close;
-pub mod environ_sub;
-pub mod field;
-pub mod get;
-pub mod input;
-pub mod kill;
-pub mod line_input;
-pub mod lset;
-pub mod name;
-pub mod open;
-pub mod put;
-pub mod view_print;
+pub mod chr;
+mod close;
+mod environ_sub;
+mod field;
+mod get;
+mod input;
+mod kill;
+mod line_input;
+mod lset;
+mod name;
+mod open;
+mod put;
+mod view_print;

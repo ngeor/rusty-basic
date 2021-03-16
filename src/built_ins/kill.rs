@@ -1,20 +1,5 @@
 // KILL file-spec$ -> deletes files from disk
 
-pub mod parser {
-    use crate::built_ins::BuiltInSub;
-    use crate::common::*;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
-    use crate::parser::*;
-
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Close).map(|_| Statement::BuiltInSubCall(BuiltInSub::Close, vec![]))
-    }
-}
-
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;

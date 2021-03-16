@@ -7,7 +7,7 @@ pub fn run_function<S: InterpreterTrait>(
     interpreter: &mut S,
 ) -> Result<(), QError> {
     match f {
-        BuiltInFunction::Chr => chr::run(interpreter),
+        BuiltInFunction::Chr => crate::built_ins::chr::interpreter::run(interpreter),
         BuiltInFunction::Environ => environ_fn::run(interpreter),
         BuiltInFunction::Eof => eof::run(interpreter),
         BuiltInFunction::InStr => instr::run(interpreter),
@@ -20,7 +20,6 @@ pub fn run_function<S: InterpreterTrait>(
     }
 }
 
-mod chr;
 mod environ_fn;
 mod eof;
 mod instr;

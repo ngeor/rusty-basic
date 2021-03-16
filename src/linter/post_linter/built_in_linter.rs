@@ -39,7 +39,7 @@ impl PostConversionLinter for BuiltInLinter {
 
 fn lint(built_in: &BuiltInFunction, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
     match built_in {
-        BuiltInFunction::Chr => chr::lint(args),
+        BuiltInFunction::Chr => crate::built_ins::chr::linter::lint(args),
         BuiltInFunction::Environ => environ_fn::lint(args),
         BuiltInFunction::Eof => eof::lint(args),
         BuiltInFunction::InStr => instr::lint(args),
@@ -85,15 +85,6 @@ mod lbound {
         } else {
             Err(QError::ArgumentTypeMismatch).with_err_at(first_pos)
         }
-    }
-}
-
-mod chr {
-    use super::*;
-    use crate::linter::arg_validation::ArgValidation;
-
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        args.require_one_numeric_argument()
     }
 }
 

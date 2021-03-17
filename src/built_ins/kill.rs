@@ -1,10 +1,23 @@
 // KILL file-spec$ -> deletes files from disk
 
-use super::*;
+pub mod linter {
+    use crate::common::QErrorNode;
+    use crate::linter::arg_validation::ArgValidation;
+    use crate::parser::ExpressionNode;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let file_name: &str = interpreter.context()[0].to_str_unchecked();
-    std::fs::remove_file(file_name).map_err(QError::from)
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        args.require_one_string_argument()
+    }
+}
+
+pub mod interpreter {
+    use crate::common::QError;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
+
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+        let file_name: &str = interpreter.context()[0].to_str_unchecked();
+        std::fs::remove_file(file_name).map_err(QError::from)
+    }
 }
 
 #[cfg(test)]

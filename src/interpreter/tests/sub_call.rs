@@ -1,8 +1,8 @@
 use crate::assert_prints;
 use crate::common::*;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::interpreter::stdlib::Stdlib;
 use crate::interpreter::test_utils::*;
+use crate::interpreter::Stdlib;
 
 #[test]
 fn test_interpret_sub_call_user_defined_no_args() {

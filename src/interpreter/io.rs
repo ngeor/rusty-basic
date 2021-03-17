@@ -5,6 +5,22 @@ use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 
+pub trait Input {
+    fn eof(&self) -> std::io::Result<bool>;
+
+    fn input(&self) -> std::io::Result<String>;
+
+    fn line_input(&self) -> std::io::Result<String>;
+}
+
+pub trait Printer {
+    fn print(&self, s: &str) -> std::io::Result<usize>;
+
+    fn println(&self) -> std::io::Result<usize>;
+
+    fn move_to_next_print_zone(&self) -> std::io::Result<usize>;
+}
+
 pub type FileInfoInput = ReadInputSource<BufReader<File>>;
 pub type FileInfoOutput = WritePrinter<File>;
 

@@ -1,15 +1,16 @@
 use std::marker::PhantomData;
 
+use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
 use crate::parser::types::*;
 
-fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
+pub fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
     LazyExpressionParser(PhantomData)
 }
 
-struct LazyExpressionParser<R>(PhantomData<R>);
+pub struct LazyExpressionParser<R>(PhantomData<R>);
 
 impl<R> Parser<R> for LazyExpressionParser<R>
 where
@@ -100,7 +101,7 @@ where
 {
     string_literal::string_literal_p()
         .with_pos()
-        .or(built_in_function_call::built_in_function_call_p().with_pos())
+        .or(built_in_function_call_p().with_pos())
         .or(word::word_p().with_pos())
         .or(number_literal::number_literal_p())
         .or(number_literal::float_without_leading_zero_p())
@@ -154,6 +155,22 @@ where
         )
 }
 
+/// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
+pub fn file_handle_as_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    file_handle_p()
+        .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
+}
+
+pub fn file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    file_handle_as_expression_node_p().or(expression_node_p())
+}
+
 pub fn parenthesis_p<R>() -> impl Parser<R, Output = Expression>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
@@ -162,6 +179,29 @@ where
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
     .map(|child| Expression::Parenthesis(Box::new(child)))
+}
+
+pub fn file_handle_comma_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    file_handle_p()
+        .and_demand(
+            item_p(',')
+                .surrounded_by_opt_ws()
+                .or_syntax_error("Expected: ,"),
+        )
+        .keep_left()
+}
+
+pub fn guarded_file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    whitespace_p()
+        .and(file_handle_as_expression_node_p())
+        .keep_right()
+        .or(guarded_expression_node_p())
 }
 
 mod string_literal {
@@ -755,30 +795,6 @@ pub mod word {
                 }
             }
         }
-    }
-}
-
-// needed for built-in functions that are also keywords (e.g. LEN), so they
-// cannot be parsed by the `word` module.
-mod built_in_function_call {
-    use super::*;
-    use crate::built_ins::BuiltInFunction;
-
-    pub fn built_in_function_call_p<R>() -> impl Parser<R, Output = Expression>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Len)
-            .and_demand(
-                in_parenthesis_p(
-                    lazy_expression_node_p()
-                        .csv()
-                        .or_syntax_error("Expected: variable"),
-                )
-                .or_syntax_error("Expected: ("),
-            )
-            .keep_right()
-            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }
 }
 

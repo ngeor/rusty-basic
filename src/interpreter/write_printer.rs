@@ -1,4 +1,4 @@
-use crate::interpreter::printer::Printer;
+use crate::interpreter::io::Printer;
 use std::cell::RefCell;
 use std::io::Write;
 

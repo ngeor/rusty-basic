@@ -187,9 +187,8 @@ pub enum BuiltInSub {
     Name,
     Open,
     Put,
+    ViewPrint,
 }
-
-// TODO try again self-contained modules per built-in sub that take care of parsing/linting/etc in one module
 
 impl BuiltInSub {
     /// Parses a built-in sub name which isn't implemented with a keyword.
@@ -208,3 +207,143 @@ impl BuiltInSub {
         }
     }
 }
+
+pub mod parser {
+    use crate::common::*;
+    use crate::parser::pc::*;
+    use crate::parser::{Expression, Statement};
+
+    /// Parses built-in subs which have a special syntax.
+    pub fn parse<R>() -> impl Parser<R, Output = Statement>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        crate::built_ins::close::parser::parse()
+            .or(crate::built_ins::input::parser::parse())
+            .or(crate::built_ins::line_input::parser::parse())
+            .or(crate::built_ins::name::parser::parse())
+            .or(crate::built_ins::open::parser::parse())
+            .or(crate::built_ins::field::parser::parse())
+            .or(crate::built_ins::lset::parser::parse())
+            .or(crate::built_ins::get::parser::parse())
+            .or(crate::built_ins::put::parser::parse())
+            .or(crate::built_ins::view_print::parser::parse())
+    }
+
+    // needed for built-in functions that are also keywords (e.g. LEN), so they
+    // cannot be parsed by the `word` module.
+    pub fn built_in_function_call_p<R>() -> impl Parser<R, Output = Expression>
+    where
+        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    {
+        crate::built_ins::len::parser::parse()
+    }
+}
+
+pub mod linter {
+    use crate::built_ins::{BuiltInFunction, BuiltInSub};
+    use crate::common::QErrorNode;
+    use crate::parser::ExpressionNodes;
+
+    pub fn lint_sub_call(
+        built_in_sub: &BuiltInSub,
+        args: &ExpressionNodes,
+    ) -> Result<(), QErrorNode> {
+        match built_in_sub {
+            BuiltInSub::Close => crate::built_ins::close::linter::lint(args),
+            BuiltInSub::Environ => crate::built_ins::environ_sub::linter::lint(args),
+            BuiltInSub::Field => crate::built_ins::field::linter::lint(args),
+            BuiltInSub::Get => crate::built_ins::get::linter::lint(args),
+            BuiltInSub::Input => crate::built_ins::input::linter::lint(args),
+            BuiltInSub::Kill => crate::built_ins::kill::linter::lint(args),
+            BuiltInSub::LineInput => crate::built_ins::line_input::linter::lint(args),
+            BuiltInSub::LSet => crate::built_ins::lset::linter::lint(args),
+            BuiltInSub::Name => crate::built_ins::name::linter::lint(args),
+            BuiltInSub::Open => crate::built_ins::open::linter::lint(args),
+            BuiltInSub::Put => crate::built_ins::put::linter::lint(args),
+            BuiltInSub::ViewPrint => crate::built_ins::view_print::linter::lint(args),
+        }
+    }
+
+    pub fn lint_function_call(
+        built_in: &BuiltInFunction,
+        args: &ExpressionNodes,
+    ) -> Result<(), QErrorNode> {
+        match built_in {
+            BuiltInFunction::Chr => crate::built_ins::chr::linter::lint(args),
+            BuiltInFunction::Environ => crate::built_ins::environ_fn::linter::lint(args),
+            BuiltInFunction::Eof => crate::built_ins::eof::linter::lint(args),
+            BuiltInFunction::InStr => crate::built_ins::instr::linter::lint(args),
+            BuiltInFunction::LBound => crate::built_ins::lbound::linter::lint(args),
+            BuiltInFunction::Len => crate::built_ins::len::linter::lint(args),
+            BuiltInFunction::Mid => crate::built_ins::mid_fn::linter::lint(args),
+            BuiltInFunction::Str => crate::built_ins::str_fn::linter::lint(args),
+            BuiltInFunction::Val => crate::built_ins::val::linter::lint(args),
+            BuiltInFunction::UBound => crate::built_ins::ubound::linter::lint(args),
+        }
+    }
+}
+
+pub mod interpreter {
+    use crate::built_ins::{BuiltInFunction, BuiltInSub};
+    use crate::common::QError;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
+
+    pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QError> {
+        match s {
+            BuiltInSub::Close => crate::built_ins::close::interpreter::run(interpreter),
+            BuiltInSub::Environ => crate::built_ins::environ_sub::interpreter::run(interpreter),
+            BuiltInSub::Field => crate::built_ins::field::interpreter::run(interpreter),
+            BuiltInSub::Get => crate::built_ins::get::interpreter::run(interpreter),
+            BuiltInSub::Input => crate::built_ins::input::interpreter::run(interpreter),
+            BuiltInSub::Kill => crate::built_ins::kill::interpreter::run(interpreter),
+            BuiltInSub::LineInput => crate::built_ins::line_input::interpreter::run(interpreter),
+            BuiltInSub::LSet => crate::built_ins::lset::interpreter::run(interpreter),
+            BuiltInSub::Name => crate::built_ins::name::interpreter::run(interpreter),
+            BuiltInSub::Open => crate::built_ins::open::interpreter::run(interpreter),
+            BuiltInSub::Put => crate::built_ins::put::interpreter::run(interpreter),
+            BuiltInSub::ViewPrint => crate::built_ins::view_print::interpreter::run(interpreter),
+        }
+    }
+
+    pub fn run_function<S: InterpreterTrait>(
+        f: &BuiltInFunction,
+        interpreter: &mut S,
+    ) -> Result<(), QError> {
+        match f {
+            BuiltInFunction::Chr => crate::built_ins::chr::interpreter::run(interpreter),
+            BuiltInFunction::Environ => crate::built_ins::environ_fn::interpreter::run(interpreter),
+            BuiltInFunction::Eof => crate::built_ins::eof::interpreter::run(interpreter),
+            BuiltInFunction::InStr => crate::built_ins::instr::interpreter::run(interpreter),
+            BuiltInFunction::LBound => crate::built_ins::lbound::interpreter::run(interpreter),
+            BuiltInFunction::Len => crate::built_ins::len::interpreter::run(interpreter),
+            BuiltInFunction::Mid => crate::built_ins::mid_fn::interpreter::run(interpreter),
+            BuiltInFunction::Str => crate::built_ins::str_fn::interpreter::run(interpreter),
+            BuiltInFunction::UBound => crate::built_ins::ubound::interpreter::run(interpreter),
+            BuiltInFunction::Val => crate::built_ins::val::interpreter::run(interpreter),
+        }
+    }
+}
+
+mod chr;
+mod close;
+mod environ_fn;
+mod environ_sub;
+mod eof;
+mod field;
+mod get;
+mod input;
+mod instr;
+mod kill;
+mod lbound;
+mod len;
+mod line_input;
+mod lset;
+mod mid_fn;
+mod name;
+mod open;
+mod put;
+mod str_fn;
+mod ubound;
+mod val;
+mod view_print;

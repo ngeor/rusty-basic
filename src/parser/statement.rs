@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::built_ins;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -42,7 +41,7 @@ where
 {
     dim::dim_p()
         .or(constant::constant_p())
-        .or(built_ins::parse_built_in_p())
+        .or(crate::built_ins::parser::parse())
         .or(print::parse_print_p())
         .or(print::parse_lprint_p())
         .or(sub_call::sub_call_or_assignment_p())

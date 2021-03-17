@@ -1,6 +1,5 @@
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
-use crate::interpreter::built_ins;
 use crate::interpreter::context::*;
 use crate::interpreter::default_stdlib::DefaultStdlib;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
@@ -336,7 +335,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::BuiltInFunction(f) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                built_ins::run_function(f, self).with_err_no_pos()?;
+                crate::built_ins::interpreter::run_function(f, self).with_err_no_pos()?;
             }
             Instruction::Label(_) => (), // no-op
             Instruction::Halt => {

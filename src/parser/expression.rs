@@ -1,15 +1,16 @@
 use std::marker::PhantomData;
 
+use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
 use crate::parser::types::*;
 
-fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
+pub fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
     LazyExpressionParser(PhantomData)
 }
 
-struct LazyExpressionParser<R>(PhantomData<R>);
+pub struct LazyExpressionParser<R>(PhantomData<R>);
 
 impl<R> Parser<R> for LazyExpressionParser<R>
 where
@@ -100,7 +101,7 @@ where
 {
     string_literal::string_literal_p()
         .with_pos()
-        .or(built_in_function_call::built_in_function_call_p().with_pos())
+        .or(built_in_function_call_p().with_pos())
         .or(word::word_p().with_pos())
         .or(number_literal::number_literal_p())
         .or(number_literal::float_without_leading_zero_p())
@@ -794,30 +795,6 @@ pub mod word {
                 }
             }
         }
-    }
-}
-
-// needed for built-in functions that are also keywords (e.g. LEN), so they
-// cannot be parsed by the `word` module.
-mod built_in_function_call {
-    use super::*;
-    use crate::built_ins::BuiltInFunction;
-
-    pub fn built_in_function_call_p<R>() -> impl Parser<R, Output = Expression>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Len)
-            .and_demand(
-                in_parenthesis_p(
-                    lazy_expression_node_p()
-                        .csv()
-                        .or_syntax_error("Expected: variable"),
-                )
-                .or_syntax_error("Expected: ("),
-            )
-            .keep_right()
-            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }
 }
 

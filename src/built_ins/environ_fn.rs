@@ -1,15 +1,30 @@
 // ENVIRON$ (env-variable$) -> returns the variable
 // ENVIRON$ (n%) -> returns the nth variable (TODO support this)
-use super::*;
-use crate::interpreter::Stdlib;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-    let env_var_name: &str = interpreter.context()[0].to_str_unchecked();
-    let result = interpreter.stdlib().get_env_var(env_var_name);
-    interpreter
-        .context_mut()
-        .set_built_in_function_result(BuiltInFunction::Environ, result);
-    Ok(())
+pub mod linter {
+    use crate::common::QErrorNode;
+    use crate::linter::arg_validation::ArgValidation;
+    use crate::parser::ExpressionNode;
+
+    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+        args.require_one_string_argument()
+    }
+}
+
+pub mod interpreter {
+    use crate::built_ins::BuiltInFunction;
+    use crate::common::QError;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::interpreter::Stdlib;
+
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+        let env_var_name: &str = interpreter.context()[0].to_str_unchecked();
+        let result = interpreter.stdlib().get_env_var(env_var_name);
+        interpreter
+            .context_mut()
+            .set_built_in_function_result(BuiltInFunction::Environ, result);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

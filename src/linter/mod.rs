@@ -1,7 +1,7 @@
 pub mod arg_validation;
 mod const_value_resolver;
 mod converter;
-pub mod post_linter;
+mod post_linter;
 mod pre_linter;
 mod type_resolver;
 mod type_resolver_impl;

@@ -139,6 +139,8 @@ pub enum Keyword {
     Wend,
     /// WHILE
     While,
+    /// WIDTH
+    Width,
 }
 
 const STR_ACCESS: &str = "ACCESS";
@@ -209,8 +211,9 @@ const STR_USING: &str = "USING";
 const STR_VIEW: &str = "VIEW";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
+const STR_WIDTH: &str = "WIDTH";
 
-const SORTED_KEYWORDS_STR: [&str; 68] = [
+const SORTED_KEYWORDS_STR: [&str; 69] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -279,9 +282,10 @@ const SORTED_KEYWORDS_STR: [&str; 68] = [
     STR_VIEW,
     STR_WEND,
     STR_WHILE,
+    STR_WIDTH,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 68] = [
+const SORTED_KEYWORDS: [Keyword; 69] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -350,6 +354,7 @@ const SORTED_KEYWORDS: [Keyword; 68] = [
     Keyword::View,
     Keyword::Wend,
     Keyword::While,
+    Keyword::Width,
 ];
 
 impl Keyword {
@@ -423,6 +428,7 @@ impl Keyword {
             Self::View => STR_VIEW,
             Self::Wend => STR_WEND,
             Self::While => STR_WHILE,
+            Self::Width => STR_WIDTH,
         }
     }
 }

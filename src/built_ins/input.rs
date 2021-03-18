@@ -1,17 +1,3 @@
-// INPUT [;] ["prompt"{; | ,}] variable-list
-// INPUT #file-number%, variable-list
-//
-// prompt - An optional string that is displayed before the user
-// enters data. A semicolon after promp appends a question mark to the
-// prompt string.
-//
-// variable names can consist of up to 40 characters and must begin
-// with a letter. Valid characters are a-z, 0-9 and period (.).
-//
-// A semicolon immediately after INPUT keeps the cursor on the same line
-// after the user presses the Enter key.
-//
-
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;

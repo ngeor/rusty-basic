@@ -1,5 +1,3 @@
-// STR$(numeric-expression) returns a string representation of a number
-
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;

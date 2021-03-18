@@ -1,6 +1,3 @@
-// LINE INPUT -> see INPUT
-// LINE INPUT [;] ["prompt";] variable$
-// LINE INPUT #file-number%, variable$
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;

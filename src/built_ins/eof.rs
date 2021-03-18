@@ -1,5 +1,3 @@
-// EOF(file-number%) -> checks if the end of file has been reached
-
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;

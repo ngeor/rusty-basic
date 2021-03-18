@@ -308,6 +308,18 @@ where
             QError::syntax_error("Error: trailing comma"),
         )
     }
+
+    /// Parses one or more items provided by the given source, separated by commas.
+    /// Items are allowed to be missing.
+    /// Trailing commas are not allowed. Space is allowed around commas.
+    fn csv_allow_missing(
+        self,
+    ) -> OneOrMoreDelimitedAllowMissing<Self, SurroundedByOptWhitespace<Item<R>>, QError> {
+        self.one_or_more_delimited_by_allow_missing(
+            item_p(',').surrounded_by_opt_ws(),
+            QError::syntax_error("Error: trailing comma"),
+        )
+    }
 }
 
 impl<R: Reader<Item = char, Err = QError>, T> PcSpecific<R> for T where T: Parser<R> {}

@@ -1,6 +1,3 @@
-// NAME old$ AS new$
-// Renames a file or directory.
-
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;

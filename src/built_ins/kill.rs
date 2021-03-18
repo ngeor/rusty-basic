@@ -1,5 +1,3 @@
-// KILL file-spec$ -> deletes files from disk
-
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;

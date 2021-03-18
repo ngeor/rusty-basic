@@ -96,6 +96,41 @@ where
     }
 }
 
+/// Parses one or more items separated by a delimiter.
+/// This parser allows missing items.
+pub struct OneOrMoreDelimitedAllowMissing<S, D, E>(S, D, E);
+
+impl<R, S, D, E> Parser<R> for OneOrMoreDelimitedAllowMissing<S, D, E>
+where
+    R: Reader<Err = E>,
+    S: Parser<R>,
+    D: Parser<R>,
+    E: Clone,
+{
+    type Output = Vec<Option<S::Output>>;
+
+    fn parse(&mut self, r: R) -> ReaderResult<R, Self::Output, R::Err> {
+        let mut reader = r;
+        let mut result: Vec<Option<S::Output>> = vec![];
+        let mut has_more = true;
+        while has_more {
+            let (tmp, opt_item) = self.0.parse(reader)?;
+            reader = tmp;
+            result.push(opt_item);
+            let (tmp, opt_delimiter) = self.1.parse(reader)?;
+            reader = tmp;
+            has_more = opt_delimiter.is_some();
+        }
+        if result.is_empty() {
+            Ok((reader, None))
+        } else if result.last().unwrap().is_none() {
+            Err((reader, self.2.clone()))
+        } else {
+            Ok((reader, Some(result)))
+        }
+    }
+}
+
 pub struct OneOrMoreLookingBack<A, F>(A, F);
 
 impl<A, F> OneOrMoreLookingBack<A, F> {
@@ -170,6 +205,17 @@ pub trait ManyParser<R: Reader>: Parser<R> + Sized {
         trailing_delimiter_err: E,
     ) -> OneOrMoreDelimited<Self, D, E> {
         OneOrMoreDelimited(self, delimiter, trailing_delimiter_err)
+    }
+
+    /// Returns a parser that parses items separated by a delimiter.
+    /// Trailing delimiters are not allowed.
+    /// Items may be missing.
+    fn one_or_more_delimited_by_allow_missing<D, E>(
+        self,
+        delimiter: D,
+        trailing_delimiter_err: E,
+    ) -> OneOrMoreDelimitedAllowMissing<Self, D, E> {
+        OneOrMoreDelimitedAllowMissing(self, delimiter, trailing_delimiter_err)
     }
 
     /// Returns a parser that collects multiple items, looking back at the previously

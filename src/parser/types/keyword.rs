@@ -69,6 +69,8 @@ pub enum Keyword {
     Len,
     /// LINE
     Line,
+    /// LOCATE
+    Locate,
     /// LONG
     Long,
     /// LOOP
@@ -172,6 +174,7 @@ const STR_INTEGER: &str = "INTEGER";
 const STR_IS: &str = "IS";
 const STR_LEN: &str = "LEN";
 const STR_LINE: &str = "LINE";
+const STR_LOCATE: &str = "LOCATE";
 const STR_LONG: &str = "LONG";
 const STR_LOOP: &str = "LOOP";
 const STR_LPRINT: &str = "LPRINT";
@@ -207,7 +210,7 @@ const STR_VIEW: &str = "VIEW";
 const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 
-const SORTED_KEYWORDS_STR: [&str; 67] = [
+const SORTED_KEYWORDS_STR: [&str; 68] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -241,6 +244,7 @@ const SORTED_KEYWORDS_STR: [&str; 67] = [
     STR_IS,
     STR_LEN,
     STR_LINE,
+    STR_LOCATE,
     STR_LONG,
     STR_LOOP,
     STR_LPRINT,
@@ -277,7 +281,7 @@ const SORTED_KEYWORDS_STR: [&str; 67] = [
     STR_WHILE,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 67] = [
+const SORTED_KEYWORDS: [Keyword; 68] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -311,6 +315,7 @@ const SORTED_KEYWORDS: [Keyword; 67] = [
     Keyword::Is,
     Keyword::Len,
     Keyword::Line,
+    Keyword::Locate,
     Keyword::Long,
     Keyword::Loop,
     Keyword::LPrint,
@@ -383,6 +388,7 @@ impl Keyword {
             Self::Is => STR_IS,
             Self::Len => STR_LEN,
             Self::Line => STR_LINE,
+            Self::Locate => STR_LOCATE,
             Self::Long => STR_LONG,
             Self::Loop => STR_LOOP,
             Self::LPrint => STR_LPRINT,

@@ -1,12 +1,3 @@
-// OPEN file$ [FOR mode] [ACCESS access] [lock] AS [#]file-number% [LEN=rec-len%]
-//
-// mode: APPEND, BINARY, INPUT, OUTPUT, RANDOM
-// access: READ, WRITE, READ WRITE
-// lock: SHARED, LOCK READ, LOCK WRITE, LOCK READ WRITE
-// file-number a number in the range 1 through 255
-// rec-len%: For random access files, the record length (default is 128 bytes)
-//           For sequential files, the number of characters buffered (default is 512 bytes)
-
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;

@@ -1,6 +1,3 @@
-// LEN(str_expr$) -> number of characters in string
-// LEN(variable) -> number of bytes required to store a variable
-
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
     use crate::common::*;

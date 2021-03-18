@@ -1,6 +1,3 @@
-// ENVIRON$ (env-variable$) -> returns the variable
-// ENVIRON$ (n%) -> returns the nth variable (TODO support this)
-
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;

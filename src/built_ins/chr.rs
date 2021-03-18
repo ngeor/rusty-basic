@@ -1,5 +1,3 @@
-// CHR$(ascii-code%) returns the text representation of the given ascii code
-
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;

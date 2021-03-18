@@ -1,9 +1,3 @@
-// MID$ function returns part of a string
-// MID$ statement replaces part of a string (TODO support this)
-// MID$(str_expr$, start%[, length%])
-// MID$(str_var$, start%[, length%]) = str_expr$
-// if the length is omitted, returns or replaces all remaining characters
-
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;

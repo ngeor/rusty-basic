@@ -1,7 +1,3 @@
-// INSTR([start%,] hay$, needle$)
-// if start% is omitted, INSTR starts at position 1
-// returns the first occurrence of needle$ inside hay$
-
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;

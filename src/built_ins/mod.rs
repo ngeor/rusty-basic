@@ -8,25 +8,48 @@ use std::convert::TryFrom;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum BuiltInFunction {
-    /// CHR$
+    /// `CHR$(ascii-code%)` returns the text representation of the given ascii code
     Chr,
-    /// ENVIRON$
+
+    /// `ENVIRON$ (env-variable$)` -> returns the variable
+    ///
+    /// `ENVIRON$ (n%)` -> returns the nth variable (TODO support this)
     Environ,
-    /// EOF
+
+    /// `EOF(file-number%)` -> checks if the end of file has been reached
     Eof,
-    /// INSTR
+
+    /// `INSTR([start%,] hay$, needle$)`
+    /// if start% is omitted, INSTR starts at position 1
+    /// returns the first occurrence of needle$ inside hay$
     InStr,
+
     /// LBOUND
     LBound,
-    /// LEN
+
+    /// `LEN(str_expr$)` -> number of characters in string
+    ///
+    /// `LEN(variable)` -> number of bytes required to store a variable
     Len,
-    /// MID$
+
+    /// MID$ function returns part of a string
+    ///
+    /// MID$ statement replaces part of a string (TODO support this)
+    ///
+    /// MID$(str_expr$, start%[, length%])
+    ///
+    /// MID$(str_var$, start%[, length%]) = str_expr$
+    ///
+    /// if the length is omitted, returns or replaces all remaining characters
     Mid,
-    /// STR$
+
+    /// `STR$(numeric-expression)` returns a string representation of a number
     Str,
+
     /// UBOUND
     UBound,
-    /// VAL
+
+    /// `VAL(str-expr$)` converts a string representation of a number to a number.
     Val,
 }
 
@@ -180,11 +203,58 @@ pub enum BuiltInSub {
     Environ,
     Field,
     Get,
+
+    /// `INPUT [;] ["prompt"{; | ,}] variable-list`
+    ///
+    /// `INPUT #file-number%, variable-list`
+    ///
+    /// prompt - An optional string that is displayed before the user
+    /// enters data. A semicolon after promp appends a question mark to the
+    /// prompt string.
+    ///
+    /// variable names can consist of up to 40 characters and must begin
+    /// with a letter. Valid characters are a-z, 0-9 and period (.).
+    ///
+    /// A semicolon immediately after INPUT keeps the cursor on the same line
+    /// after the user presses the Enter key.
+    ///
     Input,
+
+    /// `KILL file-spec$` -> deletes files from disk
     Kill,
+
+    /// `LINE INPUT` -> see [INPUT](Self::Input)
+    ///
+    /// `LINE INPUT [;] ["prompt";] variable$`
+    ///
+    /// `LINE INPUT #file-number%, variable$`
     LineInput,
+
+    /// LOCATE moves the cursor to a specified position on the screen
+    ///
+    /// `LOCATE [row%] [,[column%] [,[cursor%] [,start% [,stop%]]]]`
+    ///
+    /// cursor 0 = invisible 1 = visible
+    ///
+    /// start and stop are 0..31 indicating scan lines
+    Locate,
     LSet,
+
+    /// `NAME old$ AS new$` Renames a file or directory.
     Name,
+
+    /// `OPEN file$ [FOR mode] [ACCESS access] [lock] AS [#]file-number% [LEN=rec-len%]`
+    ///
+    /// mode: APPEND, BINARY, INPUT, OUTPUT, RANDOM
+    ///
+    /// access: READ, WRITE, READ WRITE
+    ///
+    /// lock: SHARED, LOCK READ, LOCK WRITE, LOCK READ WRITE
+    ///
+    /// file-number a number in the range 1 through 255
+    ///
+    /// rec-len%: For random access files, the record length (default is 128 bytes)
+    ///           For sequential files, the number of characters buffered (default is 512 bytes)
     Open,
     Put,
     ViewPrint,
@@ -219,13 +289,14 @@ pub mod parser {
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         crate::built_ins::close::parser::parse()
+            .or(crate::built_ins::field::parser::parse())
+            .or(crate::built_ins::get::parser::parse())
             .or(crate::built_ins::input::parser::parse())
             .or(crate::built_ins::line_input::parser::parse())
+            .or(crate::built_ins::locate::parser::parse())
+            .or(crate::built_ins::lset::parser::parse())
             .or(crate::built_ins::name::parser::parse())
             .or(crate::built_ins::open::parser::parse())
-            .or(crate::built_ins::field::parser::parse())
-            .or(crate::built_ins::lset::parser::parse())
-            .or(crate::built_ins::get::parser::parse())
             .or(crate::built_ins::put::parser::parse())
             .or(crate::built_ins::view_print::parser::parse())
     }
@@ -257,6 +328,7 @@ pub mod linter {
             BuiltInSub::Input => crate::built_ins::input::linter::lint(args),
             BuiltInSub::Kill => crate::built_ins::kill::linter::lint(args),
             BuiltInSub::LineInput => crate::built_ins::line_input::linter::lint(args),
+            BuiltInSub::Locate => crate::built_ins::locate::linter::lint(args),
             BuiltInSub::LSet => crate::built_ins::lset::linter::lint(args),
             BuiltInSub::Name => crate::built_ins::name::linter::lint(args),
             BuiltInSub::Open => crate::built_ins::open::linter::lint(args),
@@ -298,6 +370,7 @@ pub mod interpreter {
             BuiltInSub::Input => crate::built_ins::input::interpreter::run(interpreter),
             BuiltInSub::Kill => crate::built_ins::kill::interpreter::run(interpreter),
             BuiltInSub::LineInput => crate::built_ins::line_input::interpreter::run(interpreter),
+            BuiltInSub::Locate => crate::built_ins::locate::interpreter::run(interpreter),
             BuiltInSub::LSet => crate::built_ins::lset::interpreter::run(interpreter),
             BuiltInSub::Name => crate::built_ins::name::interpreter::run(interpreter),
             BuiltInSub::Open => crate::built_ins::open::interpreter::run(interpreter),
@@ -338,6 +411,7 @@ mod kill;
 mod lbound;
 mod len;
 mod line_input;
+mod locate;
 mod lset;
 mod mid_fn;
 mod name;

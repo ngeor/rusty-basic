@@ -1,5 +1,3 @@
-// VAL(str-expr$) converts a string representation of a number to a number.
-
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;

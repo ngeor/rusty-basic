@@ -258,6 +258,7 @@ pub enum BuiltInSub {
     Open,
     Put,
     ViewPrint,
+    Width,
 }
 
 impl BuiltInSub {
@@ -299,6 +300,7 @@ pub mod parser {
             .or(crate::built_ins::open::parser::parse())
             .or(crate::built_ins::put::parser::parse())
             .or(crate::built_ins::view_print::parser::parse())
+            .or(crate::built_ins::width::parser::parse())
     }
 
     // needed for built-in functions that are also keywords (e.g. LEN), so they
@@ -334,6 +336,7 @@ pub mod linter {
             BuiltInSub::Open => crate::built_ins::open::linter::lint(args),
             BuiltInSub::Put => crate::built_ins::put::linter::lint(args),
             BuiltInSub::ViewPrint => crate::built_ins::view_print::linter::lint(args),
+            BuiltInSub::Width => crate::built_ins::width::linter::lint(args),
         }
     }
 
@@ -376,6 +379,7 @@ pub mod interpreter {
             BuiltInSub::Open => crate::built_ins::open::interpreter::run(interpreter),
             BuiltInSub::Put => crate::built_ins::put::interpreter::run(interpreter),
             BuiltInSub::ViewPrint => crate::built_ins::view_print::interpreter::run(interpreter),
+            BuiltInSub::Width => crate::built_ins::width::interpreter::run(interpreter),
         }
     }
 
@@ -421,3 +425,4 @@ mod str_fn;
 mod ubound;
 mod val;
 mod view_print;
+mod width;

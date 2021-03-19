@@ -200,6 +200,7 @@ fn demand_unqualified(
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BuiltInSub {
     Close,
+    Data,
     Environ,
     Field,
     Get,
@@ -257,6 +258,7 @@ pub enum BuiltInSub {
     ///           For sequential files, the number of characters buffered (default is 512 bytes)
     Open,
     Put,
+    Read,
     ViewPrint,
     Width,
 }
@@ -290,6 +292,7 @@ pub mod parser {
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         crate::built_ins::close::parser::parse()
+            .or(crate::built_ins::data::parser::parse())
             .or(crate::built_ins::field::parser::parse())
             .or(crate::built_ins::get::parser::parse())
             .or(crate::built_ins::input::parser::parse())
@@ -299,6 +302,7 @@ pub mod parser {
             .or(crate::built_ins::name::parser::parse())
             .or(crate::built_ins::open::parser::parse())
             .or(crate::built_ins::put::parser::parse())
+            .or(crate::built_ins::read::parser::parse())
             .or(crate::built_ins::view_print::parser::parse())
             .or(crate::built_ins::width::parser::parse())
     }
@@ -316,14 +320,17 @@ pub mod parser {
 pub mod linter {
     use crate::built_ins::{BuiltInFunction, BuiltInSub};
     use crate::common::QErrorNode;
+    use crate::linter::NameContext;
     use crate::parser::ExpressionNodes;
 
     pub fn lint_sub_call(
         built_in_sub: &BuiltInSub,
         args: &ExpressionNodes,
+        name_context: NameContext,
     ) -> Result<(), QErrorNode> {
         match built_in_sub {
             BuiltInSub::Close => crate::built_ins::close::linter::lint(args),
+            BuiltInSub::Data => crate::built_ins::data::linter::lint(name_context),
             BuiltInSub::Environ => crate::built_ins::environ_sub::linter::lint(args),
             BuiltInSub::Field => crate::built_ins::field::linter::lint(args),
             BuiltInSub::Get => crate::built_ins::get::linter::lint(args),
@@ -335,6 +342,7 @@ pub mod linter {
             BuiltInSub::Name => crate::built_ins::name::linter::lint(args),
             BuiltInSub::Open => crate::built_ins::open::linter::lint(args),
             BuiltInSub::Put => crate::built_ins::put::linter::lint(args),
+            BuiltInSub::Read => crate::built_ins::read::linter::lint(args),
             BuiltInSub::ViewPrint => crate::built_ins::view_print::linter::lint(args),
             BuiltInSub::Width => crate::built_ins::width::linter::lint(args),
         }
@@ -367,6 +375,7 @@ pub mod interpreter {
     pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QError> {
         match s {
             BuiltInSub::Close => crate::built_ins::close::interpreter::run(interpreter),
+            BuiltInSub::Data => crate::built_ins::data::interpreter::run(interpreter),
             BuiltInSub::Environ => crate::built_ins::environ_sub::interpreter::run(interpreter),
             BuiltInSub::Field => crate::built_ins::field::interpreter::run(interpreter),
             BuiltInSub::Get => crate::built_ins::get::interpreter::run(interpreter),
@@ -378,6 +387,7 @@ pub mod interpreter {
             BuiltInSub::Name => crate::built_ins::name::interpreter::run(interpreter),
             BuiltInSub::Open => crate::built_ins::open::interpreter::run(interpreter),
             BuiltInSub::Put => crate::built_ins::put::interpreter::run(interpreter),
+            BuiltInSub::Read => crate::built_ins::read::interpreter::run(interpreter),
             BuiltInSub::ViewPrint => crate::built_ins::view_print::interpreter::run(interpreter),
             BuiltInSub::Width => crate::built_ins::width::interpreter::run(interpreter),
         }
@@ -404,6 +414,7 @@ pub mod interpreter {
 
 mod chr;
 mod close;
+mod data;
 mod environ_fn;
 mod environ_sub;
 mod eof;
@@ -421,6 +432,7 @@ mod mid_fn;
 mod name;
 mod open;
 mod put;
+mod read;
 mod str_fn;
 mod ubound;
 mod val;

@@ -16,7 +16,7 @@ fn resume_illegal_in_function() {
         RESUME
     END FUNCTION
     "#;
-    assert_linter_err!(input, QError::syntax_error("Illegal in subprogram"), 3, 9);
+    assert_linter_err!(input, QError::IllegalInSubFunction, 3, 9);
 }
 
 #[test]
@@ -26,5 +26,5 @@ fn resume_illegal_in_sub() {
         RESUME
     END SUB
     "#;
-    assert_linter_err!(input, QError::syntax_error("Illegal in subprogram"), 3, 9);
+    assert_linter_err!(input, QError::IllegalInSubFunction, 3, 9);
 }

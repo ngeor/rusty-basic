@@ -1,7 +1,8 @@
 use super::converter::{Converter, ConverterImpl};
 use crate::common::*;
-use crate::linter::converter::context::{ExprContext, NameContext};
+use crate::linter::converter::context::ExprContext;
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
+use crate::linter::NameContext;
 use crate::parser::{
     DimName, DoLoopNode, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
 };
@@ -99,14 +100,14 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && self.context.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
-                    Err(QError::syntax_error("Illegal in subprogram")).with_err_at(pos)
+                    Err(QError::IllegalInSubFunction).with_err_at(pos)
                 } else {
                     Ok((Some(Statement::Return(opt_label).at(pos)), vec![]))
                 }
             }
             Statement::Resume(resume_option) => {
                 if self.context.is_in_subprogram() {
-                    Err(QError::syntax_error("Illegal in subprogram")).with_err_at(pos)
+                    Err(QError::IllegalInSubFunction).with_err_at(pos)
                 } else {
                     Ok((Some(Statement::Resume(resume_option).at(pos)), vec![]))
                 }

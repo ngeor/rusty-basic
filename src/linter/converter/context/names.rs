@@ -1,6 +1,6 @@
-use super::NameContext;
 use crate::common::CaseInsensitiveString;
 use crate::linter::const_value_resolver::ConstValueResolver;
+use crate::linter::NameContext;
 use crate::parser::{BareName, TypeQualifier, VariableInfo};
 use crate::variant::Variant;
 use std::collections::{HashMap, HashSet};

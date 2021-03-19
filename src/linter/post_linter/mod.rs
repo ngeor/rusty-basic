@@ -42,7 +42,7 @@ fn apply_linters(
     let mut linter = dots_linter::DotsLinter { names_without_dot };
     linter.visit_program(&result)?;
 
-    let mut linter = built_in_linter::BuiltInLinter {};
+    let mut linter = built_in_linter::BuiltInLinter::new();
     linter.visit_program(&result)?;
 
     let mut linter = print_linter::PrintLinter {};

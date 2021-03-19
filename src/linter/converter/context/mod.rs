@@ -10,6 +10,7 @@ use crate::common::{AtLocation, Locatable, QErrorNode};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
+use crate::linter::NameContext;
 use crate::parser::*;
 use crate::variant::Variant;
 use names::Names;
@@ -558,7 +559,7 @@ pub mod dim_rules {
 
         pub fn validate(ctx: &Context, dim_list: &DimList) -> Result<(), QErrorNode> {
             if ctx.is_in_subprogram() && dim_list.shared {
-                Err(QError::syntax_error("SHARED not allowed in subprogram"))
+                Err(QError::IllegalInSubFunction)
                     .with_err_at(dim_list.variables.first().unwrap().pos)
             } else {
                 Ok(())
@@ -673,11 +674,4 @@ fn union(
 ) -> Vec<QualifiedNameNode> {
     left.append(&mut right);
     left
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NameContext {
-    Global,
-    Sub,
-    Function,
 }

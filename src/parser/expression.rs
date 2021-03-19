@@ -95,6 +95,28 @@ where
         })
 }
 
+/// Parses one or more expressions separated by comma.
+/// Trailing commas are not allowed.
+/// Missing expressions are not allowed.
+/// The first expression needs to be preceded by space or surrounded in parenthesis.
+pub fn expression_nodes_p<R>() -> impl Parser<R, Output = ExpressionNodes>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    guarded_expression_node_p()
+        .and_demand(
+            item_p(',')
+                .surrounded_by_opt_ws()
+                .and_demand(demand_expression_node_p("Expected: expression after comma"))
+                .keep_right()
+                .zero_or_more(),
+        )
+        .map(|(first, mut remaining)| {
+            remaining.insert(0, first);
+            remaining
+        })
+}
+
 fn single_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

@@ -1,5 +1,6 @@
 use crate::instruction_generator::Path;
 use crate::interpreter::context::Context;
+use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::variables::Variables;
@@ -58,4 +59,6 @@ pub trait InterpreterTrait {
     fn set_function_result(&mut self, v: Variant);
 
     fn var_path_stack(&mut self) -> &mut VecDeque<Path>;
+
+    fn data_segment(&mut self) -> &mut DataSegment;
 }

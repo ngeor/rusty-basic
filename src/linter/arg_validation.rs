@@ -1,4 +1,6 @@
-use crate::common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use crate::common::{
+    CanCastTo, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
+};
 use crate::parser::{
     Expression, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier, VariableInfo,
 };
@@ -13,6 +15,8 @@ pub trait ArgValidation {
     fn require_string_argument(&self, idx: usize) -> Result<(), QErrorNode>;
 
     fn require_string_variable(&self, idx: usize) -> Result<(), QErrorNode>;
+
+    fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), QErrorNode>;
 
     fn require_one_argument(&self) -> Result<(), QErrorNode>;
 
@@ -76,6 +80,32 @@ impl ArgValidation for ExpressionNodes {
             ) => Ok(()),
             Expression::Variable(_, _) => Err(QError::ArgumentTypeMismatch).with_err_at(&self[idx]),
             _ => Err(QError::VariableRequired).with_err_at(&self[idx]),
+        }
+    }
+
+    fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), QErrorNode> {
+        let Locatable { element, .. } = &self[idx];
+        match element {
+            Expression::Variable(
+                _,
+                VariableInfo {
+                    expression_type, ..
+                },
+            )
+            | Expression::ArrayElement(
+                _,
+                _,
+                VariableInfo {
+                    expression_type, ..
+                },
+            )
+            | Expression::Property(_, _, expression_type) => match expression_type {
+                ExpressionType::BuiltIn(_) | ExpressionType::FixedLengthString(_) => Ok(()),
+                _ => Err(QError::ArgumentTypeMismatch).with_err_at(&self[idx]),
+            },
+            _ => {
+                return Err(QError::VariableRequired).with_err_at(&self[idx]);
+            }
         }
     }
 

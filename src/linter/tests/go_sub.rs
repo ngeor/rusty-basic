@@ -13,7 +13,7 @@ fn return_with_explicit_label_is_illegal_in_sub() {
 
     END SUB
     "#;
-    assert_linter_err!(input, QError::syntax_error("Illegal in subprogram"), 7, 5);
+    assert_linter_err!(input, QError::IllegalInSubFunction, 7, 5);
 }
 
 #[test]

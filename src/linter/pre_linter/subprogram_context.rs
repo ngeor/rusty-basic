@@ -537,11 +537,8 @@ impl SubContext {
     }
 
     pub fn post_visit(&self) -> Result<(), QErrorNode> {
-        for (k, v) in self.declarations.iter() {
-            if !self.implementations.contains_key(k) {
-                return Err(QError::SubprogramNotDefined).with_err_at(v);
-            }
-        }
+        // not checking if declarations are present, because in MONEY.BAS there
+        // are two SUBs declared but not implemented (and not called either)
 
         for (k, v) in self.implementations.iter() {
             let opt_built_in: Option<BuiltInSub> = BuiltInSub::parse_non_keyword_sub(k.as_ref());

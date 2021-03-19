@@ -38,3 +38,15 @@ fn test_sub_param_same_as_other_function_allowed() {
     "#;
     assert_prints!(program, "5");
 }
+
+#[test]
+fn possible_to_have_declare_sub_without_implementation() {
+    // this is happening on MONEY.BAS, two SUBs are declared but they are not
+    // implemented (and they're never called either, which would have been a
+    // problem)
+    let program = r#"
+    DECLARE SUB MakeBackup()
+    PRINT "hello"
+    "#;
+    assert_prints!(program, "hello");
+}

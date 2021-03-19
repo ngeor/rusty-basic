@@ -1,5 +1,6 @@
 mod arguments;
 pub mod context;
+pub mod data_segment;
 mod default_stdlib;
 pub mod interpreter;
 pub mod interpreter_trait;

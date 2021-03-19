@@ -349,12 +349,7 @@ mod dim_shared {
             DIM SHARED A
         END FUNCTION
         "#;
-        assert_linter_err!(
-            program,
-            QError::syntax_error("SHARED not allowed in subprogram"),
-            3,
-            24
-        );
+        assert_linter_err!(program, QError::IllegalInSubFunction, 3, 24);
     }
 
     #[test]
@@ -364,12 +359,7 @@ mod dim_shared {
             DIM SHARED A
         END SUB
         "#;
-        assert_linter_err!(
-            program,
-            QError::syntax_error("SHARED not allowed in subprogram"),
-            3,
-            24
-        );
+        assert_linter_err!(program, QError::IllegalInSubFunction, 3, 24);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
 use crate::interpreter::context::*;
+use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::default_stdlib::DefaultStdlib;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::{FileManager, Input, Printer};
@@ -65,6 +66,8 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     last_error_address: Option<usize>,
 
     print_interpreter: Rc<RefCell<PrintInterpreter>>,
+
+    data_segment: DataSegment,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -142,6 +145,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     fn var_path_stack(&mut self) -> &mut VecDeque<Path> {
         &mut self.var_path_stack
     }
+
+    fn data_segment(&mut self) -> &mut DataSegment {
+        &mut self.data_segment
+    }
 }
 
 pub type DefaultInterpreter = Interpreter<
@@ -187,6 +194,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             value_stack: vec![],
             last_error_address: None,
             print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
+            data_segment: DataSegment::new(),
         }
     }
 

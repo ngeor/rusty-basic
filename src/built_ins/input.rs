@@ -72,13 +72,7 @@ pub mod linter {
         }
 
         for i in starting_index..args.len() {
-            let Locatable { element, .. } = &args[i];
-            match element {
-                Expression::Variable(_, _) | Expression::Property(_, _, _) => {}
-                _ => {
-                    return Err(QError::VariableRequired).with_err_at(&args[i]);
-                }
-            }
+            args.require_variable_of_built_in_type(i)?;
         }
 
         Ok(())

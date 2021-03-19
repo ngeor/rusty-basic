@@ -193,6 +193,8 @@ pub enum QError {
 
     ElementNotDefined,
 
+    IllegalInSubFunction,
+
     // Lexer errors
     UnsupportedCharacter(char),
 

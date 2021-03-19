@@ -41,7 +41,7 @@ where
                         Ok((reader, Some(Statement::SubCall(bare_name, args))))
                     }
                     Ok((bare_name, None)) => {
-                        let (reader, args) = sub_call_args_after_space_p().parse(reader)?;
+                        let (reader, args) = expression::expression_nodes_p().parse(reader)?;
                         Ok((
                             reader,
                             Some(Statement::SubCall(bare_name, args.unwrap_or_default())),
@@ -104,27 +104,6 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
         }
         _ => Err(QError::syntax_error("Illegal sub name")),
     }
-}
-
-// guarded-expression [ , expression ] *
-fn sub_call_args_after_space_p<R>() -> impl Parser<R, Output = ExpressionNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    expression::guarded_expression_node_p()
-        .and_demand(
-            item_p(',')
-                .surrounded_by_opt_ws()
-                .and_demand(expression::demand_expression_node_p(
-                    "Expected: expression after comma",
-                ))
-                .keep_right()
-                .zero_or_more(),
-        )
-        .map(|(first, mut remaining)| {
-            remaining.insert(0, first);
-            remaining
-        })
 }
 
 #[cfg(test)]

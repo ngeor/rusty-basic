@@ -1,20 +1,47 @@
+use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{linter, BuiltInSub};
 use crate::common::*;
-use crate::parser::{Expression, ExpressionNode};
-
-use super::post_conversion_linter::PostConversionLinter;
+use crate::linter::NameContext;
+use crate::parser::{Expression, ExpressionNode, FunctionImplementation, SubImplementation};
 
 /// Lints built-in functions and subs.
-pub struct BuiltInLinter;
+pub struct BuiltInLinter {
+    name_context: NameContext,
+}
+
+impl BuiltInLinter {
+    pub fn new() -> Self {
+        Self {
+            name_context: NameContext::Global,
+        }
+    }
+}
 
 impl PostConversionLinter for BuiltInLinter {
+    fn visit_function_implementation(
+        &mut self,
+        f: &FunctionImplementation,
+    ) -> Result<(), QErrorNode> {
+        self.name_context = NameContext::Function;
+        let result = self.visit_statement_nodes(&f.body);
+        self.name_context = NameContext::Global;
+        result
+    }
+
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
+        self.name_context = NameContext::Sub;
+        let result = self.visit_statement_nodes(&s.body);
+        self.name_context = NameContext::Global;
+        result
+    }
+
     fn visit_built_in_sub_call(
         &mut self,
         built_in_sub: &BuiltInSub,
         args: &Vec<ExpressionNode>,
     ) -> Result<(), QErrorNode> {
         self.visit_expressions(args)?;
-        linter::lint_sub_call(built_in_sub, args)
+        linter::lint_sub_call(built_in_sub, args, self.name_context)
     }
 
     fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {

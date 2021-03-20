@@ -34,7 +34,8 @@ pub mod parser {
 
 pub mod linter {
     use crate::common::*;
-    use crate::parser::{Expression, ExpressionNode, ExpressionType, TypeQualifier, VariableInfo};
+    use crate::linter::arg_validation::ArgValidation;
+    use crate::parser::{Expression, ExpressionNode};
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         // the first one or two arguments stand for the file number
@@ -75,25 +76,7 @@ pub mod linter {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
 
-        let Locatable {
-            element: var_arg,
-            pos,
-        } = &args[starting_index];
-        match var_arg {
-            Expression::Variable(
-                _,
-                VariableInfo {
-                    expression_type, ..
-                },
-            ) => match expression_type {
-                ExpressionType::BuiltIn(TypeQualifier::DollarString)
-                | ExpressionType::FixedLengthString(_) => {}
-                _ => return Err(QError::TypeMismatch).with_err_at(*pos),
-            },
-            _ => return Err(QError::TypeMismatch).with_err_at(*pos),
-        }
-
-        Ok(())
+        args.require_string_ref(starting_index)
     }
 }
 
@@ -174,8 +157,10 @@ mod tests {
     use crate::assert_built_in_sub_call;
     use crate::assert_interpreter_err;
     use crate::assert_parser_err;
+    use crate::assert_prints;
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::parser::test_utils::*;
     use crate::parser::*;
 
@@ -269,5 +254,30 @@ mod tests {
 
         assert_interpreter_err!(input, QError::InputPastEndOfFile, 5, 9);
         std::fs::remove_file("test_line_input_string_from_file_eof.txt").unwrap_or_default();
+    }
+
+    #[test]
+    fn line_input_reading_into_array_user_defined_type_string() {
+        let filename = "line_input_reading_into_array_user_defined_type_string.txt";
+        std::fs::remove_file(filename).unwrap_or_default();
+        std::fs::write(filename, "Hello world!!!\r\n").unwrap();
+        let input = format!(
+            r#"
+        TYPE MyType
+            Greeting AS STRING * 11
+        END TYPE
+
+        DIM A(1 TO 2) AS MyType
+
+        OPEN "{}" FOR INPUT AS #1
+        LINE INPUT #1, A(1).Greeting
+        CLOSE
+
+        PRINT A(1).Greeting
+        "#,
+            filename
+        );
+        assert_prints!(input, "Hello world");
+        std::fs::remove_file(filename).unwrap_or_default();
     }
 }

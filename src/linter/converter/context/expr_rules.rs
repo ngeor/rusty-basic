@@ -1,11 +1,10 @@
-use std::convert::TryFrom;
-
 use super::{Context, ExprContext};
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::linter::type_resolver::TypeResolver;
 use crate::parser::*;
 use crate::variant::Variant;
+use std::convert::TryFrom;
 
 type O = (ExpressionNode, Vec<QualifiedNameNode>);
 type R = Result<O, QErrorNode>;
@@ -280,7 +279,7 @@ mod variable {
             let q = TypeQualifier::try_from(v).with_err_at(pos)?;
             if name.is_bare_or_of_type(q) {
                 // resolve to literal expression
-                let expr = Expression::try_from(v.clone()).with_err_at(pos)?;
+                let expr = Expression::from_constant(v.clone()).with_err_at(pos)?;
                 Ok(expr.at(pos))
             } else {
                 Err(QError::DuplicateDefinition).with_err_at(pos)

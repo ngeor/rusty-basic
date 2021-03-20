@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::parser::types::*;
@@ -84,10 +82,8 @@ impl From<i64> for Expression {
     }
 }
 
-impl TryFrom<Variant> for Expression {
-    type Error = QError;
-
-    fn try_from(value: Variant) -> Result<Self, Self::Error> {
+impl Expression {
+    pub fn from_constant(value: Variant) -> Result<Self, QError> {
         match value {
             Variant::VSingle(f) => Ok(f.into()),
             Variant::VDouble(d) => Ok(d.into()),
@@ -97,9 +93,8 @@ impl TryFrom<Variant> for Expression {
             _ => Err(QError::InvalidConstant),
         }
     }
-}
 
-impl Expression {
+    #[cfg(test)]
     pub fn func(s: &str, args: ExpressionNodes) -> Self {
         let name: Name = s.into();
         Expression::FunctionCall(name, args)
@@ -240,15 +235,59 @@ impl Expression {
             VariableInfo::new_local(ExpressionType::UserDefined(type_name.into())),
         )
     }
+
+    fn should_flip_unary(&self, op: UnaryOperator) -> bool {
+        match self {
+            Expression::BinaryExpression(r_op, _, _, _) => {
+                op == UnaryOperator::Minus || r_op.is_binary()
+            }
+            _ => false,
+        }
+    }
+
+    fn should_flip_binary(&self) -> bool {
+        match self {
+            Expression::BinaryExpression(l_op, _, l_right, _) => match &l_right.element {
+                Expression::BinaryExpression(r_op, _, _, _) => {
+                    l_op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
+                        || l_op.is_relational() && r_op.is_binary()
+                        || *l_op == Operator::And && *r_op == Operator::Or
+                        || (*l_op == Operator::Multiply
+                            || *l_op == Operator::Divide
+                            || *l_op == Operator::Modulo)
+                            && (*r_op == Operator::Plus || *r_op == Operator::Minus)
+                }
+                _ => false,
+            },
+            _ => false,
+        }
+    }
 }
 
 impl ExpressionNode {
-    pub fn simplify_unary_minus_literals(self) -> Self {
-        self.map(|x| x.simplify_unary_minus_literals())
+    /// Flips a binary expression.
+    ///
+    /// `A AND B OR C` would be parsed as `A AND (B OR C)` but needs to be `(A AND B) OR C`.
+    fn flip_binary(self) -> Self {
+        let Self { element, pos } = self;
+        if let Expression::BinaryExpression(l_op, l_left, l_right, _) = element {
+            let Self {
+                element: r_element,
+                pos: r_pos,
+            } = *l_right;
+            if let Expression::BinaryExpression(r_op, r_left, r_right, _) = r_element {
+                let new_left = l_left.binary_expr(l_op, *r_left, pos);
+                new_left.binary_expr(r_op, *r_right, r_pos)
+            } else {
+                panic!("should_flip_binary internal error")
+            }
+        } else {
+            panic!("should_flip_binary internal error")
+        }
     }
 
-    pub fn is_parenthesis(&self) -> bool {
-        self.as_ref().is_parenthesis()
+    pub fn simplify_unary_minus_literals(self) -> Self {
+        self.map(|x| x.simplify_unary_minus_literals())
     }
 
     pub fn apply_priority_order(
@@ -257,68 +296,41 @@ impl ExpressionNode {
         op: Operator,
         pos: Location,
     ) -> ExpressionNode {
-        match right_side.as_ref() {
-            Expression::BinaryExpression(r_op, r_left, r_right, _) => {
-                let should_flip = op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
-                    || op.is_relational() && r_op.is_binary()
-                    || op == Operator::And && *r_op == Operator::Or
-                    || (op == Operator::Multiply
-                        || op == Operator::Divide
-                        || op == Operator::Modulo)
-                        && (*r_op == Operator::Plus || *r_op == Operator::Minus);
-                if should_flip {
-                    Expression::BinaryExpression(
-                        *r_op,
-                        Box::new(
-                            Expression::BinaryExpression(
-                                op,
-                                Box::new(self),
-                                r_left.clone(),
-                                ExpressionType::Unresolved,
-                            )
-                            .at(pos),
-                        ),
-                        r_right.clone(),
-                        ExpressionType::Unresolved,
-                    )
-                    .at(right_side.pos())
-                } else {
-                    Expression::BinaryExpression(
-                        op,
-                        Box::new(self),
-                        Box::new(right_side),
-                        ExpressionType::Unresolved,
-                    )
-                    .at(pos)
-                }
-            }
-            _ => Expression::BinaryExpression(
-                op,
-                Box::new(self),
-                Box::new(right_side),
-                ExpressionType::Unresolved,
-            )
-            .at(pos),
+        self.binary_expr(op, right_side, pos)
+    }
+
+    fn binary_expr(self, op: Operator, right_side: Self, pos: Location) -> Self {
+        let result = Expression::BinaryExpression(
+            op,
+            Box::new(self),
+            Box::new(right_side),
+            ExpressionType::Unresolved,
+        )
+        .at(pos);
+        if result.should_flip_binary() {
+            result.flip_binary()
+        } else {
+            result
         }
     }
 
-    pub fn apply_unary_priority_order(self, op: UnaryOperator, pos: Location) -> ExpressionNode {
-        match self.as_ref() {
-            Expression::BinaryExpression(r_op, r_left, r_right, old_expression_type) => {
-                let should_flip = op == UnaryOperator::Minus || r_op.is_binary();
-                if should_flip {
-                    Expression::BinaryExpression(
-                        *r_op,
-                        Box::new(Expression::UnaryExpression(op, r_left.clone()).at(pos)),
-                        r_right.clone(),
-                        old_expression_type.clone(),
-                    )
-                    .at(self.pos())
-                } else {
-                    Expression::UnaryExpression(op, Box::new(self)).at(pos)
+    /// Applies the unary operator priority order.
+    ///
+    /// `NOT A AND B` would be parsed as `NOT (A AND B)`, needs to flip into `(NOT A) AND B`
+    pub fn apply_unary_priority_order(self, op: UnaryOperator, op_pos: Location) -> ExpressionNode {
+        if self.should_flip_unary(op) {
+            let Locatable { element, pos } = self;
+            match element {
+                Expression::BinaryExpression(r_op, r_left, r_right, _) => {
+                    // apply the unary operator to the left of the binary expr
+                    let new_left = Expression::UnaryExpression(op, r_left).at(op_pos);
+                    // and nest it as left inside a binary expr
+                    new_left.binary_expr(r_op, *r_right, pos)
                 }
+                _ => panic!("should_flip_unary internal error"),
             }
-            _ => Expression::UnaryExpression(op, Box::new(self)).at(pos),
+        } else {
+            Expression::UnaryExpression(op, Box::new(self)).at(op_pos)
         }
     }
 }

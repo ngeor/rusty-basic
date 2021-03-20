@@ -361,6 +361,12 @@ mod eq {
         assert_condition!("1 = 1");
         assert_condition_false!("1 = 2");
     }
+
+    #[test]
+    fn test_equality_string() {
+        assert_condition!(r#""ABC" = "ABC""#);
+        assert_condition_false!(r#""ABC" = "DEF""#);
+    }
 }
 
 mod geq {
@@ -371,6 +377,13 @@ mod geq {
         assert_condition!("1 >= 1");
         assert_condition!("2 >= 1");
         assert_condition_false!("1 >= 2");
+    }
+
+    #[test]
+    fn test_greater_or_equal_string() {
+        assert_condition!(r#""DEF" >= "ABC""#);
+        assert_condition!(r#""DEF" >= "DEF""#);
+        assert_condition_false!(r#""ABC" >= "DEF""#);
     }
 }
 
@@ -438,6 +451,11 @@ mod and {
         assert_prints!("PRINT -5 AND -2", "-6");
         assert_prints!("PRINT -5 AND -1", "-5");
     }
+
+    #[test]
+    fn test_and_two_string_comparisons() {
+        assert_condition!(r#" "DEF" >= "ABC" AND "DEF" < "GHI" "#);
+    }
 }
 
 mod or {
@@ -467,6 +485,11 @@ mod or {
         assert_prints!("PRINT -1 OR -1", "-1");
         assert_prints!("PRINT -1 OR 0", "-1");
         assert_prints!("PRINT -1 OR 1", "-1");
+    }
+
+    #[test]
+    fn test_or_string_comparison_and_two_string_comparisons() {
+        assert_condition!(r#" "DEF" >= "ABC" AND "DEF" < "GHI" OR "XYZ" = "XYZ" "#);
     }
 }
 

@@ -1269,6 +1269,80 @@ mod tests {
                 )
             );
         }
+
+        #[test]
+        fn test_and_two_string_comparisons() {
+            assert_expression!(
+                r#" "DEF" >= "ABC" AND "DEF" < "GHI" "#,
+                Expression::BinaryExpression(
+                    Operator::And,
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operator::GreaterOrEqual,
+                            Box::new("DEF".as_lit_expr(1, 8)),
+                            Box::new("ABC".as_lit_expr(1, 17)),
+                            ExpressionType::Unresolved
+                        )
+                        .at_rc(1, 14)
+                    ),
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operator::Less,
+                            Box::new("DEF".as_lit_expr(1, 27)),
+                            Box::new("GHI".as_lit_expr(1, 35)),
+                            ExpressionType::Unresolved
+                        )
+                        .at_rc(1, 33)
+                    ),
+                    ExpressionType::Unresolved
+                )
+            );
+        }
+
+        #[test]
+        fn test_or_string_comparison_and_two_string_comparisons() {
+            assert_expression!(
+                r#" "DEF" >= "ABC" AND "DEF" < "GHI" OR "XYZ" = "XYZ" "#,
+                Expression::BinaryExpression(
+                    Operator::Or,
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operator::And,
+                            Box::new(
+                                Expression::BinaryExpression(
+                                    Operator::GreaterOrEqual,
+                                    Box::new("DEF".as_lit_expr(1, 8)),
+                                    Box::new("ABC".as_lit_expr(1, 17)),
+                                    ExpressionType::Unresolved
+                                )
+                                .at_rc(1, 14)
+                            ),
+                            Box::new(
+                                Expression::BinaryExpression(
+                                    Operator::Less,
+                                    Box::new("DEF".as_lit_expr(1, 27)),
+                                    Box::new("GHI".as_lit_expr(1, 35)),
+                                    ExpressionType::Unresolved
+                                )
+                                .at_rc(1, 33)
+                            ),
+                            ExpressionType::Unresolved
+                        )
+                        .at_rc(1, 23)
+                    ),
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operator::Equal,
+                            Box::new("XYZ".as_lit_expr(1, 44)),
+                            Box::new("XYZ".as_lit_expr(1, 52)),
+                            ExpressionType::Unresolved
+                        )
+                        .at_rc(1, 50)
+                    ),
+                    ExpressionType::Unresolved
+                )
+            );
+        }
     }
 
     mod binary_plus {

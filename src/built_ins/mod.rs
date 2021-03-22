@@ -46,6 +46,15 @@ pub enum BuiltInFunction {
     /// `STR$(numeric-expression)` returns a string representation of a number
     Str,
 
+    /// Returns a string of a specified length made up of a repeating character.
+    ///
+    /// `STRING$(length%, { ascii-code% | string-expression$ })`
+    ///
+    /// - `length%` The length of the string
+    /// - `ascii-code%` The ASCII code of the repeating character
+    /// - `string-expression$` Any string expression. Only the first character will be used.
+    String_,
+
     /// UBOUND
     UBound,
 
@@ -53,7 +62,7 @@ pub enum BuiltInFunction {
     Val,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 10] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 11] = [
     BuiltInFunction::Chr,
     BuiltInFunction::Environ,
     BuiltInFunction::Eof,
@@ -62,12 +71,13 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 10] = [
     BuiltInFunction::Len,
     BuiltInFunction::Mid,
     BuiltInFunction::Str,
+    BuiltInFunction::String_,
     BuiltInFunction::UBound,
     BuiltInFunction::Val,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 10] = [
-    "Chr", "Environ", "Eof", "InStr", "LBound", "Len", "Mid", "Str", "UBound", "Val",
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 11] = [
+    "Chr", "Environ", "Eof", "InStr", "LBound", "Len", "Mid", "Str", "String", "UBound", "Val",
 ];
 
 // BuiltInFunction -> &str
@@ -102,6 +112,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::Len => TypeQualifier::PercentInteger,
             BuiltInFunction::Mid => TypeQualifier::DollarString,
             BuiltInFunction::Str => TypeQualifier::DollarString,
+            BuiltInFunction::String_ => TypeQualifier::DollarString,
             BuiltInFunction::UBound => TypeQualifier::PercentInteger,
             BuiltInFunction::Val => TypeQualifier::BangSingle,
         }
@@ -160,7 +171,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                         }
                     }
                 }
-                BuiltInFunction::Chr | BuiltInFunction::Str => {
+                BuiltInFunction::Chr | BuiltInFunction::Str | BuiltInFunction::String_ => {
                     // STR$ or otherwise it's undefined
                     match n {
                         // confirmed that even with DEFSTR A-Z it won't work as unqualified
@@ -313,7 +324,7 @@ pub mod parser {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        crate::built_ins::len::parser::parse()
+        crate::built_ins::len::parser::parse().or(crate::built_ins::string_fn::parser::parse())
     }
 }
 
@@ -361,6 +372,7 @@ pub mod linter {
             BuiltInFunction::Len => crate::built_ins::len::linter::lint(args),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::linter::lint(args),
             BuiltInFunction::Str => crate::built_ins::str_fn::linter::lint(args),
+            BuiltInFunction::String_ => crate::built_ins::string_fn::linter::lint(args),
             BuiltInFunction::Val => crate::built_ins::val::linter::lint(args),
             BuiltInFunction::UBound => crate::built_ins::ubound::linter::lint(args),
         }
@@ -406,6 +418,7 @@ pub mod interpreter {
             BuiltInFunction::Len => crate::built_ins::len::interpreter::run(interpreter),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::interpreter::run(interpreter),
             BuiltInFunction::Str => crate::built_ins::str_fn::interpreter::run(interpreter),
+            BuiltInFunction::String_ => crate::built_ins::string_fn::interpreter::run(interpreter),
             BuiltInFunction::UBound => crate::built_ins::ubound::interpreter::run(interpreter),
             BuiltInFunction::Val => crate::built_ins::val::interpreter::run(interpreter),
         }
@@ -434,6 +447,7 @@ mod open;
 mod put;
 mod read;
 mod str_fn;
+mod string_fn;
 mod ubound;
 mod val;
 mod view_print;

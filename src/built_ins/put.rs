@@ -39,12 +39,12 @@ pub mod interpreter {
     use crate::common::{FileHandle, QError, StringUtils};
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::io::Field;
-    use crate::interpreter::utils::{get_record_number, to_file_handle};
+    use crate::interpreter::utils::VariantCasts;
     use crate::parser::{BareName, TypeQualifier};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-        let handle: FileHandle = to_file_handle(&interpreter.context()[0])?;
-        let record_number: usize = get_record_number(&interpreter.context()[1])?;
+        let handle: FileHandle = interpreter.context()[0].to_file_handle()?;
+        let record_number: usize = interpreter.context()[1].to_record_number()?;
         let file_info = interpreter.file_manager().try_get_file_info_mut(&handle)?;
         let mut record_contents = String::new();
         // get the current field list

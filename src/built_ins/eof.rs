@@ -13,10 +13,10 @@ pub mod interpreter {
     use crate::common::{FileHandle, QError};
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::io::Input;
-    use crate::interpreter::utils::to_file_handle;
+    use crate::interpreter::utils::VariantCasts;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-        let file_handle: FileHandle = to_file_handle(&interpreter.context()[0])?;
+        let file_handle: FileHandle = interpreter.context()[0].to_file_handle()?;
         let file_input = interpreter
             .file_manager()
             .try_get_file_info_input(&file_handle)?;

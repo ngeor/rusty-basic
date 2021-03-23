@@ -103,12 +103,12 @@ pub mod interpreter {
     use crate::common::{FileHandle, QError};
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::io::Field;
-    use crate::interpreter::utils::to_file_handle;
+    use crate::interpreter::utils::VariantCasts;
     use crate::variant::{QBNumberCast, Variant};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let len = interpreter.context().variables().len();
-        let file_handle: FileHandle = to_file_handle(&interpreter.context()[0])?;
+        let file_handle: FileHandle = interpreter.context()[0].to_file_handle()?;
         let mut i: usize = 1;
         let mut fields: Vec<Field> = vec![];
         while i < len {

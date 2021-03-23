@@ -172,14 +172,14 @@ pub mod linter {
 pub mod interpreter {
     use crate::common::{FileAccess, FileHandle, FileMode, QError};
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::interpreter::utils::to_file_handle;
+    use crate::interpreter::utils::VariantCasts;
     use crate::variant::{QBNumberCast, Variant};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let file_name: String = interpreter.context()[0].to_str_unchecked().to_owned(); // TODO fighting borrow checker
         let file_mode: FileMode = to_file_mode(&interpreter.context()[1]);
         let file_access: FileAccess = to_file_access(&interpreter.context()[2]);
-        let file_handle: FileHandle = to_file_handle(&interpreter.context()[3])?;
+        let file_handle: FileHandle = interpreter.context()[3].to_file_handle()?;
         let rec_len: usize = to_record_length(&interpreter.context()[4])?;
         interpreter
             .file_manager()

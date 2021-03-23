@@ -2,16 +2,46 @@ use crate::common::{FileHandle, QError};
 use crate::variant::{QBNumberCast, Variant};
 use std::convert::TryFrom;
 
-pub fn to_file_handle(v: &Variant) -> Result<FileHandle, QError> {
-    let i: i32 = v.try_cast()?;
-    FileHandle::try_from(i)
+pub trait VariantCasts {
+    fn to_file_handle(&self) -> Result<FileHandle, QError>;
+
+    fn to_record_number(&self) -> Result<usize, QError>;
+
+    fn to_non_negative_int(&self) -> Result<usize, QError>;
+
+    fn to_positive_int(&self) -> Result<usize, QError>;
 }
 
-pub fn get_record_number(v: &Variant) -> Result<usize, QError> {
-    let record_number_as_long: i64 = v.try_cast()?;
-    if record_number_as_long <= 0 {
-        Err(QError::BadRecordNumber)
-    } else {
-        Ok(record_number_as_long as usize)
+impl VariantCasts for Variant {
+    fn to_file_handle(&self) -> Result<FileHandle, QError> {
+        let i: i32 = self.try_cast()?;
+        FileHandle::try_from(i)
+    }
+
+    fn to_record_number(&self) -> Result<usize, QError> {
+        let record_number_as_long: i64 = self.try_cast()?;
+        if record_number_as_long <= 0 {
+            Err(QError::BadRecordNumber)
+        } else {
+            Ok(record_number_as_long as usize)
+        }
+    }
+
+    fn to_non_negative_int(&self) -> Result<usize, QError> {
+        let i: i32 = self.try_cast()?;
+        if i >= 0 {
+            Ok(i as usize)
+        } else {
+            Err(QError::IllegalFunctionCall)
+        }
+    }
+
+    fn to_positive_int(&self) -> Result<usize, QError> {
+        let i: i32 = self.try_cast()?;
+        if i > 0 {
+            Ok(i as usize)
+        } else {
+            Err(QError::IllegalFunctionCall)
+        }
     }
 }

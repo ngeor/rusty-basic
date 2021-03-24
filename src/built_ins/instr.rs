@@ -22,7 +22,7 @@ pub mod interpreter {
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::utils::VariantCasts;
-    use crate::variant::{QBNumberCast, Variant};
+    use crate::variant::Variant;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let a: &Variant = &interpreter.context()[0];

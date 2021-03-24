@@ -10,6 +10,8 @@ pub trait VariantCasts {
     fn to_non_negative_int(&self) -> Result<usize, QError>;
 
     fn to_positive_int(&self) -> Result<usize, QError>;
+
+    fn to_positive_int_or(&self, err: QError) -> Result<usize, QError>;
 }
 
 impl VariantCasts for Variant {
@@ -37,11 +39,15 @@ impl VariantCasts for Variant {
     }
 
     fn to_positive_int(&self) -> Result<usize, QError> {
+        self.to_positive_int_or(QError::IllegalFunctionCall)
+    }
+
+    fn to_positive_int_or(&self, err: QError) -> Result<usize, QError> {
         let i: i32 = self.try_cast()?;
         if i > 0 {
             Ok(i as usize)
         } else {
-            Err(QError::IllegalFunctionCall)
+            Err(err)
         }
     }
 }

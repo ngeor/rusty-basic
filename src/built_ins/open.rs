@@ -203,7 +203,7 @@ pub mod interpreter {
     fn to_record_length(v: &Variant) -> Result<usize, QError> {
         let i: i32 = v.try_cast()?;
         if i < 0 {
-            // TODO make 0 invalid too, now 0 means no value
+            // TODO make 0 invalid too, now 0 means no value. Afterwards, use VariantCasts trait.
             Err(QError::BadRecordLength)
         } else {
             Ok(i as usize)

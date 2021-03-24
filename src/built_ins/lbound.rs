@@ -42,30 +42,27 @@ pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::variant::{QBNumberCast, Variant};
+    use crate::interpreter::utils::VariantCasts;
+    use crate::variant::Variant;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let v: Variant = interpreter.context()[0].clone();
-        let dimension: i32 = match interpreter.context().variables().get(1) {
-            Some(v) => v.try_cast()?,
+        let dimension: usize = match interpreter.context().variables().get(1) {
+            Some(v) => v.to_positive_int_or(QError::SubscriptOutOfRange)?,
             _ => 1,
         };
-        if dimension <= 0 {
-            Err(QError::SubscriptOutOfRange)
-        } else {
-            match v {
-                Variant::VArray(a) => match a.get_dimensions((dimension - 1) as usize) {
-                    Some((lower, _)) => {
-                        interpreter.context_mut().set_built_in_function_result(
-                            BuiltInFunction::LBound,
-                            Variant::VInteger(*lower),
-                        );
-                        Ok(())
-                    }
-                    _ => Err(QError::SubscriptOutOfRange),
-                },
-                _ => Err(QError::ArgumentTypeMismatch),
-            }
+        match v {
+            Variant::VArray(a) => match a.get_dimensions(dimension - 1) {
+                Some((lower, _)) => {
+                    interpreter.context_mut().set_built_in_function_result(
+                        BuiltInFunction::LBound,
+                        Variant::VInteger(*lower),
+                    );
+                    Ok(())
+                }
+                _ => Err(QError::SubscriptOutOfRange),
+            },
+            _ => Err(QError::ArgumentTypeMismatch),
         }
     }
 }

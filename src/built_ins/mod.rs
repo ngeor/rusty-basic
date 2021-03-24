@@ -27,6 +27,9 @@ pub enum BuiltInFunction {
     /// LBOUND
     LBound,
 
+    /// LCASE$
+    LCase,
+
     /// `LEFT$(str_expr$, count%)`
     Left,
 
@@ -64,16 +67,20 @@ pub enum BuiltInFunction {
     /// UBOUND
     UBound,
 
+    /// UCASE$
+    UCase,
+
     /// `VAL(str-expr$)` converts a string representation of a number to a number.
     Val,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 13] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 15] = [
     BuiltInFunction::Chr,
     BuiltInFunction::Environ,
     BuiltInFunction::Eof,
     BuiltInFunction::InStr,
     BuiltInFunction::LBound,
+    BuiltInFunction::LCase,
     BuiltInFunction::Left,
     BuiltInFunction::Len,
     BuiltInFunction::Mid,
@@ -81,12 +88,13 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 13] = [
     BuiltInFunction::Str,
     BuiltInFunction::String_,
     BuiltInFunction::UBound,
+    BuiltInFunction::UCase,
     BuiltInFunction::Val,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 13] = [
-    "Chr", "Environ", "Eof", "InStr", "LBound", "Left", "Len", "Mid", "Right", "Str", "String",
-    "UBound", "Val",
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 15] = [
+    "Chr", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "Mid", "Right", "Str",
+    "String", "UBound", "UCase", "Val",
 ];
 
 // BuiltInFunction -> &str
@@ -118,6 +126,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::Eof => TypeQualifier::PercentInteger,
             BuiltInFunction::InStr => TypeQualifier::PercentInteger,
             BuiltInFunction::LBound => TypeQualifier::PercentInteger,
+            BuiltInFunction::LCase => TypeQualifier::DollarString,
             BuiltInFunction::Left => TypeQualifier::DollarString,
             BuiltInFunction::Len => TypeQualifier::PercentInteger,
             BuiltInFunction::Mid => TypeQualifier::DollarString,
@@ -125,6 +134,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::Str => TypeQualifier::DollarString,
             BuiltInFunction::String_ => TypeQualifier::DollarString,
             BuiltInFunction::UBound => TypeQualifier::PercentInteger,
+            BuiltInFunction::UCase => TypeQualifier::DollarString,
             BuiltInFunction::Val => TypeQualifier::BangSingle,
         }
     }
@@ -167,9 +177,11 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 | BuiltInFunction::UBound
                 | BuiltInFunction::Val => demand_unqualified(b, n),
                 BuiltInFunction::Environ
+                | BuiltInFunction::LCase
                 | BuiltInFunction::Left
                 | BuiltInFunction::Mid
-                | BuiltInFunction::Right => {
+                | BuiltInFunction::Right
+                | BuiltInFunction::UCase => {
                     // ENVIRON$ must be qualified
                     match n {
                         Name::Bare(_) => Err(QError::SyntaxError(format!(
@@ -383,14 +395,16 @@ pub mod linter {
             BuiltInFunction::Eof => crate::built_ins::eof::linter::lint(args),
             BuiltInFunction::InStr => crate::built_ins::instr::linter::lint(args),
             BuiltInFunction::LBound => crate::built_ins::lbound::linter::lint(args),
+            BuiltInFunction::LCase => crate::built_ins::lcase::linter::lint(args),
             BuiltInFunction::Left => crate::built_ins::left::linter::lint(args),
             BuiltInFunction::Len => crate::built_ins::len::linter::lint(args),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::linter::lint(args),
             BuiltInFunction::Right => crate::built_ins::right::linter::lint(args),
             BuiltInFunction::Str => crate::built_ins::str_fn::linter::lint(args),
             BuiltInFunction::String_ => crate::built_ins::string_fn::linter::lint(args),
-            BuiltInFunction::Val => crate::built_ins::val::linter::lint(args),
             BuiltInFunction::UBound => crate::built_ins::ubound::linter::lint(args),
+            BuiltInFunction::UCase => crate::built_ins::ucase::linter::lint(args),
+            BuiltInFunction::Val => crate::built_ins::val::linter::lint(args),
         }
     }
 }
@@ -431,6 +445,7 @@ pub mod interpreter {
             BuiltInFunction::Eof => crate::built_ins::eof::interpreter::run(interpreter),
             BuiltInFunction::InStr => crate::built_ins::instr::interpreter::run(interpreter),
             BuiltInFunction::LBound => crate::built_ins::lbound::interpreter::run(interpreter),
+            BuiltInFunction::LCase => crate::built_ins::lcase::interpreter::run(interpreter),
             BuiltInFunction::Left => crate::built_ins::left::interpreter::run(interpreter),
             BuiltInFunction::Len => crate::built_ins::len::interpreter::run(interpreter),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::interpreter::run(interpreter),
@@ -438,6 +453,7 @@ pub mod interpreter {
             BuiltInFunction::Str => crate::built_ins::str_fn::interpreter::run(interpreter),
             BuiltInFunction::String_ => crate::built_ins::string_fn::interpreter::run(interpreter),
             BuiltInFunction::UBound => crate::built_ins::ubound::interpreter::run(interpreter),
+            BuiltInFunction::UCase => crate::built_ins::ucase::interpreter::run(interpreter),
             BuiltInFunction::Val => crate::built_ins::val::interpreter::run(interpreter),
         }
     }
@@ -455,6 +471,7 @@ mod input;
 mod instr;
 mod kill;
 mod lbound;
+mod lcase;
 mod left;
 mod len;
 mod line_input;
@@ -469,6 +486,7 @@ mod right;
 mod str_fn;
 mod string_fn;
 mod ubound;
+mod ucase;
 mod val;
 mod view_print;
 mod width;

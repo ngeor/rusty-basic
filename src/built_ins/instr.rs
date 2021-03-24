@@ -21,13 +21,18 @@ pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::variant::{QBNumberCast, Variant};
+    use crate::interpreter::utils::VariantCasts;
+    use crate::variant::Variant;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let a: &Variant = &interpreter.context()[0];
         let b: &Variant = &interpreter.context()[1];
         let result: i32 = match interpreter.context().variables().get(2) {
-            Some(c) => do_instr(a.try_cast()?, b.to_str_unchecked(), c.to_str_unchecked())?,
+            Some(c) => do_instr(
+                a.to_positive_int()?,
+                b.to_str_unchecked(),
+                c.to_str_unchecked(),
+            )?,
             None => do_instr(1, a.to_str_unchecked(), b.to_str_unchecked())?,
         };
         interpreter
@@ -36,15 +41,14 @@ pub mod interpreter {
         Ok(())
     }
 
-    fn do_instr(start: i32, hay: &str, needle: &str) -> Result<i32, QError> {
-        if start <= 0 {
-            Err(QError::IllegalFunctionCall)
-        } else if hay.is_empty() {
+    fn do_instr(start: usize, hay: &str, needle: &str) -> Result<i32, QError> {
+        debug_assert!(start >= 1);
+        if hay.is_empty() {
             Ok(0)
         } else if needle.is_empty() {
             Ok(1)
         } else {
-            let mut i: usize = (start - 1) as usize;
+            let mut i: usize = start - 1;
             while i + needle.len() <= hay.len() {
                 let sub = hay.get(i..(i + needle.len())).unwrap();
                 if sub == needle {

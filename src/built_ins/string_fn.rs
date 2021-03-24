@@ -49,23 +49,20 @@ pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::interpreter::utils::VariantCasts;
     use crate::variant::{QBNumberCast, Variant};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-        let count: i32 = interpreter.context()[0].try_cast()?;
-        if count < 0 {
-            Err(QError::IllegalFunctionCall)
-        } else {
-            let v = &interpreter.context()[1];
-            let s = run_with_variant(count, v)?;
-            interpreter
-                .context_mut()
-                .set_built_in_function_result(BuiltInFunction::String_, s);
-            Ok(())
-        }
+        let count: usize = interpreter.context()[0].to_non_negative_int()?;
+        let v = &interpreter.context()[1];
+        let s = run_with_variant(count, v)?;
+        interpreter
+            .context_mut()
+            .set_built_in_function_result(BuiltInFunction::String_, s);
+        Ok(())
     }
 
-    fn run_with_variant(count: i32, v: &Variant) -> Result<String, QError> {
+    fn run_with_variant(count: usize, v: &Variant) -> Result<String, QError> {
         if let Variant::VString(s) = v {
             run_with_string_argument(count, s)
         } else {
@@ -74,12 +71,12 @@ pub mod interpreter {
         }
     }
 
-    fn run_with_string_argument(count: i32, s: &str) -> Result<String, QError> {
+    fn run_with_string_argument(count: usize, s: &str) -> Result<String, QError> {
         let first_char = s.chars().next().ok_or(QError::IllegalFunctionCall)?;
         run_with_char(count, first_char)
     }
 
-    fn run_with_ascii_code_argument(count: i32, ascii: i32) -> Result<String, QError> {
+    fn run_with_ascii_code_argument(count: usize, ascii: i32) -> Result<String, QError> {
         if ascii >= 0 && ascii <= 255 {
             let u: u8 = ascii as u8;
             run_with_char(count, u as char)
@@ -88,8 +85,8 @@ pub mod interpreter {
         }
     }
 
-    fn run_with_char(count: i32, ch: char) -> Result<String, QError> {
-        Ok(std::iter::repeat(ch).take(count as usize).collect())
+    fn run_with_char(count: usize, ch: char) -> Result<String, QError> {
+        Ok(std::iter::repeat(ch).take(count).collect())
     }
 }
 

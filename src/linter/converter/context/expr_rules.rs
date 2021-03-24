@@ -581,10 +581,7 @@ mod property {
 
 fn functions_must_have_arguments(args: &ExpressionNodes, pos: Location) -> Result<(), QErrorNode> {
     if args.is_empty() {
-        Err(QError::syntax_error(
-            "Cannot have function call without arguments",
-        ))
-        .with_err_at(pos)
+        Err(QError::FunctionNeedsArguments).with_err_at(pos)
     } else {
         Ok(())
     }

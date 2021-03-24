@@ -195,6 +195,8 @@ pub enum QError {
 
     IllegalInSubFunction,
 
+    FunctionNeedsArguments,
+
     // Lexer errors
     UnsupportedCharacter(char),
 

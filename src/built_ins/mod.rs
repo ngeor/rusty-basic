@@ -11,6 +11,11 @@ pub enum BuiltInFunction {
     /// `CHR$(ascii-code%)` returns the text representation of the given ascii code
     Chr,
 
+    /// `CVD(8 byte string-expression)`
+    ///
+    /// Converts a string previously created by `MKD$` into a double.
+    Cvd,
+
     /// `ENVIRON$ (env-variable$)` -> returns the variable
     ///
     /// `ENVIRON$ (n%)` -> returns the nth variable (TODO support this)
@@ -49,6 +54,12 @@ pub enum BuiltInFunction {
     /// if the length is omitted, returns or replaces all remaining characters
     Mid,
 
+    /// `MKD$(double-expression#)`
+    ///
+    /// Converts a double precision number into an 8 byte string that can be
+    /// used in `FIELD` statements.
+    Mkd,
+
     /// `RIGHT$(str_expr$, count%)`
     Right,
 
@@ -74,8 +85,9 @@ pub enum BuiltInFunction {
     Val,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 15] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 17] = [
     BuiltInFunction::Chr,
+    BuiltInFunction::Cvd,
     BuiltInFunction::Environ,
     BuiltInFunction::Eof,
     BuiltInFunction::InStr,
@@ -84,6 +96,7 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 15] = [
     BuiltInFunction::Left,
     BuiltInFunction::Len,
     BuiltInFunction::Mid,
+    BuiltInFunction::Mkd,
     BuiltInFunction::Right,
     BuiltInFunction::Str,
     BuiltInFunction::String_,
@@ -92,9 +105,9 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 15] = [
     BuiltInFunction::Val,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 15] = [
-    "Chr", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "Mid", "Right", "Str",
-    "String", "UBound", "UCase", "Val",
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 17] = [
+    "Chr", "Cvd", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "Mid", "Mkd",
+    "Right", "Str", "String", "UBound", "UCase", "Val",
 ];
 
 // BuiltInFunction -> &str
@@ -122,6 +135,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
     fn from(x: &BuiltInFunction) -> TypeQualifier {
         match x {
             BuiltInFunction::Chr => TypeQualifier::DollarString,
+            BuiltInFunction::Cvd => TypeQualifier::HashDouble,
             BuiltInFunction::Environ => TypeQualifier::DollarString,
             BuiltInFunction::Eof => TypeQualifier::PercentInteger,
             BuiltInFunction::InStr => TypeQualifier::PercentInteger,
@@ -130,6 +144,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::Left => TypeQualifier::DollarString,
             BuiltInFunction::Len => TypeQualifier::PercentInteger,
             BuiltInFunction::Mid => TypeQualifier::DollarString,
+            BuiltInFunction::Mkd => TypeQualifier::DollarString,
             BuiltInFunction::Right => TypeQualifier::DollarString,
             BuiltInFunction::Str => TypeQualifier::DollarString,
             BuiltInFunction::String_ => TypeQualifier::DollarString,
@@ -170,7 +185,8 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
         let opt_built_in: Option<BuiltInFunction> = n.bare_name().into();
         match opt_built_in {
             Some(b) => match b {
-                BuiltInFunction::Eof
+                BuiltInFunction::Cvd
+                | BuiltInFunction::Eof
                 | BuiltInFunction::InStr
                 | BuiltInFunction::Len
                 | BuiltInFunction::LBound
@@ -180,6 +196,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 | BuiltInFunction::LCase
                 | BuiltInFunction::Left
                 | BuiltInFunction::Mid
+                | BuiltInFunction::Mkd
                 | BuiltInFunction::Right
                 | BuiltInFunction::UCase => {
                     // ENVIRON$ must be qualified
@@ -391,6 +408,7 @@ pub mod linter {
     ) -> Result<(), QErrorNode> {
         match built_in {
             BuiltInFunction::Chr => crate::built_ins::chr::linter::lint(args),
+            BuiltInFunction::Cvd => crate::built_ins::cvd::linter::lint(args),
             BuiltInFunction::Environ => crate::built_ins::environ_fn::linter::lint(args),
             BuiltInFunction::Eof => crate::built_ins::eof::linter::lint(args),
             BuiltInFunction::InStr => crate::built_ins::instr::linter::lint(args),
@@ -399,6 +417,7 @@ pub mod linter {
             BuiltInFunction::Left => crate::built_ins::left::linter::lint(args),
             BuiltInFunction::Len => crate::built_ins::len::linter::lint(args),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::linter::lint(args),
+            BuiltInFunction::Mkd => crate::built_ins::mkd::linter::lint(args),
             BuiltInFunction::Right => crate::built_ins::right::linter::lint(args),
             BuiltInFunction::Str => crate::built_ins::str_fn::linter::lint(args),
             BuiltInFunction::String_ => crate::built_ins::string_fn::linter::lint(args),
@@ -441,6 +460,7 @@ pub mod interpreter {
     ) -> Result<(), QError> {
         match f {
             BuiltInFunction::Chr => crate::built_ins::chr::interpreter::run(interpreter),
+            BuiltInFunction::Cvd => crate::built_ins::cvd::interpreter::run(interpreter),
             BuiltInFunction::Environ => crate::built_ins::environ_fn::interpreter::run(interpreter),
             BuiltInFunction::Eof => crate::built_ins::eof::interpreter::run(interpreter),
             BuiltInFunction::InStr => crate::built_ins::instr::interpreter::run(interpreter),
@@ -449,6 +469,7 @@ pub mod interpreter {
             BuiltInFunction::Left => crate::built_ins::left::interpreter::run(interpreter),
             BuiltInFunction::Len => crate::built_ins::len::interpreter::run(interpreter),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::interpreter::run(interpreter),
+            BuiltInFunction::Mkd => crate::built_ins::mkd::interpreter::run(interpreter),
             BuiltInFunction::Right => crate::built_ins::right::interpreter::run(interpreter),
             BuiltInFunction::Str => crate::built_ins::str_fn::interpreter::run(interpreter),
             BuiltInFunction::String_ => crate::built_ins::string_fn::interpreter::run(interpreter),
@@ -461,6 +482,7 @@ pub mod interpreter {
 
 mod chr;
 mod close;
+mod cvd;
 mod data;
 mod environ_fn;
 mod environ_sub;
@@ -478,6 +500,7 @@ mod line_input;
 mod locate;
 mod lset;
 mod mid_fn;
+mod mkd;
 mod name;
 mod open;
 mod put;

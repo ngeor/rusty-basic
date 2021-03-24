@@ -55,10 +55,7 @@ mod tests {
 
     #[test]
     fn test_no_args() {
-        assert_linter_err!(
-            r#"PRINT LEFT$()"#,
-            QError::syntax_error("Cannot have function call without arguments")
-        );
+        assert_linter_err!(r#"PRINT LEFT$()"#, QError::FunctionNeedsArguments);
     }
 
     #[test]

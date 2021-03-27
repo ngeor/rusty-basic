@@ -253,7 +253,7 @@ mod number_literal {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::PcSpecific;
     use crate::parser::types::*;
-    use crate::variant::{BitVec, INT_BITS, LONG_BITS, MAX_INTEGER, MAX_LONG};
+    use crate::variant::{BitVec, MAX_INTEGER, MAX_LONG};
 
     pub fn number_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
     where
@@ -404,9 +404,9 @@ mod number_literal {
 
     fn create_expression_from_bit_vec(mut bit_vec: BitVec) -> Result<Expression, QError> {
         bit_vec.fit()?;
-        if bit_vec.len() == INT_BITS {
+        if bit_vec.is_integer_size() {
             Ok(Expression::IntegerLiteral(bit_vec.into()))
-        } else if bit_vec.len() == LONG_BITS {
+        } else if bit_vec.is_long_size() {
             Ok(Expression::LongLiteral(bit_vec.into()))
         } else {
             Err(QError::Overflow)

@@ -1,9 +1,15 @@
 use crate::common::QError;
-use crate::variant::{INT_BITS, LONG_BITS};
-use std::fmt::Write;
+use std::cmp::{max, min};
+use std::fmt::{Formatter, Write};
 
-#[derive(Clone, Debug, PartialEq)]
+const INT_BITS: usize = 16;
+const LONG_BITS: usize = 32;
+const FLOAT_BITS: usize = 32;
+const DOUBLE_BITS: usize = 64;
+
+#[derive(Clone, PartialEq)]
 pub struct BitVec {
+    // msb -> lsb
     v: Vec<bool>,
 }
 
@@ -17,6 +23,7 @@ impl BitVec {
     }
 
     pub fn push_hex(&mut self, u: u8) {
+        // msb -> lsb
         self.v.push(u & 8 == 8);
         self.v.push(u & 4 == 4);
         self.v.push(u & 2 == 2);
@@ -24,6 +31,7 @@ impl BitVec {
     }
 
     pub fn push_oct(&mut self, u: u8) {
+        // msb -> lsb
         self.v.push(u & 4 == 4);
         self.v.push(u & 2 == 2);
         self.v.push(u & 1 == 1);
@@ -57,18 +65,13 @@ impl BitVec {
             }
         }
     }
-}
 
-impl From<Vec<bool>> for BitVec {
-    fn from(v: Vec<bool>) -> Self {
-        Self { v }
+    pub fn is_integer_size(&self) -> bool {
+        self.len() == INT_BITS
     }
-}
 
-impl From<[bool; INT_BITS]> for BitVec {
-    fn from(bits: [bool; 16]) -> Self {
-        let v: Vec<bool> = bits.into();
-        v.into()
+    pub fn is_long_size(&self) -> bool {
+        self.len() == LONG_BITS
     }
 }
 
@@ -92,7 +95,7 @@ impl From<i32> for BitVec {
                 x = x >> 1;
             }
         }
-        result.into()
+        Self { v: result.into() }
     }
 }
 
@@ -139,6 +142,71 @@ impl From<BitVec> for i64 {
         } else {
             x
         }
+    }
+}
+
+impl From<f64> for BitVec {
+    fn from(value: f64) -> Self {
+        let mut result: [bool; DOUBLE_BITS] = [false; DOUBLE_BITS];
+        //  1 bit for sign,
+        //
+        // 11 bit for exponent,
+        //
+        // 52 bit for significant.
+        //
+        // 1023 for bias
+        //
+        // 1.significant * 2 ^ exponent
+
+        let sign_bit: bool = value < 0.0_f64;
+        let absolute_value = value.abs();
+
+        let mut int_value: i64 = absolute_value.trunc() as i64;
+        let mut int_bits: Vec<bool> = vec![];
+        while int_value > 0 {
+            let remainder = int_value % 2;
+            int_value = int_value / 2;
+            int_bits.push(remainder == 1);
+        }
+        println!("{:?}", int_bits);
+
+        let mut fraction_value = absolute_value.fract();
+        let mut fraction_bits: Vec<bool> = vec![];
+        while fraction_bits.len() <= DOUBLE_BITS && (fraction_value - 1.0).abs() > 0.0 {
+            fraction_value = fraction_value * 2.0;
+            fraction_bits.push(fraction_value > 0.0);
+        }
+        println!("{:?}", fraction_bits);
+
+        let mut exponent = if int_bits.is_empty() {
+            0
+        } else {
+            (int_bits.len() - 1) as i32
+        };
+        println!("exponent {}", exponent);
+        result[result.len() - 1] = sign_bit;
+        for i in 0..11 {
+            let remainder = exponent % 2;
+            exponent = exponent / 2;
+            result[result.len() - 2 - i] = remainder == 1;
+        }
+
+        int_bits.pop(); // the 1. part is always implied
+        for i in 0..52 {
+            if !int_bits.is_empty() {
+                result[result.len() - 13 - i] = int_bits.pop().unwrap_or_default();
+            } else if !fraction_bits.is_empty() {
+                result[result.len() - 13 - i] = fraction_bits.pop().unwrap_or_default();
+            }
+        }
+
+        Self { v: result.into() }
+    }
+}
+
+impl From<BitVec> for f64 {
+    fn from(bits: BitVec) -> Self {
+        unimplemented!()
     }
 }
 
@@ -215,6 +283,49 @@ impl std::fmt::Display for BitVec {
     }
 }
 
+impl std::fmt::Debug for BitVec {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+
+fn i32_to_bytes(i: i32) -> [u8; 2] {
+    // BitVec is msb -> lsb
+    let BitVec { v } = BitVec::from(i);
+    debug_assert_eq!(INT_BITS, v.len());
+    let high_byte = extract_byte(&v[0..8]);
+    let low_byte = extract_byte(&v[8..16]);
+    // result is lsb -> msb
+    [low_byte, high_byte]
+}
+
+fn bytes_to_i32(b: [u8; 2]) -> i32 {
+    todo!()
+}
+
+fn f64_to_bytes(f: f64) -> [u8; 8] {
+    // LSB -> MSB
+    todo!()
+}
+
+fn bytes_to_f64(b: [u8; 8]) -> f64 {
+    todo!()
+}
+
+fn extract_byte(bits: &[bool]) -> u8 {
+    // bits is encoded msb -> lsb
+    debug_assert_eq!(8, bits.len());
+    let mut result: u8 = 0;
+    let mut mask: u8 = 0x80; // msb set
+    for i in 0..bits.len() {
+        result = result & mask;
+        if i < bits.len() - 1 {
+            mask = mask >> 1;
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -237,7 +348,6 @@ mod tests {
 
         // 0 | 0 1 1
         expected_bits[INT_BITS - 1] = true;
-        expected_bits[INT_BITS - 2] = true;
         assert_eq!(BitVec::from(3), expected_bits);
 
         // 0 | 1 0 0
@@ -307,5 +417,140 @@ mod tests {
         assert_eq!(format!("{}", BitVec::from(32767)), "0111 1111 1111 1111");
         assert_eq!(format!("{}", BitVec::from(-32768)), "1000 0000 0000 0000");
         assert_eq!(format!("{}", BitVec::from(-1)), "1111 1111 1111 1111");
+    }
+
+    #[test]
+    fn convert_f64() {
+        // assert_eq!(
+        //     format!("{}", BitVec::from(0.0_f64)),
+        //     "00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000",
+        //     "zero"
+        // );
+        // assert_eq!(
+        //     format!("{}", BitVec::from(2.0_f64)),
+        //     "00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010",
+        //     "2.0"
+        // );
+        // assert_eq!(
+        //     format!("{}", BitVec::from(-2.0_f64)),
+        //     "00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000011",
+        //     "-2.0"
+        // );
+        //
+        // assert_eq!(
+        //     BitVec::from(-10.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 24 c0",
+        //     "-10 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-9.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 22 c0",
+        //     "-9 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-8.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 20 c0",
+        //     "-8 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-7.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 1c c0",
+        //     "-7 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-6.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 18 c0",
+        //     "-6 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-5.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 14 c0",
+        //     "-5 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-4.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 10 c0",
+        //     "-4 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-3.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 08 c0",
+        //     "-3 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-2.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 00 c0",
+        //     "-2 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(-1.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 f0 3f",
+        //     "-1 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(0.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 00 00",
+        //     "zero as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(1.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 f0 3f",
+        //     "1 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(2.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 00 40",
+        //     "2 as hex"
+        // );
+
+        // 40 : 0100 0000
+        // 08 : 0000 1000
+        // 10 : 0001 0000
+
+        // 3 should be 08 40:
+        // 0 | 100_0000  0000  | 1000  (1.1 * 2 ^ 1)
+        // assert_eq!(
+        //     BitVec::from(3.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 08 40",
+        //     "3 as hex"
+        // );
+
+        // 4 should be 10 40:
+        // 0 | 100_0000 0001 | 0000 (1.0 * 2 ^ 1025) ? 1025 = 2 + 1023 (bias)
+        // assert_eq!(
+        //     BitVec::from(4.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 10 40",
+        //     "4 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(5.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 14 40",
+        //     "5 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(6.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 18 40",
+        //     "6 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(7.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 1c 40",
+        //     "7 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(8.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 20 40",
+        //     "8 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(9.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 22 40",
+        //     "9 as hex"
+        // );
+        // assert_eq!(
+        //     BitVec::from(10.0_f64).to_hex_string(),
+        //     "00 00 00 00 00 00 24 40",
+        //     "10 as hex"
+        // );
     }
 }

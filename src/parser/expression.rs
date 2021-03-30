@@ -253,7 +253,7 @@ mod number_literal {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::PcSpecific;
     use crate::parser::types::*;
-    use crate::variant::{BitVec, MAX_INTEGER, MAX_LONG};
+    use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
     pub fn number_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
     where
@@ -402,14 +402,11 @@ mod number_literal {
         }
     }
 
-    fn create_expression_from_bit_vec(mut bit_vec: BitVec) -> Result<Expression, QError> {
-        bit_vec.fit()?;
-        if bit_vec.is_integer_size() {
-            Ok(Expression::IntegerLiteral(bit_vec.into()))
-        } else if bit_vec.is_long_size() {
-            Ok(Expression::LongLiteral(bit_vec.into()))
-        } else {
-            Err(QError::Overflow)
+    fn create_expression_from_bit_vec(bit_vec: BitVec) -> Result<Expression, QError> {
+        match bit_vec.convert_to_integer_variant()? {
+            Variant::VInteger(i) => Ok(Expression::IntegerLiteral(i)),
+            Variant::VLong(l) => Ok(Expression::LongLiteral(l)),
+            _ => Err(QError::Overflow),
         }
     }
 }

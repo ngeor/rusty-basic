@@ -1,4 +1,5 @@
 use crate::common::QError;
+use crate::variant::Variant;
 use std::fmt::{Formatter, Write};
 
 const INT_BITS: usize = 16;
@@ -40,41 +41,46 @@ impl BitVec {
         self.v.push(u & 1 == 1);
     }
 
-    pub fn fit(&mut self) -> Result<(), QError> {
-        // find first non-zero bit
-        let mut first_non_zero_bit: usize = 0;
-        while first_non_zero_bit < self.v.len() && !self.v[first_non_zero_bit] {
-            first_non_zero_bit += 1;
+    pub fn convert_to_integer_variant(mut self) -> Result<Variant, QError> {
+        match Self::find_first_non_zero_bit(&self.v) {
+            Some(idx) => {
+                let bit_count = self.len() - idx;
+                if bit_count == 0 {
+                    // optimization
+                    Ok(Variant::VInteger(0))
+                } else if bit_count <= INT_BITS {
+                    if bit_count < INT_BITS {
+                        // inject one bit for the sign bit
+                        self.v.insert(0, false);
+                    }
+                    let i: i32 = bits_to_i32(&self.v[idx..]);
+                    Ok(Variant::VInteger(i))
+                } else if bit_count <= LONG_BITS {
+                    // it fits in a long
+                    if bit_count < LONG_BITS {
+                        // inject one bit for the sign bit
+                        self.v.insert(0, false);
+                    }
+                    let l: i64 = bits_to_i64(&self.v[idx..]);
+                    Ok(Variant::VLong(l))
+                } else {
+                    Err(QError::Overflow)
+                }
+            }
+            None => Ok(Variant::VInteger(0)),
         }
-        if self.v.len() - first_non_zero_bit <= INT_BITS {
-            self.fit_to(INT_BITS);
-            Ok(())
-        } else if self.v.len() - first_non_zero_bit <= LONG_BITS {
-            self.fit_to(LONG_BITS);
-            Ok(())
+    }
+
+    fn find_first_non_zero_bit(bits: &[bool]) -> Option<usize> {
+        let mut index: usize = 0;
+        while index < bits.len() && !bits[index] {
+            index += 1;
+        }
+        if index < bits.len() {
+            Some(index)
         } else {
-            Err(QError::Overflow)
+            None
         }
-    }
-
-    fn fit_to(&mut self, bits: usize) {
-        if self.v.len() > bits {
-            while self.v.len() > bits {
-                self.v.remove(0);
-            }
-        } else if self.v.len() < bits {
-            while self.v.len() < bits {
-                self.v.insert(0, false);
-            }
-        }
-    }
-
-    pub fn is_integer_size(&self) -> bool {
-        self.len() == INT_BITS
-    }
-
-    pub fn is_long_size(&self) -> bool {
-        self.len() == LONG_BITS
     }
 }
 
@@ -102,26 +108,39 @@ impl From<i32> for BitVec {
     }
 }
 
+macro_rules! bits_to_integer_type {
+    ($fn_name: tt, $integer_type: tt, $max_bits: expr) => {
+        fn $fn_name(bits: &[bool]) -> $integer_type {
+            debug_assert!(bits.len() <= $max_bits);
+            debug_assert!(!bits.is_empty());
+            let mut x: $integer_type = 0;
+            let sign = bits[0];
+            let mut idx = 1;
+            while idx < bits.len() {
+                x = x << 1;
+                if bits[idx] != sign {
+                    x = x | 1;
+                }
+                idx += 1;
+            }
+            if sign {
+                -x - 1
+            } else {
+                x
+            }
+        }
+    };
+}
+
+bits_to_integer_type!(bits_to_i32, i32, INT_BITS);
+bits_to_integer_type!(bits_to_i64, i64, LONG_BITS);
+
 impl From<BitVec> for i32 {
     fn from(bits: BitVec) -> i32 {
         if bits.len() != INT_BITS {
             panic!("should be {} bits, was {}", INT_BITS, bits.len());
         }
-        let mut x: i32 = 0;
-        let sign = bits[0];
-        let mut idx = 1;
-        while idx < INT_BITS {
-            x = x << 1;
-            if bits[idx] != sign {
-                x = x | 1;
-            }
-            idx += 1;
-        }
-        if sign {
-            -x - 1
-        } else {
-            x
-        }
+        bits_to_i32(bits.v.as_slice())
     }
 }
 
@@ -130,21 +149,7 @@ impl From<BitVec> for i64 {
         if bits.len() != LONG_BITS {
             panic!("should be {} bits, was {}", LONG_BITS, bits.len());
         }
-        let mut x: i64 = 0;
-        let sign = bits[0];
-        let mut idx = 1;
-        while idx < LONG_BITS {
-            x = x << 1;
-            if bits[idx] != sign {
-                x = x | 1;
-            }
-            idx += 1;
-        }
-        if sign {
-            -x - 1
-        } else {
-            x
-        }
+        bits_to_i64(bits.v.as_slice())
     }
 }
 

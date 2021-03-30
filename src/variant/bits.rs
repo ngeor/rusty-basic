@@ -6,6 +6,10 @@ const LONG_BITS: usize = 32;
 // const FLOAT_BITS: usize = 32;
 const DOUBLE_BITS: usize = 64;
 
+const DOUBLE_EXPONENT_BITS: usize = 11;
+const DOUBLE_SIGNIFICANT_BITS: usize = 52;
+const DOUBLE_BIAS: i32 = 1023;
+
 #[derive(Clone, PartialEq)]
 pub struct BitVec {
     // msb -> lsb
@@ -144,71 +148,6 @@ impl From<BitVec> for i64 {
     }
 }
 
-impl From<f64> for BitVec {
-    fn from(value: f64) -> Self {
-        // msb -> lsb
-        let mut bits: Vec<bool> = vec![];
-        //  1 bit for sign,
-        //
-        // 11 bit for exponent,
-        //
-        // 52 bit for significant.
-        //
-        // 1023 for bias
-        //
-        // 1.significant * 2 ^ exponent
-
-        let sign_bit: bool = value < 0.0_f64;
-        bits.push(sign_bit);
-
-        let absolute_value = value.abs();
-
-        // create int_bits msb -> lsb
-        // e.g. int_bits for 4 will be [1, 0, 0]
-        let mut int_value: i64 = absolute_value.trunc() as i64;
-        let mut int_bits: Vec<bool> = vec![];
-        while int_value > 0 {
-            let remainder = int_value % 2;
-            int_bits.insert(0, remainder == 1);
-            int_value = int_value / 2;
-        }
-
-        let mut fraction_value = absolute_value.fract();
-        let mut fraction_bits: Vec<bool> = vec![];
-        while fraction_bits.len() <= DOUBLE_BITS && (fraction_value - 1.0).abs() > 0.0 {
-            fraction_value = fraction_value * 2.0;
-            fraction_bits.push(fraction_value > 0.0);
-        }
-
-        let mut exponent = if int_bits.is_empty() {
-            0
-        } else {
-            (int_bits.len() as i32) - 1 + 1023
-        };
-        for _i in 0..11 {
-            let remainder = exponent % 2;
-            exponent = exponent / 2;
-            bits.insert(1, remainder == 1);
-        }
-
-        if !int_bits.is_empty() {
-            int_bits.remove(0); // the 1. part is always implied
-        }
-        for _i in 0..52 {
-            let bit = if !int_bits.is_empty() {
-                int_bits.remove(0)
-            } else if !fraction_bits.is_empty() {
-                fraction_bits.pop().unwrap_or_default()
-            } else {
-                false
-            };
-            bits.push(bit);
-        }
-
-        Self { v: bits }
-    }
-}
-
 impl std::ops::Index<usize> for BitVec {
     type Output = bool;
 
@@ -310,20 +249,83 @@ pub fn bytes_to_i32(b: [u8; 2]) -> i32 {
 }
 
 pub fn f64_to_bytes(f: f64) -> [u8; 8] {
-    // BitVec is msb -> lsb
-    let BitVec { v } = BitVec::from(f);
-    debug_assert_eq!(DOUBLE_BITS, v.len());
+    // bits is msb -> lsb
+    let bits = f64_to_bits(f);
+    debug_assert_eq!(DOUBLE_BITS, bits.len());
     // result is lsb -> msb
     [
-        extract_byte(&v[56..64]),
-        extract_byte(&v[48..56]),
-        extract_byte(&v[40..48]),
-        extract_byte(&v[32..40]),
-        extract_byte(&v[24..32]),
-        extract_byte(&v[16..24]),
-        extract_byte(&v[8..16]),
-        extract_byte(&v[0..8]),
+        extract_byte(&bits[56..64]),
+        extract_byte(&bits[48..56]),
+        extract_byte(&bits[40..48]),
+        extract_byte(&bits[32..40]),
+        extract_byte(&bits[24..32]),
+        extract_byte(&bits[16..24]),
+        extract_byte(&bits[8..16]),
+        extract_byte(&bits[0..8]),
     ]
+}
+
+fn f64_to_bits(value: f64) -> Vec<bool> {
+    // msb -> lsb
+    let mut bits: Vec<bool> = vec![];
+    //  1 bit for sign,
+    //
+    // 11 bit for exponent,
+    //
+    // 52 bit for significant.
+    //
+    // 1023 for bias
+    //
+    // 1.significant * 2 ^ exponent
+
+    let sign_bit: bool = value < 0.0_f64;
+    bits.push(sign_bit);
+
+    let absolute_value = value.abs();
+
+    // create int_bits msb -> lsb
+    // e.g. int_bits for 4 will be [1, 0, 0]
+    let mut int_value: i64 = absolute_value.trunc() as i64;
+    let mut int_bits: Vec<bool> = vec![];
+    while int_value > 0 {
+        let remainder = int_value % 2;
+        int_bits.insert(0, remainder == 1);
+        int_value = int_value / 2;
+    }
+
+    let mut fraction_value = absolute_value.fract();
+    let mut fraction_bits: Vec<bool> = vec![];
+    while fraction_bits.len() <= DOUBLE_BITS && (fraction_value - 1.0).abs() > 0.0 {
+        fraction_value = fraction_value * 2.0;
+        fraction_bits.push(fraction_value > 0.0);
+    }
+
+    let mut exponent = if int_bits.is_empty() {
+        0
+    } else {
+        (int_bits.len() as i32) - 1 + DOUBLE_BIAS
+    };
+    for _i in 0..DOUBLE_EXPONENT_BITS {
+        let remainder = exponent % 2;
+        exponent = exponent / 2;
+        bits.insert(1, remainder == 1);
+    }
+
+    if !int_bits.is_empty() {
+        int_bits.remove(0); // the 1. part is always implied
+    }
+    for _i in 0..DOUBLE_SIGNIFICANT_BITS {
+        let bit = if !int_bits.is_empty() {
+            int_bits.remove(0)
+        } else if !fraction_bits.is_empty() {
+            fraction_bits.pop().unwrap_or_default()
+        } else {
+            false
+        };
+        bits.push(bit);
+    }
+
+    bits
 }
 
 pub fn bytes_to_f64(bytes: &[u8]) -> f64 {
@@ -352,7 +354,7 @@ pub fn bytes_to_f64(bytes: &[u8]) -> f64 {
             result += 1.0 / 2.0_f64.powi(i as i32 + 1);
         }
     }
-    result *= 2.0_f64.powi(exponent - 1023);
+    result *= 2.0_f64.powi(exponent - DOUBLE_BIAS);
     if sign {
         -result
     } else {

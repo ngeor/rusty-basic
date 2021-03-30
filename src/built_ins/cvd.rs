@@ -12,9 +12,16 @@ pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::variant::bytes_to_f64;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-        todo!()
+        let s = interpreter.context()[0].to_str_unchecked();
+        let bytes = s.as_bytes();
+        let f = bytes_to_f64(bytes);
+        interpreter
+            .context_mut()
+            .set_built_in_function_result(BuiltInFunction::Cvd, f);
+        Ok(())
     }
 }
 
@@ -42,7 +49,7 @@ mod tests {
 
     #[test]
     fn prints_expected_value() {
-        let program = r#"PRINT CVD("12345678")"#;
-        assert_prints!(program, "fix me");
+        let program = "PRINT CVD(\"\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}@\")";
+        assert_prints!(program, "2");
     }
 }

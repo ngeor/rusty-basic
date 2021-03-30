@@ -12,10 +12,16 @@ pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::variant::Variant;
+    use crate::variant::{f64_to_bytes, QBNumberCast};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-        todo!()
+        let f: f64 = interpreter.context()[0].try_cast()?;
+        let bytes = f64_to_bytes(f);
+        let s: String = bytes.iter().map(|b| *b as char).collect();
+        interpreter
+            .context_mut()
+            .set_built_in_function_result(BuiltInFunction::Mkd, s);
+        Ok(())
     }
 }
 
@@ -43,7 +49,7 @@ mod tests {
 
     #[test]
     fn prints_expected_value() {
-        let program = r#"PRINT MKD$(3.14)"#;
-        assert_prints!(program, "fix me");
+        let program = r#"PRINT MKD$(2)"#;
+        assert_prints!(program, "\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}@");
     }
 }

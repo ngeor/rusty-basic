@@ -3,7 +3,7 @@ use std::fmt::{Formatter, Write};
 
 const INT_BITS: usize = 16;
 const LONG_BITS: usize = 32;
-const FLOAT_BITS: usize = 32;
+// const FLOAT_BITS: usize = 32;
 const DOUBLE_BITS: usize = 64;
 
 #[derive(Clone, PartialEq)]
@@ -172,7 +172,6 @@ impl From<f64> for BitVec {
             int_bits.insert(0, remainder == 1);
             int_value = int_value / 2;
         }
-        println!("int_bits for {} -> {:?}", value, int_bits);
 
         let mut fraction_value = absolute_value.fract();
         let mut fraction_bits: Vec<bool> = vec![];
@@ -186,8 +185,7 @@ impl From<f64> for BitVec {
         } else {
             (int_bits.len() as i32) - 1 + 1023
         };
-        println!("exponent {}, without bias {}", exponent, exponent - 1023);
-        for i in 0..11 {
+        for _i in 0..11 {
             let remainder = exponent % 2;
             exponent = exponent / 2;
             bits.insert(1, remainder == 1);
@@ -196,7 +194,7 @@ impl From<f64> for BitVec {
         if !int_bits.is_empty() {
             int_bits.remove(0); // the 1. part is always implied
         }
-        for i in 0..52 {
+        for _i in 0..52 {
             let bit = if !int_bits.is_empty() {
                 int_bits.remove(0)
             } else if !fraction_bits.is_empty() {
@@ -208,12 +206,6 @@ impl From<f64> for BitVec {
         }
 
         Self { v: bits }
-    }
-}
-
-impl From<BitVec> for f64 {
-    fn from(bits: BitVec) -> Self {
-        unimplemented!()
     }
 }
 
@@ -296,7 +288,8 @@ impl std::fmt::Debug for BitVec {
     }
 }
 
-fn i32_to_bytes(i: i32) -> [u8; 2] {
+#[cfg(test)]
+pub fn i32_to_bytes(i: i32) -> [u8; 2] {
     // BitVec is msb -> lsb
     let BitVec { v } = BitVec::from(i);
     debug_assert_eq!(INT_BITS, v.len());
@@ -306,7 +299,8 @@ fn i32_to_bytes(i: i32) -> [u8; 2] {
     [low_byte, high_byte]
 }
 
-fn bytes_to_i32(b: [u8; 2]) -> i32 {
+#[cfg(test)]
+pub fn bytes_to_i32(b: [u8; 2]) -> i32 {
     // given array is [low_byte, high_byte]
     // bits vector is msb -> lsb
     let bits: Vec<bool> = lsb_bytes_to_msb_bits(&b);
@@ -315,7 +309,7 @@ fn bytes_to_i32(b: [u8; 2]) -> i32 {
     bit_vec.into()
 }
 
-fn f64_to_bytes(f: f64) -> [u8; 8] {
+pub fn f64_to_bytes(f: f64) -> [u8; 8] {
     // BitVec is msb -> lsb
     let BitVec { v } = BitVec::from(f);
     debug_assert_eq!(DOUBLE_BITS, v.len());
@@ -332,10 +326,10 @@ fn f64_to_bytes(f: f64) -> [u8; 8] {
     ]
 }
 
-fn bytes_to_f64(bytes: [u8; 8]) -> f64 {
+pub fn bytes_to_f64(bytes: &[u8]) -> f64 {
     // bytes is lsb -> msb
     // bits is msb -> lsb
-    let bits: Vec<bool> = lsb_bytes_to_msb_bits(&bytes);
+    let bits: Vec<bool> = lsb_bytes_to_msb_bits(bytes);
     debug_assert_eq!(bits.len(), DOUBLE_BITS);
     let sign = bits[0];
     let exponent_bits = &bits[1..12];
@@ -547,11 +541,12 @@ mod tests {
 
     #[test]
     fn test_bytes_to_f64() {
-        for i in -10..11 {
+        // let's try some integers
+        for i in -MIN_INTEGER..MAX_INTEGER + 1 {
             let source: f64 = i as f64;
             let bytes = f64_to_bytes(source);
-            let converted = bytes_to_f64(bytes);
-            assert_eq!(source, converted);
+            let converted = bytes_to_f64(&bytes);
+            assert_eq!(source, converted, "{}", source);
         }
     }
 }

@@ -232,8 +232,8 @@ pub fn i32_to_bytes(i: i32) -> [u8; 2] {
     // BitVec is msb -> lsb
     let BitVec { v } = BitVec::from(i);
     debug_assert_eq!(INT_BITS, v.len());
-    let high_byte = extract_byte(&v[0..8]);
-    let low_byte = extract_byte(&v[8..16]);
+    let high_byte = msb_bits_to_byte(&v[0..8]);
+    let low_byte = msb_bits_to_byte(&v[8..16]);
     // result is lsb -> msb
     [low_byte, high_byte]
 }
@@ -254,14 +254,14 @@ pub fn f64_to_bytes(f: f64) -> [u8; 8] {
     debug_assert_eq!(DOUBLE_BITS, bits.len());
     // result is lsb -> msb
     [
-        extract_byte(&bits[56..64]),
-        extract_byte(&bits[48..56]),
-        extract_byte(&bits[40..48]),
-        extract_byte(&bits[32..40]),
-        extract_byte(&bits[24..32]),
-        extract_byte(&bits[16..24]),
-        extract_byte(&bits[8..16]),
-        extract_byte(&bits[0..8]),
+        msb_bits_to_byte(&bits[56..64]),
+        msb_bits_to_byte(&bits[48..56]),
+        msb_bits_to_byte(&bits[40..48]),
+        msb_bits_to_byte(&bits[32..40]),
+        msb_bits_to_byte(&bits[24..32]),
+        msb_bits_to_byte(&bits[16..24]),
+        msb_bits_to_byte(&bits[8..16]),
+        msb_bits_to_byte(&bits[0..8]),
     ]
 }
 
@@ -362,7 +362,10 @@ pub fn bytes_to_f64(bytes: &[u8]) -> f64 {
     }
 }
 
-fn extract_byte(bits: &[bool]) -> u8 {
+/// Converts the given bit array into a byte.
+/// The input array must be 8 bits long.
+/// The input array is ordered from msb to lsb.
+fn msb_bits_to_byte(bits: &[bool]) -> u8 {
     // bits is encoded msb -> lsb
     debug_assert_eq!(8, bits.len());
     let mut result: u8 = 0;
@@ -378,21 +381,22 @@ fn extract_byte(bits: &[bool]) -> u8 {
     result
 }
 
-fn push_byte(bits: &mut Vec<bool>, byte: u8) {
-    // bits is msb -> lsb
-    let mut mask: u8 = 0x80;
-    while mask >= 0x01 {
-        bits.push(byte & mask == mask);
-        mask >>= 1;
-    }
-}
-
+/// Converts the given byte array into a bit array.
+/// Every byte will be stored as 8 bits.
+/// The byte array is ordered from low byte to high byte.
+/// The resulting bit array is ordered from msb to lsb,
+/// so the order of the bytes will be reversed.
 fn lsb_bytes_to_msb_bits(bytes: &[u8]) -> Vec<bool> {
     let mut bits: Vec<bool> = vec![];
     let mut i = bytes.len();
     while i > 0 {
         i -= 1;
-        push_byte(&mut bits, bytes[i]);
+        let mut mask: u8 = 0x80;
+        let byte = bytes[i];
+        while mask >= 0x01 {
+            bits.push(byte & mask == mask);
+            mask >>= 1;
+        }
     }
     bits
 }

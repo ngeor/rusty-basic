@@ -26,9 +26,6 @@ pub const MAX_INTEGER: i32 = 32767;
 pub const MIN_LONG: i64 = -2147483648;
 pub const MAX_LONG: i64 = 2147483647;
 
-pub const INT_BITS: usize = 16;
-pub const LONG_BITS: usize = 32;
-
 trait ApproximateCmp {
     fn cmp(left: &Self, right: &Self) -> Ordering;
 }

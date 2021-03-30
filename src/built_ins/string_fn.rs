@@ -100,10 +100,7 @@ mod tests {
 
     #[test]
     fn string_without_args() {
-        assert_linter_err!(
-            "PRINT STRING$()",
-            QError::syntax_error("Cannot have function call without arguments")
-        );
+        assert_linter_err!("PRINT STRING$()", QError::FunctionNeedsArguments);
     }
 
     #[test]

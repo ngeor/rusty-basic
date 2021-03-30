@@ -10,6 +10,8 @@ pub trait ArgValidation {
 
     fn require_long_argument(&self, idx: usize) -> Result<(), QErrorNode>;
 
+    fn require_double_argument(&self, idx: usize) -> Result<(), QErrorNode>;
+
     fn require_numeric_argument(&self, idx: usize) -> Result<(), QErrorNode>;
 
     fn require_string_argument(&self, idx: usize) -> Result<(), QErrorNode>;
@@ -27,6 +29,11 @@ pub trait ArgValidation {
     fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), QErrorNode>;
 
     fn require_one_argument(&self) -> Result<(), QErrorNode>;
+
+    fn require_one_double_argument(&self) -> Result<(), QErrorNode> {
+        self.require_one_argument()
+            .and_then(|_| self.require_double_argument(0))
+    }
 
     fn require_one_numeric_argument(&self) -> Result<(), QErrorNode> {
         self.require_one_argument()
@@ -50,6 +57,14 @@ impl ArgValidation for ExpressionNodes {
 
     fn require_long_argument(&self, idx: usize) -> Result<(), QErrorNode> {
         if !self[idx].can_cast_to(TypeQualifier::AmpersandLong) {
+            Err(QError::ArgumentTypeMismatch).with_err_at(&self[idx])
+        } else {
+            Ok(())
+        }
+    }
+
+    fn require_double_argument(&self, idx: usize) -> Result<(), QErrorNode> {
+        if !self[idx].can_cast_to(TypeQualifier::HashDouble) {
             Err(QError::ArgumentTypeMismatch).with_err_at(&self[idx])
         } else {
             Ok(())

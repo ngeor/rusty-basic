@@ -40,10 +40,7 @@ mod tests {
 
     #[test]
     fn test_no_args() {
-        assert_linter_err!(
-            r#"PRINT LCASE$()"#,
-            QError::syntax_error("Cannot have function call without arguments")
-        );
+        assert_linter_err!(r#"PRINT LCASE$()"#, QError::FunctionNeedsArguments);
     }
 
     #[test]

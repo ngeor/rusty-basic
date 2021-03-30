@@ -69,8 +69,10 @@ pub mod interpreter {
 mod tests {
     use crate::assert_interpreter_err;
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::built_ins::BuiltInSub;
     use crate::common::QError;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::parser::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
     use crate::parser::*;
 
@@ -104,5 +106,18 @@ mod tests {
     fn address_cannot_exceed_65535() {
         let input = "DEF SEG = 65536";
         assert_interpreter_err!(input, QError::Overflow, 1, 1);
+    }
+
+    #[test]
+    fn happy_flow() {
+        let input = r#"
+        DIM A AS INTEGER
+        P = VARPTR(A)
+        DEF SEG = VARSEG(A)
+        POKE P, 2     ' sets the low byte of A to 2
+        POKE P + 1, 1 ' sets the high byte of A to 1
+        PRINT A       ' result is 2 + 1 * 256 = 258
+        "#;
+        assert_prints!(input, "258");
     }
 }

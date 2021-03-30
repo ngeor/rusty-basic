@@ -43,6 +43,9 @@ pub enum BuiltInFunction {
     /// `LEN(variable)` -> number of bytes required to store a variable
     Len,
 
+    /// `LTRIM$`
+    LTrim,
+
     /// MID$ function returns part of a string
     ///
     /// MID$ statement replaces part of a string (TODO support this)
@@ -62,6 +65,9 @@ pub enum BuiltInFunction {
 
     /// `RIGHT$(str_expr$, count%)`
     Right,
+
+    /// `RTRIM$`
+    RTrim,
 
     /// `STR$(numeric-expression)` returns a string representation of a number
     Str,
@@ -85,7 +91,7 @@ pub enum BuiltInFunction {
     Val,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 17] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 19] = [
     BuiltInFunction::Chr,
     BuiltInFunction::Cvd,
     BuiltInFunction::Environ,
@@ -95,9 +101,11 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 17] = [
     BuiltInFunction::LCase,
     BuiltInFunction::Left,
     BuiltInFunction::Len,
+    BuiltInFunction::LTrim,
     BuiltInFunction::Mid,
     BuiltInFunction::Mkd,
     BuiltInFunction::Right,
+    BuiltInFunction::RTrim,
     BuiltInFunction::Str,
     BuiltInFunction::String_,
     BuiltInFunction::UBound,
@@ -105,9 +113,9 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 17] = [
     BuiltInFunction::Val,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 17] = [
-    "Chr", "Cvd", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "Mid", "Mkd",
-    "Right", "Str", "String", "UBound", "UCase", "Val",
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 19] = [
+    "Chr", "Cvd", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "LTrim", "Mid",
+    "Mkd", "Right", "RTrim", "Str", "String", "UBound", "UCase", "Val",
 ];
 
 // BuiltInFunction -> &str
@@ -143,9 +151,11 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::LCase => TypeQualifier::DollarString,
             BuiltInFunction::Left => TypeQualifier::DollarString,
             BuiltInFunction::Len => TypeQualifier::PercentInteger,
+            BuiltInFunction::LTrim => TypeQualifier::DollarString,
             BuiltInFunction::Mid => TypeQualifier::DollarString,
             BuiltInFunction::Mkd => TypeQualifier::DollarString,
             BuiltInFunction::Right => TypeQualifier::DollarString,
+            BuiltInFunction::RTrim => TypeQualifier::DollarString,
             BuiltInFunction::Str => TypeQualifier::DollarString,
             BuiltInFunction::String_ => TypeQualifier::DollarString,
             BuiltInFunction::UBound => TypeQualifier::PercentInteger,
@@ -195,9 +205,11 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 BuiltInFunction::Environ
                 | BuiltInFunction::LCase
                 | BuiltInFunction::Left
+                | BuiltInFunction::LTrim
                 | BuiltInFunction::Mid
                 | BuiltInFunction::Mkd
                 | BuiltInFunction::Right
+                | BuiltInFunction::RTrim
                 | BuiltInFunction::UCase => {
                     // ENVIRON$ must be qualified
                     match n {
@@ -416,9 +428,11 @@ pub mod linter {
             BuiltInFunction::LCase => crate::built_ins::lcase::linter::lint(args),
             BuiltInFunction::Left => crate::built_ins::left::linter::lint(args),
             BuiltInFunction::Len => crate::built_ins::len::linter::lint(args),
+            BuiltInFunction::LTrim => crate::built_ins::ltrim::linter::lint(args),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::linter::lint(args),
             BuiltInFunction::Mkd => crate::built_ins::mkd::linter::lint(args),
             BuiltInFunction::Right => crate::built_ins::right::linter::lint(args),
+            BuiltInFunction::RTrim => crate::built_ins::rtrim::linter::lint(args),
             BuiltInFunction::Str => crate::built_ins::str_fn::linter::lint(args),
             BuiltInFunction::String_ => crate::built_ins::string_fn::linter::lint(args),
             BuiltInFunction::UBound => crate::built_ins::ubound::linter::lint(args),
@@ -468,9 +482,11 @@ pub mod interpreter {
             BuiltInFunction::LCase => crate::built_ins::lcase::interpreter::run(interpreter),
             BuiltInFunction::Left => crate::built_ins::left::interpreter::run(interpreter),
             BuiltInFunction::Len => crate::built_ins::len::interpreter::run(interpreter),
+            BuiltInFunction::LTrim => crate::built_ins::ltrim::interpreter::run(interpreter),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::interpreter::run(interpreter),
             BuiltInFunction::Mkd => crate::built_ins::mkd::interpreter::run(interpreter),
             BuiltInFunction::Right => crate::built_ins::right::interpreter::run(interpreter),
+            BuiltInFunction::RTrim => crate::built_ins::rtrim::interpreter::run(interpreter),
             BuiltInFunction::Str => crate::built_ins::str_fn::interpreter::run(interpreter),
             BuiltInFunction::String_ => crate::built_ins::string_fn::interpreter::run(interpreter),
             BuiltInFunction::UBound => crate::built_ins::ubound::interpreter::run(interpreter),
@@ -499,6 +515,7 @@ mod len;
 mod line_input;
 mod locate;
 mod lset;
+mod ltrim;
 mod mid_fn;
 mod mkd;
 mod name;
@@ -506,6 +523,7 @@ mod open;
 mod put;
 mod read;
 mod right;
+mod rtrim;
 mod str_fn;
 mod string_fn;
 mod ubound;

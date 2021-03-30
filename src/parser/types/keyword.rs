@@ -21,6 +21,8 @@ pub enum Keyword {
     Data,
     /// DECLARE
     Declare,
+    /// DEF
+    Def,
     /// DEFDBL
     DefDbl,
     /// DEFINT
@@ -109,6 +111,8 @@ pub enum Keyword {
     Resume,
     /// RETURN
     Return,
+    /// SEG
+    Seg,
     /// SELECT
     Select,
     /// SHARED
@@ -154,6 +158,7 @@ const STR_CLOSE: &str = "CLOSE";
 const STR_CONST: &str = "CONST";
 const STR_DATA: &str = "DATA";
 const STR_DECLARE: &str = "DECLARE";
+const STR_DEF: &str = "DEF";
 const STR_DEFDBL: &str = "DEFDBL";
 const STR_DEFINT: &str = "DEFINT";
 const STR_DEFLNG: &str = "DEFLNG";
@@ -198,6 +203,7 @@ const STR_RANDOM: &str = "RANDOM";
 const STR_READ: &str = "READ";
 const STR_RESUME: &str = "RESUME";
 const STR_RETURN: &str = "RETURN";
+const STR_SEG: &str = "SEG";
 const STR_SELECT: &str = "SELECT";
 const STR_SHARED: &str = "SHARED";
 const STR_SINGLE: &str = "SINGLE";
@@ -216,7 +222,7 @@ const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 const STR_WIDTH: &str = "WIDTH";
 
-const SORTED_KEYWORDS_STR: [&str; 70] = [
+const SORTED_KEYWORDS_STR: [&str; 72] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -226,6 +232,7 @@ const SORTED_KEYWORDS_STR: [&str; 70] = [
     STR_CONST,
     STR_DATA,
     STR_DECLARE,
+    STR_DEF,
     STR_DEFDBL,
     STR_DEFINT,
     STR_DEFLNG,
@@ -270,6 +277,7 @@ const SORTED_KEYWORDS_STR: [&str; 70] = [
     STR_READ,
     STR_RESUME,
     STR_RETURN,
+    STR_SEG,
     STR_SELECT,
     STR_SHARED,
     STR_SINGLE,
@@ -289,7 +297,7 @@ const SORTED_KEYWORDS_STR: [&str; 70] = [
     STR_WIDTH,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 70] = [
+const SORTED_KEYWORDS: [Keyword; 72] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -299,6 +307,7 @@ const SORTED_KEYWORDS: [Keyword; 70] = [
     Keyword::Const,
     Keyword::Data,
     Keyword::Declare,
+    Keyword::Def,
     Keyword::DefDbl,
     Keyword::DefInt,
     Keyword::DefLng,
@@ -343,6 +352,7 @@ const SORTED_KEYWORDS: [Keyword; 70] = [
     Keyword::Read,
     Keyword::Resume,
     Keyword::Return,
+    Keyword::Seg,
     Keyword::Select,
     Keyword::Shared,
     Keyword::Single,
@@ -374,6 +384,7 @@ impl Keyword {
             Self::Const => STR_CONST,
             Self::Data => STR_DATA,
             Self::Declare => STR_DECLARE,
+            Self::Def => STR_DEF,
             Self::DefDbl => STR_DEFDBL,
             Self::DefInt => STR_DEFINT,
             Self::DefLng => STR_DEFLNG,
@@ -418,6 +429,7 @@ impl Keyword {
             Self::Read => STR_READ,
             Self::Resume => STR_RESUME,
             Self::Return => STR_RETURN,
+            Self::Seg => STR_SEG,
             Self::Select => STR_SELECT,
             Self::Shared => STR_SHARED,
             Self::Single => STR_SINGLE,

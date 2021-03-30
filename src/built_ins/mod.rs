@@ -267,6 +267,7 @@ fn demand_unqualified(
 pub enum BuiltInSub {
     Close,
     Data,
+    DefSeg,
     Environ,
     Field,
     Get,
@@ -359,6 +360,7 @@ pub mod parser {
     {
         crate::built_ins::close::parser::parse()
             .or(crate::built_ins::data::parser::parse())
+            .or(crate::built_ins::def_seg::parser::parse())
             .or(crate::built_ins::field::parser::parse())
             .or(crate::built_ins::get::parser::parse())
             .or(crate::built_ins::input::parser::parse())
@@ -397,6 +399,7 @@ pub mod linter {
         match built_in_sub {
             BuiltInSub::Close => crate::built_ins::close::linter::lint(args),
             BuiltInSub::Data => crate::built_ins::data::linter::lint(name_context),
+            BuiltInSub::DefSeg => crate::built_ins::def_seg::linter::lint(args),
             BuiltInSub::Environ => crate::built_ins::environ_sub::linter::lint(args),
             BuiltInSub::Field => crate::built_ins::field::linter::lint(args),
             BuiltInSub::Get => crate::built_ins::get::linter::lint(args),
@@ -451,6 +454,7 @@ pub mod interpreter {
         match s {
             BuiltInSub::Close => crate::built_ins::close::interpreter::run(interpreter),
             BuiltInSub::Data => crate::built_ins::data::interpreter::run(interpreter),
+            BuiltInSub::DefSeg => crate::built_ins::def_seg::interpreter::run(interpreter),
             BuiltInSub::Environ => crate::built_ins::environ_sub::interpreter::run(interpreter),
             BuiltInSub::Field => crate::built_ins::field::interpreter::run(interpreter),
             BuiltInSub::Get => crate::built_ins::get::interpreter::run(interpreter),
@@ -500,6 +504,7 @@ mod chr;
 mod close;
 mod cvd;
 mod data;
+mod def_seg;
 mod environ_fn;
 mod environ_sub;
 mod eof;

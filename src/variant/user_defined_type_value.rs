@@ -77,15 +77,15 @@ impl UserDefinedTypeValue {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.map.values().map(Variant::len).sum()
+    pub fn size_in_bytes(&self) -> usize {
+        self.map.values().map(Variant::size_in_bytes).sum()
     }
 
     pub fn address_of_property(&self, property: &CaseInsensitiveString) -> usize {
         self.indices
             .iter()
             .take_while(|p| *p != property)
-            .map(|p| self.map.get(p).unwrap().len())
+            .map(|p| self.map.get(p).unwrap().size_in_bytes())
             .sum()
     }
 }

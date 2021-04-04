@@ -12,13 +12,8 @@ pub mod parser {
         keyword_pair_p(Keyword::Def, Keyword::Seg)
             .and_opt(equal_sign_and_expression())
             .keep_right()
-            .map(|opt_arg| {
-                let args: ExpressionNodes = match opt_arg {
-                    Some(arg) => vec![arg],
-                    _ => vec![],
-                };
-                Statement::BuiltInSubCall(BuiltInSub::DefSeg, args)
-            })
+            .map(opt_arg_to_args)
+            .map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
     }
 
     fn equal_sign_and_expression<R>() -> impl Parser<R, Output = ExpressionNode>
@@ -29,6 +24,13 @@ pub mod parser {
             .surrounded_by_opt_ws()
             .and_demand(expression::expression_node_p())
             .keep_right()
+    }
+
+    fn opt_arg_to_args(opt_arg: Option<ExpressionNode>) -> ExpressionNodes {
+        match opt_arg {
+            Some(arg) => vec![arg],
+            _ => vec![],
+        }
     }
 }
 

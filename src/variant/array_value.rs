@@ -58,14 +58,22 @@ impl VArray {
         self.dimensions.get(idx)
     }
 
-    pub fn len(&self) -> usize {
-        let element_size = self.elements.first().map(Variant::len).unwrap_or_default();
+    pub fn size_in_bytes(&self) -> usize {
+        let element_size = self
+            .elements
+            .first()
+            .map(Variant::size_in_bytes)
+            .unwrap_or_default();
         let array_length = dimensions_to_array_length(&self.dimensions);
         element_size * array_length
     }
 
     pub fn get_address(&self, indices: &[i32]) -> Result<usize, QError> {
-        let element_size = self.elements.first().map(Variant::len).unwrap_or_default();
+        let element_size = self
+            .elements
+            .first()
+            .map(Variant::size_in_bytes)
+            .unwrap_or_default();
         let abs_index = self.abs_index(indices)?;
         Ok(element_size * abs_index)
     }

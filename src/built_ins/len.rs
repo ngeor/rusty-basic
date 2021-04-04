@@ -25,40 +25,28 @@ pub mod parser {
 
 pub mod linter {
     use crate::common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
-    use crate::parser::{Expression, ExpressionNode, ExpressionType, TypeQualifier, VariableInfo};
+    use crate::parser::{
+        Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier,
+    };
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             let arg: &Expression = args[0].as_ref();
-            match arg {
-                Expression::Variable(
-                    _,
-                    VariableInfo {
-                        expression_type, ..
-                    },
-                )
-                | Expression::Property(_, _, expression_type)
-                | Expression::ArrayElement(
-                    _,
-                    _,
-                    VariableInfo {
-                        expression_type, ..
-                    },
-                ) => match expression_type {
+            if arg.is_by_ref() {
+                match arg.expression_type() {
+                    // QBasic actually accepts LEN(A) where A is an array,
+                    // but its results don't make much sense
                     ExpressionType::Unresolved | ExpressionType::Array(_) => {
                         Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
                     }
                     _ => Ok(()),
-                },
-                _ => {
-                    if !args[0].can_cast_to(TypeQualifier::DollarString) {
-                        Err(QError::VariableRequired).with_err_at(&args[0])
-                    } else {
-                        Ok(())
-                    }
                 }
+            } else if !args[0].can_cast_to(TypeQualifier::DollarString) {
+                Err(QError::VariableRequired).with_err_at(&args[0])
+            } else {
+                Ok(())
             }
         }
     }
@@ -72,7 +60,7 @@ pub mod interpreter {
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let v: &Variant = &interpreter.context()[0];
-        let len: i32 = v.len() as i32;
+        let len: i32 = v.size_in_bytes() as i32;
         interpreter
             .context_mut()
             .set_built_in_function_result(BuiltInFunction::Len, len);

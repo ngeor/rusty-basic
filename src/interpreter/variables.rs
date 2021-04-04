@@ -200,7 +200,13 @@ impl Variables {
         match self.name_to_index.get(name) {
             Some(idx) => {
                 debug_assert!(*idx < self.values.len());
-                Some(self.values.iter().take(*idx).map(Variant::len).sum())
+                Some(
+                    self.values
+                        .iter()
+                        .take(*idx)
+                        .map(Variant::size_in_bytes)
+                        .sum(),
+                )
             }
             _ => None,
         }

@@ -3,18 +3,18 @@ use crate::common::{CaseInsensitiveString, Locatable};
 use crate::parser::{Element, UserDefinedTypes};
 use std::collections::HashMap;
 
+/// Holds a value of a user defined type.
 #[derive(Clone, Debug)]
 pub struct UserDefinedTypeValue {
-    type_name: CaseInsensitiveString,
-    map: HashMap<CaseInsensitiveString, Variant>,
-    indices: Vec<CaseInsensitiveString>,
+    ordered_property_names: Vec<CaseInsensitiveString>,
+    property_names_to_values: HashMap<CaseInsensitiveString, Variant>,
 }
 
 impl UserDefinedTypeValue {
     pub fn new(type_name: &CaseInsensitiveString, types: &UserDefinedTypes) -> Self {
         let user_defined_type = types.get(type_name).expect("could not find type");
-        let mut map: HashMap<CaseInsensitiveString, Variant> = HashMap::new();
-        let mut indices: Vec<CaseInsensitiveString> = vec![];
+        let mut property_names_to_values: HashMap<CaseInsensitiveString, Variant> = HashMap::new();
+        let mut ordered_property_names: Vec<CaseInsensitiveString> = vec![];
         for Locatable {
             element: Element {
                 name, element_type, ..
@@ -23,30 +23,22 @@ impl UserDefinedTypeValue {
         } in user_defined_type.elements()
         {
             let def_value: Variant = element_type.default_variant(types);
-            map.insert(name.clone(), def_value);
-            indices.push(name.clone());
+            property_names_to_values.insert(name.clone(), def_value);
+            ordered_property_names.push(name.clone());
         }
 
         Self {
-            type_name: type_name.clone(),
-            map,
-            indices,
+            property_names_to_values,
+            ordered_property_names,
         }
     }
 
-    /// Gets the name of the user defined type.
-    ///
-    /// Currently used only by the LEN function.
-    pub fn type_name(&self) -> &CaseInsensitiveString {
-        &self.type_name
-    }
-
     pub fn get(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
-        self.map.get(name)
+        self.property_names_to_values.get(name)
     }
 
     pub fn get_mut(&mut self, name: &CaseInsensitiveString) -> Option<&mut Variant> {
-        self.map.get_mut(name)
+        self.property_names_to_values.get_mut(name)
     }
 
     pub fn get_path(&self, names: &[CaseInsensitiveString]) -> Option<&Variant> {
@@ -65,7 +57,7 @@ impl UserDefinedTypeValue {
     pub fn insert_path(&mut self, names: &[CaseInsensitiveString], value: Variant) {
         let (first, rest) = names.split_first().expect("empty names!");
         if rest.is_empty() {
-            self.map.insert(first.clone(), value);
+            self.property_names_to_values.insert(first.clone(), value);
         } else {
             let first_variant = self.get_mut(first).expect("member missing!");
             match first_variant {
@@ -78,14 +70,22 @@ impl UserDefinedTypeValue {
     }
 
     pub fn size_in_bytes(&self) -> usize {
-        self.map.values().map(Variant::size_in_bytes).sum()
+        self.property_names_to_values
+            .values()
+            .map(Variant::size_in_bytes)
+            .sum()
     }
 
     pub fn address_of_property(&self, property: &CaseInsensitiveString) -> usize {
-        self.indices
+        self.ordered_property_names
             .iter()
             .take_while(|p| *p != property)
-            .map(|p| self.map.get(p).unwrap().size_in_bytes())
+            .map(|p| {
+                self.property_names_to_values
+                    .get(p)
+                    .unwrap()
+                    .size_in_bytes()
+            })
             .sum()
     }
 }

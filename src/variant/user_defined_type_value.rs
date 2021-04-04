@@ -76,16 +76,18 @@ impl UserDefinedTypeValue {
             .sum()
     }
 
-    pub fn address_of_property(&self, property: &CaseInsensitiveString) -> usize {
+    pub fn address_offset_of_property(&self, property: &CaseInsensitiveString) -> usize {
         self.ordered_property_names
             .iter()
             .take_while(|p| *p != property)
-            .map(|p| {
-                self.property_names_to_values
-                    .get(p)
-                    .unwrap()
-                    .size_in_bytes()
-            })
+            .map(|p| self.property_size_in_bytes(p))
             .sum()
+    }
+
+    fn property_size_in_bytes(&self, property: &CaseInsensitiveString) -> usize {
+        self.property_names_to_values
+            .get(property)
+            .map(Variant::size_in_bytes)
+            .unwrap_or_default()
     }
 }

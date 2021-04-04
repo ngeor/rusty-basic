@@ -68,7 +68,7 @@ pub mod interpreter {
                 // calculate offset for given property
                 let owner_variable = find_owning_type(interpreter, parent_path.as_ref())?;
                 if let Variant::VUserDefined(u) = owner_variable {
-                    Ok(parent_address + u.address_of_property(property_name))
+                    Ok(parent_address + u.address_offset_of_property(property_name))
                 } else {
                     panic!("Should be a property")
                 }

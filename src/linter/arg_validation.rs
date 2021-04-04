@@ -166,14 +166,10 @@ impl ArgValidation for ExpressionNodes {
     }
 
     fn require_variable(&self, idx: usize) -> Result<(), QErrorNode> {
-        let Locatable { element, .. } = &self[idx];
-        match element {
-            Expression::Variable(_, _)
-            | Expression::ArrayElement(_, _, _)
-            | Expression::Property(_, _, _) => Ok(()),
-            _ => {
-                return Err(QError::VariableRequired).with_err_at(&self[idx]);
-            }
+        if self[idx].is_by_ref() {
+            Ok(())
+        } else {
+            Err(QError::VariableRequired).with_err_at(&self[idx])
         }
     }
 

@@ -1,24 +1,22 @@
+use crate::common::IndexedMap;
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::parser::{
     BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
 };
 use crate::variant::{Variant, V_FALSE};
-use std::collections::HashMap;
 use std::slice::Iter;
 
 #[derive(Debug)]
 pub struct Variables {
-    name_to_index: HashMap<Name, usize>,
-    values: Vec<Variant>,
+    map: IndexedMap<Name, Variant>,
     arg_paths: Vec<Option<Path>>,
 }
 
 impl Variables {
     pub fn new() -> Self {
         Self {
-            name_to_index: HashMap::new(),
-            values: Vec::new(),
+            map: IndexedMap::new(),
             arg_paths: Vec::new(),
         }
     }
@@ -37,7 +35,9 @@ impl Variables {
     }
 
     fn insert_unnamed(&mut self, value: Variant, arg_path: Option<Path>) {
-        self.values.push(value);
+        let dummy_name = format!("{}", self.map.len());
+        self.map
+            .insert(Name::new(BareName::new(dummy_name), None), value);
         self.arg_paths.push(arg_path);
     }
 
@@ -62,15 +62,7 @@ impl Variables {
     }
 
     pub fn insert(&mut self, name: Name, value: Variant) {
-        match self.name_to_index.get(&name) {
-            Some(idx) => {
-                self.values[*idx] = value;
-            }
-            None => {
-                self.name_to_index.insert(name, self.values.len());
-                self.values.push(value);
-            }
-        }
+        self.map.insert(name, value);
     }
 
     pub fn insert_dim(&mut self, dim_name: DimName, value: Variant) {
@@ -101,15 +93,7 @@ impl Variables {
     }
 
     pub fn get_or_create(&mut self, name: Name) -> &mut Variant {
-        match self.name_to_index.get(&name) {
-            Some(idx) => self.values.get_mut(*idx).expect("Should have variable"),
-            _ => {
-                let value = Self::default_value_for_name(&name);
-                self.name_to_index.insert(name, self.values.len());
-                self.values.push(value);
-                self.values.last_mut().expect("Should have variable")
-            }
-        }
+        self.map.get_or_crate(name, Self::default_value_for_name)
     }
 
     // This is needed only when we're setting the default value for a function
@@ -125,12 +109,12 @@ impl Variables {
 
     /// Gets the number of variables in this object.
     pub fn len(&self) -> usize {
-        self.values.len()
+        self.map.len()
     }
 
     /// Gets an iterator that returns the variables in this object.
     pub fn iter(&self) -> Iter<Variant> {
-        self.values.iter()
+        self.map.values()
     }
 
     pub fn get_built_in(&self, bare_name: &BareName, qualifier: TypeQualifier) -> Option<&Variant> {
@@ -142,15 +126,15 @@ impl Variables {
     }
 
     pub fn get_by_name(&self, name: &Name) -> Option<&Variant> {
-        self.name_to_index.get(name).and_then(|idx| self.get(*idx))
+        self.map.get(name)
     }
 
     pub fn get(&self, idx: usize) -> Option<&Variant> {
-        self.values.get(idx)
+        self.map.get_by_index(idx)
     }
 
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
-        self.values.get_mut(idx)
+        self.map.get_by_index_mut(idx)
     }
 
     pub fn apply_arguments(&mut self, arguments: Arguments) {
@@ -196,20 +180,14 @@ impl Variables {
         }
     }
 
-    pub fn calculate_var_ptr(&self, name: &Name) -> Option<usize> {
-        match self.name_to_index.get(name) {
-            Some(idx) => {
-                debug_assert!(*idx < self.values.len());
-                Some(
-                    self.values
-                        .iter()
-                        .take(*idx)
-                        .map(Variant::size_in_bytes)
-                        .sum(),
-                )
-            }
-            _ => None,
-        }
+    pub fn calculate_var_ptr(&self, name: &Name) -> usize {
+        debug_assert!(self.map.get(name).is_some());
+        self.map
+            .keys()
+            .take_while(|k| *k != name)
+            .map(|k| self.map.get(k).unwrap())
+            .map(Variant::size_in_bytes)
+            .sum()
     }
 }
 

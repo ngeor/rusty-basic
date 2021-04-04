@@ -80,9 +80,7 @@ pub mod interpreter {
                 } else {
                     interpreter.context().caller_variables()
                 };
-                let size = variable_owner
-                    .calculate_var_ptr(name)
-                    .ok_or(QError::VariableRequired)?;
+                let size = variable_owner.calculate_var_ptr(name);
                 Ok(size)
             }
         }

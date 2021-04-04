@@ -52,7 +52,7 @@ pub mod interpreter {
                         .expect("Should have variable");
                     if let Variant::VArray(arr) = array_variable {
                         let indices_as_int: Vec<i32> = indices.try_cast()?;
-                        let address = arr.get_address(&indices_as_int)?;
+                        let address = arr.address_offset_of_element(&indices_as_int)?;
                         Ok(address)
                     } else {
                         panic!("Should be an array");

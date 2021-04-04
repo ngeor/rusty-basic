@@ -33,6 +33,7 @@ impl VArray {
         }
     }
 
+    /// Maps the indices of a multi-dimensional array element into a flat index.
     fn abs_index(&self, indices: &[i32]) -> Result<usize, QError> {
         if indices.len() != self.dimensions.len() {
             return Err(QError::InternalError("Array indices mismatch".to_string()));
@@ -54,31 +55,30 @@ impl VArray {
         Ok(index as usize)
     }
 
-    pub fn get_dimensions(&self, idx: usize) -> Option<&(i32, i32)> {
-        self.dimensions.get(idx)
+    /// Returns the lower and upper bounds of the given dimension.
+    pub fn get_dimension_bounds(&self, dimension_index: usize) -> Option<&(i32, i32)> {
+        self.dimensions.get(dimension_index)
     }
 
     pub fn size_in_bytes(&self) -> usize {
-        let element_size = self
-            .elements
-            .first()
-            .map(Variant::size_in_bytes)
-            .unwrap_or_default();
         let array_length = dimensions_to_array_length(&self.dimensions);
-        element_size * array_length
+        self.element_size_in_bytes() * array_length
     }
 
-    pub fn get_address(&self, indices: &[i32]) -> Result<usize, QError> {
-        let element_size = self
-            .elements
+    pub fn address_offset_of_element(&self, indices: &[i32]) -> Result<usize, QError> {
+        let abs_index = self.abs_index(indices)?;
+        Ok(self.element_size_in_bytes() * abs_index)
+    }
+
+    fn element_size_in_bytes(&self) -> usize {
+        self.elements
             .first()
             .map(Variant::size_in_bytes)
-            .unwrap_or_default();
-        let abs_index = self.abs_index(indices)?;
-        Ok(element_size * abs_index)
+            .unwrap_or_default()
     }
 }
 
+/// Calculates the number of elements in a multi-dimensional array.
 fn dimensions_to_array_length(dimensions: &[(i32, i32)]) -> usize {
     let mut len: usize = 1;
     for (lbound, ubound) in dimensions {

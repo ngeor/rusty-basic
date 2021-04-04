@@ -54,7 +54,7 @@ pub struct InstructionGeneratorResult {
     pub statement_addresses: Vec<usize>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Path {
     Root(RootPath),
     ArrayElement(Box<Path>, Vec<Variant>),
@@ -105,7 +105,9 @@ pub enum Instruction {
     CopyAToVarPath,
 
     /// Copies the value of the variable path into register A
-    CopyVarPathToA,
+    CopyVarPathToA(
+        bool, /* true: consume path, false: leave path in place for the PushByRef operation to cleanup */
+    ),
 
     /// Loads a value into register A
     LoadIntoA(Variant),
@@ -171,7 +173,9 @@ pub enum Instruction {
 
     /// Pushes the value of register A as an unnamed parameter to a child context.
     /// Unnamed parameters are used by built-in functions/subs.
-    PushAToUnnamedArg,
+    PushUnnamedByVal,
+
+    PushUnnamedByRef,
 
     PushStack,
     PushStaticStack(SubprogramName),
@@ -379,7 +383,7 @@ impl InstructionGenerator {
         Variant: From<T>,
     {
         self.push_load(value, pos);
-        self.push(Instruction::PushAToUnnamedArg, pos);
+        self.push(Instruction::PushUnnamedByVal, pos);
     }
 
     fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
@@ -425,11 +429,6 @@ impl InstructionGenerator {
     fn generate_store_instructions(&mut self, l: Expression, pos: Location) {
         self.generate_path_instructions(l.at(pos));
         self.push(Instruction::CopyAToVarPath, pos);
-    }
-
-    fn generate_load_instructions(&mut self, l: Expression, pos: Location) {
-        self.generate_path_instructions(l.at(pos));
-        self.push(Instruction::CopyVarPathToA, pos);
     }
 
     fn mark_statement_address(&mut self) {

@@ -9,7 +9,6 @@ use crate::interpreter::lpt1_write::Lpt1Write;
 use crate::interpreter::print::PrintInterpreter;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
-use crate::interpreter::variables::Variables;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::parser::UserDefinedTypes;
@@ -112,10 +111,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
 
     fn context_mut(&mut self) -> &mut Context {
         &mut self.context
-    }
-
-    fn global_variables_mut(&mut self) -> &mut Variables {
-        self.context.global_variables_mut()
     }
 
     fn registers(&self) -> &Registers {
@@ -331,8 +326,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::UnStashFunctionReturnValue => {
                 subprogram::un_stash_function_return_value(self);
             }
-            Instruction::PushAToUnnamedArg => {
-                subprogram::push_a_to_unnamed_arg(self);
+            Instruction::PushUnnamedByVal => {
+                subprogram::push_unnamed_arg_by_val(self);
+            }
+            Instruction::PushUnnamedByRef => {
+                subprogram::push_unnamed_arg_by_ref(self);
             }
             Instruction::PushNamed(param_name) => {
                 subprogram::push_a_to_named_arg(self, param_name);
@@ -434,8 +432,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::CopyAToVarPath => {
                 var_path::copy_a_to_var_path(self).with_err_at(pos)?;
             }
-            Instruction::CopyVarPathToA => {
-                var_path::copy_var_path_to_a(self).with_err_at(pos)?;
+            Instruction::CopyVarPathToA(consume_var_path) => {
+                var_path::copy_var_path_to_a(self, *consume_var_path).with_err_at(pos)?;
             }
             Instruction::PushAToValueStack => {
                 let v = self.registers().get_a();

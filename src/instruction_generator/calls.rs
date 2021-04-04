@@ -113,22 +113,28 @@ impl InstructionGenerator {
     ) {
         self.push(Instruction::BeginCollectArguments, pos);
         for Locatable { element: arg, pos } in args {
-            self.generate_expression_instructions(arg.clone().at(pos));
-            self.push(Instruction::PushAToUnnamedArg, *pos);
+            if arg.is_by_ref() {
+                self.generate_expression_instructions_optionally_by_ref(arg.clone().at(pos), false);
+                debug_assert!(if let Instruction::CopyVarPathToA(false) =
+                    self.instructions.last().unwrap().element
+                {
+                    true
+                } else {
+                    false
+                });
+                self.push(Instruction::PushUnnamedByRef, *pos);
+            } else {
+                self.generate_expression_instructions(arg.clone().at(pos));
+                self.push(Instruction::PushUnnamedByVal, *pos);
+            }
         }
     }
 
     fn generate_stash_by_ref_args(&mut self, args: &Vec<ExpressionNode>) {
         let mut idx: usize = 0;
         for Locatable { element: arg, pos } in args {
-            match arg {
-                Expression::Variable(_, _)
-                | Expression::Property(_, _, _)
-                | Expression::ArrayElement(_, _, _) => {
-                    // by ref
-                    self.push(Instruction::EnqueueToReturnStack(idx), *pos);
-                }
-                _ => {}
+            if arg.is_by_ref() {
+                self.push(Instruction::EnqueueToReturnStack(idx), *pos);
             }
 
             idx += 1;
@@ -137,15 +143,10 @@ impl InstructionGenerator {
 
     fn generate_un_stash_by_ref_args(&mut self, args: &Vec<ExpressionNode>) {
         for Locatable { element: arg, pos } in args {
-            match arg {
-                Expression::Variable(_, _)
-                | Expression::Property(_, _, _)
-                | Expression::ArrayElement(_, _, _) => {
-                    self.push(Instruction::DequeueFromReturnStack, *pos);
-                    self.generate_fix_string_length(arg, *pos);
-                    self.generate_store_instructions(arg.clone(), *pos);
-                }
-                _ => {}
+            if arg.is_by_ref() {
+                self.push(Instruction::DequeueFromReturnStack, *pos);
+                self.generate_fix_string_length(arg, *pos);
+                self.generate_store_instructions(arg.clone(), *pos);
             }
         }
     }

@@ -1,4 +1,5 @@
 use crate::common::{QError, StringUtils};
+use crate::interpreter::arguments::ArgumentInfo;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::parser::{BareName, ExpressionType, TypeQualifier, UserDefinedTypes};
 use crate::variant::{QBNumberCast, UserDefinedTypeValue, VArray, Variant};
@@ -31,7 +32,7 @@ pub fn allocate_array<T: InterpreterTrait>(
         .drop_arguments_for_array_allocation();
     let r_args: Result<Vec<i32>, QError> = arguments
         .iter()
-        .map(|(_, v)| v)
+        .map(|ArgumentInfo { value, .. }| value)
         .map(QBNumberCast::try_cast)
         .collect();
     let args = r_args?;

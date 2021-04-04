@@ -1,4 +1,5 @@
-use crate::interpreter::arguments::Arguments;
+use crate::instruction_generator::Path;
+use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::parser::{
     BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
 };
@@ -10,6 +11,7 @@ use std::slice::Iter;
 pub struct Variables {
     name_to_index: HashMap<Name, usize>,
     values: Vec<Variant>,
+    arg_paths: Vec<Option<Path>>,
 }
 
 impl Variables {
@@ -17,6 +19,7 @@ impl Variables {
         Self {
             name_to_index: HashMap::new(),
             values: Vec::new(),
+            arg_paths: Vec::new(),
         }
     }
 
@@ -33,8 +36,9 @@ impl Variables {
         self.insert(bare_name.into(), value);
     }
 
-    pub fn insert_unnamed(&mut self, value: Variant) {
+    fn insert_unnamed(&mut self, value: Variant, arg_path: Option<Path>) {
         self.values.push(value);
+        self.arg_paths.push(arg_path);
     }
 
     pub fn insert_param(&mut self, param_name: ParamName, value: Variant) {
@@ -150,10 +154,15 @@ impl Variables {
     }
 
     pub fn apply_arguments(&mut self, arguments: Arguments) {
-        for (opt_param, arg) in arguments.into_iter() {
-            match opt_param {
-                Some(param_name) => self.insert_param(param_name, arg),
-                None => self.insert_unnamed(arg),
+        for ArgumentInfo {
+            value,
+            param_name,
+            arg_path,
+        } in arguments.into_iter()
+        {
+            match param_name {
+                Some(param_name) => self.insert_param(param_name, value),
+                None => self.insert_unnamed(value, arg_path),
             }
         }
     }
@@ -177,6 +186,23 @@ impl Variables {
                 self.get_by_dim_name_internal(bare_name, box_dim_type.as_ref())
             }
             DimType::Bare => panic!("Unresolved dim"),
+        }
+    }
+
+    pub fn get_path(&self, idx: usize) -> Option<&Path> {
+        match self.arg_paths.get(idx) {
+            Some(opt_path) => opt_path.as_ref(),
+            _ => None,
+        }
+    }
+
+    pub fn calculate_var_ptr(&self, name: &Name) -> Option<usize> {
+        match self.name_to_index.get(name) {
+            Some(idx) => {
+                debug_assert!(*idx < self.values.len());
+                Some(self.values.iter().take(*idx).map(Variant::len).sum())
+            }
+            _ => None,
         }
     }
 }

@@ -25,7 +25,7 @@ pub mod parser {
 
 pub mod linter {
     use crate::common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
-    use crate::parser::{Expression, ExpressionNode, TypeQualifier};
+    use crate::parser::{Expression, ExpressionNode, ExpressionType, TypeQualifier, VariableInfo};
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         if args.len() != 1 {
@@ -33,7 +33,25 @@ pub mod linter {
         } else {
             let arg: &Expression = args[0].as_ref();
             match arg {
-                Expression::Variable(_, _) | Expression::Property(_, _, _) => Ok(()),
+                Expression::Variable(
+                    _,
+                    VariableInfo {
+                        expression_type, ..
+                    },
+                )
+                | Expression::Property(_, _, expression_type)
+                | Expression::ArrayElement(
+                    _,
+                    _,
+                    VariableInfo {
+                        expression_type, ..
+                    },
+                ) => match expression_type {
+                    ExpressionType::Unresolved | ExpressionType::Array(_) => {
+                        Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
+                    }
+                    _ => Ok(()),
+                },
                 _ => {
                     if !args[0].can_cast_to(TypeQualifier::DollarString) {
                         Err(QError::VariableRequired).with_err_at(&args[0])
@@ -48,59 +66,17 @@ pub mod linter {
 
 pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
-    use crate::common::{Locatable, QError};
+    use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::parser::{ElementType, UserDefinedType, UserDefinedTypes};
     use crate::variant::Variant;
-    use std::convert::TryInto;
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let v: &Variant = &interpreter.context()[0];
-        let len: i32 = match v {
-            Variant::VSingle(_) => 4,
-            Variant::VDouble(_) => 8,
-            Variant::VString(v) => v.len().try_into().unwrap(),
-            Variant::VInteger(_) => 2,
-            Variant::VLong(_) => 4,
-            Variant::VUserDefined(user_defined_value) => {
-                let user_defined_type = interpreter
-                    .user_defined_types()
-                    .get(user_defined_value.type_name())
-                    .unwrap();
-                let sum: u32 =
-                    len_of_user_defined_type(user_defined_type, interpreter.user_defined_types());
-                sum as i32
-            }
-            Variant::VArray(_) => {
-                return Err(QError::ArgumentTypeMismatch);
-            }
-        };
+        let len: i32 = v.len() as i32;
         interpreter
             .context_mut()
             .set_built_in_function_result(BuiltInFunction::Len, len);
         Ok(())
-    }
-
-    fn len_of_user_defined_type(
-        user_defined_type: &UserDefinedType,
-        types: &UserDefinedTypes,
-    ) -> u32 {
-        let mut sum: u32 = 0;
-        for Locatable { element, .. } in user_defined_type.elements() {
-            sum += match element.element_type() {
-                ElementType::Single => 4,
-                ElementType::Double => 8,
-                ElementType::Integer => 2,
-                ElementType::Long => 4,
-                ElementType::FixedLengthString(_, l) => *l as u32,
-                ElementType::UserDefined(Locatable {
-                    element: type_name, ..
-                }) => {
-                    len_of_user_defined_type(types.get(type_name).expect("type not found"), types)
-                }
-            };
-        }
-        sum
     }
 }
 
@@ -253,5 +229,35 @@ mod tests {
         PRINT LEN(A.Address)
         ";
         assert_prints!(program, "56");
+    }
+
+    #[test]
+    fn test_fixed_length_string() {
+        let program = r#"
+        DIM X AS STRING * 5
+        PRINT LEN(X)
+        DIM Y AS STRING
+        PRINT LEN(Y)
+        "#;
+        assert_prints!(program, "5", "0");
+    }
+
+    #[test]
+    fn test_array_element() {
+        let program = r#"
+        DIM A(1 TO 2) AS INTEGER
+        PRINT LEN(A(1))
+        "#;
+        assert_prints!(program, "2");
+    }
+
+    #[test]
+    fn test_array() {
+        let program = r#"
+        DIM A(1 TO 2) AS INTEGER
+        PRINT LEN(A)
+        "#;
+        // QBasic actually seems to be printing "4" regardless of the array type
+        assert_linter_err!(program, QError::ArgumentTypeMismatch);
     }
 }

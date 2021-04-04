@@ -89,9 +89,12 @@ pub enum BuiltInFunction {
 
     /// `VAL(str-expr$)` converts a string representation of a number to a number.
     Val,
+
+    /// `VARPTR`
+    VarPtr,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 19] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 20] = [
     BuiltInFunction::Chr,
     BuiltInFunction::Cvd,
     BuiltInFunction::Environ,
@@ -111,11 +114,12 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 19] = [
     BuiltInFunction::UBound,
     BuiltInFunction::UCase,
     BuiltInFunction::Val,
+    BuiltInFunction::VarPtr,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 19] = [
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 20] = [
     "Chr", "Cvd", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "LTrim", "Mid",
-    "Mkd", "Right", "RTrim", "Str", "String", "UBound", "UCase", "Val",
+    "Mkd", "Right", "RTrim", "Str", "String", "UBound", "UCase", "Val", "VarPtr",
 ];
 
 // BuiltInFunction -> &str
@@ -161,6 +165,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::UBound => TypeQualifier::PercentInteger,
             BuiltInFunction::UCase => TypeQualifier::DollarString,
             BuiltInFunction::Val => TypeQualifier::BangSingle,
+            BuiltInFunction::VarPtr => TypeQualifier::PercentInteger,
         }
     }
 }
@@ -201,7 +206,8 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 | BuiltInFunction::Len
                 | BuiltInFunction::LBound
                 | BuiltInFunction::UBound
-                | BuiltInFunction::Val => demand_unqualified(b, n),
+                | BuiltInFunction::Val
+                | BuiltInFunction::VarPtr => demand_unqualified(b, n),
                 BuiltInFunction::Environ
                 | BuiltInFunction::LCase
                 | BuiltInFunction::Left
@@ -441,6 +447,7 @@ pub mod linter {
             BuiltInFunction::UBound => crate::built_ins::ubound::linter::lint(args),
             BuiltInFunction::UCase => crate::built_ins::ucase::linter::lint(args),
             BuiltInFunction::Val => crate::built_ins::val::linter::lint(args),
+            BuiltInFunction::VarPtr => crate::built_ins::varptr::linter::lint(args),
         }
     }
 }
@@ -496,6 +503,7 @@ pub mod interpreter {
             BuiltInFunction::UBound => crate::built_ins::ubound::interpreter::run(interpreter),
             BuiltInFunction::UCase => crate::built_ins::ucase::interpreter::run(interpreter),
             BuiltInFunction::Val => crate::built_ins::val::interpreter::run(interpreter),
+            BuiltInFunction::VarPtr => crate::built_ins::varptr::interpreter::run(interpreter),
         }
     }
 }
@@ -534,5 +542,6 @@ mod string_fn;
 mod ubound;
 mod ucase;
 mod val;
+mod varptr;
 mod view_print;
 mod width;

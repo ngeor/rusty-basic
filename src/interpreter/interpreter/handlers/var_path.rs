@@ -34,21 +34,32 @@ pub fn var_path_property<T: InterpreterTrait>(interpreter: &mut T, property_name
 
 pub fn copy_a_to_var_path<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
     let a = interpreter.registers().get_a();
-    let v = resolve_name_ptr_mut(interpreter)?;
+    let v = resolve_name_ptr_mut(interpreter, true)?;
     *v = a;
     Ok(())
 }
 
-pub fn copy_var_path_to_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
-    let v = resolve_name_ptr_mut(interpreter)?;
+pub fn copy_var_path_to_a<T: InterpreterTrait>(
+    interpreter: &mut T,
+    consume_var_path: bool,
+) -> Result<(), QError> {
+    let v = resolve_name_ptr_mut(interpreter, consume_var_path)?;
     let v_copy = v.clone();
     interpreter.registers_mut().set_a(v_copy);
     Ok(())
 }
 
-fn resolve_name_ptr_mut<T: InterpreterTrait>(interpreter: &mut T) -> Result<&mut Variant, QError> {
+fn resolve_name_ptr_mut<T: InterpreterTrait>(
+    interpreter: &mut T,
+    consume_var_path: bool,
+) -> Result<&mut Variant, QError> {
     match interpreter.var_path_stack().pop_back() {
-        Some(n) => resolve_some_name_ptr_mut(interpreter, n),
+        Some(n) => {
+            if !consume_var_path {
+                interpreter.var_path_stack().push_back(n.clone());
+            }
+            resolve_some_name_ptr_mut(interpreter, n)
+        }
         _ => panic!("Root name_ptr was None"),
     }
 }
@@ -60,7 +71,7 @@ fn resolve_some_name_ptr_mut<T: InterpreterTrait>(
     match name_ptr {
         Path::Root(RootPath { name, shared }) => {
             let variables = if shared {
-                interpreter.global_variables_mut()
+                interpreter.context_mut().global_variables_mut()
             } else {
                 interpreter.context_mut().variables_mut()
             };
@@ -80,9 +91,8 @@ fn resolve_some_name_ptr_mut<T: InterpreterTrait>(
 fn resolve_array_mut(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Variant, QError> {
     match v {
         Variant::VArray(v_array) => {
-            let int_indices: Result<Vec<i32>, QError> =
-                indices.iter().map(QBNumberCast::try_cast).collect();
-            v_array.get_element_mut(int_indices?)
+            let int_indices: Vec<i32> = indices.try_cast()?;
+            v_array.get_element_mut(&int_indices)
         }
         _ => panic!("Expected array, found {:?}", v),
     }

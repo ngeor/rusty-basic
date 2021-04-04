@@ -1,26 +1,36 @@
 use super::Variant;
 use crate::common::{CaseInsensitiveString, Locatable};
-use crate::parser::UserDefinedTypes;
+use crate::parser::{Element, UserDefinedTypes};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct UserDefinedTypeValue {
     type_name: CaseInsensitiveString,
     map: HashMap<CaseInsensitiveString, Variant>,
+    indices: Vec<CaseInsensitiveString>,
 }
 
 impl UserDefinedTypeValue {
     pub fn new(type_name: &CaseInsensitiveString, types: &UserDefinedTypes) -> Self {
         let user_defined_type = types.get(type_name).expect("could not find type");
         let mut map: HashMap<CaseInsensitiveString, Variant> = HashMap::new();
-        for Locatable { element, .. } in user_defined_type.elements() {
-            let def_value: Variant = element.element_type().default_variant(types);
-            map.insert(element.as_ref().clone(), def_value);
+        let mut indices: Vec<CaseInsensitiveString> = vec![];
+        for Locatable {
+            element: Element {
+                name, element_type, ..
+            },
+            ..
+        } in user_defined_type.elements()
+        {
+            let def_value: Variant = element_type.default_variant(types);
+            map.insert(name.clone(), def_value);
+            indices.push(name.clone());
         }
 
         Self {
             type_name: type_name.clone(),
             map,
+            indices,
         }
     }
 
@@ -65,5 +75,17 @@ impl UserDefinedTypeValue {
                 _ => panic!("cannot navigate simple variant"),
             }
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.map.values().map(Variant::len).sum()
+    }
+
+    pub fn address_of_property(&self, property: &CaseInsensitiveString) -> usize {
+        self.indices
+            .iter()
+            .take_while(|p| *p != property)
+            .map(|p| self.map.get(p).unwrap().len())
+            .sum()
     }
 }

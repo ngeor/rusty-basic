@@ -35,12 +35,11 @@ impl UserDefinedType {
     }
 
     pub fn find_element(&self, element_name: &BareName) -> Option<&ElementType> {
-        for Locatable { element, .. } in self.elements() {
-            if element.as_ref() == element_name {
-                return Some(element.element_type());
-            }
-        }
-        None
+        self.elements
+            .iter()
+            .map(|Locatable { element, .. }| element)
+            .find(|x| &x.name == element_name)
+            .map(|x| &x.element_type)
     }
 
     pub fn demand_element_by_name(&self, element_name: &Name) -> Result<&ElementType, QError> {
@@ -68,11 +67,11 @@ pub type ElementNode = Locatable<Element>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Element {
     /// The name of the element
-    name: BareName,
+    pub name: BareName,
     /// The element type
-    element_type: ElementType,
+    pub element_type: ElementType,
     /// Comments between the end of this element and the next one
-    comments: Vec<Locatable<String>>,
+    pub comments: Vec<Locatable<String>>,
 }
 
 impl Element {
@@ -86,16 +85,6 @@ impl Element {
             element_type,
             comments,
         }
-    }
-
-    pub fn element_type(&self) -> &ElementType {
-        &self.element_type
-    }
-}
-
-impl AsRef<BareName> for Element {
-    fn as_ref(&self) -> &BareName {
-        &self.name
     }
 }
 

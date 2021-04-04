@@ -9,10 +9,7 @@ pub struct VArray {
 
 impl VArray {
     pub fn new(dimensions: Vec<(i32, i32)>, default_variant: Variant) -> Self {
-        let mut len: i32 = 1;
-        for (lbound, ubound) in dimensions.iter() {
-            len = len * (*ubound - *lbound + 1);
-        }
+        let len = dimensions_to_array_length(&dimensions);
         let elements: Vec<Variant> = (0..len).map(|_| default_variant.clone()).collect();
         Self {
             dimensions,
@@ -20,7 +17,7 @@ impl VArray {
         }
     }
 
-    pub fn get_element(&self, indices: Vec<i32>) -> Result<&Variant, QError> {
+    pub fn get_element(&self, indices: &[i32]) -> Result<&Variant, QError> {
         let index = self.abs_index(indices)?;
         match self.elements.get(index) {
             Some(v) => Ok(v),
@@ -28,7 +25,7 @@ impl VArray {
         }
     }
 
-    pub fn get_element_mut(&mut self, indices: Vec<i32>) -> Result<&mut Variant, QError> {
+    pub fn get_element_mut(&mut self, indices: &[i32]) -> Result<&mut Variant, QError> {
         let index = self.abs_index(indices)?;
         match self.elements.get_mut(index) {
             Some(v) => Ok(v),
@@ -36,7 +33,7 @@ impl VArray {
         }
     }
 
-    fn abs_index(&self, indices: Vec<i32>) -> Result<usize, QError> {
+    fn abs_index(&self, indices: &[i32]) -> Result<usize, QError> {
         if indices.len() != self.dimensions.len() {
             return Err(QError::InternalError("Array indices mismatch".to_string()));
         }
@@ -60,4 +57,24 @@ impl VArray {
     pub fn get_dimensions(&self, idx: usize) -> Option<&(i32, i32)> {
         self.dimensions.get(idx)
     }
+
+    pub fn len(&self) -> usize {
+        let element_size = self.elements.first().map(Variant::len).unwrap_or_default();
+        let array_length = dimensions_to_array_length(&self.dimensions);
+        element_size * array_length
+    }
+
+    pub fn get_address(&self, indices: &[i32]) -> Result<usize, QError> {
+        let element_size = self.elements.first().map(Variant::len).unwrap_or_default();
+        let abs_index = self.abs_index(indices)?;
+        Ok(element_size * abs_index)
+    }
+}
+
+fn dimensions_to_array_length(dimensions: &[(i32, i32)]) -> usize {
+    let mut len: usize = 1;
+    for (lbound, ubound) in dimensions {
+        len = len * ((*ubound - *lbound + 1) as usize);
+    }
+    len
 }

@@ -372,6 +372,17 @@ impl Variant {
             _ => Err(QError::TypeMismatch),
         }
     }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Self::VInteger(_) => 2,
+            Self::VLong(_) | Self::VSingle(_) => 4,
+            Self::VDouble(_) => 8,
+            Self::VString(s) => s.len(),
+            Self::VArray(v_array) => v_array.len(),
+            Self::VUserDefined(user_defined_type_value) => user_defined_type_value.len(),
+        }
+    }
 }
 
 impl PartialEq for Variant {

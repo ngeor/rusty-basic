@@ -78,6 +78,10 @@ impl Context {
         self.do_push_existing(0, false);
     }
 
+    pub fn global_variables(&self) -> &Variables {
+        &self.memory_blocks.first().unwrap().variables
+    }
+
     // needed due to DIM SHARED
     pub fn global_variables_mut(&mut self) -> &mut Variables {
         &mut self.memory_blocks.first_mut().unwrap().variables

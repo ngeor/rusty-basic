@@ -148,13 +148,21 @@ fn user_defined_type(
         Err(QError::DuplicateDefinition).with_err_no_pos()
     } else {
         let mut resolved_elements: HashMap<BareName, ElementType> = HashMap::new();
-        for Locatable { element, pos } in user_defined_type.elements() {
-            let element_name: &BareName = element.as_ref();
+        for Locatable {
+            element:
+                Element {
+                    name: element_name,
+                    element_type,
+                    ..
+                },
+            pos,
+        } in user_defined_type.elements()
+        {
             if resolved_elements.contains_key(element_name) {
                 // duplicate element name within type
                 return Err(QError::DuplicateDefinition).with_err_at(pos);
             }
-            let resolved_element_type = match element.element_type() {
+            let resolved_element_type = match element_type {
                 ElementType::Integer => ElementType::Integer,
                 ElementType::Long => ElementType::Long,
                 ElementType::Single => ElementType::Single,
@@ -180,11 +188,13 @@ fn user_defined_type(
             resolved_elements.insert(element_name.clone(), resolved_element_type);
         }
         let mut elements: Vec<ElementNode> = vec![];
-        for Locatable { element, pos } in user_defined_type.elements() {
-            let converted_element_type = resolved_elements.remove(element.as_ref()).unwrap();
-            elements.push(
-                Element::new(element.as_ref().clone(), converted_element_type, vec![]).at(pos),
-            );
+        for Locatable {
+            element: Element { name, .. },
+            pos,
+        } in user_defined_type.elements()
+        {
+            let converted_element_type = resolved_elements.remove(name).unwrap();
+            elements.push(Element::new(name.clone(), converted_element_type, vec![]).at(pos));
         }
         user_defined_types.insert(
             type_name.clone(),

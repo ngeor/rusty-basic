@@ -172,6 +172,15 @@ impl Expression {
         }
     }
 
+    pub fn is_by_ref(&self) -> bool {
+        match self {
+            Expression::Variable(_, _)
+            | Expression::ArrayElement(_, _, _)
+            | Expression::Property(_, _, _) => true,
+            _ => false,
+        }
+    }
+
     /// Returns the name of this `Variable` or `Property` expression.
     /// For properties, this is the concatenated name of all elements in the property path.
     pub fn fold_name(&self) -> Option<Name> {

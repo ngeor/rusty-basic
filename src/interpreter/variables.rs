@@ -5,19 +5,28 @@ use crate::parser::{
     BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
 };
 use crate::variant::{Variant, V_FALSE};
-use std::slice::Iter;
 
 #[derive(Debug)]
 pub struct Variables {
-    map: IndexedMap<Name, Variant>,
-    arg_paths: Vec<Option<Path>>,
+    map: IndexedMap<Name, RuntimeVariableInfo>,
+}
+
+#[derive(Debug)]
+struct RuntimeVariableInfo {
+    value: Variant,
+    arg_path: Option<Path>,
+}
+
+impl RuntimeVariableInfo {
+    pub fn new(value: Variant, arg_path: Option<Path>) -> Self {
+        Self { value, arg_path }
+    }
 }
 
 impl Variables {
     pub fn new() -> Self {
         Self {
             map: IndexedMap::new(),
-            arg_paths: Vec::new(),
         }
     }
 
@@ -36,9 +45,9 @@ impl Variables {
 
     fn insert_unnamed(&mut self, value: Variant, arg_path: Option<Path>) {
         let dummy_name = format!("{}", self.map.len());
+        let name = Name::new(BareName::new(dummy_name), None);
         self.map
-            .insert(Name::new(BareName::new(dummy_name), None), value);
-        self.arg_paths.push(arg_path);
+            .insert(name, RuntimeVariableInfo::new(value, arg_path));
     }
 
     pub fn insert_param(&mut self, param_name: ParamName, value: Variant) {
@@ -62,7 +71,7 @@ impl Variables {
     }
 
     pub fn insert(&mut self, name: Name, value: Variant) {
-        self.map.insert(name, value);
+        self.map.insert(name, RuntimeVariableInfo::new(value, None));
     }
 
     pub fn insert_dim(&mut self, dim_name: DimName, value: Variant) {
@@ -93,7 +102,12 @@ impl Variables {
     }
 
     pub fn get_or_create(&mut self, name: Name) -> &mut Variant {
-        self.map.get_or_crate(name, Self::default_value_for_name)
+        &mut self
+            .map
+            .get_or_create(name, |n| {
+                RuntimeVariableInfo::new(Self::default_value_for_name(n), None)
+            })
+            .value
     }
 
     // This is needed only when we're setting the default value for a function
@@ -113,8 +127,8 @@ impl Variables {
     }
 
     /// Gets an iterator that returns the variables in this object.
-    pub fn iter(&self) -> Iter<Variant> {
-        self.map.values()
+    pub fn iter(&self) -> impl Iterator<Item = &Variant> {
+        self.map.values().map(|r| &r.value)
     }
 
     pub fn get_built_in(&self, bare_name: &BareName, qualifier: TypeQualifier) -> Option<&Variant> {
@@ -126,15 +140,15 @@ impl Variables {
     }
 
     pub fn get_by_name(&self, name: &Name) -> Option<&Variant> {
-        self.map.get(name)
+        self.map.get(name).map(|r| &r.value)
     }
 
     pub fn get(&self, idx: usize) -> Option<&Variant> {
-        self.map.get_by_index(idx)
+        self.map.get_by_index(idx).map(|r| &r.value)
     }
 
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
-        self.map.get_by_index_mut(idx)
+        self.map.get_by_index_mut(idx).map(|r| &mut r.value)
     }
 
     pub fn apply_arguments(&mut self, arguments: Arguments) {
@@ -174,10 +188,7 @@ impl Variables {
     }
 
     pub fn get_path(&self, idx: usize) -> Option<&Path> {
-        match self.arg_paths.get(idx) {
-            Some(opt_path) => opt_path.as_ref(),
-            _ => None,
-        }
+        self.map.get_by_index(idx).and_then(|r| r.arg_path.as_ref())
     }
 
     pub fn calculate_var_ptr(&self, name: &Name) -> usize {
@@ -185,7 +196,7 @@ impl Variables {
         self.map
             .keys()
             .take_while(|k| *k != name)
-            .map(|k| self.map.get(k).unwrap())
+            .map(|k| self.map.get(k).map(|r| &r.value).unwrap())
             .map(Variant::size_in_bytes)
             .sum()
     }

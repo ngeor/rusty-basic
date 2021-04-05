@@ -56,7 +56,7 @@ where
         self.values.get_mut(idx)
     }
 
-    pub fn get_or_crate<F>(&mut self, key: K, creator: F) -> &mut V
+    pub fn get_or_create<F>(&mut self, key: K, creator: F) -> &mut V
     where
         F: FnOnce(&K) -> V,
     {

@@ -431,9 +431,13 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::CopyAToVarPath => {
                 var_path::copy_a_to_var_path(self).with_err_at(pos)?;
+                var_path::pop_var_path(self).with_err_at(pos)?;
             }
-            Instruction::CopyVarPathToA(consume_var_path) => {
-                var_path::copy_var_path_to_a(self, *consume_var_path).with_err_at(pos)?;
+            Instruction::CopyVarPathToA => {
+                var_path::copy_var_path_to_a(self).with_err_at(pos)?;
+            }
+            Instruction::PopVarPath => {
+                var_path::pop_var_path(self).with_err_at(pos)?;
             }
             Instruction::PushAToValueStack => {
                 let v = self.registers().get_a();

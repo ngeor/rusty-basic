@@ -55,7 +55,6 @@ pub trait InterpreterTrait {
 
     fn set_function_result(&mut self, v: Variant);
 
-    // TODO can this VecDeque be replaced by a simple Option?
     fn var_path_stack(&mut self) -> &mut VecDeque<Path>;
 
     fn data_segment(&mut self) -> &mut DataSegment;

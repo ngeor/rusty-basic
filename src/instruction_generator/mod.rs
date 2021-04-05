@@ -101,13 +101,20 @@ pub enum Instruction {
 
     VarPathProperty(BareName),
 
-    /// Copies the value of register A into the variable path
+    /// Copies the value of register A into the variable path.
+    ///
+    /// The variable path is automatically dropped by the var path deque,
+    /// i.e. the `PopVarPath` instruction is implicitly executed.
     CopyAToVarPath,
 
-    /// Copies the value of the variable path into register A
-    CopyVarPathToA(
-        bool, /* true: consume path, false: leave path in place for the PushByRef operation to cleanup */
-    ),
+    /// Copies the value of the variable path into register A.
+    ///
+    /// The variable path is not dropped from the var path deque, in case it is
+    /// needed by the `PushUnnamedByRef` instruction.
+    CopyVarPathToA,
+
+    /// Pops a value from the var path deque.
+    PopVarPath,
 
     /// Loads a value into register A
     LoadIntoA(Variant),
@@ -175,6 +182,9 @@ pub enum Instruction {
     /// Unnamed parameters are used by built-in functions/subs.
     PushUnnamedByVal,
 
+    /// Pushes the value of register A as an unnamed parameter to a child context.
+    /// Additionally, it pops the var path (implicitly uses `PopVarPath`) and pushes
+    /// the path that can be used by the built-in function/sub.
     PushUnnamedByRef,
 
     PushStack,

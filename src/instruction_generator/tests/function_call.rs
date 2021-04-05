@@ -36,7 +36,7 @@ fn test_built_in_len_with_string_variable_parameter() {
                 shared: false
             })
             .at_rc(2, 13),
-            Instruction::CopyVarPathToA(false).at_rc(2, 13),
+            Instruction::CopyVarPathToA.at_rc(2, 13),
             Instruction::PushUnnamedByRef.at_rc(2, 13),
             Instruction::PushStack.at_rc(2, 9),
             Instruction::BuiltInFunction(BuiltInFunction::Len).at_rc(2, 9),

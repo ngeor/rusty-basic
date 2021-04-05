@@ -115,12 +115,12 @@ impl InstructionGenerator {
         for Locatable { element: arg, pos } in args {
             if arg.is_by_ref() {
                 self.generate_expression_instructions_optionally_by_ref(arg.clone().at(pos), false);
-                debug_assert!(if let Instruction::CopyVarPathToA(false) =
+                debug_assert!(if let Instruction::PopVarPath =
                     self.instructions.last().unwrap().element
                 {
-                    true
-                } else {
                     false
+                } else {
+                    true
                 });
                 self.push(Instruction::PushUnnamedByRef, *pos);
             } else {

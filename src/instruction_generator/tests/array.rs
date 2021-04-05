@@ -137,7 +137,8 @@ fn test_assign_and_print_one_element() {
             Instruction::LoadIntoA(Variant::VInteger(1)),
             Instruction::VarPathIndex,
             Instruction::PopValueStackIntoA,
-            Instruction::CopyVarPathToA(true),
+            Instruction::CopyVarPathToA,
+            Instruction::PopVarPath,
             Instruction::PrintValueFromA,
             Instruction::PrintEnd,
             Instruction::Halt,
@@ -178,7 +179,8 @@ fn test_pass_param_to_sub() {
                 name: "A!".into(),
                 shared: false
             }),
-            Instruction::CopyVarPathToA(true),
+            Instruction::CopyVarPathToA,
+            Instruction::PopVarPath,
             Instruction::PushNamed(ParamName::new(
                 "values".into(),
                 ParamType::Array(Box::new(ParamType::BuiltIn(
@@ -187,8 +189,8 @@ fn test_pass_param_to_sub() {
                 )))
             )),
             Instruction::PushStack,
-            Instruction::PushRet(15),
-            Instruction::Jump(AddressOrLabel::Resolved(21)),
+            Instruction::PushRet(16),
+            Instruction::Jump(AddressOrLabel::Resolved(22)),
             Instruction::EnqueueToReturnStack(0),
             Instruction::PopStack,
             Instruction::DequeueFromReturnStack,

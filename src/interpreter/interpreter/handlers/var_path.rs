@@ -34,30 +34,30 @@ pub fn var_path_property<T: InterpreterTrait>(interpreter: &mut T, property_name
 
 pub fn copy_a_to_var_path<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
     let a = interpreter.registers().get_a();
-    let v = resolve_name_ptr_mut(interpreter, true)?;
+    let v = resolve_name_ptr_mut(interpreter)?;
     *v = a;
     Ok(())
 }
 
-pub fn copy_var_path_to_a<T: InterpreterTrait>(
-    interpreter: &mut T,
-    consume_var_path: bool,
-) -> Result<(), QError> {
-    let v = resolve_name_ptr_mut(interpreter, consume_var_path)?;
+pub fn copy_var_path_to_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+    let v = resolve_name_ptr_mut(interpreter)?;
     let v_copy = v.clone();
     interpreter.registers_mut().set_a(v_copy);
     Ok(())
 }
 
-fn resolve_name_ptr_mut<T: InterpreterTrait>(
-    interpreter: &mut T,
-    consume_var_path: bool,
-) -> Result<&mut Variant, QError> {
+pub fn pop_var_path<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+    interpreter
+        .var_path_stack()
+        .pop_back()
+        .ok_or(QError::Overflow)
+        .map(|_| ())
+}
+
+fn resolve_name_ptr_mut<T: InterpreterTrait>(interpreter: &mut T) -> Result<&mut Variant, QError> {
     match interpreter.var_path_stack().pop_back() {
         Some(n) => {
-            if !consume_var_path {
-                interpreter.var_path_stack().push_back(n.clone());
-            }
+            interpreter.var_path_stack().push_back(n.clone());
             resolve_some_name_ptr_mut(interpreter, n)
         }
         _ => panic!("Root name_ptr was None"),

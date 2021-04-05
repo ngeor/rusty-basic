@@ -54,7 +54,10 @@ impl InstructionGenerator {
             | Expression::ArrayElement(_, _, _)
             | Expression::Property(_, _, _) => {
                 self.generate_path_instructions(e.at(pos));
-                self.push(Instruction::CopyVarPathToA(consume_var_path), pos);
+                self.push(Instruction::CopyVarPathToA, pos);
+                if consume_var_path {
+                    self.push(Instruction::PopVarPath, pos);
+                }
             }
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);

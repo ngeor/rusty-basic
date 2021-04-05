@@ -13,7 +13,11 @@ pub struct Variables {
 
 #[derive(Debug)]
 struct RuntimeVariableInfo {
+    /// Holds the value of the variable.
     value: Variant,
+
+    /// For anonymous by ref arguments, holds a resolved path that can be used
+    /// to find the variable in the parent context.
     arg_path: Option<Path>,
 }
 
@@ -136,6 +140,7 @@ impl Variables {
     }
 
     pub fn get_user_defined(&self, bare_name: &BareName) -> Option<&Variant> {
+        // TODO make a structure that allows to lookup by BareName and QualifiedName without the need to clone
         self.get_by_name(&bare_name.clone().into())
     }
 
@@ -187,7 +192,7 @@ impl Variables {
         }
     }
 
-    pub fn get_path(&self, idx: usize) -> Option<&Path> {
+    pub fn get_arg_path(&self, idx: usize) -> Option<&Path> {
         self.map.get_by_index(idx).and_then(|r| r.arg_path.as_ref())
     }
 
@@ -196,7 +201,7 @@ impl Variables {
         self.map
             .keys()
             .take_while(|k| *k != name)
-            .map(|k| self.map.get(k).map(|r| &r.value).unwrap())
+            .map(|k| self.get_by_name(k).unwrap())
             .map(Variant::size_in_bytes)
             .sum()
     }

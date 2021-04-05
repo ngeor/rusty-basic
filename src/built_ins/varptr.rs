@@ -16,7 +16,7 @@ pub mod interpreter {
     use crate::variant::{QBNumberCast, Variant};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-        match interpreter.context().variables().get_path(0) {
+        match interpreter.context().variables().get_arg_path(0) {
             Some(path) => {
                 let address = find_path_address(interpreter, path)?;
                 interpreter

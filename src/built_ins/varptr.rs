@@ -16,40 +16,35 @@ pub mod interpreter {
     use crate::variant::{QBNumberCast, Variant};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
-        match interpreter.context().variables().get_arg_path(0) {
-            Some(path) => {
-                let address = find_path_address(interpreter, path)?;
-                interpreter
-                    .context_mut()
-                    .set_built_in_function_result(BuiltInFunction::VarPtr, address as i32);
-                Ok(())
-            }
-            _ => {
-                Err(QError::VariableRequired) // should not happen
-            }
-        }
+        let path = interpreter
+            .context()
+            .variables()
+            .get_arg_path(0)
+            .expect("VARPTR should have a variable");
+        let address = interpreter.calculate_varptr(path)?;
+        interpreter
+            .context_mut()
+            .set_built_in_function_result(BuiltInFunction::VarPtr, address as i32);
+        Ok(())
     }
 
-    fn find_path_address<S: InterpreterTrait>(
-        interpreter: &S,
-        path: &Path,
-    ) -> Result<usize, QError> {
-        match path {
-            Path::ArrayElement(parent_path, indices) => {
-                // arrays define a new segment, no need to calculate parent path address
-                if let Path::Root(RootPath {
-                    name: array_name,
-                    shared,
-                }) = parent_path.as_ref()
-                {
-                    let variable_owner = if *shared {
-                        interpreter.context().global_variables()
-                    } else {
-                        interpreter.context().caller_variables()
-                    };
-                    let array_variable = variable_owner
-                        .get_by_name(array_name)
-                        .expect("Should have variable");
+    trait VarPtrImpl {
+        fn calculate_varptr(&self, path: &Path) -> Result<usize, QError>;
+
+        fn find_value_in_caller_context<P>(&self, path: &P) -> Result<&Variant, QError>
+        where
+            P: AsRef<Path>;
+    }
+
+    impl<T> VarPtrImpl for T
+    where
+        T: InterpreterTrait,
+    {
+        fn calculate_varptr(&self, path: &Path) -> Result<usize, QError> {
+            match path {
+                Path::ArrayElement(parent_path, indices) => {
+                    // arrays define a new segment, no need to calculate parent path address
+                    let array_variable = self.find_value_in_caller_context(parent_path)?;
                     if let Variant::VArray(arr) = array_variable {
                         let indices_as_int: Vec<i32> = indices.try_cast()?;
                         let address = arr.address_offset_of_element(&indices_as_int)?;
@@ -57,65 +52,62 @@ pub mod interpreter {
                     } else {
                         panic!("Should be an array");
                     }
-                } else {
-                    // TODO make this enforceable via rust types
-                    panic!("Should not be possible to have anything else as parent of an array element")
                 }
-            }
-            Path::Property(parent_path, property_name) => {
-                // find address of parent path
-                let parent_address = find_path_address(interpreter, parent_path.as_ref())?;
-                // calculate offset for given property
-                let owner_variable = find_owning_type(interpreter, parent_path.as_ref())?;
-                if let Variant::VUserDefined(u) = owner_variable {
-                    Ok(parent_address + u.address_offset_of_property(property_name))
-                } else {
-                    panic!("Should be a property")
+                Path::Property(parent_path, property_name) => {
+                    // find address of parent path
+                    let parent_address = self.calculate_varptr(parent_path.as_ref())?;
+                    // calculate offset for given property
+                    let owner_variable = self.find_value_in_caller_context(parent_path)?;
+                    if let Variant::VUserDefined(u) = owner_variable {
+                        Ok(parent_address + u.address_offset_of_property(property_name))
+                    } else {
+                        panic!("Should be a property")
+                    }
                 }
-            }
-            Path::Root(RootPath { name, shared }) => {
-                // find address of root path
-                let variable_owner = if *shared {
-                    interpreter.context().global_variables()
-                } else {
-                    interpreter.context().caller_variables()
-                };
-                let size = variable_owner.calculate_var_ptr(name);
-                Ok(size)
+                Path::Root(RootPath { name, shared }) => {
+                    // find address of root path
+                    let variable_owner = if *shared {
+                        self.context().global_variables()
+                    } else {
+                        self.context().caller_variables()
+                    };
+                    let size = variable_owner.calculate_var_ptr(name);
+                    Ok(size)
+                }
             }
         }
-    }
 
-    fn find_owning_type<'a, S: InterpreterTrait>(
-        interpreter: &'a S,
-        path: &Path,
-    ) -> Result<&'a Variant, QError> {
-        match path {
-            Path::Root(RootPath { name, shared }) => {
-                let variable_owner = if *shared {
-                    interpreter.context().global_variables()
-                } else {
-                    interpreter.context().caller_variables()
-                };
-                variable_owner
-                    .get_by_name(name)
-                    .ok_or(QError::VariableRequired)
-            }
-            Path::Property(parent_path, property_name) => {
-                let parent = find_owning_type(interpreter, parent_path.as_ref())?;
-                if let Variant::VUserDefined(u) = parent {
-                    u.get(property_name).ok_or(QError::ElementNotDefined)
-                } else {
-                    Err(QError::TypeMismatch)
+        fn find_value_in_caller_context<P>(&self, path: &P) -> Result<&Variant, QError>
+        where
+            P: AsRef<Path>,
+        {
+            match path.as_ref() {
+                Path::Root(RootPath { name, shared }) => {
+                    let variable_owner = if *shared {
+                        self.context().global_variables()
+                    } else {
+                        self.context().caller_variables()
+                    };
+                    variable_owner
+                        .get_by_name(name)
+                        .ok_or(QError::VariableRequired)
                 }
-            }
-            Path::ArrayElement(parent_path, indices) => {
-                let parent = find_owning_type(interpreter, parent_path.as_ref())?;
-                if let Variant::VArray(a) = parent {
-                    let int_indices: Vec<i32> = indices.try_cast()?;
-                    a.get_element(&int_indices)
-                } else {
-                    Err(QError::TypeMismatch)
+                Path::Property(parent_path, property_name) => {
+                    let parent = self.find_value_in_caller_context(parent_path)?;
+                    if let Variant::VUserDefined(u) = parent {
+                        u.get(property_name).ok_or(QError::ElementNotDefined)
+                    } else {
+                        Err(QError::TypeMismatch)
+                    }
+                }
+                Path::ArrayElement(parent_path, indices) => {
+                    let parent = self.find_value_in_caller_context(parent_path)?;
+                    if let Variant::VArray(a) = parent {
+                        let int_indices: Vec<i32> = indices.try_cast()?;
+                        a.get_element(&int_indices)
+                    } else {
+                        Err(QError::TypeMismatch)
+                    }
                 }
             }
         }

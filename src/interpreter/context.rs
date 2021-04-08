@@ -1,4 +1,5 @@
 use crate::built_ins::BuiltInFunction;
+use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
 use crate::linter::SubprogramName;
@@ -95,20 +96,6 @@ impl Context {
             .variables
     }
 
-    pub fn caller_variables(&self) -> &Variables {
-        debug_assert!(self.states.len() >= 2);
-        let caller_state = self
-            .states
-            .get(self.states.len() - 2)
-            .expect("Should have caller state");
-        let memory_block_index = caller_state.memory_block_index;
-        &self
-            .memory_blocks
-            .get(memory_block_index)
-            .expect("internal error")
-            .variables
-    }
-
     pub fn variables_mut(&mut self) -> &mut Variables {
         let current_memory_block_index = self.current_memory_block_index();
         &mut self
@@ -118,18 +105,31 @@ impl Context {
             .variables
     }
 
+    pub fn caller_variables(&self) -> &Variables {
+        let memory_block_index = self.caller_variables_memory_block_index();
+        &self
+            .memory_blocks
+            .get(memory_block_index)
+            .expect("internal error")
+            .variables
+    }
+
     pub fn caller_variables_mut(&mut self) -> &mut Variables {
-        debug_assert!(self.states.len() >= 2);
-        let caller_state = self
-            .states
-            .get(self.states.len() - 2)
-            .expect("Should have caller state");
-        let memory_block_index = caller_state.memory_block_index;
+        let memory_block_index = self.caller_variables_memory_block_index();
         &mut self
             .memory_blocks
             .get_mut(memory_block_index)
             .expect("internal error")
             .variables
+    }
+
+    fn caller_variables_memory_block_index(&self) -> usize {
+        debug_assert!(self.states.len() >= 2);
+        let caller_state = self
+            .states
+            .get(self.states.len() - 2)
+            .expect("Should have caller state");
+        caller_state.memory_block_index
     }
 
     pub fn arguments_mut(&mut self) -> &mut Arguments {
@@ -179,14 +179,18 @@ impl Context {
         let next_memory_block_index = self.memory_blocks.len();
         let memory_block = MemoryBlock::new(variables, is_static);
         self.memory_blocks.push(memory_block);
-        self.do_push_existing(next_memory_block_index, false);
+        self.do_push_state(next_memory_block_index, false);
         next_memory_block_index
     }
 
     fn do_push_existing(&mut self, memory_block_index: usize, arguments: bool) {
+        self.do_push_state(memory_block_index, arguments);
+        self.increase_ref_count(memory_block_index);
+    }
+
+    fn do_push_state(&mut self, memory_block_index: usize, arguments: bool) {
         let state = State::new(memory_block_index, arguments);
         self.states.push(state);
-        self.increase_ref_count(memory_block_index);
     }
 
     fn do_pop(&mut self) -> State {
@@ -204,6 +208,47 @@ impl Context {
 
     fn decrease_ref_count(&mut self, memory_block_index: usize) -> bool {
         self.memory_blocks[memory_block_index].decrease_ref_count()
+    }
+
+    pub fn calculate_varseg(&self, path: &Path) -> usize {
+        match path {
+            Path::Root(RootPath { shared, .. }) => {
+                let index = if *shared {
+                    0
+                } else {
+                    self.caller_variables_memory_block_index()
+                };
+                let mut result = 0;
+                for i in 0..index {
+                    result += self.memory_blocks[i].variables.number_of_arrays() + 1;
+                }
+                result
+            }
+            Path::ArrayElement(parent_path, ..) => {
+                if let Path::Root(RootPath { name, shared }) = parent_path.as_ref() {
+                    let memory_block_index = if *shared {
+                        0
+                    } else {
+                        self.caller_variables_memory_block_index()
+                    };
+                    let grand_parent_varseg = if memory_block_index > 0 {
+                        self.memory_blocks[memory_block_index - 1]
+                            .variables
+                            .number_of_arrays()
+                            + 1
+                    } else {
+                        0
+                    };
+                    let array_varseg = self.memory_blocks[memory_block_index]
+                        .variables
+                        .number_of_arrays_until(name);
+                    grand_parent_varseg + array_varseg
+                } else {
+                    panic!("Expected Path::Root to be parent of Path::ArrayElement");
+                }
+            }
+            Path::Property(parent_path, ..) => self.calculate_varseg(parent_path.as_ref()),
+        }
     }
 }
 

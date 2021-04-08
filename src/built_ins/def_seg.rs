@@ -122,4 +122,15 @@ mod tests {
         "#;
         assert_prints!(input, "258");
     }
+
+    #[test]
+    fn caps_lock() {
+        let input = r#"
+        DEF SEG = 0                     ' Turn off CapLock, NumLock and ScrollLock
+        KeyFlags = PEEK(1047)
+        POKE 1047, &H0
+        DEF SEG
+        "#;
+        assert_prints!(input, "");
+    }
 }

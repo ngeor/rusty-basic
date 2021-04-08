@@ -205,6 +205,27 @@ impl Variables {
             .map(Variant::size_in_bytes)
             .sum()
     }
+
+    pub fn number_of_arrays(&self) -> usize {
+        self.map
+            .values()
+            .map(|RuntimeVariableInfo { value, .. }| value)
+            .filter(|v| v.is_array())
+            .count()
+    }
+
+    pub fn number_of_arrays_until(&self, name: &Name) -> usize {
+        let mut result: usize = 0;
+        for key in self.map.keys() {
+            if self.get_by_name(key).unwrap().is_array() {
+                result += 1;
+            }
+            if key == name {
+                break;
+            }
+        }
+        result
+    }
 }
 
 impl From<Arguments> for Variables {

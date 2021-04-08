@@ -33,7 +33,7 @@ where
 {
     let (instruction_generator_result, user_defined_types) =
         generate_instructions_str_with_types(input);
-    // println!("{:#?}", instructions);
+    // println!("{:#?}", instruction_generator_result.instructions);
     (
         instruction_generator_result,
         mock_interpreter_for_user_defined_types(user_defined_types),

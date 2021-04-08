@@ -92,9 +92,12 @@ pub enum BuiltInFunction {
 
     /// `VARPTR`
     VarPtr,
+
+    /// `VARSEG`
+    VarSeg,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 20] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 21] = [
     BuiltInFunction::Chr,
     BuiltInFunction::Cvd,
     BuiltInFunction::Environ,
@@ -115,11 +118,12 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 20] = [
     BuiltInFunction::UCase,
     BuiltInFunction::Val,
     BuiltInFunction::VarPtr,
+    BuiltInFunction::VarSeg,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 20] = [
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 21] = [
     "Chr", "Cvd", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "LTrim", "Mid",
-    "Mkd", "Right", "RTrim", "Str", "String", "UBound", "UCase", "Val", "VarPtr",
+    "Mkd", "Right", "RTrim", "Str", "String", "UBound", "UCase", "Val", "VarPtr", "VarSeg",
 ];
 
 // BuiltInFunction -> &str
@@ -166,6 +170,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::UCase => TypeQualifier::DollarString,
             BuiltInFunction::Val => TypeQualifier::BangSingle,
             BuiltInFunction::VarPtr => TypeQualifier::PercentInteger,
+            BuiltInFunction::VarSeg => TypeQualifier::PercentInteger,
         }
     }
 }
@@ -207,7 +212,8 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 | BuiltInFunction::LBound
                 | BuiltInFunction::UBound
                 | BuiltInFunction::Val
-                | BuiltInFunction::VarPtr => demand_unqualified(b, n),
+                | BuiltInFunction::VarPtr
+                | BuiltInFunction::VarSeg => demand_unqualified(b, n),
                 BuiltInFunction::Environ
                 | BuiltInFunction::LCase
                 | BuiltInFunction::Left
@@ -448,6 +454,7 @@ pub mod linter {
             BuiltInFunction::UCase => crate::built_ins::ucase::linter::lint(args),
             BuiltInFunction::Val => crate::built_ins::val::linter::lint(args),
             BuiltInFunction::VarPtr => crate::built_ins::varptr::linter::lint(args),
+            BuiltInFunction::VarSeg => crate::built_ins::varseg::linter::lint(args),
         }
     }
 }
@@ -504,6 +511,7 @@ pub mod interpreter {
             BuiltInFunction::UCase => crate::built_ins::ucase::interpreter::run(interpreter),
             BuiltInFunction::Val => crate::built_ins::val::interpreter::run(interpreter),
             BuiltInFunction::VarPtr => crate::built_ins::varptr::interpreter::run(interpreter),
+            BuiltInFunction::VarSeg => crate::built_ins::varseg::interpreter::run(interpreter),
         }
     }
 }
@@ -543,5 +551,6 @@ mod ubound;
 mod ucase;
 mod val;
 mod varptr;
+mod varseg;
 mod view_print;
 mod width;

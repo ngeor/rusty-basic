@@ -383,6 +383,13 @@ impl Variant {
             Self::VUserDefined(user_defined_type_value) => user_defined_type_value.size_in_bytes(),
         }
     }
+
+    pub fn is_array(&self) -> bool {
+        match self {
+            Self::VArray(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl PartialEq for Variant {

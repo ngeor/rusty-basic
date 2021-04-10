@@ -93,7 +93,18 @@ impl VArray {
     }
 
     pub fn poke_array_element(&mut self, address: usize, value: u8) -> Result<(), QError> {
-        todo!()
+        let element_size = self.element_size_in_bytes();
+        if element_size == 0 {
+            Err(QError::SubscriptOutOfRange)
+        } else {
+            let element_index = address / element_size;
+            let offset = address % element_size;
+            let element = self
+                .elements
+                .get_mut(element_index)
+                .ok_or(QError::SubscriptOutOfRange)?;
+            element.poke_non_array(offset, value)
+        }
     }
 }
 

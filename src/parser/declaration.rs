@@ -99,7 +99,7 @@ mod tests {
                         );
                     }
                 }
-                _ => panic!(format!("{:?}", $input)),
+                _ => panic!("{:?}", $input),
             }
         };
     }

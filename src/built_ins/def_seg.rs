@@ -135,4 +135,22 @@ mod tests {
         "#;
         assert_prints!(input, "");
     }
+
+    #[test]
+    fn data_poke() {
+        let input = r#"
+        DEFINT A-Z
+        DATA 1, 2, 3, 4
+        DIM A(1 TO 2)
+        DEF SEG = VARSEG(A(1))
+        FOR I = 1 TO 4
+            READ X
+            POKE VARPTR(A(1)) + I - 1, X
+        NEXT
+        DEF SEG
+        PRINT A(1)
+        PRINT A(2)
+        "#;
+        assert_prints!(input, "513", "1027");
+    }
 }

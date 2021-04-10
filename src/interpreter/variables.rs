@@ -1,7 +1,6 @@
 use crate::common::{IndexedMap, QError};
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};
-use crate::interpreter::context::Segment;
 use crate::parser::{
     BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
 };
@@ -136,6 +135,10 @@ impl Variables {
         self.map.values().map(|r| &r.value)
     }
 
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Variant> {
+        self.map.values_mut().map(|r| &mut r.value)
+    }
+
     pub fn get_built_in(&self, bare_name: &BareName, qualifier: TypeQualifier) -> Option<&Variant> {
         self.get_by_name(&QualifiedName::new(bare_name.clone(), qualifier).into())
     }
@@ -147,10 +150,6 @@ impl Variables {
 
     pub fn get_by_name(&self, name: &Name) -> Option<&Variant> {
         self.map.get(name).map(|r| &r.value)
-    }
-
-    pub fn get_by_name_mut(&mut self, name: &Name) -> Option<&mut Variant> {
-        self.map.get_mut(name).map(|r| &mut r.value)
     }
 
     pub fn get(&self, idx: usize) -> Option<&Variant> {
@@ -211,37 +210,10 @@ impl Variables {
             .sum()
     }
 
-    pub fn number_of_arrays(&self) -> usize {
+    pub fn array_names(&self) -> impl Iterator<Item = &Name> {
         self.map
-            .values()
-            .map(|RuntimeVariableInfo { value, .. }| value)
-            .filter(|v| v.is_array())
-            .count()
-    }
-
-    pub fn number_of_arrays_until(&self, name: &Name) -> usize {
-        let mut result: usize = 0;
-        for key in self.map.keys() {
-            if self.get_by_name(key).unwrap().is_array() {
-                result += 1;
-            }
-            if key == name {
-                break;
-            }
-        }
-        result
-    }
-
-    pub fn segments(&self, index: usize) -> Vec<Segment> {
-        let mut result: Vec<Segment> = vec![];
-        result.push(Segment::Root(index));
-        for name in self.map.keys() {
-            let value = self.get_by_name(name).unwrap();
-            if value.is_array() {
-                result.push(Segment::Array(index, name.clone()));
-            }
-        }
-        result
+            .keys()
+            .filter(move |key| self.map.get(*key).unwrap().value.is_array())
     }
 
     pub fn peek_non_array(&self, address: usize) -> Result<u8, QError> {

@@ -1,5 +1,5 @@
 use crate::instruction_generator::Path;
-use crate::interpreter::context::Context;
+use crate::interpreter::context::{Context, VAR_SEG_BASE};
 use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::registers::{RegisterStack, Registers};
@@ -61,6 +61,13 @@ pub trait InterpreterTrait {
     fn data_segment(&mut self) -> &mut DataSegment;
 
     fn get_def_seg(&self) -> Option<usize>;
+
+    fn get_def_seg_or_default(&self) -> usize {
+        match self.get_def_seg() {
+            Some(seg) => seg,
+            _ => VAR_SEG_BASE,
+        }
+    }
 
     fn set_def_seg(&mut self, def_seg: Option<usize>);
 }

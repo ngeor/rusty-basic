@@ -76,7 +76,7 @@ mod tests {
             PRINT VARSEG(B)
         END SUB
         "#;
-        assert_prints!(input, "4097", "4097"); // TODO should be 4096, 4096
+        assert_prints!(input, "4096", "4096");
     }
 
     #[test]
@@ -93,7 +93,7 @@ mod tests {
             PRINT VARSEG(C)
         END SUB
         "#;
-        assert_prints!(input, "4097", "4097", "4096");
+        assert_prints!(input, "4096", "4096", "4096");
     }
 
     #[test]
@@ -203,7 +203,7 @@ mod tests {
             PRINT VARSEG(A)
         END SUB
         "#;
-        assert_prints!(input, "4097", "4098");
+        assert_prints!(input, "4096", "4096");
     }
 
     #[test]
@@ -219,6 +219,6 @@ mod tests {
             END IF
         END SUB
         "#;
-        assert_prints!(input, "4097", "4098", "4099");
+        assert_prints!(input, "4096", "4096", "4096");
     }
 }

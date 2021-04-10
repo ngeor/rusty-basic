@@ -17,7 +17,7 @@ pub unsafe fn get_indicator_keys() -> Result<u8, QError> {
 }
 
 #[cfg(not(windows))]
-pub unsafe fn set_indicator_keys(flags: u8) -> Result<(), QError> {
+pub unsafe fn set_indicator_keys(_flags: u8) -> Result<(), QError> {
     // TODO implement set_indicator_keys for other platforms
     Ok(())
 }

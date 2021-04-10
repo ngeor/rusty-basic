@@ -11,9 +11,7 @@ pub mod linter {
 pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
     use crate::common::QError;
-    use crate::instruction_generator::{Path, RootPath};
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::variant::{QBNumberCast, Variant};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let path = interpreter
@@ -21,96 +19,11 @@ pub mod interpreter {
             .variables()
             .get_arg_path(0)
             .expect("VARPTR should have a variable");
-        let address = interpreter.calculate_varptr(path)?;
+        let address = interpreter.context().calculate_varptr(path)?;
         interpreter
             .context_mut()
             .set_built_in_function_result(BuiltInFunction::VarPtr, address as i32);
         Ok(())
-    }
-
-    trait VarPtrImpl {
-        fn calculate_varptr(&self, path: &Path) -> Result<usize, QError>;
-
-        fn find_value_in_caller_context<P>(&self, path: &P) -> Result<&Variant, QError>
-        where
-            P: AsRef<Path>;
-    }
-
-    impl<T> VarPtrImpl for T
-    where
-        T: InterpreterTrait,
-    {
-        fn calculate_varptr(&self, path: &Path) -> Result<usize, QError> {
-            match path {
-                Path::ArrayElement(parent_path, indices) => {
-                    // arrays define a new segment, no need to calculate parent path address
-                    let array_variable = self.find_value_in_caller_context(parent_path)?;
-                    if let Variant::VArray(arr) = array_variable {
-                        let indices_as_int: Vec<i32> = indices.try_cast()?;
-                        let address = arr.address_offset_of_element(&indices_as_int)?;
-                        Ok(address)
-                    } else {
-                        panic!("Should be an array");
-                    }
-                }
-                Path::Property(parent_path, property_name) => {
-                    // find address of parent path
-                    let parent_address = self.calculate_varptr(parent_path.as_ref())?;
-                    // calculate offset for given property
-                    let owner_variable = self.find_value_in_caller_context(parent_path)?;
-                    if let Variant::VUserDefined(u) = owner_variable {
-                        Ok(parent_address + u.address_offset_of_property(property_name))
-                    } else {
-                        panic!("Should be a property")
-                    }
-                }
-                Path::Root(RootPath { name, shared }) => {
-                    // find address of root path
-                    let variable_owner = if *shared {
-                        self.context().global_variables()
-                    } else {
-                        self.context().caller_variables()
-                    };
-                    let size = variable_owner.calculate_var_ptr(name);
-                    Ok(size)
-                }
-            }
-        }
-
-        fn find_value_in_caller_context<P>(&self, path: &P) -> Result<&Variant, QError>
-        where
-            P: AsRef<Path>,
-        {
-            match path.as_ref() {
-                Path::Root(RootPath { name, shared }) => {
-                    let variable_owner = if *shared {
-                        self.context().global_variables()
-                    } else {
-                        self.context().caller_variables()
-                    };
-                    variable_owner
-                        .get_by_name(name)
-                        .ok_or(QError::VariableRequired)
-                }
-                Path::Property(parent_path, property_name) => {
-                    let parent = self.find_value_in_caller_context(parent_path)?;
-                    if let Variant::VUserDefined(u) = parent {
-                        u.get(property_name).ok_or(QError::ElementNotDefined)
-                    } else {
-                        Err(QError::TypeMismatch)
-                    }
-                }
-                Path::ArrayElement(parent_path, indices) => {
-                    let parent = self.find_value_in_caller_context(parent_path)?;
-                    if let Variant::VArray(a) = parent {
-                        let int_indices: Vec<i32> = indices.try_cast()?;
-                        a.get_element(&int_indices)
-                    } else {
-                        Err(QError::TypeMismatch)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -180,7 +93,7 @@ mod tests {
             PRINT VARPTR(C)
         END SUB
         "#;
-        assert_prints!(input, "0", "2", "0");
+        assert_prints!(input, "4", "6", "0");
     }
 
     #[test]

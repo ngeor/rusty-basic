@@ -28,10 +28,7 @@ pub mod interpreter {
         let value: i32 = interpreter.context()[1].try_cast()?;
         if value >= 0 && value < 256 {
             let b: u8 = value as u8;
-            let seg = match interpreter.get_def_seg() {
-                Some(seg) => seg,
-                _ => interpreter.context().current_varseg(),
-            };
+            let seg = interpreter.get_def_seg_or_default();
             if seg == 0 {
                 zero_seg(address, b)
             } else {

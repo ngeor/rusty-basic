@@ -19,10 +19,7 @@ pub mod interpreter {
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let address: usize = interpreter.context()[0].to_non_negative_int()?;
-        let seg = match interpreter.get_def_seg() {
-            Some(seg) => seg,
-            _ => interpreter.context().current_varseg(),
-        };
+        let seg = interpreter.get_def_seg_or_default();
         let peek_value: u8 = if seg == 0 {
             // use seg, special case if 0
             zero_seg(address)?

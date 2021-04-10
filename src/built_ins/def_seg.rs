@@ -63,7 +63,7 @@ pub mod interpreter {
                 interpreter.set_def_seg(Some(address as usize));
                 Ok(())
             } else {
-                Err(QError::Overflow)
+                Err(QError::IllegalFunctionCall)
             }
         }
     }
@@ -107,9 +107,15 @@ mod tests {
     }
 
     #[test]
+    fn address_cannot_be_negative() {
+        let input = "DEF SEG = -1";
+        assert_interpreter_err!(input, QError::IllegalFunctionCall, 1, 1);
+    }
+
+    #[test]
     fn address_cannot_exceed_65535() {
         let input = "DEF SEG = 65536";
-        assert_interpreter_err!(input, QError::Overflow, 1, 1);
+        assert_interpreter_err!(input, QError::IllegalFunctionCall, 1, 1);
     }
 
     #[test]

@@ -15,6 +15,8 @@ pub mod interpreter {
     use crate::interpreter::keyboard::get_indicator_keys;
     use crate::interpreter::utils::VariantCasts;
 
+    pub const INDICATOR_KEYS_ADDRESS: usize = 1047;
+
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let address: usize = interpreter.context()[0].to_non_negative_int()?;
         let seg = match interpreter.get_def_seg() {
@@ -23,9 +25,9 @@ pub mod interpreter {
         };
         let peek_value: u8 = if seg == 0 {
             // use seg, special case if 0
-            zero_seg(interpreter, address)?
+            zero_seg(address)?
         } else {
-            with_seg(interpreter, seg, address)?
+            interpreter.context().peek(seg, address)?
         };
         interpreter
             .context_mut()
@@ -33,20 +35,12 @@ pub mod interpreter {
         Ok(())
     }
 
-    fn zero_seg<S: InterpreterTrait>(_interpreter: &mut S, address: usize) -> Result<u8, QError> {
-        if address == 1047 {
+    fn zero_seg(address: usize) -> Result<u8, QError> {
+        if address == INDICATOR_KEYS_ADDRESS {
             unsafe { get_indicator_keys() }
         } else {
             unimplemented!()
         }
-    }
-
-    fn with_seg<S: InterpreterTrait>(
-        interpreter: &mut S,
-        seg: usize,
-        address: usize,
-    ) -> Result<u8, QError> {
-        interpreter.context().peek(seg, address)
     }
 }
 

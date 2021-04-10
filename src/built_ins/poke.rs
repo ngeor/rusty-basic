@@ -16,6 +16,7 @@ pub mod linter {
 }
 
 pub mod interpreter {
+    use crate::built_ins::peek::interpreter::INDICATOR_KEYS_ADDRESS;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::keyboard::set_indicator_keys;
@@ -42,7 +43,7 @@ pub mod interpreter {
     }
 
     fn zero_seg(address: usize, value: u8) -> Result<(), QError> {
-        if address == 1047 {
+        if address == INDICATOR_KEYS_ADDRESS {
             unsafe { set_indicator_keys(value) }
         } else {
             unimplemented!()

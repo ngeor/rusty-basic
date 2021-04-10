@@ -284,6 +284,8 @@ fn demand_unqualified(
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BuiltInSub {
     Close,
+    Cls,
+    Color,
     Data,
     DefSeg,
     Environ,
@@ -360,7 +362,11 @@ impl BuiltInSub {
     /// they can't hit this function, as they are represented by keywords and are
     /// parsed by custom parsers.
     pub fn parse_non_keyword_sub(s: &str) -> Option<BuiltInSub> {
-        if s.eq_ignore_ascii_case("Environ") {
+        if s.eq_ignore_ascii_case("Cls") {
+            Some(BuiltInSub::Cls)
+        } else if s.eq_ignore_ascii_case("Color") {
+            Some(BuiltInSub::Color)
+        } else if s.eq_ignore_ascii_case("Environ") {
             Some(BuiltInSub::Environ)
         } else if s.eq_ignore_ascii_case("Kill") {
             Some(BuiltInSub::Kill)
@@ -383,6 +389,7 @@ pub mod parser {
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
         crate::built_ins::close::parser::parse()
+            .or(crate::built_ins::color::parser::parse())
             .or(crate::built_ins::data::parser::parse())
             .or(crate::built_ins::def_seg::parser::parse())
             .or(crate::built_ins::field::parser::parse())
@@ -422,6 +429,8 @@ pub mod linter {
     ) -> Result<(), QErrorNode> {
         match built_in_sub {
             BuiltInSub::Close => crate::built_ins::close::linter::lint(args),
+            BuiltInSub::Cls => crate::built_ins::cls::linter::lint(args),
+            BuiltInSub::Color => crate::built_ins::color::linter::lint(args),
             BuiltInSub::Data => crate::built_ins::data::linter::lint(name_context),
             BuiltInSub::DefSeg => crate::built_ins::def_seg::linter::lint(args),
             BuiltInSub::Environ => crate::built_ins::environ_sub::linter::lint(args),
@@ -481,6 +490,8 @@ pub mod interpreter {
     pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QError> {
         match s {
             BuiltInSub::Close => crate::built_ins::close::interpreter::run(interpreter),
+            BuiltInSub::Cls => crate::built_ins::cls::interpreter::run(interpreter),
+            BuiltInSub::Color => crate::built_ins::color::interpreter::run(interpreter),
             BuiltInSub::Data => crate::built_ins::data::interpreter::run(interpreter),
             BuiltInSub::DefSeg => crate::built_ins::def_seg::interpreter::run(interpreter),
             BuiltInSub::Environ => crate::built_ins::environ_sub::interpreter::run(interpreter),
@@ -534,6 +545,8 @@ pub mod interpreter {
 
 mod chr;
 mod close;
+mod cls;
+mod color;
 mod cvd;
 mod data;
 mod def_seg;

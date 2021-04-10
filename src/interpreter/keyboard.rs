@@ -12,12 +12,14 @@ pub unsafe fn set_indicator_keys(flags: u8) -> Result<(), QError> {
 
 #[cfg(not(windows))]
 pub unsafe fn get_indicator_keys() -> Result<u8, QError> {
-    todo!()
+    // TODO implement get_indicator_keys for other platforms
+    Ok(0)
 }
 
 #[cfg(not(windows))]
 pub unsafe fn set_indicator_keys(flags: u8) -> Result<(), QError> {
-    todo!()
+    // TODO implement set_indicator_keys for other platforms
+    Ok(())
 }
 
 #[cfg(windows)]

@@ -54,7 +54,7 @@ pub struct InstructionGeneratorResult {
     pub statement_addresses: Vec<usize>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Path {
     Root(RootPath),
     ArrayElement(Box<Path>, Vec<Variant>),
@@ -101,11 +101,20 @@ pub enum Instruction {
 
     VarPathProperty(BareName),
 
-    /// Copies the value of register A into the variable path
+    /// Copies the value of register A into the variable path.
+    ///
+    /// The variable path is automatically dropped by the var path deque,
+    /// i.e. the `PopVarPath` instruction is implicitly executed.
     CopyAToVarPath,
 
-    /// Copies the value of the variable path into register A
+    /// Copies the value of the variable path into register A.
+    ///
+    /// The variable path is not dropped from the var path deque, in case it is
+    /// needed by the `PushUnnamedByRef` instruction.
     CopyVarPathToA,
+
+    /// Pops a value from the var path deque.
+    PopVarPath,
 
     /// Loads a value into register A
     LoadIntoA(Variant),
@@ -171,7 +180,12 @@ pub enum Instruction {
 
     /// Pushes the value of register A as an unnamed parameter to a child context.
     /// Unnamed parameters are used by built-in functions/subs.
-    PushAToUnnamedArg,
+    PushUnnamedByVal,
+
+    /// Pushes the value of register A as an unnamed parameter to a child context.
+    /// Additionally, it pops the var path (implicitly uses `PopVarPath`) and pushes
+    /// the path that can be used by the built-in function/sub.
+    PushUnnamedByRef,
 
     PushStack,
     PushStaticStack(SubprogramName),
@@ -379,7 +393,7 @@ impl InstructionGenerator {
         Variant: From<T>,
     {
         self.push_load(value, pos);
-        self.push(Instruction::PushAToUnnamedArg, pos);
+        self.push(Instruction::PushUnnamedByVal, pos);
     }
 
     fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
@@ -425,11 +439,6 @@ impl InstructionGenerator {
     fn generate_store_instructions(&mut self, l: Expression, pos: Location) {
         self.generate_path_instructions(l.at(pos));
         self.push(Instruction::CopyAToVarPath, pos);
-    }
-
-    fn generate_load_instructions(&mut self, l: Expression, pos: Location) {
-        self.generate_path_instructions(l.at(pos));
-        self.push(Instruction::CopyVarPathToA, pos);
     }
 
     fn mark_statement_address(&mut self) {

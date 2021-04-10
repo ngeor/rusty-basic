@@ -16,16 +16,16 @@ fn test_declaration() {
             Instruction::BeginCollectArguments.at_rc(2, 9),
             // lbound of first dimension
             Instruction::LoadIntoA(Variant::VInteger(1)).at_rc(2, 11),
-            Instruction::PushAToUnnamedArg.at_rc(2, 11),
+            Instruction::PushUnnamedByVal.at_rc(2, 11),
             // ubound of first dimension
             Instruction::LoadIntoA(Variant::VInteger(3)).at_rc(2, 16),
-            Instruction::PushAToUnnamedArg.at_rc(2, 16),
+            Instruction::PushUnnamedByVal.at_rc(2, 16),
             // lbound of second dimension
             Instruction::LoadIntoA(Variant::VInteger(1)).at_rc(2, 19),
-            Instruction::PushAToUnnamedArg.at_rc(2, 19),
+            Instruction::PushUnnamedByVal.at_rc(2, 19),
             // ubound of second dimension
             Instruction::LoadIntoA(Variant::VInteger(4)).at_rc(2, 24),
-            Instruction::PushAToUnnamedArg.at_rc(2, 24),
+            Instruction::PushUnnamedByVal.at_rc(2, 24),
             // allocate array into A
             Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::BangSingle))
                 .at_rc(2, 9),
@@ -54,10 +54,10 @@ fn test_assignment() {
             Instruction::BeginCollectArguments.at_rc(2, 9),
             // lbound of first dimension
             Instruction::LoadIntoA(Variant::VInteger(1)).at_rc(2, 12),
-            Instruction::PushAToUnnamedArg.at_rc(2, 12),
+            Instruction::PushUnnamedByVal.at_rc(2, 12),
             // ubound of first dimension
             Instruction::LoadIntoA(Variant::VInteger(3)).at_rc(2, 17),
-            Instruction::PushAToUnnamedArg.at_rc(2, 17),
+            Instruction::PushUnnamedByVal.at_rc(2, 17),
             // allocate array into A
             Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::PercentInteger))
                 .at_rc(2, 9),
@@ -101,10 +101,10 @@ fn test_assign_and_print_one_element() {
             Instruction::BeginCollectArguments,
             // lbound
             Instruction::LoadIntoA(Variant::VInteger(1)),
-            Instruction::PushAToUnnamedArg,
+            Instruction::PushUnnamedByVal,
             // ubound
             Instruction::LoadIntoA(Variant::VInteger(1)),
-            Instruction::PushAToUnnamedArg,
+            Instruction::PushUnnamedByVal,
             // allocate array into A
             Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::BangSingle)),
             Instruction::VarPathName(RootPath {
@@ -138,6 +138,7 @@ fn test_assign_and_print_one_element() {
             Instruction::VarPathIndex,
             Instruction::PopValueStackIntoA,
             Instruction::CopyVarPathToA,
+            Instruction::PopVarPath,
             Instruction::PrintValueFromA,
             Instruction::PrintEnd,
             Instruction::Halt,
@@ -161,10 +162,10 @@ fn test_pass_param_to_sub() {
             Instruction::BeginCollectArguments,
             // lbound
             Instruction::LoadIntoA(Variant::VInteger(1)),
-            Instruction::PushAToUnnamedArg,
+            Instruction::PushUnnamedByVal,
             // ubound
             Instruction::LoadIntoA(Variant::VInteger(1)),
-            Instruction::PushAToUnnamedArg,
+            Instruction::PushUnnamedByVal,
             // allocate array into A
             Instruction::AllocateArrayIntoA(ExpressionType::BuiltIn(TypeQualifier::BangSingle)),
             Instruction::VarPathName(RootPath {
@@ -179,6 +180,7 @@ fn test_pass_param_to_sub() {
                 shared: false
             }),
             Instruction::CopyVarPathToA,
+            Instruction::PopVarPath,
             Instruction::PushNamed(ParamName::new(
                 "values".into(),
                 ParamType::Array(Box::new(ParamType::BuiltIn(
@@ -187,8 +189,8 @@ fn test_pass_param_to_sub() {
                 )))
             )),
             Instruction::PushStack,
-            Instruction::PushRet(15),
-            Instruction::Jump(AddressOrLabel::Resolved(21)),
+            Instruction::PushRet(16),
+            Instruction::Jump(AddressOrLabel::Resolved(22)),
             Instruction::EnqueueToReturnStack(0),
             Instruction::PopStack,
             Instruction::DequeueFromReturnStack,

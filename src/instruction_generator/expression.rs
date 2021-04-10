@@ -25,6 +25,14 @@ impl InstructionGenerator {
     }
 
     pub fn generate_expression_instructions(&mut self, expr_node: ExpressionNode) {
+        self.generate_expression_instructions_optionally_by_ref(expr_node, true);
+    }
+
+    pub fn generate_expression_instructions_optionally_by_ref(
+        &mut self,
+        expr_node: ExpressionNode,
+        consume_var_path: bool,
+    ) {
         let Locatable { element: e, pos } = expr_node;
         match e {
             Expression::SingleLiteral(s) => {
@@ -44,7 +52,13 @@ impl InstructionGenerator {
             }
             Expression::Variable(_, _)
             | Expression::ArrayElement(_, _, _)
-            | Expression::Property(_, _, _) => self.generate_load_instructions(e, pos),
+            | Expression::Property(_, _, _) => {
+                self.generate_path_instructions(e.at(pos));
+                self.push(Instruction::CopyVarPathToA, pos);
+                if consume_var_path {
+                    self.push(Instruction::PopVarPath, pos);
+                }
+            }
             Expression::FunctionCall(n, args) => {
                 let name_node = n.at(pos);
                 self.generate_function_call_instructions(name_node, args);

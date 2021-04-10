@@ -1,22 +1,36 @@
-use crate::interpreter::arguments::Arguments;
+use crate::common::{IndexedMap, QError};
+use crate::instruction_generator::Path;
+use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::parser::{
     BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
 };
 use crate::variant::{Variant, V_FALSE};
-use std::collections::HashMap;
-use std::slice::Iter;
 
 #[derive(Debug)]
 pub struct Variables {
-    name_to_index: HashMap<Name, usize>,
-    values: Vec<Variant>,
+    map: IndexedMap<Name, RuntimeVariableInfo>,
+}
+
+#[derive(Debug)]
+struct RuntimeVariableInfo {
+    /// Holds the value of the variable.
+    value: Variant,
+
+    /// For anonymous by ref arguments, holds a resolved path that can be used
+    /// to find the variable in the parent context.
+    arg_path: Option<Path>,
+}
+
+impl RuntimeVariableInfo {
+    pub fn new(value: Variant, arg_path: Option<Path>) -> Self {
+        Self { value, arg_path }
+    }
 }
 
 impl Variables {
     pub fn new() -> Self {
         Self {
-            name_to_index: HashMap::new(),
-            values: Vec::new(),
+            map: IndexedMap::new(),
         }
     }
 
@@ -33,8 +47,11 @@ impl Variables {
         self.insert(bare_name.into(), value);
     }
 
-    pub fn insert_unnamed(&mut self, value: Variant) {
-        self.values.push(value);
+    fn insert_unnamed(&mut self, value: Variant, arg_path: Option<Path>) {
+        let dummy_name = format!("{}", self.map.len());
+        let name = Name::new(BareName::new(dummy_name), None);
+        self.map
+            .insert(name, RuntimeVariableInfo::new(value, arg_path));
     }
 
     pub fn insert_param(&mut self, param_name: ParamName, value: Variant) {
@@ -58,15 +75,7 @@ impl Variables {
     }
 
     pub fn insert(&mut self, name: Name, value: Variant) {
-        match self.name_to_index.get(&name) {
-            Some(idx) => {
-                self.values[*idx] = value;
-            }
-            None => {
-                self.name_to_index.insert(name, self.values.len());
-                self.values.push(value);
-            }
-        }
+        self.map.insert(name, RuntimeVariableInfo::new(value, None));
     }
 
     pub fn insert_dim(&mut self, dim_name: DimName, value: Variant) {
@@ -97,15 +106,12 @@ impl Variables {
     }
 
     pub fn get_or_create(&mut self, name: Name) -> &mut Variant {
-        match self.name_to_index.get(&name) {
-            Some(idx) => self.values.get_mut(*idx).expect("Should have variable"),
-            _ => {
-                let value = Self::default_value_for_name(&name);
-                self.name_to_index.insert(name, self.values.len());
-                self.values.push(value);
-                self.values.last_mut().expect("Should have variable")
-            }
-        }
+        &mut self
+            .map
+            .get_or_create(name, |n| {
+                RuntimeVariableInfo::new(Self::default_value_for_name(n), None)
+            })
+            .value
     }
 
     // This is needed only when we're setting the default value for a function
@@ -121,12 +127,16 @@ impl Variables {
 
     /// Gets the number of variables in this object.
     pub fn len(&self) -> usize {
-        self.values.len()
+        self.map.len()
     }
 
     /// Gets an iterator that returns the variables in this object.
-    pub fn iter(&self) -> Iter<Variant> {
-        self.values.iter()
+    pub fn iter(&self) -> impl Iterator<Item = &Variant> {
+        self.map.values().map(|r| &r.value)
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Variant> {
+        self.map.values_mut().map(|r| &mut r.value)
     }
 
     pub fn get_built_in(&self, bare_name: &BareName, qualifier: TypeQualifier) -> Option<&Variant> {
@@ -134,26 +144,32 @@ impl Variables {
     }
 
     pub fn get_user_defined(&self, bare_name: &BareName) -> Option<&Variant> {
+        // TODO make a structure that allows to lookup by BareName and QualifiedName without the need to clone
         self.get_by_name(&bare_name.clone().into())
     }
 
     pub fn get_by_name(&self, name: &Name) -> Option<&Variant> {
-        self.name_to_index.get(name).and_then(|idx| self.get(*idx))
+        self.map.get(name).map(|r| &r.value)
     }
 
     pub fn get(&self, idx: usize) -> Option<&Variant> {
-        self.values.get(idx)
+        self.map.get_by_index(idx).map(|r| &r.value)
     }
 
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
-        self.values.get_mut(idx)
+        self.map.get_by_index_mut(idx).map(|r| &mut r.value)
     }
 
     pub fn apply_arguments(&mut self, arguments: Arguments) {
-        for (opt_param, arg) in arguments.into_iter() {
-            match opt_param {
-                Some(param_name) => self.insert_param(param_name, arg),
-                None => self.insert_unnamed(arg),
+        for ArgumentInfo {
+            value,
+            param_name,
+            arg_path,
+        } in arguments.into_iter()
+        {
+            match param_name {
+                Some(param_name) => self.insert_param(param_name, value),
+                None => self.insert_unnamed(value, arg_path),
             }
         }
     }
@@ -178,6 +194,60 @@ impl Variables {
             }
             DimType::Bare => panic!("Unresolved dim"),
         }
+    }
+
+    pub fn get_arg_path(&self, idx: usize) -> Option<&Path> {
+        self.map.get_by_index(idx).and_then(|r| r.arg_path.as_ref())
+    }
+
+    pub fn calculate_var_ptr(&self, name: &Name) -> usize {
+        debug_assert!(self.map.get(name).is_some());
+        self.map
+            .keys()
+            .take_while(|k| *k != name)
+            .map(|k| self.get_by_name(k).unwrap())
+            .map(Variant::size_in_bytes)
+            .sum()
+    }
+
+    pub fn array_names(&self) -> impl Iterator<Item = &Name> {
+        self.map
+            .keys()
+            .filter(move |key| self.map.get(*key).unwrap().value.is_array())
+    }
+
+    pub fn peek_non_array(&self, address: usize) -> Result<u8, QError> {
+        let mut offset: usize = 0;
+        for RuntimeVariableInfo { value, .. } in self.map.values() {
+            if !value.is_array() {
+                let len = value.size_in_bytes();
+                if offset <= address && address < offset + len {
+                    return value.peek_non_array(address - offset);
+                }
+
+                offset += len;
+            }
+        }
+        Err(QError::InternalError(
+            "Could not find variable at address".to_string(),
+        ))
+    }
+
+    pub fn poke_non_array(&mut self, address: usize, byte_value: u8) -> Result<(), QError> {
+        let mut offset: usize = 0;
+        for RuntimeVariableInfo { value, .. } in self.map.values_mut() {
+            if !value.is_array() {
+                let len = value.size_in_bytes();
+                if offset <= address && address < offset + len {
+                    return value.poke_non_array(address - offset, byte_value);
+                }
+
+                offset += len;
+            }
+        }
+        Err(QError::InternalError(
+            "Could not find variable at address".to_string(),
+        ))
     }
 }
 

@@ -91,7 +91,7 @@ mod tests {
                     assert_eq!(*def_type_qualifier, $expected_qualifier);
                     assert_eq!(def_type.ranges(), &$expected_ranges);
                 }
-                _ => panic!(format!("{:?}", $input)),
+                _ => panic!("{:?}", $input),
             }
         };
     }

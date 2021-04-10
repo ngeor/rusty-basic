@@ -9,10 +9,7 @@ pub struct VArray {
 
 impl VArray {
     pub fn new(dimensions: Vec<(i32, i32)>, default_variant: Variant) -> Self {
-        let mut len: i32 = 1;
-        for (lbound, ubound) in dimensions.iter() {
-            len = len * (*ubound - *lbound + 1);
-        }
+        let len = dimensions_to_array_length(&dimensions);
         let elements: Vec<Variant> = (0..len).map(|_| default_variant.clone()).collect();
         Self {
             dimensions,
@@ -20,7 +17,7 @@ impl VArray {
         }
     }
 
-    pub fn get_element(&self, indices: Vec<i32>) -> Result<&Variant, QError> {
+    pub fn get_element(&self, indices: &[i32]) -> Result<&Variant, QError> {
         let index = self.abs_index(indices)?;
         match self.elements.get(index) {
             Some(v) => Ok(v),
@@ -28,7 +25,7 @@ impl VArray {
         }
     }
 
-    pub fn get_element_mut(&mut self, indices: Vec<i32>) -> Result<&mut Variant, QError> {
+    pub fn get_element_mut(&mut self, indices: &[i32]) -> Result<&mut Variant, QError> {
         let index = self.abs_index(indices)?;
         match self.elements.get_mut(index) {
             Some(v) => Ok(v),
@@ -36,7 +33,8 @@ impl VArray {
         }
     }
 
-    fn abs_index(&self, indices: Vec<i32>) -> Result<usize, QError> {
+    /// Maps the indices of a multi-dimensional array element into a flat index.
+    fn abs_index(&self, indices: &[i32]) -> Result<usize, QError> {
         if indices.len() != self.dimensions.len() {
             return Err(QError::InternalError("Array indices mismatch".to_string()));
         }
@@ -57,7 +55,64 @@ impl VArray {
         Ok(index as usize)
     }
 
-    pub fn get_dimensions(&self, idx: usize) -> Option<&(i32, i32)> {
-        self.dimensions.get(idx)
+    /// Returns the lower and upper bounds of the given dimension.
+    pub fn get_dimension_bounds(&self, dimension_index: usize) -> Option<&(i32, i32)> {
+        self.dimensions.get(dimension_index)
     }
+
+    pub fn size_in_bytes(&self) -> usize {
+        let array_length = dimensions_to_array_length(&self.dimensions);
+        self.element_size_in_bytes() * array_length
+    }
+
+    pub fn address_offset_of_element(&self, indices: &[i32]) -> Result<usize, QError> {
+        let abs_index = self.abs_index(indices)?;
+        Ok(self.element_size_in_bytes() * abs_index)
+    }
+
+    fn element_size_in_bytes(&self) -> usize {
+        self.elements
+            .first()
+            .map(Variant::size_in_bytes)
+            .unwrap_or_default()
+    }
+
+    pub fn peek_array_element(&self, address: usize) -> Result<u8, QError> {
+        let element_size = self.element_size_in_bytes();
+        if element_size == 0 {
+            Err(QError::SubscriptOutOfRange)
+        } else {
+            let element_index = address / element_size;
+            let offset = address % element_size;
+            let element = self
+                .elements
+                .get(element_index)
+                .ok_or(QError::SubscriptOutOfRange)?;
+            element.peek_non_array(offset)
+        }
+    }
+
+    pub fn poke_array_element(&mut self, address: usize, value: u8) -> Result<(), QError> {
+        let element_size = self.element_size_in_bytes();
+        if element_size == 0 {
+            Err(QError::SubscriptOutOfRange)
+        } else {
+            let element_index = address / element_size;
+            let offset = address % element_size;
+            let element = self
+                .elements
+                .get_mut(element_index)
+                .ok_or(QError::SubscriptOutOfRange)?;
+            element.poke_non_array(offset, value)
+        }
+    }
+}
+
+/// Calculates the number of elements in a multi-dimensional array.
+fn dimensions_to_array_length(dimensions: &[(i32, i32)]) -> usize {
+    let mut len: usize = 1;
+    for (lbound, ubound) in dimensions {
+        len = len * ((*ubound - *lbound + 1) as usize);
+    }
+    len
 }

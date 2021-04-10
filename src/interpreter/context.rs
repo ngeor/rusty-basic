@@ -1,10 +1,15 @@
 use crate::built_ins::BuiltInFunction;
+use crate::common::QError;
+use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
 use crate::linter::SubprogramName;
 use crate::parser::{BareName, TypeQualifier};
-use crate::variant::Variant;
+use crate::variant::{QBNumberCast, Variant};
 use std::collections::HashMap;
+
+// This is an arbitrary value, not what QBasic is doing
+pub const VAR_SEG_BASE: usize = 4_096;
 
 #[derive(Debug)]
 pub struct Context {
@@ -78,6 +83,10 @@ impl Context {
         self.do_push_existing(0, false);
     }
 
+    pub fn global_variables(&self) -> &Variables {
+        &self.memory_blocks.first().unwrap().variables
+    }
+
     // needed due to DIM SHARED
     pub fn global_variables_mut(&mut self) -> &mut Variables {
         &mut self.memory_blocks.first_mut().unwrap().variables
@@ -91,20 +100,6 @@ impl Context {
             .variables
     }
 
-    pub fn caller_variables(&self) -> &Variables {
-        debug_assert!(self.states.len() >= 2);
-        let caller_state = self
-            .states
-            .get(self.states.len() - 2)
-            .expect("Should have caller state");
-        let memory_block_index = caller_state.memory_block_index;
-        &self
-            .memory_blocks
-            .get(memory_block_index)
-            .expect("internal error")
-            .variables
-    }
-
     pub fn variables_mut(&mut self) -> &mut Variables {
         let current_memory_block_index = self.current_memory_block_index();
         &mut self
@@ -114,18 +109,31 @@ impl Context {
             .variables
     }
 
+    pub fn caller_variables(&self) -> &Variables {
+        let memory_block_index = self.caller_variables_memory_block_index();
+        &self
+            .memory_blocks
+            .get(memory_block_index)
+            .expect("internal error")
+            .variables
+    }
+
     pub fn caller_variables_mut(&mut self) -> &mut Variables {
-        debug_assert!(self.states.len() >= 2);
-        let caller_state = self
-            .states
-            .get(self.states.len() - 2)
-            .expect("Should have caller state");
-        let memory_block_index = caller_state.memory_block_index;
+        let memory_block_index = self.caller_variables_memory_block_index();
         &mut self
             .memory_blocks
             .get_mut(memory_block_index)
             .expect("internal error")
             .variables
+    }
+
+    fn caller_variables_memory_block_index(&self) -> usize {
+        debug_assert!(self.states.len() >= 2);
+        let caller_state = self
+            .states
+            .get(self.states.len() - 2)
+            .expect("Should have caller state");
+        caller_state.memory_block_index
     }
 
     pub fn arguments_mut(&mut self) -> &mut Arguments {
@@ -175,14 +183,18 @@ impl Context {
         let next_memory_block_index = self.memory_blocks.len();
         let memory_block = MemoryBlock::new(variables, is_static);
         self.memory_blocks.push(memory_block);
-        self.do_push_existing(next_memory_block_index, false);
+        self.do_push_state(next_memory_block_index, false);
         next_memory_block_index
     }
 
     fn do_push_existing(&mut self, memory_block_index: usize, arguments: bool) {
+        self.do_push_state(memory_block_index, arguments);
+        self.increase_ref_count(memory_block_index);
+    }
+
+    fn do_push_state(&mut self, memory_block_index: usize, arguments: bool) {
         let state = State::new(memory_block_index, arguments);
         self.states.push(state);
-        self.increase_ref_count(memory_block_index);
     }
 
     fn do_pop(&mut self) -> State {
@@ -200,6 +212,194 @@ impl Context {
 
     fn decrease_ref_count(&mut self, memory_block_index: usize) -> bool {
         self.memory_blocks[memory_block_index].decrease_ref_count()
+    }
+
+    pub fn calculate_varptr(&self, path: &Path) -> Result<usize, QError> {
+        match path {
+            Path::Root(RootPath { name, shared }) => {
+                // figure out the memory block where the variable lives
+                let memory_block_index = if *shared {
+                    0
+                } else {
+                    self.caller_variables_memory_block_index()
+                };
+                let mut result: usize = 0;
+                for i in 0..memory_block_index {
+                    // add the total bytes of the previous variables in previous memory blocks
+                    result += self.memory_blocks[i]
+                        .variables
+                        .iter()
+                        .map(Variant::size_in_bytes)
+                        .sum::<usize>();
+                }
+                // add the varptr of this variable
+                result += self.memory_blocks[memory_block_index]
+                    .variables
+                    .calculate_var_ptr(name);
+                Ok(result)
+            }
+            Path::ArrayElement(parent_path, indices) => {
+                // array elements are relative to the array, so no need to add previous items
+                match self.find_value_in_caller_context(parent_path.as_ref())? {
+                    Variant::VArray(v_arr) => {
+                        let int_indices: Vec<i32> = indices.try_cast()?;
+                        v_arr.address_offset_of_element(&int_indices)
+                    }
+                    _ => panic!("Expected array"),
+                }
+            }
+            Path::Property(parent_path, property_name) => {
+                let parent_var_ptr = self.calculate_varptr(parent_path.as_ref())?;
+                match self.find_value_in_caller_context(parent_path)? {
+                    Variant::VUserDefined(v_u) => {
+                        Ok(v_u.address_offset_of_property(property_name) + parent_var_ptr)
+                    }
+                    _ => panic!("Expected user defined type"),
+                }
+            }
+        }
+    }
+
+    fn find_value_in_caller_context(&self, path: &Path) -> Result<&Variant, QError> {
+        match path {
+            Path::Root(RootPath { name, shared }) => {
+                let memory_block_index = if *shared {
+                    0
+                } else {
+                    self.caller_variables_memory_block_index()
+                };
+                self.memory_blocks[memory_block_index]
+                    .variables
+                    .get_by_name(name)
+                    .ok_or(QError::VariableRequired)
+            }
+            Path::ArrayElement(parent_path, indices) => {
+                match self.find_value_in_caller_context(parent_path.as_ref())? {
+                    Variant::VArray(v_arr) => {
+                        let int_indices: Vec<i32> = indices.try_cast()?;
+                        v_arr.get_element(&int_indices)
+                    }
+                    _ => panic!("Expected array"),
+                }
+            }
+            Path::Property(parent_path, property_name) => {
+                match self.find_value_in_caller_context(parent_path.as_ref())? {
+                    Variant::VUserDefined(v_u) => {
+                        v_u.get(property_name).ok_or(QError::ElementNotDefined)
+                    }
+                    _ => panic!("Expected user defined type"),
+                }
+            }
+        }
+    }
+
+    pub fn calculate_varseg(&self, path: &Path) -> usize {
+        match path {
+            Path::Root(RootPath { .. }) => {
+                // an ordinary variable (even an Array, but not an Array Element)
+                // they share the same data segment
+                VAR_SEG_BASE
+            }
+            Path::ArrayElement(parent_path, ..) => {
+                if let Path::Root(RootPath { name, shared }) = parent_path.as_ref() {
+                    // figure out the memory block index where the Array is defined
+                    let memory_block_index = if *shared {
+                        0
+                    } else {
+                        self.caller_variables_memory_block_index()
+                    };
+                    let mut result: usize = 0;
+                    // add one segment for every array defined in parent memory blocks
+                    for i in 0..memory_block_index {
+                        result += self.memory_blocks[i].variables.array_names().count();
+                    }
+                    // add one segment for every array defined in the memory block of the array, until we find the array name
+                    result += self.memory_blocks[memory_block_index]
+                        .variables
+                        .array_names()
+                        .take_while(|p| *p != name)
+                        .count();
+                    // add the array itself
+                    result += 1;
+                    // add the base segment
+                    result += VAR_SEG_BASE;
+                    result
+                } else {
+                    panic!("Expected Path::Root to be parent of Path::ArrayElement");
+                }
+            }
+            Path::Property(parent_path, ..) => self.calculate_varseg(parent_path.as_ref()),
+        }
+    }
+
+    pub fn peek(&self, seg: usize, address: usize) -> Result<u8, QError> {
+        if seg < VAR_SEG_BASE || seg >= 65_536 {
+            return Err(QError::SubscriptOutOfRange);
+        }
+        if seg == VAR_SEG_BASE {
+            // not an array element
+            let mut offset: usize = 0;
+            for block in self.memory_blocks.iter() {
+                for var in block.variables.iter() {
+                    let len = var.size_in_bytes();
+                    if offset <= address && address < offset + len {
+                        return var.peek_non_array(address - offset);
+                    }
+
+                    offset += len;
+                }
+            }
+        } else {
+            let mut idx = 1;
+            for block in self.memory_blocks.iter() {
+                for var in block.variables.iter() {
+                    if let Variant::VArray(v_arr) = var {
+                        if idx == seg - VAR_SEG_BASE {
+                            // found the array
+                            return v_arr.peek_array_element(address);
+                        } else {
+                            idx += 1;
+                        }
+                    }
+                }
+            }
+        }
+        Err(QError::SubscriptOutOfRange)
+    }
+
+    pub fn poke(&mut self, seg: usize, address: usize, byte_value: u8) -> Result<(), QError> {
+        if seg < VAR_SEG_BASE || seg >= 65_536 {
+            return Err(QError::SubscriptOutOfRange);
+        }
+        if seg == VAR_SEG_BASE {
+            // not an array element
+            let mut offset: usize = 0;
+            for block in self.memory_blocks.iter_mut() {
+                for var in block.variables.iter_mut() {
+                    let len = var.size_in_bytes();
+                    if offset <= address && address < offset + len {
+                        return var.poke_non_array(address - offset, byte_value);
+                    }
+
+                    offset += len;
+                }
+            }
+        } else {
+            let mut idx = 1;
+            for block in self.memory_blocks.iter_mut() {
+                for var in block.variables.iter_mut() {
+                    if let Variant::VArray(v_arr) = var {
+                        if idx == seg - VAR_SEG_BASE {
+                            // found the array
+                            return v_arr.poke_array_element(address, byte_value);
+                        } else {
+                            idx += 1;
+                        }
+                    }
+                }
+            }
+        }
+        Err(QError::SubscriptOutOfRange)
     }
 }
 

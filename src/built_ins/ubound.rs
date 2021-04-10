@@ -21,7 +21,7 @@ pub mod interpreter {
             _ => 1,
         };
         match v {
-            Variant::VArray(a) => match a.get_dimensions(dimension - 1) {
+            Variant::VArray(a) => match a.get_dimension_bounds(dimension - 1) {
                 Some((_, upper)) => {
                     interpreter.context_mut().set_built_in_function_result(
                         BuiltInFunction::UBound,

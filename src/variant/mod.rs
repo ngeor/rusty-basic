@@ -15,3 +15,12 @@ use crate::common::QError;
 pub trait QBNumberCast<T> {
     fn try_cast(&self) -> Result<T, QError>;
 }
+
+impl<T> QBNumberCast<Vec<T>> for Vec<Variant>
+where
+    Variant: QBNumberCast<T>,
+{
+    fn try_cast(&self) -> Result<Vec<T>, QError> {
+        self.iter().map(QBNumberCast::try_cast).collect()
+    }
+}

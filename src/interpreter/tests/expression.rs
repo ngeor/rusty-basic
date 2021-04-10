@@ -210,10 +210,10 @@ macro_rules! assert_condition {
             $condition
         );
         if interpret(program).stdout().output().len() > 0 {
-            panic!(format!(
+            panic!(
                 "Expected: condition to be true but was false: {}",
                 $condition
-            ))
+            )
         }
     };
 }
@@ -229,10 +229,10 @@ macro_rules! assert_condition_false {
             $condition
         );
         if interpret(program).stdout().output().len() > 0 {
-            panic!(format!(
+            panic!(
                 "Expected: condition to be false but was true: {}",
                 $condition
-            ))
+            )
         }
     };
 }

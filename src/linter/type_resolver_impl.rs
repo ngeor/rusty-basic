@@ -17,7 +17,7 @@ fn char_to_alphabet_index(ch: char) -> usize {
     if upper >= 'A' && upper <= 'Z' {
         ((upper as u8) - ('A' as u8)) as usize
     } else {
-        panic!(format!("Not a latin letter {}", ch))
+        panic!("Not a latin letter {}", ch)
     }
 }
 

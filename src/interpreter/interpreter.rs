@@ -9,7 +9,6 @@ use crate::interpreter::lpt1_write::Lpt1Write;
 use crate::interpreter::print::PrintInterpreter;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
-use crate::interpreter::variables::Variables;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::parser::UserDefinedTypes;
@@ -68,6 +67,8 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     print_interpreter: Rc<RefCell<PrintInterpreter>>,
 
     data_segment: DataSegment,
+
+    def_seg: Option<usize>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -114,10 +115,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
         &mut self.context
     }
 
-    fn global_variables_mut(&mut self) -> &mut Variables {
-        self.context.global_variables_mut()
-    }
-
     fn registers(&self) -> &Registers {
         self.register_stack.last().unwrap()
     }
@@ -148,6 +145,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
 
     fn data_segment(&mut self) -> &mut DataSegment {
         &mut self.data_segment
+    }
+
+    fn get_def_seg(&self) -> Option<usize> {
+        self.def_seg
+    }
+
+    fn set_def_seg(&mut self, def_seg: Option<usize>) {
+        self.def_seg = def_seg;
     }
 }
 
@@ -195,6 +200,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             last_error_address: None,
             print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
             data_segment: DataSegment::new(),
+            def_seg: None,
         }
     }
 
@@ -331,8 +337,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             Instruction::UnStashFunctionReturnValue => {
                 subprogram::un_stash_function_return_value(self);
             }
-            Instruction::PushAToUnnamedArg => {
-                subprogram::push_a_to_unnamed_arg(self);
+            Instruction::PushUnnamedByVal => {
+                subprogram::push_unnamed_arg_by_val(self);
+            }
+            Instruction::PushUnnamedByRef => {
+                subprogram::push_unnamed_arg_by_ref(self);
             }
             Instruction::PushNamed(param_name) => {
                 subprogram::push_a_to_named_arg(self, param_name);
@@ -433,9 +442,13 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
             Instruction::CopyAToVarPath => {
                 var_path::copy_a_to_var_path(self).with_err_at(pos)?;
+                var_path::pop_var_path(self).with_err_at(pos)?;
             }
             Instruction::CopyVarPathToA => {
                 var_path::copy_var_path_to_a(self).with_err_at(pos)?;
+            }
+            Instruction::PopVarPath => {
+                var_path::pop_var_path(self).with_err_at(pos)?;
             }
             Instruction::PushAToValueStack => {
                 let v = self.registers().get_a();

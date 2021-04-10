@@ -5,6 +5,7 @@ mod default_stdlib;
 pub mod interpreter;
 pub mod interpreter_trait;
 pub mod io;
+pub mod keyboard;
 mod lpt1_write;
 mod print;
 mod read_input;

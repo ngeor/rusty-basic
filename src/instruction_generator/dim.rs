@@ -64,14 +64,14 @@ impl InstructionGenerator {
                     if let Some(lbound) = lbound {
                         let lbound_pos = lbound.pos();
                         self.generate_expression_instructions(lbound);
-                        self.push(Instruction::PushAToUnnamedArg, lbound_pos);
+                        self.push(Instruction::PushUnnamedByVal, lbound_pos);
                     } else {
                         self.push_load_unnamed_arg(0, pos);
                     }
 
                     let ubound_pos = ubound.pos();
                     self.generate_expression_instructions(ubound);
-                    self.push(Instruction::PushAToUnnamedArg, ubound_pos);
+                    self.push(Instruction::PushUnnamedByVal, ubound_pos);
                 }
 
                 let element_type = box_element_type.expression_type();

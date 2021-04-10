@@ -38,9 +38,24 @@ pub fn un_stash_function_return_value<T: InterpreterTrait>(interpreter: &mut T) 
     interpreter.registers_mut().set_a(v);
 }
 
-pub fn push_a_to_unnamed_arg<T: InterpreterTrait>(interpreter: &mut T) {
+pub fn push_unnamed_arg_by_val<T: InterpreterTrait>(interpreter: &mut T) {
     let v = interpreter.registers().get_a();
-    interpreter.context_mut().arguments_mut().push_unnamed(v);
+    interpreter
+        .context_mut()
+        .arguments_mut()
+        .push_unnamed_by_val(v);
+}
+
+pub fn push_unnamed_arg_by_ref<T: InterpreterTrait>(interpreter: &mut T) {
+    let path = interpreter
+        .var_path_stack()
+        .pop_back()
+        .expect("Should have a VarPath");
+    let v = interpreter.registers().get_a();
+    interpreter
+        .context_mut()
+        .arguments_mut()
+        .push_unnamed_by_ref(v, path);
 }
 
 pub fn push_a_to_named_arg<T: InterpreterTrait>(interpreter: &mut T, param_name: &ParamName) {

@@ -28,6 +28,8 @@ pub trait ArgValidation {
 
     fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), QErrorNode>;
 
+    fn require_variable(&self, idx: usize) -> Result<(), QErrorNode>;
+
     fn require_one_argument(&self) -> Result<(), QErrorNode>;
 
     fn require_one_double_argument(&self) -> Result<(), QErrorNode> {
@@ -43,6 +45,11 @@ pub trait ArgValidation {
     fn require_one_string_argument(&self) -> Result<(), QErrorNode> {
         self.require_one_argument()
             .and_then(|_| self.require_string_argument(0))
+    }
+
+    fn require_one_variable(&self) -> Result<(), QErrorNode> {
+        self.require_one_argument()
+            .and_then(|_| self.require_variable(0))
     }
 }
 
@@ -155,6 +162,14 @@ impl ArgValidation for ExpressionNodes {
             _ => {
                 return Err(QError::VariableRequired).with_err_at(&self[idx]);
             }
+        }
+    }
+
+    fn require_variable(&self, idx: usize) -> Result<(), QErrorNode> {
+        if self[idx].is_by_ref() {
+            Ok(())
+        } else {
+            Err(QError::VariableRequired).with_err_at(&self[idx])
         }
     }
 

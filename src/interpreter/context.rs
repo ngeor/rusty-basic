@@ -1,4 +1,5 @@
 use crate::built_ins::BuiltInFunction;
+use crate::common::QError;
 use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
@@ -6,6 +7,9 @@ use crate::linter::SubprogramName;
 use crate::parser::{BareName, TypeQualifier};
 use crate::variant::Variant;
 use std::collections::HashMap;
+
+// This is an arbitrary value, not what QBasic is doing
+const VAR_SEG_BASE: usize = 4_096;
 
 #[derive(Debug)]
 pub struct Context {
@@ -210,6 +214,19 @@ impl Context {
         self.memory_blocks[memory_block_index].decrease_ref_count()
     }
 
+    fn varseg_of_memory_block_index(&self, index: usize) -> usize {
+        let mut result = VAR_SEG_BASE;
+        for i in 0..index {
+            result += self.memory_blocks[i].variables.number_of_arrays() + 1;
+        }
+        result
+    }
+
+    pub fn current_varseg(&self) -> usize {
+        let index = self.caller_variables_memory_block_index();
+        self.varseg_of_memory_block_index(index)
+    }
+
     pub fn calculate_varseg(&self, path: &Path) -> usize {
         match path {
             Path::Root(RootPath { shared, .. }) => {
@@ -218,11 +235,7 @@ impl Context {
                 } else {
                     self.caller_variables_memory_block_index()
                 };
-                let mut result = 0;
-                for i in 0..index {
-                    result += self.memory_blocks[i].variables.number_of_arrays() + 1;
-                }
-                result
+                self.varseg_of_memory_block_index(index)
             }
             Path::ArrayElement(parent_path, ..) => {
                 if let Path::Root(RootPath { name, shared }) = parent_path.as_ref() {
@@ -231,14 +244,7 @@ impl Context {
                     } else {
                         self.caller_variables_memory_block_index()
                     };
-                    let grand_parent_varseg = if memory_block_index > 0 {
-                        self.memory_blocks[memory_block_index - 1]
-                            .variables
-                            .number_of_arrays()
-                            + 1
-                    } else {
-                        0
-                    };
+                    let grand_parent_varseg = self.varseg_of_memory_block_index(memory_block_index);
                     let array_varseg = self.memory_blocks[memory_block_index]
                         .variables
                         .number_of_arrays_until(name);
@@ -249,6 +255,82 @@ impl Context {
             }
             Path::Property(parent_path, ..) => self.calculate_varseg(parent_path.as_ref()),
         }
+    }
+
+    pub fn peek(&self, seg: usize, address: usize) -> Result<u8, QError> {
+        let seg = Self::map_seg_to_real_seg(seg)?;
+        let segments = self.segments();
+        let segment = segments.get(seg).ok_or(QError::SubscriptOutOfRange)?;
+        match segment {
+            Segment::Root(memory_block_index) => {
+                let memory_block = self
+                    .memory_blocks
+                    .get(*memory_block_index)
+                    .ok_or(QError::SubscriptOutOfRange)?;
+                memory_block.variables.peek_non_array(address)
+            }
+            Segment::Array(memory_block_index, array_name) => {
+                let memory_block = self
+                    .memory_blocks
+                    .get(*memory_block_index)
+                    .ok_or(QError::SubscriptOutOfRange)?;
+                let value = memory_block
+                    .variables
+                    .get_by_name(array_name)
+                    .ok_or(QError::VariableRequired)?;
+                match value {
+                    Variant::VArray(arr) => arr.peek_array_element(address),
+                    _ => Err(QError::InternalError("Should be an array".to_owned())),
+                }
+            }
+        }
+    }
+
+    pub fn poke(&mut self, seg: usize, address: usize, byte_value: u8) -> Result<(), QError> {
+        let seg = Self::map_seg_to_real_seg(seg)?;
+        let segments = self.segments();
+        let segment = segments.get(seg).ok_or(QError::SubscriptOutOfRange)?;
+        match segment {
+            Segment::Root(memory_block_index) => {
+                let memory_block = self
+                    .memory_blocks
+                    .get_mut(*memory_block_index)
+                    .ok_or(QError::SubscriptOutOfRange)?;
+                memory_block.variables.poke_non_array(address, byte_value)
+            }
+            Segment::Array(memory_block_index, array_name) => {
+                let memory_block = self
+                    .memory_blocks
+                    .get_mut(*memory_block_index)
+                    .ok_or(QError::SubscriptOutOfRange)?;
+                let value = memory_block
+                    .variables
+                    .get_by_name_mut(array_name)
+                    .ok_or(QError::VariableRequired)?;
+                match value {
+                    Variant::VArray(arr) => arr.poke_array_element(address, byte_value),
+                    _ => Err(QError::InternalError("Should be an array".to_owned())),
+                }
+            }
+        }
+    }
+
+    fn map_seg_to_real_seg(seg: usize) -> Result<usize, QError> {
+        if seg >= VAR_SEG_BASE && seg < 65_536 {
+            Ok(seg - VAR_SEG_BASE)
+        } else {
+            Err(QError::SubscriptOutOfRange)
+        }
+    }
+
+    pub fn segments(&self) -> Vec<Segment> {
+        let mut result: Vec<Segment> = vec![];
+        for i in 0..self.memory_blocks.len() {
+            for segment in self.memory_blocks[i].variables.segments(i) {
+                result.push(segment);
+            }
+        }
+        result
     }
 }
 
@@ -335,4 +417,9 @@ impl MemoryBlock {
             !self.is_static
         }
     }
+}
+
+pub enum Segment {
+    Root(usize),
+    Array(usize, crate::parser::Name),
 }

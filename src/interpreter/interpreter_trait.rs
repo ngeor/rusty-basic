@@ -57,5 +57,10 @@ pub trait InterpreterTrait {
 
     fn var_path_stack(&mut self) -> &mut VecDeque<Path>;
 
+    ///  Used by the `DATA` statement.
     fn data_segment(&mut self) -> &mut DataSegment;
+
+    fn get_def_seg(&self) -> Option<usize>;
+
+    fn set_def_seg(&mut self, def_seg: Option<usize>);
 }

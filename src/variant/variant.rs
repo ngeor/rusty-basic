@@ -2,6 +2,7 @@ use super::fit::FitToType;
 use super::UserDefinedTypeValue;
 use crate::common::QError;
 use crate::parser::TypeQualifier;
+use crate::variant::bits::{bytes_to_i32, i32_to_bytes};
 use crate::variant::{qb_and, qb_or, QBNumberCast, VArray};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
@@ -388,6 +389,32 @@ impl Variant {
         match self {
             Self::VArray(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn peek_non_array(&self, address: usize) -> Result<u8, QError> {
+        match self {
+            Self::VInteger(i) => {
+                let bytes = i32_to_bytes(*i);
+                Ok(bytes[address])
+            }
+            _ => {
+                todo!()
+            }
+        }
+    }
+
+    pub fn poke_non_array(&mut self, address: usize, byte_value: u8) -> Result<(), QError> {
+        match self {
+            Self::VInteger(i) => {
+                let mut bytes = i32_to_bytes(*i);
+                bytes[address] = byte_value;
+                *i = bytes_to_i32(bytes);
+                Ok(())
+            }
+            _ => {
+                todo!()
+            }
         }
     }
 }

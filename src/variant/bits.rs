@@ -232,7 +232,6 @@ impl std::fmt::Debug for BitVec {
     }
 }
 
-#[cfg(test)]
 pub fn i32_to_bytes(i: i32) -> [u8; 2] {
     // BitVec is msb -> lsb
     let BitVec { v } = BitVec::from(i);
@@ -243,7 +242,6 @@ pub fn i32_to_bytes(i: i32) -> [u8; 2] {
     [low_byte, high_byte]
 }
 
-#[cfg(test)]
 pub fn bytes_to_i32(b: [u8; 2]) -> i32 {
     // given array is [low_byte, high_byte]
     // bits vector is msb -> lsb

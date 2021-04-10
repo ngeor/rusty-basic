@@ -76,6 +76,25 @@ impl VArray {
             .map(Variant::size_in_bytes)
             .unwrap_or_default()
     }
+
+    pub fn peek_array_element(&self, address: usize) -> Result<u8, QError> {
+        let element_size = self.element_size_in_bytes();
+        if element_size == 0 {
+            Err(QError::SubscriptOutOfRange)
+        } else {
+            let element_index = address / element_size;
+            let offset = address % element_size;
+            let element = self
+                .elements
+                .get(element_index)
+                .ok_or(QError::SubscriptOutOfRange)?;
+            element.peek_non_array(offset)
+        }
+    }
+
+    pub fn poke_array_element(&mut self, address: usize, value: u8) -> Result<(), QError> {
+        todo!()
+    }
 }
 
 /// Calculates the number of elements in a multi-dimensional array.

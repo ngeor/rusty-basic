@@ -63,6 +63,9 @@ pub enum BuiltInFunction {
     /// used in `FIELD` statements.
     Mkd,
 
+    /// `PEEK`
+    Peek,
+
     /// `RIGHT$(str_expr$, count%)`
     Right,
 
@@ -97,7 +100,7 @@ pub enum BuiltInFunction {
     VarSeg,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 21] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 22] = [
     BuiltInFunction::Chr,
     BuiltInFunction::Cvd,
     BuiltInFunction::Environ,
@@ -110,6 +113,7 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 21] = [
     BuiltInFunction::LTrim,
     BuiltInFunction::Mid,
     BuiltInFunction::Mkd,
+    BuiltInFunction::Peek,
     BuiltInFunction::Right,
     BuiltInFunction::RTrim,
     BuiltInFunction::Str,
@@ -121,9 +125,9 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 21] = [
     BuiltInFunction::VarSeg,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 21] = [
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 22] = [
     "Chr", "Cvd", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "LTrim", "Mid",
-    "Mkd", "Right", "RTrim", "Str", "String", "UBound", "UCase", "Val", "VarPtr", "VarSeg",
+    "Mkd", "Peek", "Right", "RTrim", "Str", "String", "UBound", "UCase", "Val", "VarPtr", "VarSeg",
 ];
 
 // BuiltInFunction -> &str
@@ -162,6 +166,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::LTrim => TypeQualifier::DollarString,
             BuiltInFunction::Mid => TypeQualifier::DollarString,
             BuiltInFunction::Mkd => TypeQualifier::DollarString,
+            BuiltInFunction::Peek => TypeQualifier::PercentInteger,
             BuiltInFunction::Right => TypeQualifier::DollarString,
             BuiltInFunction::RTrim => TypeQualifier::DollarString,
             BuiltInFunction::Str => TypeQualifier::DollarString,
@@ -209,6 +214,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 | BuiltInFunction::Eof
                 | BuiltInFunction::InStr
                 | BuiltInFunction::Len
+                | BuiltInFunction::Peek
                 | BuiltInFunction::LBound
                 | BuiltInFunction::UBound
                 | BuiltInFunction::Val
@@ -336,6 +342,10 @@ pub enum BuiltInSub {
     /// rec-len%: For random access files, the record length (default is 128 bytes)
     ///           For sequential files, the number of characters buffered (default is 512 bytes)
     Open,
+
+    /// `POKE`
+    Poke,
+
     Put,
     Read,
     ViewPrint,
@@ -354,6 +364,8 @@ impl BuiltInSub {
             Some(BuiltInSub::Environ)
         } else if s.eq_ignore_ascii_case("Kill") {
             Some(BuiltInSub::Kill)
+        } else if s.eq_ignore_ascii_case("Poke") {
+            Some(BuiltInSub::Poke)
         } else {
             None
         }
@@ -422,6 +434,7 @@ pub mod linter {
             BuiltInSub::LSet => crate::built_ins::lset::linter::lint(args),
             BuiltInSub::Name => crate::built_ins::name::linter::lint(args),
             BuiltInSub::Open => crate::built_ins::open::linter::lint(args),
+            BuiltInSub::Poke => crate::built_ins::poke::linter::lint(args),
             BuiltInSub::Put => crate::built_ins::put::linter::lint(args),
             BuiltInSub::Read => crate::built_ins::read::linter::lint(args),
             BuiltInSub::ViewPrint => crate::built_ins::view_print::linter::lint(args),
@@ -446,6 +459,7 @@ pub mod linter {
             BuiltInFunction::LTrim => crate::built_ins::ltrim::linter::lint(args),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::linter::lint(args),
             BuiltInFunction::Mkd => crate::built_ins::mkd::linter::lint(args),
+            BuiltInFunction::Peek => crate::built_ins::peek::linter::lint(args),
             BuiltInFunction::Right => crate::built_ins::right::linter::lint(args),
             BuiltInFunction::RTrim => crate::built_ins::rtrim::linter::lint(args),
             BuiltInFunction::Str => crate::built_ins::str_fn::linter::lint(args),
@@ -479,6 +493,7 @@ pub mod interpreter {
             BuiltInSub::LSet => crate::built_ins::lset::interpreter::run(interpreter),
             BuiltInSub::Name => crate::built_ins::name::interpreter::run(interpreter),
             BuiltInSub::Open => crate::built_ins::open::interpreter::run(interpreter),
+            BuiltInSub::Poke => crate::built_ins::poke::interpreter::run(interpreter),
             BuiltInSub::Put => crate::built_ins::put::interpreter::run(interpreter),
             BuiltInSub::Read => crate::built_ins::read::interpreter::run(interpreter),
             BuiltInSub::ViewPrint => crate::built_ins::view_print::interpreter::run(interpreter),
@@ -503,6 +518,7 @@ pub mod interpreter {
             BuiltInFunction::LTrim => crate::built_ins::ltrim::interpreter::run(interpreter),
             BuiltInFunction::Mid => crate::built_ins::mid_fn::interpreter::run(interpreter),
             BuiltInFunction::Mkd => crate::built_ins::mkd::interpreter::run(interpreter),
+            BuiltInFunction::Peek => crate::built_ins::peek::interpreter::run(interpreter),
             BuiltInFunction::Right => crate::built_ins::right::interpreter::run(interpreter),
             BuiltInFunction::RTrim => crate::built_ins::rtrim::interpreter::run(interpreter),
             BuiltInFunction::Str => crate::built_ins::str_fn::interpreter::run(interpreter),
@@ -541,6 +557,8 @@ mod mid_fn;
 mod mkd;
 mod name;
 mod open;
+mod peek;
+mod poke;
 mod put;
 mod read;
 mod right;

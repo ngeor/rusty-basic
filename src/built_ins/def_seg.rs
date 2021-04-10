@@ -55,11 +55,13 @@ pub mod interpreter {
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         if interpreter.context().variables().len() == 0 {
-            todo!()
+            interpreter.set_def_seg(None);
+            Ok(())
         } else {
             let address: i64 = interpreter.context()[0].try_cast()?;
             if address >= 0 && address <= 65535 {
-                todo!()
+                interpreter.set_def_seg(Some(address as usize));
+                Ok(())
             } else {
                 Err(QError::Overflow)
             }

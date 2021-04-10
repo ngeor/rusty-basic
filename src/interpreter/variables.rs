@@ -1,6 +1,7 @@
-use crate::common::IndexedMap;
+use crate::common::{IndexedMap, QError};
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};
+use crate::interpreter::context::Segment;
 use crate::parser::{
     BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
 };
@@ -148,6 +149,10 @@ impl Variables {
         self.map.get(name).map(|r| &r.value)
     }
 
+    pub fn get_by_name_mut(&mut self, name: &Name) -> Option<&mut Variant> {
+        self.map.get_mut(name).map(|r| &mut r.value)
+    }
+
     pub fn get(&self, idx: usize) -> Option<&Variant> {
         self.map.get_by_index(idx).map(|r| &r.value)
     }
@@ -225,6 +230,52 @@ impl Variables {
             }
         }
         result
+    }
+
+    pub fn segments(&self, index: usize) -> Vec<Segment> {
+        let mut result: Vec<Segment> = vec![];
+        result.push(Segment::Root(index));
+        for name in self.map.keys() {
+            let value = self.get_by_name(name).unwrap();
+            if value.is_array() {
+                result.push(Segment::Array(index, name.clone()));
+            }
+        }
+        result
+    }
+
+    pub fn peek_non_array(&self, address: usize) -> Result<u8, QError> {
+        let mut offset: usize = 0;
+        for RuntimeVariableInfo { value, .. } in self.map.values() {
+            if !value.is_array() {
+                let len = value.size_in_bytes();
+                if offset <= address && address < offset + len {
+                    return value.peek_non_array(address - offset);
+                }
+
+                offset += len;
+            }
+        }
+        Err(QError::InternalError(
+            "Could not find variable at address".to_string(),
+        ))
+    }
+
+    pub fn poke_non_array(&mut self, address: usize, byte_value: u8) -> Result<(), QError> {
+        let mut offset: usize = 0;
+        for RuntimeVariableInfo { value, .. } in self.map.values_mut() {
+            if !value.is_array() {
+                let len = value.size_in_bytes();
+                if offset <= address && address < offset + len {
+                    return value.poke_non_array(address - offset, byte_value);
+                }
+
+                offset += len;
+            }
+        }
+        Err(QError::InternalError(
+            "Could not find variable at address".to_string(),
+        ))
     }
 }
 

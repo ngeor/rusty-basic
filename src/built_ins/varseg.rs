@@ -61,7 +61,7 @@ mod tests {
         PRINT VARSEG(C)
         PRINT VARSEG(D)
         "#;
-        assert_prints!(input, "0", "0", "0", "0");
+        assert_prints!(input, "4096", "4096", "4096", "4096");
     }
 
     #[test]
@@ -76,7 +76,7 @@ mod tests {
             PRINT VARSEG(B)
         END SUB
         "#;
-        assert_prints!(input, "1", "1");
+        assert_prints!(input, "4097", "4097"); // TODO should be 4096, 4096
     }
 
     #[test]
@@ -93,18 +93,18 @@ mod tests {
             PRINT VARSEG(C)
         END SUB
         "#;
-        assert_prints!(input, "1", "1", "0");
+        assert_prints!(input, "4097", "4097", "4096");
     }
 
     #[test]
-    fn array_elements_relative_to_array() {
+    fn array_elements_define_new_var_seg() {
         let input = r#"
         DIM A(1 TO 2)
         PRINT VARSEG(A)
         PRINT VARSEG(A(1))
         PRINT VARSEG(A(2))
         "#;
-        assert_prints!(input, "0", "1", "1");
+        assert_prints!(input, "4096", "4097", "4097");
     }
 
     #[test]
@@ -113,7 +113,7 @@ mod tests {
         DIM A(1 TO 3, 1 TO 4)
         PRINT VARSEG(A(2, 3))
         "#;
-        assert_prints!(input, "1");
+        assert_prints!(input, "4097");
     }
 
     #[test]
@@ -130,7 +130,7 @@ mod tests {
         PRINT VARSEG(c.Suit)
         PRINT VARSEG(c.Luck)
         "#;
-        assert_prints!(input, "0", "0", "0", "0");
+        assert_prints!(input, "4096", "4096", "4096", "4096");
     }
 
     #[test]
@@ -149,7 +149,7 @@ mod tests {
         DIM A AS Address
         PRINT VARSEG(A.PostCode.Suffix)
         "#;
-        assert_prints!(input, "0");
+        assert_prints!(input, "4096");
     }
 
     #[test]
@@ -168,7 +168,7 @@ mod tests {
         DIM A(1 TO 5) AS Address
         PRINT VARSEG(A(2).PostCode.Suffix)
         "#;
-        assert_prints!(input, "1");
+        assert_prints!(input, "4097");
     }
 
     #[test]
@@ -184,7 +184,7 @@ mod tests {
         PRINT VARSEG(B(1))
         PRINT VARSEG(C(1))
         "#;
-        assert_prints!(input, "0", "0", "0", "1", "2", "3");
+        assert_prints!(input, "4096", "4096", "4096", "4097", "4098", "4099");
     }
 
     #[test]
@@ -203,7 +203,7 @@ mod tests {
             PRINT VARSEG(A)
         END SUB
         "#;
-        assert_prints!(input, "1", "2");
+        assert_prints!(input, "4097", "4098");
     }
 
     #[test]
@@ -219,6 +219,6 @@ mod tests {
             END IF
         END SUB
         "#;
-        assert_prints!(input, "1", "2", "3");
+        assert_prints!(input, "4097", "4098", "4099");
     }
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 #[derive(Clone, Debug)]
 pub struct IndexedMap<K, V>
@@ -72,6 +72,10 @@ where
 
     pub fn values(&self) -> Iter<'_, V> {
         self.values.iter()
+    }
+
+    pub fn values_mut(&mut self) -> IterMut<'_, V> {
+        self.values.iter_mut()
     }
 
     pub fn keys(&self) -> impl Iterator<Item = &K> + '_ {

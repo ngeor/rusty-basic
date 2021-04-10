@@ -67,6 +67,8 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     print_interpreter: Rc<RefCell<PrintInterpreter>>,
 
     data_segment: DataSegment,
+
+    def_seg: Option<usize>,
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -144,6 +146,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     fn data_segment(&mut self) -> &mut DataSegment {
         &mut self.data_segment
     }
+
+    fn get_def_seg(&self) -> Option<usize> {
+        self.def_seg
+    }
+
+    fn set_def_seg(&mut self, def_seg: Option<usize>) {
+        self.def_seg = def_seg;
+    }
 }
 
 pub type DefaultInterpreter = Interpreter<
@@ -190,6 +200,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             last_error_address: None,
             print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
             data_segment: DataSegment::new(),
+            def_seg: None,
         }
     }
 

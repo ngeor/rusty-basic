@@ -24,6 +24,14 @@ pub enum BuiltInFunction {
     /// `EOF(file-number%)` -> checks if the end of file has been reached
     Eof,
 
+    /// `ERR`
+    Err,
+
+    /// `INKEY$`
+    ///
+    /// Reads a character from the keyboard.
+    InKey,
+
     /// `INSTR([start%,] hay$, needle$)`
     /// if start% is omitted, INSTR starts at position 1
     /// returns the first occurrence of needle$ inside hay$
@@ -72,6 +80,9 @@ pub enum BuiltInFunction {
     /// `RTRIM$`
     RTrim,
 
+    /// `SPACE$(number-of-spaces)`
+    Space,
+
     /// `STR$(numeric-expression)` returns a string representation of a number
     Str,
 
@@ -100,11 +111,13 @@ pub enum BuiltInFunction {
     VarSeg,
 }
 
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 22] = [
+const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 25] = [
     BuiltInFunction::Chr,
     BuiltInFunction::Cvd,
     BuiltInFunction::Environ,
     BuiltInFunction::Eof,
+    BuiltInFunction::Err,
+    BuiltInFunction::InKey,
     BuiltInFunction::InStr,
     BuiltInFunction::LBound,
     BuiltInFunction::LCase,
@@ -116,6 +129,7 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 22] = [
     BuiltInFunction::Peek,
     BuiltInFunction::Right,
     BuiltInFunction::RTrim,
+    BuiltInFunction::Space,
     BuiltInFunction::Str,
     BuiltInFunction::String_,
     BuiltInFunction::UBound,
@@ -125,9 +139,10 @@ const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 22] = [
     BuiltInFunction::VarSeg,
 ];
 
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 22] = [
-    "Chr", "Cvd", "Environ", "Eof", "InStr", "LBound", "LCase", "Left", "Len", "LTrim", "Mid",
-    "Mkd", "Peek", "Right", "RTrim", "Str", "String", "UBound", "UCase", "Val", "VarPtr", "VarSeg",
+const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 25] = [
+    "Chr", "Cvd", "Environ", "Eof", "Err", "InKey", "InStr", "LBound", "LCase", "Left", "Len",
+    "LTrim", "Mid", "Mkd", "Peek", "Right", "RTrim", "Space", "Str", "String", "UBound", "UCase",
+    "Val", "VarPtr", "VarSeg",
 ];
 
 // BuiltInFunction -> &str
@@ -158,6 +173,8 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::Cvd => TypeQualifier::HashDouble,
             BuiltInFunction::Environ => TypeQualifier::DollarString,
             BuiltInFunction::Eof => TypeQualifier::PercentInteger,
+            BuiltInFunction::Err => TypeQualifier::PercentInteger,
+            BuiltInFunction::InKey => TypeQualifier::DollarString,
             BuiltInFunction::InStr => TypeQualifier::PercentInteger,
             BuiltInFunction::LBound => TypeQualifier::PercentInteger,
             BuiltInFunction::LCase => TypeQualifier::DollarString,
@@ -169,6 +186,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::Peek => TypeQualifier::PercentInteger,
             BuiltInFunction::Right => TypeQualifier::DollarString,
             BuiltInFunction::RTrim => TypeQualifier::DollarString,
+            BuiltInFunction::Space => TypeQualifier::DollarString,
             BuiltInFunction::Str => TypeQualifier::DollarString,
             BuiltInFunction::String_ => TypeQualifier::DollarString,
             BuiltInFunction::UBound => TypeQualifier::PercentInteger,
@@ -212,6 +230,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
             Some(b) => match b {
                 BuiltInFunction::Cvd
                 | BuiltInFunction::Eof
+                | BuiltInFunction::Err
                 | BuiltInFunction::InStr
                 | BuiltInFunction::Len
                 | BuiltInFunction::Peek
@@ -221,6 +240,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 | BuiltInFunction::VarPtr
                 | BuiltInFunction::VarSeg => demand_unqualified(b, n),
                 BuiltInFunction::Environ
+                | BuiltInFunction::InKey
                 | BuiltInFunction::LCase
                 | BuiltInFunction::Left
                 | BuiltInFunction::LTrim
@@ -228,6 +248,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                 | BuiltInFunction::Mkd
                 | BuiltInFunction::Right
                 | BuiltInFunction::RTrim
+                | BuiltInFunction::Space
                 | BuiltInFunction::UCase => {
                     // ENVIRON$ must be qualified
                     match n {
@@ -283,6 +304,8 @@ fn demand_unqualified(
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BuiltInSub {
+    Beep,
+    CallAbsolute,
     Close,
     Cls,
     Color,
@@ -350,6 +373,7 @@ pub enum BuiltInSub {
 
     Put,
     Read,
+    Screen,
     ViewPrint,
     Width,
 }
@@ -362,7 +386,11 @@ impl BuiltInSub {
     /// they can't hit this function, as they are represented by keywords and are
     /// parsed by custom parsers.
     pub fn parse_non_keyword_sub(s: &str) -> Option<BuiltInSub> {
-        if s.eq_ignore_ascii_case("Cls") {
+        if s.eq_ignore_ascii_case("Beep") {
+            Some(BuiltInSub::Beep)
+        } else if s.eq_ignore_ascii_case("Call") {
+            Some(BuiltInSub::CallAbsolute)
+        } else if s.eq_ignore_ascii_case("Cls") {
             Some(BuiltInSub::Cls)
         } else if s.eq_ignore_ascii_case("Color") {
             Some(BuiltInSub::Color)
@@ -372,6 +400,8 @@ impl BuiltInSub {
             Some(BuiltInSub::Kill)
         } else if s.eq_ignore_ascii_case("Poke") {
             Some(BuiltInSub::Poke)
+        } else if s.eq_ignore_ascii_case("Screen") {
+            Some(BuiltInSub::Screen)
         } else {
             None
         }
@@ -428,6 +458,8 @@ pub mod linter {
         name_context: NameContext,
     ) -> Result<(), QErrorNode> {
         match built_in_sub {
+            BuiltInSub::Beep => Ok(()),
+            BuiltInSub::CallAbsolute => Ok(()),
             BuiltInSub::Close => crate::built_ins::close::linter::lint(args),
             BuiltInSub::Cls => crate::built_ins::cls::linter::lint(args),
             BuiltInSub::Color => crate::built_ins::color::linter::lint(args),
@@ -446,6 +478,7 @@ pub mod linter {
             BuiltInSub::Poke => crate::built_ins::poke::linter::lint(args),
             BuiltInSub::Put => crate::built_ins::put::linter::lint(args),
             BuiltInSub::Read => crate::built_ins::read::linter::lint(args),
+            BuiltInSub::Screen => Ok(()),
             BuiltInSub::ViewPrint => crate::built_ins::view_print::linter::lint(args),
             BuiltInSub::Width => crate::built_ins::width::linter::lint(args),
         }
@@ -460,6 +493,8 @@ pub mod linter {
             BuiltInFunction::Cvd => crate::built_ins::cvd::linter::lint(args),
             BuiltInFunction::Environ => crate::built_ins::environ_fn::linter::lint(args),
             BuiltInFunction::Eof => crate::built_ins::eof::linter::lint(args),
+            BuiltInFunction::Err => Ok(()),
+            BuiltInFunction::InKey => Ok(()),
             BuiltInFunction::InStr => crate::built_ins::instr::linter::lint(args),
             BuiltInFunction::LBound => crate::built_ins::lbound::linter::lint(args),
             BuiltInFunction::LCase => crate::built_ins::lcase::linter::lint(args),
@@ -471,6 +506,7 @@ pub mod linter {
             BuiltInFunction::Peek => crate::built_ins::peek::linter::lint(args),
             BuiltInFunction::Right => crate::built_ins::right::linter::lint(args),
             BuiltInFunction::RTrim => crate::built_ins::rtrim::linter::lint(args),
+            BuiltInFunction::Space => Ok(()),
             BuiltInFunction::Str => crate::built_ins::str_fn::linter::lint(args),
             BuiltInFunction::String_ => crate::built_ins::string_fn::linter::lint(args),
             BuiltInFunction::UBound => crate::built_ins::ubound::linter::lint(args),
@@ -489,6 +525,8 @@ pub mod interpreter {
 
     pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QError> {
         match s {
+            BuiltInSub::Beep => Ok(()),
+            BuiltInSub::CallAbsolute => Ok(()),
             BuiltInSub::Close => crate::built_ins::close::interpreter::run(interpreter),
             BuiltInSub::Cls => crate::built_ins::cls::interpreter::run(interpreter),
             BuiltInSub::Color => crate::built_ins::color::interpreter::run(interpreter),
@@ -507,6 +545,7 @@ pub mod interpreter {
             BuiltInSub::Poke => crate::built_ins::poke::interpreter::run(interpreter),
             BuiltInSub::Put => crate::built_ins::put::interpreter::run(interpreter),
             BuiltInSub::Read => crate::built_ins::read::interpreter::run(interpreter),
+            BuiltInSub::Screen => Ok(()),
             BuiltInSub::ViewPrint => crate::built_ins::view_print::interpreter::run(interpreter),
             BuiltInSub::Width => crate::built_ins::width::interpreter::run(interpreter),
         }
@@ -521,6 +560,8 @@ pub mod interpreter {
             BuiltInFunction::Cvd => crate::built_ins::cvd::interpreter::run(interpreter),
             BuiltInFunction::Environ => crate::built_ins::environ_fn::interpreter::run(interpreter),
             BuiltInFunction::Eof => crate::built_ins::eof::interpreter::run(interpreter),
+            BuiltInFunction::Err => Ok(()),
+            BuiltInFunction::InKey => Ok(()),
             BuiltInFunction::InStr => crate::built_ins::instr::interpreter::run(interpreter),
             BuiltInFunction::LBound => crate::built_ins::lbound::interpreter::run(interpreter),
             BuiltInFunction::LCase => crate::built_ins::lcase::interpreter::run(interpreter),
@@ -532,6 +573,7 @@ pub mod interpreter {
             BuiltInFunction::Peek => crate::built_ins::peek::interpreter::run(interpreter),
             BuiltInFunction::Right => crate::built_ins::right::interpreter::run(interpreter),
             BuiltInFunction::RTrim => crate::built_ins::rtrim::interpreter::run(interpreter),
+            BuiltInFunction::Space => Ok(()),
             BuiltInFunction::Str => crate::built_ins::str_fn::interpreter::run(interpreter),
             BuiltInFunction::String_ => crate::built_ins::string_fn::interpreter::run(interpreter),
             BuiltInFunction::UBound => crate::built_ins::ubound::interpreter::run(interpreter),

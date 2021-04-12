@@ -40,12 +40,12 @@ impl Screen for CrossTermScreen {
         run(Clear(ClearType::All)).and_then(|_| run(MoveTo(0, 0)))
     }
 
-    fn background_color(&self, _color: i32) -> Result<(), QError> {
-        run(SetBackgroundColor(Color::Blue))
+    fn background_color(&self, color: i32) -> Result<(), QError> {
+        run(SetBackgroundColor(qbcolor_to_crossterm_color(color)?))
     }
 
-    fn foreground_color(&self, _color: i32) -> Result<(), QError> {
-        run(SetForegroundColor(Color::Yellow))
+    fn foreground_color(&self, color: i32) -> Result<(), QError> {
+        run(SetForegroundColor(qbcolor_to_crossterm_color(color)?))
     }
 }
 
@@ -58,4 +58,30 @@ impl From<ErrorKind> for QError {
 fn run<A: std::fmt::Display>(cmd: impl Command<AnsiType = A>) -> Result<(), QError> {
     let mut stdout = stdout();
     stdout.execute(cmd).map(|_| ()).map_err(QError::from)
+}
+
+fn qbcolor_to_crossterm_color(color: i32) -> Result<Color, QError> {
+    let colors = [
+        Color::Black,
+        Color::DarkBlue,
+        Color::DarkGreen,
+        Color::DarkCyan,
+        Color::DarkRed,
+        Color::DarkMagenta,
+        Color::DarkYellow,
+        Color::Grey,
+        Color::DarkGrey,
+        Color::Blue,
+        Color::Green,
+        Color::Cyan,
+        Color::Red,
+        Color::Magenta,
+        Color::Yellow,
+        Color::White,
+    ];
+    if color >= 0 && color < colors.len() as i32 {
+        Ok(colors[color as usize])
+    } else {
+        Err(QError::IllegalFunctionCall)
+    }
 }

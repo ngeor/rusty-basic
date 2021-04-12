@@ -12,20 +12,24 @@ pub mod parser {
         keyword_followed_by_whitespace_p(Keyword::Color)
             .and_opt(expression::expression_node_p().csv_allow_missing())
             .keep_right()
-            .map(|opt_args| {
-                Statement::BuiltInSubCall(BuiltInSub::Color, map_args(opt_args.unwrap_or_default()))
-            })
+            .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Color, map_opt_args(opt_args)))
     }
 
-    fn map_args(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
-        args.into_iter().flat_map(map_arg).collect()
-    }
-
-    fn map_arg(arg: Option<ExpressionNode>) -> ExpressionNodes {
-        match arg {
-            Some(a) => vec![Expression::IntegerLiteral(1).at(Location::start()), a],
-            _ => vec![Expression::IntegerLiteral(0).at(Location::start())],
+    fn map_opt_args(args: Option<Vec<Option<ExpressionNode>>>) -> ExpressionNodes {
+        let mut result: ExpressionNodes = vec![];
+        let mut mask = 1;
+        let mut flags = 0;
+        if let Some(args) = args {
+            for arg in args {
+                if let Some(arg) = arg {
+                    flags |= mask;
+                    result.push(arg);
+                }
+                mask <<= 1;
+            }
         }
+        result.insert(0, Expression::IntegerLiteral(flags).at(Location::start()));
+        result
     }
 }
 
@@ -45,9 +49,33 @@ pub mod linter {
 pub mod interpreter {
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::variant::QBNumberCast;
 
-    pub fn run<S: InterpreterTrait>(_interpreter: &mut S) -> Result<(), QError> {
-        todo!()
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+        let flags: i32 = interpreter.context()[0].try_cast()?;
+        let is_foreground_present = flags & 0x01 != 0;
+        let is_background_present = flags & 0x02 != 0;
+        if is_foreground_present {
+            let foreground_color: i32 = interpreter.context()[1].try_cast()?;
+            if is_background_present {
+                // set both
+                let background_color: i32 = interpreter.context()[2].try_cast()?;
+                interpreter.screen().foreground_color(foreground_color)?;
+                interpreter.screen().background_color(background_color)
+            } else {
+                // only set foreground color
+                interpreter.screen().foreground_color(foreground_color)
+            }
+        } else {
+            if is_background_present {
+                // only set background color
+                let background_color: i32 = interpreter.context()[1].try_cast()?;
+                interpreter.screen().background_color(background_color)
+            } else {
+                // should not happen
+                Ok(())
+            }
+        }
     }
 }
 
@@ -81,28 +109,23 @@ mod tests {
             statement,
             Statement::BuiltInSubCall(
                 BuiltInSub::Color,
-                vec![
-                    0.as_lit_expr(1, 1),
-                    1.as_lit_expr(1, 1),
-                    7.as_lit_expr(1, 9)
-                ]
+                vec![2.as_lit_expr(1, 1), 7.as_lit_expr(1, 9)]
             )
         );
     }
 
     #[test]
     fn parse_both_colors() {
-        let input = "COLOR 7, 3";
+        let input = "COLOR 7, 4";
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
                 BuiltInSub::Color,
                 vec![
-                    1.as_lit_expr(1, 1),
+                    3.as_lit_expr(1, 1),
                     7.as_lit_expr(1, 7),
-                    1.as_lit_expr(1, 1),
-                    3.as_lit_expr(1, 10)
+                    4.as_lit_expr(1, 10)
                 ]
             )
         );

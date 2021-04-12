@@ -9,6 +9,7 @@ use crate::interpreter::lpt1_write::Lpt1Write;
 use crate::interpreter::print::PrintInterpreter;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
+use crate::interpreter::screen::{CrossTermScreen, Screen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::parser::UserDefinedTypes;
@@ -33,6 +34,8 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
 
     /// Abstracts the LPT1 printer
     lpt1: TLpt1,
+
+    screen: Box<dyn Screen>,
 
     /// Holds the definition of user defined types
     user_defined_types: UserDefinedTypes,
@@ -103,6 +106,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
         &mut self.lpt1
     }
 
+    fn screen(&self) -> &dyn Screen {
+        self.screen.as_ref()
+    }
+
     fn user_defined_types(&self) -> &UserDefinedTypes {
         &self.user_defined_types
     }
@@ -168,17 +175,19 @@ pub fn new_default_interpreter(user_defined_types: UserDefinedTypes) -> DefaultI
     let stdin = ReadInputSource::new(std::io::stdin());
     let stdout = WritePrinter::new(std::io::stdout());
     let lpt1 = WritePrinter::new(Lpt1Write {});
-    Interpreter::new(stdlib, stdin, stdout, lpt1, user_defined_types)
+    let screen = CrossTermScreen {};
+    Interpreter::new(stdlib, stdin, stdout, lpt1, screen, user_defined_types)
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
     Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
 {
-    pub fn new(
+    pub fn new<TScreen: Screen + 'static>(
         stdlib: TStdlib,
         stdin: TStdIn,
         stdout: TStdOut,
         lpt1: TLpt1,
+        screen: TScreen,
         user_defined_types: UserDefinedTypes,
     ) -> Self {
         Interpreter {
@@ -186,6 +195,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             stdin,
             stdout,
             lpt1,
+            screen: Box::new(screen),
             context: Context::new(),
             return_address_stack: vec![],
             go_sub_address_stack: vec![],

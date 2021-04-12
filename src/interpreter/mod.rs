@@ -10,6 +10,7 @@ mod lpt1_write;
 mod print;
 mod read_input;
 mod registers;
+pub mod screen;
 pub mod utils;
 mod variables;
 mod write_printer;

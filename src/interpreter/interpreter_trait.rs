@@ -3,6 +3,7 @@ use crate::interpreter::context::{Context, VAR_SEG_BASE};
 use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::registers::{RegisterStack, Registers};
+use crate::interpreter::screen::Screen;
 use crate::interpreter::Stdlib;
 use crate::parser::UserDefinedTypes;
 use crate::variant::Variant;
@@ -31,6 +32,8 @@ pub trait InterpreterTrait {
 
     /// Abstracts the LPT1 printer
     fn lpt1(&mut self) -> &mut Self::TLpt1;
+
+    fn screen(&self) -> &dyn Screen;
 
     /// Holds the definition of user defined types
     fn user_defined_types(&self) -> &UserDefinedTypes;

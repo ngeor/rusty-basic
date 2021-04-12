@@ -18,8 +18,8 @@ pub mod interpreter {
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
 
-    pub fn run<S: InterpreterTrait>(_interpreter: &mut S) -> Result<(), QError> {
-        todo!()
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+        interpreter.screen().cls()
     }
 }
 

@@ -4,6 +4,7 @@ use crate::instruction_generator::{generate_instructions, InstructionGeneratorRe
 use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::read_input::ReadInputSource;
+use crate::interpreter::screen::{CrossTermScreen, HeadlessScreen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::linter;
@@ -24,7 +25,28 @@ fn mock_interpreter_for_user_defined_types(
     let stdin = ReadInputSource::new(MockStdin { stdin: vec![] });
     let stdout = WritePrinter::new(vec![]);
     let lpt1 = WritePrinter::new(vec![]);
-    Interpreter::new(stdlib, stdin, stdout, lpt1, user_defined_types)
+    if std::env::var("USE_REAL_SCREEN")
+        .unwrap_or_default()
+        .is_empty()
+    {
+        Interpreter::new(
+            stdlib,
+            stdin,
+            stdout,
+            lpt1,
+            HeadlessScreen {},
+            user_defined_types,
+        )
+    } else {
+        Interpreter::new(
+            stdlib,
+            stdin,
+            stdout,
+            lpt1,
+            CrossTermScreen {},
+            user_defined_types,
+        )
+    }
 }
 
 pub fn mock_interpreter_for_input<T>(input: T) -> (InstructionGeneratorResult, MockInterpreter)

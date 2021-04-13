@@ -9,40 +9,24 @@ pub mod parser {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        keyword_followed_by_whitespace_p(Keyword::Color)
-            .and_opt(expression::expression_node_p().csv_allow_missing())
-            .keep_right()
-            .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Color, map_opt_args(opt_args)))
-    }
-
-    fn map_opt_args(args: Option<Vec<Option<ExpressionNode>>>) -> ExpressionNodes {
-        let mut result: ExpressionNodes = vec![];
-        let mut mask = 1;
-        let mut flags = 0;
-        if let Some(args) = args {
-            for arg in args {
-                if let Some(arg) = arg {
-                    flags |= mask;
-                    result.push(arg);
-                }
-                mask <<= 1;
-            }
-        }
-        result.insert(0, Expression::IntegerLiteral(flags).at(Location::start()));
-        result
+        parse_built_in_sub_with_opt_args(Keyword::Color, BuiltInSub::Color)
     }
 }
 
 pub mod linter {
-    use crate::common::QErrorNode;
+    use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;
     use crate::parser::ExpressionNode;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        for i in 0..args.len() {
-            args.require_numeric_argument(i)?;
+        if args.len() < 2 || args.len() > 3 {
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        } else {
+            for i in 0..args.len() {
+                args.require_numeric_argument(i)?;
+            }
+            Ok(())
         }
-        Ok(())
     }
 }
 
@@ -152,5 +136,11 @@ mod tests {
     fn lint_wrong_background_type() {
         let input = "COLOR , A$";
         assert_linter_err!(input, QError::ArgumentTypeMismatch);
+    }
+
+    #[test]
+    fn lint_too_many_args() {
+        let input = "COLOR 1, 2, 3";
+        assert_linter_err!(input, QError::ArgumentCountMismatch);
     }
 }

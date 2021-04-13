@@ -1,7 +1,7 @@
 //! For text mode applications.
 
 use crate::common::QError;
-use crossterm::cursor::MoveTo;
+use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::{Color, SetBackgroundColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::Command;
@@ -14,6 +14,12 @@ pub trait Screen {
     fn background_color(&self, color: i32) -> Result<(), QError>;
 
     fn foreground_color(&self, color: i32) -> Result<(), QError>;
+
+    fn move_to(&self, row: u16, col: u16) -> Result<(), QError>;
+
+    fn show_cursor(&self) -> Result<(), QError>;
+
+    fn hide_cursor(&self) -> Result<(), QError>;
 }
 
 pub struct HeadlessScreen {}
@@ -28,6 +34,18 @@ impl Screen for HeadlessScreen {
     }
 
     fn foreground_color(&self, _color: i32) -> Result<(), QError> {
+        Ok(())
+    }
+
+    fn move_to(&self, _row: u16, _col: u16) -> Result<(), QError> {
+        Ok(())
+    }
+
+    fn show_cursor(&self) -> Result<(), QError> {
+        Ok(())
+    }
+
+    fn hide_cursor(&self) -> Result<(), QError> {
         Ok(())
     }
 }
@@ -46,6 +64,18 @@ impl Screen for CrossTermScreen {
 
     fn foreground_color(&self, color: i32) -> Result<(), QError> {
         run(SetForegroundColor(qbcolor_to_crossterm_color(color)?))
+    }
+
+    fn move_to(&self, row: u16, col: u16) -> Result<(), QError> {
+        run(MoveTo(col, row))
+    }
+
+    fn show_cursor(&self) -> Result<(), QError> {
+        run(Show)
+    }
+
+    fn hide_cursor(&self) -> Result<(), QError> {
+        run(Hide)
     }
 }
 

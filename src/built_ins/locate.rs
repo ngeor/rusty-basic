@@ -9,26 +9,7 @@ pub mod parser {
     where
         R: Reader<Item = char, Err = QError> + HasLocation + 'static,
     {
-        keyword_followed_by_whitespace_p(Keyword::Locate)
-            .and_opt(expression::expression_node_p().csv_allow_missing())
-            .keep_right()
-            .map(|opt_args| {
-                Statement::BuiltInSubCall(
-                    BuiltInSub::Locate,
-                    map_args(opt_args.unwrap_or_default()),
-                )
-            })
-    }
-
-    fn map_args(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
-        args.into_iter().flat_map(map_arg).collect()
-    }
-
-    fn map_arg(arg: Option<ExpressionNode>) -> ExpressionNodes {
-        match arg {
-            Some(a) => vec![Expression::IntegerLiteral(1).at(Location::start()), a],
-            _ => vec![Expression::IntegerLiteral(0).at(Location::start())],
-        }
+        parse_built_in_sub_with_opt_args(Keyword::Locate, BuiltInSub::Locate)
     }
 }
 
@@ -38,8 +19,7 @@ pub mod linter {
     use crate::parser::ExpressionNode;
 
     pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
-        // 2 or 3 arguments (row, col, cursor) but they're duplicated because they're optional
-        if args.len() != 4 && args.len() != 6 {
+        if args.len() < 2 || args.len() > 4 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             for i in 0..args.len() {
@@ -53,19 +33,109 @@ pub mod linter {
 pub mod interpreter {
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::interpreter::utils::VariantCasts;
 
-    pub fn run<S: InterpreterTrait>(_interpreter: &mut S) -> Result<(), QError> {
-        todo!()
+    pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+        let mut iterator = interpreter.context().variables().iter();
+        let flags: usize = iterator.next().unwrap().to_positive_int()?;
+        let is_row_present = flags & 0x01 != 0;
+        let is_col_present = flags & 0x02 != 0;
+        let is_cursor_present = flags & 0x04 != 0;
+        let row: Option<usize> = if is_row_present {
+            Some(iterator.next().unwrap().to_positive_int()?)
+        } else {
+            None
+        };
+        let col: Option<usize> = if is_col_present {
+            Some(iterator.next().unwrap().to_positive_int()?)
+        } else {
+            None
+        };
+        let cursor: Option<usize> = if is_cursor_present {
+            Some(iterator.next().unwrap().to_non_negative_int()?)
+        } else {
+            None
+        };
+        move_to(interpreter, row, col)?;
+        show_hide_cursor(interpreter, cursor)
+    }
+
+    fn move_to<S: InterpreterTrait>(
+        interpreter: &S,
+        row: Option<usize>,
+        col: Option<usize>,
+    ) -> Result<(), QError> {
+        if let Some(row) = row {
+            if let Some(col) = col {
+                interpreter
+                    .screen()
+                    .move_to((row - 1) as u16, (col - 1) as u16)
+            } else {
+                interpreter.screen().move_to((row - 1) as u16, 0)
+            }
+        } else {
+            if col.is_some() {
+                // cannot move to a col because the current row is unknown
+                Err(QError::IllegalFunctionCall)
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    fn show_hide_cursor<S: InterpreterTrait>(
+        interpreter: &S,
+        cursor: Option<usize>,
+    ) -> Result<(), QError> {
+        match cursor {
+            Some(1) => interpreter.screen().show_cursor(),
+            Some(0) => interpreter.screen().hide_cursor(),
+            Some(_) => Err(QError::IllegalFunctionCall),
+            None => Ok(()),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::assert_linter_err;
     use crate::assert_parser_err;
     use crate::built_ins::BuiltInSub;
     use crate::common::QError;
     use crate::parser::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
     use crate::parser::Statement;
+
+    #[test]
+    fn parse_row() {
+        let input = "LOCATE 11";
+        let statement = parse(input).demand_single_statement();
+        assert_eq!(
+            statement,
+            Statement::BuiltInSubCall(
+                BuiltInSub::Locate,
+                vec![
+                    1.as_lit_expr(1, 1),  // row present
+                    11.as_lit_expr(1, 8), // row
+                ]
+            )
+        );
+    }
+
+    #[test]
+    fn parse_col() {
+        let input = "LOCATE , 20";
+        let statement = parse(input).demand_single_statement();
+        assert_eq!(
+            statement,
+            Statement::BuiltInSubCall(
+                BuiltInSub::Locate,
+                vec![
+                    2.as_lit_expr(1, 1),   // col present
+                    20.as_lit_expr(1, 10), // col
+                ]
+            )
+        );
+    }
 
     #[test]
     fn parse_row_col() {
@@ -76,9 +146,8 @@ mod tests {
             Statement::BuiltInSubCall(
                 BuiltInSub::Locate,
                 vec![
-                    1.as_lit_expr(1, 1),   // row present
+                    3.as_lit_expr(1, 1),   // row and col present
                     10.as_lit_expr(1, 8),  // row
-                    1.as_lit_expr(1, 1),   // col present
                     20.as_lit_expr(1, 12)  // col
                 ]
             )
@@ -94,9 +163,7 @@ mod tests {
             Statement::BuiltInSubCall(
                 BuiltInSub::Locate,
                 vec![
-                    0.as_lit_expr(1, 1),  // row absent
-                    0.as_lit_expr(1, 1),  // col absent
-                    1.as_lit_expr(1, 1),  // cursor present
+                    4.as_lit_expr(1, 1),  // cursor present
                     1.as_lit_expr(1, 12)  // cursor
                 ]
             )
@@ -109,5 +176,10 @@ mod tests {
             "LOCATE 1, 2,",
             QError::syntax_error("Error: trailing comma")
         );
+    }
+
+    #[test]
+    fn lint_too_many_args() {
+        assert_linter_err!("LOCATE 1, 2, 3, 4", QError::ArgumentCountMismatch);
     }
 }

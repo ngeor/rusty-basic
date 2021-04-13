@@ -1,5 +1,7 @@
+use crate::built_ins::BuiltInSub;
 /// Parser combinators specific to this project (e.g. for keywords)
 use crate::common::*;
+use crate::parser::expression::expression_node_p;
 use crate::parser::pc::*;
 use crate::parser::types::*;
 use std::marker::PhantomData;
@@ -323,3 +325,38 @@ where
 }
 
 impl<R: Reader<Item = char, Err = QError>, T> PcSpecific<R> for T where T: Parser<R> {}
+
+/// Parses built-in subs with optional arguments
+pub fn parse_built_in_sub_with_opt_args<R>(
+    keyword: Keyword,
+    built_in_sub: BuiltInSub,
+) -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_followed_by_whitespace_p(keyword)
+        .and_opt(expression_node_p().csv_allow_missing())
+        .keep_right()
+        .map(move |opt_args| {
+            Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
+        })
+}
+
+/// Maps optional arguments to arguments, inserting a dummy first argument indicating
+/// which arguments were present in the form of a bit mask.
+pub fn map_opt_args_to_flags(args: Option<Vec<Option<ExpressionNode>>>) -> ExpressionNodes {
+    let mut result: ExpressionNodes = vec![];
+    let mut mask = 1;
+    let mut flags = 0;
+    if let Some(args) = args {
+        for arg in args {
+            if let Some(arg) = arg {
+                flags |= mask;
+                result.push(arg);
+            }
+            mask <<= 1;
+        }
+    }
+    result.insert(0, Expression::IntegerLiteral(flags).at(Location::start()));
+    result
+}

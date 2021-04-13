@@ -326,6 +326,11 @@ mod tests {
         fn test_input_explicit_positive() {
             assert_input("+3.14", "N", "N!", 3.14_f32);
         }
+
+        #[test]
+        fn test_space_is_trimmed() {
+            assert_input("  42  ", "N", "N!", 42.0_f32);
+        }
     }
 
     mod string_var {
@@ -362,6 +367,16 @@ mod tests {
             "#;
             let mut interpreter = interpret_with_raw_input(input, "hello, world");
             assert_eq!(interpreter.stdout().output_exact(), "hello.\r\nworld.\r\n");
+        }
+
+        #[test]
+        fn test_space_is_trimmed() {
+            let input = r#"
+            INPUT A$
+            PRINT A$ ; "."
+            "#;
+            let mut interpreter = interpret_with_raw_input(input, "  hello  ");
+            assert_eq!(interpreter.stdout().output(), "hello.");
         }
     }
 

@@ -111,6 +111,7 @@ impl<T: Read> Input for ReadInputSource<T> {
         self.skip_while(|ch| ch == ' ')?;
         // read until comma or eol
         self.read_until(|ch| ch == ',' || ch == '\r' || ch == '\n')
+            .map(|s| s.trim().to_owned())
     }
 
     fn line_input(&self) -> std::io::Result<String> {

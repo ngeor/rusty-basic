@@ -19,14 +19,26 @@ pub mod parser {
 }
 
 pub mod linter {
-    use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
+    use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
     use crate::linter::NameContext;
+    use crate::parser::{Expression, ExpressionNode, ExpressionNodes};
 
-    pub fn lint(name_context: NameContext) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes, name_context: NameContext) -> Result<(), QErrorNode> {
         if name_context == NameContext::Global {
-            Ok(())
+            args.iter().map(require_constant).collect()
         } else {
             Err(QError::IllegalInSubFunction).with_err_no_pos()
+        }
+    }
+
+    fn require_constant(arg: &ExpressionNode) -> Result<(), QErrorNode> {
+        match &arg.element {
+            Expression::SingleLiteral(_)
+            | Expression::DoubleLiteral(_)
+            | Expression::StringLiteral(_)
+            | Expression::IntegerLiteral(_)
+            | Expression::LongLiteral(_) => Ok(()),
+            _ => Err(QError::InvalidConstant).with_err_at(arg),
         }
     }
 }
@@ -53,8 +65,10 @@ pub mod interpreter {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
+    use crate::assert_prints;
     use crate::built_ins::BuiltInSub;
     use crate::common::QError;
+    use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::parser::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
     use crate::parser::*;
 
@@ -109,5 +123,20 @@ mod tests {
         END FUNCTION
         "#;
         assert_linter_err!(input, QError::IllegalInSubFunction);
+    }
+
+    #[test]
+    fn data_must_be_constants() {
+        assert_linter_err!("DATA A", QError::InvalidConstant);
+    }
+
+    #[test]
+    fn data_is_moved_at_the_start_of_the_program() {
+        let input = r#"
+        READ A
+        PRINT A
+        DATA 42
+        "#;
+        assert_prints!(input, "42");
     }
 }

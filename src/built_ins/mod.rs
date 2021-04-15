@@ -431,7 +431,7 @@ pub mod linter {
             BuiltInSub::Close => crate::built_ins::close::linter::lint(args),
             BuiltInSub::Cls => crate::built_ins::cls::linter::lint(args),
             BuiltInSub::Color => crate::built_ins::color::linter::lint(args),
-            BuiltInSub::Data => crate::built_ins::data::linter::lint(name_context),
+            BuiltInSub::Data => crate::built_ins::data::linter::lint(args, name_context),
             BuiltInSub::DefSeg => crate::built_ins::def_seg::linter::lint(args),
             BuiltInSub::Environ => crate::built_ins::environ_sub::linter::lint(args),
             BuiltInSub::Field => crate::built_ins::field::linter::lint(args),

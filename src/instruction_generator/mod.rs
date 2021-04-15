@@ -309,7 +309,25 @@ impl InstructionGenerator {
                 _ => {}
             }
         }
-        (top_level_statements, functions, subs)
+        (
+            Self::move_data_statements_first(top_level_statements),
+            functions,
+            subs,
+        )
+    }
+
+    fn move_data_statements_first(statements: StatementNodes) -> StatementNodes {
+        let mut data_statements: StatementNodes = vec![];
+        let mut other_statements: StatementNodes = vec![];
+        for statement in statements {
+            if let Statement::BuiltInSubCall(BuiltInSub::Data, _) = statement.as_ref() {
+                data_statements.push(statement);
+            } else {
+                other_statements.push(statement);
+            }
+        }
+        data_statements.append(&mut other_statements);
+        data_statements
     }
 
     fn visit_top_level_statements(&mut self, statements: StatementNodes) {

@@ -516,8 +516,7 @@ mod convert2 {
             match &variable_info.redim_info {
                 Some(r) => {
                     if r.dimension_count != array_dimensions.len() {
-                        return Err(QError::InternalError("Wrong dimension count".to_owned()))
-                            .with_err_at(pos);
+                        return Err(QError::WrongNumberOfDimensions).with_err_at(pos);
                     }
 
                     match built_in_style {
@@ -617,12 +616,10 @@ mod convert2 {
                 if redim_info.dimension_count == dimension_count {
                     Ok(())
                 } else {
-                    Err(QError::InternalError(
-                        "Wrong number of dimensions".to_owned(),
-                    ))
+                    Err(QError::WrongNumberOfDimensions)
                 }
             }
-            _ => Err(QError::InternalError("Dimensions already fixed".to_owned())),
+            _ => Err(QError::ArrayAlreadyDimensioned),
         }
     }
 

@@ -197,8 +197,12 @@ pub enum QError {
 
     FunctionNeedsArguments,
 
+    /// Indicates that a REDIM statement is trying to change a variable
+    /// previously defined with DIM.
     ArrayAlreadyDimensioned,
 
+    /// Indicates that a REDIM statement is trying to change the number of
+    /// dimensions previously defined in an array.
     WrongNumberOfDimensions,
 
     // Lexer errors

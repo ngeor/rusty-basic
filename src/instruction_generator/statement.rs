@@ -88,7 +88,7 @@ impl Visitor<StatementNode> for InstructionGenerator {
                 self.push(Instruction::PopRet, pos);
             }
             Statement::Comment(_) => {}
-            Statement::Dim(dim_list) => {
+            Statement::Dim(dim_list) | Statement::Redim(dim_list) => {
                 self.visit(dim_list);
             }
             Statement::End | Statement::System => {

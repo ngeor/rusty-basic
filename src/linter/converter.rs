@@ -1,7 +1,6 @@
 mod assignment;
 mod context;
 mod converter;
-mod dim;
 mod for_loop;
 mod function_implementation;
 mod if_blocks;

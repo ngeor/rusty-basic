@@ -41,6 +41,25 @@ where
         )
 }
 
+pub fn redim_name_node_p<R>() -> impl Parser<R, Output = DimNameNode>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    name_with_dot_p()
+        .with_pos()
+        .and_demand(array_dimensions_p().or_syntax_error("Expected: array dimensions"))
+        .and_opt(type_definition_extended_p())
+        .and_then(
+            |((name_node, array_dimensions), opt_extended_type_definition)| {
+                map_name_opt_extended_type_definition(
+                    name_node,
+                    Some(array_dimensions),
+                    opt_extended_type_definition,
+                )
+            },
+        )
+}
+
 fn array_dimensions_p<R>() -> impl Parser<R, Output = ArrayDimensions>
 where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,

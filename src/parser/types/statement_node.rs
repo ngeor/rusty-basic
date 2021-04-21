@@ -30,6 +30,8 @@ pub enum Statement {
     /// DIM A, B, C
     Dim(DimList),
 
+    Redim(DimList),
+
     SubCall(BareName, ExpressionNodes),
     BuiltInSubCall(BuiltInSub, ExpressionNodes),
 

@@ -1,8 +1,12 @@
-use crate::common::CaseInsensitiveString;
+use crate::common::{CaseInsensitiveString, QError};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::NameContext;
-use crate::parser::{BareName, TypeQualifier, VariableInfo};
+use crate::parser::{
+    BareName, BuiltInStyle, DimType, DimTypeTrait, HasExpressionType, RedimInfo, TypeQualifier,
+    VariableInfo,
+};
 use crate::variant::Variant;
+use std::collections::hash_map::Values;
 use std::collections::{HashMap, HashSet};
 
 pub struct Names {
@@ -15,6 +19,14 @@ pub enum NameInfo {
     Constant(Variant),
     Compact(HashMap<TypeQualifier, VariableInfo>),
     Extended(VariableInfo),
+}
+
+pub trait Visitor {
+    fn on_constant(&mut self, constant_value: &Variant) -> Result<(), QError>;
+
+    fn on_compact(&mut self, q: TypeQualifier, variable_info: &VariableInfo) -> Result<(), QError>;
+
+    fn on_extended(&mut self, variable_info: &VariableInfo) -> Result<(), QError>;
 }
 
 impl Names {
@@ -30,22 +42,48 @@ impl Names {
         Self::new(None, None)
     }
 
+    pub fn visit<V: Visitor>(&self, bare_name: &BareName, visitor: &mut V) -> Result<(), QError> {
+        self.do_visit(bare_name, false, visitor)
+    }
+
+    fn do_visit<V: Visitor>(
+        &self,
+        bare_name: &BareName,
+        only_shared: bool,
+        visitor: &mut V,
+    ) -> Result<(), QError> {
+        match self.map.get(bare_name) {
+            Some(NameInfo::Constant(v)) => {
+                // parameter hides const
+                if !only_shared {
+                    visitor.on_constant(v)?;
+                }
+            }
+            Some(NameInfo::Compact(compact_types)) => {
+                for (k, v) in compact_types.iter() {
+                    if !only_shared || v.shared {
+                        visitor.on_compact(*k, v)?;
+                    }
+                }
+            }
+            Some(NameInfo::Extended(variable_info)) => {
+                if !only_shared || variable_info.shared {
+                    visitor.on_extended(variable_info)?;
+                }
+            }
+            None => {}
+        }
+        match self.parent.as_ref() {
+            Some(parent) => parent.do_visit(bare_name, true, visitor),
+            None => Ok(()),
+        }
+    }
+
     /// Returns true if this name is a constant, or an extended variable,
     /// or a compact variable. In the case of compact variables, multiple may
     /// exist with the same bare name, e.g. `A$` and `A%`.
     pub fn contains(&self, bare_name: &BareName) -> bool {
         self.map.contains_key(bare_name)
-    }
-
-    /// Checks if a new compact variable can be introduced for the given name and qualifier.
-    /// This is allowed if the given name is not yet known, or if it is known as a compact
-    /// name and the qualifier hasn't been used yet.
-    pub fn can_insert_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> bool {
-        match self.map.get(bare_name) {
-            Some(NameInfo::Compact(qualifiers)) => !qualifiers.contains_key(&qualifier),
-            Some(_) => false,
-            _ => true,
-        }
     }
 
     pub fn get_compact_var_recursively(
@@ -172,6 +210,7 @@ impl Names {
         }
     }
 
+    #[deprecated]
     pub fn insert_compact(
         &mut self,
         bare_name: BareName,
@@ -190,6 +229,27 @@ impl Names {
             _ => {
                 panic!("Cannot add compact")
             }
+        }
+    }
+
+    pub fn insert3(
+        &mut self,
+        bare_name: BareName,
+        dim_type: &DimType,
+        shared: bool,
+        redim_info: Option<RedimInfo>,
+    ) {
+        let variable_info = VariableInfo {
+            expression_type: dim_type.expression_type(),
+            shared,
+            redim_info,
+        };
+        if dim_type.is_extended() {
+            self.insert_extended(bare_name, variable_info)
+        } else {
+            let opt_q: Option<TypeQualifier> = dim_type.into();
+            let q: TypeQualifier = opt_q.expect("Should be qualified");
+            self.insert_compact(bare_name, q, variable_info)
         }
     }
 
@@ -246,6 +306,13 @@ impl Names {
             _ => None,
         }
     }
+
+    pub fn names_iterator<'a>(
+        &'a self,
+        bare_name: &'a BareName,
+    ) -> impl Iterator<Item = (BuiltInStyle, &'a VariableInfo)> {
+        NamesIterator::new(self, bare_name)
+    }
 }
 
 impl ConstValueResolver for Names {
@@ -256,6 +323,98 @@ impl ConstValueResolver for Names {
                 Some(boxed_parent) => boxed_parent.get_resolved_constant(name),
                 _ => None,
             },
+        }
+    }
+}
+
+struct NamesIterator<'a> {
+    names: &'a Names,
+    bare_name: &'a BareName,
+    state: NamesIteratorState,
+    compacts: Option<Values<'a, TypeQualifier, VariableInfo>>,
+    only_shared: bool,
+}
+
+enum NamesIteratorState {
+    NotStarted,
+    Compacts,
+    FinishedCurrent,
+    Finished,
+}
+
+impl<'a> NamesIterator<'a> {
+    pub fn new(names: &'a Names, bare_name: &'a BareName) -> Self {
+        Self {
+            names,
+            bare_name,
+            state: NamesIteratorState::NotStarted,
+            compacts: None,
+            only_shared: false,
+        }
+    }
+
+    fn on_not_started(&mut self) -> Option<<Self as Iterator>::Item> {
+        match self.names.map.get(self.bare_name) {
+            Some(NameInfo::Compact(m)) => {
+                self.compacts = Some(m.values());
+                self.state = NamesIteratorState::Compacts;
+                self.on_compacts()
+            }
+            Some(NameInfo::Extended(v)) => {
+                self.state = NamesIteratorState::FinishedCurrent;
+                if !self.only_shared || v.shared {
+                    Some((BuiltInStyle::Extended, v))
+                } else {
+                    self.on_finished_current()
+                }
+            }
+            _ => self.on_finished_current(),
+        }
+    }
+
+    fn on_compacts(&mut self) -> Option<<Self as Iterator>::Item> {
+        let v = self.compacts.as_mut().unwrap().next();
+        match v {
+            Some(v) => {
+                if v.shared || !self.only_shared {
+                    Some((BuiltInStyle::Compact, v))
+                } else {
+                    self.on_compacts()
+                }
+            }
+            _ => {
+                self.state = NamesIteratorState::FinishedCurrent;
+                self.on_finished_current()
+            }
+        }
+    }
+
+    fn on_finished_current(&mut self) -> Option<<Self as Iterator>::Item> {
+        // go to parent, but only shared
+        self.only_shared = true;
+        match &self.names.parent {
+            Some(parent_names) => {
+                self.names = parent_names.as_ref();
+                self.state = NamesIteratorState::NotStarted;
+                self.on_not_started()
+            }
+            None => {
+                self.state = NamesIteratorState::Finished;
+                None
+            }
+        }
+    }
+}
+
+impl<'a> Iterator for NamesIterator<'a> {
+    type Item = (BuiltInStyle, &'a VariableInfo);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            NamesIteratorState::NotStarted => self.on_not_started(),
+            NamesIteratorState::Compacts => self.on_compacts(),
+            NamesIteratorState::FinishedCurrent => self.on_finished_current(),
+            NamesIteratorState::Finished => None,
         }
     }
 }

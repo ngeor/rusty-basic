@@ -22,12 +22,9 @@ impl DimName {
         }
     }
 
-    pub fn new<T>(bare_name: T, dim_type: DimType) -> Self
-    where
-        BareName: From<T>,
-    {
+    pub fn new(bare_name: BareName, dim_type: DimType) -> Self {
         Self {
-            bare_name: BareName::from(bare_name),
+            bare_name,
             dim_type,
         }
     }
@@ -84,10 +81,6 @@ impl From<QualifiedName> for DimName {
 impl DimTypeTrait for DimName {
     fn is_extended(&self) -> bool {
         self.dim_type.is_extended()
-    }
-
-    fn is_user_defined(&self) -> Option<&BareNameNode> {
-        self.dim_type.is_user_defined()
     }
 }
 

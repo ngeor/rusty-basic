@@ -205,3 +205,70 @@ mod dim_shared {
         assert_prints!(program, "hi", "hello");
     }
 }
+
+mod redim {
+    use super::*;
+
+    #[test]
+    fn test_redim() {
+        let input = r#"
+        REDIM A(1 TO 5)
+        FOR I = 1 TO 5
+            A(I) = I * 2
+            PRINT A(I)
+        NEXT
+        "#;
+        assert_prints!(input, "2", "4", "6", "8", "10");
+    }
+
+    #[test]
+    fn test_redim_change_single_dimension_array_of_bare_type() {
+        let input = r#"
+        REDIM A(1 TO 2)
+        FOR I = 1 TO 2
+            A(I) = 10 + I
+        NEXT
+
+        REDIM A(1 TO 3)
+        FOR I = 1 TO 3
+            PRINT A(I)
+        NEXT
+        "#;
+        assert_prints!(input, "0", "0", "0");
+    }
+
+    #[test]
+    fn test_redim_change_single_dimension_array_of_user_defined_type() {
+        let input = r#"
+        TYPE Card
+            Value AS INTEGER
+        END TYPE
+        REDIM A(1 TO 2) AS Card
+        FOR I = 1 TO 2
+            A(I).Value = 10 + I
+        NEXT
+
+        REDIM A(1 TO 3) AS Card
+        FOR I = 1 TO 3
+            PRINT A(I).Value
+        NEXT
+        "#;
+        assert_prints!(input, "0", "0", "0");
+    }
+
+    #[test]
+    fn test_redim_without_specifying_type_keeps_old_type() {
+        let input = r#"
+        TYPE Card
+            Value AS INTEGER
+            Suit AS STRING * 5
+        END TYPE
+
+        REDIM A(1 TO 5) AS Card
+        REDIM A(1 TO 2)
+        A(1).Value = 42
+        PRINT A(1).Value
+        "#;
+        assert_prints!(input, "42");
+    }
+}

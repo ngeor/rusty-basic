@@ -127,6 +127,7 @@ pub trait ExpressionReducer {
                 self.visit_do_loop(do_loop_node).map(Statement::DoLoop)
             }
             Statement::Dim(_)
+            | Statement::Redim(_)
             | Statement::OnError(_)
             | Statement::Label(_)
             | Statement::GoTo(_)

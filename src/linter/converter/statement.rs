@@ -1,6 +1,6 @@
 use super::converter::{Converter, ConverterImpl};
 use crate::common::*;
-use crate::linter::converter::context::ExprContext;
+use crate::linter::converter::context::{DimContext, ExprContext};
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
 use crate::linter::NameContext;
 use crate::parser::{
@@ -131,10 +131,18 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
                     }
                 }
             },
-            Statement::Dim(dim_list) => self.convert_and_collect_implicit_variables(dim_list).map(
+            Statement::Dim(dim_list) => self.context.on_dim(dim_list, DimContext::Default).map(
                 |(dim_list, implicit_vars_in_array_dimensions)| {
                     (
                         Some(Statement::Dim(dim_list).at(pos)),
+                        implicit_vars_in_array_dimensions,
+                    )
+                },
+            ),
+            Statement::Redim(dim_list) => self.context.on_dim(dim_list, DimContext::Redim).map(
+                |(dim_list, implicit_vars_in_array_dimensions)| {
+                    (
+                        Some(Statement::Redim(dim_list).at(pos)),
                         implicit_vars_in_array_dimensions,
                     )
                 },

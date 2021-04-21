@@ -23,6 +23,26 @@ where
         })
 }
 
+/// Parses REDIM statement
+pub fn redim_p<R>() -> impl Parser<R, Output = Statement>
+where
+    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+{
+    keyword_followed_by_whitespace_p(Keyword::Redim)
+        .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
+        .and_demand(
+            dim_name::redim_name_node_p()
+                .csv()
+                .or_syntax_error("Expected: name after REDIM"),
+        )
+        .map(|((_, opt_shared), variables)| {
+            Statement::Redim(DimList {
+                shared: opt_shared.is_some(),
+                variables,
+            })
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use crate::common::*;

@@ -109,6 +109,8 @@ pub enum Keyword {
     Random,
     /// READ
     Read,
+    /// REDIM
+    Redim,
     /// RESUME
     Resume,
     /// RETURN
@@ -204,6 +206,7 @@ const STR_PRINT: &str = "PRINT";
 const STR_PUT: &str = "PUT";
 const STR_RANDOM: &str = "RANDOM";
 const STR_READ: &str = "READ";
+const STR_REDIM: &str = "REDIM";
 const STR_RESUME: &str = "RESUME";
 const STR_RETURN: &str = "RETURN";
 const STR_SEG: &str = "SEG";
@@ -225,7 +228,7 @@ const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 const STR_WIDTH: &str = "WIDTH";
 
-const SORTED_KEYWORDS_STR: [&str; 73] = [
+const SORTED_KEYWORDS_STR: [&str; 74] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -279,6 +282,7 @@ const SORTED_KEYWORDS_STR: [&str; 73] = [
     STR_PUT,
     STR_RANDOM,
     STR_READ,
+    STR_REDIM,
     STR_RESUME,
     STR_RETURN,
     STR_SEG,
@@ -301,7 +305,7 @@ const SORTED_KEYWORDS_STR: [&str; 73] = [
     STR_WIDTH,
 ];
 
-const SORTED_KEYWORDS: [Keyword; 73] = [
+const SORTED_KEYWORDS: [Keyword; 74] = [
     Keyword::Access,
     Keyword::And,
     Keyword::Append,
@@ -355,6 +359,7 @@ const SORTED_KEYWORDS: [Keyword; 73] = [
     Keyword::Put,
     Keyword::Random,
     Keyword::Read,
+    Keyword::Redim,
     Keyword::Resume,
     Keyword::Return,
     Keyword::Seg,
@@ -433,6 +438,7 @@ impl Keyword {
             Self::Put => STR_PUT,
             Self::Random => STR_RANDOM,
             Self::Read => STR_READ,
+            Self::Redim => STR_REDIM,
             Self::Resume => STR_RESUME,
             Self::Return => STR_RETURN,
             Self::Seg => STR_SEG,

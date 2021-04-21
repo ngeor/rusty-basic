@@ -715,6 +715,7 @@ mod function {
             let VariableInfo {
                 expression_type,
                 shared,
+                redim_info,
             } = self.var_info.clone().unwrap();
             match expression_type {
                 ExpressionType::Array(element_type) => {
@@ -726,6 +727,7 @@ mod function {
                         VariableInfo {
                             expression_type: element_type.as_ref().clone(),
                             shared,
+                            redim_info,
                         },
                     );
                     Ok((result_expr.at(pos), implicit_vars))

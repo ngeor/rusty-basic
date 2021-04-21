@@ -397,3 +397,9 @@ impl<T: HasExpressionType> CanCastTo<&T> for Expression {
         self.expression_type().can_cast_to(&other_type_definition)
     }
 }
+
+impl CanCastTo<&ExpressionNode> for Expression {
+    fn can_cast_to(&self, other: &ExpressionNode) -> bool {
+        self.can_cast_to(&other.element)
+    }
+}

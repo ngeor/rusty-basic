@@ -1,28 +1,30 @@
 use super::{Instruction, InstructionGenerator, RootPath, Visitor};
 use crate::common::*;
+use crate::linter::DimContext;
 use crate::parser::*;
 
-impl Visitor<DimList> for InstructionGenerator {
-    fn visit(&mut self, dim_list: DimList) {
-        let DimList { shared, variables } = dim_list;
+impl Visitor<(DimList, DimContext)> for InstructionGenerator {
+    fn visit(&mut self, item: (DimList, DimContext)) {
+        let (DimList { shared, variables }, dim_context) = item;
         for dim_name_node in variables {
-            self.visit((dim_name_node, shared));
+            self.visit((dim_name_node, dim_context, shared));
         }
     }
 }
 
-impl Visitor<(DimNameNode, bool)> for InstructionGenerator {
-    fn visit(&mut self, item: (DimNameNode, bool)) {
+impl Visitor<(DimNameNode, DimContext, bool)> for InstructionGenerator {
+    fn visit(&mut self, item: (DimNameNode, DimContext, bool)) {
         let (
             Locatable {
                 element: dim_name,
                 pos,
             },
+            dim_context,
             shared,
         ) = item;
         // check if it is already defined to prevent re-allocation of STATIC variables
         let is_in_static_subprogram = self.is_in_static_subprogram();
-        if is_in_static_subprogram {
+        if is_in_static_subprogram && dim_context != DimContext::Redim {
             debug_assert!(
                 !shared,
                 "Should not be possible to have a SHARED variable inside a function/sub"

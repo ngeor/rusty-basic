@@ -11,7 +11,7 @@ use crate::common::{Locatable, QErrorNode};
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::NameContext;
+use crate::linter::{DimContext, NameContext};
 use crate::parser::*;
 use names::Names;
 
@@ -314,16 +314,4 @@ fn union(
 ) -> Vec<QualifiedNameNode> {
     left.append(&mut right);
     left
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DimContext {
-    /// Normal DIM statement
-    Default,
-
-    /// REDIM statement
-    Redim,
-
-    /// A function/sub parameter
-    Param,
 }

@@ -197,6 +197,10 @@ pub enum QError {
 
     FunctionNeedsArguments,
 
+    ArrayAlreadyDimensioned,
+
+    WrongNumberOfDimensions,
+
     // Lexer errors
     UnsupportedCharacter(char),
 

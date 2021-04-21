@@ -1,9 +1,10 @@
-use super::{Context, DimContext};
+use super::Context;
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::context::ExprContext;
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
 use crate::linter::type_resolver::TypeResolver;
+use crate::linter::DimContext;
 use crate::parser::*;
 use crate::variant::{Variant, MAX_INTEGER};
 

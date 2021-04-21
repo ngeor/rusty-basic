@@ -1,8 +1,8 @@
 use super::converter::{Converter, ConverterImpl};
 use crate::common::*;
-use crate::linter::converter::context::{DimContext, ExprContext};
+use crate::linter::converter::context::ExprContext;
 use crate::linter::converter::converter::ConverterWithImplicitVariables;
-use crate::linter::NameContext;
+use crate::linter::{DimContext, NameContext};
 use crate::parser::{
     DimName, DoLoopNode, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
 };

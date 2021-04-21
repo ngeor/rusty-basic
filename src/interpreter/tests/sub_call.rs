@@ -372,4 +372,19 @@ mod static_sub {
         "#;
         assert_prints!(program, "1", "2");
     }
+
+    #[test]
+    fn redim_does_not_preserve_values() {
+        let program = r#"
+        Hello
+        Hello
+
+        SUB Hello STATIC
+            REDIM A(1 TO 2)
+            PRINT A(1)
+            A(1) = A(1) + 1
+        END SUB
+        "#;
+        assert_prints!(program, "0", "0");
+    }
 }

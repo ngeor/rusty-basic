@@ -209,16 +209,146 @@ mod dim_shared {
 mod redim {
     use super::*;
 
-    #[test]
-    fn test_redim() {
-        let input = r#"
-        REDIM A(1 TO 5)
-        FOR I = 1 TO 5
-            A(I) = I * 2
-            PRINT A(I)
-        NEXT
-        "#;
-        assert_prints!(input, "2", "4", "6", "8", "10");
+    /// Test `REDIM` with all possible types
+    mod single_definition {
+        use super::*;
+
+        #[test]
+        fn bare() {
+            let input = r#"
+            REDIM A(1 TO 5)
+            FOR I = 1 TO 5
+                A(I) = I * 2
+                PRINT A(I)
+            NEXT
+            "#;
+            assert_prints!(input, "2", "4", "6", "8", "10");
+        }
+
+        #[test]
+        fn compact_single() {
+            let input = r#"
+            REDIM A!(1 TO 5)
+            A!(1) = 3.14
+            PRINT A!(1)
+            "#;
+            assert_prints!(input, "3.14");
+        }
+
+        #[test]
+        fn compact_double() {
+            let input = r#"
+            REDIM A#(1 TO 5)
+            A#(1) = 3.14
+            PRINT A#(1)
+            "#;
+            assert_prints!(input, "3.140000104904175");
+        }
+
+        #[test]
+        fn compact_string() {
+            let input = r#"
+            REDIM A$(1 TO 5)
+            A$(1) = "hello"
+            PRINT A$(1)
+            "#;
+            assert_prints!(input, "hello");
+        }
+
+        #[test]
+        fn compact_integer() {
+            let input = r#"
+            REDIM A%(1 TO 5)
+            A%(1) = 42
+            PRINT A%(1)
+            "#;
+            assert_prints!(input, "42");
+        }
+
+        #[test]
+        fn compact_long() {
+            let input = r#"
+            REDIM A&(1 TO 5)
+            A&(1) = 65536
+            PRINT A&(1)
+            "#;
+            assert_prints!(input, "65536");
+        }
+
+        #[test]
+        fn extended_single() {
+            let input = r#"
+            REDIM A(1 TO 5) AS SINGLE
+            A(1) = 3.14
+            PRINT A(1)
+            "#;
+            assert_prints!(input, "3.14");
+        }
+
+        #[test]
+        fn extended_double() {
+            let input = r#"
+            REDIM A(1 TO 5) AS DOUBLE
+            A(1) = 3.14
+            PRINT A(1)
+            "#;
+            assert_prints!(input, "3.140000104904175");
+        }
+
+        #[test]
+        fn extended_string() {
+            let input = r#"
+            REDIM A(1 TO 5) AS STRING
+            A(1) = "hello"
+            PRINT A(1)
+            "#;
+            assert_prints!(input, "hello");
+        }
+
+        #[test]
+        fn extended_integer() {
+            let input = r#"
+            REDIM A(1 TO 5)
+            A(1) = 42
+            PRINT A(1)
+            "#;
+            assert_prints!(input, "42");
+        }
+
+        #[test]
+        fn extended_long() {
+            let input = r#"
+            REDIM A&(1 TO 5)
+            A&(1) = 65536
+            PRINT A&(1)
+            "#;
+            assert_prints!(input, "65536");
+        }
+
+        #[test]
+        fn fixed_length_string() {
+            let input = r#"
+            REDIM A(1 TO 5) AS STRING * 2
+            A(1) = "hello"
+            PRINT A(1)
+            "#;
+            assert_prints!(input, "he");
+        }
+
+        #[test]
+        fn user_defined_type() {
+            let input = r#"
+            TYPE Card
+                Value AS INTEGER
+                Suit AS STRING * 4
+            END TYPE
+            REDIM A(1 TO 5) AS Card
+            A(1).Value = 42
+            A(1).Suit = "diamonds"
+            PRINT A(1).Value ; A(1).Suit
+            "#;
+            assert_prints!(input, "42 diam");
+        }
     }
 
     #[test]

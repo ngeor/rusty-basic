@@ -227,7 +227,7 @@ impl Names {
                 self.map.insert(bare_name, NameInfo::Compact(qualifiers));
             }
             _ => {
-                panic!("Cannot add compact")
+                panic!("Cannot add compact {}{}", bare_name, q)
             }
         }
     }

@@ -444,18 +444,17 @@ mod convert2 {
         pos: Location,
     ) -> Result<DimType, QErrorNode> {
         match element_dim_type {
-            DimType::Bare => redim_bare_to_dim_type(ctx, bare_name, array_dimensions, shared, pos),
+            DimType::Bare => redim_bare_to_dim_type(ctx, bare_name, array_dimensions, pos),
             DimType::BuiltIn(q, built_in_style) => redim_built_in_to_dim_type(
                 ctx,
                 bare_name,
                 array_dimensions,
                 *q,
                 *built_in_style,
-                shared,
                 pos,
             ),
             DimType::FixedLengthString(length_expression, resolved_length) => {
-                debug_assert_ne!(
+                debug_assert_eq!(
                     *resolved_length, 0,
                     "REDIM string length should not be known"
                 );
@@ -477,37 +476,10 @@ mod convert2 {
         }
     }
 
-    struct RedimBareVisitor(usize);
-
-    impl Visitor for RedimBareVisitor {
-        // TODO remove the constant part as it is always the same and implement it as a generic rule
-        fn on_constant(&mut self, _constant_value: &Variant) -> Result<(), QError> {
-            Err(QError::DuplicateDefinition)
-        }
-
-        fn on_compact(
-            &mut self,
-            q: TypeQualifier,
-            variable_info: &VariableInfo,
-        ) -> Result<(), QError> {
-            todo!()
-        }
-
-        fn on_extended(&mut self, variable_info: &VariableInfo) -> Result<(), QError> {
-            // use case:
-            // REDIM A(1 TO 5) AS Card
-            // REDIM A(1 TO 10) ' no need to specify type again
-            require_dimension_count(variable_info, self.0)?;
-
-            todo!()
-        }
-    }
-
     fn redim_bare_to_dim_type(
         ctx: &mut Context,
         bare_name: &BareName,
         array_dimensions: &ArrayDimensions,
-        shared: bool,
         pos: Location,
     ) -> Result<DimType, QErrorNode> {
         let mut found: Option<(BuiltInStyle, &VariableInfo)> = None;
@@ -569,10 +541,38 @@ mod convert2 {
         array_dimensions: &ArrayDimensions,
         q: TypeQualifier,
         built_in_style: BuiltInStyle,
-        shared: bool,
         pos: Location,
     ) -> Result<DimType, QErrorNode> {
-        todo!()
+        if built_in_style == BuiltInStyle::Compact {
+            for (built_in_style, variable_info) in ctx.names.names_iterator(bare_name) {
+                if built_in_style == BuiltInStyle::Extended {
+                    return Err(QError::DuplicateDefinition).with_err_at(pos);
+                }
+
+                let opt_q = variable_info.expression_type.opt_qualifier();
+                if opt_q.expect("Should be qualified") == q {
+                    require_dimension_count(variable_info, array_dimensions.len())
+                        .with_err_at(pos)?;
+                }
+            }
+        } else {
+            for (built_in_style, variable_info) in ctx.names.names_iterator(bare_name) {
+                if built_in_style == BuiltInStyle::Compact {
+                    return Err(QError::DuplicateDefinition).with_err_at(pos);
+                }
+
+                let opt_q = variable_info.expression_type.opt_qualifier();
+                if opt_q.is_none() || opt_q.unwrap() != q {
+                    return Err(QError::DuplicateDefinition).with_err_at(pos);
+                }
+
+                if opt_q.expect("Should be qualified") == q {
+                    require_dimension_count(variable_info, array_dimensions.len())
+                        .with_err_at(pos)?;
+                }
+            }
+        }
+        Ok(DimType::BuiltIn(q, built_in_style))
     }
 
     fn redim_fixed_length_string_to_dim_type(

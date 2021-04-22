@@ -1,27 +1,21 @@
-use super::{Instruction, InstructionGenerator, RootPath, Visitor};
+use super::{Instruction, InstructionGenerator, RootPath};
 use crate::common::*;
 use crate::linter::DimContext;
 use crate::parser::*;
 
-impl Visitor<(DimList, DimContext)> for InstructionGenerator {
-    fn visit(&mut self, item: (DimList, DimContext)) {
-        let (DimList { shared, variables }, dim_context) = item;
+impl InstructionGenerator {
+    pub fn visit_dim_list(&mut self, item: DimList, dim_context: DimContext) {
+        let DimList { shared, variables } = item;
         for dim_name_node in variables {
-            self.visit((dim_name_node, dim_context, shared));
+            self.visit(dim_name_node, dim_context, shared);
         }
     }
-}
 
-impl Visitor<(DimNameNode, DimContext, bool)> for InstructionGenerator {
-    fn visit(&mut self, item: (DimNameNode, DimContext, bool)) {
-        let (
-            Locatable {
-                element: dim_name,
-                pos,
-            },
-            dim_context,
-            shared,
-        ) = item;
+    fn visit(&mut self, item: DimNameNode, dim_context: DimContext, shared: bool) {
+        let Locatable {
+            element: dim_name,
+            pos,
+        } = item;
         // check if it is already defined to prevent re-allocation of STATIC variables
         let is_in_static_subprogram = self.is_in_static_subprogram();
         if is_in_static_subprogram && dim_context != DimContext::Redim {

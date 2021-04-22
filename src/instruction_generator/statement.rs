@@ -90,10 +90,10 @@ impl Visitor<StatementNode> for InstructionGenerator {
             }
             Statement::Comment(_) => {}
             Statement::Dim(dim_list) => {
-                self.visit((dim_list, DimContext::Default));
+                self.visit_dim_list(dim_list, DimContext::Default);
             }
             Statement::Redim(dim_list) => {
-                self.visit((dim_list, DimContext::Redim));
+                self.visit_dim_list(dim_list, DimContext::Redim);
             }
             Statement::End | Statement::System => {
                 self.push(Instruction::Halt, pos);

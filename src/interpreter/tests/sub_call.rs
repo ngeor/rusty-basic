@@ -247,6 +247,21 @@ fn test_dot_in_sub_param_name() {
     assert_prints!(program, "Hello there");
 }
 
+#[test]
+fn redim_does_not_preserve_values() {
+    let program = r#"
+        Hello
+        Hello
+
+        SUB Hello
+            REDIM A(1 TO 2)
+            PRINT A(1)
+            A(1) = A(1) + 1
+        END SUB
+        "#;
+    assert_prints!(program, "0", "0");
+}
+
 mod static_sub {
     use super::*;
 
@@ -374,7 +389,7 @@ mod static_sub {
     }
 
     #[test]
-    fn redim_does_not_preserve_values() {
+    fn redim_does_not_preserve_values_even_in_static_sub() {
         let program = r#"
         Hello
         Hello

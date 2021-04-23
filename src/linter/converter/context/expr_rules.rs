@@ -178,16 +178,18 @@ mod variable {
         pos: Location,
     ) -> (ExpressionNode, Implicits) {
         let resolved_name = ctx.resolve_name_to_name(name);
-        let q_name = resolved_name.clone().demand_qualified();
-        let qualifier = q_name.qualifier;
-        let implicit_vars = vec![q_name.at(pos)];
-        let expr_type = ExpressionType::BuiltIn(qualifier);
-        let var_info = VariableInfo::new_local(expr_type);
-        ctx.names.insert_compact(
-            resolved_name.bare_name().clone(),
-            qualifier,
-            var_info.clone(),
+
+        let bare_name = resolved_name.bare_name();
+        let q = resolved_name.qualifier().expect("Should be resolved");
+        ctx.names.insert(
+            bare_name.clone(),
+            &DimType::BuiltIn(q, BuiltInStyle::Compact),
+            false,
+            None,
         );
+
+        let var_info = VariableInfo::new_built_in(q, false);
+        let implicit_vars: Implicits = vec![resolved_name.clone().demand_qualified().at(pos)];
         let resolved_expr = Expression::Variable(resolved_name, var_info).at(pos);
         (resolved_expr, implicit_vars)
     }

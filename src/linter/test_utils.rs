@@ -52,9 +52,13 @@ macro_rules! assert_linter_err {
     };
 
     ($program:expr, $expected_err:expr, $msg:expr) => {
-        match crate::linter::test_utils::linter_err($program, $msg) {
+        match crate::linter::test_utils::linter_err($program, format!("{}", $msg).as_ref()) {
             crate::common::QErrorNode::Pos(actual_err, _) => {
-                assert_eq!(actual_err, $expected_err);
+                assert_eq!(
+                    actual_err, $expected_err,
+                    "'{}' failed, expected {:?} but was {:?}",
+                    $msg, $expected_err, actual_err
+                );
             }
             _ => panic!("Should have an error location"),
         }

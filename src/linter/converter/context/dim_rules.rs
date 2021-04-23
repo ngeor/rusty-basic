@@ -211,8 +211,7 @@ mod convert2 {
         debug_assert_ne!(dim_context, DimContext::Redim);
         resolve_dim_type_default(ctx, &bare_name, &dim_type, dim_context, shared, pos).map(
             |(dim_type, implicits)| {
-                ctx.names
-                    .insert3(bare_name.clone(), &dim_type, shared, None);
+                ctx.names.insert(bare_name.clone(), &dim_type, shared, None);
                 (DimName::new(bare_name, dim_type).at(pos), implicits)
             },
         )
@@ -415,12 +414,11 @@ mod convert2 {
                 &bare_name,
                 &converted_array_dimensions,
                 element_type.as_ref(),
-                shared,
                 pos,
             )?;
             let array_dim_type =
                 DimType::Array(converted_array_dimensions, Box::new(converted_element_type));
-            ctx.names.insert3(
+            ctx.names.insert(
                 bare_name.clone(),
                 &array_dim_type,
                 shared,
@@ -437,7 +435,6 @@ mod convert2 {
         bare_name: &BareName,
         array_dimensions: &ArrayDimensions,
         element_dim_type: &DimType,
-        shared: bool,
         pos: Location,
     ) -> Result<DimType, QErrorNode> {
         match element_dim_type {
@@ -460,7 +457,6 @@ mod convert2 {
                     bare_name,
                     array_dimensions,
                     length_expression,
-                    shared,
                     pos,
                 )
             }
@@ -548,6 +544,7 @@ mod convert2 {
 
                 let opt_q = variable_info.expression_type.opt_qualifier();
                 if opt_q.expect("Should be qualified") == q {
+                    // other compact arrays of the same name are allowed to co-exist, hence no else block here
                     require_dimension_count(variable_info, array_dimensions.len())
                         .with_err_at(pos)?;
                 }
@@ -558,18 +555,25 @@ mod convert2 {
                     return Err(QError::DuplicateDefinition).with_err_at(pos);
                 }
 
-                let opt_q = variable_info.expression_type.opt_qualifier();
-                if opt_q.is_none() || opt_q.unwrap() != q {
-                    return Err(QError::DuplicateDefinition).with_err_at(pos);
-                }
-
-                if opt_q.expect("Should be qualified") == q {
-                    require_dimension_count(variable_info, array_dimensions.len())
-                        .with_err_at(pos)?;
-                }
+                require_built_in_array(variable_info, q).with_err_at(pos)?;
+                require_dimension_count(variable_info, array_dimensions.len()).with_err_at(pos)?;
             }
         }
         Ok(DimType::BuiltIn(q, built_in_style))
+    }
+
+    fn require_built_in_array(
+        variable_info: &VariableInfo,
+        q: TypeQualifier,
+    ) -> Result<(), QError> {
+        if let ExpressionType::Array(element_type) = &variable_info.expression_type {
+            if let ExpressionType::BuiltIn(existing_q) = element_type.as_ref() {
+                if q == *existing_q {
+                    return Ok(());
+                }
+            }
+        }
+        Err(QError::DuplicateDefinition)
     }
 
     fn redim_fixed_length_string_to_dim_type(
@@ -577,10 +581,33 @@ mod convert2 {
         bare_name: &BareName,
         array_dimensions: &ArrayDimensions,
         length_expression: &ExpressionNode,
-        shared: bool,
         pos: Location,
     ) -> Result<DimType, QErrorNode> {
-        todo!()
+        let string_length: u16 = resolve_string_length(ctx, length_expression)?;
+        for (built_in_style, variable_info) in ctx.names.names_iterator(bare_name) {
+            if built_in_style == BuiltInStyle::Compact {
+                return Err(QError::DuplicateDefinition).with_err_at(pos);
+            }
+
+            require_fixed_length_string_array(variable_info, string_length).with_err_at(pos)?;
+            require_dimension_count(variable_info, array_dimensions.len()).with_err_at(pos)?;
+        }
+
+        Ok(DimType::fixed_length_string(string_length, pos))
+    }
+
+    fn require_fixed_length_string_array(
+        variable_info: &VariableInfo,
+        len: u16,
+    ) -> Result<(), QError> {
+        if let ExpressionType::Array(element_type) = &variable_info.expression_type {
+            if let ExpressionType::FixedLengthString(existing_len) = element_type.as_ref() {
+                if len == *existing_len {
+                    return Ok(());
+                }
+            }
+        }
+        Err(QError::DuplicateDefinition)
     }
 
     struct RedimUserDefinedTypeVisitor<'a>(usize, &'a BareName);
@@ -604,15 +631,19 @@ mod convert2 {
         variable_info: &VariableInfo,
         dimension_count: usize,
     ) -> Result<(), QError> {
-        match &variable_info.redim_info {
-            Some(redim_info) => {
-                if redim_info.dimension_count == dimension_count {
-                    Ok(())
-                } else {
-                    Err(QError::WrongNumberOfDimensions)
+        if let ExpressionType::Array(_) = &variable_info.expression_type {
+            match &variable_info.redim_info {
+                Some(redim_info) => {
+                    if redim_info.dimension_count == dimension_count {
+                        Ok(())
+                    } else {
+                        Err(QError::WrongNumberOfDimensions)
+                    }
                 }
+                _ => Err(QError::ArrayAlreadyDimensioned),
             }
-            _ => Err(QError::ArrayAlreadyDimensioned),
+        } else {
+            Err(QError::DuplicateDefinition)
         }
     }
 
@@ -623,16 +654,11 @@ mod convert2 {
         if let ExpressionType::Array(element_type) = &variable_info.expression_type {
             if let ExpressionType::UserDefined(u) = element_type.as_ref() {
                 if u == user_defined_type {
-                    Ok(())
-                } else {
-                    Err(QError::TypeMismatch)
+                    return Ok(());
                 }
-            } else {
-                Err(QError::DuplicateDefinition)
             }
-        } else {
-            Err(QError::DuplicateDefinition)
         }
+        Err(QError::DuplicateDefinition)
     }
 
     fn redim_user_defined_type_to_dim_type(

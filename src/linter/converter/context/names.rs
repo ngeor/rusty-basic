@@ -208,29 +208,7 @@ impl Names {
         }
     }
 
-    #[deprecated]
-    pub fn insert_compact(
-        &mut self,
-        bare_name: BareName,
-        q: TypeQualifier,
-        variable_context: VariableInfo,
-    ) {
-        match self.map.get_mut(&bare_name) {
-            Some(NameInfo::Compact(qualifiers)) => {
-                qualifiers.insert(q, variable_context);
-            }
-            None => {
-                let mut qualifiers: HashMap<TypeQualifier, VariableInfo> = HashMap::new();
-                qualifiers.insert(q, variable_context);
-                self.map.insert(bare_name, NameInfo::Compact(qualifiers));
-            }
-            _ => {
-                panic!("Cannot add compact {}{}", bare_name, q)
-            }
-        }
-    }
-
-    pub fn insert3(
+    pub fn insert(
         &mut self,
         bare_name: BareName,
         dim_type: &DimType,
@@ -245,19 +223,66 @@ impl Names {
         if dim_type.is_extended() {
             self.insert_extended(bare_name, variable_info)
         } else {
-            let opt_q: Option<TypeQualifier> = dim_type.into();
-            let q: TypeQualifier = opt_q.expect("Should be qualified");
-            self.insert_compact(bare_name, q, variable_info)
+            self.insert_compact(bare_name, variable_info)
         }
     }
 
-    pub fn insert_extended(&mut self, bare_name: BareName, variable_context: VariableInfo) {
-        self.map
-            .insert(bare_name, NameInfo::Extended(variable_context));
+    pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
+        debug_assert!(!self.map.contains_key(&bare_name));
+        self.map.insert(bare_name, NameInfo::Constant(v));
     }
 
-    pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
-        self.map.insert(bare_name, NameInfo::Constant(v));
+    fn insert_compact(&mut self, bare_name: BareName, variable_info: VariableInfo) {
+        let q = variable_info
+            .expression_type
+            .opt_qualifier()
+            .expect("Should be resolved");
+        match self.map.get_mut(&bare_name) {
+            Some(NameInfo::Compact(compacts)) => {
+                Self::insert_in_compacts(compacts, q, variable_info);
+            }
+            Some(_) => {
+                panic!(
+                    "Cannot insert compact {} because it already exists as CONST or extended",
+                    bare_name
+                );
+            }
+            None => {
+                let mut map: HashMap<TypeQualifier, VariableInfo> = HashMap::new();
+                Self::insert_in_compacts(&mut map, q, variable_info);
+                self.map.insert(bare_name, NameInfo::Compact(map));
+            }
+        }
+    }
+
+    fn insert_in_compacts(
+        map: &mut HashMap<TypeQualifier, VariableInfo>,
+        q: TypeQualifier,
+        variable_info: VariableInfo,
+    ) {
+        debug_assert!(match map.get(&q) {
+            Some(existing_v) => {
+                existing_v.redim_info.is_some()
+            }
+            None => {
+                true
+            }
+        });
+        map.insert(q, variable_info);
+    }
+
+    fn insert_extended(&mut self, bare_name: BareName, variable_context: VariableInfo) {
+        debug_assert!(match self.map.get(&bare_name) {
+            Some(NameInfo::Extended(v)) => {
+                v.redim_info.is_some()
+            }
+            Some(_) => false,
+            None => {
+                true
+            }
+        });
+        self.map
+            .insert(bare_name, NameInfo::Extended(variable_context));
     }
 
     pub fn drain_extended_names_into(&mut self, set: &mut HashSet<BareName>) {

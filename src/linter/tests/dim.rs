@@ -484,7 +484,7 @@ mod redim {
                     Value AS INTEGER
                 END TYPE
 
-                DIM A{}
+                DIM {}
                 REDIM A(1 TO 5)
                 "#,
                     s
@@ -503,7 +503,7 @@ mod redim {
                 "#,
                     ch, ch
                 );
-                assert_linter_err!(input, QError::DuplicateDefinition);
+                assert_linter_err!(input, QError::DuplicateDefinition, ch);
             }
         }
 
@@ -591,7 +591,11 @@ mod redim {
                     "#,
                         s, s2
                     );
-                    assert_linter_err!(input, QError::DuplicateDefinition);
+                    assert_linter_err!(
+                        input,
+                        QError::DuplicateDefinition,
+                        format!("{} -> {}", s, s2)
+                    );
                 }
             }
         }

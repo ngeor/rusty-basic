@@ -1,7 +1,6 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
-use crate::linter::converter::context::{Context, ExprContext};
-use crate::linter::converter::{Implicits, R};
+use crate::linter::converter::{Context, ExprContext, Implicits, R};
 use crate::linter::type_resolver::TypeResolver;
 use crate::parser::*;
 use crate::variant::Variant;
@@ -386,7 +385,7 @@ mod variable {
 
 mod property {
     use super::*;
-    use crate::linter::converter::context::expr_rules::variable::{
+    use crate::linter::converter::expr_rules::variable::{
         add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
         VarAsUserDefinedFunctionCall, VarResolve,
     };

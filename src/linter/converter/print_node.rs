@@ -1,5 +1,4 @@
-use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::{ConverterImpl, ConverterWithImplicitVariables, R};
+use crate::linter::converter::{ConverterImpl, ConverterWithImplicitVariables, ExprContext, R};
 use crate::parser::{PrintArg, PrintNode};
 
 impl<'a> ConverterWithImplicitVariables<PrintNode, PrintNode> for ConverterImpl<'a> {

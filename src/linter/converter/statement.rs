@@ -1,6 +1,7 @@
 use crate::common::*;
-use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::{Converter, ConverterImpl, ConverterWithImplicitVariables, R};
+use crate::linter::converter::{
+    Converter, ConverterImpl, ConverterWithImplicitVariables, ExprContext, R,
+};
 use crate::linter::{DimContext, NameContext};
 use crate::parser::{DimName, ExitObject, Statement, StatementNode, StatementNodes};
 

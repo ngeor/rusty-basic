@@ -1,7 +1,6 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Locatable};
-use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::{ConverterImpl, R};
+use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::parser::{BareNameNode, ExpressionNodes, Statement, StatementNode};
 
 impl<'a> ConverterImpl<'a> {

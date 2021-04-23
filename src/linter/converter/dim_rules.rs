@@ -1,8 +1,7 @@
 use super::Context;
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::{ConverterWithImplicitVariables, Implicits, R};
+use crate::linter::converter::{ConverterWithImplicitVariables, ExprContext, Implicits, R};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::DimContext;
 use crate::parser::*;
@@ -180,7 +179,7 @@ mod validate2 {
 
 mod convert2 {
     use super::*;
-    use crate::linter::converter::context::names::Visitor;
+    use crate::linter::converter::names::Visitor;
     use crate::parser::{ArrayDimensions, BareNameNode, ExpressionNode};
     use crate::variant::QBNumberCast;
 

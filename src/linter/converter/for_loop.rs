@@ -1,5 +1,6 @@
-use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::{Converter, ConverterImpl, ConverterWithImplicitVariables, R};
+use crate::linter::converter::{
+    Converter, ConverterImpl, ConverterWithImplicitVariables, ExprContext, R,
+};
 use crate::parser::ForLoopNode;
 
 impl<'a> ConverterWithImplicitVariables<ForLoopNode, ForLoopNode> for ConverterImpl<'a> {

@@ -1,5 +1,5 @@
 use crate::common::{AtLocation, Locatable, QErrorNode};
-use crate::linter::converter::converter::{Converter, ConverterImpl};
+use crate::linter::converter::{Converter, ConverterImpl};
 use crate::parser::{FunctionImplementation, TopLevelToken};
 
 impl<'a> ConverterImpl<'a> {

@@ -22,8 +22,6 @@ pub enum NameInfo {
 }
 
 pub trait Visitor {
-    fn on_constant(&mut self, constant_value: &Variant) -> Result<(), QError>;
-
     fn on_compact(&mut self, q: TypeQualifier, variable_info: &VariableInfo) -> Result<(), QError>;
 
     fn on_extended(&mut self, variable_info: &VariableInfo) -> Result<(), QError>;
@@ -53,10 +51,10 @@ impl Names {
         visitor: &mut V,
     ) -> Result<(), QError> {
         match self.map.get(bare_name) {
-            Some(NameInfo::Constant(v)) => {
+            Some(NameInfo::Constant(_)) => {
                 // parameter hides const
                 if !only_shared {
-                    visitor.on_constant(v)?;
+                    panic!("Should have detected for constants before calling this method");
                 }
             }
             Some(NameInfo::Compact(compact_types)) => {
@@ -366,6 +364,13 @@ impl<'a> NamesIterator<'a> {
                     Some((BuiltInStyle::Extended, v))
                 } else {
                     self.on_finished_current()
+                }
+            }
+            Some(NameInfo::Constant(_)) => {
+                if self.only_shared {
+                    self.on_finished_current()
+                } else {
+                    panic!("Should have detected for constants before calling this method");
                 }
             }
             _ => self.on_finished_current(),

@@ -1,11 +1,8 @@
-use super::converter::{Converter, ConverterImpl};
 use crate::common::*;
 use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::converter::ConverterWithImplicitVariables;
+use crate::linter::converter::{Converter, ConverterImpl, ConverterWithImplicitVariables, R};
 use crate::linter::{DimContext, NameContext};
-use crate::parser::{
-    DimName, DoLoopNode, ExitObject, QualifiedNameNode, Statement, StatementNode, StatementNodes,
-};
+use crate::parser::{DimName, DoLoopNode, ExitObject, Statement, StatementNode, StatementNodes};
 
 // A statement can be expanded into multiple statements to convert implicitly
 // declared variables into explicit.
@@ -63,7 +60,7 @@ impl<'a> ConverterWithImplicitVariables<StatementNode, Option<StatementNode>>
     fn convert_and_collect_implicit_variables(
         &mut self,
         statement_node: StatementNode,
-    ) -> Result<(Option<StatementNode>, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> R<Option<StatementNode>> {
         let Locatable {
             element: statement,
             pos,
@@ -165,7 +162,7 @@ impl<'a> ConverterWithImplicitVariables<DoLoopNode, DoLoopNode> for ConverterImp
     fn convert_and_collect_implicit_variables(
         &mut self,
         do_loop_node: DoLoopNode,
-    ) -> Result<(DoLoopNode, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> R<DoLoopNode> {
         let DoLoopNode {
             condition,
             statements,

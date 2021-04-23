@@ -9,6 +9,7 @@ use std::rc::Rc;
 
 use crate::common::{Locatable, QErrorNode};
 use crate::linter::const_value_resolver::ConstValueResolver;
+use crate::linter::converter::{Implicits, R};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::{DimContext, NameContext};
@@ -128,7 +129,7 @@ impl<'a> Context<'a> {
         &mut self,
         expr_node: ExpressionNode,
         expr_context: ExprContext,
-    ) -> Result<(ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> R<ExpressionNode> {
         expr_rules::on_expression(self, expr_node, expr_context)
     }
 
@@ -136,7 +137,7 @@ impl<'a> Context<'a> {
         &mut self,
         opt_expr_node: Option<ExpressionNode>,
         expr_context: ExprContext,
-    ) -> Result<(Option<ExpressionNode>, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> R<Option<ExpressionNode>> {
         match opt_expr_node {
             Some(expr_node) => self
                 .on_expression(expr_node, expr_context)
@@ -149,8 +150,8 @@ impl<'a> Context<'a> {
         &mut self,
         expr_nodes: ExpressionNodes,
         expr_context: ExprContext,
-    ) -> Result<(ExpressionNodes, Vec<QualifiedNameNode>), QErrorNode> {
-        let mut implicit_vars: Vec<QualifiedNameNode> = vec![];
+    ) -> R<ExpressionNodes> {
+        let mut implicit_vars: Implicits = vec![];
         let mut converted_expr_nodes: ExpressionNodes = vec![];
         for expr_node in expr_nodes {
             let (converted_expr_node, implicits) = self.on_expression(expr_node, expr_context)?;
@@ -164,7 +165,7 @@ impl<'a> Context<'a> {
         &mut self,
         left_side: ExpressionNode,
         right_side: ExpressionNode,
-    ) -> Result<(ExpressionNode, ExpressionNode, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> Result<(ExpressionNode, ExpressionNode, Implicits), QErrorNode> {
         assignment_pre_conversion_validation_rules::validate(self, &left_side)?;
         let (converted_right_side, right_side_implicit_vars) =
             self.on_expression(right_side, ExprContext::Default)?;
@@ -181,11 +182,7 @@ impl<'a> Context<'a> {
         ))
     }
 
-    pub fn on_dim(
-        &mut self,
-        dim_list: DimList,
-        dim_context: DimContext,
-    ) -> Result<(DimList, Vec<QualifiedNameNode>), QErrorNode> {
+    pub fn on_dim(&mut self, dim_list: DimList, dim_context: DimContext) -> R<DimList> {
         dim_rules::on_dim(self, dim_list, dim_context)
     }
 
@@ -308,10 +305,7 @@ mod assignment_post_conversion_validation_rules {
     }
 }
 
-fn union(
-    mut left: Vec<QualifiedNameNode>,
-    mut right: Vec<QualifiedNameNode>,
-) -> Vec<QualifiedNameNode> {
+fn union(mut left: Implicits, mut right: Implicits) -> Implicits {
     left.append(&mut right);
     left
 }

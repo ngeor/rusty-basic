@@ -1,13 +1,9 @@
-use super::converter::{ConverterImpl, ConverterWithImplicitVariables};
-use crate::common::*;
 use crate::linter::converter::context::ExprContext;
-use crate::parser::{PrintArg, PrintNode, QualifiedNameNode};
+use crate::linter::converter::{ConverterImpl, ConverterWithImplicitVariables, R};
+use crate::parser::{PrintArg, PrintNode};
 
 impl<'a> ConverterWithImplicitVariables<PrintNode, PrintNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: PrintNode,
-    ) -> Result<(PrintNode, Vec<QualifiedNameNode>), QErrorNode> {
+    fn convert_and_collect_implicit_variables(&mut self, a: PrintNode) -> R<PrintNode> {
         let (format_string, mut implicit_vars_format_string) = self
             .context
             .on_opt_expression(a.format_string, ExprContext::Default)?;
@@ -28,10 +24,7 @@ impl<'a> ConverterWithImplicitVariables<PrintNode, PrintNode> for ConverterImpl<
 }
 
 impl<'a> ConverterWithImplicitVariables<PrintArg, PrintArg> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: PrintArg,
-    ) -> Result<(PrintArg, Vec<QualifiedNameNode>), QErrorNode> {
+    fn convert_and_collect_implicit_variables(&mut self, a: PrintArg) -> R<PrintArg> {
         match a {
             PrintArg::Comma => Ok((PrintArg::Comma, vec![])),
             PrintArg::Semicolon => Ok((PrintArg::Semicolon, vec![])),

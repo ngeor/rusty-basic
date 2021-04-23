@@ -1,9 +1,6 @@
-use crate::common::QErrorNode;
 use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::converter::{
-    Converter, ConverterImpl, ConverterWithImplicitVariables,
-};
-use crate::parser::{ConditionalBlockNode, IfBlockNode, QualifiedNameNode};
+use crate::linter::converter::{Converter, ConverterImpl, ConverterWithImplicitVariables, R};
+use crate::parser::{ConditionalBlockNode, IfBlockNode};
 
 impl<'a> ConverterWithImplicitVariables<ConditionalBlockNode, ConditionalBlockNode>
     for ConverterImpl<'a>
@@ -11,7 +8,7 @@ impl<'a> ConverterWithImplicitVariables<ConditionalBlockNode, ConditionalBlockNo
     fn convert_and_collect_implicit_variables(
         &mut self,
         a: ConditionalBlockNode,
-    ) -> Result<(ConditionalBlockNode, Vec<QualifiedNameNode>), QErrorNode> {
+    ) -> R<ConditionalBlockNode> {
         let (condition, implicit_vars) = self
             .context
             .on_expression(a.condition, ExprContext::Default)?;
@@ -26,10 +23,7 @@ impl<'a> ConverterWithImplicitVariables<ConditionalBlockNode, ConditionalBlockNo
 }
 
 impl<'a> ConverterWithImplicitVariables<IfBlockNode, IfBlockNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: IfBlockNode,
-    ) -> Result<(IfBlockNode, Vec<QualifiedNameNode>), QErrorNode> {
+    fn convert_and_collect_implicit_variables(&mut self, a: IfBlockNode) -> R<IfBlockNode> {
         let (if_block, mut implicit_vars_if_block) =
             self.convert_and_collect_implicit_variables(a.if_block)?;
         let (else_if_blocks, mut implicit_vars_else_if_blocks) =

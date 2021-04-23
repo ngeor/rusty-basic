@@ -2,18 +2,11 @@ use super::Context;
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::converter::ConverterWithImplicitVariables;
+use crate::linter::converter::{ConverterWithImplicitVariables, Implicits, R};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::DimContext;
 use crate::parser::*;
-use crate::variant::{Variant, MAX_INTEGER};
-
-type Implicits = Vec<QualifiedNameNode>;
-type R<T> = Result<(T, Implicits), QErrorNode>;
-
-fn no_implicits<T>(value: T) -> (T, Implicits) {
-    (value, vec![])
-}
+use crate::variant::MAX_INTEGER;
 
 pub fn on_dim(ctx: &mut Context, dim_list: DimList, dim_context: DimContext) -> R<DimList> {
     dim_list.convert2(ctx, dim_context)
@@ -96,11 +89,23 @@ mod validate2 {
         validate2::cannot_clash_with_functions(ctx, bare_name, dim_type, dim_context)
             .with_err_no_pos()?;
         validate2::user_defined_type_must_exist(ctx, dim_type)?;
+        validate2::cannot_clash_with_local_constants(ctx, bare_name).with_err_no_pos()?;
         validate2::shared_validation(ctx, dim_context, shared).with_err_no_pos()
     }
 
     fn cannot_clash_with_subs(ctx: &Context, bare_name: &BareName) -> Result<(), QError> {
         if ctx.subs.contains_key(bare_name) {
+            Err(QError::DuplicateDefinition)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn cannot_clash_with_local_constants(
+        ctx: &Context,
+        bare_name: &BareName,
+    ) -> Result<(), QError> {
+        if ctx.names.contains_const(bare_name) {
             Err(QError::DuplicateDefinition)
         } else {
             Ok(())
@@ -250,10 +255,6 @@ mod convert2 {
     struct BuiltInCompactVisitor(TypeQualifier);
 
     impl Visitor for BuiltInCompactVisitor {
-        fn on_constant(&mut self, _constant_value: &Variant) -> Result<(), QError> {
-            Err(QError::DuplicateDefinition)
-        }
-
         fn on_compact(
             &mut self,
             q: TypeQualifier,
@@ -285,10 +286,6 @@ mod convert2 {
     struct ExtendedVisitor;
 
     impl Visitor for ExtendedVisitor {
-        fn on_constant(&mut self, _constant_value: &Variant) -> Result<(), QError> {
-            Err(QError::DuplicateDefinition)
-        }
-
         fn on_compact(
             &mut self,
             _q: TypeQualifier,
@@ -589,10 +586,6 @@ mod convert2 {
     struct RedimUserDefinedTypeVisitor<'a>(usize, &'a BareName);
 
     impl<'a> Visitor for RedimUserDefinedTypeVisitor<'a> {
-        fn on_constant(&mut self, _constant_value: &Variant) -> Result<(), QError> {
-            Err(QError::DuplicateDefinition)
-        }
-
         fn on_compact(
             &mut self,
             _q: TypeQualifier,
@@ -701,4 +694,8 @@ fn convert_param_name_node(
     let param_type = ParamType::from(dim_type);
     let param_name = ParamName::new(bare_name, param_type);
     Ok(param_name.at(pos))
+}
+
+fn no_implicits<T>(value: T) -> (T, Implicits) {
+    (value, vec![])
 }

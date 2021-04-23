@@ -1,5 +1,5 @@
 use crate::common::QErrorNode;
-use crate::linter::converter::converter::{Converter, ConverterImpl};
+use crate::linter::converter::{Converter, ConverterImpl};
 use crate::parser::{SubImplementation, TopLevelToken};
 
 impl<'a> ConverterImpl<'a> {

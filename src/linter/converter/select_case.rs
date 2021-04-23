@@ -1,15 +1,9 @@
-use crate::common::QErrorNode;
 use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::converter::{
-    Converter, ConverterImpl, ConverterWithImplicitVariables,
-};
-use crate::parser::{CaseBlockNode, CaseExpression, QualifiedNameNode, SelectCaseNode};
+use crate::linter::converter::{Converter, ConverterImpl, ConverterWithImplicitVariables, R};
+use crate::parser::{CaseBlockNode, CaseExpression, SelectCaseNode};
 
 impl<'a> ConverterWithImplicitVariables<SelectCaseNode, SelectCaseNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: SelectCaseNode,
-    ) -> Result<(SelectCaseNode, Vec<QualifiedNameNode>), QErrorNode> {
+    fn convert_and_collect_implicit_variables(&mut self, a: SelectCaseNode) -> R<SelectCaseNode> {
         let (expr, mut implicit_vars_expr) =
             self.context.on_expression(a.expr, ExprContext::Default)?;
         let (case_blocks, mut implicit_vars_case_blocks) =
@@ -28,10 +22,7 @@ impl<'a> ConverterWithImplicitVariables<SelectCaseNode, SelectCaseNode> for Conv
 }
 
 impl<'a> ConverterWithImplicitVariables<CaseBlockNode, CaseBlockNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: CaseBlockNode,
-    ) -> Result<(CaseBlockNode, Vec<QualifiedNameNode>), QErrorNode> {
+    fn convert_and_collect_implicit_variables(&mut self, a: CaseBlockNode) -> R<CaseBlockNode> {
         let (expression_list, implicit_vars_expr) =
             self.convert_and_collect_implicit_variables(a.expression_list)?;
         Ok((
@@ -45,10 +36,7 @@ impl<'a> ConverterWithImplicitVariables<CaseBlockNode, CaseBlockNode> for Conver
 }
 
 impl<'a> ConverterWithImplicitVariables<CaseExpression, CaseExpression> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: CaseExpression,
-    ) -> Result<(CaseExpression, Vec<QualifiedNameNode>), QErrorNode> {
+    fn convert_and_collect_implicit_variables(&mut self, a: CaseExpression) -> R<CaseExpression> {
         match a {
             CaseExpression::Simple(e) => self
                 .context

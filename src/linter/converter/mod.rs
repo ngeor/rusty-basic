@@ -1,5 +1,6 @@
 mod assignment;
 mod context;
+mod do_loop;
 mod for_loop;
 mod function_implementation;
 mod if_blocks;

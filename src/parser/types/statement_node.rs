@@ -12,22 +12,68 @@ pub type StatementNodes = Vec<StatementNode>;
 pub enum Statement {
     Comment(String),
 
-    // A = 42
-    // A.Hello = 42 at the parser state it is not known if this is a member variable or not
-    // A$ = "hello"
+    /// Assignment to a variable.
+    ///
+    /// Examples:
+    ///
+    /// ```bas
+    /// A = 42
+    /// A.Hello = 42
+    /// A$ = "hello"
+    /// ```
+    ///
+    /// The validity of the assignment is determined at the linting phase.
     Assignment(Expression, ExpressionNode),
 
     Const(NameNode, ExpressionNode),
 
-    /// DIM A (Bare)
-    /// DIM A$ (Compact)
-    /// DIM A AS INTEGER (ExtendedBuiltIn)
-    /// DIM A AS STRING (without length)
-    /// DIM A AS STRING * 4 (with fixed length)
+    /// Declares a variable.
+    ///
+    /// Examples:
+    ///
+    /// ```bas
+    /// DIM A                    ' (Bare)
+    /// DIM A$                   ' (Compact)
+    /// DIM A AS INTEGER         ' (ExtendedBuiltIn)
+    /// DIM A AS STRING          ' (without length)
+    /// DIM A AS STRING * 4      ' (with fixed length)
     /// DIM A AS UserDefinedType
     /// DIM SHARED A
     /// DIM A(1 TO 2)
     /// DIM A, B, C
+    /// ```
+    ///
+    /// Parsing syntax reference:
+    ///
+    /// ```txt
+    /// <dim> ::= "DIM"<ws><dim-name>
+    /// <dim-name> ::= <bare-dim-name> | <compact-dim-name> | <extended-dim-name> | <user-defined-dim-name>
+    ///
+    /// (* DIM A, DIM A.B.C, DIM A.., DIM A(1 TO 2) *)
+    /// <bare-dim-name> ::= <bare-name-with-dots-not-keyword><opt-array-dimensions>
+    ///
+    /// (* DIM A$, DIM A.B.C!, DIM A..% *)
+    /// <compact-dim-name> ::= <compact-dim-name-left><opt-array-dimensions>
+    /// (* it is allowed to have a keyword qualified by a string qualifier *)
+    /// <compact-dim-name-left> ::= <bare-name-with-dots-not-keyword> ( "!" | "#" | "%" | "&")
+    ///     | <bare-name-with-dots> "$"
+    ///
+    /// <extended-dim-name> ::= <bare-name-with-dots-not-keyword><opt-array-dimensions> <ws> "AS" <ws> <extended-dim-type>
+    /// <extended-dim-type> ::= "INTEGER"
+    ///     | "LONG"
+    ///     | "SINGLE"
+    ///     | "DOUBLE"
+    ///     | <extended-dim-string>
+    /// <extended-dim-string> ::= "STRING" <opt-ws> "*" <opt-ws> <expression> | "STRING"
+    ///
+    /// (* user defined type variable cannot have dots *)
+    /// <user-defined-dim-name> ::= <bare-name-not-keyword><opt-array-dimensions> <ws> "AS" <ws> <user-defined-type>
+    /// <user-defined-type> ::= <bare-name-not-keyword>
+    ///
+    /// <opt-array-dimensions> ::= "" | "(" <opt-ws> <array-dimensions> <opt-ws> ")"
+    /// <array-dimensions> ::= <array-dimension> | <array-dimension> <opt-ws> "," <opt-ws> <array-dimensions>
+    /// <array-dimension> ::= <expression> | <expression> <ws> "TO" <ws> <expression>
+    /// ```
     Dim(DimList),
 
     Redim(DimList),

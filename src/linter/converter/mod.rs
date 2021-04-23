@@ -1,16 +1,5 @@
-use std::cell::RefCell;
-use std::collections::HashSet;
-use std::rc::Rc;
-
-use crate::common::*;
-use crate::linter::type_resolver::TypeResolver;
-use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::{DimContext, NameContext};
-use crate::parser::{
-    BareName, DimList, ExpressionNode, ExpressionNodes, FunctionMap, Name, NameNode,
-    ParamNameNodes, ProgramNode, QualifiedNameNode, SubMap, TypeQualifier, UserDefinedTypes,
-};
-
+//! Converter is the main logic of the linter, where most validation takes place,
+//! as well as resolving variable types.
 mod assignment;
 mod dim_rules;
 mod do_loop;
@@ -27,6 +16,21 @@ mod sub_call;
 mod sub_implementation;
 mod top_level_token;
 
+use std::cell::RefCell;
+use std::collections::HashSet;
+use std::rc::Rc;
+
+use crate::common::*;
+use crate::linter::const_value_resolver::ConstValueResolver;
+use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver_impl::TypeResolverImpl;
+use crate::linter::{DimContext, NameContext};
+use crate::parser::{
+    BareName, DimList, ExpressionNode, ExpressionNodes, FunctionMap, Name, NameNode,
+    ParamNameNodes, ProgramNode, QualifiedNameNode, SubMap, TypeQualifier, UserDefinedTypes,
+};
+use names::Names;
+
 pub fn convert(
     program: ProgramNode,
     f_c: &FunctionMap,
@@ -40,18 +44,9 @@ pub fn convert(
     Ok((result, names_without_dot))
 }
 
-/// Alias for the implicit variables collected during evaluating something.
-/// e.g. `INPUT N` is a statement implicitly defining variable `N`.
-type Implicits = Vec<QualifiedNameNode>;
-
-/// Alias for the result of returning something together with any implicit
-/// variables collected during its conversion.
-type R<T> = Result<(T, Implicits), QErrorNode>;
-
-//
-// Converter trait
-//
-
+/// Converts an object into another one.
+///
+/// This is similar to the standard From/Into traits, but it is allowed to fail.
 trait Converter<A, B> {
     fn convert(&mut self, a: A) -> Result<B, QErrorNode>;
 }
@@ -90,16 +85,23 @@ where
     }
 }
 
-//
-// ConverterWithImplicitVariables
-//
+/// Alias for the implicit variables collected during evaluating something.
+/// e.g. `INPUT N` is a statement implicitly defining variable `N`.
+type Implicits = Vec<QualifiedNameNode>;
 
+/// Alias for the result of returning something together with any implicit
+/// variables collected during its conversion.
+type R<T> = Result<(T, Implicits), QErrorNode>;
+
+/// Converts an object into another, possibly collecting implicitly defined
+/// variables along the way.
+///
+/// Example: `INPUT N` is a statement that implicitly declares variable `N`.
 trait ConverterWithImplicitVariables<A, B> {
     fn convert_and_collect_implicit_variables(&mut self, a: A) -> R<B>;
 }
 
 // blanket for Option
-
 impl<T, A, B> ConverterWithImplicitVariables<Option<A>, Option<B>> for T
 where
     T: ConverterWithImplicitVariables<A, B>,
@@ -115,7 +117,6 @@ where
 }
 
 // blanket for Box
-
 impl<T, A, B> ConverterWithImplicitVariables<Box<A>, Box<B>> for T
 where
     T: ConverterWithImplicitVariables<A, B>,
@@ -129,7 +130,6 @@ where
 }
 
 // blanket for Vec
-
 impl<T, A, B> ConverterWithImplicitVariables<Vec<A>, Vec<B>> for T
 where
     T: ConverterWithImplicitVariables<A, B>,
@@ -146,14 +146,15 @@ where
     }
 }
 
-//
-// Converter
-//
-
+/// Resolves all symbols of the program, converting it into an explicitly typed
+/// equivalent program.
 struct ConverterImpl<'a> {
     pub resolver: Rc<RefCell<TypeResolverImpl>>,
+    // TODO pass a trait that exposes only the functionality really needed here
     pub functions: &'a FunctionMap,
+    // TODO pass a trait that exposes only the functionality really needed here
     pub subs: &'a SubMap,
+    // TODO pass a trait that exposes only the functionality really needed here
     pub user_defined_types: &'a UserDefinedTypes,
     pub context: Context<'a>,
 }
@@ -222,9 +223,6 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5. An extended variable can be referenced either bare or by its correct qualifier
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
-
-use crate::linter::const_value_resolver::ConstValueResolver;
-use names::Names;
 
 pub struct Context<'a> {
     functions: &'a FunctionMap,

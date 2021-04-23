@@ -3,6 +3,25 @@ use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
 use crate::parser::{ExpressionType, HasExpressionType};
 use std::convert::TryFrom;
 
+/// Defines a name.
+///
+/// Parsing syntax reference
+///
+/// ```txt
+/// <qualifier> ::= "!" | "#" | "$" | "%" | "&"
+///
+/// <bare-name-with-dots-not-keyword> ::= <bare-name-with-dots> AND NOT keyword
+/// <bare-name-with-dots> ::= <letter> | <letter><letters-or-digits-or-dots>
+///
+/// <bare-name-not-keyword> ::= <bare-name> AND NOT keyword
+/// <bare-name> ::= <letter> | <letter><letters-or-digits>
+///
+/// <letters-or-digits-or-dots> ::= <letter-or-digit-or-dot> | <letter-or-digit-or-dot><letters-or-digits-or-dots>
+/// <letter-or-digit-or-dot> ::= <letter> | <digit> | "."
+///
+/// <letters-or-digits> ::= <letter-or-digit> | <letter-or-digit><letters-or-digits>
+/// <letter-or-digit> ::= <letter> | <digit>
+/// ```
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Name {
     Bare(BareName),

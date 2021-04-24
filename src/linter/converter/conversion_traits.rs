@@ -91,13 +91,3 @@ where
         Ok((result, total_implicit))
     }
 }
-
-/// Converts an item to the same type, collecting implicit variables,
-/// but it is allowed to return `None` to indicate that the item can be filtered out.
-/// TODO: maybe make the filtering out separate
-pub trait OptSameTypeConverterWithImplicits<T> {
-    fn convert_opt_same_type_with_implicits(
-        &mut self,
-        item: T,
-    ) -> Result<Option<(T, Implicits)>, QErrorNode>;
-}

@@ -7,7 +7,6 @@ pub trait SameTypeConverter<T> {
 }
 
 // blanket for Option
-
 impl<X, T> SameTypeConverter<Option<T>> for X
 where
     X: SameTypeConverter<T>,
@@ -45,47 +44,20 @@ where
 ///
 /// Example: `INPUT N` is a statement that implicitly declares variable `N`.
 pub trait SameTypeConverterWithImplicits<T> {
-    fn convert_same_type_with_implicits(&mut self, a: T) -> R<T>;
-}
-
-// blanket for Option
-impl<T, A> SameTypeConverterWithImplicits<Option<A>> for T
-where
-    T: SameTypeConverterWithImplicits<A>,
-{
-    fn convert_same_type_with_implicits(&mut self, a: Option<A>) -> R<Option<A>> {
-        match a {
-            Some(a) => self
-                .convert_same_type_with_implicits(a)
-                .map(|(a, implicit_variables)| (Some(a), implicit_variables)),
-            None => Ok((None, vec![])),
-        }
-    }
-}
-
-// blanket for Box
-impl<T, A> SameTypeConverterWithImplicits<Box<A>> for T
-where
-    T: SameTypeConverterWithImplicits<A>,
-{
-    fn convert_same_type_with_implicits(&mut self, a: Box<A>) -> R<Box<A>> {
-        let unboxed: A = *a;
-        let (converted, implicit_variables) = self.convert_same_type_with_implicits(unboxed)?;
-        Ok((Box::new(converted), implicit_variables))
-    }
+    fn convert_same_type_with_implicits(&mut self, item: T) -> R<T>;
 }
 
 // blanket for Vec
-impl<T, A> SameTypeConverterWithImplicits<Vec<A>> for T
+impl<X, T> SameTypeConverterWithImplicits<Vec<T>> for X
 where
-    T: SameTypeConverterWithImplicits<A>,
+    X: SameTypeConverterWithImplicits<T>,
 {
-    fn convert_same_type_with_implicits(&mut self, a: Vec<A>) -> R<Vec<A>> {
-        let mut result: Vec<A> = vec![];
+    fn convert_same_type_with_implicits(&mut self, items: Vec<T>) -> R<Vec<T>> {
+        let mut result: Vec<T> = vec![];
         let mut total_implicit: Implicits = vec![];
-        for i in a {
-            let (b, mut implicit) = self.convert_same_type_with_implicits(i)?;
-            result.push(b);
+        for item in items {
+            let (converted_item, mut implicit) = self.convert_same_type_with_implicits(item)?;
+            result.push(converted_item);
             total_implicit.append(&mut implicit);
         }
         Ok((result, total_implicit))

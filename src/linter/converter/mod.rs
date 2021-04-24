@@ -1,6 +1,7 @@
 //! Converter is the main logic of the linter, where most validation takes place,
 //! as well as resolving variable types.
 mod assignment;
+mod const_rules;
 mod conversion_traits;
 mod dim_rules;
 mod do_loop;
@@ -21,7 +22,6 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::common::*;
-use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::{DimContext, NameContext};
@@ -239,9 +239,10 @@ impl<'a> Context<'a> {
         let mut implicit_vars: Implicits = vec![];
         let mut converted_expr_nodes: ExpressionNodes = vec![];
         for expr_node in expr_nodes {
-            let (converted_expr_node, implicits) = self.on_expression(expr_node, expr_context)?;
+            let (converted_expr_node, mut implicits) =
+                self.on_expression(expr_node, expr_context)?;
             converted_expr_nodes.push(converted_expr_node);
-            implicit_vars = union(implicit_vars, implicits);
+            implicit_vars.append(&mut implicits);
         }
         Ok((converted_expr_nodes, implicit_vars))
     }
@@ -251,20 +252,7 @@ impl<'a> Context<'a> {
         left_side: ExpressionNode,
         right_side: ExpressionNode,
     ) -> Result<(ExpressionNode, ExpressionNode, Implicits), QErrorNode> {
-        assignment_pre_conversion_validation_rules::validate(self, &left_side)?;
-        let (converted_right_side, right_side_implicit_vars) =
-            self.on_expression(right_side, ExprContext::Default)?;
-        let (converted_left_side, left_side_implicit_vars) =
-            expr_rules::on_expression(self, left_side, ExprContext::Assignment)?;
-        assignment_post_conversion_validation_rules::validate(
-            &converted_left_side,
-            &converted_right_side,
-        )?;
-        Ok((
-            converted_left_side,
-            converted_right_side,
-            union(left_side_implicit_vars, right_side_implicit_vars),
-        ))
+        assignment::on_assignment(self, left_side, right_side)
     }
 
     pub fn on_dim(&mut self, dim_list: DimList, dim_context: DimContext) -> R<DimList> {
@@ -288,114 +276,4 @@ impl<'a> Context<'a> {
              }| *q,
         )
     }
-}
-
-mod const_rules {
-    use std::convert::TryFrom;
-
-    use crate::common::{QError, ToLocatableError};
-
-    use super::*;
-
-    pub fn on_const(
-        ctx: &mut Context,
-        left_side: NameNode,
-        right_side: ExpressionNode,
-    ) -> Result<(), QErrorNode> {
-        const_cannot_clash_with_existing_names(ctx, &left_side)?;
-        new_const(ctx, left_side, right_side)
-    }
-
-    fn const_cannot_clash_with_existing_names(
-        ctx: &mut Context,
-        left_side: &NameNode,
-    ) -> Result<(), QErrorNode> {
-        let Locatable {
-            element: const_name,
-            pos: const_name_pos,
-        } = left_side;
-        if ctx
-            .names
-            .contains_any_locally_or_contains_extended_recursively(const_name.bare_name())
-            || ctx.subs.contains_key(const_name.bare_name())
-            || ctx.functions.contains_key(const_name.bare_name())
-        {
-            Err(QError::DuplicateDefinition).with_err_at(*const_name_pos)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn new_const(
-        ctx: &mut Context,
-        left_side: NameNode,
-        right_side: ExpressionNode,
-    ) -> Result<(), QErrorNode> {
-        let Locatable {
-            element: const_name,
-            ..
-        } = left_side;
-        let value_before_casting = ctx.names.resolve_const_value_node(&right_side)?;
-        let value_qualifier =
-            TypeQualifier::try_from(&value_before_casting).with_err_at(&right_side)?;
-        let final_value = if const_name.is_bare_or_of_type(value_qualifier) {
-            value_before_casting
-        } else {
-            value_before_casting
-                .cast(const_name.qualifier().unwrap())
-                .with_err_at(&right_side)?
-        };
-        ctx.names
-            .insert_const(const_name.bare_name().clone(), final_value.clone());
-        Ok(())
-    }
-}
-
-mod assignment_pre_conversion_validation_rules {
-    use crate::common::{QError, ToLocatableError};
-    use crate::parser::Expression;
-
-    use super::*;
-
-    pub fn validate(ctx: &mut Context, left_side: &ExpressionNode) -> Result<(), QErrorNode> {
-        cannot_assign_to_const(ctx, left_side)
-    }
-
-    fn cannot_assign_to_const(ctx: &mut Context, input: &ExpressionNode) -> Result<(), QErrorNode> {
-        if let Locatable {
-            element: Expression::Variable(var_name, _),
-            ..
-        } = input
-        {
-            if ctx.names.contains_const_recursively(var_name.bare_name()) {
-                Err(QError::DuplicateDefinition).with_err_at(input)
-            } else {
-                Ok(())
-            }
-        } else {
-            Ok(())
-        }
-    }
-}
-
-mod assignment_post_conversion_validation_rules {
-    use crate::common::{CanCastTo, QError, ToLocatableError};
-
-    use super::*;
-
-    pub fn validate(
-        left_side: &ExpressionNode,
-        right_side: &ExpressionNode,
-    ) -> Result<(), QErrorNode> {
-        if right_side.can_cast_to(left_side) {
-            Ok(())
-        } else {
-            Err(QError::TypeMismatch).with_err_at(right_side)
-        }
-    }
-}
-
-fn union(mut left: Implicits, mut right: Implicits) -> Implicits {
-    left.append(&mut right);
-    left
 }

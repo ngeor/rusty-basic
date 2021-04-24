@@ -126,9 +126,9 @@ pub trait ExpressionReducer {
             Statement::DoLoop(do_loop_node) => {
                 self.visit_do_loop(do_loop_node).map(Statement::DoLoop)
             }
-            Statement::Dim(_)
-            | Statement::Redim(_)
-            | Statement::OnError(_)
+            Statement::Dim(dim_list) => self.visit_dim_list(dim_list).map(Statement::Dim),
+            Statement::Redim(dim_list) => self.visit_dim_list(dim_list).map(Statement::Redim),
+            Statement::OnError(_)
             | Statement::Label(_)
             | Statement::GoTo(_)
             | Statement::GoSub(_)
@@ -317,5 +317,81 @@ pub trait ExpressionReducer {
                 .map(|converted_expr_node| PrintArg::Expression(converted_expr_node)),
             _ => Ok(print_arg),
         }
+    }
+
+    fn visit_dim_list(&mut self, dim_list: DimList) -> Result<DimList, QErrorNode> {
+        let DimList { shared, variables } = dim_list;
+        let converted_variables = self.visit_dim_name_nodes(variables)?;
+        Ok(DimList {
+            shared,
+            variables: converted_variables,
+        })
+    }
+
+    fn visit_dim_name_nodes(
+        &mut self,
+        dim_name_nodes: DimNameNodes,
+    ) -> Result<DimNameNodes, QErrorNode> {
+        dim_name_nodes
+            .into_iter()
+            .map(|d| self.visit_dim_name_node(d))
+            .collect()
+    }
+
+    fn visit_dim_name_node(
+        &mut self,
+        dim_name_node: DimNameNode,
+    ) -> Result<DimNameNode, QErrorNode> {
+        let DimNameNode {
+            element: DimName {
+                bare_name,
+                dim_type,
+            },
+            pos,
+        } = dim_name_node;
+        let converted_dim_type = self.visit_dim_type(dim_type)?;
+        Ok(DimNameNode {
+            element: DimName {
+                bare_name,
+                dim_type: converted_dim_type,
+            },
+            pos,
+        })
+    }
+
+    fn visit_dim_type(&mut self, dim_type: DimType) -> Result<DimType, QErrorNode> {
+        match dim_type {
+            DimType::Array(array_dimensions, element_type) => {
+                let converted_array_dimensions = self.visit_array_dimensions(array_dimensions)?;
+                Ok(DimType::Array(converted_array_dimensions, element_type))
+            }
+            _ => Ok(dim_type),
+        }
+    }
+
+    fn visit_array_dimensions(
+        &mut self,
+        array_dimensions: ArrayDimensions,
+    ) -> Result<ArrayDimensions, QErrorNode> {
+        array_dimensions
+            .into_iter()
+            .map(|a| self.visit_array_dimension(a))
+            .collect()
+    }
+
+    fn visit_array_dimension(
+        &mut self,
+        array_dimension: ArrayDimension,
+    ) -> Result<ArrayDimension, QErrorNode> {
+        let ArrayDimension { lbound, ubound } = array_dimension;
+        let converted_lbound = match lbound {
+            Some(lbound) => Some(self.visit_expression_node(lbound)?),
+            None => None,
+        };
+        let converted_ubound = self.visit_expression_node(ubound)?;
+        Ok(ArrayDimension {
+            lbound: converted_lbound,
+            ubound: converted_ubound,
+        })
     }
 }

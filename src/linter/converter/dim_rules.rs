@@ -1,7 +1,8 @@
 use super::Context;
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::{ConverterWithImplicitVariables, ExprContext, Implicits, R};
+use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
+use crate::linter::converter::{ExprContext, Implicits, R};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::DimContext;
 use crate::parser::*;
@@ -17,8 +18,8 @@ trait Converter2<C> {
         Self: Sized;
 }
 
-impl<'a> ConverterWithImplicitVariables<ArrayDimension, ArrayDimension> for Context<'a> {
-    fn convert_and_collect_implicit_variables(&mut self, a: ArrayDimension) -> R<ArrayDimension> {
+impl<'a> SameTypeConverterWithImplicits<ArrayDimension> for Context<'a> {
+    fn convert_same_type_with_implicits(&mut self, a: ArrayDimension) -> R<ArrayDimension> {
         let (lbound, mut implicits) = self.on_opt_expression(a.lbound, ExprContext::Default)?;
         let (ubound, mut ubound_implicits) = self.on_expression(a.ubound, ExprContext::Default)?;
         implicits.append(&mut ubound_implicits);
@@ -393,7 +394,7 @@ mod convert2 {
         ctx: &mut Context,
         array_dimensions: ArrayDimensions,
     ) -> R<ArrayDimensions> {
-        ctx.convert_and_collect_implicit_variables(array_dimensions)
+        ctx.convert_same_type_with_implicits(array_dimensions)
     }
 
     fn do_convert_redim(

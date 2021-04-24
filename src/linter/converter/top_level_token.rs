@@ -1,12 +1,13 @@
 use crate::common::{AtLocation, Locatable, QErrorNode};
-use crate::linter::converter::{Converter, ConverterImpl};
+use crate::linter::converter::conversion_traits::OneToManyConverter;
+use crate::linter::converter::ConverterImpl;
 use crate::parser::{TopLevelToken, TopLevelTokenNode};
 
 // Vec because:
 // 1. we filter out DefType and UserDefinedType
 // 2. a top level statement might expand into multiple due to implicit variables
-impl<'a> Converter<TopLevelTokenNode, Vec<TopLevelTokenNode>> for ConverterImpl<'a> {
-    fn convert(
+impl<'a> OneToManyConverter<TopLevelTokenNode> for ConverterImpl<'a> {
+    fn convert_to_many(
         &mut self,
         top_level_token_node: TopLevelTokenNode,
     ) -> Result<Vec<TopLevelTokenNode>, QErrorNode> {
@@ -30,7 +31,7 @@ impl<'a> Converter<TopLevelTokenNode, Vec<TopLevelTokenNode>> for ConverterImpl<
                 .map(|top_level_token| vec![top_level_token.at(pos)]),
             TopLevelToken::Statement(statement) => {
                 let statement_node = statement.at(pos);
-                self.convert(statement_node)
+                self.convert_to_many(statement_node)
                     .map(|converted_statement_nodes| {
                         converted_statement_nodes
                             .into_iter()

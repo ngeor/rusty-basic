@@ -1,13 +1,11 @@
-use crate::linter::converter::{
-    Converter, ConverterImpl, ConverterWithImplicitVariables, ExprContext, R,
+use crate::linter::converter::conversion_traits::{
+    SameTypeConverter, SameTypeConverterWithImplicits,
 };
+use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::parser::DoLoopNode;
 
-impl<'a> ConverterWithImplicitVariables<DoLoopNode, DoLoopNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        do_loop_node: DoLoopNode,
-    ) -> R<DoLoopNode> {
+impl<'a> SameTypeConverterWithImplicits<DoLoopNode> for ConverterImpl<'a> {
+    fn convert_same_type_with_implicits(&mut self, do_loop_node: DoLoopNode) -> R<DoLoopNode> {
         let DoLoopNode {
             condition,
             statements,
@@ -17,7 +15,7 @@ impl<'a> ConverterWithImplicitVariables<DoLoopNode, DoLoopNode> for ConverterImp
         let (condition, implicit_vars) = self
             .context
             .on_expression(condition, ExprContext::Default)?;
-        let statements = self.convert(statements)?;
+        let statements = self.convert_same_type(statements)?;
         Ok((
             DoLoopNode {
                 condition,

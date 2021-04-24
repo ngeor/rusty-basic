@@ -1,5 +1,6 @@
 use crate::common::QErrorNode;
-use crate::linter::converter::{Converter, ConverterImpl};
+use crate::linter::converter::conversion_traits::SameTypeConverter;
+use crate::linter::converter::ConverterImpl;
 use crate::parser::{SubImplementation, TopLevelToken};
 
 impl<'a> ConverterImpl<'a> {
@@ -17,7 +18,7 @@ impl<'a> ConverterImpl<'a> {
         let mapped = TopLevelToken::SubImplementation(SubImplementation {
             name,
             params: mapped_params,
-            body: self.convert(body)?,
+            body: self.convert_same_type(body)?,
             is_static,
         });
         self.context.pop_context();

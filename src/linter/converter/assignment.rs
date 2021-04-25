@@ -1,4 +1,4 @@
-use crate::common::{AtLocation, Locatable, QErrorNode};
+use crate::common::*;
 use crate::linter::converter::{Context, ConverterImpl, ExprContext, Implicits, R};
 use crate::parser::{ExpressionNode, Statement, StatementNode};
 
@@ -39,10 +39,8 @@ pub fn on_assignment(
 }
 
 mod assignment_pre_conversion_validation_rules {
-    use crate::common::{QError, ToLocatableError};
-    use crate::parser::Expression;
-
     use super::*;
+    use crate::parser::Expression;
 
     pub fn validate(ctx: &mut Context, left_side: &ExpressionNode) -> Result<(), QErrorNode> {
         cannot_assign_to_const(ctx, left_side)
@@ -66,8 +64,6 @@ mod assignment_pre_conversion_validation_rules {
 }
 
 mod assignment_post_conversion_validation_rules {
-    use crate::common::{CanCastTo, QError, ToLocatableError};
-
     use super::*;
 
     pub fn validate(

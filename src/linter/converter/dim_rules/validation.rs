@@ -11,12 +11,11 @@ pub fn do_validate(
     dim_context: DimContext,
     shared: bool,
 ) -> Result<(), QErrorNode> {
-    validate2::cannot_clash_with_subs(ctx, bare_name).with_err_no_pos()?;
-    validate2::cannot_clash_with_functions(ctx, bare_name, dim_type, dim_context)
-        .with_err_no_pos()?;
-    validate2::user_defined_type_must_exist(ctx, dim_type)?;
-    validate2::cannot_clash_with_local_constants(ctx, bare_name).with_err_no_pos()?;
-    validate2::shared_validation(ctx, dim_context, shared).with_err_no_pos()
+    cannot_clash_with_subs(ctx, bare_name).with_err_no_pos()?;
+    cannot_clash_with_functions(ctx, bare_name, dim_type, dim_context).with_err_no_pos()?;
+    user_defined_type_must_exist(ctx, dim_type)?;
+    cannot_clash_with_local_constants(ctx, bare_name).with_err_no_pos()?;
+    shared_validation(ctx, dim_context, shared).with_err_no_pos()
 }
 
 fn cannot_clash_with_subs(ctx: &Context, bare_name: &BareName) -> Result<(), QError> {

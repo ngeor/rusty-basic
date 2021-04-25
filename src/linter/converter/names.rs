@@ -1,4 +1,4 @@
-use crate::common::{CaseInsensitiveString, QError};
+use crate::common::CaseInsensitiveString;
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::NameContext;
 use crate::parser::{
@@ -21,12 +21,6 @@ pub enum NameInfo {
     Extended(VariableInfo),
 }
 
-pub trait Visitor {
-    fn on_compact(&mut self, q: TypeQualifier, variable_info: &VariableInfo) -> Result<(), QError>;
-
-    fn on_extended(&mut self, variable_info: &VariableInfo) -> Result<(), QError>;
-}
-
 impl Names {
     pub fn new(parent: Option<Box<Self>>, current_function_name: Option<BareName>) -> Self {
         Self {
@@ -40,41 +34,15 @@ impl Names {
         Self::new(None, None)
     }
 
-    pub fn visit<V: Visitor>(&self, bare_name: &BareName, visitor: &mut V) -> Result<(), QError> {
-        self.do_visit(bare_name, false, visitor)
-    }
-
-    fn do_visit<V: Visitor>(
-        &self,
-        bare_name: &BareName,
-        only_shared: bool,
-        visitor: &mut V,
-    ) -> Result<(), QError> {
-        match self.map.get(bare_name) {
-            Some(NameInfo::Constant(_)) => {
-                // parameter hides const
-                if !only_shared {
-                    panic!("Should have detected for constants before calling this method");
-                }
-            }
-            Some(NameInfo::Compact(compact_types)) => {
-                for (k, v) in compact_types.iter() {
-                    if !only_shared || v.shared {
-                        visitor.on_compact(*k, v)?;
-                    }
-                }
-            }
-            Some(NameInfo::Extended(variable_info)) => {
-                if !only_shared || variable_info.shared {
-                    visitor.on_extended(variable_info)?;
-                }
-            }
-            None => {}
+    pub fn visit_names<F, T, E>(&self, bare_name: &BareName, f: F) -> Result<T, E>
+    where
+        F: Fn(BuiltInStyle, &VariableInfo) -> Result<T, E>,
+        T: Default,
+    {
+        for (built_in_style, variable_info) in self.names_iterator(bare_name) {
+            f(built_in_style, variable_info)?;
         }
-        match self.parent.as_ref() {
-            Some(parent) => parent.do_visit(bare_name, true, visitor),
-            None => Ok(()),
-        }
+        Ok(T::default())
     }
 
     /// Returns true if this name is a constant, or an extended variable,

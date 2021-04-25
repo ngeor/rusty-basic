@@ -69,7 +69,7 @@ fn convert(
     shared: bool,
     pos: Location,
 ) -> R<DimNameNode> {
-    validation::do_validate(ctx, &bare_name, &dim_type, dim_context, shared).patch_err_pos(pos)?;
+    validation::validate(ctx, &bare_name, &dim_type, dim_context, shared).patch_err_pos(pos)?;
     do_convert(ctx, bare_name, dim_type, dim_context, shared, pos)
 }
 
@@ -83,9 +83,9 @@ fn do_convert(
 ) -> R<DimNameNode> {
     match dim_context {
         DimContext::Default | DimContext::Param => {
-            dim::do_convert_default(ctx, bare_name, dim_type, dim_context, shared, pos)
+            dim::convert(ctx, bare_name, dim_type, dim_context, shared, pos)
         }
-        DimContext::Redim => redim::do_convert_redim(ctx, bare_name, dim_type, shared, pos),
+        DimContext::Redim => redim::convert(ctx, bare_name, dim_type, shared, pos),
     }
 }
 

@@ -1,11 +1,10 @@
 use crate::common::*;
 use crate::linter::converter::dim_rules::{convert_array_dimensions, resolve_string_length};
-use crate::linter::converter::names::Visitor;
 use crate::linter::converter::{Context, R};
 use crate::linter::type_resolver::TypeResolver;
 use crate::parser::*;
 
-pub fn do_convert_redim(
+pub fn convert(
     ctx: &mut Context,
     bare_name: BareName,
     dim_type: DimType,
@@ -17,7 +16,7 @@ pub fn do_convert_redim(
         let (converted_array_dimensions, implicits) =
             convert_array_dimensions(ctx, array_dimensions)?;
         debug_assert_eq!(dimension_count, converted_array_dimensions.len());
-        let converted_element_type = redim_to_element_dim_type(
+        let converted_element_type = to_dim_type(
             ctx,
             &bare_name,
             &converted_array_dimensions,
@@ -38,7 +37,7 @@ pub fn do_convert_redim(
     }
 }
 
-fn redim_to_element_dim_type(
+fn to_dim_type(
     ctx: &mut Context,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
@@ -46,16 +45,16 @@ fn redim_to_element_dim_type(
     pos: Location,
 ) -> Result<DimType, QErrorNode> {
     match element_dim_type {
-        DimType::Bare => redim_bare_to_dim_type(ctx, bare_name, array_dimensions, pos),
+        DimType::Bare => bare_to_dim_type(ctx, bare_name, array_dimensions, pos),
         DimType::BuiltIn(q, built_in_style) => {
-            redim_built_in_to_dim_type(ctx, bare_name, array_dimensions, *q, *built_in_style, pos)
+            built_in_to_dim_type(ctx, bare_name, array_dimensions, *q, *built_in_style, pos)
         }
         DimType::FixedLengthString(length_expression, resolved_length) => {
             debug_assert_eq!(
                 *resolved_length, 0,
                 "REDIM string length should not be known"
             );
-            redim_fixed_length_string_to_dim_type(
+            fixed_length_string_to_dim_type(
                 ctx,
                 bare_name,
                 array_dimensions,
@@ -64,7 +63,7 @@ fn redim_to_element_dim_type(
             )
         }
         DimType::UserDefined(u) => {
-            redim_user_defined_type_to_dim_type(ctx, bare_name, array_dimensions, u, pos)
+            user_defined_type_to_dim_type(ctx, bare_name, array_dimensions, u, pos)
         }
         DimType::Array(_, _) => {
             panic!("REDIM nested array is not supported")
@@ -72,7 +71,7 @@ fn redim_to_element_dim_type(
     }
 }
 
-fn redim_bare_to_dim_type(
+fn bare_to_dim_type(
     ctx: &mut Context,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
@@ -129,7 +128,7 @@ fn redim_bare_to_dim_type(
     }
 }
 
-fn redim_built_in_to_dim_type(
+fn built_in_to_dim_type(
     ctx: &mut Context,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
@@ -138,26 +137,29 @@ fn redim_built_in_to_dim_type(
     pos: Location,
 ) -> Result<DimType, QErrorNode> {
     if built_in_style == BuiltInStyle::Compact {
-        for (built_in_style, variable_info) in ctx.names.names_iterator(bare_name) {
-            if built_in_style == BuiltInStyle::Extended {
-                return Err(QError::DuplicateDefinition).with_err_at(pos);
-            }
-
-            let opt_q = variable_info.expression_type.opt_qualifier();
-            if opt_q.expect("Should be qualified") == q {
-                // other compact arrays of the same name are allowed to co-exist, hence no else block here
-                require_dimension_count(variable_info, array_dimensions.len()).with_err_at(pos)?;
-            }
-        }
+        ctx.names
+            .visit_names(bare_name, |built_in_style, variable_info| {
+                if built_in_style == BuiltInStyle::Extended {
+                    return Err(QError::DuplicateDefinition);
+                }
+                let opt_q = variable_info.expression_type.opt_qualifier();
+                if opt_q.expect("Should be qualified") == q {
+                    // other compact arrays of the same name are allowed to co-exist, hence no else block here
+                    require_dimension_count(variable_info, array_dimensions.len())?;
+                }
+                Ok(())
+            })
+            .with_err_at(pos)?;
     } else {
-        for (built_in_style, variable_info) in ctx.names.names_iterator(bare_name) {
-            if built_in_style == BuiltInStyle::Compact {
-                return Err(QError::DuplicateDefinition).with_err_at(pos);
-            }
-
-            require_built_in_array(variable_info, q).with_err_at(pos)?;
-            require_dimension_count(variable_info, array_dimensions.len()).with_err_at(pos)?;
-        }
+        ctx.names
+            .visit_names(bare_name, |built_in_style, variable_info| {
+                if built_in_style == BuiltInStyle::Compact {
+                    return Err(QError::DuplicateDefinition);
+                }
+                require_built_in_array(variable_info, q)?;
+                require_dimension_count(variable_info, array_dimensions.len())
+            })
+            .with_err_at(pos)?;
     }
     Ok(DimType::BuiltIn(q, built_in_style))
 }
@@ -173,7 +175,7 @@ fn require_built_in_array(variable_info: &VariableInfo, q: TypeQualifier) -> Res
     Err(QError::DuplicateDefinition)
 }
 
-fn redim_fixed_length_string_to_dim_type(
+fn fixed_length_string_to_dim_type(
     ctx: &mut Context,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
@@ -181,15 +183,16 @@ fn redim_fixed_length_string_to_dim_type(
     pos: Location,
 ) -> Result<DimType, QErrorNode> {
     let string_length: u16 = resolve_string_length(ctx, length_expression)?;
-    for (built_in_style, variable_info) in ctx.names.names_iterator(bare_name) {
-        if built_in_style == BuiltInStyle::Compact {
-            return Err(QError::DuplicateDefinition).with_err_at(pos);
-        }
-
-        require_fixed_length_string_array(variable_info, string_length).with_err_at(pos)?;
-        require_dimension_count(variable_info, array_dimensions.len()).with_err_at(pos)?;
-    }
-
+    ctx.names
+        .visit_names(bare_name, |built_in_style, variable_info| {
+            if built_in_style == BuiltInStyle::Compact {
+                Err(QError::DuplicateDefinition)
+            } else {
+                require_fixed_length_string_array(variable_info, string_length)?;
+                require_dimension_count(variable_info, array_dimensions.len())
+            }
+        })
+        .with_err_at(pos)?;
     Ok(DimType::fixed_length_string(string_length, pos))
 }
 
@@ -204,21 +207,25 @@ fn require_fixed_length_string_array(variable_info: &VariableInfo, len: u16) -> 
     Err(QError::DuplicateDefinition)
 }
 
-struct RedimUserDefinedTypeVisitor<'a>(usize, &'a BareName);
-
-impl<'a> Visitor for RedimUserDefinedTypeVisitor<'a> {
-    fn on_compact(
-        &mut self,
-        _q: TypeQualifier,
-        _variable_info: &VariableInfo,
-    ) -> Result<(), QError> {
-        Err(QError::DuplicateDefinition)
-    }
-
-    fn on_extended(&mut self, variable_info: &VariableInfo) -> Result<(), QError> {
-        require_dimension_count(variable_info, self.0)
-            .and_then(|_| require_user_defined_array(variable_info, self.1))
-    }
+fn user_defined_type_to_dim_type(
+    ctx: &mut Context,
+    bare_name: &BareName,
+    array_dimensions: &ArrayDimensions,
+    user_defined_type: &BareNameNode,
+    pos: Location,
+) -> Result<DimType, QErrorNode> {
+    ctx.names
+        .visit_names(bare_name, |built_in_style, variable_info| {
+            if built_in_style == BuiltInStyle::Compact {
+                Err(QError::DuplicateDefinition)
+            } else {
+                require_dimension_count(variable_info, array_dimensions.len()).and_then(|_| {
+                    require_user_defined_array(variable_info, user_defined_type.as_ref())
+                })
+            }
+        })
+        .with_err_at(pos)?;
+    Ok(DimType::UserDefined(user_defined_type.clone()))
 }
 
 fn require_dimension_count(
@@ -253,17 +260,4 @@ fn require_user_defined_array(
         }
     }
     Err(QError::DuplicateDefinition)
-}
-
-fn redim_user_defined_type_to_dim_type(
-    ctx: &mut Context,
-    bare_name: &BareName,
-    array_dimensions: &ArrayDimensions,
-    user_defined_type: &BareNameNode,
-    pos: Location,
-) -> Result<DimType, QErrorNode> {
-    let mut visitor =
-        RedimUserDefinedTypeVisitor(array_dimensions.len(), user_defined_type.as_ref());
-    ctx.names.visit(&bare_name, &mut visitor).with_err_at(pos)?;
-    Ok(DimType::UserDefined(user_defined_type.clone()))
 }

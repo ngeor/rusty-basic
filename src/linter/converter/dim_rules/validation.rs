@@ -4,7 +4,7 @@ use crate::linter::type_resolver::TypeResolver;
 use crate::linter::DimContext;
 use crate::parser::*;
 
-pub fn do_validate(
+pub fn validate(
     ctx: &Context,
     bare_name: &BareName,
     dim_type: &DimType,

@@ -2,13 +2,12 @@ use crate::common::*;
 use crate::linter::converter::dim_rules::{
     convert_array_dimensions, no_implicits, resolve_string_length,
 };
-use crate::linter::converter::names::Visitor;
 use crate::linter::converter::{Context, R};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::DimContext;
 use crate::parser::*;
 
-pub fn do_convert_default(
+pub fn convert(
     ctx: &mut Context,
     bare_name: BareName,
     dim_type: DimType,
@@ -17,7 +16,7 @@ pub fn do_convert_default(
     pos: Location,
 ) -> R<DimNameNode> {
     debug_assert_ne!(dim_context, DimContext::Redim);
-    resolve_dim_type_default(ctx, &bare_name, &dim_type, dim_context, shared, pos).map(
+    to_dim_type(ctx, &bare_name, &dim_type, dim_context, shared, pos).map(
         |(dim_type, implicits)| {
             ctx.names.insert(bare_name.clone(), &dim_type, shared, None);
             (DimName::new(bare_name, dim_type).at(pos), implicits)
@@ -25,7 +24,7 @@ pub fn do_convert_default(
     )
 }
 
-fn resolve_dim_type_default(
+fn to_dim_type(
     ctx: &mut Context,
     bare_name: &BareName,
     dim_type: &DimType,
@@ -59,51 +58,34 @@ fn resolve_dim_type_default(
     }
 }
 
-struct BuiltInCompactVisitor(TypeQualifier);
-
-impl Visitor for BuiltInCompactVisitor {
-    fn on_compact(
-        &mut self,
-        q: TypeQualifier,
-        _variable_info: &VariableInfo,
-    ) -> Result<(), QError> {
-        if self.0 == q {
-            Err(QError::DuplicateDefinition)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn on_extended(&mut self, _variable_info: &VariableInfo) -> Result<(), QError> {
-        Err(QError::DuplicateDefinition)
-    }
-}
-
 fn bare_to_dim_type(
     ctx: &mut Context,
     bare_name: &BareName,
     pos: Location,
 ) -> Result<DimType, QErrorNode> {
     let resolved_q = ctx.resolve(bare_name);
-    let mut visitor = BuiltInCompactVisitor(resolved_q);
-    ctx.names.visit(bare_name, &mut visitor).with_err_at(pos)?;
+    require_compact_can_be_defined(ctx, bare_name, resolved_q).with_err_at(pos)?;
     Ok(DimType::BuiltIn(resolved_q, BuiltInStyle::Compact))
 }
 
-struct ExtendedVisitor;
-
-impl Visitor for ExtendedVisitor {
-    fn on_compact(
-        &mut self,
-        _q: TypeQualifier,
-        _variable_info: &VariableInfo,
-    ) -> Result<(), QError> {
-        Err(QError::DuplicateDefinition)
-    }
-
-    fn on_extended(&mut self, _variable_info: &VariableInfo) -> Result<(), QError> {
-        Err(QError::DuplicateDefinition)
-    }
+fn require_compact_can_be_defined(
+    ctx: &Context,
+    bare_name: &BareName,
+    q: TypeQualifier,
+) -> Result<(), QError> {
+    ctx.names
+        .visit_names(bare_name, |built_in_style, variable_info| {
+            if built_in_style == BuiltInStyle::Extended {
+                Err(QError::DuplicateDefinition)
+            } else {
+                let opt_q = variable_info.expression_type.opt_qualifier().unwrap();
+                if opt_q == q {
+                    Err(QError::DuplicateDefinition)
+                } else {
+                    Ok(())
+                }
+            }
+        })
 }
 
 fn built_in_to_dim_type(
@@ -115,16 +97,19 @@ fn built_in_to_dim_type(
 ) -> Result<DimType, QErrorNode> {
     match built_in_style {
         BuiltInStyle::Compact => {
-            let mut visitor = BuiltInCompactVisitor(q);
-            ctx.names.visit(bare_name, &mut visitor).with_err_at(pos)?;
+            require_compact_can_be_defined(ctx, bare_name, q).with_err_at(pos)?;
             Ok(DimType::BuiltIn(q, BuiltInStyle::Compact))
         }
         BuiltInStyle::Extended => {
-            let mut visitor = ExtendedVisitor;
-            ctx.names.visit(bare_name, &mut visitor).with_err_at(pos)?;
+            require_extended_can_be_defined(ctx, bare_name).with_err_at(pos)?;
             Ok(DimType::BuiltIn(q, BuiltInStyle::Extended))
         }
     }
+}
+
+fn require_extended_can_be_defined(ctx: &Context, bare_name: &BareName) -> Result<(), QError> {
+    ctx.names
+        .visit_names(bare_name, |_, _| Err(QError::DuplicateDefinition))
 }
 
 fn fixed_length_string_to_dim_type(
@@ -133,9 +118,7 @@ fn fixed_length_string_to_dim_type(
     length_expression: &ExpressionNode,
     pos: Location,
 ) -> Result<DimType, QErrorNode> {
-    for (_, _) in ctx.names.names_iterator(bare_name) {
-        return Err(QError::DuplicateDefinition).with_err_at(pos);
-    }
+    require_extended_can_be_defined(ctx, bare_name).with_err_at(pos)?;
     let string_length: u16 = resolve_string_length(ctx, length_expression)?;
     Ok(DimType::fixed_length_string(
         string_length,
@@ -149,8 +132,7 @@ fn user_defined_to_dim_type(
     user_defined_type: &BareNameNode,
     pos: Location,
 ) -> Result<DimType, QErrorNode> {
-    let mut visitor = ExtendedVisitor;
-    ctx.names.visit(bare_name, &mut visitor).with_err_at(pos)?;
+    require_extended_can_be_defined(ctx, bare_name).with_err_at(pos)?;
     Ok(DimType::UserDefined(user_defined_type.clone()))
 }
 
@@ -176,7 +158,7 @@ fn array_to_dim_type(
     let (converted_array_dimensions, mut implicits) =
         convert_array_dimensions(ctx, array_dimensions.clone())?;
     let (resolved_element_dim_type, mut resolved_implicits) =
-        resolve_dim_type_default(ctx, bare_name, element_type, dim_context, shared, pos)?;
+        to_dim_type(ctx, bare_name, element_type, dim_context, shared, pos)?;
     implicits.append(&mut resolved_implicits);
     let array_dim_type = DimType::Array(
         converted_array_dimensions,

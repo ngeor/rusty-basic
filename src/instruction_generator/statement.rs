@@ -1,5 +1,6 @@
 use super::{AddressOrLabel, Instruction, InstructionGenerator, Visitor};
 use crate::common::*;
+use crate::linter::DimContext;
 use crate::parser::{OnErrorOption, ResumeOption, Statement, StatementNode, StatementNodes};
 
 impl Visitor<StatementNodes> for InstructionGenerator {
@@ -89,7 +90,10 @@ impl Visitor<StatementNode> for InstructionGenerator {
             }
             Statement::Comment(_) => {}
             Statement::Dim(dim_list) => {
-                self.visit(dim_list);
+                self.visit_dim_list(dim_list, DimContext::Default);
+            }
+            Statement::Redim(dim_list) => {
+                self.visit_dim_list(dim_list, DimContext::Redim);
             }
             Statement::End | Statement::System => {
                 self.push(Instruction::Halt, pos);

@@ -482,6 +482,6 @@ impl InstructionGenerator {
     }
 }
 
-pub trait Visitor<T> {
+trait Visitor<T> {
     fn visit(&mut self, item: T);
 }

@@ -32,18 +32,18 @@ where
 /// # Panics
 ///
 /// If the parser has an error or if the linter did not have an error.
-pub fn linter_err<T>(input: T) -> QErrorNode
+pub fn linter_err<T>(input: T, msg: &str) -> QErrorNode
 where
     T: AsRef<[u8]> + 'static,
 {
     let program = parse_main_str(input).expect("Parser should succeed");
-    lint(program).expect_err("Linter should fail")
+    lint(program).expect_err(format!("Linter should fail {}", msg).as_str())
 }
 
 #[macro_export]
 macro_rules! assert_linter_err {
     ($program:expr, $expected_err:expr) => {
-        match crate::linter::test_utils::linter_err($program) {
+        match crate::linter::test_utils::linter_err($program, "") {
             crate::common::QErrorNode::Pos(actual_err, _) => {
                 assert_eq!(actual_err, $expected_err);
             }
@@ -51,8 +51,21 @@ macro_rules! assert_linter_err {
         }
     };
 
+    ($program:expr, $expected_err:expr, $msg:expr) => {
+        match crate::linter::test_utils::linter_err($program, format!("{}", $msg).as_ref()) {
+            crate::common::QErrorNode::Pos(actual_err, _) => {
+                assert_eq!(
+                    actual_err, $expected_err,
+                    "'{}' failed, expected {:?} but was {:?}",
+                    $msg, $expected_err, actual_err
+                );
+            }
+            _ => panic!("Should have an error location"),
+        }
+    };
+
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
-        match crate::linter::test_utils::linter_err($program) {
+        match crate::linter::test_utils::linter_err($program, "") {
             crate::common::QErrorNode::Pos(actual_err, actual_pos) => {
                 assert_eq!(actual_err, $expected_err);
                 assert_eq!(

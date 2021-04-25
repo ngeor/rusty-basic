@@ -1,7 +1,7 @@
-use crate::common::QError;
+use crate::common::{AtLocation, Location, QError};
 use crate::parser::{
-    ArrayDimensions, BareNameNode, BuiltInStyle, ExpressionNode, ExpressionType, HasExpressionType,
-    TypeQualifier,
+    ArrayDimensions, BareNameNode, BuiltInStyle, Expression, ExpressionNode, ExpressionType,
+    HasExpressionType, TypeQualifier,
 };
 use std::convert::TryFrom;
 
@@ -14,10 +14,21 @@ pub enum DimType {
     Array(ArrayDimensions, Box<DimType>),
 }
 
+impl DimType {
+    pub fn dimension_count(&self) -> usize {
+        match self {
+            Self::Array(array_dimensions, _) => array_dimensions.len(),
+            _ => 0,
+        }
+    }
+
+    pub fn fixed_length_string(len: u16, pos: Location) -> Self {
+        DimType::FixedLengthString(Expression::IntegerLiteral(len as i32).at(pos), len)
+    }
+}
+
 pub trait DimTypeTrait {
     fn is_extended(&self) -> bool;
-
-    fn is_user_defined(&self) -> Option<&BareNameNode>;
 }
 
 impl DimTypeTrait for DimType {
@@ -28,14 +39,6 @@ impl DimTypeTrait for DimType {
             | Self::UserDefined(_) => true,
             Self::Array(_, element_type) => element_type.is_extended(),
             _ => false,
-        }
-    }
-
-    fn is_user_defined(&self) -> Option<&BareNameNode> {
-        match self {
-            Self::UserDefined(u) => Some(u),
-            Self::Array(_, element_type) => element_type.is_user_defined(),
-            _ => None,
         }
     }
 }

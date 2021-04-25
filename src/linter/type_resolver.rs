@@ -1,4 +1,4 @@
-use crate::parser::{BareName, DimName, DimNameNode, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, DimName, DimNameNode, DimType, Name, QualifiedName, TypeQualifier};
 
 pub trait TypeResolver {
     fn resolve_char(&self, ch: char) -> TypeQualifier;
@@ -41,6 +41,14 @@ pub trait TypeResolver {
             },
             ..
         } = dim_name_node;
+        self.resolve_dim_name_to_qualifier(bare_name, dim_type)
+    }
+
+    fn resolve_dim_name_to_qualifier(
+        &self,
+        bare_name: &BareName,
+        dim_type: &DimType,
+    ) -> TypeQualifier {
         let opt_q: Option<TypeQualifier> = dim_type.into();
         match opt_q {
             Some(q) => q,

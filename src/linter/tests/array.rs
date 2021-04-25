@@ -29,7 +29,7 @@ fn test_dim_array() {
         linter_ok(input),
         vec![TopLevelToken::Statement(Statement::Dim(
             DimName::new(
-                "choice",
+                "choice".into(),
                 DimType::Array(
                     vec![ArrayDimension {
                         lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
@@ -111,7 +111,8 @@ fn test_passing_array_parameter_with_parenthesis() {
                     vec![],
                     VariableInfo {
                         expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
-                        shared: false
+                        shared: false,
+                        redim_info: None
                     }
                 )
                 .at_rc(4, 10)]
@@ -142,7 +143,8 @@ fn test_passing_array_parameter_with_parenthesis() {
                                 expression_type: ExpressionType::BuiltIn(
                                     TypeQualifier::DollarString
                                 ),
-                                shared: false
+                                shared: false,
+                                redim_info: None
                             }
                         )
                         .at_rc(7, 14)

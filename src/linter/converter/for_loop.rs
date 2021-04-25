@@ -1,15 +1,11 @@
-use crate::common::QErrorNode;
-use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::converter::{
-    Converter, ConverterImpl, ConverterWithImplicitVariables,
+use crate::linter::converter::conversion_traits::{
+    SameTypeConverter, SameTypeConverterWithImplicits,
 };
-use crate::parser::{ForLoopNode, QualifiedNameNode};
+use crate::linter::converter::{ConverterImpl, ExprContext, R};
+use crate::parser::ForLoopNode;
 
-impl<'a> ConverterWithImplicitVariables<ForLoopNode, ForLoopNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: ForLoopNode,
-    ) -> Result<(ForLoopNode, Vec<QualifiedNameNode>), QErrorNode> {
+impl<'a> SameTypeConverterWithImplicits<ForLoopNode> for ConverterImpl<'a> {
+    fn convert_same_type_with_implicits(&mut self, a: ForLoopNode) -> R<ForLoopNode> {
         let (variable_name, implicit_variables_variable_name) = self
             .context
             .on_expression(a.variable_name, ExprContext::Assignment)?;
@@ -39,7 +35,7 @@ impl<'a> ConverterWithImplicitVariables<ForLoopNode, ForLoopNode> for ConverterI
                 lower_bound,
                 upper_bound,
                 step,
-                statements: self.convert(a.statements)?,
+                statements: self.convert_same_type(a.statements)?,
                 next_counter,
             },
             implicit_vars,

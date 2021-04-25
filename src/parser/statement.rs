@@ -40,6 +40,7 @@ where
     R: Reader<Item = char, Err = QError> + HasLocation + 'static,
 {
     dim::dim_p()
+        .or(dim::redim_p())
         .or(constant::constant_p())
         .or(crate::built_ins::parser::parse())
         .or(print::parse_print_p())

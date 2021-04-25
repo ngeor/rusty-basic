@@ -1,17 +1,13 @@
-use super::converter::{ConverterImpl, ConverterWithImplicitVariables};
-use crate::common::*;
-use crate::linter::converter::context::ExprContext;
-use crate::parser::{PrintArg, PrintNode, QualifiedNameNode};
+use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
+use crate::linter::converter::{ConverterImpl, ExprContext, R};
+use crate::parser::{PrintArg, PrintNode};
 
-impl<'a> ConverterWithImplicitVariables<PrintNode, PrintNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: PrintNode,
-    ) -> Result<(PrintNode, Vec<QualifiedNameNode>), QErrorNode> {
+impl<'a> SameTypeConverterWithImplicits<PrintNode> for ConverterImpl<'a> {
+    fn convert_same_type_with_implicits(&mut self, a: PrintNode) -> R<PrintNode> {
         let (format_string, mut implicit_vars_format_string) = self
             .context
             .on_opt_expression(a.format_string, ExprContext::Default)?;
-        let (args, mut implicit_vars_args) = self.convert_and_collect_implicit_variables(a.args)?;
+        let (args, mut implicit_vars_args) = self.convert_same_type_with_implicits(a.args)?;
 
         implicit_vars_format_string.append(&mut implicit_vars_args);
 
@@ -27,11 +23,8 @@ impl<'a> ConverterWithImplicitVariables<PrintNode, PrintNode> for ConverterImpl<
     }
 }
 
-impl<'a> ConverterWithImplicitVariables<PrintArg, PrintArg> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: PrintArg,
-    ) -> Result<(PrintArg, Vec<QualifiedNameNode>), QErrorNode> {
+impl<'a> SameTypeConverterWithImplicits<PrintArg> for ConverterImpl<'a> {
+    fn convert_same_type_with_implicits(&mut self, a: PrintArg) -> R<PrintArg> {
         match a {
             PrintArg::Comma => Ok((PrintArg::Comma, vec![])),
             PrintArg::Semicolon => Ok((PrintArg::Semicolon, vec![])),

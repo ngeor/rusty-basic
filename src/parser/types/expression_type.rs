@@ -1,4 +1,4 @@
-use crate::common::{CanCastTo, Locatable, QError};
+use crate::common::{CanCastTo, QError};
 use crate::parser::{BareName, Name, Operator, QualifiedName, TypeQualifier};
 
 /// The resolved type of an expression.
@@ -39,7 +39,7 @@ impl ExpressionType {
         }
     }
 
-    fn opt_qualifier(&self) -> Option<TypeQualifier> {
+    pub fn opt_qualifier(&self) -> Option<TypeQualifier> {
         match self {
             ExpressionType::BuiltIn(expr_q) => Some(*expr_q),
             ExpressionType::FixedLengthString(_) => Some(TypeQualifier::DollarString),
@@ -58,12 +58,6 @@ impl ExpressionType {
 
 pub trait HasExpressionType {
     fn expression_type(&self) -> ExpressionType;
-}
-
-impl<T: HasExpressionType> HasExpressionType for Locatable<T> {
-    fn expression_type(&self) -> ExpressionType {
-        self.as_ref().expression_type()
-    }
 }
 
 impl ExpressionType {

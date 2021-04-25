@@ -43,6 +43,18 @@ use crate::parser::pc::Reader;
 use crate::parser::top_level_token::TopLevelTokensParser;
 use std::fs::File;
 
+/// Parses a QBasic file.
+///
+/// Syntax reference
+///
+/// ```txt
+/// (* zero or more whitespace *)
+/// <opt-ws> ::= "" | <ws>
+/// (* at least one whitespace *)
+/// <ws> ::= " " | " "<ws>
+/// <letter> ::= "A".."Z" | "a".."z"
+/// <digit> ::= "0".."9"
+/// ```
 pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
     let reader = EolReader::from(f);
     parse_reader(reader)

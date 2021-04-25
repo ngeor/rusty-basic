@@ -1,25 +1,21 @@
-use crate::common::QErrorNode;
-use crate::linter::converter::context::ExprContext;
-use crate::linter::converter::converter::{
-    Converter, ConverterImpl, ConverterWithImplicitVariables,
+use crate::linter::converter::conversion_traits::{
+    SameTypeConverter, SameTypeConverterWithImplicits,
 };
-use crate::parser::{CaseBlockNode, CaseExpression, QualifiedNameNode, SelectCaseNode};
+use crate::linter::converter::{ConverterImpl, ExprContext, R};
+use crate::parser::{CaseBlockNode, CaseExpression, SelectCaseNode};
 
-impl<'a> ConverterWithImplicitVariables<SelectCaseNode, SelectCaseNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: SelectCaseNode,
-    ) -> Result<(SelectCaseNode, Vec<QualifiedNameNode>), QErrorNode> {
+impl<'a> SameTypeConverterWithImplicits<SelectCaseNode> for ConverterImpl<'a> {
+    fn convert_same_type_with_implicits(&mut self, a: SelectCaseNode) -> R<SelectCaseNode> {
         let (expr, mut implicit_vars_expr) =
             self.context.on_expression(a.expr, ExprContext::Default)?;
         let (case_blocks, mut implicit_vars_case_blocks) =
-            self.convert_and_collect_implicit_variables(a.case_blocks)?;
+            self.convert_same_type_with_implicits(a.case_blocks)?;
         implicit_vars_expr.append(&mut implicit_vars_case_blocks);
         Ok((
             SelectCaseNode {
                 expr,
                 case_blocks,
-                else_block: self.convert(a.else_block)?,
+                else_block: self.convert_same_type(a.else_block)?,
                 inline_comments: a.inline_comments,
             },
             implicit_vars_expr,
@@ -27,28 +23,22 @@ impl<'a> ConverterWithImplicitVariables<SelectCaseNode, SelectCaseNode> for Conv
     }
 }
 
-impl<'a> ConverterWithImplicitVariables<CaseBlockNode, CaseBlockNode> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: CaseBlockNode,
-    ) -> Result<(CaseBlockNode, Vec<QualifiedNameNode>), QErrorNode> {
+impl<'a> SameTypeConverterWithImplicits<CaseBlockNode> for ConverterImpl<'a> {
+    fn convert_same_type_with_implicits(&mut self, a: CaseBlockNode) -> R<CaseBlockNode> {
         let (expression_list, implicit_vars_expr) =
-            self.convert_and_collect_implicit_variables(a.expression_list)?;
+            self.convert_same_type_with_implicits(a.expression_list)?;
         Ok((
             CaseBlockNode {
                 expression_list,
-                statements: self.convert(a.statements)?,
+                statements: self.convert_same_type(a.statements)?,
             },
             implicit_vars_expr,
         ))
     }
 }
 
-impl<'a> ConverterWithImplicitVariables<CaseExpression, CaseExpression> for ConverterImpl<'a> {
-    fn convert_and_collect_implicit_variables(
-        &mut self,
-        a: CaseExpression,
-    ) -> Result<(CaseExpression, Vec<QualifiedNameNode>), QErrorNode> {
+impl<'a> SameTypeConverterWithImplicits<CaseExpression> for ConverterImpl<'a> {
+    fn convert_same_type_with_implicits(&mut self, a: CaseExpression) -> R<CaseExpression> {
         match a {
             CaseExpression::Simple(e) => self
                 .context

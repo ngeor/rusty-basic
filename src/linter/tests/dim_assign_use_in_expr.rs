@@ -74,7 +74,7 @@ fn extended_string() {
         vec![
             TopLevelToken::Statement(Statement::Dim(
                 DimName::new(
-                    "A",
+                    "A".into(),
                     DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
                 )
                 .into_list_rc(2, 9)
@@ -110,7 +110,7 @@ fn user_defined_type() {
         vec![
             TopLevelToken::Statement(Statement::Dim(
                 DimName::new(
-                    "A",
+                    "A".into(),
                     DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
                 )
                 .into_list_rc(6, 9)
@@ -118,7 +118,7 @@ fn user_defined_type() {
             .at_rc(6, 5),
             TopLevelToken::Statement(Statement::Dim(
                 DimName::new(
-                    "B",
+                    "B".into(),
                     DimType::UserDefined(BareName::from("Card").at_rc(7, 14)),
                 )
                 .into_list_rc(7, 9)
@@ -174,7 +174,7 @@ fn user_defined_type_integer_element() {
         input,
         Statement::Dim(
             DimName::new(
-                "A",
+                "A".into(),
                 DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
             )
             .into_list_rc(6, 9)
@@ -213,7 +213,7 @@ fn user_defined_type_string_element() {
         input,
         Statement::Dim(
             DimName::new(
-                "A",
+                "A".into(),
                 DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
             )
             .into_list_rc(6, 9)

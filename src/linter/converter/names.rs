@@ -1,8 +1,12 @@
 use crate::common::CaseInsensitiveString;
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::NameContext;
-use crate::parser::{BareName, TypeQualifier, VariableInfo};
+use crate::parser::{
+    BareName, BuiltInStyle, DimType, DimTypeTrait, HasExpressionType, RedimInfo, TypeQualifier,
+    VariableInfo,
+};
 use crate::variant::Variant;
+use std::collections::hash_map::Values;
 use std::collections::{HashMap, HashSet};
 
 pub struct Names {
@@ -30,22 +34,22 @@ impl Names {
         Self::new(None, None)
     }
 
+    pub fn visit_names<F, T, E>(&self, bare_name: &BareName, f: F) -> Result<T, E>
+    where
+        F: Fn(BuiltInStyle, &VariableInfo) -> Result<T, E>,
+        T: Default,
+    {
+        for (built_in_style, variable_info) in self.names_iterator(bare_name) {
+            f(built_in_style, variable_info)?;
+        }
+        Ok(T::default())
+    }
+
     /// Returns true if this name is a constant, or an extended variable,
     /// or a compact variable. In the case of compact variables, multiple may
     /// exist with the same bare name, e.g. `A$` and `A%`.
     pub fn contains(&self, bare_name: &BareName) -> bool {
         self.map.contains_key(bare_name)
-    }
-
-    /// Checks if a new compact variable can be introduced for the given name and qualifier.
-    /// This is allowed if the given name is not yet known, or if it is known as a compact
-    /// name and the qualifier hasn't been used yet.
-    pub fn can_insert_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> bool {
-        match self.map.get(bare_name) {
-            Some(NameInfo::Compact(qualifiers)) => !qualifiers.contains_key(&qualifier),
-            Some(_) => false,
-            _ => true,
-        }
     }
 
     pub fn get_compact_var_recursively(
@@ -172,34 +176,81 @@ impl Names {
         }
     }
 
-    pub fn insert_compact(
+    pub fn insert(
         &mut self,
         bare_name: BareName,
-        q: TypeQualifier,
-        variable_context: VariableInfo,
+        dim_type: &DimType,
+        shared: bool,
+        redim_info: Option<RedimInfo>,
     ) {
+        let variable_info = VariableInfo {
+            expression_type: dim_type.expression_type(),
+            shared,
+            redim_info,
+        };
+        if dim_type.is_extended() {
+            self.insert_extended(bare_name, variable_info)
+        } else {
+            self.insert_compact(bare_name, variable_info)
+        }
+    }
+
+    pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
+        debug_assert!(!self.map.contains_key(&bare_name));
+        self.map.insert(bare_name, NameInfo::Constant(v));
+    }
+
+    fn insert_compact(&mut self, bare_name: BareName, variable_info: VariableInfo) {
+        let q = variable_info
+            .expression_type
+            .opt_qualifier()
+            .expect("Should be resolved");
         match self.map.get_mut(&bare_name) {
-            Some(NameInfo::Compact(qualifiers)) => {
-                qualifiers.insert(q, variable_context);
+            Some(NameInfo::Compact(compacts)) => {
+                Self::insert_in_compacts(compacts, q, variable_info);
+            }
+            Some(_) => {
+                panic!(
+                    "Cannot insert compact {} because it already exists as CONST or extended",
+                    bare_name
+                );
             }
             None => {
-                let mut qualifiers: HashMap<TypeQualifier, VariableInfo> = HashMap::new();
-                qualifiers.insert(q, variable_context);
-                self.map.insert(bare_name, NameInfo::Compact(qualifiers));
-            }
-            _ => {
-                panic!("Cannot add compact")
+                let mut map: HashMap<TypeQualifier, VariableInfo> = HashMap::new();
+                Self::insert_in_compacts(&mut map, q, variable_info);
+                self.map.insert(bare_name, NameInfo::Compact(map));
             }
         }
     }
 
-    pub fn insert_extended(&mut self, bare_name: BareName, variable_context: VariableInfo) {
-        self.map
-            .insert(bare_name, NameInfo::Extended(variable_context));
+    fn insert_in_compacts(
+        map: &mut HashMap<TypeQualifier, VariableInfo>,
+        q: TypeQualifier,
+        variable_info: VariableInfo,
+    ) {
+        debug_assert!(match map.get(&q) {
+            Some(existing_v) => {
+                existing_v.redim_info.is_some()
+            }
+            None => {
+                true
+            }
+        });
+        map.insert(q, variable_info);
     }
 
-    pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
-        self.map.insert(bare_name, NameInfo::Constant(v));
+    fn insert_extended(&mut self, bare_name: BareName, variable_context: VariableInfo) {
+        debug_assert!(match self.map.get(&bare_name) {
+            Some(NameInfo::Extended(v)) => {
+                v.redim_info.is_some()
+            }
+            Some(_) => false,
+            None => {
+                true
+            }
+        });
+        self.map
+            .insert(bare_name, NameInfo::Extended(variable_context));
     }
 
     pub fn drain_extended_names_into(&mut self, set: &mut HashSet<BareName>) {
@@ -246,6 +297,13 @@ impl Names {
             _ => None,
         }
     }
+
+    pub fn names_iterator<'a>(
+        &'a self,
+        bare_name: &'a BareName,
+    ) -> impl Iterator<Item = (BuiltInStyle, &'a VariableInfo)> {
+        NamesIterator::new(self, bare_name)
+    }
 }
 
 impl ConstValueResolver for Names {
@@ -256,6 +314,105 @@ impl ConstValueResolver for Names {
                 Some(boxed_parent) => boxed_parent.get_resolved_constant(name),
                 _ => None,
             },
+        }
+    }
+}
+
+struct NamesIterator<'a> {
+    names: &'a Names,
+    bare_name: &'a BareName,
+    state: NamesIteratorState,
+    compacts: Option<Values<'a, TypeQualifier, VariableInfo>>,
+    only_shared: bool,
+}
+
+enum NamesIteratorState {
+    NotStarted,
+    Compacts,
+    FinishedCurrent,
+    Finished,
+}
+
+impl<'a> NamesIterator<'a> {
+    pub fn new(names: &'a Names, bare_name: &'a BareName) -> Self {
+        Self {
+            names,
+            bare_name,
+            state: NamesIteratorState::NotStarted,
+            compacts: None,
+            only_shared: false,
+        }
+    }
+
+    fn on_not_started(&mut self) -> Option<<Self as Iterator>::Item> {
+        match self.names.map.get(self.bare_name) {
+            Some(NameInfo::Compact(m)) => {
+                self.compacts = Some(m.values());
+                self.state = NamesIteratorState::Compacts;
+                self.on_compacts()
+            }
+            Some(NameInfo::Extended(v)) => {
+                self.state = NamesIteratorState::FinishedCurrent;
+                if !self.only_shared || v.shared {
+                    Some((BuiltInStyle::Extended, v))
+                } else {
+                    self.on_finished_current()
+                }
+            }
+            Some(NameInfo::Constant(_)) => {
+                if self.only_shared {
+                    self.on_finished_current()
+                } else {
+                    panic!("Should have detected for constants before calling this method");
+                }
+            }
+            _ => self.on_finished_current(),
+        }
+    }
+
+    fn on_compacts(&mut self) -> Option<<Self as Iterator>::Item> {
+        let v = self.compacts.as_mut().unwrap().next();
+        match v {
+            Some(v) => {
+                if v.shared || !self.only_shared {
+                    Some((BuiltInStyle::Compact, v))
+                } else {
+                    self.on_compacts()
+                }
+            }
+            _ => {
+                self.state = NamesIteratorState::FinishedCurrent;
+                self.on_finished_current()
+            }
+        }
+    }
+
+    fn on_finished_current(&mut self) -> Option<<Self as Iterator>::Item> {
+        // go to parent, but only shared
+        self.only_shared = true;
+        match &self.names.parent {
+            Some(parent_names) => {
+                self.names = parent_names.as_ref();
+                self.state = NamesIteratorState::NotStarted;
+                self.on_not_started()
+            }
+            None => {
+                self.state = NamesIteratorState::Finished;
+                None
+            }
+        }
+    }
+}
+
+impl<'a> Iterator for NamesIterator<'a> {
+    type Item = (BuiltInStyle, &'a VariableInfo);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            NamesIteratorState::NotStarted => self.on_not_started(),
+            NamesIteratorState::Compacts => self.on_compacts(),
+            NamesIteratorState::FinishedCurrent => self.on_finished_current(),
+            NamesIteratorState::Finished => None,
         }
     }
 }

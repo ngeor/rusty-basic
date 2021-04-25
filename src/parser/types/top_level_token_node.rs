@@ -7,6 +7,36 @@ use crate::common::*;
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;
 
+/// Represents a parsed token that can appear as a top-level element of the
+/// parsing tree.
+///
+/// Syntax reference
+///
+/// ```txt
+/// <program> ::= <top-level-token> | <top-level-token><program>
+///
+/// <top-level-token> ::= <comment>
+///     | <def-type>
+///     | <declaration>
+///     | <statement>
+///     | <function>
+///     | <sub>
+///     | <user-defined-type>
+///
+/// <statement> ::= <comment>
+///     | <dim>
+///     | <const>
+///     | <built-in>
+///     | <label>
+///     | <sub-call>
+///     | <assignment>
+///     | <if-block>
+///     | <for-loop>
+///     | <select-case>
+///     | <while-wend>
+///     | <go-to>
+///     | <on-error-go-to>
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub enum TopLevelToken {
     /// A default type definition, e.g. `DEFINT A-Z.`

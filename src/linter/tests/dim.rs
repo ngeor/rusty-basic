@@ -406,3 +406,329 @@ mod dim_shared {
         assert_linter_err!(program, QError::DuplicateDefinition, 4, 19);
     }
 }
+
+mod redim {
+    use super::*;
+
+    mod const_exists {
+        use super::*;
+
+        #[test]
+        fn bare() {
+            let input = r#"
+            CONST A = 42
+            REDIM A(1 TO 5)
+            "#;
+            assert_linter_err!(input, QError::DuplicateDefinition);
+        }
+
+        #[test]
+        fn compacts() {
+            for ch in "!#$%&".chars() {
+                let input = format!(
+                    r#"
+                    CONST A = 42
+                    REDIM A{}(1 TO 5)
+                    "#,
+                    ch
+                );
+                assert_linter_err!(input, QError::DuplicateDefinition);
+            }
+        }
+
+        #[test]
+        fn extended() {
+            for s in &[
+                "SINGLE",
+                "DOUBLE",
+                "STRING",
+                "INTEGER",
+                "LONG",
+                "STRING * 5",
+                "Card",
+            ] {
+                let input = format!(
+                    r#"
+                    TYPE Card
+                        Value AS INTEGER
+                    END TYPE
+
+                    CONST A = 42
+                    REDIM A(1 TO 5) AS {}
+                    "#,
+                    s
+                );
+                assert_linter_err!(input, QError::DuplicateDefinition, s);
+            }
+        }
+    }
+
+    mod non_array_variable_exists {
+        use super::*;
+
+        #[test]
+        fn bare() {
+            for s in &[
+                "A",
+                "A AS SINGLE",
+                "A AS DOUBLE",
+                "A AS STRING",
+                "A AS INTEGER",
+                "A AS LONG",
+                "A AS STRING * 5",
+                "A AS Card",
+            ] {
+                let input = format!(
+                    r#"
+                TYPE Card
+                    Value AS INTEGER
+                END TYPE
+
+                DIM {}
+                REDIM A(1 TO 5)
+                "#,
+                    s
+                );
+                assert_linter_err!(input, QError::DuplicateDefinition, s);
+            }
+        }
+
+        #[test]
+        fn redim_as_compact_when_compact_of_same_type_exists() {
+            for ch in "!#$%&".chars() {
+                let input = format!(
+                    r#"
+                DIM A{}
+                REDIM A{}(1 TO 5)
+                "#,
+                    ch, ch
+                );
+                assert_linter_err!(input, QError::DuplicateDefinition, ch);
+            }
+        }
+
+        #[test]
+        fn redim_as_compact_when_extended_exists() {
+            for ch in "!#$%&".chars() {
+                for s in &[
+                    "SINGLE",
+                    "DOUBLE",
+                    "STRING",
+                    "INTEGER",
+                    "LONG",
+                    "STRING * 5",
+                    "Card",
+                ] {
+                    let input = format!(
+                        r#"
+                    TYPE Card
+                        Value AS INTEGER
+                    END TYPE
+                    DIM A AS {}
+                    REDIM A{}(1 TO 5)
+                    "#,
+                        s, ch
+                    );
+                    assert_linter_err!(input, QError::DuplicateDefinition);
+                }
+            }
+        }
+
+        #[test]
+        fn redim_as_extended_when_compact_exists() {
+            for ch in "!#$%&".chars() {
+                for s in &[
+                    "SINGLE",
+                    "DOUBLE",
+                    "STRING",
+                    "INTEGER",
+                    "LONG",
+                    "STRING * 5",
+                    "Card",
+                ] {
+                    let input = format!(
+                        r#"
+                    TYPE Card
+                        Value AS INTEGER
+                    END TYPE
+                    DIM A{}
+                    REDIM A(1 TO 5) AS {}
+                    "#,
+                        ch, s
+                    );
+                    assert_linter_err!(input, QError::DuplicateDefinition);
+                }
+            }
+        }
+
+        #[test]
+        fn redim_as_extended_when_extended_exists() {
+            for s in &[
+                "SINGLE",
+                "DOUBLE",
+                "STRING",
+                "INTEGER",
+                "LONG",
+                "STRING * 5",
+                "Card",
+            ] {
+                for s2 in &[
+                    "SINGLE",
+                    "DOUBLE",
+                    "STRING",
+                    "INTEGER",
+                    "LONG",
+                    "STRING * 5",
+                    "Card",
+                ] {
+                    let input = format!(
+                        r#"
+                    TYPE Card
+                        Value AS INTEGER
+                    END TYPE
+                    DIM A AS {}
+                    REDIM A(1 TO 5) AS {}
+                    "#,
+                        s, s2
+                    );
+                    assert_linter_err!(
+                        input,
+                        QError::DuplicateDefinition,
+                        format!("{} -> {}", s, s2)
+                    );
+                }
+            }
+        }
+    }
+
+    mod already_dimensioned {
+        use super::*;
+
+        #[test]
+        fn compacts() {
+            for ch in "!#$%&".chars() {
+                let input = format!(
+                    r#"
+                DIM A{}(1 TO 5)
+                REDIM A{}(1 TO 5)
+                "#,
+                    ch, ch
+                );
+                assert_linter_err!(input, QError::ArrayAlreadyDimensioned);
+            }
+        }
+
+        #[test]
+        fn extended() {
+            for s in &[
+                "SINGLE",
+                "DOUBLE",
+                "STRING",
+                "INTEGER",
+                "LONG",
+                "STRING * 5",
+                "Card",
+            ] {
+                let input = format!(
+                    r#"
+                TYPE Card
+                    Value AS INTEGER
+                END TYPE
+                DIM A(1 TO 5) AS {}
+                REDIM A(1 TO 5) AS {}
+                "#,
+                    s, s
+                );
+                assert_linter_err!(input, QError::ArrayAlreadyDimensioned, s);
+            }
+        }
+    }
+
+    mod wrong_number_of_dimensions {
+        use super::*;
+
+        #[test]
+        fn compacts() {
+            for ch in "!#$%&".chars() {
+                let input = format!(
+                    r#"
+                REDIM A{}(1 TO 5)
+                REDIM A{}(1 TO 5, 1 TO 10)
+                "#,
+                    ch, ch
+                );
+                assert_linter_err!(input, QError::WrongNumberOfDimensions);
+            }
+        }
+
+        #[test]
+        fn extended() {
+            for s in &[
+                "SINGLE",
+                "DOUBLE",
+                "STRING",
+                "INTEGER",
+                "LONG",
+                "STRING * 5",
+                "Card",
+            ] {
+                let input = format!(
+                    r#"
+                TYPE Card
+                    Value AS INTEGER
+                END TYPE
+                REDIM A(1 TO 5) AS {}
+                REDIM A(1 TO 5, 1 TO 10) AS {}
+                "#,
+                    s, s
+                );
+                assert_linter_err!(input, QError::WrongNumberOfDimensions, s);
+            }
+        }
+    }
+
+    mod cannot_change_type {
+        use super::*;
+
+        #[test]
+        fn cannot_change_type_extended_to_extended() {
+            let types = &[
+                "SINGLE",
+                "DOUBLE",
+                "STRING",
+                "INTEGER",
+                "LONG",
+                "STRING * 5",
+                "STRING * 10",
+                "Card",
+                "PostCode",
+            ];
+            for a in types {
+                for b in types {
+                    if a != b {
+                        let input = format!(
+                            r#"
+                            TYPE Card
+                                Value AS INTEGER
+                            END TYPE
+
+                            TYPE PostCode
+                                Suffix AS STRING * 4
+                            END TYPE
+
+                            REDIM A(1 TO 5) AS {}
+                            REDIM A(1 TO 5) AS {}
+                            "#,
+                            a, b
+                        );
+                        assert_linter_err!(
+                            input,
+                            QError::DuplicateDefinition,
+                            format!("REDIM {} to {}", a, b).as_str()
+                        );
+                    }
+                }
+            }
+        }
+    }
+}

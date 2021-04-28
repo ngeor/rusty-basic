@@ -493,7 +493,7 @@ pub mod linter {
             BuiltInFunction::Cvd => crate::built_ins::cvd::linter::lint(args),
             BuiltInFunction::Environ => crate::built_ins::environ_fn::linter::lint(args),
             BuiltInFunction::Eof => crate::built_ins::eof::linter::lint(args),
-            BuiltInFunction::Err => Ok(()),
+            BuiltInFunction::Err => crate::built_ins::err::linter::lint(args),
             BuiltInFunction::InKey => Ok(()),
             BuiltInFunction::InStr => crate::built_ins::instr::linter::lint(args),
             BuiltInFunction::LBound => crate::built_ins::lbound::linter::lint(args),
@@ -560,7 +560,7 @@ pub mod interpreter {
             BuiltInFunction::Cvd => crate::built_ins::cvd::interpreter::run(interpreter),
             BuiltInFunction::Environ => crate::built_ins::environ_fn::interpreter::run(interpreter),
             BuiltInFunction::Eof => crate::built_ins::eof::interpreter::run(interpreter),
-            BuiltInFunction::Err => Ok(()),
+            BuiltInFunction::Err => crate::built_ins::err::interpreter::run(interpreter),
             BuiltInFunction::InKey => Ok(()),
             BuiltInFunction::InStr => crate::built_ins::instr::interpreter::run(interpreter),
             BuiltInFunction::LBound => crate::built_ins::lbound::interpreter::run(interpreter),
@@ -595,6 +595,7 @@ mod def_seg;
 mod environ_fn;
 mod environ_sub;
 mod eof;
+mod err;
 mod field;
 mod get;
 mod input;

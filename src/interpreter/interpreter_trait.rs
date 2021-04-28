@@ -73,4 +73,6 @@ pub trait InterpreterTrait {
     }
 
     fn set_def_seg(&mut self, def_seg: Option<usize>);
+
+    fn get_last_error_code(&self) -> Option<i32>;
 }

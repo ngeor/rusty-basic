@@ -4,7 +4,7 @@ use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::parser::{
     BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
 };
-use crate::variant::{Variant, V_FALSE};
+use crate::variant::{AsciiSize, Variant, V_FALSE};
 
 #[derive(Debug)]
 pub struct Variables {
@@ -206,7 +206,7 @@ impl Variables {
             .keys()
             .take_while(|k| *k != name)
             .map(|k| self.get_by_name(k).unwrap())
-            .map(Variant::size_in_bytes)
+            .map(Variant::ascii_size)
             .sum()
     }
 
@@ -220,7 +220,7 @@ impl Variables {
         let mut offset: usize = 0;
         for RuntimeVariableInfo { value, .. } in self.map.values() {
             if !value.is_array() {
-                let len = value.size_in_bytes();
+                let len = value.ascii_size();
                 if offset <= address && address < offset + len {
                     return value.peek_non_array(address - offset);
                 }
@@ -237,7 +237,7 @@ impl Variables {
         let mut offset: usize = 0;
         for RuntimeVariableInfo { value, .. } in self.map.values_mut() {
             if !value.is_array() {
-                let len = value.size_in_bytes();
+                let len = value.ascii_size();
                 if offset <= address && address < offset + len {
                     return value.poke_non_array(address - offset, byte_value);
                 }
@@ -256,5 +256,11 @@ impl From<Arguments> for Variables {
         let mut variables: Self = Self::new();
         variables.apply_arguments(arguments);
         variables
+    }
+}
+
+impl AsciiSize for Variables {
+    fn ascii_size(&self) -> usize {
+        self.iter().map(Variant::ascii_size).sum()
     }
 }

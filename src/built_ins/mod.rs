@@ -494,7 +494,7 @@ pub mod linter {
             BuiltInFunction::Environ => crate::built_ins::environ_fn::linter::lint(args),
             BuiltInFunction::Eof => crate::built_ins::eof::linter::lint(args),
             BuiltInFunction::Err => crate::built_ins::err::linter::lint(args),
-            BuiltInFunction::InKey => Ok(()),
+            BuiltInFunction::InKey => crate::built_ins::inkey::linter::lint(args),
             BuiltInFunction::InStr => crate::built_ins::instr::linter::lint(args),
             BuiltInFunction::LBound => crate::built_ins::lbound::linter::lint(args),
             BuiltInFunction::LCase => crate::built_ins::lcase::linter::lint(args),
@@ -506,7 +506,7 @@ pub mod linter {
             BuiltInFunction::Peek => crate::built_ins::peek::linter::lint(args),
             BuiltInFunction::Right => crate::built_ins::right::linter::lint(args),
             BuiltInFunction::RTrim => crate::built_ins::rtrim::linter::lint(args),
-            BuiltInFunction::Space => Ok(()),
+            BuiltInFunction::Space => crate::built_ins::space::linter::lint(args),
             BuiltInFunction::Str => crate::built_ins::str_fn::linter::lint(args),
             BuiltInFunction::String_ => crate::built_ins::string_fn::linter::lint(args),
             BuiltInFunction::UBound => crate::built_ins::ubound::linter::lint(args),
@@ -561,7 +561,7 @@ pub mod interpreter {
             BuiltInFunction::Environ => crate::built_ins::environ_fn::interpreter::run(interpreter),
             BuiltInFunction::Eof => crate::built_ins::eof::interpreter::run(interpreter),
             BuiltInFunction::Err => crate::built_ins::err::interpreter::run(interpreter),
-            BuiltInFunction::InKey => Ok(()),
+            BuiltInFunction::InKey => crate::built_ins::inkey::interpreter::run(interpreter),
             BuiltInFunction::InStr => crate::built_ins::instr::interpreter::run(interpreter),
             BuiltInFunction::LBound => crate::built_ins::lbound::interpreter::run(interpreter),
             BuiltInFunction::LCase => crate::built_ins::lcase::interpreter::run(interpreter),
@@ -573,7 +573,7 @@ pub mod interpreter {
             BuiltInFunction::Peek => crate::built_ins::peek::interpreter::run(interpreter),
             BuiltInFunction::Right => crate::built_ins::right::interpreter::run(interpreter),
             BuiltInFunction::RTrim => crate::built_ins::rtrim::interpreter::run(interpreter),
-            BuiltInFunction::Space => Ok(()),
+            BuiltInFunction::Space => crate::built_ins::space::interpreter::run(interpreter),
             BuiltInFunction::Str => crate::built_ins::str_fn::interpreter::run(interpreter),
             BuiltInFunction::String_ => crate::built_ins::string_fn::interpreter::run(interpreter),
             BuiltInFunction::UBound => crate::built_ins::ubound::interpreter::run(interpreter),
@@ -598,6 +598,7 @@ mod eof;
 mod err;
 mod field;
 mod get;
+mod inkey;
 mod input;
 mod instr;
 mod kill;
@@ -619,6 +620,7 @@ mod put;
 mod read;
 mod right;
 mod rtrim;
+mod space;
 mod str_fn;
 mod string_fn;
 mod ubound;

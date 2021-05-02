@@ -1,44 +1,24 @@
 use crate::common::*;
-use crate::linter::converter::conversion_traits::{
-    OneToManyConverter, SameTypeConverterWithImplicits,
-};
+use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
 use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::linter::{DimContext, NameContext};
 use crate::parser::{
-    BareName, DimName, ExitObject, Expression, Name, Statement, StatementNode, StatementNodes,
+    BareName, ExitObject, Expression, Name, Statement, StatementNode, StatementNodes,
 };
 
-// A statement can be expanded into multiple statements to convert implicitly
-// declared variables into explicit.
-// Example:
-//      A = B + C
-// becomes
-//      DIM B
-//      DIM C
-//      DIM A
-//      A = B + C
-
-impl<'a> OneToManyConverter<StatementNode> for ConverterImpl<'a> {
-    fn convert_to_many(
+impl<'a> SameTypeConverterWithImplicits<Option<StatementNodes>> for ConverterImpl<'a> {
+    fn convert_same_type_with_implicits(
         &mut self,
-        statement_node: StatementNode,
-    ) -> Result<StatementNodes, QErrorNode> {
-        let mut result: StatementNodes = vec![];
-        let (converted_statement_node, implicit_vars) =
-            self.convert_same_type_with_implicits(statement_node)?;
-        if let Statement::Const(_, _) = converted_statement_node.as_ref() {
-            // filter out CONST statements, they've been registered into context as values
-        } else {
-            for implicit_var in implicit_vars {
-                let Locatable {
-                    element: q_name,
-                    pos,
-                } = implicit_var;
-                result.push(Statement::Dim(DimName::from(q_name).into_list(pos)).at(pos));
+        item: Option<StatementNodes>,
+    ) -> R<Option<StatementNodes>> {
+        match item {
+            Some(statements) => {
+                let (converted_statements, implicits) =
+                    self.convert_block_keeping_implicits(statements)?;
+                Ok((Some(converted_statements), implicits))
             }
-            result.push(converted_statement_node);
+            None => Ok((None, vec![])),
         }
-        Ok(result)
     }
 }
 

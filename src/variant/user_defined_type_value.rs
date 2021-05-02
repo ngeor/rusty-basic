@@ -1,6 +1,7 @@
 use super::Variant;
 use crate::common::{CaseInsensitiveString, IndexedMap, Locatable};
 use crate::parser::{Element, UserDefinedTypes};
+use crate::variant::AsciiSize;
 
 /// Holds a value of a user defined type.
 #[derive(Clone, Debug)]
@@ -47,10 +48,6 @@ impl UserDefinedTypeValue {
         }
     }
 
-    pub fn size_in_bytes(&self) -> usize {
-        self.map.values().map(Variant::size_in_bytes).sum()
-    }
-
     pub fn address_offset_of_property(&self, property: &CaseInsensitiveString) -> usize {
         self.map
             .keys()
@@ -62,7 +59,13 @@ impl UserDefinedTypeValue {
     fn property_size_in_bytes(&self, property: &CaseInsensitiveString) -> usize {
         self.map
             .get(property)
-            .map(Variant::size_in_bytes)
+            .map(Variant::ascii_size)
             .unwrap_or_default()
+    }
+}
+
+impl AsciiSize for UserDefinedTypeValue {
+    fn ascii_size(&self) -> usize {
+        self.map.values().map(Variant::ascii_size).sum()
     }
 }

@@ -5,7 +5,7 @@ use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
 use crate::linter::SubprogramName;
 use crate::parser::{BareName, TypeQualifier};
-use crate::variant::{QBNumberCast, Variant};
+use crate::variant::{AsciiSize, QBNumberCast, Variant};
 use std::collections::HashMap;
 
 // This is an arbitrary value, not what QBasic is doing
@@ -226,11 +226,7 @@ impl Context {
                 let mut result: usize = 0;
                 for i in 0..memory_block_index {
                     // add the total bytes of the previous variables in previous memory blocks
-                    result += self.memory_blocks[i]
-                        .variables
-                        .iter()
-                        .map(Variant::size_in_bytes)
-                        .sum::<usize>();
+                    result += self.memory_blocks[i].variables.ascii_size();
                 }
                 // add the varptr of this variable
                 result += self.memory_blocks[memory_block_index]
@@ -341,7 +337,7 @@ impl Context {
             let mut offset: usize = 0;
             for block in self.memory_blocks.iter() {
                 for var in block.variables.iter() {
-                    let len = var.size_in_bytes();
+                    let len = var.ascii_size();
                     if offset <= address && address < offset + len {
                         return var.peek_non_array(address - offset);
                     }
@@ -376,7 +372,7 @@ impl Context {
             let mut offset: usize = 0;
             for block in self.memory_blocks.iter_mut() {
                 for var in block.variables.iter_mut() {
-                    let len = var.size_in_bytes();
+                    let len = var.ascii_size();
                     if offset <= address && address < offset + len {
                         return var.poke_non_array(address - offset, byte_value);
                     }

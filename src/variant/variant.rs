@@ -3,7 +3,7 @@ use super::UserDefinedTypeValue;
 use crate::common::QError;
 use crate::parser::TypeQualifier;
 use crate::variant::bits::{bytes_to_i32, i32_to_bytes};
-use crate::variant::{qb_and, qb_or, QBNumberCast, VArray};
+use crate::variant::{qb_and, qb_or, AsciiSize, QBNumberCast, VArray};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -374,17 +374,6 @@ impl Variant {
         }
     }
 
-    pub fn size_in_bytes(&self) -> usize {
-        match self {
-            Self::VInteger(_) => 2,
-            Self::VLong(_) | Self::VSingle(_) => 4,
-            Self::VDouble(_) => 8,
-            Self::VString(s) => s.len(),
-            Self::VArray(v_array) => v_array.size_in_bytes(),
-            Self::VUserDefined(user_defined_type_value) => user_defined_type_value.size_in_bytes(),
-        }
-    }
-
     pub fn is_array(&self) -> bool {
         match self {
             Self::VArray(_) => true,
@@ -415,6 +404,19 @@ impl Variant {
             _ => {
                 todo!()
             }
+        }
+    }
+}
+
+impl AsciiSize for Variant {
+    fn ascii_size(&self) -> usize {
+        match self {
+            Self::VInteger(_) => 2,
+            Self::VLong(_) | Self::VSingle(_) => 4,
+            Self::VDouble(_) => 8,
+            Self::VString(s) => s.chars().count(),
+            Self::VArray(v_array) => v_array.ascii_size(),
+            Self::VUserDefined(user_defined_type_value) => user_defined_type_value.ascii_size(),
         }
     }
 }

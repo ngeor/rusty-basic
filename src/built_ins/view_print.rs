@@ -54,10 +54,10 @@ pub mod interpreter {
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         if interpreter.context().variables().len() > 0 {
             // we have args
-            todo!()
+            Ok(())
         } else {
             // reset full view
-            todo!()
+            Ok(())
         }
     }
 }

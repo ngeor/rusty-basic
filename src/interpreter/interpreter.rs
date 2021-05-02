@@ -67,6 +67,8 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
 
     last_error_address: Option<usize>,
 
+    last_error_code: Option<i32>,
+
     print_interpreter: Rc<RefCell<PrintInterpreter>>,
 
     data_segment: DataSegment,
@@ -161,6 +163,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     fn set_def_seg(&mut self, def_seg: Option<usize>) {
         self.def_seg = def_seg;
     }
+
+    fn get_last_error_code(&self) -> Option<i32> {
+        self.last_error_code
+    }
 }
 
 pub type DefaultInterpreter = Interpreter<
@@ -208,6 +214,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             function_result: None,
             value_stack: vec![],
             last_error_address: None,
+            last_error_code: None,
             print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
             data_segment: DataSegment::new(),
             def_seg: None,
@@ -390,40 +397,26 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     return Err(QError::ReturnWithoutGoSub).with_err_at(pos);
                 }
             },
-            Instruction::Resume => match self.last_error_address.take() {
-                Some(last_error_address) => {
-                    ctx.opt_next_index = Some(
-                        ctx.nearest_statement_finder
-                            .find_current(last_error_address),
-                    );
-                    self.context.pop();
-                }
-                _ => {
-                    // TODO test this
-                    return Err(QError::ResumeWithoutError).with_err_at(pos);
-                }
-            },
-            Instruction::ResumeNext => match self.last_error_address.take() {
-                Some(last_error_address) => {
-                    ctx.opt_next_index =
-                        Some(ctx.nearest_statement_finder.find_next(last_error_address));
-                    self.context.pop();
-                }
-                _ => {
-                    // TODO test this
-                    return Err(QError::ResumeWithoutError).with_err_at(pos);
-                }
-            },
-            Instruction::ResumeLabel(resume_label) => match self.last_error_address.take() {
-                Some(_) => {
-                    ctx.opt_next_index = Some(resume_label.address());
-                    self.context.pop();
-                }
-                _ => {
-                    // TODO test this
-                    return Err(QError::ResumeWithoutError).with_err_at(pos);
-                }
-            },
+            Instruction::Resume => {
+                let last_error_address = self.take_last_error_address().with_err_at(pos)?;
+                ctx.opt_next_index = Some(
+                    ctx.nearest_statement_finder
+                        .find_current(last_error_address),
+                );
+                self.context.pop();
+            }
+            Instruction::ResumeNext => {
+                let last_error_address = self.take_last_error_address().with_err_at(pos)?;
+                ctx.opt_next_index =
+                    Some(ctx.nearest_statement_finder.find_next(last_error_address));
+                self.context.pop();
+            }
+            Instruction::ResumeLabel(resume_label) => {
+                // not using the last error address but need to clear it which also clears the err code
+                self.take_last_error_address().with_err_at(pos)?;
+                ctx.opt_next_index = Some(resume_label.address());
+                self.context.pop();
+            }
             Instruction::Throw(interpreter_error) => {
                 return Err(interpreter_error.clone()).with_err_at(pos);
             }
@@ -569,6 +562,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     }
                 },
                 Err(e) => {
+                    self.last_error_code = Some(e.as_ref().get_code());
                     match ctx.error_handler {
                         ErrorHandler::Address(handler_address) => {
                             // store error address, so we can call RESUME and RESUME NEXT from within the error handler
@@ -587,6 +581,16 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             }
         }
         Ok(())
+    }
+
+    /// Gets the instruction address where the most recent error occurred.
+    /// Clears that address and also clears the most recent error code.
+    fn take_last_error_address(&mut self) -> Result<usize, QError> {
+        self.last_error_code = None;
+        match self.last_error_address.take() {
+            Some(a) => Ok(a),
+            None => Err(QError::ResumeWithoutError),
+        }
     }
 }
 

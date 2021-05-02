@@ -52,7 +52,7 @@ pub mod interpreter {
     use crate::interpreter::interpreter_trait::InterpreterTrait;
 
     pub fn run<S: InterpreterTrait>(_interpreter: &mut S) -> Result<(), QError> {
-        todo!()
+        Ok(())
     }
 }
 

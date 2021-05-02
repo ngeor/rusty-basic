@@ -166,25 +166,53 @@ where
     }
 }
 
-/// Implements the "or" parser, returning the first successful
-/// result out of the two given parsers.
-pub struct LeftOrRight<R, T> {
-    left: Box<dyn Parser<R, Output = T>>,
-    right: Box<dyn Parser<R, Output = T>>,
+/// Implements an "or" parser, returning the first successful
+/// result out of the given parsers.
+pub struct VecOr<R, T> {
+    alt: Vec<Box<dyn Parser<R, Output = T>>>,
 }
 
-impl<R, T> Parser<R> for LeftOrRight<R, T>
+impl<R, T> VecOr<R, T>
+where
+    R: Reader,
+{
+    pub fn new<A, B>(left: A, right: B) -> Self
+    where
+        A: Parser<R, Output = T> + 'static,
+        B: Parser<R, Output = T> + 'static,
+    {
+        let mut alt: Vec<Box<dyn Parser<R, Output = T>>> = vec![];
+        alt.push(Box::new(left));
+        alt.push(Box::new(right));
+        Self { alt }
+    }
+
+    pub fn or<B>(self, right: B) -> Self
+    where
+        B: Parser<R, Output = T> + 'static,
+    {
+        let Self { mut alt } = self;
+        alt.push(Box::new(right));
+        Self { alt }
+    }
+}
+
+impl<R, T> Parser<R> for VecOr<R, T>
 where
     R: Reader,
 {
     type Output = T;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_a) = self.left.parse(reader)?;
-        match opt_a {
-            Some(a) => Ok((reader, Some(a))),
-            _ => self.right.parse(reader),
+        let mut r = reader;
+        for x in self.alt.iter_mut() {
+            let (tmp, opt_a) = x.as_mut().parse(r)?;
+            r = tmp;
+            if let Some(a) = opt_a {
+                return Ok((r, Some(a)));
+            }
         }
+        Ok((r, None))
     }
 }
 
@@ -251,15 +279,12 @@ pub trait BinaryParser<R: Reader>: Parser<R> + Sized {
 
     /// Returns a parser which will return the result of this parser if it
     /// is successful, otherwise it will use the given parser.
-    fn or<B>(self, other: B) -> LeftOrRight<R, Self::Output>
+    fn or<B>(self, other: B) -> VecOr<R, Self::Output>
     where
         Self: 'static,
         B: Sized + Parser<R, Output = Self::Output> + 'static,
     {
-        LeftOrRight {
-            left: Box::new(self),
-            right: Box::new(other),
-        }
+        VecOr::new(self, other)
     }
 }
 

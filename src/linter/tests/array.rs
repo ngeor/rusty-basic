@@ -167,6 +167,11 @@ fn test_passing_array_without_parenthesis() {
     assert_eq!(
         linter_ok(input),
         vec![
+            // X is hoisted first, even though it's implicitly defined later at line 3
+            TopLevelToken::Statement(Statement::Dim(
+                DimName::new_compact_local("X", TypeQualifier::BangSingle).into_list_rc(3, 5)
+            ))
+            .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Dim(
                 DimNameBuilder::new()
                     .bare_name("choice")
@@ -184,10 +189,6 @@ fn test_passing_array_without_parenthesis() {
                     .into_list_rc(2, 9)
             ))
             .at_rc(2, 5),
-            TopLevelToken::Statement(Statement::Dim(
-                DimName::new_compact_local("X", TypeQualifier::BangSingle).into_list_rc(3, 5)
-            ))
-            .at_rc(3, 5),
             TopLevelToken::Statement(Statement::Assignment(
                 Expression::Variable(
                     "X!".into(),

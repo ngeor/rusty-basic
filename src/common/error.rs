@@ -216,6 +216,27 @@ impl QError {
     pub fn syntax_error<S: AsRef<str>>(msg: S) -> Self {
         QError::SyntaxError(format!("{}", msg.as_ref()))
     }
+
+    pub fn get_code(&self) -> i32 {
+        match self {
+            Self::ReturnWithoutGoSub => 3,
+            Self::IllegalFunctionCall => 5,
+            Self::Overflow => 6,
+            Self::SubscriptOutOfRange => 9,
+            Self::DivisionByZero => 11,
+            Self::TypeMismatch => 13,
+            Self::ResumeWithoutError => 20,
+            Self::BadFileNameOrNumber => 52,
+            Self::FileNotFound => 53,
+            Self::FileAlreadyOpen => 55,
+            Self::InputPastEndOfFile => 62,
+            // the following are not QBasic codes
+            Self::InternalError(_) => 256,
+            Self::Other(_) => 257,
+            Self::ForLoopZeroStep => 258,
+            _ => todo!(),
+        }
+    }
 }
 
 pub type QErrorNode = ErrorEnvelope<QError>;
@@ -260,5 +281,39 @@ impl From<&str> for QError {
 impl From<String> for QError {
     fn from(x: String) -> Self {
         Self::Other(x)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_code() {
+        let errors = [
+            QError::ReturnWithoutGoSub,
+            QError::IllegalFunctionCall,
+            QError::Overflow,
+            QError::SubscriptOutOfRange,
+            QError::DivisionByZero,
+            QError::TypeMismatch,
+            QError::ResumeWithoutError,
+            QError::BadFileNameOrNumber,
+            QError::FileNotFound,
+            QError::FileAlreadyOpen,
+            QError::InputPastEndOfFile,
+            // the following are not qbasic codes
+            QError::InternalError("whatever".to_owned()),
+            QError::Other("whatever".to_owned()),
+            QError::ForLoopZeroStep,
+        ];
+        let codes = [3, 5, 6, 9, 11, 13, 20, 52, 53, 55, 62, 256, 257, 258];
+
+        assert_eq!(errors.len(), codes.len());
+        for i in 0..errors.len() {
+            let error = &errors[i];
+            let code = codes[i];
+            assert_eq!(error.get_code(), code);
+        }
     }
 }

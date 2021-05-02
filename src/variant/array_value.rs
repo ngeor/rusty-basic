@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::variant::Variant;
+use crate::variant::{AsciiSize, Variant};
 
 #[derive(Clone, Debug)]
 pub struct VArray {
@@ -60,11 +60,6 @@ impl VArray {
         self.dimensions.get(dimension_index)
     }
 
-    pub fn size_in_bytes(&self) -> usize {
-        let array_length = dimensions_to_array_length(&self.dimensions);
-        self.element_size_in_bytes() * array_length
-    }
-
     pub fn address_offset_of_element(&self, indices: &[i32]) -> Result<usize, QError> {
         let abs_index = self.abs_index(indices)?;
         Ok(self.element_size_in_bytes() * abs_index)
@@ -73,7 +68,7 @@ impl VArray {
     fn element_size_in_bytes(&self) -> usize {
         self.elements
             .first()
-            .map(Variant::size_in_bytes)
+            .map(Variant::ascii_size)
             .unwrap_or_default()
     }
 
@@ -105,6 +100,13 @@ impl VArray {
                 .ok_or(QError::SubscriptOutOfRange)?;
             element.poke_non_array(offset, value)
         }
+    }
+}
+
+impl AsciiSize for VArray {
+    fn ascii_size(&self) -> usize {
+        let array_length = dimensions_to_array_length(&self.dimensions);
+        self.element_size_in_bytes() * array_length
     }
 }
 

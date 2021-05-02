@@ -32,6 +32,8 @@ pub trait ArgValidation {
 
     fn require_one_argument(&self) -> Result<(), QErrorNode>;
 
+    fn require_zero_arguments(&self) -> Result<(), QErrorNode>;
+
     fn require_one_double_argument(&self) -> Result<(), QErrorNode> {
         self.require_one_argument()
             .and_then(|_| self.require_double_argument(0))
@@ -178,6 +180,14 @@ impl ArgValidation for ExpressionNodes {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             Ok(())
+        }
+    }
+
+    fn require_zero_arguments(&self) -> Result<(), QErrorNode> {
+        if self.is_empty() {
+            Ok(())
+        } else {
+            Err(QError::ArgumentCountMismatch).with_err_no_pos()
         }
     }
 }

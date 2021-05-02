@@ -11,6 +11,14 @@ pub enum ErrorEnvelope<T> {
     Stacktrace(T, Vec<Location>),
 }
 
+impl<T> AsRef<T> for ErrorEnvelope<T> {
+    fn as_ref(&self) -> &T {
+        match self {
+            Self::NoPos(t) | Self::Pos(t, _) | Self::Stacktrace(t, _) => t,
+        }
+    }
+}
+
 impl<T> ErrorEnvelope<T> {
     pub fn into_err(self) -> T {
         match self {

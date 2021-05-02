@@ -56,11 +56,11 @@ pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::variant::Variant;
+    use crate::variant::{AsciiSize, Variant};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let v: &Variant = &interpreter.context()[0];
-        let len: i32 = v.size_in_bytes() as i32;
+        let len: i32 = v.ascii_size() as i32;
         interpreter
             .context_mut()
             .set_built_in_function_result(BuiltInFunction::Len, len);

@@ -76,3 +76,17 @@ fn return_without_go_sub() {
     "#;
     assert_interpreter_err!(input, QError::ReturnWithoutGoSub, 2, 5);
 }
+
+#[test]
+fn variable_assigned_in_go_sub_before_definition() {
+    let input = r#"
+    GOSUB Alpha
+    PRINT A
+    END
+
+    Alpha:
+    A = 42
+    RETURN
+    "#;
+    assert_prints!(input, "42");
+}

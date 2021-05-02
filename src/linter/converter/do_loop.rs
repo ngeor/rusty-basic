@@ -1,6 +1,4 @@
-use crate::linter::converter::conversion_traits::{
-    SameTypeConverter, SameTypeConverterWithImplicits,
-};
+use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
 use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::parser::DoLoopNode;
 
@@ -12,10 +10,11 @@ impl<'a> SameTypeConverterWithImplicits<DoLoopNode> for ConverterImpl<'a> {
             position,
             kind,
         } = do_loop_node;
-        let (condition, implicit_vars) = self
+        let (condition, mut implicit_vars) = self
             .context
             .on_expression(condition, ExprContext::Default)?;
-        let statements = self.convert_same_type(statements)?;
+        let (statements, mut block_implicits) = self.convert_block_keeping_implicits(statements)?;
+        implicit_vars.append(&mut block_implicits);
         Ok((
             DoLoopNode {
                 condition,

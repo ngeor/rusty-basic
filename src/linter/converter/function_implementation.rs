@@ -1,5 +1,4 @@
 use crate::common::{AtLocation, Locatable, QErrorNode};
-use crate::linter::converter::conversion_traits::SameTypeConverter;
 use crate::linter::converter::ConverterImpl;
 use crate::parser::{FunctionImplementation, TopLevelToken};
 
@@ -24,7 +23,7 @@ impl<'a> ConverterImpl<'a> {
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
             name: resolved_function_name.at(pos),
             params: resolved_params,
-            body: self.convert_same_type(body)?,
+            body: self.convert_block_hoisting_implicits(body)?,
             is_static,
         });
         self.context.pop_context();

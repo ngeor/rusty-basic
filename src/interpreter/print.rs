@@ -141,7 +141,7 @@ fn print_non_formatting_chars(
     let mut buf: String = String::new();
     let starting_index = *idx;
     let mut i = starting_index;
-    while format_string_chars[i] != '#' {
+    while !is_formatting_char(format_string_chars[i]) {
         buf.push(format_string_chars[i]);
         i = (i + 1) % format_string_chars.len();
         if i == starting_index {
@@ -154,6 +154,10 @@ fn print_non_formatting_chars(
     Ok(())
 }
 
+fn is_formatting_char(ch: char) -> bool {
+    ch == '#' || ch == '\\' || ch == '!'
+}
+
 fn print_remaining_non_formatting_chars(
     printer: &Box<&dyn Printer>,
     format_string_chars: &[char],
@@ -163,7 +167,7 @@ fn print_remaining_non_formatting_chars(
     let mut buf: String = String::new();
     let starting_index = *idx;
     let mut i = starting_index;
-    while i < format_string_chars.len() && format_string_chars[i] != '#' {
+    while i < format_string_chars.len() && !is_formatting_char(format_string_chars[i]) {
         buf.push(format_string_chars[i]);
         i += 1;
     }
@@ -178,6 +182,24 @@ fn print_formatting_chars(
     idx: &mut usize,
     v: Variant,
 ) -> Result<(), QError> {
+    match format_string_chars[*idx] {
+        '#' => print_digit_formatting_chars(printer, format_string_chars, idx, v),
+        '\\' => print_string_formatting_chars(printer, format_string_chars, idx, v),
+        '!' => print_first_char_formatting_chars(printer, format_string_chars, idx, v),
+        _ => Err(QError::InternalError(format!(
+            "Not a formatting character: {}",
+            format_string_chars[*idx]
+        ))),
+    }
+}
+
+fn print_digit_formatting_chars(
+    printer: Box<&dyn Printer>,
+    format_string_chars: &[char],
+    idx: &mut usize,
+    v: Variant,
+) -> Result<(), QError> {
+    debug_assert_eq!(format_string_chars[*idx], '#');
     let mut integer_digits: usize = 0;
     while *idx < format_string_chars.len() && format_string_chars[*idx] == '#' {
         *idx += 1;
@@ -264,6 +286,53 @@ fn print_formatting_chars(
         }
     }
     Ok(())
+}
+
+fn print_string_formatting_chars(
+    printer: Box<&dyn Printer>,
+    format_string_chars: &[char],
+    idx: &mut usize,
+    v: Variant,
+) -> Result<(), QError> {
+    debug_assert_eq!(format_string_chars[*idx], '\\');
+    *idx += 1;
+    let mut counter: usize = 2;
+    while *idx < format_string_chars.len() && format_string_chars[*idx] != '\\' {
+        if format_string_chars[*idx] != ' ' {
+            // only spaces should be allowed within backslashes
+            return Err(QError::IllegalFunctionCall);
+        }
+        *idx += 1;
+        counter += 1;
+    }
+    if *idx < format_string_chars.len() {
+        *idx += 1;
+        if let Variant::VString(s) = v {
+            printer.print(s.fix_length(counter).as_str())?;
+            Ok(())
+        } else {
+            Err(QError::TypeMismatch)
+        }
+    } else {
+        // did not find closing backslash
+        Err(QError::IllegalFunctionCall)
+    }
+}
+fn print_first_char_formatting_chars(
+    printer: Box<&dyn Printer>,
+    format_string_chars: &[char],
+    idx: &mut usize,
+    v: Variant,
+) -> Result<(), QError> {
+    debug_assert_eq!(format_string_chars[*idx], '!');
+    if let Variant::VString(s) = v {
+        let ch = s.chars().next().ok_or(QError::IllegalFunctionCall)?;
+        printer.print(String::from(ch).as_str())?;
+        *idx += 1;
+        Ok(())
+    } else {
+        Err(QError::TypeMismatch)
+    }
 }
 
 trait PrintHelper {
@@ -492,5 +561,22 @@ mod tests {
         PRINT "a", A$, "z"
         "#;
         assert_prints_exact!(input, "a             hello, ", "", " world        z", "");
+    }
+
+    #[test]
+    fn test_print_using_backslash() {
+        let input = r#"
+        '            hello
+        PRINT USING "\   \"; "hello world"
+        "#;
+        assert_prints!(input, "hello");
+    }
+
+    #[test]
+    fn test_print_using_exclamation_point() {
+        let input = r#"
+        PRINT USING "!"; "hello world"
+        "#;
+        assert_prints!(input, "h");
     }
 }

@@ -51,11 +51,119 @@ pub mod interpreter {
                 }
             }
             KeyCode::Enter => String::from(13_u8 as char),
-            KeyCode::Tab => String::from(9 as char),
-            KeyCode::Right => String::from("\0M"),
+            KeyCode::Tab => {
+                if modifiers == KeyModifiers::NONE {
+                    String::from(9 as char)
+                } else if modifiers == KeyModifiers::SHIFT {
+                    String::from("\0\u{15}")
+                } else {
+                    String::new()
+                }
+            }
+            KeyCode::Up => String::from("\0H"),
             KeyCode::Down => String::from("\0P"),
+            KeyCode::Left => String::from("\0K"),
+            KeyCode::Right => String::from("\0M"),
             KeyCode::Esc => String::from(27 as char),
+            KeyCode::F(f) => {
+                let mut s = String::new();
+                s.push(0 as char);
+                s.push((58 + f) as char);
+                s
+            }
             _ => String::new(),
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::built_ins::inkey::interpreter::handle_key;
+        use crossterm::event::{KeyCode, KeyModifiers};
+
+        #[test]
+        fn test_mapping_lowercase_letters() {
+            for ch in 'a'..'z' {
+                assert_eq!(
+                    handle_key(KeyCode::Char(ch), KeyModifiers::NONE),
+                    String::from(ch)
+                );
+            }
+        }
+
+        #[test]
+        fn test_mapping_function_keys() {
+            assert_eq!(
+                handle_key(KeyCode::F(2), KeyModifiers::NONE),
+                String::from("\0<")
+            );
+            assert_eq!(
+                handle_key(KeyCode::F(3), KeyModifiers::NONE),
+                String::from("\0=")
+            );
+        }
+
+        #[test]
+        fn test_enter() {
+            assert_eq!(
+                handle_key(KeyCode::Enter, KeyModifiers::NONE),
+                String::from(13 as char)
+            );
+        }
+
+        #[test]
+        fn test_escape() {
+            assert_eq!(
+                handle_key(KeyCode::Esc, KeyModifiers::NONE),
+                String::from(27 as char)
+            );
+        }
+
+        #[test]
+        fn test_up_arrow() {
+            assert_eq!(
+                handle_key(KeyCode::Up, KeyModifiers::NONE),
+                String::from("\0H")
+            );
+        }
+
+        #[test]
+        fn test_down_arrow() {
+            assert_eq!(
+                handle_key(KeyCode::Down, KeyModifiers::NONE),
+                String::from("\0P")
+            );
+        }
+
+        #[test]
+        fn test_left_arrow() {
+            assert_eq!(
+                handle_key(KeyCode::Left, KeyModifiers::NONE),
+                String::from("\0K")
+            );
+        }
+
+        #[test]
+        fn test_right_arrow() {
+            assert_eq!(
+                handle_key(KeyCode::Right, KeyModifiers::NONE),
+                String::from("\0M")
+            );
+        }
+
+        #[test]
+        fn test_tab() {
+            assert_eq!(
+                handle_key(KeyCode::Tab, KeyModifiers::NONE),
+                String::from(9 as char)
+            );
+        }
+
+        #[test]
+        fn test_shift_tab() {
+            assert_eq!(
+                handle_key(KeyCode::Tab, KeyModifiers::SHIFT),
+                String::from("\0\u{15}")
+            );
         }
     }
 }

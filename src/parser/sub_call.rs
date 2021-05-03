@@ -290,19 +290,19 @@ mod tests {
                         "ENVIRON".into(),
                         vec![Expression::BinaryExpression(
                             Operator::Plus,
-                            Box::new("N$".as_var_expr(5, 21)),
                             Box::new(
                                 Expression::BinaryExpression(
                                     Operator::Plus,
+                                    Box::new("N$".as_var_expr(5, 21)),
                                     Box::new("=".as_lit_expr(5, 26)),
-                                    Box::new("V$".as_var_expr(5, 32)),
                                     ExpressionType::Unresolved
                                 )
-                                .at_rc(5, 30)
+                                .at_rc(5, 24)
                             ),
+                            Box::new("V$".as_var_expr(5, 32)),
                             ExpressionType::Unresolved
                         )
-                        .at_rc(5, 24)]
+                        .at_rc(5, 30)]
                     )
                     .at_rc(5, 13)],
                     is_static: false

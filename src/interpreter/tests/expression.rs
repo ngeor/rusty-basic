@@ -102,6 +102,16 @@ mod binary_minus {
         assert_has_variable!(interpret("X& = 5 - 2.1#"), "X&", 3_i64);
         assert_has_variable!(interpret("X& = 5 - 2"), "X&", 3_i64);
     }
+
+    #[test]
+    fn plus_minus() {
+        assert_prints!("PRINT 4 - 2 + 1", "3");
+    }
+
+    #[test]
+    fn double_minus() {
+        assert_prints!("PRINT 4 - 1 - 1", "2");
+    }
 }
 
 mod multiply {
@@ -139,6 +149,11 @@ mod divide {
     #[test]
     fn test_divide() {
         assert_prints!("PRINT 10 / 2", "5");
+    }
+
+    #[test]
+    fn test_double_divide() {
+        assert_prints!("PRINT 12 / 2 / 3", "2");
     }
 }
 

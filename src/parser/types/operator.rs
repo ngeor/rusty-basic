@@ -44,4 +44,18 @@ impl Operator {
             _ => false,
         }
     }
+
+    pub fn is_plus_or_minus(&self) -> bool {
+        match self {
+            Self::Plus | Self::Minus => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_multiply_or_divide(&self) -> bool {
+        match self {
+            Self::Multiply | Self::Divide => true,
+            _ => false,
+        }
+    }
 }

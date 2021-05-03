@@ -261,15 +261,38 @@ impl Expression {
                     l_op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
                         || l_op.is_relational() && r_op.is_binary()
                         || *l_op == Operator::And && *r_op == Operator::Or
-                        || (*l_op == Operator::Multiply
-                            || *l_op == Operator::Divide
-                            || *l_op == Operator::Modulo)
-                            && (*r_op == Operator::Plus || *r_op == Operator::Minus)
+                        || Self::flip_multiply_plus(l_op, r_op)
+                        || Self::flip_plus_minus(l_op, r_op)
+                        || Self::flip_multiply_divide(l_op, r_op)
                 }
                 _ => false,
             },
             _ => false,
         }
+    }
+
+    fn flip_multiply_plus(l_op: &Operator, r_op: &Operator) -> bool {
+        (l_op.is_multiply_or_divide() || *l_op == Operator::Modulo) && r_op.is_plus_or_minus()
+    }
+
+    fn flip_plus_minus(l_op: &Operator, r_op: &Operator) -> bool {
+        //
+        //  A + B - C is parsed as
+        //
+        //      +
+        //   A     -
+        //        B C
+        //
+        // needs to flip into
+        //
+        //      -
+        //   +    C
+        //  A B
+        l_op.is_plus_or_minus() && r_op.is_plus_or_minus()
+    }
+
+    fn flip_multiply_divide(l_op: &Operator, r_op: &Operator) -> bool {
+        l_op.is_multiply_or_divide() && r_op.is_multiply_or_divide()
     }
 }
 

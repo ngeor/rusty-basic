@@ -1081,6 +1081,48 @@ mod tests {
         use super::*;
 
         #[test]
+        fn test_a_plus_b_minus_c() {
+            assert_expression!(
+                "A + B - C",
+                Expression::BinaryExpression(
+                    Operator::Minus,
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operator::Plus,
+                            Box::new("A".as_var_expr(1, 7)),
+                            Box::new("B".as_var_expr(1, 11)),
+                            ExpressionType::Unresolved
+                        )
+                        .at_rc(1, 9)
+                    ),
+                    Box::new("C".as_var_expr(1, 15)),
+                    ExpressionType::Unresolved
+                )
+            );
+        }
+
+        #[test]
+        fn test_a_minus_b_plus_c() {
+            assert_expression!(
+                "A - B + C",
+                Expression::BinaryExpression(
+                    Operator::Plus,
+                    Box::new(
+                        Expression::BinaryExpression(
+                            Operator::Minus,
+                            Box::new("A".as_var_expr(1, 7)),
+                            Box::new("B".as_var_expr(1, 11)),
+                            ExpressionType::Unresolved
+                        )
+                        .at_rc(1, 9)
+                    ),
+                    Box::new("C".as_var_expr(1, 15)),
+                    ExpressionType::Unresolved
+                )
+            );
+        }
+
+        #[test]
         fn test_a_plus_b_less_than_c() {
             assert_expression!(
                 "A + B < C",
@@ -1364,16 +1406,16 @@ mod tests {
                 "N + 1 + 2",
                 Expression::BinaryExpression(
                     Operator::Plus,
-                    Box::new("N".as_var_expr(1, 7)),
                     Box::new(
                         Expression::BinaryExpression(
                             Operator::Plus,
+                            Box::new("N".as_var_expr(1, 7)),
                             Box::new(1.as_lit_expr(1, 11)),
-                            Box::new(2.as_lit_expr(1, 15)),
                             ExpressionType::Unresolved
                         )
-                        .at_rc(1, 13)
+                        .at_rc(1, 9)
                     ),
+                    Box::new(2.as_lit_expr(1, 15)),
                     ExpressionType::Unresolved
                 )
             );

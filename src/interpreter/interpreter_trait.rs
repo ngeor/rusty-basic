@@ -35,6 +35,8 @@ pub trait InterpreterTrait {
 
     fn screen(&self) -> &dyn Screen;
 
+    fn screen_mut(&mut self) -> &mut dyn Screen;
+
     /// Holds the definition of user defined types
     fn user_defined_types(&self) -> &UserDefinedTypes;
 

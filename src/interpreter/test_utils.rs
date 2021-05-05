@@ -43,7 +43,7 @@ fn mock_interpreter_for_user_defined_types(
             stdin,
             stdout,
             lpt1,
-            CrossTermScreen {},
+            CrossTermScreen::new(),
             user_defined_types,
         )
     }

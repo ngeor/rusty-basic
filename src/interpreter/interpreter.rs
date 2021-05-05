@@ -112,6 +112,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
         self.screen.as_ref()
     }
 
+    fn screen_mut(&mut self) -> &mut dyn Screen {
+        self.screen.as_mut()
+    }
+
     fn user_defined_types(&self) -> &UserDefinedTypes {
         &self.user_defined_types
     }
@@ -181,7 +185,7 @@ pub fn new_default_interpreter(user_defined_types: UserDefinedTypes) -> DefaultI
     let stdin = ReadInputSource::new(std::io::stdin());
     let stdout = WritePrinter::new(std::io::stdout());
     let lpt1 = WritePrinter::new(Lpt1Write {});
-    let screen = CrossTermScreen {};
+    let screen = CrossTermScreen::new();
     Interpreter::new(stdlib, stdin, stdout, lpt1, screen, user_defined_types)
 }
 

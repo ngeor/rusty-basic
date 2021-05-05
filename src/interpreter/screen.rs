@@ -20,6 +20,12 @@ pub trait Screen {
     fn show_cursor(&self) -> Result<(), QError>;
 
     fn hide_cursor(&self) -> Result<(), QError>;
+
+    fn get_view_print(&self) -> Option<(usize, usize)>;
+
+    fn set_view_print(&mut self, start_row: usize, end_row: usize);
+
+    fn reset_view_print(&mut self);
 }
 
 pub struct HeadlessScreen {}
@@ -48,10 +54,26 @@ impl Screen for HeadlessScreen {
     fn hide_cursor(&self) -> Result<(), QError> {
         Ok(())
     }
+
+    fn get_view_print(&self) -> Option<(usize, usize)> {
+        None
+    }
+
+    fn set_view_print(&mut self, _start_row: usize, _end_row: usize) {}
+
+    fn reset_view_print(&mut self) {}
 }
 
 /// Implements the `Screen` trait using the "crossterm" crate.
-pub struct CrossTermScreen {}
+pub struct CrossTermScreen {
+    view_print: Option<(usize, usize)>,
+}
+
+impl CrossTermScreen {
+    pub fn new() -> Self {
+        Self { view_print: None }
+    }
+}
 
 impl Screen for CrossTermScreen {
     fn cls(&self) -> Result<(), QError> {
@@ -76,6 +98,18 @@ impl Screen for CrossTermScreen {
 
     fn hide_cursor(&self) -> Result<(), QError> {
         run(Hide)
+    }
+
+    fn get_view_print(&self) -> Option<(usize, usize)> {
+        self.view_print
+    }
+
+    fn set_view_print(&mut self, start_row: usize, end_row: usize) {
+        self.view_print = Some((start_row, end_row));
+    }
+
+    fn reset_view_print(&mut self) {
+        self.view_print = None;
     }
 }
 

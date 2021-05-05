@@ -334,6 +334,7 @@ fn f64_to_bits(value: f64) -> Vec<bool> {
 pub fn bytes_to_f64(bytes: &[u8]) -> f64 {
     // bytes is lsb -> msb
     // bits is msb -> lsb
+    debug_assert_eq!(bytes.len(), DOUBLE_BITS / 8);
     let bits: Vec<bool> = lsb_bytes_to_msb_bits(bytes);
     debug_assert_eq!(bits.len(), DOUBLE_BITS);
     let sign = bits[0];

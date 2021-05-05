@@ -522,7 +522,7 @@ mod tests {
         PRINT FirstName$; LastName$
         CLOSE
         "#;
-        assert_prints!(input, "NikosGeorg");
+        assert_prints!(input, "Nikos\0\0\0\0\0Georg");
         let contents = read_and_remove("rnd2.txt");
         assert_eq!(contents, "Nikos\0\0\0\0\0GeorgSomeone\0\0\0Else\0");
     }

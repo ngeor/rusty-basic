@@ -94,10 +94,12 @@ impl FileInfo {
         let mut buffer: Vec<u8> = std::iter::repeat(0 as u8).take(self.rec_len).collect();
         let bytes_read = file.read(&mut buffer)?;
         if bytes_read < buffer.len() {
-            Err(QError::InputPastEndOfFile)
-        } else {
-            Ok(buffer)
+            // zero out missing bytes
+            for i in bytes_read..buffer.len() {
+                buffer[i] = 0;
+            }
         }
+        Ok(buffer)
     }
 
     pub fn put_record(&mut self, record_number: usize, bytes: &[u8]) -> Result<(), QError> {

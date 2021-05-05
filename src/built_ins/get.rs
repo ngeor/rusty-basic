@@ -57,7 +57,6 @@ pub mod interpreter {
         for fields in field_lists {
             let mut start: usize = 0;
             for Field { width, name } in fields {
-                // collect ASCII chars stop at non printable char
                 let s = from_ascii(&bytes[start..(start + width)]);
                 let v = Variant::VString(s);
                 // set variable in parent context, because we're inside the context of the built-in sub
@@ -77,15 +76,8 @@ pub mod interpreter {
         let mut s = String::new();
         for byte in bytes {
             let ch = *byte as char;
-            if ch >= ' ' {
-                s.push(ch);
-            } else {
-                break;
-            }
+            s.push(ch);
         }
         s
     }
 }
-
-#[cfg(test)]
-mod tests {}

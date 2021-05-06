@@ -458,7 +458,7 @@ pub mod linter {
         name_context: NameContext,
     ) -> Result<(), QErrorNode> {
         match built_in_sub {
-            BuiltInSub::Beep => Ok(()),
+            BuiltInSub::Beep => crate::built_ins::beep::linter::lint(args),
             BuiltInSub::CallAbsolute => Ok(()),
             BuiltInSub::Close => crate::built_ins::close::linter::lint(args),
             BuiltInSub::Cls => crate::built_ins::cls::linter::lint(args),
@@ -525,7 +525,7 @@ pub mod interpreter {
 
     pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QError> {
         match s {
-            BuiltInSub::Beep => Ok(()),
+            BuiltInSub::Beep => crate::built_ins::beep::interpreter::run(interpreter),
             BuiltInSub::CallAbsolute => Ok(()),
             BuiltInSub::Close => crate::built_ins::close::interpreter::run(interpreter),
             BuiltInSub::Cls => crate::built_ins::cls::interpreter::run(interpreter),
@@ -585,6 +585,7 @@ pub mod interpreter {
     }
 }
 
+mod beep;
 mod chr;
 mod close;
 mod cls;

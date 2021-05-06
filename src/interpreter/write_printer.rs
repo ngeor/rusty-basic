@@ -25,6 +25,7 @@ impl<T: Write> WritePrinter<T> {
 
     fn print_as_is(&self, s: &str) -> std::io::Result<usize> {
         let bytes_written = self.writer.borrow_mut().write(s.as_bytes())?;
+        self.writer.borrow_mut().flush()?;
         let old_column: usize = *self.last_column.borrow();
         *self.last_column.borrow_mut() = old_column + s.len();
         Ok(bytes_written)

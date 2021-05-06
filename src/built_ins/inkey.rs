@@ -43,7 +43,7 @@ pub mod interpreter {
     fn handle_key(code: KeyCode, modifiers: KeyModifiers) -> String {
         match code {
             KeyCode::Char(ch) => {
-                if modifiers == KeyModifiers::NONE {
+                if modifiers == KeyModifiers::NONE || modifiers == KeyModifiers::SHIFT {
                     String::from(ch)
                 } else {
                     // TODO
@@ -65,6 +65,7 @@ pub mod interpreter {
             KeyCode::Left => String::from("\0K"),
             KeyCode::Right => String::from("\0M"),
             KeyCode::Esc => String::from(27 as char),
+            KeyCode::Backspace => String::from(8 as char),
             KeyCode::F(f) => {
                 let mut s = String::new();
                 s.push(0 as char);
@@ -91,6 +92,16 @@ pub mod interpreter {
         }
 
         #[test]
+        fn test_mapping_uppercase_letters() {
+            for ch in 'A'..'Z' {
+                assert_eq!(
+                    handle_key(KeyCode::Char(ch), KeyModifiers::SHIFT),
+                    String::from(ch)
+                );
+            }
+        }
+
+        #[test]
         fn test_mapping_function_keys() {
             assert_eq!(
                 handle_key(KeyCode::F(2), KeyModifiers::NONE),
@@ -99,6 +110,14 @@ pub mod interpreter {
             assert_eq!(
                 handle_key(KeyCode::F(3), KeyModifiers::NONE),
                 String::from("\0=")
+            );
+        }
+
+        #[test]
+        fn test_backspace() {
+            assert_eq!(
+                handle_key(KeyCode::Backspace, KeyModifiers::NONE),
+                String::from(8 as char)
             );
         }
 

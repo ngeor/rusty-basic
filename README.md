@@ -11,9 +11,9 @@ The primary goal is to have an interpreter compatible with QBasic.
 - Be able to interpret the sample
   [TODO.BAS](https://github.com/ngeor/kamino/blob/trunk/dockerfiles/basic/basic/rest-qb/TODO.BAS)
   from my
-  [basic Docker project](https://github.com/ngeor/kamino/tree/trunk/dockerfiles/basic).
+  [basic Docker project](https://github.com/ngeor/kamino/tree/trunk/dockerfiles/basic)
   ✅
-- Be able to interpret `MONEY.BAS` from QBasic.
+- Be able to interpret `MONEY.BAS` (an original demo program from QBasic) ✅
 
 Secondary goals:
 

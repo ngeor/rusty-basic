@@ -573,6 +573,16 @@ mod tests {
     }
 
     #[test]
+    fn test_print_using_backslash_when_string_contains_nulls() {
+        let input = r#"
+        DIM A$
+        A$ = "12" + CHR$(0)
+        PRINT USING "\ \"; A$;
+        "#;
+        assert_prints_exact!(input, "12 ");
+    }
+
+    #[test]
     fn test_print_using_exclamation_point() {
         let input = r#"
         PRINT USING "!"; "hello world"

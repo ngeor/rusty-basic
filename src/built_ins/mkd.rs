@@ -10,14 +10,14 @@ pub mod linter {
 
 pub mod interpreter {
     use crate::built_ins::BuiltInFunction;
-    use crate::common::QError;
+    use crate::common::{QError, ToAsciiString};
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::variant::{f64_to_bytes, QBNumberCast};
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let f: f64 = interpreter.context()[0].try_cast()?;
         let bytes = f64_to_bytes(f);
-        let s: String = bytes.iter().map(|b| *b as char).collect();
+        let s: String = bytes.to_ascii_string();
         interpreter
             .context_mut()
             .set_built_in_function_result(BuiltInFunction::Mkd, s);

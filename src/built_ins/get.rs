@@ -41,7 +41,7 @@ pub mod linter {
 }
 
 pub mod interpreter {
-    use crate::common::{FileHandle, QError};
+    use crate::common::{FileHandle, QError, ToAsciiString};
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::io::Field;
     use crate::interpreter::utils::VariantCasts;
@@ -57,7 +57,7 @@ pub mod interpreter {
         for fields in field_lists {
             let mut start: usize = 0;
             for Field { width, name } in fields {
-                let s = from_ascii(&bytes[start..(start + width)]);
+                let s = (&bytes[start..(start + width)]).to_ascii_string();
                 let v = Variant::VString(s);
                 // set variable in parent context, because we're inside the context of the built-in sub
                 let bare_name: BareName = BareName::from(name);
@@ -70,14 +70,5 @@ pub mod interpreter {
             }
         }
         Ok(())
-    }
-
-    fn from_ascii(bytes: &[u8]) -> String {
-        let mut s = String::new();
-        for byte in bytes {
-            let ch = *byte as char;
-            s.push(ch);
-        }
-        s
     }
 }

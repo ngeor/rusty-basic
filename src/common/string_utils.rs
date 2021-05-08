@@ -64,3 +64,23 @@ impl StringUtils for str {
         }
     }
 }
+
+pub trait ToAsciiString {
+    fn to_ascii_string(&self) -> String;
+}
+
+impl ToAsciiString for [u8] {
+    fn to_ascii_string(&self) -> String {
+        self.iter().map(|b| *b as char).collect()
+    }
+}
+
+pub trait ToAsciiBytes {
+    fn to_ascii_bytes(&self) -> Vec<u8>;
+}
+
+impl ToAsciiBytes for str {
+    fn to_ascii_bytes(&self) -> Vec<u8> {
+        self.chars().map(|c| c as u8).collect()
+    }
+}

@@ -183,7 +183,9 @@ fn print_formatting_chars(
     v: Variant,
 ) -> Result<(), QError> {
     match format_string_chars[*idx] {
-        '#' => print_digit_formatting_chars(printer, format_string_chars, idx, v),
+        '#' => {
+            numeric_formatting::print_digit_formatting_chars(printer, format_string_chars, idx, v)
+        }
         '\\' => print_string_formatting_chars(printer, format_string_chars, idx, v),
         '!' => print_first_char_formatting_chars(printer, format_string_chars, idx, v),
         _ => Err(QError::InternalError(format!(
@@ -193,99 +195,131 @@ fn print_formatting_chars(
     }
 }
 
-fn print_digit_formatting_chars(
-    printer: Box<&dyn Printer>,
-    format_string_chars: &[char],
-    idx: &mut usize,
-    v: Variant,
-) -> Result<(), QError> {
-    debug_assert_eq!(format_string_chars[*idx], '#');
-    let mut integer_digits: usize = 0;
-    while *idx < format_string_chars.len() && format_string_chars[*idx] == '#' {
-        *idx += 1;
-        integer_digits += 1;
+mod numeric_formatting {
+    //! Handles formatting of numbers.
+
+    use crate::common::QError;
+    use crate::interpreter::io::Printer;
+    use crate::variant::Variant;
+
+    pub fn print_digit_formatting_chars(
+        printer: Box<&dyn Printer>,
+        format_string_chars: &[char],
+        idx: &mut usize,
+        v: Variant,
+    ) -> Result<(), QError> {
+        debug_assert_eq!(format_string_chars[*idx], '#');
+        // collect just the formatting chars e.g. ###,###.##
+        let number_format_chars: &[char] = format_string_chars[*idx..]
+            .split(|ch| *ch != '#' && *ch != ',' && *ch != '.')
+            .next()
+            .expect("Should find at least one formatting character");
+        // increment the index
+        *idx += number_format_chars.len();
+        // split at decimal point
+        let mut decimal_split = number_format_chars.split(|ch| *ch == '.');
+        let integer_part = decimal_split.next().unwrap();
+        if integer_part.is_empty() {
+            // leading dot
+            return Err(QError::IllegalFunctionCall);
+        }
+        (match decimal_split.next() {
+            Some(fractional_part) => {
+                if fractional_part.is_empty() {
+                    // trailing dot
+                    Err(QError::IllegalFunctionCall)
+                } else {
+                    fmt_with_fractional_part(integer_part, fractional_part, v)
+                }
+            }
+            _ => fmt_without_fractional_part(integer_part, v),
+        })
+        .and_then(|s| printer.print(s.as_str()).map_err(QError::from))
+        .map(|_| ())
     }
-    if *idx < format_string_chars.len() && format_string_chars[*idx] == '.' {
-        // it has a fractional part too
-        *idx += 1;
-        let mut fraction_digits: usize = 0;
-        while *idx < format_string_chars.len() && format_string_chars[*idx] == '#' {
-            *idx += 1;
-            fraction_digits += 1;
+
+    fn fmt_with_fractional_part(
+        integer_fmt: &[char],
+        fractional_fmt: &[char],
+        v: Variant,
+    ) -> Result<String, QError> {
+        let unformatted = format_variant(v, fractional_fmt.len())?;
+        let mut unformatted_decimal_split = unformatted.split('.');
+        let unformatted_integer = unformatted_decimal_split.next().unwrap();
+        let unformatted_fractional = unformatted_decimal_split.next().unwrap_or("");
+        let mut result = fmt_integer_part(integer_fmt, unformatted_integer)?;
+
+        // append the fractional parts
+        result.push('.');
+        for ch in unformatted_fractional
+            .chars()
+            .chain(std::iter::repeat('0'))
+            .take(fractional_fmt.len())
+        {
+            result.push(ch);
         }
-        // print dot
-        // print decimal part with rounding
-        match v {
-            Variant::VSingle(f) => {
-                // formatting to a variable precision with rounding https://stackoverflow.com/a/61101531/153258
-                let mut x = format!("{:.1$}", f, fraction_digits);
-                if let Some(dot_index) = x.find('.') {
-                    let mut spaces_to_add: i32 = integer_digits as i32 - dot_index as i32;
-                    while spaces_to_add > 0 {
-                        x.insert(0, ' ');
-                        spaces_to_add -= 1;
+        Ok(result)
+    }
+
+    fn fmt_without_fractional_part(integer_fmt: &[char], v: Variant) -> Result<String, QError> {
+        let unformatted: String = format_variant(v, 0)?;
+        fmt_integer_part(integer_fmt, &unformatted)
+    }
+
+    fn fmt_integer_part(integer_fmt: &[char], unformatted_str: &str) -> Result<String, QError> {
+        let mut result: String = String::new();
+        let unformatted: Vec<char> = unformatted_str.chars().collect();
+        // start with the rightmost digit
+        let mut i: usize = integer_fmt.len();
+        let mut j: usize = unformatted.len();
+        while i > 0 || j > 0 {
+            if i > 0 {
+                match integer_fmt[i - 1] {
+                    ',' => {
+                        result.insert(0, if j > 0 { ',' } else { ' ' });
+                    }
+                    '#' => {
+                        if j > 0 {
+                            result.insert(0, unformatted[j - 1]);
+                            j -= 1;
+                        } else {
+                            result.insert(0, ' ');
+                        }
+                    }
+                    _ => {
+                        // unsupported formatting character
+                        return Err(QError::IllegalFunctionCall);
                     }
                 }
-                printer.print(x.as_str())?;
-            }
-            Variant::VDouble(d) => {
-                let mut x = format!("{:.1$}", d, fraction_digits);
-                if let Some(dot_index) = x.find('.') {
-                    let mut spaces_to_add: i32 = integer_digits as i32 - dot_index as i32;
-                    while spaces_to_add > 0 {
-                        x.insert(0, ' ');
-                        spaces_to_add -= 1;
-                    }
-                }
-                printer.print(x.as_str())?;
-            }
-            Variant::VInteger(i) => {
-                let mut x = i.to_string().pad_left(integer_digits);
-                x.push('.');
-                for _i in 0..fraction_digits {
-                    x.push('0');
-                }
-                printer.print(x.as_str())?;
-            }
-            Variant::VLong(l) => {
-                let mut x = l.to_string().pad_left(integer_digits);
-                x.push('.');
-                for _i in 0..fraction_digits {
-                    x.push('0');
-                }
-                printer.print(x.as_str())?;
-            }
-            _ => {
-                return Err(QError::TypeMismatch);
+                i -= 1;
+            } else {
+                // we run out formatting characters but we still have digits to print
+                result.insert(0, unformatted[j - 1]);
+                j -= 1;
             }
         }
-    } else {
-        // just the integer part
+        Ok(result)
+    }
+
+    fn format_variant(v: Variant, fractional_digits: usize) -> Result<String, QError> {
         match v {
-            Variant::VSingle(f) => {
+            Variant::VSingle(f) => Ok(if fractional_digits > 0 {
+                format!("{:.1$}", f, fractional_digits)
+            } else {
                 let l = f.round() as i64;
-                let x = l.to_string().pad_left(integer_digits);
-                printer.print(x.as_str())?;
-            }
-            Variant::VDouble(d) => {
+                l.to_string()
+            }),
+            Variant::VDouble(d) => Ok(if fractional_digits > 0 {
+                format!("{:.1$}", d, fractional_digits)
+            } else {
                 let l = d.round() as i64;
-                let x = l.to_string().pad_left(integer_digits);
-                printer.print(x.as_str())?;
-            }
-            Variant::VInteger(i) => {
-                let x = i.to_string().pad_left(integer_digits);
-                printer.print(x.as_str())?;
-            }
-            Variant::VLong(l) => {
-                let x = l.to_string().pad_left(integer_digits);
-                printer.print(x.as_str())?;
-            }
-            _ => {
-                return Err(QError::TypeMismatch);
-            }
+                l.to_string()
+            }),
+            Variant::VInteger(i) => Ok(i.to_string()),
+            Variant::VLong(l) => Ok(l.to_string()),
+            _ => Err(QError::TypeMismatch),
         }
     }
-    Ok(())
 }
 
 fn print_string_formatting_chars(
@@ -431,6 +465,21 @@ mod tests {
     #[test]
     fn test_print_using() {
         assert_prints_exact!("PRINT USING \"#.###\"; 3.14", "3.140", "");
+    }
+
+    #[test]
+    fn test_print_using_thousands_placeholder_no_decimals() {
+        assert_prints_exact!("PRINT USING \"###,###\"; 1000;", "  1,000");
+    }
+
+    #[test]
+    fn test_print_using_thousands_placeholder_no_decimals_less_than_thousand() {
+        assert_prints_exact!("PRINT USING \"###,###\"; 42;", "     42");
+    }
+
+    #[test]
+    fn test_print_using_thousands_placeholder_two_decimals() {
+        assert_prints_exact!("PRINT USING \"###,###.##\"; 1000;", "  1,000.00");
     }
 
     #[test]

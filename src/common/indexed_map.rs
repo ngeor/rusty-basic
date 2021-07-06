@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::slice::{Iter, IterMut};
 
+/// A key-value map that can also access values by their insertion order.
 #[derive(Clone, Debug)]
 pub struct IndexedMap<K, V>
 where

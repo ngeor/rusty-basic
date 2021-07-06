@@ -1,8 +1,7 @@
 use std::cmp::Ordering;
 use std::str::Chars;
 
-// CaseInsensitiveString
-
+/// A string that is case insensitive when comparing or checking for equality.
 #[derive(Clone, Debug)]
 pub struct CaseInsensitiveString {
     // TODO experiment with making this an enum Borrowed(&str)/Owned(String)

@@ -1,3 +1,4 @@
+//! The `common` module contains shared functionality (often not specific to `rusty-basic`).
 mod case_insensitive_string;
 mod error;
 mod error_envelope;

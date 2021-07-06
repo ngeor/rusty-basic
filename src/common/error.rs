@@ -1,5 +1,7 @@
 use super::ErrorEnvelope;
 
+/// Represents QBasic errors.
+/// Note that for convenience this enum also holds a few custom errors.
 #[derive(Clone, Debug, PartialEq)]
 pub enum QError {
     // 1

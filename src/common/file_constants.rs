@@ -79,6 +79,7 @@ impl From<u8> for FileAccess {
     }
 }
 
+/// Represents a file handle used in a file built-in statement (e.g. `CLOSE #1`).
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FileHandle(u8);
 

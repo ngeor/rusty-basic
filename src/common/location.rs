@@ -4,6 +4,7 @@
 
 use std::ops::Deref;
 
+/// The location of a token within a text file, expressed in row and column.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Location {
     row: u32,
@@ -41,6 +42,8 @@ impl Location {
 // Locatable
 //
 
+/// Bundles an element (typically a parsed token) together with its location
+/// within the file it was read from.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Locatable<T> {
     pub element: T,

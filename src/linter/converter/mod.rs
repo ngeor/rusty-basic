@@ -53,12 +53,6 @@ type R<T> = Result<(T, Implicits), QErrorNode>;
 /// equivalent program.
 struct ConverterImpl<'a> {
     pub resolver: Rc<RefCell<TypeResolverImpl>>,
-    // TODO pass a trait that exposes only the functionality really needed here
-    pub functions: &'a FunctionMap,
-    // TODO pass a trait that exposes only the functionality really needed here
-    pub subs: &'a SubMap,
-    // TODO pass a trait that exposes only the functionality really needed here
-    pub user_defined_types: &'a UserDefinedTypes,
     pub context: Context<'a>,
 }
 
@@ -70,10 +64,7 @@ impl<'a> ConverterImpl<'a> {
     ) -> Self {
         let resolver = Rc::new(RefCell::new(TypeResolverImpl::new()));
         Self {
-            user_defined_types,
             resolver: Rc::clone(&resolver),
-            functions,
-            subs,
             context: Context::new(functions, subs, user_defined_types, Rc::clone(&resolver)),
         }
     }

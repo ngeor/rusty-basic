@@ -3,7 +3,7 @@ on:
     tags:
       - v*
 jobs:
-  Build:
+  Release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository code

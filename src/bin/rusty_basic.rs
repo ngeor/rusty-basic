@@ -46,7 +46,7 @@ fn on_linted(program: ProgramNode, user_defined_types: UserDefinedTypes, run_opt
 
 fn get_filename(is_running_in_apache: bool) -> String {
     // Normally it should just be the first command line argument.
-    // We also check the variable BLR_PROGRAM in order to make it work inside Apache.
+    // We also check the variable PATH_TRANSLATED in order to make it work inside Apache.
     if is_running_in_apache {
         get_filename_from_env_var()
     } else {
@@ -59,10 +59,8 @@ fn get_filename_from_args() -> String {
 }
 
 fn get_filename_from_env_var() -> String {
-    std::env::var("REDIRECT_BLR_PROGRAM").unwrap_or_else(|_| {
-        std::env::var("BLR_PROGRAM")
-            .expect("The BLR_PROGRAM env variable should be the program to run")
-    })
+    std::env::var("PATH_TRANSLATED")
+        .expect("The PATH_TRANSLATED env variable should be the program to run")
 }
 
 /// Checks if we're running inside Apache with mod_cgi.

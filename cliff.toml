@@ -17,7 +17,7 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
     ### {{ group | upper_first }}
     {% for commit in commits %}
-        - {{ commit.message | upper_first }}\
+        - {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message | upper_first }}\
     {% endfor %}
 {% endfor %}\n
 """
@@ -29,9 +29,10 @@ footer = """
 """
 
 [git]
-# allow only conventional commits
-# https://www.conventionalcommits.org
+# parse the commits based on https://www.conventionalcommits.org
 conventional_commits = true
+# filter out the commits that are not conventional
+filter_unconventional = true
 # regex for parsing and grouping commits
 commit_parsers = [
     { message = "^feat", group = "Features"},
@@ -41,6 +42,7 @@ commit_parsers = [
     { message = "^refactor", group = "Refactor"},
     { message = "^style", group = "Styling"},
     { message = "^test", group = "Testing"},
+    { message = "^chore\\(changelog\\)", skip = true},
     { message = "^chore\\(release\\): prepare for", skip = true},
     { message = "^chore", group = "Miscellaneous Tasks"},
     { body = ".*security", group = "Security"},
@@ -51,3 +53,9 @@ filter_commits = false
 tag_pattern = "v[0-9]*"
 # regex for skipping tags
 skip_tags = "v0.1.0-beta.1"
+# regex for ignoring tags
+ignore_tags = ""
+# sort the tags topologically
+topo_order = false
+# sort the commits inside sections by oldest/newest order
+sort_commits = "oldest"

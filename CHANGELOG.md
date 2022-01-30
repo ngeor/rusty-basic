@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Miscellaneous Tasks
+
+- Updated copyright year in LICENSE
+
 ## [0.7.0] - 2021-12-11
 
 ### Features

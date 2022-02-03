@@ -1,11 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Miscellaneous Tasks
+
+- Updated copyright year in LICENSE
+- Use cliff.toml from instarepo
+
 ## [0.7.0] - 2021-12-11
 
 ### Features
 
-- Use standard PATH_TRANSLATED variable for Apache cgi-script instead of BLR_PROGRAM
+- [**breaking**] Use standard PATH_TRANSLATED variable for Apache cgi-script instead of BLR_PROGRAM
 - Introducing git-cliff and changelog
 
 ## [0.5.0] - 2020-11-27

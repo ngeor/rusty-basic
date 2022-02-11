@@ -5,7 +5,7 @@ use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::{Color, SetBackgroundColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::Command;
-use crossterm::{ErrorKind, ExecutableCommand};
+use crossterm::ExecutableCommand;
 use std::io::stdout;
 
 pub trait Screen {
@@ -113,13 +113,7 @@ impl Screen for CrossTermScreen {
     }
 }
 
-impl From<ErrorKind> for QError {
-    fn from(error_kind: ErrorKind) -> Self {
-        QError::InternalError(format!("{}", error_kind))
-    }
-}
-
-fn run<A: std::fmt::Display>(cmd: impl Command<AnsiType = A>) -> Result<(), QError> {
+fn run(cmd: impl Command) -> Result<(), QError> {
     let mut stdout = stdout();
     stdout.execute(cmd).map(|_| ()).map_err(QError::from)
 }

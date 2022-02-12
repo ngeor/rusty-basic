@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 - Updated copyright year in LICENSE
 - Use cliff.toml from instarepo
+- Upgrade to crossterm 0.23
 
 ## [0.7.0] - 2021-12-11
 

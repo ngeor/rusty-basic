@@ -33,7 +33,10 @@ pub mod interpreter {
     }
 
     fn handle_event(event: Event) -> String {
-        if let Event::Key(KeyEvent { code, modifiers }) = event {
+        if let Event::Key(KeyEvent {
+            code, modifiers, ..
+        }) = event
+        {
             handle_key(code, modifiers)
         } else {
             String::new()

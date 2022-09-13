@@ -13,7 +13,7 @@ use crate::parser::pc::{Reader, ReaderResult};
 /// - `Ok(None)` means we hit EOF
 /// - `Err(err)` means we encountered some IO error
 #[derive(Debug)]
-struct CharReader<T: BufRead> {
+pub struct CharReader<T: BufRead> {
     reader: T,
     buffer: VecDeque<char>,
     read_eof: bool,

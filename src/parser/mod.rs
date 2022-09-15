@@ -19,6 +19,7 @@ mod param_name;
 pub mod pc;
 pub mod pc_specific;
 mod print;
+mod readers;
 mod recognizers;
 mod resume;
 mod select_case;

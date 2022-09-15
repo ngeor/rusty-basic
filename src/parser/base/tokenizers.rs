@@ -195,7 +195,7 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
 mod tests {
     use super::{TokenizerImpl, UndoTokenizerImpl, Tokenizer};
     use super::super::readers::string_char_reader;
-    use super::super::recognizers::{digits_recognizer, letters_recognizer};
+    use super::super::recognizers::{many_digits_recognizer, many_letters_recognizer};
 
     #[test]
     fn test_digits() {
@@ -203,7 +203,7 @@ mod tests {
         let reader = string_char_reader(input);
         let mut tokenizer = TokenizerImpl::new(
             reader,
-            vec![Box::new(digits_recognizer())]
+            vec![Box::new(many_digits_recognizer())]
         );
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
@@ -221,8 +221,8 @@ mod tests {
         let mut tokenizer = TokenizerImpl::new(
             reader,
             vec![
-                Box::new(letters_recognizer()),
-                Box::new(digits_recognizer())
+                Box::new(many_letters_recognizer()),
+                Box::new(many_digits_recognizer())
             ]
         );
         let token = tokenizer.read().unwrap().unwrap();
@@ -248,8 +248,8 @@ mod tests {
         let mut tokenizer = UndoTokenizerImpl::new( TokenizerImpl::new(
             reader,
             vec![
-                Box::new(letters_recognizer()),
-                Box::new(digits_recognizer())
+                Box::new(many_letters_recognizer()),
+                Box::new(many_digits_recognizer())
             ]
         ));
 

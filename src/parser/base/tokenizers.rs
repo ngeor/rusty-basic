@@ -1,9 +1,9 @@
 use std::iter;
-use crate::parser::readers::CharReader;
+use super::readers::CharReader;
 use super::recognizers::{Recognizer, Recognition};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct RowCol {
+pub struct RowCol {
     row: u32,
     col: u32
 }
@@ -28,27 +28,32 @@ impl RowCol {
     }
 }
 
-struct Position {
+pub struct Position {
     begin: RowCol,
     end: RowCol
 }
 
-struct Token {
+pub struct Token {
     kind: i32,
     text: String,
     position: Position
 }
 
-type TokenList = Vec<Token>;
+pub type TokenList = Vec<Token>;
 
-struct Tokenizer<R: CharReader> {
+pub trait Tokenizer {
+    fn read(&mut self) -> std::io::Result<Option<Token>>;
+    fn unread(&mut self, token: Token);
+}
+
+struct TokenizerImpl<R: CharReader> {
     reader: R,
     recognizers: Vec<Box<dyn Recognizer>>,
     pos: RowCol
 }
 
-struct UndoTokenizer<R: CharReader> {
-    tokenizer: Tokenizer<R>,
+struct UndoTokenizerImpl<R: CharReader> {
+    tokenizer: TokenizerImpl<R>,
     buffer: TokenList
 }
 
@@ -75,7 +80,7 @@ impl RecognizerResponses {
     }
 }
 
-impl<R: CharReader> Tokenizer<R> {
+impl<R: CharReader> TokenizerImpl<R> {
     pub fn new(reader: R, recognizers: Vec<Box<dyn Recognizer>>) -> Self {
         Self {
             reader,
@@ -164,37 +169,39 @@ impl<R: CharReader> Tokenizer<R> {
     }
 }
 
-impl<R: CharReader> UndoTokenizer<R> {
-    pub fn new(tokenizer: Tokenizer<R>) -> Self {
+impl<R: CharReader> UndoTokenizerImpl<R> {
+    pub fn new(tokenizer: TokenizerImpl<R>) -> Self {
         Self {
             tokenizer,
             buffer: vec![]
         }
     }
+}
 
-    pub fn read(&mut self) -> std::io::Result<Option<Token>> {
+impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
+    fn read(&mut self) -> std::io::Result<Option<Token>> {
         match self.buffer.pop() {
             Some(token) => Ok(Some(token)),
             None => self.tokenizer.read()
         }
     }
 
-    pub fn unread(&mut self, token: Token) {
+    fn unread(&mut self, token: Token) {
         self.buffer.push(token)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::readers::string_char_reader;
-    use crate::parser::recognizers::{digits_recognizer, letters_recognizer};
-    use super::*;
+    use super::{TokenizerImpl, UndoTokenizerImpl, Tokenizer};
+    use super::super::readers::string_char_reader;
+    use super::super::recognizers::{digits_recognizer, letters_recognizer};
 
     #[test]
     fn test_digits() {
         let input = "1234";
         let reader = string_char_reader(input);
-        let mut tokenizer = Tokenizer::new(
+        let mut tokenizer = TokenizerImpl::new(
             reader,
             vec![Box::new(digits_recognizer())]
         );
@@ -211,7 +218,7 @@ mod tests {
     fn test_letters_digits() {
         let input = "abc1234";
         let reader = string_char_reader(input);
-        let mut tokenizer = Tokenizer::new(
+        let mut tokenizer = TokenizerImpl::new(
             reader,
             vec![
                 Box::new(letters_recognizer()),
@@ -238,7 +245,7 @@ mod tests {
     fn test_undo() {
         let input = "a1b2c3";
         let reader = string_char_reader(input);
-        let mut tokenizer = UndoTokenizer::new( Tokenizer::new(
+        let mut tokenizer = UndoTokenizerImpl::new( TokenizerImpl::new(
             reader,
             vec![
                 Box::new(letters_recognizer()),

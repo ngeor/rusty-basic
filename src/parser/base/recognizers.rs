@@ -47,9 +47,23 @@ impl<T: Fn(char) -> bool> Recognizer for PredicateRecognizer<T> {
     }
 }
 
+pub fn any_recognizer() -> impl Recognizer {
+    AnyRecognizer{}
+}
+
+pub fn new_line_recognizer() -> impl Recognizer {
+    NewLineRecognizer{}
+}
+
 pub fn digits_recognizer() -> impl Recognizer {
     PredicateRecognizer {
         predicate: |ch| ch >= '0' && ch <= '9'
+    }
+}
+
+pub fn white_space_recognizer() -> impl Recognizer {
+    PredicateRecognizer {
+        predicate: |ch| ch == ' ' || ch == '\t'
     }
 }
 

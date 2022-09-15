@@ -34,9 +34,9 @@ pub struct Position {
 }
 
 pub struct Token {
-    kind: i32,
-    text: String,
-    position: Position
+    pub kind: i32,
+    pub text: String,
+    pub position: Position
 }
 
 pub type TokenList = Vec<Token>;

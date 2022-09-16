@@ -7,7 +7,10 @@ pub trait CharReader {
     fn unread(&mut self, item: char);
 }
 
-pub fn string_char_reader<T>(input : T) -> impl CharReader where T : AsRef<[u8]>{
+pub fn string_char_reader<T>(input: T) -> impl CharReader
+where
+    T: AsRef<[u8]>,
+{
     CharReaderImpl::new(BufReader::new(Cursor::new(input)))
 }
 
@@ -17,21 +20,22 @@ pub fn file_reader(input: File) -> impl CharReader {
 
 struct CharReaderImpl<T: BufRead> {
     buf_read: T,
-    buffer: VecDeque<char>
+    buffer: VecDeque<char>,
 }
 
 impl<T: BufRead> CharReaderImpl<T> {
     fn new(buf_read: T) -> Self {
-        Self { buf_read, buffer: VecDeque::new()}
+        Self {
+            buf_read,
+            buffer: VecDeque::new(),
+        }
     }
 }
 
 impl<T: BufRead> CharReader for CharReaderImpl<T> {
     fn read(&mut self) -> std::io::Result<Option<char>> {
         match self.buffer.pop_front() {
-            Some(ch) => {
-                Ok(Some(ch))
-            }
+            Some(ch) => Ok(Some(ch)),
             None => {
                 let mut line = String::new();
                 let bytes_read = self.buf_read.read_line(&mut line)?;
@@ -39,7 +43,7 @@ impl<T: BufRead> CharReader for CharReaderImpl<T> {
                     loop {
                         match line.pop() {
                             Some(ch) => self.buffer.push_front(ch),
-                            None => break
+                            None => break,
                         }
                     }
                     Ok(self.buffer.pop_front())
@@ -53,5 +57,4 @@ impl<T: BufRead> CharReader for CharReaderImpl<T> {
     fn unread(&mut self, item: char) {
         self.buffer.push_front(item)
     }
-
 }

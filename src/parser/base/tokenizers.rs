@@ -1,11 +1,11 @@
-use std::iter;
 use super::readers::CharReader;
-use super::recognizers::{Recognizer, Recognition};
+use super::recognizers::{Recognition, Recognizer};
+use std::iter;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RowCol {
     row: u32,
-    col: u32
+    col: u32,
 }
 
 impl RowCol {
@@ -16,27 +16,27 @@ impl RowCol {
     pub fn inc_row(self) -> Self {
         Self {
             row: self.row + 1,
-            col: 1
+            col: 1,
         }
     }
 
     pub fn inc_col(self) -> Self {
         Self {
             row: self.row,
-            col: self.col + 1
+            col: self.col + 1,
         }
     }
 }
 
 pub struct Position {
     begin: RowCol,
-    end: RowCol
+    end: RowCol,
 }
 
 pub struct Token {
     pub kind: i32,
     pub text: String,
-    pub position: Position
+    pub position: Position,
 }
 
 pub type TokenList = Vec<Token>;
@@ -49,21 +49,21 @@ pub trait Tokenizer {
 struct TokenizerImpl<R: CharReader> {
     reader: R,
     recognizers: Vec<Box<dyn Recognizer>>,
-    pos: RowCol
+    pos: RowCol,
 }
 
 struct UndoTokenizerImpl<R: CharReader> {
     tokenizer: TokenizerImpl<R>,
-    buffer: TokenList
+    buffer: TokenList,
 }
 
 struct RecognizerResponses {
-    responses: Vec<Recognition>
+    responses: Vec<Recognition>,
 }
 
 impl RecognizerResponses {
     pub fn new(length: usize) -> Self {
-        let responses : Vec<Recognition> = iter::repeat(Recognition::Partial).take(length).collect();
+        let responses: Vec<Recognition> = iter::repeat(Recognition::Partial).take(length).collect();
         Self { responses }
     }
 
@@ -85,7 +85,7 @@ impl<R: CharReader> TokenizerImpl<R> {
         Self {
             reader,
             recognizers,
-            pos: RowCol::new()
+            pos: RowCol::new(),
         }
     }
 
@@ -93,7 +93,7 @@ impl<R: CharReader> TokenizerImpl<R> {
         let mut buffer = String::new();
         let mut no_match_or_eof = false;
         let mut recognizer_responses = RecognizerResponses::new(self.recognizers.len());
-        let mut sizes : Vec<usize> = iter::repeat(0).take(self.recognizers.len()).collect();
+        let mut sizes: Vec<usize> = iter::repeat(0).take(self.recognizers.len()).collect();
         while !no_match_or_eof {
             match self.reader.read()? {
                 Some(ch) => {
@@ -107,14 +107,18 @@ impl<R: CharReader> TokenizerImpl<R> {
                             if recognition == Recognition::Positive {
                                 // remember the buffer size at this point
                                 sizes[i] = buffer.len();
-                            } else if recognition == Recognition::Negative && last_response == Recognition::Partial {
+                            } else if recognition == Recognition::Negative
+                                && last_response == Recognition::Partial
+                            {
                                 // this recognizer never met its goal
                                 sizes[i] = 0;
                             }
                         }
                         i += 1;
                     }
-                    no_match_or_eof = recognizer_responses.count_by_recognition(Recognition::Negative) == self.recognizers.len();
+                    no_match_or_eof = recognizer_responses
+                        .count_by_recognition(Recognition::Negative)
+                        == self.recognizers.len();
                 }
                 None => {
                     no_match_or_eof = true;
@@ -123,7 +127,7 @@ impl<R: CharReader> TokenizerImpl<R> {
         }
 
         // find the longest win
-        let mut max_positive_size : usize = 0;
+        let mut max_positive_size: usize = 0;
         let mut max_positive_index: i32 = -1;
         for i in 0..self.recognizers.len() {
             if sizes[i] > max_positive_size {
@@ -139,8 +143,8 @@ impl<R: CharReader> TokenizerImpl<R> {
         }
 
         if max_positive_index >= 0 {
-            let begin : RowCol = self.pos;
-            let mut previous_char : char = ' ';
+            let begin: RowCol = self.pos;
+            let mut previous_char: char = ' ';
             for ch in buffer.chars() {
                 if ch == '\r' {
                     self.pos = self.pos.inc_row();
@@ -160,8 +164,8 @@ impl<R: CharReader> TokenizerImpl<R> {
                 text: buffer,
                 position: Position {
                     begin,
-                    end: self.pos
-                }
+                    end: self.pos,
+                },
             }))
         } else {
             Ok(None)
@@ -173,7 +177,7 @@ impl<R: CharReader> UndoTokenizerImpl<R> {
     pub fn new(tokenizer: TokenizerImpl<R>) -> Self {
         Self {
             tokenizer,
-            buffer: vec![]
+            buffer: vec![],
         }
     }
 }
@@ -182,7 +186,7 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
     fn read(&mut self) -> std::io::Result<Option<Token>> {
         match self.buffer.pop() {
             Some(token) => Ok(Some(token)),
-            None => self.tokenizer.read()
+            None => self.tokenizer.read(),
         }
     }
 
@@ -193,18 +197,15 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
 
 #[cfg(test)]
 mod tests {
-    use super::{TokenizerImpl, UndoTokenizerImpl, Tokenizer};
     use super::super::readers::string_char_reader;
     use super::super::recognizers::{many_digits_recognizer, many_letters_recognizer};
+    use super::{Tokenizer, TokenizerImpl, UndoTokenizerImpl};
 
     #[test]
     fn test_digits() {
         let input = "1234";
         let reader = string_char_reader(input);
-        let mut tokenizer = TokenizerImpl::new(
-            reader,
-            vec![Box::new(many_digits_recognizer())]
-        );
+        let mut tokenizer = TokenizerImpl::new(reader, vec![Box::new(many_digits_recognizer())]);
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 0);
@@ -222,8 +223,8 @@ mod tests {
             reader,
             vec![
                 Box::new(many_letters_recognizer()),
-                Box::new(many_digits_recognizer())
-            ]
+                Box::new(many_digits_recognizer()),
+            ],
         );
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "abc");
@@ -245,12 +246,12 @@ mod tests {
     fn test_undo() {
         let input = "a1b2c3";
         let reader = string_char_reader(input);
-        let mut tokenizer = UndoTokenizerImpl::new( TokenizerImpl::new(
+        let mut tokenizer = UndoTokenizerImpl::new(TokenizerImpl::new(
             reader,
             vec![
                 Box::new(many_letters_recognizer()),
-                Box::new(many_digits_recognizer())
-            ]
+                Box::new(many_digits_recognizer()),
+            ],
         ));
 
         let token = tokenizer.read().unwrap().unwrap();

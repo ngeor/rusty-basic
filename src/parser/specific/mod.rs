@@ -6,7 +6,6 @@ use crate::parser::Statement;
 
 /// specific module contains implementation that mirrors the base module
 /// but it is specific to QBasic
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TokenType {
     Unknown,
@@ -78,10 +77,7 @@ fn go_sub_parser() -> impl Parser {
         seq3(
             keyword("GOSUB"),
             demand(whitespace(), "Expected whitespace after GOSUB"),
-            demand(
-                filter_token_type(TokenType::Identifier),
-                "Expected label after GOSUB",
-            ),
+            demand(identifier(), "Expected label after GOSUB"),
         ),
         |(a, b, c)| Statement::GoSub(c.text.into()),
     )
@@ -99,4 +95,8 @@ fn filter_token_type(token_type: TokenType) -> impl Parser<Item = Token> {
 
 fn whitespace() -> impl Parser<Item = Token> {
     filter_token_type(TokenType::WhiteSpace)
+}
+
+fn identifier() -> impl Parser<Item = Token> {
+    filter_token_type(TokenType::Identifier)
 }

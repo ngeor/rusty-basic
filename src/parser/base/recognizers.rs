@@ -196,8 +196,14 @@ pub fn many_letters_recognizer() -> impl Recognizer {
     }
 }
 
-pub fn leading_remaining_recognizer<T: Fn(char) -> bool, U: Fn(char) -> bool>(leading_predicate: T, remaining_predicate: U) -> impl Recognizer {
-    LeadingRemainingPredicateRecognizer { leading_predicate, remaining_predicate }
+pub fn leading_remaining_recognizer<T: Fn(char) -> bool, U: Fn(char) -> bool>(
+    leading_predicate: T,
+    remaining_predicate: U,
+) -> impl Recognizer {
+    LeadingRemainingPredicateRecognizer {
+        leading_predicate,
+        remaining_predicate,
+    }
 }
 
 pub fn single_char_recognizer(needle: char) -> impl Recognizer {

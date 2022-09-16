@@ -74,29 +74,33 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
 fn go_sub_parser() -> impl Parser {
     // keyword GOSUB + whitespace + bare name (any word without dot)
     map(
-        seq3(
-            keyword("GOSUB"),
-            demand(whitespace(), "Expected whitespace after GOSUB"),
-            demand(identifier(), "Expected label after GOSUB"),
-        ),
-        |(a, b, c)| Statement::GoSub(c.text.into()),
+        seq3(keyword_opt("GOSUB"), whitespace(), identifier()),
+        |(_, _, label_token)| Statement::GoSub(label_token.text.into()),
     )
 }
 
-fn keyword(needle: &str) -> impl Parser<Item = Token> + '_ {
+fn keyword_opt(needle: &str) -> impl Parser<Item = Token> + '_ {
     filter_token(move |token| {
         token.kind == TokenType::Keyword as i32 && token.text.eq_ignore_ascii_case(needle)
     })
 }
 
-fn filter_token_type(token_type: TokenType) -> impl Parser<Item = Token> {
-    filter_token(move |token| token.kind == token_type as i32)
+fn whitespace() -> impl Parser<Item = Token> {
+    filter_token_by_kind(TokenType::WhiteSpace as i32, "Expected whitespace")
 }
 
-fn whitespace() -> impl Parser<Item = Token> {
-    filter_token_type(TokenType::WhiteSpace)
+fn whitespace_opt() -> impl Parser<Item = Token> {
+    filter_token_by_kind_opt(TokenType::WhiteSpace as i32)
 }
 
 fn identifier() -> impl Parser<Item = Token> {
-    filter_token_type(TokenType::Identifier)
+    filter_token_by_kind(TokenType::Identifier as i32, "Expected identifier")
 }
+
+// fn expression() -> impl Parser {
+//     todo!()
+// }
+//
+// fn expression_in_parenthesis() -> impl Parser {
+//     todo!()
+// }

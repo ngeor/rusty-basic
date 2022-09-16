@@ -1,24 +1,67 @@
 use super::tokenizers::{Token, Tokenizer};
 use crate::common::QError;
 
+// Parser
+
 pub trait Parser {
     type Item;
     fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError>;
 }
 
-struct AnyTokenParser {}
+// FilterTokenByKindParser
 
-impl Parser for AnyTokenParser {
+struct FilterTokenByKindParser<'a> {
+    kind: i32,
+    optional: bool,
+    err_msg: &'a str,
+}
+
+impl<'a> Parser for FilterTokenByKindParser<'a> {
     type Item = Token;
 
     fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
-        source.read().map_err(|e| e.into())
+        match source.read() {
+            Ok(Some(token)) => {
+                if token.kind == self.kind {
+                    Ok(Some(token))
+                } else {
+                    if self.optional {
+                        source.unread(token);
+                        Ok(None)
+                    } else {
+                        Err(QError::SyntaxError(self.err_msg.into()))
+                    }
+                }
+            }
+            Ok(None) => {
+                if self.optional {
+                    Ok(None)
+                } else {
+                    Err(QError::SyntaxError(self.err_msg.into()))
+                }
+            }
+            Err(err) => Err(err.into()),
+        }
     }
 }
 
-pub fn any_token() -> impl Parser<Item = Token> {
-    AnyTokenParser {}
+pub fn filter_token_by_kind_opt(kind: i32) -> impl Parser<Item = Token> {
+    FilterTokenByKindParser {
+        kind,
+        optional: true,
+        err_msg: "",
+    }
 }
+
+pub fn filter_token_by_kind<'a>(kind: i32, err_msg: &'a str) -> impl Parser<Item = Token> + 'a {
+    FilterTokenByKindParser {
+        kind,
+        optional: false,
+        err_msg,
+    }
+}
+
+// FilterTokenParser
 
 struct FilterTokenParser<P>
 where
@@ -53,101 +96,7 @@ pub fn filter_token<P: Fn(&Token) -> bool>(predicate: P) -> impl Parser<Item = T
     FilterTokenParser { predicate }
 }
 
-struct TokenAndTokenParser<L: Parser<Item = Token>, R: Parser<Item = Token>> {
-    left: L,
-    right: R,
-}
-
-impl<L: Parser<Item = Token>, R: Parser<Item = Token>> Parser for TokenAndTokenParser<L, R> {
-    type Item = (L::Item, R::Item);
-
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
-        match self.left.parse(source) {
-            Ok(Some(left)) => match self.right.parse(source) {
-                Ok(Some(right)) => Ok(Some((left, right))),
-                Ok(None) => {
-                    source.unread(left);
-                    Ok(None)
-                }
-                Err(err) => Err(err),
-            },
-            Ok(None) => Ok(None),
-            Err(err) => Err(err),
-        }
-    }
-}
-
-pub fn seq<L: Parser<Item = Token>, R: Parser<Item = Token>>(
-    left: L,
-    right: R,
-) -> impl Parser<Item = (L::Item, R::Item)> {
-    TokenAndTokenParser { left, right }
-}
-
-struct TokenPairAndTokenParser<L: Parser<Item = (Token, Token)>, R: Parser<Item = Token>> {
-    left: L,
-    right: R,
-}
-
-impl<L: Parser<Item = (Token, Token)>, R: Parser<Item = Token>> Parser
-    for TokenPairAndTokenParser<L, R>
-{
-    type Item = (Token, Token, Token);
-
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
-        match self.left.parse(source) {
-            Ok(Some((left1, left2))) => match self.right.parse(source) {
-                Ok(Some(right)) => Ok(Some((left1, left2, right))),
-                Ok(None) => {
-                    source.unread(left2);
-                    source.unread(left1);
-                    Ok(None)
-                }
-                Err(err) => Err(err),
-            },
-            Ok(None) => Ok(None),
-            Err(err) => Err(err),
-        }
-    }
-}
-
-pub fn seq3<P1: Parser<Item = Token>, P2: Parser<Item = Token>, P3: Parser<Item = Token>>(
-    p1: P1,
-    p2: P2,
-    p3: P3,
-) -> impl Parser<Item = (Token, Token, Token)> {
-    TokenPairAndTokenParser {
-        left: seq(p1, p2),
-        right: p3,
-    }
-}
-
-struct DemandParser<'a, P>
-where
-    P: Parser,
-{
-    parser: P,
-    err: &'a str,
-}
-
-impl<'a, P> Parser for DemandParser<'a, P>
-where
-    P: Parser,
-{
-    type Item = P::Item;
-
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
-        match self.parser.parse(source) {
-            Ok(Some(x)) => Ok(Some(x)),
-            Ok(None) => Err(QError::SyntaxError(String::from(self.err))),
-            Err(err) => Err(err),
-        }
-    }
-}
-
-pub fn demand<'a, P: 'a + Parser>(parser: P, err: &'a str) -> impl Parser<Item = P::Item> + 'a {
-    DemandParser { parser, err }
-}
+// Map
 
 struct MapParser<P, M, U>
 where
@@ -180,4 +129,62 @@ where
     M: Fn(P::Item) -> U,
 {
     MapParser { parser, mapper }
+}
+
+// And (no undo!)
+
+struct AndParser<L, R>
+where
+    L: Parser,
+    R: Parser,
+{
+    left: L,
+    right: R,
+}
+
+impl<L, R> Parser for AndParser<L, R>
+where
+    L: Parser,
+    R: Parser,
+{
+    type Item = (L::Item, R::Item);
+
+    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
+        match self.left.parse(source)? {
+            Some(first) => {
+                match self.right.parse(source)? {
+                    Some(second) => Ok(Some((first, second))),
+                    None => {
+                        // should not happen!
+                        Err(QError::InternalError(
+                            "AndParser does not support undo! The right parser returned None"
+                                .into(),
+                        ))
+                    }
+                }
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+pub fn and<L, R>(left: L, right: R) -> impl Parser<Item = (L::Item, R::Item)>
+where
+    L: Parser,
+    R: Parser,
+{
+    AndParser { left, right }
+}
+
+pub fn seq3<P1, P2, P3>(
+    p1: P1,
+    p2: P2,
+    p3: P3,
+) -> impl Parser<Item = (P1::Item, P2::Item, P3::Item)>
+where
+    P1: Parser,
+    P2: Parser,
+    P3: Parser,
+{
+    map(and(p1, and(p2, p3)), |(a, (b, c))| (a, b, c))
 }

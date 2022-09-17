@@ -107,41 +107,6 @@ pub fn filter_token<P: Fn(&Token) -> Result<bool, QError>>(
     FilterTokenParser { predicate }
 }
 
-// Map
-
-struct MapParser<P, M, U>
-where
-    P: Parser,
-    M: Fn(P::Output) -> U,
-{
-    parser: P,
-    mapper: M,
-}
-
-impl<P, M, U> Parser for MapParser<P, M, U>
-where
-    P: Parser,
-    M: Fn(P::Output) -> U,
-{
-    type Output = U;
-
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.parser.parse(source) {
-            Ok(Some(x)) => Ok(Some((self.mapper)(x))),
-            Ok(None) => Ok(None),
-            Err(err) => Err(err),
-        }
-    }
-}
-
-pub fn map<P, M, U>(parser: P, mapper: M) -> impl Parser<Output = U>
-where
-    P: Parser,
-    M: Fn(P::Output) -> U,
-{
-    MapParser { parser, mapper }
-}
-
 // And (no undo!)
 
 struct AndParser<L, R>
@@ -269,4 +234,47 @@ where
     R: Parser<Output = T>,
 {
     OrParser { left, right }
+}
+
+// And Then
+
+struct AndThenParser<P, M, U>
+where
+    P: Parser,
+    M: Fn(P::Output) -> Result<Option<U>, QError>,
+{
+    parser: P,
+    mapper: M,
+}
+
+impl<P, M, U> Parser for AndThenParser<P, M, U>
+where
+    P: Parser,
+    M: Fn(P::Output) -> Result<Option<U>, QError>,
+{
+    type Output = U;
+
+    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self.parser.parse(source) {
+            Ok(Some(x)) => (self.mapper)(x),
+            Ok(None) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+pub fn and_then<P, M, U>(parser: P, mapper: M) -> impl Parser<Output = U>
+where
+    P: Parser,
+    M: Fn(P::Output) -> Result<Option<U>, QError>,
+{
+    AndThenParser { parser, mapper }
+}
+
+pub fn map<P, M, U>(parser: P, mapper: M) -> impl Parser<Output = U>
+where
+    P: Parser,
+    M: Fn(P::Output) -> U,
+{
+    and_then(parser, |x| Ok(Some(mapper(x))))
 }

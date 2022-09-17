@@ -133,7 +133,7 @@ pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
 pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
     item_p('#')
         .with_pos()
-        .and_demand(digits_p().or_syntax_error("Expected: digits after #"))
+        .and_demand(number_literal::digits())
         .and_then(
             |(Locatable { pos, .. }, digits)| match digits.parse::<u8>() {
                 Ok(d) => {
@@ -206,8 +206,8 @@ mod string_literal {
 
 mod number_literal {
     use crate::common::*;
-    use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::item_p;
+    use crate::parser::base::parsers::{and_then, filter_token_by_kind, filter_token_by_kind_opt, Parser};
+    use crate::parser::specific::{item_p, TokenType};
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
@@ -216,7 +216,7 @@ mod number_literal {
         digits_p()
             .and_opt(
                 item_p('.')
-                    .and_demand(digits_p().or_syntax_error("Expected: digits after decimal point"))
+                    .and_demand(digits())
                     .keep_right(),
             )
             .and_opt(item_p('#'))
@@ -235,7 +235,7 @@ mod number_literal {
 
     pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
         item_p('.')
-            .and(digits_p())
+            .and(digits())
             .and_opt(item_p('#'))
             .and_then(|((_, fraction_digits), opt_double)| {
                 parse_floating_point_literal_no_pos(
@@ -324,6 +324,46 @@ mod number_literal {
             Variant::VLong(l) => Ok(Expression::LongLiteral(l)),
             _ => Err(QError::Overflow),
         }
+    }
+
+    pub fn hexadecimal_literal_p() -> impl Parser {
+        and_then(filter_token_by_kind_opt(TokenType::HexDigits), |token| {
+            // token text is &HFFFF or &H-FFFF
+            let mut s: String = token.text;
+            // remove &
+            s.remove(0);
+            // remove H
+            s.remove(0);
+            if s.starts_with('-') {
+                Err(QError::Overflow)
+            } else {
+                convert_hex_digits(s).map(Some)
+            }
+        })
+    }
+
+    pub fn octal_literal_p() -> impl Parser {
+        and_then(filter_token_by_kind_opt(TokenType::OctDigits), |token| {
+            let mut s: String = token.text;
+            // remove &
+            s.remove(0);
+            // remove O
+            s.remove(0);
+            if s.starts_with('-') {
+                Err(QError::Overflow)
+            } else {
+                convert_oct_digits(s).map(Some)
+            }
+        })
+    }
+
+    pub fn digits() -> impl Parser {
+        filter_token_by_kind(TokenType::Digits, "Expected digits")
+    }
+
+    // TODO rename to opt
+    pub fn digits_p() -> impl Parser {
+        filter_token_by_kind_opt(TokenType::Digits)
     }
 }
 

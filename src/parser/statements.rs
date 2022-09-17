@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::base::parsers::{AndTrait, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{item_p, whitespace};
+use crate::parser::specific::{item_p, whitespace, WithPosTrait};
 use crate::parser::statement;
 use crate::parser::statement_separator::StatementSeparator;
 use crate::parser::types::*;

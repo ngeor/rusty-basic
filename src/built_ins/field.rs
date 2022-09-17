@@ -2,7 +2,9 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::parsers::{AndDemandTrait, KeepRightTrait, Parser};
-    use crate::parser::specific::{item_p, keyword_p, whitespace};
+    use crate::parser::specific::{
+        item_p, keyword_p, surrounded_by_opt_ws, whitespace, OrSyntaxErrorTrait, WithPosTrait,
+    };
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
@@ -14,11 +16,7 @@ pub mod parser {
     fn field_node_p() -> impl Parser<Output = Statement> {
         whitespace()
             .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(
-                item_p(',')
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: ,"),
-            )
+            .and_demand(surrounded_by_opt_ws(item_p(',')).or_syntax_error("Expected: ,"))
             .and_demand(
                 field_item_p()
                     .csv()

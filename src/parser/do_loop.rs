@@ -1,4 +1,6 @@
-use crate::parser::base::parsers::{AndDemandTrait, AndTrait, KeepRightTrait, Parser};
+use crate::parser::base::parsers::{
+    AndDemandTrait, AndTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser,
+};
 use crate::parser::expression::guarded_expression_node_p;
 use crate::parser::specific::{keyword, keyword_choice, keyword_p, whitespace};
 use crate::parser::statements::*;

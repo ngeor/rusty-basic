@@ -1,10 +1,10 @@
 use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptTrait, AndTrait, KeepRightTrait, OrTrait, Parser,
+    AndDemandTrait, AndOptTrait, AndTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser,
 };
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::{
-    demand_keyword_pair_p, keyword_choice, keyword_choice_p, keyword_p, whitespace,
+    demand_keyword_pair_p, keyword_choice, keyword_choice_p, keyword_p, whitespace, WithPosTrait,
 };
 use crate::parser::statements;
 use crate::parser::types::*;

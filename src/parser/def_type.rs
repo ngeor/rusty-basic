@@ -1,6 +1,7 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{
-    AndDemandTrait, AndThenTrait, AndTrait, ErrorProvider, Parser, TokenPredicate,
+    AndDemandTrait, AndThenTrait, AndTrait, ErrorProvider, FnMapTrait, OrTrait, Parser,
+    TokenPredicate,
 };
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;

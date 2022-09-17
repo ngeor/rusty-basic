@@ -1,4 +1,4 @@
-use crate::parser::base::parsers::{AndDemandTrait, Parser};
+use crate::parser::base::parsers::{AndDemandTrait, FnMapTrait, Parser};
 use crate::parser::specific::{keyword_choice, keyword_followed_by_whitespace_p};
 use crate::parser::{ExitObject, Keyword, Statement};
 

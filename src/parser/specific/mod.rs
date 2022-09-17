@@ -191,7 +191,10 @@ pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
 }
 
 #[cfg(test)]
-pub fn create_string_tokenizer(input: &str) -> impl Tokenizer + '_ {
+pub fn create_string_tokenizer<T>(input: T) -> impl Tokenizer
+where
+    T: AsRef<[u8]>,
+{
     create_tokenizer(string_char_reader(input), create_recognizers())
 }
 
@@ -234,7 +237,7 @@ pub fn keyword_followed_by_whitespace_p(keyword: Keyword) -> impl Parser {
 pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
     keyword_p(first)
         .and_demand(whitespace())
-        .and_demand(keyword_p(second))
+        .and_demand(keyword(second))
 }
 
 // TODO rename to keyword_pair
@@ -265,11 +268,11 @@ impl<'a> ErrorProvider for KeywordChoice<'a> {
 }
 
 // TODO rename to keyword_choice_opt
-pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = Token> {
+pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = Token> + '_ {
     KeywordChoice { keywords }
 }
 
-pub fn keyword_choice(keywords: &[Keyword]) -> impl NonOptParser<Output = Token> {
+pub fn keyword_choice(keywords: &[Keyword]) -> impl NonOptParser<Output = Token> + '_ {
     KeywordChoice { keywords }
 }
 
@@ -302,7 +305,7 @@ pub fn whitespace() -> TokenKindParser {
     TokenKindParser(TokenType::Whitespace)
 }
 
-pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Parser> {
+pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
     OptAndPC::new(whitespace(), parser)
         .and_opt(whitespace())
         .keep_left()
@@ -473,7 +476,9 @@ where
 }
 
 pub trait MapErrTrait {
-    fn map_err(self, err: QError) -> MapErrParser<Self>;
+    fn map_err(self, err: QError) -> MapErrParser<Self>
+    where
+        Self: Sized;
 }
 
 impl<S> MapErrTrait for S {
@@ -503,11 +508,48 @@ where
 }
 
 pub trait WithPosTrait {
-    fn with_pos(self) -> WithPosMapper<Self>;
+    fn with_pos(self) -> WithPosMapper<Self>
+    where
+        Self: Sized;
 }
 
 impl<S: Parser> WithPosTrait for S {
     fn with_pos(self) -> WithPosMapper<Self> {
         WithPosMapper(self)
+    }
+}
+
+//
+// Or Syntax Error
+//
+
+pub struct OrSyntaxError<'a, P>(P, &'a str);
+
+impl<'a, P> NonOptParser for OrSyntaxError<'a, P>
+where
+    P: Parser,
+{
+    type Output = P::Output;
+
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        match self.0.parse(tokenizer)? {
+            Some(value) => Ok(value),
+            None => Err(QError::syntax_error(self.2)),
+        }
+    }
+}
+
+pub trait OrSyntaxErrorTrait {
+    fn or_syntax_error<'a>(self, msg: &str) -> OrSyntaxError<'a, Self>
+    where
+        Self: Sized;
+}
+
+impl<S> OrSyntaxErrorTrait for S {
+    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self>
+    where
+        Self: Sized,
+    {
+        OrSyntaxError(self, msg)
     }
 }

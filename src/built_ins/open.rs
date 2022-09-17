@@ -6,6 +6,7 @@ pub mod parser {
     };
     use crate::parser::specific::{
         item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace,
+        OrSyntaxErrorTrait,
     };
     use crate::parser::*;
 

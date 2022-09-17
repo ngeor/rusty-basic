@@ -103,7 +103,9 @@ where
 }
 
 pub trait AndThenTrait<F> {
-    fn and_then(self, mapper: F) -> AndThenMapper<Self, F>;
+    fn and_then(self, mapper: F) -> AndThenMapper<Self, F>
+    where
+        Self: Sized;
 }
 
 impl<S, F, U> AndThenTrait<F> for S
@@ -141,7 +143,9 @@ where
 }
 
 pub trait AndOptTrait<P> {
-    fn and_opt(self, other: P) -> AndOptPC<Self, P>;
+    fn and_opt(self, other: P) -> AndOptPC<Self, P>
+    where
+        Self: Sized;
 }
 
 impl<S, P> AndOptTrait<P> for S
@@ -215,23 +219,23 @@ where
     }
 }
 
-impl<L, R> Parser for AndPC<L, R>
-where
-    L: Parser,
-    R: NonOptParser,
-{
-    type Output = (L::Output, R::Output);
-
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(left) => {
-                let right = self.1.parse_non_opt(tokenizer)?;
-                Ok(Some((left, right)))
-            }
-            None => Ok(None),
-        }
-    }
-}
+// impl<L, R> Parser for AndPC<L, R>
+// where
+//     L: Parser,
+//     R: NonOptParser,
+// {
+//     type Output = (L::Output, R::Output);
+//
+//     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+//         match self.0.parse(tokenizer)? {
+//             Some(left) => {
+//                 let right = self.1.parse_non_opt(tokenizer)?;
+//                 Ok(Some((left, right)))
+//             }
+//             None => Ok(None),
+//         }
+//     }
+// }
 
 impl<L, R> NonOptParser for AndPC<L, R>
 where
@@ -248,7 +252,9 @@ where
 }
 
 pub trait AndTrait<P> {
-    fn and(self, other: P) -> AndPC<Self, P>;
+    fn and(self, other: P) -> AndPC<Self, P>
+    where
+        Self: Sized;
 }
 
 impl<S, P> AndTrait<P> for S
@@ -262,7 +268,9 @@ where
 }
 
 pub trait AndDemandTrait<P> {
-    fn and_demand(self, other: P) -> AndPC<Self, P>;
+    fn and_demand(self, other: P) -> AndPC<Self, P>
+    where
+        Self: Sized;
 }
 
 impl<S, P> AndDemandTrait<P> for S
@@ -275,15 +283,15 @@ where
     }
 }
 
-impl<S, P> AndDemandTrait<P> for S
-where
-    S: NonOptParser,
-    P: NonOptParser,
-{
-    fn and_demand(self, other: P) -> AndPC<Self, P> {
-        AndPC(self, other)
-    }
-}
+// impl<S, P> AndDemandTrait<P> for S
+// where
+//     S: NonOptParser,
+//     P: NonOptParser,
+// {
+//     fn and_demand(self, other: P) -> AndPC<Self, P> {
+//         AndPC(self, other)
+//     }
+// }
 
 //
 // Keep Left
@@ -295,7 +303,7 @@ impl<P, L, R> Parser for KeepLeftMapper<P>
 where
     P: Parser<Output = (L, R)>,
 {
-    type Output = R;
+    type Output = L;
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.0
@@ -305,7 +313,9 @@ where
 }
 
 pub trait KeepLeftTrait {
-    fn keep_left(self) -> KeepLeftMapper<Self>;
+    fn keep_left(self) -> KeepLeftMapper<Self>
+    where
+        Self: Sized;
 }
 
 impl<S, L, R> KeepLeftTrait for S
@@ -337,7 +347,9 @@ where
 }
 
 pub trait KeepRightTrait {
-    fn keep_right(self) -> KeepRightMapper<Self>;
+    fn keep_right(self) -> KeepRightMapper<Self>
+    where
+        Self: Sized;
 }
 
 impl<S, L, R> KeepRightTrait for S
@@ -369,13 +381,43 @@ where
     }
 }
 
+impl<P, F, U> NonOptParser for FnMapper<P, F>
+where
+    P: NonOptParser,
+    F: Fn(P::Output) -> U,
+{
+    type Output = U;
+
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.0.parse_non_opt(tokenizer).map(&self.1)
+    }
+}
+
 pub trait FnMapTrait<F> {
-    fn map(self, mapper: F) -> FnMapper<Self, F>;
+    fn map(self, mapper: F) -> FnMapper<Self, F>
+    where
+        Self: Sized;
 }
 
 impl<S, F, U> FnMapTrait<F> for S
 where
     S: Parser,
+    F: Fn(S::Output) -> U,
+{
+    fn map(self, mapper: F) -> FnMapper<Self, F> {
+        FnMapper(self, mapper)
+    }
+}
+
+pub trait FnMapNonOptTrait<F> {
+    fn map(self, mapper: F) -> FnMapper<Self, F>
+    where
+        Self: Sized;
+}
+
+impl<S, F, U> FnMapNonOptTrait<F> for S
+where
+    S: NonOptParser,
     F: Fn(S::Output) -> U,
 {
     fn map(self, mapper: F) -> FnMapper<Self, F> {
@@ -405,7 +447,9 @@ where
 }
 
 pub trait OrTrait<P> {
-    fn or(self, other: P) -> OrPC<Self, P>;
+    fn or(self, other: P) -> OrPC<Self, P>
+    where
+        Self: Sized;
 }
 
 impl<S, P> OrTrait<P> for S
@@ -445,7 +489,9 @@ where
 }
 
 pub trait AndOptFactoryTrait<F> {
-    fn and_opt_factory(self, f: F) -> AndOptFactoryPC<Self, F>;
+    fn and_opt_factory(self, f: F) -> AndOptFactoryPC<Self, F>
+    where
+        Self: Sized;
 }
 
 impl<S, F, R> AndOptFactoryTrait<F> for S
@@ -463,7 +509,10 @@ where
 // Many
 //
 
-pub struct ManyParser<P>(P);
+pub struct ManyParser<P> {
+    parser: P,
+    allow_empty: bool,
+}
 
 impl<P> Parser for ManyParser<P>
 where
@@ -474,7 +523,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut result: Vec<P::Output> = Vec::new();
         loop {
-            match self.0.parse(tokenizer)? {
+            match self.parser.parse(tokenizer)? {
                 Some(value) => {
                     result.push(value);
                 }
@@ -483,7 +532,7 @@ where
                 }
             }
         }
-        if result.is_empty() {
+        if result.is_empty() && !self.allow_empty {
             Ok(None)
         } else {
             Ok(Some(result))
@@ -491,15 +540,55 @@ where
     }
 }
 
+impl<P> NonOptParser for ManyParser<P>
+where
+    P: Parser,
+{
+    type Output = Vec<P::Output>;
+
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let mut result: Vec<P::Output> = Vec::new();
+        loop {
+            match self.parser.parse(tokenizer)? {
+                Some(value) => {
+                    result.push(value);
+                }
+                None => {
+                    break;
+                }
+            }
+        }
+        if result.is_empty() && !self.allow_empty {
+            Err(QError::ArgumentCountMismatch)
+        } else {
+            Ok(result)
+        }
+    }
+}
+
 pub trait ManyTrait {
-    fn many(self) -> ManyParser<Self>;
+    fn zero_or_more(self) -> ManyParser<Self>
+    where
+        Self: Sized;
+    fn one_or_more(self) -> ManyParser<Self>
+    where
+        Self: Sized;
 }
 
 impl<S> ManyTrait for S
 where
     S: Parser,
 {
-    fn many(self) -> ManyParser<Self> {
-        ManyParser(self)
+    fn zero_or_more(self) -> ManyParser<Self> {
+        ManyParser {
+            parser: self,
+            allow_empty: true,
+        }
+    }
+    fn one_or_more(self) -> ManyParser<Self> {
+        ManyParser {
+            parser: self,
+            allow_empty: false,
+        }
     }
 }

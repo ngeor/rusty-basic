@@ -5,7 +5,7 @@ use crate::parser::base::parsers::{
 use crate::parser::expression;
 use crate::parser::specific::{
     item_p, keyword, keyword_followed_by_whitespace_p, keyword_p, whitespace, LeadingWhitespace,
-    MapErrTrait, WithPosTrait,
+    MapErrTrait, OrSyntaxErrorTrait, WithPosTrait,
 };
 use crate::parser::statements;
 use crate::parser::types::*;

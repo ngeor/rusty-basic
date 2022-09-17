@@ -1,4 +1,4 @@
-use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, Parser};
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, FnMapTrait, Parser};
 use crate::parser::specific::keyword_followed_by_whitespace_p;
 use crate::parser::{dim_name, DimList, Keyword, Statement};
 

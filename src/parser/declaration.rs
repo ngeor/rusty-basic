@@ -1,7 +1,12 @@
-use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, KeepRightTrait, Parser};
+use crate::parser::base::parsers::{
+    AndDemandTrait, AndOptTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser,
+};
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
-use crate::parser::specific::{in_parenthesis_p, keyword_followed_by_whitespace_p, whitespace};
+use crate::parser::specific::{
+    in_parenthesis_p, keyword_followed_by_whitespace_p, whitespace, OrSyntaxErrorTrait,
+    WithPosTrait,
+};
 use crate::parser::types::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)

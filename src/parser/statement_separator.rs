@@ -1,5 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{AndOptTrait, AndTrait, ManyTrait, Parser, TokenPredicate};
+use crate::parser::base::parsers::{
+    AndOptTrait, AndTrait, ManyTrait, OrTrait, Parser, TokenPredicate,
+};
 use crate::parser::base::tokenizers::{Position, Token, Tokenizer};
 use crate::parser::specific::{item_p, whitespace, TokenKindParser, TokenType};
 
@@ -121,7 +123,7 @@ fn colon_separator_p() -> impl Parser {
 // <eol> < ws | eol >*
 // TODO rename to _opt
 fn eol_separator_p() -> impl Parser {
-    TokenKindParser::new(TokenType::Eol).and(EolOrWhitespace.many())
+    TokenKindParser::new(TokenType::Eol).and(EolOrWhitespace.zero_or_more())
 }
 
 struct EolOrWhitespace;

@@ -1,15 +1,16 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::{item_p, keyword_p};
+    use crate::parser::base::parsers::{
+        AndOptTrait, AndTrait, FnMapTrait, KeepRightTrait, ManyTrait, Parser,
+    };
+    use crate::parser::specific::{item_p, keyword_p, surrounded_by_opt_ws};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::Close)
             .and_opt(
                 expression::guarded_file_handle_or_expression_p().and_opt(
-                    item_p(',')
-                        .surrounded_by_opt_ws()
+                    surrounded_by_opt_ws(item_p(','))
                         .and(expression::file_handle_or_expression_p())
                         .keep_right()
                         .one_or_more(),

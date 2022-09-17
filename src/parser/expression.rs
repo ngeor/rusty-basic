@@ -1,13 +1,13 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptFactoryTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapTrait,
-    KeepLeftTrait, KeepRightTrait, OptAndPC, OrTrait, Parser,
+    AndDemandTrait, AndOptFactoryTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapNonOptTrait,
+    FnMapTrait, KeepLeftTrait, KeepRightTrait, OptAndPC, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::{
     in_parenthesis_p, item_p, keyword_p, map_tokens, whitespace, LeadingWhitespace,
-    TokenKindParser, TokenType,
+    OrSyntaxErrorTrait, TokenKindParser, TokenType, WithPosTrait,
 };
 use crate::parser::types::*;
 
@@ -193,13 +193,13 @@ pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionN
 
 mod string_literal {
     use super::*;
-    use crate::parser::base::parsers::{Parser, TokenPredicate};
+    use crate::parser::base::parsers::{ManyTrait, Parser, TokenPredicate};
     use crate::parser::base::tokenizers::{token_list_to_string, Token};
     use crate::parser::specific::{TokenKindParser, TokenType};
 
     pub fn string_literal_p() -> impl Parser<Output = Expression> {
         string_delimiter()
-            .and_opt(InsideString.many())
+            .and_opt(InsideString.one_or_more())
             .and_demand(string_delimiter())
             .map(|(_, (token_list, _))| Expression::StringLiteral(token_list_to_string(token_list)))
     }
@@ -224,7 +224,7 @@ mod number_literal {
     };
     use crate::parser::base::recognizers::is_digit;
     use crate::parser::base::tokenizers::Token;
-    use crate::parser::specific::{item_p, TokenKindParser, TokenType};
+    use crate::parser::specific::{item_p, TokenKindParser, TokenType, WithPosTrait};
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
@@ -388,7 +388,9 @@ pub mod word {
     };
     use crate::parser::base::tokenizers::Tokenizer;
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::specific::{identifier_without_dot_p, in_parenthesis_p, item_p, TokenType};
+    use crate::parser::specific::{
+        identifier_without_dot_p, in_parenthesis_p, item_p, OrSyntaxErrorTrait, TokenType,
+    };
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
 

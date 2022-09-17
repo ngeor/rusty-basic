@@ -1,5 +1,7 @@
 use crate::common::*;
-use crate::parser::base::parsers::{AndDemandTrait, AndTrait, KeepLeftTrait, Parser};
+use crate::parser::base::parsers::{
+    AndDemandTrait, AndThenTrait, AndTrait, KeepLeftTrait, OrTrait, Parser,
+};
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -13,7 +15,9 @@ use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
-use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, keyword_p};
+use crate::parser::specific::{
+    item_p, keyword_followed_by_whitespace_p, keyword_p, OrSyntaxErrorTrait,
+};
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;

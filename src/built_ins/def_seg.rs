@@ -1,7 +1,9 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::{item_p, keyword_pair_p};
+    use crate::parser::base::parsers::{
+        AndDemandTrait, AndOptTrait, FnMapTrait, KeepRightTrait, Parser,
+    };
+    use crate::parser::specific::{item_p, keyword_pair_p, surrounded_by_opt_ws};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
@@ -13,8 +15,7 @@ pub mod parser {
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
-        item_p('=')
-            .surrounded_by_opt_ws()
+        surrounded_by_opt_ws(item_p('='))
             .and_demand(expression::expression_node_p())
             .keep_right()
     }

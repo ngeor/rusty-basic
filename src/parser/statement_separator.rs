@@ -1,7 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{and, filter_token, filter_token_by_kind_opt, many_opt, Parser};
+use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::{Token, Tokenizer};
-use crate::parser::specific::{dummy_token, item_p, opt_whitespace_p, whitespace_p, TokenType};
+use crate::parser::specific::{item_p, TokenType};
 
 // TODO split into two classes one for comments and one for non comments
 pub struct StatementSeparator {

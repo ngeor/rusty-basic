@@ -1,8 +1,8 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::{item_p, keyword_p, whitespace_p};
+    use crate::parser::base::parsers::{AndDemandTrait, KeepRightTrait, Parser};
+    use crate::parser::specific::{item_p, keyword_p, whitespace};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
@@ -12,7 +12,7 @@ pub mod parser {
     }
 
     fn field_node_p() -> impl Parser<Output = Statement> {
-        whitespace_p()
+        whitespace()
             .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
             .and_demand(
                 item_p(',')

@@ -1,8 +1,8 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::{keyword_p, keyword_pair_p};
+    use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, KeepRightTrait, Parser};
     use crate::parser::*;
+    use crate::parser::specific::{keyword, keyword_pair_p};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair_p(Keyword::View, Keyword::Print)
@@ -15,7 +15,7 @@ pub mod parser {
 
     fn parse_args() -> impl Parser<Output = ExpressionNodes> {
         expression::back_guarded_expression_node_p()
-            .and_demand(keyword_p(Keyword::To).or_syntax_error("Expected: TO"))
+            .and_demand(keyword(Keyword::To))
             .and_demand(
                 expression::guarded_expression_node_p().or_syntax_error("Expected: expression"),
             )

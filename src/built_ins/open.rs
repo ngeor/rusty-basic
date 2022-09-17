@@ -1,12 +1,9 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::{
-        item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace_p,
-        PcSpecific,
-    };
+    use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, KeepLeftTrait, KeepRightTrait, Parser};
     use crate::parser::*;
+    use crate::parser::specific::{item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::Open)
@@ -47,7 +44,7 @@ pub mod parser {
                 .with_pos(),
             )
             .keep_right()
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after file mode"))
+            .and_demand(whitespace())
             .keep_left()
             .map(
                 |Locatable {
@@ -75,7 +72,7 @@ pub mod parser {
                     .or_syntax_error("Invalid file access"),
             )
             .keep_right()
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after file-access"))
+            .and_demand(whitespace())
             .keep_left()
             .map(|x| FileAccess::Read.at(x.pos()))
     }
@@ -92,7 +89,7 @@ pub mod parser {
     }
 
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
-        whitespace_p()
+        whitespace()
             .and(keyword_p(Keyword::Len))
             .and_demand(
                 item_p('=')

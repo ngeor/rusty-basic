@@ -1,43 +1,49 @@
 use crate::common::*;
-use crate::parser::base::parsers::{filter_token, Parser};
-use crate::parser::specific::{item_p, PcSpecific, TokenType};
+use crate::parser::base::parsers::{Parser, TokenPredicate};
+use crate::parser::base::tokenizers::Token;
+use crate::parser::specific::{item_p, TokenType};
 use crate::parser::types::*;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<Output = Statement> {
     item_p('\'')
-        .and_opt(non_eol_p())
+        .and_opt(NonEol)
         .keep_right()
         .map(|x| Statement::Comment(x.unwrap_or_default()))
 }
 
 /// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> {
-    eol_or_whitespace_p()
+    EolOrWhitespace
         .map_none_to_default()
         .and_opt(
             item_p('\'')
                 .with_pos()
-                .and_opt(non_eol_p())
-                .and_opt(eol_or_whitespace_p())
+                .and_opt(NonEol)
+                .and_opt(EolOrWhitespace)
                 .keep_left()
                 .map(|(Locatable { pos, .. }, opt_s)| opt_s.unwrap_or_default().at(pos))
                 .one_or_more(),
         )
-        .and_opt(eol_or_whitespace_p())
+        .and_opt(EolOrWhitespace)
         .keep_middle()
         .map(|x| x.unwrap_or_default())
 }
 
-// TODO rename to non_eol_opt
-fn non_eol_p() -> impl Parser {
-    filter_token(|token| Ok(token.kind != TokenType::Eol as i32))
+struct NonEol;
+
+impl TokenPredicate for NonEol {
+    fn test(&self, token: &Token) -> bool {
+        token.kind != TokenType::Eol as i32
+    }
 }
 
-fn eol_or_whitespace_p() -> impl Parser {
-    filter_token(|token| {
-        Ok(token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32)
-    })
+struct EolOrWhitespace;
+
+impl TokenPredicate for EolOrWhitespace {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32
+    }
 }
 
 #[cfg(test)]

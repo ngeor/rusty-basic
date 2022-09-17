@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndTrait, KeepLeftTrait, Parser};
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -82,7 +82,7 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 mod end {
     use super::*;
     use crate::parser::base::tokenizers::{Token, Tokenizer};
-    use crate::parser::specific::{keyword_choice_p, opt_whitespace_p};
+    use crate::parser::specific::keyword_choice_p;
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
@@ -160,7 +160,6 @@ mod end {
 
 mod system {
     use super::*;
-    use crate::parser::specific::opt_whitespace_p;
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {

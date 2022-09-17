@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, KeepLeftTrait, Parser};
 use crate::parser::declaration;
 use crate::parser::specific::{demand_keyword_pair_p, keyword_p};
 use crate::parser::statements;

@@ -1,9 +1,7 @@
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, KeepRightTrait, Parser};
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
-use crate::parser::specific::{
-    in_parenthesis_p, keyword_followed_by_whitespace_p, whitespace_p, PcSpecific,
-};
+use crate::parser::specific::{in_parenthesis_p, keyword_followed_by_whitespace_p, whitespace};
 use crate::parser::types::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
@@ -35,7 +33,7 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
                 .with_pos()
                 .or_syntax_error("Expected: function name"),
         )
-        .and_opt(whitespace_p())
+        .and_opt(whitespace())
         .and_opt(declaration_parameters_p())
         .map(|(((_, function_name_node), _), opt_p)| {
             (function_name_node, opt_p.unwrap_or_default())
@@ -49,7 +47,7 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
                 .with_pos()
                 .or_syntax_error("Expected: sub name"),
         )
-        .and_opt(whitespace_p())
+        .and_opt(whitespace())
         .and_opt(declaration_parameters_p())
         .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
 }

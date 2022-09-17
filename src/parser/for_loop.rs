@@ -1,10 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, Parser};
 use crate::parser::expression;
-use crate::parser::specific::{
-    item_p, keyword_followed_by_whitespace_p, keyword_p, map_err, opt_whitespace_p, whitespace_p,
-    PcSpecific,
-};
+use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, keyword_p, whitespace};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -84,7 +81,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
 
 fn next_counter_p() -> impl Parser<Output = Option<ExpressionNode>> {
     keyword_p(Keyword::Next)
-        .and_opt(whitespace_p().and(expression::word::word_p().with_pos()))
+        .and_opt(whitespace().and(expression::word::word_p().with_pos()))
         .map(|(_, opt_right)| opt_right.map(|(_, r)| r))
 }
 

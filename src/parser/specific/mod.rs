@@ -195,31 +195,126 @@ pub fn create_string_tokenizer(input: &str) -> impl Tokenizer + '_ {
     create_tokenizer(string_char_reader(input), create_recognizers())
 }
 
-// TODO rename to keyword_opt
-pub fn keyword_p(keyword: Keyword) -> impl Parser<Output = Token> {
-    filter_token(move |token| {
-        Ok(token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str())
-    })
+//
+// KeywordParser
+//
+
+pub struct KeywordParser {
+    keyword: Keyword,
 }
 
-pub fn keyword(keyword: Keyword) -> impl Parser<Output = Token> {
-    filter_token(move |token| {
-        if token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str() {
-            Ok(true)
-        } else {
-            Err(QError::SyntaxError(format!("Expected keyword {}", keyword)))
-        }
-    })
+impl TokenPredicate for KeywordParser {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Keyword as i32 && token.text == self.keyword.as_str()
+    }
 }
+
+impl ErrorProvider for KeywordParser {
+    fn provide_error(&self) -> QError {
+        QError::SyntaxError(format!("Expected keyword {}", self.keyword))
+    }
+}
+
+// TODO rename to keyword keep only one of those functions
+pub fn keyword_p(keyword: Keyword) -> impl Parser<Output = Token> {
+    KeywordParser { keyword }
+}
+
+// TODO rename to keyword_non_opt keep only one of those functions
+pub fn keyword(keyword: Keyword) -> impl NonOptParser<Output = Token> {
+    KeywordParser { keyword }
+}
+
 
 // TODO deprecate this
 pub fn keyword_followed_by_whitespace_p(keyword: Keyword) -> impl Parser {
-    and(keyword_p(keyword), whitespace())
+    keyword_p(keyword).and(whitespace())
 }
 
+
+// TODO rename to keyword_pair_opt
+pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
+    keyword_p(first)
+        .and_demand(whitespace())
+        .and_demand(keyword_p(second))
+}
+
+// TODO rename to keyword_pair
+pub fn demand_keyword_pair_p(first: Keyword, second: Keyword) -> impl NonOptParser {
+    keyword(first)
+        .and_demand(whitespace())
+        .and_demand(keyword(second))
+}
+
+pub struct KeywordChoice<'a> {
+    keywords: &'a [Keyword]
+}
+
+impl<'a> TokenPredicate for KeywordChoice<'a> {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into())
+    }
+}
+
+impl<'a> ErrorProvider for KeywordChoice<'a> {
+    fn provide_error(&self) -> QError {
+        // TODO fix me
+        QError::SyntaxError(format!(
+            "Expected one of the following keywords: {}",
+            "todo"
+        ))
+    }
+}
+
+// TODO rename to keyword_choice_opt
+pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = Token> {
+    KeywordChoice { keywords  }
+}
+
+pub fn keyword_choice(keywords: &[Keyword]) -> impl NonOptParser<Output = Token> {
+    KeywordChoice { keywords }
+}
+
+//
+// TokenKindParser
+//
+
+pub struct TokenKindParser(TokenType);
+
+impl TokenKindParser {
+    pub fn new(token_type: TokenType) -> Self {
+        Self(token_type)
+    }
+}
+
+impl TokenPredicate for TokenKindParser {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == self.0 as i32
+    }
+}
+
+impl ErrorProvider for TokenKindParser {
+    fn provide_error(&self) -> QError {
+        // TODO use Display instead of Debug
+        QError::SyntaxError(format!("Expected token of type {:?}", self.0))
+    }
+}
+
+pub fn whitespace() -> TokenKindParser {
+    TokenKindParser(TokenType::Whitespace)
+}
+
+pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Parser> {
+    OptAndPC::new(whitespace(), parser)
+        .and_opt(whitespace())
+        .keep_left()
+        .keep_right()
+}
+
+
 // TODO deprecate this
-pub fn item_p(ch: char) -> impl Parser<Output = Token> {
-    filter_token_by_kind_opt(match ch {
+pub fn item_p(ch: char) -> TokenKindParser {
+    TokenKindParser(match ch {
         ',' => TokenType::Comma,
         '=' => TokenType::Equals,
         '$' => TokenType::DollarSign,
@@ -235,6 +330,10 @@ pub fn item_p(ch: char) -> impl Parser<Output = Token> {
         _ => panic!("not implemented {}", ch),
     })
 }
+
+//
+// TODO Used only by COLOR and LOCATE, perhaps move elsewhere
+//
 
 /// Parses built-in subs with optional arguments
 pub fn parse_built_in_sub_with_opt_args(
@@ -268,153 +367,110 @@ fn map_opt_args_to_flags(args: Option<Vec<Option<ExpressionNode>>>) -> Expressio
     result
 }
 
-// TODO rename to keyword_pair_opt
-pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
-    seq3(keyword_p(first), whitespace(), keyword(second))
-}
+//
+// In Parenthesis
+//
 
-// TODO rename to keyword_pair
-pub fn demand_keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
-    seq3(keyword(first), whitespace(), keyword(second))
-}
-
-pub fn whitespace() -> impl Parser {
-    filter_token_by_kind(TokenType::Whitespace, "Expected whitespace")
-}
-
-// TODO rename to whitespace_opt
-pub fn whitespace_p<'a>() -> FilterTokenByKindParser<'a, TokenType> {
-    filter_token_by_kind_opt(TokenType::Whitespace)
-}
-
-pub fn in_parenthesis<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
-    map(
-        seq3(
-            filter_token_by_kind(TokenType::LParen, "Expected ("),
-            parser,
-            filter_token_by_kind(TokenType::RParen, "Expected )"),
-        ),
-        |(_, output, _)| output,
-    )
+pub fn in_parenthesis<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = P::Output> {
+    TokenKindParser(TokenType::LParen)
+        .and_demand(parser)
+        .and_demand(TokenType::RParen)
 }
 
 // TODO rename to opt
-pub fn in_parenthesis_p<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
-    map(
-        seq3(
-            filter_token_by_kind_opt(TokenType::LParen),
-            parser,
-            filter_token_by_kind(TokenType::RParen, "Expected )"),
-        ),
-        |(_, output, _)| output,
-    )
+// TODO implementation is identical to above
+pub fn in_parenthesis_p<P: NonOptParser>(parser: P) -> impl Parser<Output = P::Output> {
+    TokenKindParser(TokenType::LParen)
+        .and_demand(parser)
+        .and_demand(TokenType::RParen)
 }
 
-// TODO rename to keyword_choice_opt
-pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = Token> {
-    filter_token(|token| {
-        Ok(token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into()))
-    })
-}
-
-pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser<Output = Token> {
-    filter_token(|token| {
-        if token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into()) {
-            Ok(true)
-        } else {
-            // TODO fix me
-            Err(QError::SyntaxError(format!(
-                "Expected one of the following keywords: {}",
-                "todo"
-            )))
-        }
-    })
-}
 
 // TODO deprecate this
-pub fn identifier_without_dot_p() -> impl Parser {
-    filter_token_by_kind_opt(TokenType::Identifier)
+pub fn identifier_without_dot_p() -> impl Parser<Output = Token> {
+    TokenKindParser(TokenType::Identifier)
 }
 
-// TODO deprecate this
-pub fn opt_whitespace_p(reject_empty: bool) -> impl Parser<Output = Token> {
-    if reject_empty {
-        whitespace_p()
-    } else {
-        alt(whitespace_p(), EmptyWhitespaceTokenParser)
-    }
-}
-
-struct EmptyWhitespaceTokenParser;
-
-pub fn dummy_token(tokenizer: &impl Tokenizer) -> Token {
-    Token {
-        kind: TokenType::Whitespace as i32,
-        text: String::new(),
-        position: Position {
-            begin: tokenizer.position(),
-            end: tokenizer.position(),
-        },
-    }
-}
-
-impl Parser for EmptyWhitespaceTokenParser {
-    type Output = Token;
-
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        Ok(Some(dummy_token(tokenizer)))
-    }
-}
-
-struct MapErrParser<P>(P, QError);
-
-impl<P> Parser for MapErrParser<P>
-where
-    P: Parser,
-{
-    type Output = P::Output;
-
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.0.parse(tokenizer).map_err(|_| self.1)
-    }
-}
-
-pub fn map_err<P: Parser>(parser: P, err: QError) -> impl Parser<Output = P::Output> {
-    MapErrParser(parser, err)
-}
-
-pub trait PcSpecific: Parser {
-    fn surrounded_by_opt_ws<'a>(
-        self,
-    ) -> SurroundedByOptParser<Self, FilterTokenByKindParser<'a, TokenType>>
-    where
-        Self: Sized,
-    {
-        self.surrounded_by_opt(whitespace_p())
-    }
-
-    fn with_pos(self) -> WithPosMapper<Self>
-    where
-        Self: Sized,
-    {
-        WithPosMapper(self)
-    }
-}
-
-impl<T> PcSpecific for T where T: Parser {}
-
-pub struct WithPosMapper<P>(P);
-
-impl<P> Parser for WithPosMapper<P>
-where
-    P: Parser,
-{
-    type Output = Locatable<P::Output>;
-
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let pos = tokenizer.position();
-        self.0
-            .parse(tokenizer)
-            .map(|opt_x| opt_x.map(|x| x.at_rc(pos.row, pos.col)))
-    }
-}
+//
+// // TODO deprecate this
+// pub fn opt_whitespace_p(reject_empty: bool) -> impl Parser<Output = Token> {
+//     if reject_empty {
+//         whitespace_p()
+//     } else {
+//         alt(whitespace_p(), EmptyWhitespaceTokenParser)
+//     }
+// }
+//
+// struct EmptyWhitespaceTokenParser;
+//
+// pub fn dummy_token(tokenizer: &impl Tokenizer) -> Token {
+//     Token {
+//         kind: TokenType::Whitespace as i32,
+//         text: String::new(),
+//         position: Position {
+//             begin: tokenizer.position(),
+//             end: tokenizer.position(),
+//         },
+//     }
+// }
+//
+// impl Parser for EmptyWhitespaceTokenParser {
+//     type Output = Token;
+//
+//     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+//         Ok(Some(dummy_token(tokenizer)))
+//     }
+// }
+//
+// struct MapErrParser<P>(P, QError);
+//
+// impl<P> Parser for MapErrParser<P>
+// where
+//     P: Parser,
+// {
+//     type Output = P::Output;
+//
+//     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+//         self.0.parse(tokenizer).map_err(|_| self.1)
+//     }
+// }
+//
+// pub fn map_err<P: Parser>(parser: P, err: QError) -> impl Parser<Output = P::Output> {
+//     MapErrParser(parser, err)
+// }
+//
+// pub trait PcSpecific: Parser {
+//     fn surrounded_by_opt_ws<'a>(
+//         self,
+//     ) -> SurroundedByOptParser<Self, FilterTokenByKindParser<'a, TokenType>>
+//     where
+//         Self: Sized,
+//     {
+//         self.surrounded_by_opt(whitespace_p())
+//     }
+//
+//     fn with_pos(self) -> WithPosMapper<Self>
+//     where
+//         Self: Sized,
+//     {
+//         WithPosMapper(self)
+//     }
+// }
+//
+// impl<T> PcSpecific for T where T: Parser {}
+//
+// pub struct WithPosMapper<P>(P);
+//
+// impl<P> Parser for WithPosMapper<P>
+// where
+//     P: Parser,
+// {
+//     type Output = Locatable<P::Output>;
+//
+//     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+//         let pos = tokenizer.position();
+//         self.0
+//             .parse(tokenizer)
+//             .map(|opt_x| opt_x.map(|x| x.at_rc(pos.row, pos.col)))
+//     }
+// }

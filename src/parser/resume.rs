@@ -1,8 +1,8 @@
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, Parser};
 use crate::parser::name::bare_name_p;
-use crate::parser::specific::{keyword_p, whitespace_p};
 use crate::parser::statement_separator::EofOrStatementSeparator;
 use crate::parser::{Keyword, ResumeOption, Statement};
+use crate::parser::specific::keyword_p;
 
 // RESUME
 // RESUME NEXT

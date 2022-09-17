@@ -1,6 +1,6 @@
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndTrait, KeepRightTrait, Parser};
 use crate::parser::expression::guarded_expression_node_p;
-use crate::parser::specific::{keyword_choice, keyword_p, whitespace_p};
+use crate::parser::specific::{keyword, keyword_choice, keyword_p, whitespace};
 use crate::parser::statements::*;
 use crate::parser::types::*;
 
@@ -16,7 +16,7 @@ pub fn do_loop_p() -> impl Parser<Output = Statement> {
 }
 
 fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
-    whitespace_p()
+    whitespace()
         .and(keyword_choice(&[Keyword::Until, Keyword::While]))
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
         .and_demand(zero_or_more_statements_p(keyword_p(Keyword::Loop)))
@@ -35,8 +35,8 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
 
 fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> {
     zero_or_more_statements_p(keyword_p(Keyword::Loop))
-        .and_demand(keyword_p(Keyword::Loop).or_syntax_error("DO without LOOP"))
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LOOP"))
+        .and_demand(keyword(Keyword::Loop))
+        .and_demand(whitespace())
         .and_demand(keyword_choice(&[Keyword::Until, Keyword::While]))
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
         .map(|((((statements, _), _), (k, _)), condition)| DoLoopNode {

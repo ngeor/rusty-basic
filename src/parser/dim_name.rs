@@ -1,15 +1,12 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
-use crate::parser::specific::{
-    identifier_without_dot_p, in_parenthesis_p, item_p, keyword_followed_by_whitespace_p,
-    keyword_p, whitespace_p, PcSpecific, TokenType,
-};
+use crate::parser::specific::{identifier_without_dot_p, in_parenthesis_p, item_p, keyword_followed_by_whitespace_p, keyword_p, TokenType, whitespace};
 use crate::parser::types::*;
 
 // Parses a declared name. Possible options:
@@ -66,7 +63,7 @@ fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
 fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
     expression::expression_node_p()
         .and_opt(
-            whitespace_p()
+            whitespace()
                 .and(keyword_p(Keyword::To))
                 .and_demand(
                     expression::guarded_expression_node_p()
@@ -88,7 +85,7 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
 
 fn type_definition_extended_p() -> impl Parser<Output = DimType> {
     // <ws+> AS <ws+> identifier
-    whitespace_p()
+    whitespace()
         .and(keyword_followed_by_whitespace_p(Keyword::As))
         .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
         .keep_right()

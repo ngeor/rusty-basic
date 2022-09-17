@@ -1,8 +1,8 @@
 use crate::common::*;
-use crate::parser::base::parsers::{alt, filter_token_by_kind_opt, map, Parser};
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
-use crate::parser::specific::{item_p, keyword_p, opt_whitespace_p, whitespace_p, TokenType};
+use crate::parser::specific::{item_p, keyword_p, TokenType, whitespace};
 use crate::parser::types::*;
 
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
@@ -123,7 +123,7 @@ impl Parser for PrintArgLookingBack {
 }
 
 fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
-    whitespace_p()
+    whitespace()
         .and(expression::file_handle_p())
         .and_demand(
             item_p(',')

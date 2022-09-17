@@ -1,11 +1,9 @@
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::specific::{
-    demand_keyword_pair_p, keyword_p, keyword_pair_p, opt_whitespace_p, whitespace_p,
-};
+use crate::parser::specific::{demand_keyword_pair_p, keyword_p, keyword_pair_p, whitespace};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -79,7 +77,7 @@ impl Parser for CaseBlockParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         // CASE
         let (reader, result) = keyword_p(Keyword::Case)
-            .and_opt(whitespace_p())
+            .and_opt(whitespace())
             .map(|((_, l), r)| {
                 let mut temp: String = String::new();
                 temp.push_str(l.as_str());

@@ -1,13 +1,13 @@
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndTrait, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{item_p, whitespace_p, PcSpecific};
+use crate::parser::specific::{item_p, whitespace};
 use crate::parser::statement;
 use crate::parser::statement_separator::StatementSeparator;
 use crate::parser::types::*;
 
 pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
-    whitespace_p()
+    whitespace()
         .and(
             statement::single_line_non_comment_statement_p()
                 .with_pos()
@@ -20,7 +20,7 @@ pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementN
 }
 
 pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
-    whitespace_p()
+    whitespace()
         .and(
             statement::single_line_statement_p()
                 .with_pos()

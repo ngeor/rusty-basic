@@ -1,9 +1,7 @@
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, KeepRightTrait, Parser};
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::specific::{
-    demand_keyword_pair_p, keyword_choice, keyword_choice_p, keyword_p, whitespace_p,
-};
+use crate::parser::specific::{demand_keyword_pair_p, keyword_p, whitespace};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -51,7 +49,7 @@ fn single_line_if_else_p() -> impl Parser<
     statements::single_line_non_comment_statements_p()
         .and_opt(
             // comment or ELSE
-            whitespace_p()
+            whitespace()
                 .and(comment::comment_p().with_pos())
                 .keep_right()
                 .map(|s| vec![s])
@@ -61,7 +59,7 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
-    whitespace_p()
+    whitespace()
         .and(keyword_p(Keyword::Else))
         .and_demand(statements::single_line_statements_p())
         .keep_right()

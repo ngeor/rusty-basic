@@ -1,12 +1,10 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndDemandTrait, AndThenTrait, AndTrait, KeepRightTrait, Parser};
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
-use crate::parser::specific::{
-    identifier_without_dot_p, keyword_followed_by_whitespace_p, whitespace_p, PcSpecific,
-};
+use crate::parser::specific::{identifier_without_dot_p, keyword_followed_by_whitespace_p, whitespace};
 use crate::parser::types::*;
 
 // Parses a Param name. Possible options:
@@ -94,7 +92,7 @@ fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
 
 fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
     // <ws+> AS <ws+> identifier
-    whitespace_p()
+    whitespace()
         .and(keyword_followed_by_whitespace_p(Keyword::As))
         .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
         .keep_right()

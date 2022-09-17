@@ -1,12 +1,8 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
-use crate::parser::base::parsers::{
-    add, alt4, alt6, and_then, filter_token_by_kind_opt, map, Parser,
-};
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, OptAndPC, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{
-    in_parenthesis_p, item_p, keyword_p, opt_whitespace_p, whitespace_p, PcSpecific, TokenType,
-};
+use crate::parser::specific::{item_p, keyword_p, whitespace, TokenType, in_parenthesis_p};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -28,11 +24,11 @@ pub fn demand_expression_node_p(err_msg: &str) -> impl Parser<Output = Expressio
     expression_node_p().or_syntax_error(err_msg)
 }
 
+// TODO check if all usages are "demand"
 pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
-    and_then(
-        add(whitespace_p(), lazy_expression_node_p()),
+    OptAndPC::new(whitespace(), lazy_expression_node_p()).and_then(
         |(opt_leading_whitespace, opt_expression)| match opt_expression {
             Some(expression) => {
                 let needs_leading_whitespace = !expression.is_parenthesis();
@@ -53,9 +49,8 @@ pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
 pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr ws+
-    opt_whitespace_p(false)
-        .and(lazy_expression_node_p())
-        .and_opt(whitespace_p())
+    OptAndPC::new(whitespace(), lazy_expression_node_p())
+        .and_opt(whitespace())
         .and_then(|((l, expr), r)| {
             if expr.is_parenthesis() || (!l.is_empty() && !r.unwrap_or_default().is_empty()) {
                 Ok(Some(expr))
@@ -184,7 +179,7 @@ pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
 }
 
 pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-    whitespace_p()
+    whitespace()
         .and(file_handle_as_expression_node_p())
         .keep_right()
         .or(guarded_expression_node_p())
@@ -192,34 +187,38 @@ pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionN
 
 mod string_literal {
     use super::*;
-    use crate::parser::base::parsers::{
-        filter_token, filter_token_by_kind, filter_token_by_kind_opt, many_opt, map, seq3, Parser,
-    };
-    use crate::parser::base::tokenizers::token_list_to_string;
-    use crate::parser::specific::TokenType;
+    use crate::parser::base::parsers::{Parser, TokenPredicate};
+    use crate::parser::base::tokenizers::{Token, token_list_to_string};
+    use crate::parser::specific::{TokenKindParser, TokenType};
 
     pub fn string_literal_p() -> impl Parser<Output = Expression> {
-        map(
-            seq3(
-                filter_token_by_kind_opt(TokenType::DoubleQuote),
-                many_opt(filter_token(|t| {
-                    Ok(t.kind != TokenType::DoubleQuote as i32 && t.kind != TokenType::Eol as i32)
-                })),
-                filter_token_by_kind(TokenType::DoubleQuote, "Unterminated string"),
-            ),
-            |(_, token_list, _)| Expression::StringLiteral(token_list_to_string(token_list)),
-        )
+        string_delimiter()
+            .and_opt(
+                InsideString.many()
+            )
+            .and_demand(string_delimiter())
+            .map(|(_, (token_list, _))|   Expression::StringLiteral(token_list_to_string(token_list)))
+    }
+
+    fn string_delimiter() -> TokenKindParser {
+        TokenKindParser::new(TokenType::DoubleQuote)
+    }
+
+    struct InsideString;
+
+    impl TokenPredicate for InsideString {
+        fn test(&self, token: &Token) -> bool {
+            token.kind != TokenType::DoubleQuote as i32 && token.kind != TokenType::Eol as i32
+        }
     }
 }
 
 mod number_literal {
     use crate::common::*;
-    use crate::parser::base::parsers::{
-        and_then, filter_token_by_kind, filter_token_by_kind_opt, Parser,
-    };
+    use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndThenTrait, KeepRightTrait, NonOptParser, Parser};
     use crate::parser::base::recognizers::is_digit;
     use crate::parser::base::tokenizers::Token;
-    use crate::parser::specific::{item_p, TokenType};
+    use crate::parser::specific::{item_p, TokenKindParser, TokenType};
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
@@ -335,7 +334,7 @@ mod number_literal {
     }
 
     pub fn hexadecimal_literal_p() -> impl Parser {
-        and_then(filter_token_by_kind_opt(TokenType::HexDigits), |token| {
+        TokenKindParser::new(TokenType::HexDigits).and_then(|token| {
             // token text is &HFFFF or &H-FFFF
             let mut s: String = token.text;
             // remove &
@@ -351,7 +350,7 @@ mod number_literal {
     }
 
     pub fn octal_literal_p() -> impl Parser {
-        and_then(filter_token_by_kind_opt(TokenType::OctDigits), |token| {
+        TokenKindParser::new(TokenType::OctDigits).and_then(|token| {
             let mut s: String = token.text;
             // remove &
             s.remove(0);
@@ -365,20 +364,20 @@ mod number_literal {
         })
     }
 
-    pub fn digits() -> impl Parser<Output = Token> {
-        filter_token_by_kind(TokenType::Digits, "Expected digits")
+    pub fn digits() -> impl NonOptParser<Output = Token> {
+        TokenKindParser::new(TokenType::Digits)
     }
 
     // TODO rename to opt
     pub fn digits_p() -> impl Parser<Output = Token> {
-        filter_token_by_kind_opt(TokenType::Digits)
+        TokenKindParser::new(TokenType::Digits)
     }
 }
 
 pub mod word {
     use super::lazy_expression_node_p;
     use crate::common::*;
-    use crate::parser::base::parsers::Parser;
+    use crate::parser::base::parsers::{AndDemandTrait, KeepRightTrait, Parser};
     use crate::parser::base::tokenizers::Tokenizer;
     use crate::parser::name::name_with_dot_p;
     use crate::parser::specific::{identifier_without_dot_p, in_parenthesis_p, item_p, TokenType};

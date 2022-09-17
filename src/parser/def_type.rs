@@ -1,8 +1,8 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{filter_token, Parser};
+use crate::parser::base::parsers::{AndDemandTrait, AndThenTrait, AndTrait, ErrorProvider, Parser, TokenPredicate};
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
-use crate::parser::specific::{item_p, keyword_choice_p, whitespace_p, TokenType};
+use crate::parser::specific::{item_p, keyword_choice_p, TokenType, whitespace};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
@@ -13,7 +13,7 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 pub fn def_type_p() -> impl Parser<Output = DefType> {
     def_keyword_p()
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DEF-type"))
+        .and_demand(whitespace())
         .and_demand(
             letter_range_p()
                 .csv()
@@ -45,13 +45,13 @@ fn letter_range_p() -> impl Parser<Output = LetterRange> {
 }
 
 fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
-    letter_opt().map(|l| LetterRange::Single(l))
+    LetterToken.map(|l| LetterRange::Single(l))
 }
 
 fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
-    letter_opt()
+    LetterToken
         .and(item_p('-'))
-        .and_demand(letter())
+        .and_demand(LetterToken)
         .and_then(|((l, _), r)| {
             if l < r {
                 Ok(LetterRange::Range(l, r))
@@ -61,23 +61,20 @@ fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
         })
 }
 
-fn letter() -> impl Parser {
-    filter_token(|token| {
-        if is_token_letter(token) {
-            Ok(true)
-        } else {
-            Err(QError::syntax_error("Expected letter"))
-        }
-    })
-}
-fn letter_opt() -> impl Parser {
-    filter_token(|token| Ok(is_token_letter(token)))
+struct LetterToken;
+
+impl TokenPredicate for LetterToken {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Identifier as i32
+            && token.text.len() == 1
+            && is_letter(token.text.chars().next().unwrap())
+    }
 }
 
-fn is_token_letter(token: &Token) -> bool {
-    token.kind == TokenType::Identifier as i32
-        && token.text.len() == 1
-        && is_letter(token.text.chars().next().unwrap())
+impl ErrorProvider for LetterToken {
+    fn provide_error(&self) -> QError {
+        QError::syntax_error("Expected letter")
+    }
 }
 
 #[cfg(test)]

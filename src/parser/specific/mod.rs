@@ -430,7 +430,7 @@ pub fn map_token<U>(token_type: TokenType, result: U) -> impl Parser<Output = U>
 }
 
 pub fn map_tokens<U: Copy>(pairs: &[(TokenType, U)]) -> impl Parser<Output = U> {
-    let mut accumulator : Option<Box<dyn Parser<Output = U>>> = None;
+    let mut accumulator: Option<Box<dyn Parser<Output = U>>> = None;
     for (token_type, result) in pairs {
         let pair_parser = map_token(*token_type, *result);
         if accumulator.is_none() {
@@ -461,7 +461,10 @@ where
     }
 }
 
-impl<P> NonOptParser for MapErrParser<P> where P : NonOptParser {
+impl<P> NonOptParser for MapErrParser<P>
+where
+    P: NonOptParser,
+{
     type Output = P::Output;
 
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {

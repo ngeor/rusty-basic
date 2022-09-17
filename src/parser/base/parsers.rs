@@ -389,17 +389,17 @@ where
 
 pub struct OrPC<L, R>(L, R);
 
-impl<L, R> Parser for OrPC<L, R> where L : Parser, R: Parser<Output = L::Output>{
+impl<L, R> Parser for OrPC<L, R>
+where
+    L: Parser,
+    R: Parser<Output = L::Output>,
+{
     type Output = L::Output;
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.0.parse(tokenizer)? {
-            Some(first) => {
-                Ok(Some(first))
-            }
-            None => {
-                self.1.parse(tokenizer)
-            }
+            Some(first) => Ok(Some(first)),
+            None => self.1.parse(tokenizer),
         }
     }
 }
@@ -409,9 +409,97 @@ pub trait OrTrait<P> {
 }
 
 impl<S, P> OrTrait<P> for S
-where S : Parser, P: Parser<Output = S::Output>
+where
+    S: Parser,
+    P: Parser<Output = S::Output>,
 {
     fn or(self, other: P) -> OrPC<Self, P> {
         OrPC(self, other)
+    }
+}
+
+//
+// AndOptFactory
+//
+
+pub struct AndOptFactoryPC<L, RF>(L, RF);
+
+impl<L, RF, R> Parser for AndOptFactoryPC<L, RF>
+where
+    L: Parser,
+    RF: Fn(&L::Output) -> R,
+    R: Parser,
+{
+    type Output = (L::Output, Option<R::Output>);
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self.0.parse(tokenizer)? {
+            Some(first) => {
+                let second_parser = (self.1)(&first);
+                let opt_second = second_parser.parse(tokenizer)?;
+                Ok(Some((first, opt_second)))
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+pub trait AndOptFactoryTrait<F> {
+    fn and_opt_factory(self, f: F) -> AndOptFactoryPC<Self, F>;
+}
+
+impl<S, F, R> AndOptFactoryTrait<F> for S
+where
+    S: Parser,
+    F: Fn(&S::Output) -> R,
+    R: Parser,
+{
+    fn and_opt_factory(self, f: F) -> AndOptFactoryPC<Self, F> {
+        AndOptFactoryPC(self, f)
+    }
+}
+
+//
+// Many
+//
+
+pub struct ManyParser<P>(P);
+
+impl<P> Parser for ManyParser<P>
+where
+    P: Parser,
+{
+    type Output = Vec<P::Output>;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let mut result: Vec<P::Output> = Vec::new();
+        loop {
+            match self.0.parse(tokenizer)? {
+                Some(value) => {
+                    result.push(value);
+                }
+                None => {
+                    break;
+                }
+            }
+        }
+        if result.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(result))
+        }
+    }
+}
+
+pub trait ManyTrait {
+    fn many(self) -> ManyParser<Self>;
+}
+
+impl<S> ManyTrait for S
+where
+    S: Parser,
+{
+    fn many(self) -> ManyParser<Self> {
+        ManyParser(self)
     }
 }

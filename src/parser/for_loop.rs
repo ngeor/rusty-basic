@@ -1,7 +1,12 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, Parser, FnMapTrait, KeepRightTrait};
+use crate::parser::base::parsers::{
+    AndDemandTrait, AndOptFactoryTrait, AndOptTrait, AndTrait, FnMapTrait, KeepRightTrait, Parser,
+};
 use crate::parser::expression;
-use crate::parser::specific::{item_p, keyword, keyword_followed_by_whitespace_p, keyword_p, MapErrTrait, whitespace, WithPosTrait};
+use crate::parser::specific::{
+    item_p, keyword, keyword_followed_by_whitespace_p, keyword_p, whitespace, LeadingWhitespace,
+    MapErrTrait, WithPosTrait,
+};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -44,8 +49,7 @@ fn parse_for_step_p() -> impl Parser<
 > {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
-            opt_whitespace_p(!upper.is_parenthesis())
-                .and(keyword_p(Keyword::Step))
+            LeadingWhitespace::new(keyword_p(Keyword::Step), !upper.is_parenthesis())
                 .and_demand(
                     expression::guarded_expression_node_p()
                         .or_syntax_error("Expected: expression after STEP"),

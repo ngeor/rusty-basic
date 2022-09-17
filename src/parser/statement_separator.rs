@@ -1,6 +1,6 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{AndOptTrait, AndTrait, Parser, TokenPredicate};
-use crate::parser::base::tokenizers::{Token, Tokenizer};
+use crate::parser::base::parsers::{AndOptTrait, AndTrait, ManyTrait, Parser, TokenPredicate};
+use crate::parser::base::tokenizers::{Position, Token, Tokenizer};
 use crate::parser::specific::{item_p, whitespace, TokenKindParser, TokenType};
 
 // TODO split into two classes one for comments and one for non comments
@@ -95,9 +95,21 @@ impl Parser for EofOrStatementSeparator {
             }
             _ => {
                 // EOF is accepted
+                // TODO fix this so it doesn't need a dummy token
                 Ok(Some(dummy_token(tokenizer)))
             }
         }
+    }
+}
+
+fn dummy_token(tokenizer: &impl Tokenizer) -> Token {
+    Token {
+        kind: TokenType::Whitespace as i32,
+        text: String::new(),
+        position: Position {
+            begin: tokenizer.position(),
+            end: tokenizer.position(),
+        },
     }
 }
 
@@ -109,7 +121,7 @@ fn colon_separator_p() -> impl Parser {
 // <eol> < ws | eol >*
 // TODO rename to _opt
 fn eol_separator_p() -> impl Parser {
-    TokenKindParser::new(TokenType::Eol).and(many_opt(EolOrWhitespace))
+    TokenKindParser::new(TokenType::Eol).and(EolOrWhitespace.many())
 }
 
 struct EolOrWhitespace;

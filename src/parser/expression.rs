@@ -1,11 +1,14 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait,
-    OptAndPC, OrTrait, Parser,
+    AndDemandTrait, AndOptFactoryTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapTrait,
+    KeepLeftTrait, KeepRightTrait, OptAndPC, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{in_parenthesis_p, item_p, keyword_p, whitespace, LeadingWhitespace, TokenKindParser, TokenType, map_tokens};
+use crate::parser::specific::{
+    in_parenthesis_p, item_p, keyword_p, map_tokens, whitespace, LeadingWhitespace,
+    TokenKindParser, TokenType,
+};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -857,8 +860,8 @@ pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
         (TokenType::Less, Operator::Less),
         (TokenType::Greater, Operator::Greater),
         (TokenType::Equals, Operator::Equal),
-
-    ]).with_pos()
+    ])
+    .with_pos()
     // token_type_to_operator(TokenType::LessEquals, Operator::LessOrEqual)
     //     .or(token_type_to_operator(
     //         TokenType::GreaterEquals,

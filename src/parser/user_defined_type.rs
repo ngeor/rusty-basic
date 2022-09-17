@@ -47,7 +47,10 @@ use crate::parser::base::parsers::{AndDemandTrait, AndThenTrait, KeepRightTrait,
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::specific::{demand_keyword_pair_p, item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p, whitespace, WithPosTrait};
+use crate::parser::specific::{
+    demand_keyword_pair_p, item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p,
+    whitespace, WithPosTrait,
+};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
@@ -84,7 +87,9 @@ fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
 }
 
 fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> {
-    element_node_p().one_or_more().map_err(QError::ElementNotDefined)
+    element_node_p()
+        .one_or_more()
+        .map_err(QError::ElementNotDefined)
 }
 
 fn element_node_p() -> impl Parser<Output = ElementNode> {

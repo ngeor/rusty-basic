@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::parsers::{AndDemandTrait, Parser, FnMapTrait};
+use crate::parser::base::parsers::{AndDemandTrait, FnMapTrait, Parser};
 use crate::parser::expression::guarded_expression_node_p;
 use crate::parser::specific::{keyword, keyword_p, MapErrTrait};
 use crate::parser::statements::*;

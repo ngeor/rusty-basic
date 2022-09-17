@@ -37,8 +37,7 @@ impl Parser for TopLevelTokensParser {
                             return Err(QError::SyntaxError(format!("No separator: {}", ch)));
                         }
                         reader.unread(ch);
-                        let opt_top_level_token =
-                            top_level_token_one_p().parse(reader)?;
+                        let opt_top_level_token = top_level_token_one_p().parse(reader)?;
                         match opt_top_level_token {
                             Some(top_level_token) => {
                                 top_level_tokens.push(top_level_token);

@@ -1,7 +1,7 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{and, filter_token, filter_token_by_kind_opt, many_opt, Parser};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
-use crate::parser::specific::{dummy_token, item_p, opt_whitespace_p, TokenType, whitespace_p};
+use crate::parser::specific::{dummy_token, item_p, opt_whitespace_p, whitespace_p, TokenType};
 
 // TODO split into two classes one for comments and one for non comments
 pub struct StatementSeparator {
@@ -83,7 +83,10 @@ impl Parser for EofOrStatementSeparator {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) => {
-                if token.kind == TokenType::Colon as i32 || token.kind == TokenType::SingleQuote as i32 || token.kind == TokenType::Eol as i32 {
+                if token.kind == TokenType::Colon as i32
+                    || token.kind == TokenType::SingleQuote as i32
+                    || token.kind == TokenType::Eol as i32
+                {
                     Ok(Some(token))
                 } else {
                     tokenizer.unread(token);
@@ -102,7 +105,7 @@ impl Parser for EofOrStatementSeparator {
 fn colon_separator_p() -> impl Parser {
     and(
         filter_token_by_kind_opt(TokenType::Colon),
-        opt_whitespace_p(false)
+        opt_whitespace_p(false),
     )
 }
 
@@ -111,10 +114,12 @@ fn colon_separator_p() -> impl Parser {
 fn eol_separator_p() -> impl Parser {
     and(
         filter_token_by_kind_opt(TokenType::Eol),
-        many_opt(eol_or_whitespace_opt())
+        many_opt(eol_or_whitespace_opt()),
     )
 }
 
 fn eol_or_whitespace_opt() -> impl Parser {
-    filter_token(|token| Ok(token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32))
+    filter_token(|token| {
+        Ok(token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32)
+    })
 }

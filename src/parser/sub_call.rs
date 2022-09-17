@@ -27,19 +27,16 @@ impl Parser for SubCallOrAssignment {
                     let opt_v =
                         expression::demand_expression_node_p("Expected: expression for assignment")
                             .parse(reader)?;
-                    Ok(
-                        Some(Statement::Assignment(name_expr, opt_v.unwrap())),
-                    )
+                    Ok(Some(Statement::Assignment(name_expr, opt_v.unwrap())))
                 }
                 _ => match expr_to_bare_name_args(name_expr) {
-                    Ok((bare_name, Some(args))) => {
-                        Ok(Some(Statement::SubCall(bare_name, args)))
-                    }
+                    Ok((bare_name, Some(args))) => Ok(Some(Statement::SubCall(bare_name, args))),
                     Ok((bare_name, None)) => {
                         let args = expression::expression_nodes_p().parse(reader)?;
-                        Ok(
-                            Some(Statement::SubCall(bare_name, args.unwrap_or_default())),
-                        )
+                        Ok(Some(Statement::SubCall(
+                            bare_name,
+                            args.unwrap_or_default(),
+                        )))
                     }
                     Err(err) => Err(err),
                 },

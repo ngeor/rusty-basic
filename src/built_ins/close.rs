@@ -1,29 +1,30 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::{item_p, keyword_p};
+    use crate::parser::base::parsers::{map, Parser};
+    use crate::parser::specific::{item_p, keyword_p, PcSpecific};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_p(Keyword::Close)
-            .and_opt(
-                expression::guarded_file_handle_or_expression_p().and_opt(
-                    item_p(',')
-                        .surrounded_by_opt_ws()
-                        .and(expression::file_handle_or_expression_p())
-                        .keep_right()
-                        .one_or_more(),
-                ),
-            )
-            .keep_right()
-            .map(|opt_first_and_remaining| {
+            keyword_p(Keyword::Close)
+                .and_opt(
+                    expression::guarded_file_handle_or_expression_p().and_opt(
+                        item_p(',')
+                            .surrounded_by_opt_ws()
+                            .and(expression::file_handle_or_expression_p())
+                            .keep_right()
+                            .one_or_more(),
+                    ),
+                )
+                .keep_right().map(
+            |opt_first_and_remaining| {
                 let mut args: ExpressionNodes = vec![];
                 if let Some((first, opt_remaining)) = opt_first_and_remaining {
                     args.push(first);
                     args.extend(opt_remaining.unwrap_or_default());
                 }
                 Statement::BuiltInSubCall(BuiltInSub::Close, args)
-            })
+            },
+        )
     }
 }
 

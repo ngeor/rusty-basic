@@ -382,3 +382,14 @@ where
 pub fn map_err<P: Parser>(parser: P, err: QError) -> impl Parser<Output = P::Output> {
     MapErrParser(parser, err)
 }
+
+pub trait PcSpecific: Parser {
+    fn surrounded_by_opt_ws<F>(self) -> SurroundedByOptParser<Self, F>
+    where
+        Self: Sized,
+    {
+        self.surrounded_by_opt(|token| token.kind == TokenType::Whitespace as i32)
+    }
+}
+
+impl<T> PcSpecific for T where T: Parser {}

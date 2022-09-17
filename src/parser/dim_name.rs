@@ -6,7 +6,9 @@ use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
-use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_p, TokenType, whitespace_p};
+use crate::parser::specific::{
+    keyword_followed_by_whitespace_p, keyword_p, whitespace_p, TokenType,
+};
 use crate::parser::types::*;
 
 // Parses a declared name. Possible options:
@@ -104,17 +106,13 @@ impl Parser for ExtendedTypeParser {
         match reader.read()? {
             Some(token) => {
                 if token.kind == TokenType::Keyword as i32 {
-
                 } else if token.kind == TokenType::Identifier as i32 {
-
                 } else {
                     reader.unread(token);
                     Ok(None)
                 }
             }
-            None => {
-                Ok(None)
-            }
+            None => Ok(None),
         }
         let (reader, opt_identifier) = identifier_without_dot_p().with_pos().parse(reader)?;
         match opt_identifier {
@@ -147,13 +145,11 @@ impl Parser for ExtendedTypeParser {
 }
 
 impl ExtendedTypeParser {
-    fn built_in(q: TypeQualifier) -> Result<Option<DimType>, QError>
-    {
+    fn built_in(q: TypeQualifier) -> Result<Option<DimType>, QError> {
         Ok(Some(DimType::BuiltIn(q, BuiltInStyle::Extended)))
     }
 
-    fn string(reader: &mut impl Tokenizer) -> Result<Option<DimType>, QError>
-    {
+    fn string(reader: &mut impl Tokenizer) -> Result<Option<DimType>, QError> {
         let (reader, opt_len) = item_p('*')
             .surrounded_by_opt_ws()
             .and_demand(

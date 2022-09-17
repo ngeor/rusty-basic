@@ -12,7 +12,11 @@ impl StatementSeparator {
         Self { comment_mode }
     }
 
-    fn parse_comment(&self, reader: &mut impl Tokenizer, mut buf: String) -> Result<Option<String>, QError> {
+    fn parse_comment(
+        &self,
+        reader: &mut impl Tokenizer,
+        mut buf: String,
+    ) -> Result<Option<String>, QError> {
         let (reader, opt_item) = eol_separator_p().parse(reader)?;
         let item = opt_item.unwrap();
         buf.push_str(item.as_str());
@@ -22,7 +26,11 @@ impl StatementSeparator {
     // <ws>* '\'' (undoing it)
     // <ws>* ':' <ws*>
     // <ws>* EOL <ws | eol>*
-    fn parse_non_comment(&self, reader: &mut impl Tokenizer, mut buf: String) -> Result<Option<String>, QError> {
+    fn parse_non_comment(
+        &self,
+        reader: &mut impl Tokenizer,
+        mut buf: String,
+    ) -> Result<Option<String>, QError> {
         let (reader, opt_item) = comment_separator_p()
             .or(colon_separator_p())
             .or(eol_separator_p())

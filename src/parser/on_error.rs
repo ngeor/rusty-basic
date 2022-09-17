@@ -2,8 +2,8 @@ use crate::common::{Locatable, QError};
 use crate::parser::base::parsers::Parser;
 use crate::parser::expression::expression_node_p;
 use crate::parser::name::bare_name_p;
-use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_pair_p, whitespace_p};
+use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
     keyword_pair_p(Keyword::On, Keyword::Error)

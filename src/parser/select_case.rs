@@ -1,11 +1,11 @@
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
+use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
+use crate::parser::specific::{keyword_p, keyword_pair_p, whitespace_p};
 use crate::parser::statements;
 use crate::parser::types::*;
-use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{keyword_p, keyword_pair_p, whitespace_p};
 
 // SELECT CASE expr ' comment
 // CASE 1

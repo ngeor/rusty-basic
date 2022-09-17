@@ -2,8 +2,8 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
-    use crate::parser::*;
     use crate::parser::specific::{item_p, keyword_p, whitespace_p};
+    use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::Field)

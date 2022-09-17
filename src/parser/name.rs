@@ -68,8 +68,8 @@ fn ensure_length_and_not_keyword(s: &String) -> Result<bool, QError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::specific::create_string_tokenizer;
     use super::*;
+    use crate::parser::specific::create_string_tokenizer;
 
     #[test]
     fn test_any_word_with_dot() {

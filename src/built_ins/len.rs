@@ -1,18 +1,17 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
     use crate::parser::base::parsers::Parser;
+    use crate::parser::specific::{in_parenthesis, keyword_p};
     use crate::parser::*;
-    use crate::parser::specific::keyword_p;
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::Len)
             .and_demand(
-                in_parenthesis_p(
+                in_parenthesis(
                     expression::lazy_expression_node_p()
                         .csv()
                         .or_syntax_error("Expected: variable"),
                 )
-                .or_syntax_error("Expected: ("),
             )
             .keep_right()
             .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))

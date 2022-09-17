@@ -330,10 +330,10 @@ pub mod word {
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
     use crate::parser::name::name_with_dot_p;
+    use crate::parser::specific::item_p;
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;
-    use crate::parser::specific::item_p;
 
     pub fn word_p() -> impl Parser<Output = Expression> {
         name_with_dot_p()
@@ -457,8 +457,8 @@ pub mod word {
             use super::*;
 
             mod no_dots {
-                use crate::parser::specific::create_string_tokenizer;
                 use super::*;
+                use crate::parser::specific::create_string_tokenizer;
 
                 #[test]
                 fn test_any_word_without_dot() {
@@ -483,8 +483,8 @@ pub mod word {
             }
 
             mod dots {
-                use crate::parser::specific::create_string_tokenizer;
                 use super::*;
+                use crate::parser::specific::create_string_tokenizer;
 
                 #[test]
                 fn test_trailing_dot() {
@@ -567,8 +567,8 @@ pub mod word {
             use super::*;
 
             mod no_dots {
-                use crate::parser::specific::create_string_tokenizer;
                 use super::*;
+                use crate::parser::specific::create_string_tokenizer;
 
                 #[test]
                 fn test_qualified_var_without_dot() {
@@ -602,8 +602,8 @@ pub mod word {
             }
 
             mod dots {
-                use crate::parser::specific::create_string_tokenizer;
                 use super::*;
+                use crate::parser::specific::create_string_tokenizer;
 
                 #[test]
                 fn test_possible_qualified_property() {

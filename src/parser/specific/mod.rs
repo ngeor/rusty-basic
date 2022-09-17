@@ -1,13 +1,15 @@
-use std::fs::File;
-use crate::parser::base::parsers::*;
-use crate::parser::base::recognizers::*;
-use crate::parser::base::tokenizers::*;
-use crate::parser::{Expression, ExpressionNode, ExpressionNodes, Keyword, SORTED_KEYWORDS_STR, Statement};
-use std::str::Chars;
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Location, QError};
+use crate::parser::base::parsers::*;
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
+use crate::parser::base::recognizers::*;
+use crate::parser::base::tokenizers::*;
 use crate::parser::expression::expression_node_p;
+use crate::parser::{
+    Expression, ExpressionNode, ExpressionNodes, Keyword, Statement, SORTED_KEYWORDS_STR,
+};
+use std::fs::File;
+use std::str::Chars;
 
 /// specific module contains implementation that mirrors the base module
 /// but it is specific to QBasic
@@ -185,41 +187,39 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
 }
 
 pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
-    create_tokenizer(
-        file_char_reader(input),
-        create_recognizers()
-    )
+    create_tokenizer(file_char_reader(input), create_recognizers())
 }
 
 #[cfg(test)]
 pub fn create_string_tokenizer(input: &str) -> impl Tokenizer {
-    create_tokenizer(
-        string_char_reader(input),
-        create_recognizers()
-    )
+    create_tokenizer(string_char_reader(input), create_recognizers())
 }
 
 // TODO rename to keyword_opt
 pub fn keyword_p(keyword: Keyword) -> impl Parser {
-    filter_token(|token| Ok(token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str()))
+    filter_token(|token| {
+        Ok(token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str())
+    })
 }
 
 pub fn keyword(keyword: Keyword) -> impl Parser {
-    filter_token(|token| if token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str() { Ok(true) } else { Err(QError::SyntaxError(format!("Expected keyword {}", keyword))) })
+    filter_token(|token| {
+        if token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str() {
+            Ok(true)
+        } else {
+            Err(QError::SyntaxError(format!("Expected keyword {}", keyword)))
+        }
+    })
 }
 
 // TODO deprecate this
 pub fn keyword_followed_by_whitespace_p(keyword: Keyword) -> impl Parser {
-    and(
-        keyword_p(keyword),
-        whitespace()
-    )
+    and(keyword_p(keyword), whitespace())
 }
 
 // TODO deprecate this
 pub fn item_p(ch: char) -> impl Parser {
-    filter_token_by_kind_opt(
-    match ch {
+    filter_token_by_kind_opt(match ch {
         ',' => TokenType::Comma,
         '=' => TokenType::Equals,
         '$' => TokenType::DollarSign,
@@ -232,7 +232,7 @@ pub fn item_p(ch: char) -> impl Parser {
         '>' => TokenType::Greater,
         '<' => TokenType::Less,
         ':' => TokenType::Colon,
-        _ => panic!("not implemented {}", ch)
+        _ => panic!("not implemented {}", ch),
     })
 }
 
@@ -240,8 +240,7 @@ pub fn item_p(ch: char) -> impl Parser {
 pub fn parse_built_in_sub_with_opt_args(
     keyword: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl Parser<Output = Statement>
-{
+) -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(keyword)
         .and_opt(expression_node_p().csv_allow_missing())
         .keep_right()
@@ -270,11 +269,7 @@ fn map_opt_args_to_flags(args: Option<Vec<Option<ExpressionNode>>>) -> Expressio
 }
 
 pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
-    seq3(
-        keyword_p(first),
-        whitespace(),
-        keyword(second)
-    )
+    seq3(keyword_p(first), whitespace(), keyword(second))
 }
 
 pub fn whitespace() -> impl Parser {
@@ -284,4 +279,15 @@ pub fn whitespace() -> impl Parser {
 // TODO rename to whitespace_opt
 pub fn whitespace_p() -> impl Parser {
     filter_token_by_kind_opt(TokenType::WhiteSpace)
+}
+
+pub fn in_parenthesis<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
+    map(
+        seq3(
+            filter_token_by_kind(TokenType::LParen, "Expected ("),
+            parser,
+            filter_token_by_kind(TokenType::RParen, "Expected )"),
+        ),
+        |(_, output, _)| output,
+    )
 }

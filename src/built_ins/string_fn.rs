@@ -1,19 +1,18 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
     use crate::parser::base::parsers::Parser;
+    use crate::parser::specific::{in_parenthesis, item_p, keyword_p};
     use crate::parser::*;
-    use crate::parser::specific::{item_p, keyword_p};
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::String_)
             .and(item_p('$'))
             .and_demand(
-                in_parenthesis_p(
+                in_parenthesis(
                     expression::lazy_expression_node_p()
                         .csv()
                         .or_syntax_error("Expected: expression"),
                 )
-                .or_syntax_error("Expected: ("),
             )
             .keep_right()
             .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))

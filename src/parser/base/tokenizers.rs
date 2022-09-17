@@ -54,7 +54,10 @@ pub trait Tokenizer {
     fn unread(&mut self, token: Token);
 }
 
-pub fn create_tokenizer<R: CharReader>(reader: R, recognizers: Vec<Box<dyn Recognizer>>) -> impl Tokenizer {
+pub fn create_tokenizer<R: CharReader>(
+    reader: R,
+    recognizers: Vec<Box<dyn Recognizer>>,
+) -> impl Tokenizer {
     UndoTokenizerImpl::new(TokenizerImpl::new(reader, recognizers))
 }
 

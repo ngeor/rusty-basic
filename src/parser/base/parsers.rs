@@ -101,7 +101,9 @@ where
     }
 }
 
-pub fn filter_token<P: Fn(&Token) -> Result<bool, QError>>(predicate: P) -> impl Parser<Output = Token> {
+pub fn filter_token<P: Fn(&Token) -> Result<bool, QError>>(
+    predicate: P,
+) -> impl Parser<Output = Token> {
     FilterTokenParser { predicate }
 }
 

@@ -1,7 +1,7 @@
-use std::cmp::Ordering;
 use crate::common::CmpIgnoreAsciiCase;
-use std::str::FromStr;
 use crate::parser::base::recognizers::{Recognition, Recognizer};
+use std::cmp::Ordering;
+use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Keyword {

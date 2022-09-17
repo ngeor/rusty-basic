@@ -36,11 +36,11 @@ pub mod test_utils;
 pub use self::types::*;
 
 use crate::common::*;
-use crate::parser::top_level_token::TopLevelTokensParser;
-use std::fs::File;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::{create_file_tokenizer, create_string_tokenizer};
+use crate::parser::top_level_token::TopLevelTokensParser;
+use std::fs::File;
 
 /// Parses a QBasic file.
 ///

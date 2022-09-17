@@ -2,7 +2,7 @@ use crate::common::QError;
 use crate::parser::base::parsers::Parser;
 use crate::parser::expression;
 use crate::parser::specific::{
-    item_p, keyword_followed_by_whitespace_p, keyword_p, opt_whitespace_p, whitespace_p,
+    item_p, keyword_followed_by_whitespace_p, keyword_p, map_err, opt_whitespace_p, whitespace_p,
 };
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -16,7 +16,7 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::Next,
         )))
-        .and_demand(next_counter_p().or(static_err_p(QError::ForWithoutNext)))
+        .and_demand(map_err(next_counter_p(), QError::ForWithoutNext))
         .map(
             |(
                 ((variable_name, lower_bound, upper_bound, opt_step), statements),

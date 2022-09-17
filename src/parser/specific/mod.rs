@@ -357,3 +357,20 @@ impl Parser for EmptyWhitespaceTokenParser {
         }))
     }
 }
+
+struct MapErrParser<P>(P, QError);
+
+impl<P> Parser for MapErrParser<P>
+where
+    P: Parser,
+{
+    type Output = P::Output;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        self.0.parse(tokenizer).map_err(|_| self.1)
+    }
+}
+
+pub fn map_err<P: Parser>(parser: P, err: QError) -> impl Parser<Output = P::Output> {
+    MapErrParser(parser, err)
+}

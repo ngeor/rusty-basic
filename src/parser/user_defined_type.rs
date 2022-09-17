@@ -48,7 +48,7 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::specific::{
-    item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p, whitespace_p,
+    item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p, map_err, whitespace_p,
 };
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
@@ -86,9 +86,7 @@ fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
 }
 
 fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> {
-    element_node_p()
-        .one_or_more()
-        .or(static_err_p(QError::ElementNotDefined))
+    map_err(element_node_p().one_or_more(), QError::ElementNotDefined)
 }
 
 fn element_node_p() -> impl Parser<Output = ElementNode> {

@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::parsers::{filter_token, filter_token_by_kind_opt, Parser};
+use crate::parser::base::parsers::{filter_token, Parser};
 use crate::parser::specific::{item_p, TokenType};
 use crate::parser::types::*;
 

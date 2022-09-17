@@ -51,7 +51,7 @@ impl Parser for StatementSeparator {
 
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         // skip any whitespace, so that the error will hit the first offending character
-        let (reader, opt_buf) = whitespace_p().parse(reader)?;
+        let opt_buf = whitespace_p().parse(reader)?;
         let buf = opt_buf.unwrap_or_default();
         if self.comment_mode {
             self.parse_comment(reader, buf)

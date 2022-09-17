@@ -20,33 +20,31 @@ impl Parser for SubCallOrAssignment {
     type Output = Statement;
 
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let (reader, opt_item) = Self::name_and_opt_eq_sign().parse(reader)?;
+        let opt_item = Self::name_and_opt_eq_sign().parse(reader)?;
         match opt_item {
             Some((name_expr, opt_equal_sign)) => match opt_equal_sign {
                 Some(_) => {
-                    let (reader, opt_v) =
+                    let opt_v =
                         expression::demand_expression_node_p("Expected: expression for assignment")
                             .parse(reader)?;
-                    Ok((
-                        reader,
+                    Ok(
                         Some(Statement::Assignment(name_expr, opt_v.unwrap())),
-                    ))
+                    )
                 }
                 _ => match expr_to_bare_name_args(name_expr) {
                     Ok((bare_name, Some(args))) => {
-                        Ok((reader, Some(Statement::SubCall(bare_name, args))))
+                        Ok(Some(Statement::SubCall(bare_name, args)))
                     }
                     Ok((bare_name, None)) => {
-                        let (reader, args) = expression::expression_nodes_p().parse(reader)?;
-                        Ok((
-                            reader,
+                        let args = expression::expression_nodes_p().parse(reader)?;
+                        Ok(
                             Some(Statement::SubCall(bare_name, args.unwrap_or_default())),
-                        ))
+                        )
                     }
-                    Err(err) => Err((reader, err)),
+                    Err(err) => Err(err),
                 },
             },
-            _ => Ok((reader, None)),
+            _ => Ok(None),
         }
     }
 }

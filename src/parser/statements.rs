@@ -66,7 +66,7 @@ impl Parser for StatementAndSeparator {
     type Output = StatementNode;
 
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let (reader, opt_statement_node) = statement::statement_p().with_pos().parse(reader)?;
+        let opt_statement_node = statement::statement_p().with_pos().parse(reader)?;
         match opt_statement_node {
             Some(statement_node) => {
                 let is_comment = if let Statement::Comment(_) = statement_node.as_ref() {
@@ -74,13 +74,13 @@ impl Parser for StatementAndSeparator {
                 } else {
                     false
                 };
-                let (reader, opt_separator) = StatementSeparator::new(is_comment).parse(reader)?;
+                let opt_separator = StatementSeparator::new(is_comment).parse(reader)?;
                 match opt_separator {
-                    Some(_) => Ok((reader, Some(statement_node))),
-                    _ => Err((reader, QError::syntax_error("Expected: end-of-statement"))),
+                    Some(_) => Ok(Some(statement_node)),
+                    _ => Err(QError::syntax_error("Expected: end-of-statement")),
                 }
             }
-            _ => Ok((reader, None)),
+            _ => Ok(None),
         }
     }
 }

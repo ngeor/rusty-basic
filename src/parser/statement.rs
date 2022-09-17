@@ -8,7 +8,6 @@ use crate::parser::exit::statement_exit_p;
 use crate::parser::for_loop;
 use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
-use crate::parser::name;
 use crate::parser::name::bare_name_p;
 use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::print;
@@ -57,7 +56,7 @@ pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
 }
 
 fn statement_label_p() -> impl Parser<Output = Statement> {
-    name::bare_name_p()
+    bare_name_p()
         .and(item_p(':'))
         .keep_left()
         .map(|l| Statement::Label(l))
@@ -82,7 +81,7 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 
 mod end {
     use super::*;
-    use crate::parser::base::tokenizers::Tokenizer;
+    use crate::parser::base::tokenizers::{Token, Tokenizer};
     use crate::parser::specific::{keyword_choice_p, opt_whitespace_p};
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
@@ -108,22 +107,23 @@ mod end {
     struct AfterEndSeparator {}
 
     impl Parser for AfterEndSeparator {
-        type Output = String;
+        type Output = Token;
 
         fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-            let (reader, opt_result) = allowed_keywords_after_end().parse(reader)?;
+            let opt_result = allowed_keywords_after_end().parse(reader)?;
             match opt_result {
-                Some((_, s)) => {
+                Some(s) => {
                     // undo and return None, as another parser will handle this
-                    Ok((reader.undo(s), None))
+                    reader.unread(s);
+                    Ok(None)
                 }
                 _ => {
-                    let (reader, opt_str) = EofOrStatementSeparator::new().parse(reader)?;
+                    let opt_str = EofOrStatementSeparator::new().parse(reader)?;
                     match opt_str {
-                        Some(s) => Ok((reader, Some(s))),
+                        Some(s) => Ok(Some(s)),
                         _ => {
                             // error
-                            Err((reader, QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement")))
+                            Err(QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"))
                         }
                     }
                 }
@@ -131,7 +131,7 @@ mod end {
         }
     }
 
-    fn allowed_keywords_after_end() -> impl Parser<Output = (Keyword, String)> {
+    fn allowed_keywords_after_end() -> impl Parser<Output = Token> {
         keyword_choice_p(&[
             Keyword::Function,
             Keyword::If,

@@ -311,13 +311,13 @@ pub fn in_parenthesis_p<P: Parser>(parser: P) -> impl Parser<Output = P::Output>
 }
 
 // TODO rename to keyword_choice_opt
-pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser {
+pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = Token> {
     filter_token(|token| {
         Ok(token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into()))
     })
 }
 
-pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser {
+pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser<Output = Token> {
     filter_token(|token| {
         if token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into()) {
             Ok(true)

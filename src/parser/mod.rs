@@ -55,20 +55,20 @@ use std::fs::File;
 /// <digit> ::= "0".."9"
 /// ```
 pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
-    let reader = create_file_tokenizer(f);
-    parse_reader(reader)
+    let mut reader = create_file_tokenizer(f);
+    parse_reader(&mut reader)
 }
 
 #[cfg(test)]
 pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
-    let reader = create_string_tokenizer(s);
-    parse_reader(reader)
+    let mut reader = create_string_tokenizer(s);
+    parse_reader(&mut reader)
 }
 
 fn parse_reader(reader: &mut impl Tokenizer) -> Result<ProgramNode, QErrorNode> {
     match TopLevelTokensParser::new().parse(reader) {
-        Ok((_, opt_program)) => Ok(opt_program.unwrap_or_default()),
-        Err((reader, err)) => Err(ErrorEnvelope::Pos(err, reader.pos())),
+        Ok(opt_program) => Ok(opt_program.unwrap_or_default()),
+        Err(err) => Err(ErrorEnvelope::Pos(err, reader.pos())),
     }
 }
 

@@ -22,10 +22,8 @@ impl Parser for TopLevelTokensParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
-        let mut r = reader;
         loop {
-            let (tmp, opt_item) = r.read()?;
-            r = tmp;
+            let opt_item = reader.read()?;
             match opt_item {
                 Some(ch) => {
                     if ch == ' ' {
@@ -36,18 +34,18 @@ impl Parser for TopLevelTokensParser {
                         // if it is a comment, we are allowed to read it without a separator
                         let can_read = ch == '\'' || read_separator;
                         if !can_read {
-                            return Err((r, QError::SyntaxError(format!("No separator: {}", ch))));
+                            return Err(QError::SyntaxError(format!("No separator: {}", ch)));
                         }
-                        let (tmp, opt_top_level_token) =
-                            top_level_token_one_p().parse(r.undo_item(ch))?;
-                        r = tmp;
+                        reader.unread(ch);
+                        let opt_top_level_token =
+                            top_level_token_one_p().parse(reader)?;
                         match opt_top_level_token {
                             Some(top_level_token) => {
                                 top_level_tokens.push(top_level_token);
                                 read_separator = false;
                             }
                             _ => {
-                                return Err((r, QError::syntax_error("Expected: top level token")));
+                                return Err(QError::syntax_error("Expected: top level token"));
                             }
                         }
                     }
@@ -57,7 +55,7 @@ impl Parser for TopLevelTokensParser {
                 }
             }
         }
-        Ok((r, Some(top_level_tokens)))
+        Ok(Some(top_level_tokens))
     }
 }
 

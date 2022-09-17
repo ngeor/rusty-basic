@@ -6,6 +6,10 @@ use crate::common::QError;
 pub trait Parser {
     type Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
+
+    fn or<P>(self, other: P) -> OrParser<Self, P, Self::Output> where Self : Sized, P: Parser<Output = Self::Output> {
+        OrParser { left: self, right: other }
+    }
 }
 
 // TODO make a new trait for a Parser that is guaranteed to not return Ok(None)
@@ -64,7 +68,7 @@ pub fn filter_token_by_kind_opt<T: Copy>(kind: T) -> impl Parser<Output = Token>
 pub fn filter_token_by_kind<'a, T: Copy>(
     kind: T,
     err_msg: &'a str,
-) -> impl Parser<Item = Token> + 'a {
+) -> impl Parser<Output = Token> + 'a {
     FilterTokenByKindParser {
         kind,
         optional: false,
@@ -215,12 +219,12 @@ where
     right: R,
 }
 
-impl<L, R, T> Parser<Output = T> for OrParser<L, R, T>
+impl<L, R, T> Parser for OrParser<L, R, T>
 where
     L: Parser<Output = T>,
     R: Parser<Output = T>,
 {
-    type Output = ();
+    type Output = T;
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.left.parse(tokenizer)? {

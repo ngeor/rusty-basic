@@ -1,7 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{and, filter_token, filter_token_by_kind_opt, many_opt, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{item_p, whitespace_p};
+use crate::parser::specific::{item_p, TokenType, whitespace_p};
 
 pub struct StatementSeparator {
     comment_mode: bool,
@@ -97,4 +97,15 @@ impl Parser for EofOrStatementSeparator {
             }
         }
     }
+}
+
+fn eol_separator_p() -> impl Parser {
+    and(
+        filter_token_by_kind_opt(TokenType::Eol),
+    many_opt(eol_or_whitespace_opt())
+    )
+}
+
+fn eol_or_whitespace_opt() -> impl Parser {
+    filter_token(|token| Ok(token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32))
 }

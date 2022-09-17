@@ -8,6 +8,8 @@ pub trait Parser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
 }
 
+// TODO make a new trait for a Parser that is guaranteed to not return Ok(None)
+
 // FilterTokenByKindParser
 
 struct FilterTokenByKindParser<'a, T>

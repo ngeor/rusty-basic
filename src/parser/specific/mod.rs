@@ -317,3 +317,8 @@ pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser {
         Err(QError::SyntaxError(format!("Expected one of the following keywords: {}", "todo")))
     })
 }
+
+// TODO deprecate this
+pub fn identifier_without_dot_p() -> impl Parser {
+    filter_token_by_kind_opt(TokenType::Identifier)
+}

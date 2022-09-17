@@ -2,7 +2,7 @@ use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{item_p, keyword_p, whitespace_p};
+use crate::parser::specific::{in_parenthesis_p, item_p, keyword_p, whitespace_p};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -330,7 +330,7 @@ pub mod word {
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::specific::{in_parenthesis_p, item_p};
+    use crate::parser::specific::{identifier_without_dot_p, in_parenthesis_p, item_p};
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;
@@ -465,7 +465,7 @@ pub mod word {
                     let input = "abc";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
@@ -474,7 +474,7 @@ pub mod word {
                     let input = "A(1)";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)]))
@@ -491,7 +491,7 @@ pub mod word {
                     let input = "abc.";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
@@ -500,7 +500,7 @@ pub mod word {
                     let input = "abc..";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
@@ -509,7 +509,7 @@ pub mod word {
                     let input = "a.b.c";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::Property(
@@ -529,7 +529,7 @@ pub mod word {
                     let input = "a.b.c.";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved("a.b.c.")));
                 }
 
@@ -550,7 +550,7 @@ pub mod word {
                     let input = "A(1).Suit";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::Property(
@@ -575,7 +575,7 @@ pub mod word {
                     let input = "abc$";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
@@ -593,7 +593,7 @@ pub mod word {
                     let input = "A$(1)";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::func("A$".into(), vec![1.as_lit_expr(1, 4)]))
@@ -610,7 +610,7 @@ pub mod word {
                     let input = "a.b$";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::Property(
@@ -626,7 +626,7 @@ pub mod word {
                     let input = "a.b$(1)";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::func("a.b$".into(), vec![1.as_lit_expr(1, 6)]))
@@ -638,7 +638,7 @@ pub mod word {
                     let input = "abc.$";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
@@ -647,7 +647,7 @@ pub mod word {
                     let input = "abc..$";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
                 }
 
@@ -668,7 +668,7 @@ pub mod word {
                     let input = "A.B$(1)";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::func("A.B$".into(), vec![1.as_lit_expr(1, 6)]))

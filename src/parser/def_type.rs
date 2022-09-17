@@ -1,7 +1,8 @@
 use crate::common::QError;
-use crate::parser::base::parsers::Parser;
-use crate::parser::specific::{item_p, keyword_choice_p, whitespace_p};
+use crate::parser::base::parsers::{filter_token, Parser};
+use crate::parser::specific::{item_p, keyword_choice_p, TokenType, whitespace_p};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
+use crate::parser::base::tokenizers::Token;
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
 // DefKeyword   ::= DEFSNG|DEFDBL|DEFSTR|DEFINT|DEFLNG
@@ -43,13 +44,13 @@ fn letter_range_p() -> impl Parser<Output = LetterRange> {
 }
 
 fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
-    if_p(is_letter).map(|l| LetterRange::Single(l))
+    letter_opt().map(|l| LetterRange::Single(l))
 }
 
 fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
-    if_p(is_letter)
+    letter_opt()
         .and(item_p('-'))
-        .and_demand(if_p(is_letter).or_syntax_error("Expected: letter after dash"))
+        .and_demand(letter())
         .and_then(|((l, _), r)| {
             if l < r {
                 Ok(LetterRange::Range(l, r))
@@ -57,6 +58,21 @@ fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
                 Err(QError::syntax_error("Invalid letter range"))
             }
         })
+}
+
+fn letter() -> impl Parser {
+    filter_token(|token| if is_token_letter(token) { Ok(true) } else { Err(QError::syntax_error("Expected letter"))})
+}
+fn letter_opt() -> impl Parser {
+    filter_token(|token| Ok(is_token_letter(token)))
+}
+
+fn is_token_letter(token: &Token) -> bool {
+    token.kind == TokenType::Identifier as i32 && token.text.len() == 1 && is_letter(token.text.chars().next().unwrap())
+}
+
+fn is_letter(ch: char) -> bool {
+    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
 }
 
 #[cfg(test)]

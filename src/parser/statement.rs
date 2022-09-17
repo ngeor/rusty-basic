@@ -14,6 +14,7 @@ use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
+use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, keyword_p};
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;

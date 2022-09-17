@@ -3,8 +3,8 @@ use crate::parser::base::parsers::Parser;
 use crate::parser::statement;
 use crate::parser::statement_separator::StatementSeparator;
 use crate::parser::types::*;
-use std::marker::PhantomData;
 use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::specific::{item_p, whitespace_p};
 
 pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
     whitespace_p()

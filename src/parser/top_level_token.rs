@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::Tokenizer;

@@ -4,8 +4,8 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::statements;
 use crate::parser::types::*;
-use std::marker::PhantomData;
 use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::specific::{keyword_p, keyword_pair_p, whitespace_p};
 
 // SELECT CASE expr ' comment
 // CASE 1

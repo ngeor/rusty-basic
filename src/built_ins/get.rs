@@ -2,7 +2,7 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::parsers::Parser;
     use crate::parser::*;
-    use crate::parser::specific::item_p;
+    use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Get)

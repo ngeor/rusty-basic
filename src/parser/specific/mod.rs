@@ -45,7 +45,7 @@ pub enum TokenType {
     HexDigits,
 }
 
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 enum OctOrHex {
     Oct,
     Hex,
@@ -206,6 +206,14 @@ pub fn keyword_p(keyword: Keyword) -> impl Parser {
 
 pub fn keyword(keyword: Keyword) -> impl Parser {
     filter_token(|token| if token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str() { Ok(true) } else { Err(QError::SyntaxError(format!("Expected keyword {}", keyword))) })
+}
+
+// TODO deprecate this
+pub fn keyword_followed_by_whitespace_p(keyword: Keyword) -> impl Parser {
+    and(
+        keyword_p(keyword),
+        whitespace()
+    )
 }
 
 // TODO deprecate this

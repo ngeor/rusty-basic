@@ -1,8 +1,8 @@
-use crate::common::{HasLocation, QError};
 use crate::parser::base::parsers::Parser;
 use crate::parser::name::bare_name_p;
 use crate::parser::statement_separator::EofOrStatementSeparator;
 use crate::parser::{Keyword, ResumeOption, Statement};
+use crate::parser::specific::{keyword_p, whitespace_p};
 
 // RESUME
 // RESUME NEXT
@@ -21,7 +21,7 @@ fn resume_option_p() -> impl Parser<Output = ResumeOption> {
 }
 
 fn blank_resume() -> impl Parser<Output = ResumeOption> {
-    EofOrStatementSeparator::<R>::new()
+    EofOrStatementSeparator::new()
         .peek()
         .map(|_| ResumeOption::Bare)
 }

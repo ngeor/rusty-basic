@@ -1,6 +1,6 @@
-use crate::common::{HasLocation, QError};
 use crate::parser::base::parsers::Parser;
 use crate::parser::{dim_name, DimList, Keyword, Statement};
+use crate::parser::specific::keyword_followed_by_whitespace_p;
 
 /// Parses DIM statement
 pub fn dim_p() -> impl Parser<Output = Statement> {

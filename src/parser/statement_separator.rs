@@ -1,7 +1,7 @@
 use crate::common::QError;
 use crate::parser::base::parsers::Parser;
-use std::marker::PhantomData;
 use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::specific::{item_p, whitespace_p};
 
 pub struct StatementSeparator {
     comment_mode: bool,

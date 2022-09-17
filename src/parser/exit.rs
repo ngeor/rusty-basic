@@ -1,6 +1,6 @@
-use crate::common::{HasLocation, QError};
 use crate::parser::base::parsers::Parser;
 use crate::parser::{ExitObject, Keyword, Statement};
+use crate::parser::specific::keyword_followed_by_whitespace_p;
 
 pub fn statement_exit_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Exit)

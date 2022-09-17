@@ -6,7 +6,7 @@ use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
-use crate::parser::specific::TokenType;
+use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_p, TokenType, whitespace_p};
 use crate::parser::types::*;
 
 // Parses a declared name. Possible options:

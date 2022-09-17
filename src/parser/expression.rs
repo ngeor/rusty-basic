@@ -1,9 +1,8 @@
-use std::marker::PhantomData;
-
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::specific::{item_p, keyword_p, whitespace_p};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -206,6 +205,7 @@ mod string_literal {
 mod number_literal {
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
+    use crate::parser::specific::item_p;
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
@@ -333,6 +333,7 @@ pub mod word {
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;
+    use crate::parser::specific::item_p;
 
     pub fn word_p() -> impl Parser<Output = Expression> {
         name_with_dot_p()

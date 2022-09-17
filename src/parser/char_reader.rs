@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor};
 
 use crate::common::{HasLocation, Location, QError};
-use crate::parser::pc::{Reader, ReaderResult};
 
 /// Reads one character at a time out of a `BufRead`.
 ///

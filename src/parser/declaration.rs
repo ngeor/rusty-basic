@@ -1,8 +1,7 @@
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{in_parenthesis_p, keyword_followed_by_whitespace_p, PcSpecific};
 use crate::parser::types::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
@@ -16,10 +15,7 @@ use crate::parser::types::*;
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
-pub fn declaration_p<R>() -> impl Parser<R, Output = TopLevelToken>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
     keyword_followed_by_whitespace_p(Keyword::Declare)
         .and_demand(
             function_declaration_p()
@@ -30,10 +26,7 @@ where
         .keep_right()
 }
 
-pub fn function_declaration_p<R>() -> impl Parser<R, Output = (NameNode, ParamNameNodes)>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNodes)> {
     keyword_followed_by_whitespace_p(Keyword::Function)
         .and_demand(
             name::name_with_dot_p()
@@ -47,10 +40,7 @@ where
         })
 }
 
-pub fn sub_declaration_p<R>() -> impl Parser<R, Output = (BareNameNode, ParamNameNodes)>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes)> {
     keyword_followed_by_whitespace_p(Keyword::Sub)
         .and_demand(
             name::bare_name_p()
@@ -62,10 +52,7 @@ where
         .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
 }
 
-fn declaration_parameters_p<R>() -> impl Parser<R, Output = ParamNameNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {
     in_parenthesis_p(param_name_node_p().csv().map_none_to_default())
 }
 

@@ -1,14 +1,11 @@
 use crate::common::*;
-use crate::parser::pc::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::statement;
 use crate::parser::statement_separator::StatementSeparator;
 use crate::parser::types::*;
 use std::marker::PhantomData;
 
-pub fn single_line_non_comment_statements_p<R>() -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
     whitespace_p()
         .and(
             statement::single_line_non_comment_statement_p()
@@ -21,10 +18,7 @@ where
         .keep_right()
 }
 
-pub fn single_line_statements_p<R>() -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
     whitespace_p()
         .and(
             statement::single_line_statement_p()
@@ -40,10 +34,9 @@ where
 // When `zero_or_more_statements_p` is called, it must always read first the first statement separator.
 // `top_level_token` handles the case where the first statement does not start with
 // a separator.
-pub fn zero_or_more_statements_p<R, S>(exit_source: S) -> impl Parser<R, Output = StatementNodes>
+pub fn zero_or_more_statements_p<S>(exit_source: S) -> impl Parser<Output = StatementNodes>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + Undo<S::Output> + 'static,
-    S: Parser<R> + 'static,
+    S: Parser,
 {
     // first separator
     // loop
@@ -60,21 +53,15 @@ where
         .keep_right()
 }
 
-struct StatementAndSeparator<R>(PhantomData<R>);
+struct StatementAndSeparator;
 
-impl<R> StatementAndSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation,
-{
+impl StatementAndSeparator {
     pub fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 }
 
-impl<R> Parser<R> for StatementAndSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for StatementAndSeparator {
     type Output = StatementNode;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {

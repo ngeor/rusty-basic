@@ -1,12 +1,9 @@
 use crate::common::*;
-use crate::parser::pc::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::types::*;
 
 /// Tries to read a comment.
-pub fn comment_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn comment_p() -> impl Parser<Output = Statement> {
     item_p('\'')
         .and_opt(non_eol_p())
         .keep_right()
@@ -14,10 +11,7 @@ where
 }
 
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p<R>() -> impl Parser<R, Output = Vec<Locatable<String>>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> {
     eol_or_whitespace_p()
         .map_none_to_default()
         .and_opt(
@@ -33,9 +27,6 @@ where
         .keep_middle()
         .map(|x| x.unwrap_or_default())
 }
-
-// A sequence of any characters that are not EOL
-crate::char_sequence_p!(NonEolSequence, non_eol_p, is_not_eol);
 
 fn is_not_eol(ch: char) -> bool {
     !is_eol(ch)

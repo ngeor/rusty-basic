@@ -43,23 +43,16 @@
 // Type must be defined Before DECLARE SUB
 
 use crate::common::{HasLocation, Locatable, QError};
+use crate::parser::base::parsers::Parser;
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{
-    demand_keyword_pair_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p,
-    PcSpecific,
-};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
 };
 
-pub fn user_defined_type_p<R>() -> impl Parser<R, Output = UserDefinedType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
     keyword_followed_by_whitespace_p(Keyword::Type)
         .and_demand(
             bare_name_without_dot_p()
@@ -74,10 +67,7 @@ where
         })
 }
 
-fn bare_name_without_dot_p<R>() -> impl Parser<R, Output = BareName>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
     name::name_with_dot_p().and_then(|n| match n {
         Name::Bare(b) => {
             if b.contains('.') {
@@ -92,19 +82,13 @@ where
     })
 }
 
-fn element_nodes_p<R>() -> impl Parser<R, Output = Vec<ElementNode>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> {
     element_node_p()
         .one_or_more()
         .or(static_err_p(QError::ElementNotDefined))
 }
 
-fn element_node_p<R>() -> impl Parser<R, Output = ElementNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn element_node_p() -> impl Parser<Output = ElementNode> {
     bare_name_without_dot_p()
         .with_pos()
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after element name"))
@@ -118,10 +102,7 @@ where
         )
 }
 
-fn element_type_p<R>() -> impl Parser<R, Output = ElementType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn element_type_p() -> impl Parser<Output = ElementType> {
     keyword_choice_p(&[
         Keyword::Integer,
         Keyword::Long,
@@ -149,10 +130,7 @@ where
         .map(|n| ElementType::UserDefined(n)))
 }
 
-fn demand_string_length_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> {
     expression::demand_expression_node_p("Expected: string length").and_then(
         |Locatable { element, pos }| match element {
             Expression::IntegerLiteral(i) => {

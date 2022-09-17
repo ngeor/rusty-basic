@@ -1,26 +1,23 @@
 use std::marker::PhantomData;
 
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
-use crate::parser::pc::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
 
-pub struct TopLevelTokensParser<R>(PhantomData<R>);
+pub struct TopLevelTokensParser;
 
-impl<R> TopLevelTokensParser<R> {
+impl TopLevelTokensParser {
     pub fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 }
 
-impl<R> Parser<R> for TopLevelTokensParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for TopLevelTokensParser {
     type Output = ProgramNode;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -65,10 +62,7 @@ where
     }
 }
 
-fn top_level_token_one_p<R>() -> impl Parser<R, Output = TopLevelTokenNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
     def_type::def_type_p()
         .map(TopLevelToken::DefType)
         .or(declaration::declaration_p())

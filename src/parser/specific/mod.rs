@@ -1,8 +1,8 @@
 use crate::parser::base::parsers::*;
 use crate::parser::base::recognizers::*;
 use crate::parser::base::tokenizers::*;
-use crate::parser::pc::{is_digit, is_letter};
 use crate::parser::Statement;
+use std::str::Chars;
 
 /// specific module contains implementation that mirrors the base module
 /// but it is specific to QBasic
@@ -14,6 +14,7 @@ pub enum TokenType {
     Digits,
     LParen,
     RParen,
+    Colon,
     Comma,
     SingleQuote,
     DoubleQuote,
@@ -34,9 +35,110 @@ pub enum TokenType {
     Percent,
     Keyword,
     Identifier,
+    OctDigits,
+    HexDigits,
 }
 
 const KEYWORDS: [&str; 4] = ["DIM", "GOSUB", "INPUT", "PRINT"];
+
+#[derive(Copy)]
+enum OctOrHex {
+    Oct,
+    Hex,
+}
+
+impl From<OctOrHex> for char {
+    fn from(value: OctOrHex) -> Self {
+        match value {
+            OctOrHex::Oct => 'O',
+            OctOrHex::Hex => 'H',
+        }
+    }
+}
+
+impl OctOrHex {
+    fn is_digit(&self, ch: char) -> bool {
+        match self {
+            Self::Oct => ch >= '0' && ch <= '7',
+            Self::Hex => {
+                (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
+            }
+        }
+    }
+}
+
+struct OctHexDigitsRecognizer {
+    mode: OctOrHex,
+}
+
+impl Recognizer for OctHexDigitsRecognizer {
+    fn recognize(&self, buffer: &str) -> Recognition {
+        let mut chars = buffer.chars();
+        match chars.next() {
+            Some('&') => self.after_ampersand(&mut chars),
+            _ => Recognition::Negative,
+        }
+    }
+}
+
+impl OctHexDigitsRecognizer {
+    fn after_ampersand(&self, chars: &mut Chars) -> Recognition {
+        match chars.next() {
+            Some(ch) => {
+                let needle: char = self.mode.into();
+                if ch == needle {
+                    self.after_radix(chars)
+                } else {
+                    Recognition::Negative
+                }
+            }
+            None => Recognition::Partial,
+        }
+    }
+
+    fn after_radix(&self, chars: &mut Chars) -> Recognition {
+        // might be a negative sign, which will lead into Overflow,
+        // but needs to be recognized anyway
+        match chars.next() {
+            Some(ch) => {
+                if ch == '-' {
+                    self.after_minus(chars)
+                } else {
+                    self.first_possible_digit(chars, ch)
+                }
+            }
+            None => Recognition::Partial,
+        }
+    }
+
+    fn after_minus(&self, chars: &mut Chars) -> Recognition {
+        match chars.next() {
+            Some(ch) => self.first_possible_digit(chars, ch),
+            None => Recognition::Partial,
+        }
+    }
+
+    fn first_possible_digit(&self, chars: &mut Chars, first: char) -> Recognition {
+        if self.mode.is_digit(first) {
+            self.next_possible_digit(chars)
+        } else {
+            Recognition::Negative
+        }
+    }
+
+    fn next_possible_digit(&self, chars: &mut Chars) -> Recognition {
+        match chars.next() {
+            Some(ch) => {
+                if self.mode.is_digit(ch) {
+                    self.next_possible_digit(chars)
+                } else {
+                    Recognition::Negative
+                }
+            }
+            None => Recognition::Positive,
+        }
+    }
+}
 
 pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
     vec![
@@ -46,6 +148,7 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
         Box::new(many_digits_recognizer()),
         Box::new(single_char_recognizer('(')),
         Box::new(single_char_recognizer(')')),
+        Box::new(single_char_recognizer(':')),
         Box::new(single_char_recognizer(',')),
         Box::new(single_char_recognizer('\'')),
         Box::new(single_char_recognizer('"')),
@@ -68,6 +171,12 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
         Box::new(leading_remaining_recognizer(is_letter, |ch| {
             is_letter(ch) || is_digit(ch)
         })),
+        Box::new(OctHexDigitsRecognizer {
+            mode: OctOrHex::Oct,
+        }),
+        Box::new(OctHexDigitsRecognizer {
+            mode: OctOrHex::Hex,
+        }),
     ]
 }
 
@@ -86,15 +195,15 @@ fn keyword_opt(needle: &str) -> impl Parser<Item = Token> + '_ {
 }
 
 fn whitespace() -> impl Parser<Item = Token> {
-    filter_token_by_kind(TokenType::WhiteSpace as i32, "Expected whitespace")
+    filter_token_by_kind(TokenType::WhiteSpace, "Expected whitespace")
 }
 
 fn whitespace_opt() -> impl Parser<Item = Token> {
-    filter_token_by_kind_opt(TokenType::WhiteSpace as i32)
+    filter_token_by_kind_opt(TokenType::WhiteSpace)
 }
 
 fn identifier() -> impl Parser<Item = Token> {
-    filter_token_by_kind(TokenType::Identifier as i32, "Expected identifier")
+    filter_token_by_kind(TokenType::Identifier, "Expected identifier")
 }
 
 // fn expression() -> impl Parser {

@@ -1,6 +1,5 @@
 use crate::common::{HasLocation, QError};
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_choice_p, PcSpecific};
+use crate::parser::base::parsers::Parser;
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
@@ -9,10 +8,7 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-pub fn def_type_p<R>() -> impl Parser<R, Output = DefType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn def_type_p() -> impl Parser<Output = DefType> {
     def_keyword_p()
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after DEF-type"))
         .and_demand(
@@ -23,10 +19,7 @@ where
         .map(|((l, _), r)| DefType::new(l, r))
 }
 
-fn def_keyword_p<R>() -> impl Parser<R, Output = TypeQualifier>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
     keyword_choice_p(&[
         Keyword::DefDbl,
         Keyword::DefInt,
@@ -44,24 +37,15 @@ where
     })
 }
 
-fn letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn letter_range_p() -> impl Parser<Output = LetterRange> {
     two_letter_range_p().or(single_letter_range_p())
 }
 
-fn single_letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation,
-{
+fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
     if_p(is_letter).map(|l| LetterRange::Single(l))
 }
 
-fn two_letter_range_p<R>() -> impl Parser<R, Output = LetterRange>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
     if_p(is_letter)
         .and(item_p('-'))
         .and_demand(if_p(is_letter).or_syntax_error("Expected: letter after dash"))

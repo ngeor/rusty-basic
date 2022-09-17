@@ -1,6 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::identifier_with_dot;
+use crate::parser::base::parsers::Parser;
 use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 use std::str::FromStr;
@@ -11,10 +10,7 @@ use std::str::FromStr;
 ///
 /// The parser validates the maximum length of the name and checks that the name
 /// is not a keyword (with the exception of strings, e.g. `end$`).
-pub fn name_with_dot_p<R>() -> impl Parser<R, Output = Name>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
+pub fn name_with_dot_p() -> impl Parser<Output = Name> {
     identifier_with_dot()
         .validate(|n| {
             if n.len() > MAX_LENGTH {
@@ -46,20 +42,14 @@ where
 
 // bare name node
 
-pub fn bare_name_p<R>() -> impl Parser<R, Output = BareName>
-where
-    R: Reader<Item = char, Err = QError>,
-{
+pub fn bare_name_p() -> impl Parser<Output = BareName> {
     any_word_with_dot_p().unless_followed_by(type_qualifier_p())
 }
 
 pub const MAX_LENGTH: usize = 40;
 
 /// Reads any word, i.e. any identifier which is not a keyword.
-pub fn any_word_with_dot_p<R>() -> impl Parser<R, Output = BareName>
-where
-    R: Reader<Item = char, Err = QError>,
-{
+pub fn any_word_with_dot_p() -> impl Parser<Output = BareName> {
     identifier_with_dot()
         .validate(ensure_length_and_not_keyword)
         .map(|x| x.into())

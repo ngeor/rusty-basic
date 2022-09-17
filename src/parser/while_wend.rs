@@ -1,14 +1,10 @@
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::expression::guarded_expression_node_p;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::statements::*;
 use crate::parser::types::*;
 
-pub fn while_wend_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn while_wend_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::While)
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after WHILE"))
         .and_demand(zero_or_more_statements_p(keyword_p(Keyword::Wend)))

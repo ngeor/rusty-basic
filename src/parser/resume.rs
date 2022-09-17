@@ -1,7 +1,6 @@
 use crate::common::{HasLocation, QError};
+use crate::parser::base::parsers::Parser;
 use crate::parser::name::bare_name_p;
-use crate::parser::pc::{whitespace_p, BinaryParser, Parser, Reader, UnaryFnParser, UnaryParser};
-use crate::parser::pc_specific::{keyword_p, PcSpecific};
 use crate::parser::statement_separator::EofOrStatementSeparator;
 use crate::parser::{Keyword, ResumeOption, Statement};
 
@@ -9,10 +8,7 @@ use crate::parser::{Keyword, ResumeOption, Statement};
 // RESUME NEXT
 // RESUME label
 
-pub fn statement_resume_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn statement_resume_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::Resume)
         .and_demand(
             resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
@@ -20,35 +16,23 @@ where
         .map(|(_, r)| Statement::Resume(r))
 }
 
-fn resume_option_p<R>() -> impl Parser<R, Output = ResumeOption>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn resume_option_p() -> impl Parser<Output = ResumeOption> {
     blank_resume().or(resume_next()).or(resume_label())
 }
 
-fn blank_resume<R>() -> impl Parser<R, Output = ResumeOption>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn blank_resume() -> impl Parser<Output = ResumeOption> {
     EofOrStatementSeparator::<R>::new()
         .peek()
         .map(|_| ResumeOption::Bare)
 }
 
-fn resume_next<R>() -> impl Parser<R, Output = ResumeOption>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn resume_next() -> impl Parser<Output = ResumeOption> {
     whitespace_p()
         .and(keyword_p(Keyword::Next))
         .map(|_| ResumeOption::Next)
 }
 
-fn resume_label<R>() -> impl Parser<R, Output = ResumeOption>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn resume_label() -> impl Parser<Output = ResumeOption> {
     whitespace_p()
         .and(bare_name_p())
         .map(|(_, r)| ResumeOption::Label(r))

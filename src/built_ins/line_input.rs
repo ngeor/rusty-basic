@@ -1,14 +1,10 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
+    use crate::parser::base::parsers::Parser;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair_p(Keyword::Line, Keyword::Input)
             .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LINE INPUT"))
             .and_opt(expression::file_handle_comma_p())

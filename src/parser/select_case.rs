@@ -1,8 +1,7 @@
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, keyword_pair_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 use std::marker::PhantomData;
@@ -19,10 +18,7 @@ use std::marker::PhantomData;
 // CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
-pub fn select_case_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn select_case_p() -> impl Parser<Output = Statement> {
     select_case_expr_p()
         .and_opt(comment::comments_and_whitespace_p())
         .and_opt(case_blocks())
@@ -41,10 +37,7 @@ where
 }
 
 /// Parses the `SELECT CASE expression` part
-fn select_case_expr_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
     keyword_pair_p(Keyword::Select, Keyword::Case)
         .and_demand(
             expression::guarded_expression_node_p()
@@ -71,19 +64,13 @@ where
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks<R>() -> impl Parser<R, Output = Vec<CaseBlockNode>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    CaseBlockParser::<R>::new().one_or_more()
+fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
+    CaseBlockParser::new().one_or_more()
 }
 
-struct CaseBlockParser<R>(PhantomData<R>);
+struct CaseBlockParser;
 
-impl<R> Parser<R> for CaseBlockParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for CaseBlockParser {
     type Output = CaseBlockNode;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -110,15 +97,12 @@ where
     }
 }
 
-impl<R> CaseBlockParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl CaseBlockParser {
     fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 
-    fn continue_after_case() -> impl Parser<R, Output = CaseBlockNode> {
+    fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
         case_expression_list()
             .and_demand(statements::zero_or_more_statements_p(
                 keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
@@ -130,19 +114,13 @@ where
     }
 }
 
-fn case_expression_list<R>() -> impl Parser<R, Output = Vec<CaseExpression>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
     CaseExpressionParser::new().csv()
 }
 
-struct CaseExpressionParser<R>(PhantomData<R>);
+struct CaseExpressionParser;
 
-impl<R> Parser<R> for CaseExpressionParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for CaseExpressionParser {
     type Output = CaseExpression;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -158,15 +136,12 @@ where
     }
 }
 
-impl<R> CaseExpressionParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl CaseExpressionParser {
     fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 
-    fn case_is() -> impl Parser<R, Output = CaseExpression> {
+    fn case_is() -> impl Parser<Output = CaseExpression> {
         keyword_p(Keyword::Is)
             .and_opt(whitespace_p())
             .and_demand(
@@ -181,12 +156,9 @@ where
     }
 }
 
-struct SimpleOrRangeParser<R>(PhantomData<R>);
+struct SimpleOrRangeParser;
 
-impl<R> Parser<R> for SimpleOrRangeParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for SimpleOrRangeParser {
     type Output = CaseExpression;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -215,16 +187,13 @@ where
     }
 }
 
-impl<R> SimpleOrRangeParser<R> {
+impl SimpleOrRangeParser {
     fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 }
 
-fn case_else<R>() -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn case_else() -> impl Parser<Output = StatementNodes> {
     keyword_pair_p(Keyword::Case, Keyword::Else)
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::End,

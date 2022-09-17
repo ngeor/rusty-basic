@@ -1,14 +1,10 @@
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::expression::guarded_expression_node_p;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_choice_p, keyword_p, PcSpecific};
 use crate::parser::statements::*;
 use crate::parser::types::*;
 
-pub fn do_loop_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn do_loop_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::Do)
         .and_demand(
             do_condition_top()
@@ -19,10 +15,7 @@ where
         .map(Statement::DoLoop)
 }
 
-fn do_condition_top<R>() -> impl Parser<R, Output = DoLoopNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
     whitespace_p()
         .and(keyword_choice_p(&[Keyword::Until, Keyword::While]))
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
@@ -40,10 +33,7 @@ where
         })
 }
 
-fn do_condition_bottom<R>() -> impl Parser<R, Output = DoLoopNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> {
     zero_or_more_statements_p(keyword_p(Keyword::Loop))
         .and_demand(keyword_p(Keyword::Loop).or_syntax_error("DO without LOOP"))
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LOOP"))

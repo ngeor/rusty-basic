@@ -1,14 +1,10 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
+    use crate::parser::base::parsers::Parser;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair_p(Keyword::View, Keyword::Print)
             .and_opt(parse_args())
             .keep_right()
@@ -17,10 +13,7 @@ pub mod parser {
             })
     }
 
-    fn parse_args<R>() -> impl Parser<R, Output = ExpressionNodes>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn parse_args() -> impl Parser<Output = ExpressionNodes> {
         expression::back_guarded_expression_node_p()
             .and_demand(keyword_p(Keyword::To).or_syntax_error("Expected: TO"))
             .and_demand(

@@ -1,6 +1,6 @@
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::expression;
-use crate::parser::pc::*;
 use crate::parser::types::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
@@ -8,19 +8,13 @@ use crate::parser::types::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 
-pub fn sub_call_or_assignment_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
     SubCallOrAssignment {}
 }
 
 pub struct SubCallOrAssignment {}
 
-impl<R> Parser<R> for SubCallOrAssignment
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for SubCallOrAssignment {
     type Output = Statement;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -56,10 +50,7 @@ where
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign<R>() -> impl Parser<R, Output = (Expression, Option<char>)>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<char>)> {
         expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
     }
 }

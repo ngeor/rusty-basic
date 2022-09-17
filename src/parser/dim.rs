@@ -1,13 +1,9 @@
 use crate::common::{HasLocation, QError};
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, PcSpecific};
+use crate::parser::base::parsers::Parser;
 use crate::parser::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement
-pub fn dim_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn dim_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Dim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(
@@ -24,10 +20,7 @@ where
 }
 
 /// Parses REDIM statement
-pub fn redim_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn redim_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Redim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(

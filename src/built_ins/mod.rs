@@ -410,14 +410,11 @@ impl BuiltInSub {
 
 pub mod parser {
     use crate::common::*;
-    use crate::parser::pc::*;
+    use crate::parser::base::parsers::Parser;
     use crate::parser::{Expression, Statement};
 
     /// Parses built-in subs which have a special syntax.
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         crate::built_ins::close::parser::parse()
             .or(crate::built_ins::color::parser::parse())
             .or(crate::built_ins::data::parser::parse())
@@ -438,10 +435,7 @@ pub mod parser {
 
     // needed for built-in functions that are also keywords (e.g. LEN), so they
     // cannot be parsed by the `word` module.
-    pub fn built_in_function_call_p<R>() -> impl Parser<R, Output = Expression>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn built_in_function_call_p() -> impl Parser<Output = Expression> {
         crate::built_ins::len::parser::parse().or(crate::built_ins::string_fn::parser::parse())
     }
 }

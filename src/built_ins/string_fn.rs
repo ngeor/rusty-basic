@@ -1,14 +1,10 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
     use crate::common::*;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
+    use crate::parser::base::parsers::Parser;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Expression>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::String_)
             .and(item_p('$'))
             .and_demand(

@@ -1,13 +1,9 @@
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::expression;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
-pub fn parse_print_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn parse_print_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::Print)
             .and_opt(ws_file_handle_comma_p())
             .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
@@ -29,10 +25,7 @@ where
             })
 }
 
-pub fn parse_lprint_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::LPrint)
         .and_opt(using_p(true))
         .and_opt_factory(|(_keyword, opt_using)| {
@@ -53,10 +46,7 @@ where
         })
 }
 
-fn using_p<R>(needs_leading_whitespace: bool) -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn using_p(needs_leading_whitespace: bool) -> impl Parser<Output = ExpressionNode> {
     opt_whitespace_p(needs_leading_whitespace)
         .and(keyword_p(Keyword::Using))
         .and_demand(
@@ -68,12 +58,9 @@ where
         .keep_right()
 }
 
-fn first_print_arg_p<R>(
+fn first_print_arg_p(
     needs_leading_whitespace_for_expression: bool,
-) -> impl Parser<R, Output = PrintArg>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+) -> impl Parser<Output = PrintArg> {
     FirstPrintArg {
         needs_leading_whitespace_for_expression,
     }
@@ -83,10 +70,7 @@ struct FirstPrintArg {
     needs_leading_whitespace_for_expression: bool,
 }
 
-impl<R> Parser<R> for FirstPrintArg
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for FirstPrintArg {
     type Output = PrintArg;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -101,18 +85,12 @@ where
     }
 }
 
-fn any_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
     semicolon_or_comma_as_print_arg_p()
         .or(expression::expression_node_p().map(|e| PrintArg::Expression(e)))
 }
 
-fn semicolon_or_comma_as_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation,
-{
+fn semicolon_or_comma_as_print_arg_p() -> impl Parser<Output = PrintArg> {
     any_p()
         .filter_reader_item(|ch| ch == ';' || ch == ',')
         .map(|ch| match ch {
@@ -126,10 +104,7 @@ struct PrintArgLookingBack {
     prev_print_arg_was_expression: bool,
 }
 
-impl<R> Parser<R> for PrintArgLookingBack
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for PrintArgLookingBack {
     type Output = PrintArg;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -145,10 +120,7 @@ where
     }
 }
 
-fn ws_file_handle_comma_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     whitespace_p()
         .and(expression::file_handle_p())
         .and_demand(

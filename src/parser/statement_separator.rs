@@ -1,24 +1,14 @@
 use crate::common::QError;
-use crate::parser::pc::{
-    is_eol, is_eol_or_whitespace, is_whitespace, item_p, whitespace_p, BinaryParser, Parser,
-    Reader, ReaderResult, UnaryFnParser, UnaryParser,
-};
+use crate::parser::base::parsers::Parser;
 use std::marker::PhantomData;
 
-pub struct StatementSeparator<R> {
-    phantom_reader: PhantomData<R>,
+pub struct StatementSeparator {
     comment_mode: bool,
 }
 
-impl<R> StatementSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
+impl StatementSeparator {
     pub fn new(comment_mode: bool) -> Self {
-        Self {
-            phantom_reader: PhantomData,
-            comment_mode,
-        }
+        Self { comment_mode }
     }
 
     fn parse_comment(&self, reader: R, mut buf: String) -> ReaderResult<R, String, R::Err> {
@@ -46,10 +36,7 @@ where
     }
 }
 
-impl<R> Parser<R> for StatementSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
+impl Parser for StatementSeparator {
     type Output = String;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -65,42 +52,22 @@ where
 }
 
 // '\'' (undoing it)
-fn comment_separator_p<R>() -> impl Parser<R, Output = String>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
+fn comment_separator_p<R>() -> impl Parser<Output = String> {
     // not adding the ' character in the resulting string because it was already undone
     item_p('\'').peek_reader_item().map(|_| String::new())
 }
 
-// ':' <ws>*
-crate::char_sequence_p!(ColonOptWs, colon_separator_p, is_colon, is_whitespace);
-fn is_colon(ch: char) -> bool {
-    ch == ':'
-}
-
-// <eol> < ws | eol >*
-crate::char_sequence_p!(
-    EolFollowedByEolOrWhitespace,
-    eol_separator_p,
-    is_eol,
-    is_eol_or_whitespace
-);
-
 /// A parser that succeeds on EOF, EOL, colon and comment.
 /// Does not undo anything.
-pub struct EofOrStatementSeparator<R>(PhantomData<R>);
+pub struct EofOrStatementSeparator;
 
-impl<R> EofOrStatementSeparator<R> {
+impl EofOrStatementSeparator {
     pub fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 }
 
-impl<R> Parser<R> for EofOrStatementSeparator<R>
-where
-    R: Reader<Item = char>,
-{
+impl Parser for EofOrStatementSeparator {
     type Output = String;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {

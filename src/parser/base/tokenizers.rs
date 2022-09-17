@@ -41,6 +41,14 @@ pub struct Token {
 
 pub type TokenList = Vec<Token>;
 
+pub fn token_list_to_string(list: TokenList) -> String {
+    let mut result = String::new();
+    for token in list {
+        result.push_str(&token.text);
+    }
+    result
+}
+
 pub trait Tokenizer {
     fn read(&mut self) -> std::io::Result<Option<Token>>;
     fn unread(&mut self, token: Token);

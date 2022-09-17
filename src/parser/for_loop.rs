@@ -1,7 +1,6 @@
 use crate::common::{HasLocation, QError};
+use crate::parser::base::parsers::Parser;
 use crate::parser::expression;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -9,10 +8,7 @@ use crate::parser::types::*;
 // statements
 // NEXT (I)
 
-pub fn for_loop_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn for_loop_p() -> impl Parser<Output = Statement> {
     parse_for_step_p()
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::Next,
@@ -36,18 +32,14 @@ where
 }
 
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part
-fn parse_for_step_p<R>() -> impl Parser<
-    R,
+fn parse_for_step_p() -> impl Parser<
     Output = (
         ExpressionNode,
         ExpressionNode,
         ExpressionNode,
         Option<ExpressionNode>,
     ),
->
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+> {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
             opt_whitespace_p(!upper.is_parenthesis())
@@ -62,10 +54,7 @@ where
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p<R>() -> impl Parser<R, Output = (ExpressionNode, ExpressionNode, ExpressionNode)>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
     keyword_followed_by_whitespace_p(Keyword::For)
         .and_demand(
             expression::word::word_p()
@@ -89,10 +78,7 @@ where
         .map(|(((((_, n), _), l), _), u)| (n, l, u))
 }
 
-fn next_counter_p<R>() -> impl Parser<R, Output = Option<ExpressionNode>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn next_counter_p() -> impl Parser<Output = Option<ExpressionNode>> {
     keyword_p(Keyword::Next)
         .and_opt(whitespace_p().and(expression::word::word_p().with_pos()))
         .map(|(_, opt_right)| opt_right.map(|(_, r)| r))

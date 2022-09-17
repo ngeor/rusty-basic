@@ -4,25 +4,31 @@ use crate::common::QError;
 // Parser
 
 pub trait Parser {
-    type Item;
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError>;
+    type Output;
+    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
 }
 
 // FilterTokenByKindParser
 
-struct FilterTokenByKindParser<'a> {
-    kind: i32,
+struct FilterTokenByKindParser<'a, T>
+where
+    T: Copy,
+{
+    kind: T,
     optional: bool,
     err_msg: &'a str,
 }
 
-impl<'a> Parser for FilterTokenByKindParser<'a> {
-    type Item = Token;
+impl<'a, T> Parser for FilterTokenByKindParser<'a, T>
+where
+    T: Copy,
+{
+    type Output = Token;
 
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
+    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match source.read() {
             Ok(Some(token)) => {
-                if token.kind == self.kind {
+                if token.kind == self.kind as i32 {
                     Ok(Some(token))
                 } else {
                     if self.optional {
@@ -45,7 +51,7 @@ impl<'a> Parser for FilterTokenByKindParser<'a> {
     }
 }
 
-pub fn filter_token_by_kind_opt(kind: i32) -> impl Parser<Item = Token> {
+pub fn filter_token_by_kind_opt<T: Copy>(kind: T) -> impl Parser<Item = Token> {
     FilterTokenByKindParser {
         kind,
         optional: true,
@@ -53,7 +59,10 @@ pub fn filter_token_by_kind_opt(kind: i32) -> impl Parser<Item = Token> {
     }
 }
 
-pub fn filter_token_by_kind<'a>(kind: i32, err_msg: &'a str) -> impl Parser<Item = Token> + 'a {
+pub fn filter_token_by_kind<'a, T: Copy>(
+    kind: T,
+    err_msg: &'a str,
+) -> impl Parser<Item = Token> + 'a {
     FilterTokenByKindParser {
         kind,
         optional: false,
@@ -74,9 +83,9 @@ impl<P> Parser for FilterTokenParser<P>
 where
     P: Fn(&Token) -> bool,
 {
-    type Item = Token;
+    type Output = Token;
 
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
+    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match source.read() {
             Ok(Some(token)) => {
                 if (self.predicate)(&token) {
@@ -92,7 +101,7 @@ where
     }
 }
 
-pub fn filter_token<P: Fn(&Token) -> bool>(predicate: P) -> impl Parser<Item = Token> {
+pub fn filter_token<P: Fn(&Token) -> bool>(predicate: P) -> impl Parser<Output = Token> {
     FilterTokenParser { predicate }
 }
 
@@ -101,7 +110,7 @@ pub fn filter_token<P: Fn(&Token) -> bool>(predicate: P) -> impl Parser<Item = T
 struct MapParser<P, M, U>
 where
     P: Parser,
-    M: Fn(P::Item) -> U,
+    M: Fn(P::Output) -> U,
 {
     parser: P,
     mapper: M,
@@ -110,11 +119,11 @@ where
 impl<P, M, U> Parser for MapParser<P, M, U>
 where
     P: Parser,
-    M: Fn(P::Item) -> U,
+    M: Fn(P::Output) -> U,
 {
-    type Item = U;
+    type Output = U;
 
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
+    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.parser.parse(source) {
             Ok(Some(x)) => Ok(Some((self.mapper)(x))),
             Ok(None) => Ok(None),
@@ -123,10 +132,10 @@ where
     }
 }
 
-pub fn map<P, M, U>(parser: P, mapper: M) -> impl Parser<Item = U>
+pub fn map<P, M, U>(parser: P, mapper: M) -> impl Parser<Output = U>
 where
     P: Parser,
-    M: Fn(P::Item) -> U,
+    M: Fn(P::Output) -> U,
 {
     MapParser { parser, mapper }
 }
@@ -147,9 +156,9 @@ where
     L: Parser,
     R: Parser,
 {
-    type Item = (L::Item, R::Item);
+    type Output = (L::Output, R::Output);
 
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Item>, QError> {
+    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.left.parse(source)? {
             Some(first) => {
                 match self.right.parse(source)? {
@@ -168,7 +177,7 @@ where
     }
 }
 
-pub fn and<L, R>(left: L, right: R) -> impl Parser<Item = (L::Item, R::Item)>
+pub fn and<L, R>(left: L, right: R) -> impl Parser<Output = (L::Output, R::Output)>
 where
     L: Parser,
     R: Parser,
@@ -180,11 +189,48 @@ pub fn seq3<P1, P2, P3>(
     p1: P1,
     p2: P2,
     p3: P3,
-) -> impl Parser<Item = (P1::Item, P2::Item, P3::Item)>
+) -> impl Parser<Output = (P1::Output, P2::Output, P3::Output)>
 where
     P1: Parser,
     P2: Parser,
     P3: Parser,
 {
     map(and(p1, and(p2, p3)), |(a, (b, c))| (a, b, c))
+}
+
+// Many
+
+struct Many<P> {
+    parser: P,
+    allow_empty: bool,
+}
+
+impl<P: Parser> Parser for Many<P> {
+    type Output = Vec<P::Output>;
+
+    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let mut result: Vec<P::Output> = Vec::new();
+        loop {
+            match self.parser.parse(source)? {
+                Some(item) => {
+                    result.push(item);
+                }
+                None => {
+                    break;
+                }
+            }
+        }
+        if self.allow_empty || !result.is_empty() {
+            Ok(Some(result))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+pub fn many_opt<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Output>> {
+    Many {
+        parser,
+        allow_empty: true,
+    }
 }

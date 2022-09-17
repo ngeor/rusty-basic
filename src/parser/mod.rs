@@ -1,5 +1,5 @@
 mod assignment;
-mod base;
+pub mod base;
 pub mod char_reader;
 mod comment;
 mod constant;
@@ -17,12 +17,10 @@ mod implementation;
 pub mod name;
 mod on_error;
 mod param_name;
-pub mod pc;
-pub mod pc_specific;
 mod print;
 mod resume;
 mod select_case;
-mod specific;
+pub mod specific;
 pub mod statement;
 mod statement_separator;
 pub mod statements;
@@ -40,8 +38,6 @@ pub use self::types::*;
 
 use crate::common::*;
 use crate::parser::char_reader::*;
-use crate::parser::pc::Parser;
-use crate::parser::pc::Reader;
 use crate::parser::top_level_token::TopLevelTokensParser;
 use std::fs::File;
 
@@ -68,10 +64,7 @@ pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QEr
     parse_reader(reader)
 }
 
-fn parse_reader<R>(reader: R) -> Result<ProgramNode, QErrorNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn parse_reader<R>(reader: R) -> Result<ProgramNode, QErrorNode> {
     match TopLevelTokensParser::new().parse(reader) {
         Ok((_, opt_program)) => Ok(opt_program.unwrap_or_default()),
         Err((reader, err)) => Err(ErrorEnvelope::Pos(err, reader.pos())),

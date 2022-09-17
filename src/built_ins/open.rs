@@ -1,14 +1,10 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
+    use crate::parser::base::parsers::Parser;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::Open)
             .and_demand(
                 expression::back_guarded_expression_node_p()
@@ -35,10 +31,7 @@ pub mod parser {
     }
 
     // FOR <ws+> INPUT <ws+>
-    fn parse_open_mode_p<R>() -> impl Parser<R, Output = Locatable<FileMode>>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn parse_open_mode_p() -> impl Parser<Output = Locatable<FileMode>> {
         keyword_followed_by_whitespace_p(Keyword::For)
             .and_demand(
                 keyword_choice_p(&[
@@ -71,10 +64,7 @@ pub mod parser {
     }
 
     // ACCESS <ws+> READ <ws+>
-    fn parse_open_access_p<R>() -> impl Parser<R, Output = Locatable<FileAccess>>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn parse_open_access_p() -> impl Parser<Output = Locatable<FileAccess>> {
         keyword_followed_by_whitespace_p(Keyword::Access)
             .and_demand(
                 keyword_p(Keyword::Read)
@@ -89,10 +79,7 @@ pub mod parser {
 
     // AS <ws+> expression
     // AS ( expression )
-    fn parse_file_number_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
         keyword_p(Keyword::As)
             .and_demand(
                 expression::guarded_file_handle_or_expression_p()
@@ -101,10 +88,7 @@ pub mod parser {
             .keep_right()
     }
 
-    fn parse_len_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
         whitespace_p()
             .and(keyword_p(Keyword::Len))
             .and_demand(

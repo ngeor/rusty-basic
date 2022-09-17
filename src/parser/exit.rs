@@ -1,12 +1,8 @@
 use crate::common::{HasLocation, QError};
-use crate::parser::pc::{BinaryParser, Parser, Reader, UnaryFnParser};
-use crate::parser::pc_specific::{keyword_choice_p, keyword_followed_by_whitespace_p, PcSpecific};
+use crate::parser::base::parsers::Parser;
 use crate::parser::{ExitObject, Keyword, Statement};
 
-pub fn statement_exit_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn statement_exit_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Exit)
         .and_demand(
             keyword_choice_p(&[Keyword::Function, Keyword::Sub])

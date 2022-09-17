@@ -1,4 +1,5 @@
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -10,8 +11,6 @@ use crate::parser::if_block;
 use crate::parser::name;
 use crate::parser::name::bare_name_p;
 use crate::parser::on_error::statement_on_error_go_to_p;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
 use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
@@ -19,10 +18,7 @@ use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
 
-pub fn statement_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn statement_p() -> impl Parser<Output = Statement> {
     statement_label_p()
         .or(single_line_statement_p())
         .or(if_block::if_block_p())
@@ -35,10 +31,7 @@ where
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
-pub fn single_line_non_comment_statement_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn single_line_non_comment_statement_p() -> impl Parser<Output = Statement> {
     dim::dim_p()
         .or(dim::redim_p())
         .or(constant::constant_p())
@@ -58,36 +51,24 @@ where
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
     comment::comment_p().or(single_line_non_comment_statement_p())
 }
 
-fn statement_label_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn statement_label_p() -> impl Parser<Output = Statement> {
     name::bare_name_p()
         .and(item_p(':'))
         .keep_left()
         .map(|l| Statement::Label(l))
 }
 
-fn statement_go_to_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn statement_go_to_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_demand(bare_name_p().or_syntax_error("Expected: label"))
         .map(|(_, l)| Statement::GoTo(l))
 }
 
-fn illegal_starting_keywords<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::Wend)
         .or(keyword_p(Keyword::Else))
         .and_then(|(k, _)| match k {
@@ -100,13 +81,9 @@ where
 
 mod end {
     use super::*;
-    use crate::parser::pc_specific::keyword_choice_p;
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
-    pub fn parse_end_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::End)
             .and(
                 opt_whitespace_p(false)
@@ -127,10 +104,7 @@ mod end {
     /// Otherwise, it demands that we find an end-of-statement terminator.
     struct AfterEndSeparator {}
 
-    impl<R> Parser<R> for AfterEndSeparator
-    where
-        R: Reader<Item = char, Err = QError>,
-    {
+    impl Parser for AfterEndSeparator {
         type Output = String;
 
         fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -154,10 +128,7 @@ mod end {
         }
     }
 
-    fn allowed_keywords_after_end<R>() -> impl Parser<R, Output = (Keyword, String)>
-    where
-        R: Reader<Item = char>,
-    {
+    fn allowed_keywords_after_end() -> impl Parser<Output = (Keyword, String)> {
         keyword_choice_p(&[
             Keyword::Function,
             Keyword::If,
@@ -188,10 +159,7 @@ mod system {
     use super::*;
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
-    pub fn parse_system_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::System)
             .and_demand(
                 opt_whitespace_p(false)

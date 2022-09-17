@@ -1,23 +1,16 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
+    use crate::parser::base::parsers::Parser;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::Field)
             .and_demand(field_node_p().or_syntax_error("Expected: file number after FIELD"))
             .keep_right()
     }
 
-    fn field_node_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn field_node_p() -> impl Parser<Output = Statement> {
         whitespace_p()
             .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
             .and_demand(
@@ -35,10 +28,7 @@ pub mod parser {
             })
     }
 
-    fn field_item_p<R>() -> impl Parser<R, Output = (ExpressionNode, NameNode)>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
         expression::expression_node_p()
             // TODO 'AS' does not need leading whitespace if expression has parenthesis
             // TODO solve this not by peeking the previous but with a new expression:: function

@@ -1,15 +1,11 @@
 use crate::common::*;
+use crate::parser::base::parsers::Parser;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_choice_p, keyword_p, PcSpecific};
 use crate::parser::statements;
 use crate::parser::types::*;
 
-pub fn if_block_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn if_block_p() -> impl Parser<Output = Statement> {
     if_expr_then_p()
         .and_demand(
             single_line_if_else_p()
@@ -33,10 +29,7 @@ where
 // single line else ::= ELSE non-comment-statements-separated-by-colon comment-statement
 // multi line if    ::= statements else-if-blocks else-block END IF
 
-fn if_expr_then_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
     keyword_p(Keyword::If)
         .and_demand(
             expression::back_guarded_expression_node_p()
@@ -46,17 +39,13 @@ where
         .keep_middle()
 }
 
-fn single_line_if_else_p<R>() -> impl Parser<
-    R,
+fn single_line_if_else_p() -> impl Parser<
     Output = (
         StatementNodes,
         Vec<ConditionalBlockNode>,
         Option<StatementNodes>,
     ),
->
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+> {
     statements::single_line_non_comment_statements_p()
         .and_opt(
             // comment or ELSE
@@ -69,27 +58,20 @@ where
         .map(|(l, r)| (l, vec![], r))
 }
 
-fn single_line_else_p<R>() -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
     whitespace_p()
         .and(keyword_p(Keyword::Else))
         .and_demand(statements::single_line_statements_p())
         .keep_right()
 }
 
-fn multi_line_if_p<R>() -> impl Parser<
-    R,
+fn multi_line_if_p() -> impl Parser<
     Output = (
         StatementNodes,
         Vec<ConditionalBlockNode>,
         Option<StatementNodes>,
     ),
->
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+> {
     statements::zero_or_more_statements_p(keyword_choice_p(&[
         Keyword::End,
         Keyword::Else,
@@ -103,10 +85,7 @@ where
     })
 }
 
-fn else_if_expr_then_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
     keyword_p(Keyword::ElseIf)
         .and_demand(
             expression::back_guarded_expression_node_p()
@@ -116,10 +95,7 @@ where
         .keep_middle()
 }
 
-fn else_if_block_p<R>() -> impl Parser<R, Output = ConditionalBlockNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
     else_if_expr_then_p()
         .and_demand(statements::zero_or_more_statements_p(keyword_choice_p(&[
             Keyword::End,
@@ -132,10 +108,7 @@ where
         })
 }
 
-fn else_block_p<R>() -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn else_block_p() -> impl Parser<Output = StatementNodes> {
     keyword_p(Keyword::Else)
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::End,

@@ -2,8 +2,7 @@ use std::marker::PhantomData;
 
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
-use crate::parser::pc::*;
-use crate::parser::pc_specific::{in_parenthesis_p, keyword_p, PcSpecific};
+use crate::parser::base::parsers::Parser;
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
@@ -12,10 +11,7 @@ pub fn lazy_expression_node_p<R>() -> LazyExpressionParser<R> {
 
 pub struct LazyExpressionParser<R>(PhantomData<R>);
 
-impl<R> Parser<R> for LazyExpressionParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl Parser for LazyExpressionParser<R> {
     type Output = ExpressionNode;
 
     fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
@@ -24,17 +20,11 @@ where
     }
 }
 
-pub fn demand_expression_node_p<R>(err_msg: &str) -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn demand_expression_node_p(err_msg: &str) -> impl Parser<Output = ExpressionNode> {
     expression_node_p().or_syntax_error(err_msg)
 }
 
-pub fn guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
     opt_whitespace_p(false)
@@ -50,10 +40,7 @@ where
         })
 }
 
-pub fn back_guarded_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr ws+
     opt_whitespace_p(false)
@@ -71,10 +58,7 @@ where
 }
 
 /// Parses an expression
-pub fn expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
     single_expression_node_p()
         .and_opt_factory(|first_expr| {
             operator_p(first_expr.is_parenthesis()).and_demand(
@@ -99,10 +83,7 @@ where
 /// Trailing commas are not allowed.
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
-pub fn expression_nodes_p<R>() -> impl Parser<R, Output = ExpressionNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
     guarded_expression_node_p()
         .and_demand(
             item_p(',')
@@ -117,10 +98,7 @@ where
         })
 }
 
-fn single_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     string_literal::string_literal_p()
         .with_pos()
         .or(built_in_function_call_p().with_pos())
@@ -134,10 +112,7 @@ where
         .or(unary_minus_p())
 }
 
-fn unary_minus_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {
     item_p('-')
         .with_pos()
         .and_demand(
@@ -146,20 +121,14 @@ where
         .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos))
 }
 
-pub fn unary_not_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
     keyword_p(Keyword::Not)
         .with_pos()
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"))
         .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
 }
 
-pub fn file_handle_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
     item_p('#')
         .with_pos()
         .and_demand(digits_p().or_syntax_error("Expected: digits after #"))
@@ -178,35 +147,23 @@ where
 }
 
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-pub fn file_handle_as_expression_node_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     file_handle_p()
         .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
 }
 
-pub fn file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
     file_handle_as_expression_node_p().or(expression_node_p())
 }
 
-pub fn parenthesis_p<R>() -> impl Parser<R, Output = Expression>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn parenthesis_p() -> impl Parser<Output = Expression> {
     in_parenthesis_p(
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
     .map(|child| Expression::Parenthesis(Box::new(child)))
 }
 
-pub fn file_handle_comma_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     file_handle_p()
         .and_demand(
             item_p(',')
@@ -216,10 +173,7 @@ where
         .keep_left()
 }
 
-pub fn guarded_file_handle_or_expression_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
     whitespace_p()
         .and(file_handle_as_expression_node_p())
         .keep_right()
@@ -228,37 +182,33 @@ where
 
 mod string_literal {
     use super::*;
+    use crate::parser::base::parsers::{
+        filter_token, filter_token_by_kind, filter_token_by_kind_opt, many_opt, map, seq3, Parser,
+    };
+    use crate::parser::base::tokenizers::token_list_to_string;
+    use crate::parser::specific::TokenType;
 
-    pub fn string_literal_p<R>() -> impl Parser<R, Output = Expression>
-    where
-        R: Reader<Item = char, Err = QError> + 'static,
-    {
-        item_p('"')
-            .and_opt(non_quote_p())
-            .and_demand(item_p('"').or_syntax_error("Unterminated string"))
-            .keep_middle()
-            .map(|opt_s| Expression::StringLiteral(opt_s.unwrap_or_default()))
-    }
-
-    crate::char_sequence_p!(NonQuote, non_quote_p, is_not_quote);
-
-    fn is_not_quote(ch: char) -> bool {
-        ch != '"'
+    pub fn string_literal_p() -> impl Parser<Output = Expression> {
+        map(
+            seq3(
+                filter_token_by_kind_opt(TokenType::DoubleQuote),
+                many_opt(filter_token(|t| {
+                    t.kind != TokenType::DoubleQuote as i32 && t.kind != TokenType::Eol as i32
+                })),
+                filter_token_by_kind(TokenType::DoubleQuote, "Unterminated string"),
+            ),
+            |(_, token_list, _)| Expression::StringLiteral(token_list_to_string(token_list)),
+        )
     }
 }
 
 mod number_literal {
-    use super::digits_p;
     use crate::common::*;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::PcSpecific;
+    use crate::parser::base::parsers::Parser;
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
-    pub fn number_literal_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
         digits_p()
             .and_opt(
@@ -280,10 +230,7 @@ mod number_literal {
             .with_pos()
     }
 
-    pub fn float_without_leading_zero_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
         item_p('.')
             .and(digits_p())
             .and_opt(item_p('#'))
@@ -328,40 +275,6 @@ mod number_literal {
                 Err(err) => Err(err.into()),
             }
         }
-    }
-
-    macro_rules! hex_or_oct_literal_p {
-        ($fn_name:tt, $needle:expr, $recognizer:tt, $converter:tt) => {
-            pub fn $fn_name<R>() -> impl Parser<R, Output = ExpressionNode>
-            where
-                R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-            {
-                string_p($needle)
-                    .and_opt(item_p('-'))
-                    .and_demand($recognizer().or_syntax_error("Expected: digits"))
-                    .and_then(|((_, opt_negative), digits)| {
-                        if opt_negative.is_some() {
-                            Err(QError::Overflow)
-                        } else {
-                            $converter(digits)
-                        }
-                    })
-                    .with_pos()
-            }
-        };
-    }
-
-    hex_or_oct_literal_p!(hexadecimal_literal_p, "&H", hex_digit_p, convert_hex_digits);
-    hex_or_oct_literal_p!(octal_literal_p, "&O", oct_digit_p, convert_oct_digits);
-
-    crate::char_sequence_p!(OctDigit, oct_digit_p, is_oct_digit);
-    fn is_oct_digit(ch: char) -> bool {
-        ch >= '0' && ch <= '7'
-    }
-
-    crate::char_sequence_p!(HexDigit, hex_digit_p, is_hex_digit);
-    fn is_hex_digit(ch: char) -> bool {
-        ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
     }
 
     fn convert_hex_digits(digits: String) -> Result<Expression, QError> {
@@ -414,17 +327,13 @@ mod number_literal {
 pub mod word {
     use super::lazy_expression_node_p;
     use crate::common::*;
+    use crate::parser::base::parsers::Parser;
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;
 
-    pub fn word_p<R>() -> impl Parser<R, Output = Expression>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn word_p() -> impl Parser<Output = Expression> {
         name_with_dot_p()
             .and_opt(parenthesis_with_zero_or_more_expressions_p())
             .and_opt(
@@ -524,17 +433,11 @@ pub mod word {
         (parts, opt_q)
     }
 
-    fn parenthesis_with_zero_or_more_expressions_p<R>() -> impl Parser<R, Output = ExpressionNodes>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
         in_parenthesis_p(lazy_expression_node_p().csv().map_none_to_default())
     }
 
-    fn dot_property_name<R>() -> impl Parser<R, Output = String>
-    where
-        R: Reader<Item = char, Err = QError> + 'static,
-    {
+    fn dot_property_name() -> impl Parser<Output = String> {
         item_p('.')
             .and_demand(
                 identifier_without_dot_p().or_syntax_error("Expected: property name after period"),
@@ -817,10 +720,7 @@ pub mod word {
     }
 }
 
-fn operator_p<R>(had_parenthesis_before: bool) -> impl Parser<R, Output = Locatable<Operator>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
     relational_operator_p()
         .preceded_by_opt_ws()
         .or(arithmetic_op_p().with_pos().preceded_by_opt_ws())
@@ -833,23 +733,17 @@ where
         .or(and_or_p(had_parenthesis_before, Keyword::Or, Operator::Or))
 }
 
-fn and_or_p<R>(
+fn and_or_p(
     had_parenthesis_before: bool,
     keyword: Keyword,
     operator: Operator,
-) -> impl Parser<R, Output = Locatable<Operator>>
-where
-    R: Reader<Item = char> + HasLocation + 'static,
-{
+) -> impl Parser<Output = Locatable<Operator>> {
     opt_whitespace_p(!had_parenthesis_before)
         .and(keyword_p(keyword).map(move |_| operator).with_pos())
         .keep_right()
 }
 
-fn arithmetic_op_p<R>() -> impl Parser<R, Output = Operator>
-where
-    R: Reader<Item = char>,
-{
+fn arithmetic_op_p() -> impl Parser<Output = Operator> {
     if_p(|ch| ch == '+' || ch == '-' || ch == '*' || ch == '/').map(|ch| match ch {
         '+' => Operator::Plus,
         '-' => Operator::Minus,
@@ -859,19 +753,13 @@ where
     })
 }
 
-fn modulo_op_p<R>(had_parenthesis_before: bool) -> impl Parser<R, Output = Locatable<Operator>>
-where
-    R: Reader<Item = char> + HasLocation + 'static,
-{
+fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
     opt_whitespace_p(!had_parenthesis_before)
         .and(keyword_p(Keyword::Mod).map(|_| Operator::Modulo).with_pos())
         .keep_right()
 }
 
-fn lte_p<R>() -> impl Parser<R, Output = Operator>
-where
-    R: Reader<Item = char> + 'static,
-{
+fn lte_p() -> impl Parser<Output = Operator> {
     item_p('<')
         .and_opt(if_p(|ch| ch == '=' || ch == '>'))
         .map(|(_, opt_r)| match opt_r {
@@ -882,10 +770,7 @@ where
         })
 }
 
-fn gte_p<R>() -> impl Parser<R, Output = Operator>
-where
-    R: Reader<Item = char> + 'static,
-{
+fn gte_p() -> impl Parser<Output = Operator> {
     item_p('>')
         .and_opt(item_p('='))
         .map(|(_, opt_r)| match opt_r {
@@ -894,22 +779,13 @@ where
         })
 }
 
-fn eq_p<R>() -> impl Parser<R, Output = Operator>
-where
-    R: Reader<Item = char>,
-{
+fn eq_p() -> impl Parser<Output = Operator> {
     item_p('=').map(|_| Operator::Equal)
 }
 
-pub fn relational_operator_p<R>() -> impl Parser<R, Output = Locatable<Operator>>
-where
-    R: Reader<Item = char> + HasLocation + 'static,
-{
+pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
     lte_p().or(gte_p()).or(eq_p()).with_pos()
 }
-
-// Parses one or more digits.
-crate::char_sequence_p!(Digits, digits_p, is_digit);
 
 #[cfg(test)]
 mod tests {

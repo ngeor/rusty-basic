@@ -2,9 +2,11 @@ use std::str::FromStr;
 
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
+use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
+use crate::parser::specific::TokenType;
 use crate::parser::types::*;
 
 // Parses a declared name. Possible options:
@@ -98,7 +100,22 @@ struct ExtendedTypeParser;
 impl Parser for ExtendedTypeParser {
     type Output = DimType;
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match reader.read()? {
+            Some(token) => {
+                if token.kind == TokenType::Keyword as i32 {
+
+                } else if token.kind == TokenType::Identifier as i32 {
+
+                } else {
+                    reader.unread(token);
+                    Ok(None)
+                }
+            }
+            None => {
+                Ok(None)
+            }
+        }
         let (reader, opt_identifier) = identifier_without_dot_p().with_pos().parse(reader)?;
         match opt_identifier {
             Some(Locatable { element: x, pos }) => match Keyword::from_str(x.as_str()) {
@@ -130,16 +147,12 @@ impl Parser for ExtendedTypeParser {
 }
 
 impl ExtendedTypeParser {
-    fn built_in<R>(reader: R, q: TypeQualifier) -> ReaderResult<R, DimType, R::Err>
-    where
-        R: Reader,
+    fn built_in(q: TypeQualifier) -> Result<Option<DimType>, QError>
     {
-        Ok((reader, Some(DimType::BuiltIn(q, BuiltInStyle::Extended))))
+        Ok(Some(DimType::BuiltIn(q, BuiltInStyle::Extended)))
     }
 
-    fn string<R>(reader: R) -> ReaderResult<R, DimType, R::Err>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
+    fn string(reader: &mut impl Tokenizer) -> Result<Option<DimType>, QError>
     {
         let (reader, opt_len) = item_p('*')
             .surrounded_by_opt_ws()
@@ -150,7 +163,7 @@ impl ExtendedTypeParser {
             .parse(reader)?;
         match opt_len {
             Some(len) => Ok((reader, Some(DimType::FixedLengthString(len, 0)))),
-            _ => Self::built_in(reader, TypeQualifier::DollarString),
+            _ => Self::built_in(TypeQualifier::DollarString),
         }
     }
 }

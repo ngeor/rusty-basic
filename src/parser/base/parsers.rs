@@ -5,7 +5,7 @@ use crate::common::QError;
 
 pub trait Parser {
     type Output;
-    fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
 }
 
 // FilterTokenByKindParser

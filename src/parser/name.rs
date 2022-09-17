@@ -68,8 +68,8 @@ fn ensure_length_and_not_keyword(s: &String) -> Result<bool, QError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::parser::specific::create_string_tokenizer;
     use super::*;
-    use crate::parser::char_reader::EolReader;
 
     #[test]
     fn test_any_word_with_dot() {
@@ -78,7 +78,7 @@ mod tests {
         for i in 0..inputs.len() {
             let input = inputs[i];
             let expected_output = expected_outputs[i];
-            let eol_reader = EolReader::from(input);
+            let eol_reader = create_string_tokenizer(input);
             let mut parser = any_word_with_dot_p();
             let (_, result) = parser.parse(eol_reader).expect("Should succeed");
             assert_eq!(result, Some(BareName::from(expected_output)));

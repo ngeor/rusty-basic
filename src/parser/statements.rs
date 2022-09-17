@@ -4,6 +4,7 @@ use crate::parser::statement;
 use crate::parser::statement_separator::StatementSeparator;
 use crate::parser::types::*;
 use std::marker::PhantomData;
+use crate::parser::base::tokenizers::Tokenizer;
 
 pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
     whitespace_p()
@@ -64,7 +65,7 @@ impl StatementAndSeparator {
 impl Parser for StatementAndSeparator {
     type Output = StatementNode;
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let (reader, opt_statement_node) = statement::statement_p().with_pos().parse(reader)?;
         match opt_statement_node {
             Some(statement_node) => {

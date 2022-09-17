@@ -80,6 +80,7 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 }
 
 mod end {
+    use crate::parser::base::tokenizers::Tokenizer;
     use super::*;
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
@@ -107,7 +108,7 @@ mod end {
     impl Parser for AfterEndSeparator {
         type Output = String;
 
-        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+        fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
             let (reader, opt_result) = allowed_keywords_after_end().parse(reader)?;
             match opt_result {
                 Some((_, s)) => {

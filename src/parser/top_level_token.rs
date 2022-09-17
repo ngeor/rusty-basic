@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
+use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
@@ -20,7 +21,7 @@ impl TopLevelTokensParser {
 impl Parser for TopLevelTokensParser {
     type Output = ProgramNode;
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
         let mut r = reader;

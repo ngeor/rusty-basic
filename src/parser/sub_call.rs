@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
+use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::types::*;
 
@@ -17,7 +18,7 @@ pub struct SubCallOrAssignment {}
 impl Parser for SubCallOrAssignment {
     type Output = Statement;
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let (reader, opt_item) = Self::name_and_opt_eq_sign().parse(reader)?;
         match opt_item {
             Some((name_expr, opt_equal_sign)) => match opt_equal_sign {

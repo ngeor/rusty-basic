@@ -7,6 +7,7 @@ pub trait CharReader {
     fn unread(&mut self, item: char);
 }
 
+#[cfg(test)]
 pub fn string_char_reader<T>(input: T) -> impl CharReader
 where
     T: AsRef<[u8]>,
@@ -14,7 +15,7 @@ where
     CharReaderImpl::new(BufReader::new(Cursor::new(input)))
 }
 
-pub fn file_reader(input: File) -> impl CharReader {
+pub fn file_char_reader(input: File) -> impl CharReader {
     CharReaderImpl::new(BufReader::new(input))
 }
 

@@ -1,6 +1,5 @@
 mod assignment;
 pub mod base;
-pub mod char_reader;
 mod comment;
 mod constant;
 mod declaration;
@@ -37,9 +36,11 @@ pub mod test_utils;
 pub use self::types::*;
 
 use crate::common::*;
-use crate::parser::char_reader::*;
 use crate::parser::top_level_token::TopLevelTokensParser;
 use std::fs::File;
+use crate::parser::base::parsers::Parser;
+use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::specific::{create_file_tokenizer, create_string_tokenizer};
 
 /// Parses a QBasic file.
 ///
@@ -54,17 +55,17 @@ use std::fs::File;
 /// <digit> ::= "0".."9"
 /// ```
 pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
-    let reader = EolReader::from(f);
+    let reader = create_file_tokenizer(f);
     parse_reader(reader)
 }
 
 #[cfg(test)]
 pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
-    let reader = EolReader::from(s);
+    let reader = create_string_tokenizer(s);
     parse_reader(reader)
 }
 
-fn parse_reader<R>(reader: R) -> Result<ProgramNode, QErrorNode> {
+fn parse_reader(reader: &mut impl Tokenizer) -> Result<ProgramNode, QErrorNode> {
     match TopLevelTokensParser::new().parse(reader) {
         Ok((_, opt_program)) => Ok(opt_program.unwrap_or_default()),
         Err((reader, err)) => Err(ErrorEnvelope::Pos(err, reader.pos())),

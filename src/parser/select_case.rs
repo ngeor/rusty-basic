@@ -5,6 +5,7 @@ use crate::parser::expression;
 use crate::parser::statements;
 use crate::parser::types::*;
 use std::marker::PhantomData;
+use crate::parser::base::tokenizers::Tokenizer;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -73,7 +74,7 @@ struct CaseBlockParser;
 impl Parser for CaseBlockParser {
     type Output = CaseBlockNode;
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         // CASE
         let (reader, result) = keyword_p(Keyword::Case)
             .and_opt(whitespace_p())
@@ -123,10 +124,10 @@ struct CaseExpressionParser;
 impl Parser for CaseExpressionParser {
     type Output = CaseExpression;
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let (reader, result) = keyword_p(Keyword::Else).peek().parse(reader)?;
         if result.is_some() {
-            return Ok((reader, None));
+            return Ok(None);
         }
 
         Self::case_is()
@@ -161,7 +162,7 @@ struct SimpleOrRangeParser;
 impl Parser for SimpleOrRangeParser {
     type Output = CaseExpression;
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let (reader, expr) = expression::expression_node_p().parse(reader)?;
         match expr {
             Some(expr) => {

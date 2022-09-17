@@ -1,8 +1,10 @@
+use std::fs::File;
 use crate::parser::base::parsers::*;
 use crate::parser::base::recognizers::*;
 use crate::parser::base::tokenizers::*;
 use crate::parser::Statement;
 use std::str::Chars;
+use crate::parser::base::readers::{file_char_reader, string_char_reader};
 
 /// specific module contains implementation that mirrors the base module
 /// but it is specific to QBasic
@@ -38,8 +40,6 @@ pub enum TokenType {
     OctDigits,
     HexDigits,
 }
-
-const KEYWORDS: [&str; 4] = ["DIM", "GOSUB", "INPUT", "PRINT"];
 
 #[derive(Copy)]
 enum OctOrHex {
@@ -180,36 +180,17 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
     ]
 }
 
-fn go_sub_parser() -> impl Parser {
-    // keyword GOSUB + whitespace + bare name (any word without dot)
-    map(
-        seq3(keyword_opt("GOSUB"), whitespace(), identifier()),
-        |(_, _, label_token)| Statement::GoSub(label_token.text.into()),
+pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
+    create_tokenizer(
+        file_char_reader(input),
+        create_recognizers()
     )
 }
 
-fn keyword_opt(needle: &str) -> impl Parser<Item = Token> + '_ {
-    filter_token(move |token| {
-        token.kind == TokenType::Keyword as i32 && token.text.eq_ignore_ascii_case(needle)
-    })
+#[cfg(test)]
+pub fn create_string_tokenizer(input: &str) -> impl Tokenizer {
+    create_tokenizer(
+        string_char_reader(input),
+        create_recognizers()
+    )
 }
-
-fn whitespace() -> impl Parser<Item = Token> {
-    filter_token_by_kind(TokenType::WhiteSpace, "Expected whitespace")
-}
-
-fn whitespace_opt() -> impl Parser<Item = Token> {
-    filter_token_by_kind_opt(TokenType::WhiteSpace)
-}
-
-fn identifier() -> impl Parser<Item = Token> {
-    filter_token_by_kind(TokenType::Identifier, "Expected identifier")
-}
-
-// fn expression() -> impl Parser {
-//     todo!()
-// }
-//
-// fn expression_in_parenthesis() -> impl Parser {
-//     todo!()
-// }

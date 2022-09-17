@@ -250,7 +250,7 @@ pub struct KeywordChoice<'a> {
 
 impl<'a> TokenPredicate for KeywordChoice<'a> {
     fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into())
+        token.kind == TokenType::Keyword as i32 && self.keywords.contains(token.text.into())
     }
 }
 
@@ -425,56 +425,86 @@ where
     }
 }
 
+pub fn map_token<U>(token_type: TokenType, result: U) -> impl Parser<Output = U> {
+    TokenKindParser::new(token_type).map(|_| result)
+}
+
+pub fn map_tokens<U: Copy>(pairs: &[(TokenType, U)]) -> impl Parser<Output = U> {
+    let mut accumulator : Option<Box<dyn Parser<Output = U>>> = None;
+    for (token_type, result) in pairs {
+        let pair_parser = map_token(*token_type, *result);
+        if accumulator.is_none() {
+            accumulator = Some(Box::new(pair_parser));
+        } else {
+            let old = accumulator.take().unwrap();
+            let n = old.or(pair_parser);
+            accumulator = Some(Box::new(n));
+        }
+    }
+    accumulator.unwrap()
+}
+
 //
-// struct MapErrParser<P>(P, QError);
+// MapErr
 //
-// impl<P> Parser for MapErrParser<P>
-// where
-//     P: Parser,
-// {
-//     type Output = P::Output;
+
+struct MapErrParser<P>(P, QError);
+
+impl<P> Parser for MapErrParser<P>
+where
+    P: Parser,
+{
+    type Output = P::Output;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        self.0.parse(tokenizer).map_err(|_| self.1)
+    }
+}
+
+impl<P> NonOptParser for MapErrParser<P> where P : NonOptParser {
+    type Output = P::Output;
+
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.0.parse_non_opt(tokenizer).map_err(|_| self.1)
+    }
+}
+
+pub trait MapErrTrait {
+    fn map_err(self, err: QError) -> MapErrParser<Self>;
+}
+
+impl<S> MapErrTrait for S {
+    fn map_err(self, err: QError) -> MapErrParser<Self> {
+        MapErrParser(self, err)
+    }
+}
+
 //
-//     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-//         self.0.parse(tokenizer).map_err(|_| self.1)
-//     }
-// }
+// WithPos
 //
-// pub fn map_err<P: Parser>(parser: P, err: QError) -> impl Parser<Output = P::Output> {
-//     MapErrParser(parser, err)
-// }
-//
-// pub trait PcSpecific: Parser {
-//     fn surrounded_by_opt_ws<'a>(
-//         self,
-//     ) -> SurroundedByOptParser<Self, FilterTokenByKindParser<'a, TokenType>>
-//     where
-//         Self: Sized,
-//     {
-//         self.surrounded_by_opt(whitespace_p())
-//     }
-//
-//     fn with_pos(self) -> WithPosMapper<Self>
-//     where
-//         Self: Sized,
-//     {
-//         WithPosMapper(self)
-//     }
-// }
-//
-// impl<T> PcSpecific for T where T: Parser {}
-//
-// pub struct WithPosMapper<P>(P);
-//
-// impl<P> Parser for WithPosMapper<P>
-// where
-//     P: Parser,
-// {
-//     type Output = Locatable<P::Output>;
-//
-//     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-//         let pos = tokenizer.position();
-//         self.0
-//             .parse(tokenizer)
-//             .map(|opt_x| opt_x.map(|x| x.at_rc(pos.row, pos.col)))
-//     }
-// }
+
+pub struct WithPosMapper<P>(P);
+
+impl<P> Parser for WithPosMapper<P>
+where
+    P: Parser,
+{
+    type Output = Locatable<P::Output>;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let pos = tokenizer.position();
+        self.0
+            .parse(tokenizer)
+            .map(|opt_x| opt_x.map(|x| x.at_rc(pos.row, pos.col)))
+    }
+}
+
+pub trait WithPosTrait {
+    fn with_pos(self) -> WithPosMapper<Self>;
+}
+
+impl<S: Parser> WithPosTrait for S {
+    fn with_pos(self) -> WithPosMapper<Self> {
+        WithPosMapper(self)
+    }
+}

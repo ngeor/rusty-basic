@@ -1,7 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, Parser};
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, Parser, FnMapTrait, KeepRightTrait};
 use crate::parser::expression;
-use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, keyword_p, whitespace};
+use crate::parser::specific::{item_p, keyword, keyword_followed_by_whitespace_p, keyword_p, MapErrTrait, whitespace, WithPosTrait};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -14,7 +14,8 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
         .and_demand(statements::zero_or_more_statements_p(keyword_p(
             Keyword::Next,
         )))
-        .and_demand(map_err(next_counter_p(), QError::ForWithoutNext))
+        .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
+        .and_opt(next_counter_p())
         .map(
             |(
                 ((variable_name, lower_bound, upper_bound, opt_step), statements),
@@ -79,10 +80,10 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
         .map(|(((((_, n), _), l), _), u)| (n, l, u))
 }
 
-fn next_counter_p() -> impl Parser<Output = Option<ExpressionNode>> {
-    keyword_p(Keyword::Next)
-        .and_opt(whitespace().and(expression::word::word_p().with_pos()))
-        .map(|(_, opt_right)| opt_right.map(|(_, r)| r))
+fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
+    whitespace()
+        .and(expression::word::word_p().with_pos())
+        .keep_right()
 }
 
 #[cfg(test)]

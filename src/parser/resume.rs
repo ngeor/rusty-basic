@@ -1,6 +1,6 @@
-use crate::parser::base::parsers::{AndDemandTrait, Parser};
+use crate::parser::base::parsers::{AndDemandTrait, AndTrait, Parser};
 use crate::parser::name::bare_name_p;
-use crate::parser::specific::keyword_p;
+use crate::parser::specific::{keyword_p, whitespace};
 use crate::parser::statement_separator::EofOrStatementSeparator;
 use crate::parser::{Keyword, ResumeOption, Statement};
 
@@ -27,13 +27,13 @@ fn blank_resume() -> impl Parser<Output = ResumeOption> {
 }
 
 fn resume_next() -> impl Parser<Output = ResumeOption> {
-    whitespace_p()
+    whitespace()
         .and(keyword_p(Keyword::Next))
         .map(|_| ResumeOption::Next)
 }
 
 fn resume_label() -> impl Parser<Output = ResumeOption> {
-    whitespace_p()
+    whitespace()
         .and(bare_name_p())
         .map(|(_, r)| ResumeOption::Label(r))
 }

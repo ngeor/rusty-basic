@@ -83,7 +83,7 @@ mod end {
     use super::*;
     use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
     use crate::parser::base::tokenizers::{Token, Tokenizer};
-    use crate::parser::specific::{keyword_choice_p, whitespace, LeadingWhitespace};
+    use crate::parser::specific::{keyword_choice_p, whitespace};
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {

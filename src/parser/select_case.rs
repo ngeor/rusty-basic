@@ -146,11 +146,11 @@ impl CaseExpressionParser {
 
     fn case_is() -> impl Parser<Output = CaseExpression> {
         keyword_p(Keyword::Is)
-            .and_opt(whitespace_p())
+            .and_opt(whitespace())
             .and_demand(
                 expression::relational_operator_p().or_syntax_error("Expected: Operator after IS"),
             )
-            .and_opt(whitespace_p())
+            .and_opt(whitespace())
             .and_demand(
                 expression::expression_node_p()
                     .or_syntax_error("Expected: expression after IS operator"),

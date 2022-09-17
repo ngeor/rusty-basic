@@ -43,13 +43,11 @@
 // Type must be defined Before DECLARE SUB
 
 use crate::common::{Locatable, QError};
-use crate::parser::base::parsers::{AndDemandTrait, AndThenTrait, KeepRightTrait, Parser};
+use crate::parser::base::parsers::{AndDemandTrait, AndThenTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::specific::{
-    demand_keyword_pair_p, item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p,
-};
+use crate::parser::specific::{demand_keyword_pair_p, item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p, whitespace, WithPosTrait};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
@@ -86,13 +84,13 @@ fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
 }
 
 fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> {
-    map_err(element_node_p().one_or_more(), QError::ElementNotDefined)
+    element_node_p().one_or_more().map_err(QError::ElementNotDefined)
 }
 
 fn element_node_p() -> impl Parser<Output = ElementNode> {
     bare_name_without_dot_p()
         .with_pos()
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after element name"))
+        .and_demand(whitespace())
         .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
         .and_demand(comment::comments_and_whitespace_p())

@@ -1,10 +1,8 @@
 use crate::common::*;
-use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptTrait, AndTrait, KeepLeftTrait, KeepRightTrait, Parser,
-};
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, KeepLeftTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
-use crate::parser::specific::{item_p, keyword_p, whitespace, LeadingWhitespace, TokenType};
+use crate::parser::specific::{item_p, keyword_p, whitespace, LeadingWhitespace, TokenType, map_tokens};
 use crate::parser::types::*;
 
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
@@ -94,13 +92,10 @@ fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
 }
 
 fn semicolon_or_comma_as_print_arg_p() -> impl Parser<Output = PrintArg> {
-    alt(
-        map(
-            filter_token_by_kind_opt(TokenType::Semicolon),
-            PrintArg::Semicolon,
-        ),
-        map(filter_token_by_kind_opt(TokenType::Comma), PrintArg::Comma),
-    )
+    map_tokens(&[
+        (TokenType::Semicolon, PrintArg::Semicolon),
+        (TokenType::Comma, PrintArg::Comma)
+    ])
 }
 
 struct PrintArgLookingBack {

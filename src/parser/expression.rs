@@ -2,12 +2,10 @@ use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::parsers::{
     AndDemandTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait,
-    OptAndPC, Parser,
+    OptAndPC, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{
-    in_parenthesis_p, item_p, keyword_p, whitespace, LeadingWhitespace, TokenType,
-};
+use crate::parser::specific::{in_parenthesis_p, item_p, keyword_p, whitespace, LeadingWhitespace, TokenKindParser, TokenType, map_tokens};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -219,7 +217,7 @@ mod string_literal {
 mod number_literal {
     use crate::common::*;
     use crate::parser::base::parsers::{
-        AndDemandTrait, AndOptTrait, AndThenTrait, KeepRightTrait, NonOptParser, Parser,
+        AndDemandTrait, AndOptTrait, AndThenTrait, AndTrait, KeepRightTrait, NonOptParser, Parser,
     };
     use crate::parser::base::recognizers::is_digit;
     use crate::parser::base::tokenizers::Token;
@@ -382,7 +380,9 @@ mod number_literal {
 pub mod word {
     use super::lazy_expression_node_p;
     use crate::common::*;
-    use crate::parser::base::parsers::{AndDemandTrait, KeepRightTrait, Parser};
+    use crate::parser::base::parsers::{
+        AndDemandTrait, AndOptTrait, AndThenTrait, KeepLeftTrait, KeepRightTrait, Parser,
+    };
     use crate::parser::base::tokenizers::Tokenizer;
     use crate::parser::name::name_with_dot_p;
     use crate::parser::specific::{identifier_without_dot_p, in_parenthesis_p, item_p, TokenType};
@@ -824,20 +824,23 @@ fn and_or_p(
 }
 
 fn arithmetic_op_p() -> impl Parser<Output = Operator> {
-    alt4(
-        map(filter_token_by_kind_opt(TokenType::Plus), |_| {
-            Operator::Plus
-        }),
-        map(filter_token_by_kind_opt(TokenType::Minus), |_| {
-            Operator::Minus
-        }),
-        map(filter_token_by_kind_opt(TokenType::Star), |_| {
-            Operator::Multiply
-        }),
-        map(filter_token_by_kind_opt(TokenType::Slash), |_| {
-            Operator::Divide
-        }),
-    )
+    map_tokens(&[
+        (TokenType::Plus, Operator::Plus),
+        (TokenType::Minus, Operator::Minus),
+        (TokenType::Star, Operator::Multiply),
+        (TokenType::Slash, Operator::Divide),
+    ])
+    // token_type_to_operator(TokenType::Plus, Operator::Plus)
+    //     .or(token_type_to_operator(TokenType::Minus, Operator::Minus))
+    //     .or(token_type_to_operator(TokenType::Star, Operator::Multiply))
+    //     .or(token_type_to_operator(TokenType::Slash, Operator::Divide))
+}
+
+fn token_type_to_operator(
+    token_type: TokenType,
+    operator: Operator,
+) -> impl Parser<Output = Operator> {
+    TokenKindParser::new(token_type).map(|_| operator)
 }
 
 fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
@@ -847,27 +850,31 @@ fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<O
 }
 
 pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
-    alt6(
-        map(filter_token_by_kind_opt(TokenType::LessEquals), |_| {
-            Operator::LessOrEqual
-        }),
-        map(filter_token_by_kind_opt(TokenType::GreaterEquals), |_| {
-            Operator::GreaterOrEqual
-        }),
-        map(filter_token_by_kind_opt(TokenType::NotEquals), |_| {
-            Operator::NotEqual
-        }),
-        map(filter_token_by_kind_opt(TokenType::Less), |_| {
-            Operator::Less
-        }),
-        map(filter_token_by_kind_opt(TokenType::Greater), |_| {
-            Operator::Greater
-        }),
-        map(filter_token_by_kind_opt(TokenType::Equals), |_| {
-            Operator::Equal
-        }),
-    )
-    .with_pos()
+    map_tokens(&[
+        (TokenType::LessEquals, Operator::LessOrEqual),
+        (TokenType::GreaterEquals, Operator::GreaterOrEqual),
+        (TokenType::NotEquals, Operator::NotEqual),
+        (TokenType::Less, Operator::Less),
+        (TokenType::Greater, Operator::Greater),
+        (TokenType::Equals, Operator::Equal),
+
+    ]).with_pos()
+    // token_type_to_operator(TokenType::LessEquals, Operator::LessOrEqual)
+    //     .or(token_type_to_operator(
+    //         TokenType::GreaterEquals,
+    //         Operator::GreaterOrEqual,
+    //     ))
+    //     .or(token_type_to_operator(
+    //         TokenType::NotEquals,
+    //         Operator::NotEqual,
+    //     ))
+    //     .or(token_type_to_operator(TokenType::Less, Operator::Less))
+    //     .or(token_type_to_operator(
+    //         TokenType::Greater,
+    //         Operator::Greater,
+    //     ))
+    //     .or(token_type_to_operator(TokenType::Equals, Operator::Equal))
+    //     .with_pos()
 }
 
 #[cfg(test)]

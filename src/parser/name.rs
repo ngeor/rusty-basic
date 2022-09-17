@@ -1,8 +1,11 @@
+use std::io::Read;
 use crate::common::QError;
 use crate::parser::base::parsers::Parser;
 use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 use std::str::FromStr;
+use crate::parser::base::tokenizers::{Token, token_list_to_string, Tokenizer};
+use crate::parser::specific::TokenType;
 
 /// Parses a name. The name must start with a letter and can include
 /// letters, digits or dots. The name can optionally be qualified by a type
@@ -80,8 +83,61 @@ mod tests {
             let expected_output = expected_outputs[i];
             let eol_reader = create_string_tokenizer(input);
             let mut parser = any_word_with_dot_p();
-            let (_, result) = parser.parse(eol_reader).expect("Should succeed");
+            let result = parser.parse(eol_reader).expect("Should succeed");
             assert_eq!(result, Some(BareName::from(expected_output)));
         }
     }
+}
+
+struct IdentifierWithDotParser;
+
+impl Parser for IdentifierWithDotParser {
+    type Output = String; // TODO check if Vec<Token> will work better for undo
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let mut list : Vec<Token> = Vec::new();
+        loop {
+            match tokenizer.read()? {
+                Some(token) => {
+                    if token.kind == TokenType::Identifier as i32 {
+                        list.push(token);
+                    } else if token.kind == TokenType::Digits as i32 {
+                        if list.is_empty() {
+                            tokenizer.unread(token);
+                            break;
+                        } else if list.last().unwrap().kind == TokenType::Dot as i32 {
+                            return Err(QError::syntax_error("Property cannot start with a number"));
+                        } else {
+                            list.push(token);
+                        }
+                    } else if token.kind == TokenType::Dot as i32 {
+                        if list.is_empty() {
+                            tokenizer.unread(token);
+                            break;
+                        } else if list.last().unwrap().kind == TokenType::Dot as i32 {
+                            return Err(QError::syntax_error("Two dots in a row"));
+                        } else {
+                            list.push(token);
+                        }
+                    } else {
+                        tokenizer.unread(token);
+                        break;
+                    }
+                }
+                None => {
+                    break;
+                }
+            }
+        }
+        if list.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(token_list_to_string(list)))
+        }
+    }
+}
+
+// TODO rename to _opt
+fn identifier_with_dot() -> impl Parser {
+    IdentifierWithDotParser
 }

@@ -347,18 +347,22 @@ pub fn opt_whitespace_p(reject_empty: bool) -> impl Parser<Output = Token> {
 
 struct EmptyWhitespaceTokenParser;
 
+pub fn dummy_token(tokenizer: &impl Tokenizer) -> Token {
+    Token {
+        kind: TokenType::Whitespace as i32,
+        text: String::new(),
+        position: Position {
+            begin: tokenizer.position(),
+            end: tokenizer.position(),
+        },
+    }
+}
+
 impl Parser for EmptyWhitespaceTokenParser {
     type Output = Token;
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        Ok(Some(Token {
-            kind: TokenType::Whitespace as i32,
-            text: String::new(),
-            position: Position {
-                begin: tokenizer.position(),
-                end: tokenizer.position(),
-            },
-        }))
+        Ok(Some(dummy_token(tokenizer)))
     }
 }
 

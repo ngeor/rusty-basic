@@ -1,8 +1,9 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{and, filter_token, filter_token_by_kind_opt, many_opt, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{item_p, TokenType, whitespace_p};
+use crate::parser::base::tokenizers::{Token, Tokenizer};
+use crate::parser::specific::{dummy_token, item_p, opt_whitespace_p, TokenType, whitespace_p};
 
+// TODO split into two classes one for comments and one for non comments
 pub struct StatementSeparator {
     comment_mode: bool,
 }
@@ -17,10 +18,10 @@ impl StatementSeparator {
         reader: &mut impl Tokenizer,
         mut buf: String,
     ) -> Result<Option<String>, QError> {
-        let (reader, opt_item) = eol_separator_p().parse(reader)?;
+        let opt_item = eol_separator_p().parse(reader)?;
         let item = opt_item.unwrap();
         buf.push_str(item.as_str());
-        Ok((reader, Some(buf)))
+        Ok(Some(buf))
     }
 
     // <ws>* '\'' (undoing it)
@@ -31,16 +32,16 @@ impl StatementSeparator {
         reader: &mut impl Tokenizer,
         mut buf: String,
     ) -> Result<Option<String>, QError> {
-        let (reader, opt_item) = comment_separator_p()
+        let opt_item = comment_separator_p()
             .or(colon_separator_p())
             .or(eol_separator_p())
             .parse(reader)?;
         match opt_item {
             Some(item) => {
                 buf.push_str(item.as_str());
-                Ok((reader, Some(buf)))
+                Ok(Some(buf))
             }
-            _ => Err((reader, QError::syntax_error("Expected: end-of-statement"))),
+            _ => Err(QError::syntax_error("Expected: end-of-statement")),
         }
     }
 }
@@ -77,32 +78,40 @@ impl EofOrStatementSeparator {
 }
 
 impl Parser for EofOrStatementSeparator {
-    type Output = String;
+    type Output = Token;
 
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let (reader, opt_item) = reader.read()?;
-        match opt_item {
-            Some(ch) => {
-                if ch == ':' || ch == '\'' || is_eol(ch) {
-                    let mut buf: String = String::new();
-                    buf.push(ch);
-                    Ok((reader, Some(buf)))
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match tokenizer.read()? {
+            Some(token) => {
+                if token.kind == TokenType::Colon as i32 || token.kind == TokenType::SingleQuote as i32 || token.kind == TokenType::Eol as i32 {
+                    Ok(Some(token))
                 } else {
-                    Ok((reader.undo_item(ch), None))
+                    tokenizer.unread(token);
+                    Ok(None)
                 }
             }
             _ => {
                 // EOF is accepted
-                Ok((reader, Some(String::new())))
+                Ok(Some(dummy_token(tokenizer)))
             }
         }
     }
 }
 
+// ':' <ws>*
+fn colon_separator_p() -> impl Parser {
+    and(
+        filter_token_by_kind_opt(TokenType::Colon),
+        opt_whitespace_p(false)
+    )
+}
+
+// <eol> < ws | eol >*
+// TODO rename to _opt
 fn eol_separator_p() -> impl Parser {
     and(
         filter_token_by_kind_opt(TokenType::Eol),
-    many_opt(eol_or_whitespace_opt())
+        many_opt(eol_or_whitespace_opt())
     )
 }
 

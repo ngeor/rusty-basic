@@ -2,7 +2,7 @@ use std::fs::File;
 use crate::parser::base::parsers::*;
 use crate::parser::base::recognizers::*;
 use crate::parser::base::tokenizers::*;
-use crate::parser::Statement;
+use crate::parser::{Keyword, SORTED_KEYWORDS_STR, Statement};
 use std::str::Chars;
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
 
@@ -17,6 +17,7 @@ pub enum TokenType {
     LParen,
     RParen,
     Colon,
+    Semicolon,
     Comma,
     SingleQuote,
     DoubleQuote,
@@ -167,7 +168,7 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
         Box::new(single_char_recognizer('#')),
         Box::new(single_char_recognizer('$')),
         Box::new(single_char_recognizer('%')),
-        Box::new(keyword_recognizer(&KEYWORDS)),
+        Box::new(keyword_recognizer(&SORTED_KEYWORDS_STR)),
         Box::new(leading_remaining_recognizer(is_letter, |ch| {
             is_letter(ch) || is_digit(ch)
         })),
@@ -193,4 +194,28 @@ pub fn create_string_tokenizer(input: &str) -> impl Tokenizer {
         string_char_reader(input),
         create_recognizers()
     )
+}
+
+pub fn keyword_p(keyword: Keyword) -> impl Parser {
+    filter_token(|token| token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str())
+}
+
+#[deprecated]
+pub fn item_p(ch: char) -> impl Parser {
+    filter_token_by_kind_opt(
+    match ch {
+        ',' => TokenType::Comma,
+        '=' => TokenType::Equals,
+        '$' => TokenType::DollarSign,
+        '\'' => TokenType::SingleQuote,
+        '-' => TokenType::Minus,
+        '*' => TokenType::Star,
+        '#' => TokenType::Pound,
+        '.' => TokenType::Dot,
+        ';' => TokenType::Semicolon,
+        '>' => TokenType::Greater,
+        '<' => TokenType::Less,
+        ':' => TokenType::Colon,
+        _ => panic!("not implemented {}", ch)
+    })
 }

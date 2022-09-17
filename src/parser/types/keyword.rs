@@ -1,5 +1,7 @@
+use std::cmp::Ordering;
 use crate::common::CmpIgnoreAsciiCase;
 use std::str::FromStr;
+use crate::parser::base::recognizers::{Recognition, Recognizer};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Keyword {
@@ -228,7 +230,7 @@ const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 const STR_WIDTH: &str = "WIDTH";
 
-const SORTED_KEYWORDS_STR: [&str; 74] = [
+pub const SORTED_KEYWORDS_STR: [&str; 74] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -476,6 +478,28 @@ impl FromStr for Keyword {
             .binary_search_by(|p| CmpIgnoreAsciiCase::compare_ignore_ascii_case(*p, s))
             .map(|idx| SORTED_KEYWORDS[idx])
             .map_err(|_| format!("Not a keyword: {}", s))
+    }
+}
+
+struct KeywordRecognizer;
+
+fn cmp_ignore_case(left: &str, right: &str) -> Ordering {
+    todo!()
+}
+
+impl Recognizer for KeywordRecognizer {
+    fn recognize(&self, buffer: &str) -> Recognition {
+        match SORTED_KEYWORDS_STR.binary_search_by(cmp_ignore_case) {
+            Ok(_) => Recognition::Positive,
+            Err(would_be_index) => {
+                // containing the index where a matching element could be inserted while maintaining sorted order
+                if SORTED_KEYWORDS_STR[would_be_index].starts_with(buffer) {
+                    Recognition::Partial
+                } else {
+                    Recognition::Negative
+                }
+            }
+        }
     }
 }
 

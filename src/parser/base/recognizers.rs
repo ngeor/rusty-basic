@@ -153,6 +153,7 @@ impl<'a> KeywordRecognizer<'a> {
 
 impl<'a> Recognizer for KeywordRecognizer<'a> {
     fn recognize(&self, buffer: &str) -> Recognition {
+        // TODO use binary search
         for keyword in self.keywords {
             if keyword.eq_ignore_ascii_case(buffer) {
                 return Recognition::Positive;

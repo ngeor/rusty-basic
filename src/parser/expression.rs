@@ -1,9 +1,9 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{alt4, alt6, filter_token_by_kind_opt, map, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::{
-    in_parenthesis_p, item_p, keyword_p, opt_whitespace_p, whitespace_p,
+    in_parenthesis_p, item_p, keyword_p, opt_whitespace_p, whitespace_p, TokenType,
 };
 use crate::parser::types::*;
 
@@ -206,7 +206,9 @@ mod string_literal {
 
 mod number_literal {
     use crate::common::*;
-    use crate::parser::base::parsers::{and_then, filter_token_by_kind, filter_token_by_kind_opt, Parser};
+    use crate::parser::base::parsers::{
+        and_then, filter_token_by_kind, filter_token_by_kind_opt, Parser,
+    };
     use crate::parser::specific::{item_p, TokenType};
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
@@ -214,11 +216,7 @@ mod number_literal {
     pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
         digits_p()
-            .and_opt(
-                item_p('.')
-                    .and_demand(digits())
-                    .keep_right(),
-            )
+            .and_opt(item_p('.').and_demand(digits()).keep_right())
             .and_opt(item_p('#'))
             .and_then(
                 |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
@@ -371,11 +369,11 @@ pub mod word {
     use super::lazy_expression_node_p;
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
+    use crate::parser::base::tokenizers::Tokenizer;
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::specific::{identifier_without_dot_p, in_parenthesis_p, item_p};
+    use crate::parser::specific::{identifier_without_dot_p, in_parenthesis_p, item_p, TokenType};
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
-    use std::convert::TryFrom;
 
     pub fn word_p() -> impl Parser<Output = Expression> {
         name_with_dot_p()
@@ -385,13 +383,7 @@ pub mod word {
                     .one_or_more()
                     .and_opt(type_qualifier_p()),
             )
-            .and_opt(any_p::<R>().peek_reader_item().validate(|x: &char| {
-                if TypeQualifier::try_from(*x).is_ok() || *x == '.' {
-                    Err(QError::syntax_error("Expected: end of name expr"))
-                } else {
-                    Ok(true)
-                }
-            }))
+            .and_opt(EnsureEndOfNameParser)
             .keep_left()
             .and_then(|((name, opt_args), opt_properties)| {
                 if opt_args.is_none() && opt_properties.is_none() {
@@ -487,6 +479,33 @@ pub mod word {
                 identifier_without_dot_p().or_syntax_error("Expected: property name after period"),
             )
             .keep_right()
+    }
+
+    struct EnsureEndOfNameParser;
+
+    impl Parser for EnsureEndOfNameParser {
+        type Output = ();
+
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+            match tokenizer.read()? {
+                Some(token) => {
+                    let token_type = token.kind as TokenType;
+                    tokenizer.unread(token);
+                    match token_type {
+                        TokenType::Dot
+                        | TokenType::ExclamationMark
+                        | TokenType::Pound
+                        | TokenType::Percent
+                        | TokenType::Ampersand
+                        | TokenType::DollarSign => {
+                            Err(QError::syntax_error("Expected: end of name expression"))
+                        }
+                        _ => Ok(Some(())),
+                    }
+                }
+                None => Ok(Some(())),
+            }
+        }
     }
 
     #[cfg(test)]
@@ -791,13 +810,20 @@ fn and_or_p(
 }
 
 fn arithmetic_op_p() -> impl Parser<Output = Operator> {
-    if_p(|ch| ch == '+' || ch == '-' || ch == '*' || ch == '/').map(|ch| match ch {
-        '+' => Operator::Plus,
-        '-' => Operator::Minus,
-        '*' => Operator::Multiply,
-        '/' => Operator::Divide,
-        _ => panic!("Parser should not have parsed this"),
-    })
+    alt4(
+        map(filter_token_by_kind_opt(TokenType::Plus), |_| {
+            Operator::Plus
+        }),
+        map(filter_token_by_kind_opt(TokenType::Minus), |_| {
+            Operator::Minus
+        }),
+        map(filter_token_by_kind_opt(TokenType::Star), |_| {
+            Operator::Multiply
+        }),
+        map(filter_token_by_kind_opt(TokenType::Slash), |_| {
+            Operator::Divide
+        }),
+    )
 }
 
 fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
@@ -806,32 +832,28 @@ fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<O
         .keep_right()
 }
 
-fn lte_p() -> impl Parser<Output = Operator> {
-    item_p('<')
-        .and_opt(if_p(|ch| ch == '=' || ch == '>'))
-        .map(|(_, opt_r)| match opt_r {
-            Some('=') => Operator::LessOrEqual,
-            Some('>') => Operator::NotEqual,
-            None => Operator::Less,
-            _ => panic!("Parser should not have parsed this"),
-        })
-}
-
-fn gte_p() -> impl Parser<Output = Operator> {
-    item_p('>')
-        .and_opt(item_p('='))
-        .map(|(_, opt_r)| match opt_r {
-            Some(_) => Operator::GreaterOrEqual,
-            None => Operator::Greater,
-        })
-}
-
-fn eq_p() -> impl Parser<Output = Operator> {
-    item_p('=').map(|_| Operator::Equal)
-}
-
 pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
-    lte_p().or(gte_p()).or(eq_p()).with_pos()
+    alt6(
+        map(filter_token_by_kind_opt(TokenType::LessEquals), |_| {
+            Operator::LessOrEqual
+        }),
+        map(filter_token_by_kind_opt(TokenType::GreaterEquals), |_| {
+            Operator::GreaterOrEqual
+        }),
+        map(filter_token_by_kind_opt(TokenType::NotEquals), |_| {
+            Operator::NotEqual
+        }),
+        map(filter_token_by_kind_opt(TokenType::Less), |_| {
+            Operator::Less
+        }),
+        map(filter_token_by_kind_opt(TokenType::Greater), |_| {
+            Operator::Greater
+        }),
+        map(filter_token_by_kind_opt(TokenType::Equals), |_| {
+            Operator::Equal
+        }),
+    )
+    .with_pos()
 }
 
 #[cfg(test)]

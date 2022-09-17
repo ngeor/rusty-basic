@@ -236,6 +236,48 @@ where
     OrParser { left, right }
 }
 
+pub fn alt3<A, B, C, T>(a: A, b: B, c: C) -> impl Parser<Output = T>
+where
+    A: Parser<Output = T>,
+    B: Parser<Output = T>,
+    C: Parser<Output = T>,
+{
+    alt(a, alt(b, c))
+}
+
+pub fn alt4<A, B, C, D, T>(a: A, b: B, c: C, d: D) -> impl Parser<Output = T>
+where
+    A: Parser<Output = T>,
+    B: Parser<Output = T>,
+    C: Parser<Output = T>,
+    D: Parser<Output = T>,
+{
+    alt(a, alt3(b, c, d))
+}
+
+pub fn alt5<A, B, C, D, E, T>(a: A, b: B, c: C, d: D, e: E) -> impl Parser<Output = T>
+where
+    A: Parser<Output = T>,
+    B: Parser<Output = T>,
+    C: Parser<Output = T>,
+    D: Parser<Output = T>,
+    E: Parser<Output = T>,
+{
+    alt(a, alt4(b, c, d, e))
+}
+
+pub fn alt6<A, B, C, D, E, F, T>(a: A, b: B, c: C, d: D, e: E, f: F) -> impl Parser<Output = T>
+where
+    A: Parser<Output = T>,
+    B: Parser<Output = T>,
+    C: Parser<Output = T>,
+    D: Parser<Output = T>,
+    E: Parser<Output = T>,
+    F: Parser<Output = T>,
+{
+    alt(a, alt5(b, c, d, e, f))
+}
+
 // And Then
 
 struct AndThenParser<P, M, U>

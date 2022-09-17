@@ -1,5 +1,5 @@
 use crate::built_ins::BuiltInSub;
-use crate::common::{AtLocation, Location, QError};
+use crate::common::{AtLocation, AtRowCol, Locatable, Location, QError};
 use crate::parser::base::parsers::*;
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
 use crate::parser::base::recognizers::*;
@@ -196,13 +196,13 @@ pub fn create_string_tokenizer(input: &str) -> impl Tokenizer + '_ {
 }
 
 // TODO rename to keyword_opt
-pub fn keyword_p(keyword: Keyword) -> impl Parser {
+pub fn keyword_p(keyword: Keyword) -> impl Parser<Output = Token> {
     filter_token(move |token| {
         Ok(token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str())
     })
 }
 
-pub fn keyword(keyword: Keyword) -> impl Parser {
+pub fn keyword(keyword: Keyword) -> impl Parser<Output = Token> {
     filter_token(move |token| {
         if token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str() {
             Ok(true)
@@ -218,7 +218,7 @@ pub fn keyword_followed_by_whitespace_p(keyword: Keyword) -> impl Parser {
 }
 
 // TODO deprecate this
-pub fn item_p(ch: char) -> impl Parser {
+pub fn item_p(ch: char) -> impl Parser<Output = Token> {
     filter_token_by_kind_opt(match ch {
         ',' => TokenType::Comma,
         '=' => TokenType::Equals,
@@ -283,7 +283,7 @@ pub fn whitespace() -> impl Parser {
 }
 
 // TODO rename to whitespace_opt
-pub fn whitespace_p() -> impl Parser<Output = Token> {
+pub fn whitespace_p<'a>() -> FilterTokenByKindParser<'a, TokenType> {
     filter_token_by_kind_opt(TokenType::Whitespace)
 }
 
@@ -384,12 +384,37 @@ pub fn map_err<P: Parser>(parser: P, err: QError) -> impl Parser<Output = P::Out
 }
 
 pub trait PcSpecific: Parser {
-    fn surrounded_by_opt_ws<F>(self) -> SurroundedByOptParser<Self, F>
+    fn surrounded_by_opt_ws<'a>(
+        self,
+    ) -> SurroundedByOptParser<Self, FilterTokenByKindParser<'a, TokenType>>
     where
         Self: Sized,
     {
-        self.surrounded_by_opt(|token| token.kind == TokenType::Whitespace as i32)
+        self.surrounded_by_opt(whitespace_p())
+    }
+
+    fn with_pos(self) -> WithPosMapper<Self>
+    where
+        Self: Sized,
+    {
+        WithPosMapper(self)
     }
 }
 
 impl<T> PcSpecific for T where T: Parser {}
+
+pub struct WithPosMapper<P>(P);
+
+impl<P> Parser for WithPosMapper<P>
+where
+    P: Parser,
+{
+    type Output = Locatable<P::Output>;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let pos = tokenizer.position();
+        self.0
+            .parse(tokenizer)
+            .map(|opt_x| opt_x.map(|x| x.at_rc(pos.row, pos.col)))
+    }
+}

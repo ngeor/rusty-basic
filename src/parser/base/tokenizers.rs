@@ -4,8 +4,8 @@ use std::iter;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RowCol {
-    row: u32,
-    col: u32,
+    pub row: u32,
+    pub col: u32,
 }
 
 impl RowCol {

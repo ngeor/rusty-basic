@@ -5,7 +5,7 @@ use crate::parser::base::parsers::Parser;
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
 use crate::parser::specific::{
-    identifier_without_dot_p, keyword_followed_by_whitespace_p, whitespace_p,
+    identifier_without_dot_p, keyword_followed_by_whitespace_p, whitespace_p, PcSpecific,
 };
 use crate::parser::types::*;
 

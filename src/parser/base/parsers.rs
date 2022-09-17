@@ -43,7 +43,7 @@ pub trait Parser {
     fn surrounded_by_opt<F>(self, predicate: F) -> SurroundedByOptParser<Self, F>
     where
         Self: Sized,
-        F: Fn(&Token, bool),
+        F: Parser<Output = Token>,
     {
         SurroundedByOptParser {
             parser: self,
@@ -61,8 +61,31 @@ pub trait Parser {
         }
     }
 
-    fn map<F, U>(self, mapper: F) -> MapParser<Self, U> where Self : Sized, F : Fn(Self::Output) -> U {
+    fn map<F, U>(self, mapper: F) -> MapParser<Self, F, U>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> U,
+    {
         map(self, mapper)
+    }
+
+    fn and_demand<P>(self, other: P) -> AndParser<Self, P>
+    where
+        Self: Sized,
+        P: Parser,
+    {
+        todo!()
+    }
+
+    fn and_then<F, U>(self, mapper: F) -> AndThenParser<Self, F, U>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> Result<Option<U>, QError>,
+    {
+        AndThenParser {
+            parser: self,
+            mapper,
+        }
     }
 }
 
@@ -70,7 +93,7 @@ pub trait Parser {
 
 // FilterTokenByKindParser
 
-struct FilterTokenByKindParser<'a, T>
+pub struct FilterTokenByKindParser<'a, T>
 where
     T: Copy,
 {
@@ -111,7 +134,7 @@ where
     }
 }
 
-pub fn filter_token_by_kind_opt<T: Copy>(kind: T) -> impl Parser<Output = Token> {
+pub fn filter_token_by_kind_opt<'a, T: Copy>(kind: T) -> FilterTokenByKindParser<'a, T> {
     FilterTokenByKindParser {
         kind,
         optional: true,
@@ -119,7 +142,7 @@ pub fn filter_token_by_kind_opt<T: Copy>(kind: T) -> impl Parser<Output = Token>
     }
 }
 
-pub fn filter_token_by_kind<'a, T: Copy>(
+pub fn filter_token_by_kind<'a, T: 'a + Copy>(
     kind: T,
     err_msg: &'a str,
 ) -> impl Parser<Output = Token> + 'a {
@@ -209,7 +232,7 @@ where
     L: Parser,
     R: Parser,
 {
-    pub fn keep_right(self) -> impl Parser<Output = R> {
+    pub fn keep_right(self) -> impl Parser<Output = R::Output> {
         keep_right(self)
     }
 }
@@ -386,26 +409,27 @@ where
 // Map Parser
 
 pub struct MapParser<P, M, U>
-    where
-        P: Parser,
-        M: Fn(P::Output) -> U,
+where
+    P: Parser,
+    M: Fn(P::Output) -> U,
 {
     parser: P,
     mapper: M,
 }
 
-impl<P, M, U> Parser for AndThenParser<P, M, U>
-    where
-        P: Parser,
-        M: Fn(P::Output) -> U
+impl<P, M, U> Parser for MapParser<P, M, U>
+where
+    P: Parser,
+    M: Fn(P::Output) -> U,
 {
     type Output = U;
 
     fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.parser.parse(source).map(|opt_x| opt_x.map(|x| (self.mapper)(x)))
+        self.parser
+            .parse(source)
+            .map(|opt_x| opt_x.map(|x| (self.mapper)(x)))
     }
 }
-
 
 pub fn map<P, M, U>(parser: P, mapper: M) -> impl Parser<Output = U>
 where
@@ -445,7 +469,7 @@ where
     L: Parser,
     R: Parser,
 {
-    pub fn keep_right(self) -> impl Parser<Output = Option<R>> {
+    pub fn keep_right(self) -> impl Parser<Output = Option<R::Output>> {
         keep_right(self)
     }
 }
@@ -467,16 +491,16 @@ pub struct SurroundedByOptParser<P, F> {
 impl<P, F> Parser for SurroundedByOptParser<P, F>
 where
     P: Parser,
-    F: Fn(&Token) -> bool,
+    F: Parser<Output = Token>,
 {
     type Output = P::Output;
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let leading_token = self.read_surrounding_token(tokenizer)?;
+        let leading_token = self.predicate.parse(tokenizer)?;
         match self.parser.parse(tokenizer)? {
             Some(result) => {
                 // ok read the trailing token too if it exists
-                self.read_surrounding_token(tokenizer)?;
+                self.predicate.parse(tokenizer)?;
                 Ok(Some(result))
             }
             None => {
@@ -490,27 +514,28 @@ where
     }
 }
 
-impl<P, F> SurroundedByOptParser<P, F>
+// Add
+
+pub struct AddParser<L, R>(L, R);
+
+impl<L, R> Parser for AddParser<L, R>
 where
-    P: Parser,
-    F: Fn(&Token) -> bool,
+    L: Parser,
+    R: Parser,
 {
-    fn read_surrounding_token(
-        &self,
-        tokenizer: &mut impl Tokenizer,
-    ) -> Result<Option<Token>, QError> {
-        match tokenizer.read()? {
-            Some(token) => {
-                if (self.predicate)(&token) {
-                    // keep it for now
-                    Ok(Some(token))
-                } else {
-                    // undo but it is okay to continue
-                    tokenizer.unread(token);
-                    Ok(None)
-                }
-            }
-            None => Ok(None),
-        }
+    type Output = (Option<L::Output>, Option<R::Output>);
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let left = self.0.parse(tokenizer)?;
+        let right = self.1.parse(tokenizer)?;
+        Ok(Some((left, right)))
     }
+}
+
+pub fn add<L, R>(left: L, right: R) -> impl Parser<Output = (Option<L::Output>, Option<R::Output>)>
+where
+    L: Parser,
+    R: Parser,
+{
+    AddParser(left, right)
 }

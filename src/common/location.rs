@@ -2,6 +2,7 @@
 // Location
 //
 
+use crate::parser::base::tokenizers::RowCol;
 use std::ops::Deref;
 
 /// The location of a token within a text file, expressed in row and column.
@@ -35,6 +36,12 @@ impl Location {
 
     pub fn col(&self) -> u32 {
         self.col
+    }
+}
+
+impl From<RowCol> for Location {
+    fn from(row_col: RowCol) -> Self {
+        Self::new(row_col.row, row_col.col)
     }
 }
 

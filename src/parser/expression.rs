@@ -1,9 +1,11 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
-use crate::parser::base::parsers::{alt4, alt6, filter_token_by_kind_opt, map, Parser};
+use crate::parser::base::parsers::{
+    add, alt4, alt6, and_then, filter_token_by_kind_opt, map, Parser,
+};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::{
-    in_parenthesis_p, item_p, keyword_p, opt_whitespace_p, whitespace_p, TokenType,
+    in_parenthesis_p, item_p, keyword_p, opt_whitespace_p, whitespace_p, PcSpecific, TokenType,
 };
 use crate::parser::types::*;
 
@@ -29,17 +31,23 @@ pub fn demand_expression_node_p(err_msg: &str) -> impl Parser<Output = Expressio
 pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
-    opt_whitespace_p(false)
-        .and(lazy_expression_node_p())
-        .and_then(|(l, r)| {
-            if r.is_parenthesis() || !l.is_empty() {
-                Ok(r)
-            } else {
-                Err(QError::syntax_error(
-                    "Expected: whitespace before expression",
-                ))
+    and_then(
+        add(whitespace_p(), lazy_expression_node_p()),
+        |(opt_leading_whitespace, opt_expression)| match opt_expression {
+            Some(expression) => {
+                let needs_leading_whitespace = !expression.is_parenthesis();
+                let has_leading_whitespace = opt_leading_whitespace.is_some();
+                if has_leading_whitespace || !needs_leading_whitespace {
+                    Ok(Some(expression))
+                } else {
+                    Err(QError::syntax_error(
+                        "Expected: whitespace before expression",
+                    ))
+                }
             }
-        })
+            None => Ok(None),
+        },
+    )
 }
 
 pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
@@ -50,7 +58,7 @@ pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> 
         .and_opt(whitespace_p())
         .and_then(|((l, expr), r)| {
             if expr.is_parenthesis() || (!l.is_empty() && !r.unwrap_or_default().is_empty()) {
-                Ok(expr)
+                Ok(Some(expr))
             } else {
                 Err(QError::syntax_error(
                     "Expected: whitespace around expression",
@@ -135,10 +143,10 @@ pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
         .with_pos()
         .and_demand(number_literal::digits())
         .and_then(
-            |(Locatable { pos, .. }, digits)| match digits.parse::<u8>() {
+            |(Locatable { pos, .. }, digits)| match digits.text.parse::<u8>() {
                 Ok(d) => {
                     if d > 0 {
-                        Ok(Locatable::new(d.into(), pos))
+                        Ok(Some(Locatable::new(d.into(), pos)))
                     } else {
                         Err(QError::BadFileNameOrNumber)
                     }
@@ -210,6 +218,7 @@ mod number_literal {
         and_then, filter_token_by_kind, filter_token_by_kind_opt, Parser,
     };
     use crate::parser::base::recognizers::is_digit;
+    use crate::parser::base::tokenizers::Token;
     use crate::parser::specific::{item_p, TokenType};
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
@@ -356,12 +365,12 @@ mod number_literal {
         })
     }
 
-    pub fn digits() -> impl Parser {
+    pub fn digits() -> impl Parser<Output = Token> {
         filter_token_by_kind(TokenType::Digits, "Expected digits")
     }
 
     // TODO rename to opt
-    pub fn digits_p() -> impl Parser {
+    pub fn digits_p() -> impl Parser<Output = Token> {
         filter_token_by_kind_opt(TokenType::Digits)
     }
 }

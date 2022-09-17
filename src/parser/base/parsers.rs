@@ -74,21 +74,21 @@ pub fn filter_token_by_kind<'a, T: Copy>(
 
 struct FilterTokenParser<P>
 where
-    P: Fn(&Token) -> bool,
+    P: Fn(&Token) -> Result<bool, QError>,
 {
     predicate: P,
 }
 
 impl<P> Parser for FilterTokenParser<P>
 where
-    P: Fn(&Token) -> bool,
+    P: Fn(&Token) -> Result<bool, QError>,
 {
     type Output = Token;
 
     fn parse(&self, source: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match source.read() {
             Ok(Some(token)) => {
-                if (self.predicate)(&token) {
+                if (self.predicate)(&token)? {
                     Ok(Some(token))
                 } else {
                     source.unread(token);
@@ -101,7 +101,7 @@ where
     }
 }
 
-pub fn filter_token<P: Fn(&Token) -> bool>(predicate: P) -> impl Parser<Output = Token> {
+pub fn filter_token<P: Fn(&Token) -> Result<bool, QError>>(predicate: P) -> impl Parser<Output = Token> {
     FilterTokenParser { predicate }
 }
 

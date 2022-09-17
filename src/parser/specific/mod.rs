@@ -2,9 +2,12 @@ use std::fs::File;
 use crate::parser::base::parsers::*;
 use crate::parser::base::recognizers::*;
 use crate::parser::base::tokenizers::*;
-use crate::parser::{Keyword, SORTED_KEYWORDS_STR, Statement};
+use crate::parser::{Expression, ExpressionNode, ExpressionNodes, Keyword, SORTED_KEYWORDS_STR, Statement};
 use std::str::Chars;
+use crate::built_ins::BuiltInSub;
+use crate::common::{AtLocation, Location, QError};
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
+use crate::parser::expression::expression_node_p;
 
 /// specific module contains implementation that mirrors the base module
 /// but it is specific to QBasic
@@ -196,11 +199,16 @@ pub fn create_string_tokenizer(input: &str) -> impl Tokenizer {
     )
 }
 
+// TODO rename to keyword_opt
 pub fn keyword_p(keyword: Keyword) -> impl Parser {
-    filter_token(|token| token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str())
+    filter_token(|token| Ok(token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str()))
 }
 
-#[deprecated]
+pub fn keyword(keyword: Keyword) -> impl Parser {
+    filter_token(|token| if token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str() { Ok(true) } else { Err(QError::SyntaxError(format!("Expected keyword {}", keyword))) })
+}
+
+// TODO deprecate this
 pub fn item_p(ch: char) -> impl Parser {
     filter_token_by_kind_opt(
     match ch {
@@ -218,4 +226,54 @@ pub fn item_p(ch: char) -> impl Parser {
         ':' => TokenType::Colon,
         _ => panic!("not implemented {}", ch)
     })
+}
+
+/// Parses built-in subs with optional arguments
+pub fn parse_built_in_sub_with_opt_args(
+    keyword: Keyword,
+    built_in_sub: BuiltInSub,
+) -> impl Parser<Output = Statement>
+{
+    keyword_followed_by_whitespace_p(keyword)
+        .and_opt(expression_node_p().csv_allow_missing())
+        .keep_right()
+        .map(move |opt_args| {
+            Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
+        })
+}
+
+/// Maps optional arguments to arguments, inserting a dummy first argument indicating
+/// which arguments were present in the form of a bit mask.
+fn map_opt_args_to_flags(args: Option<Vec<Option<ExpressionNode>>>) -> ExpressionNodes {
+    let mut result: ExpressionNodes = vec![];
+    let mut mask = 1;
+    let mut flags = 0;
+    if let Some(args) = args {
+        for arg in args {
+            if let Some(arg) = arg {
+                flags |= mask;
+                result.push(arg);
+            }
+            mask <<= 1;
+        }
+    }
+    result.insert(0, Expression::IntegerLiteral(flags).at(Location::start()));
+    result
+}
+
+pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
+    seq3(
+        keyword_p(first),
+        whitespace(),
+        keyword(second)
+    )
+}
+
+pub fn whitespace() -> impl Parser {
+    filter_token_by_kind(TokenType::WhiteSpace, "Expected whitespace")
+}
+
+// TODO rename to whitespace_opt
+pub fn whitespace_p() -> impl Parser {
+    filter_token_by_kind_opt(TokenType::WhiteSpace)
 }

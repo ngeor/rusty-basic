@@ -194,7 +194,7 @@ mod string_literal {
             seq3(
                 filter_token_by_kind_opt(TokenType::DoubleQuote),
                 many_opt(filter_token(|t| {
-                    t.kind != TokenType::DoubleQuote as i32 && t.kind != TokenType::Eol as i32
+                    Ok(t.kind != TokenType::DoubleQuote as i32 && t.kind != TokenType::Eol as i32)
                 })),
                 filter_token_by_kind(TokenType::DoubleQuote, "Unterminated string"),
             ),

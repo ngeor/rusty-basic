@@ -3,6 +3,7 @@ pub mod parser {
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
     use crate::parser::*;
+    use crate::parser::specific::parse_built_in_sub_with_opt_args;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         parse_built_in_sub_with_opt_args(Keyword::Locate, BuiltInSub::Locate)

@@ -3,6 +3,7 @@ pub mod parser {
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
     use crate::parser::*;
+    use crate::parser::specific::{keyword_pair_p, whitespace_p};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair_p(Keyword::Line, Keyword::Input)

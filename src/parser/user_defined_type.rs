@@ -47,9 +47,7 @@ use crate::parser::base::parsers::Parser;
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
-use crate::parser::specific::{
-    item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p, map_err, whitespace_p,
-};
+use crate::parser::specific::{demand_keyword_pair_p, item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p, map_err, whitespace_p};
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,

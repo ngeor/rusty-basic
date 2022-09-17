@@ -270,8 +270,14 @@ fn map_opt_args_to_flags(args: Option<Vec<Option<ExpressionNode>>>) -> Expressio
     result
 }
 
+// TODO rename to keyword_pair_opt
 pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
     seq3(keyword_p(first), whitespace(), keyword(second))
+}
+
+// TODO rename to keyword_pair
+pub fn demand_keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
+    seq3(keyword(first), whitespace(), keyword(second))
 }
 
 pub fn whitespace() -> impl Parser {

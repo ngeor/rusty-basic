@@ -29,8 +29,8 @@ impl RowCol {
 }
 
 pub struct Position {
-    begin: RowCol,
-    end: RowCol,
+    pub begin: RowCol,
+    pub end: RowCol,
 }
 
 pub struct Token {
@@ -52,6 +52,7 @@ pub fn token_list_to_string(list: TokenList) -> String {
 pub trait Tokenizer {
     fn read(&mut self) -> std::io::Result<Option<Token>>;
     fn unread(&mut self, token: Token);
+    fn position(&self) -> RowCol;
 }
 
 pub fn create_tokenizer<R: CharReader>(
@@ -207,6 +208,10 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
 
     fn unread(&mut self, token: Token) {
         self.buffer.push(token)
+    }
+
+    fn position(&self) -> RowCol {
+        self.tokenizer.pos
     }
 }
 

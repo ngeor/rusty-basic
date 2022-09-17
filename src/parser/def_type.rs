@@ -1,8 +1,8 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{filter_token, Parser};
-use crate::parser::specific::{item_p, keyword_choice_p, TokenType, whitespace_p};
-use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 use crate::parser::base::tokenizers::Token;
+use crate::parser::specific::{item_p, keyword_choice_p, whitespace_p, TokenType};
+use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
 // DefKeyword   ::= DEFSNG|DEFDBL|DEFSTR|DEFINT|DEFLNG
@@ -61,14 +61,22 @@ fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
 }
 
 fn letter() -> impl Parser {
-    filter_token(|token| if is_token_letter(token) { Ok(true) } else { Err(QError::syntax_error("Expected letter"))})
+    filter_token(|token| {
+        if is_token_letter(token) {
+            Ok(true)
+        } else {
+            Err(QError::syntax_error("Expected letter"))
+        }
+    })
 }
 fn letter_opt() -> impl Parser {
     filter_token(|token| Ok(is_token_letter(token)))
 }
 
 fn is_token_letter(token: &Token) -> bool {
-    token.kind == TokenType::Identifier as i32 && token.text.len() == 1 && is_letter(token.text.chars().next().unwrap())
+    token.kind == TokenType::Identifier as i32
+        && token.text.len() == 1
+        && is_letter(token.text.chars().next().unwrap())
 }
 
 fn is_letter(ch: char) -> bool {

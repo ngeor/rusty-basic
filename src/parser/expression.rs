@@ -2,7 +2,9 @@ use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{in_parenthesis_p, item_p, keyword_p, whitespace_p};
+use crate::parser::specific::{
+    in_parenthesis_p, item_p, keyword_p, opt_whitespace_p, whitespace_p,
+};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {

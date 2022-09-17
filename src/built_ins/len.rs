@@ -6,13 +6,11 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::Len)
-            .and_demand(
-                in_parenthesis(
-                    expression::lazy_expression_node_p()
-                        .csv()
-                        .or_syntax_error("Expected: variable"),
-                )
-            )
+            .and_demand(in_parenthesis(
+                expression::lazy_expression_node_p()
+                    .csv()
+                    .or_syntax_error("Expected: variable"),
+            ))
             .keep_right()
             .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }

@@ -7,13 +7,11 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::String_)
             .and(item_p('$'))
-            .and_demand(
-                in_parenthesis(
-                    expression::lazy_expression_node_p()
-                        .csv()
-                        .or_syntax_error("Expected: expression"),
-                )
-            )
+            .and_demand(in_parenthesis(
+                expression::lazy_expression_node_p()
+                    .csv()
+                    .or_syntax_error("Expected: expression"),
+            ))
             .keep_right()
             .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))
     }

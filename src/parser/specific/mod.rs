@@ -17,7 +17,7 @@ use std::str::Chars;
 pub enum TokenType {
     Unknown,
     Eol,
-    WhiteSpace,
+    Whitespace,
     Digits,
     LParen,
     RParen,
@@ -273,12 +273,12 @@ pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
 }
 
 pub fn whitespace() -> impl Parser {
-    filter_token_by_kind(TokenType::WhiteSpace, "Expected whitespace")
+    filter_token_by_kind(TokenType::Whitespace, "Expected whitespace")
 }
 
 // TODO rename to whitespace_opt
-pub fn whitespace_p() -> impl Parser {
-    filter_token_by_kind_opt(TokenType::WhiteSpace)
+pub fn whitespace_p() -> impl Parser<Output = Token> {
+    filter_token_by_kind_opt(TokenType::Whitespace)
 }
 
 pub fn in_parenthesis<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
@@ -296,7 +296,7 @@ pub fn in_parenthesis<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
 pub fn in_parenthesis_p<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
     map(
         seq3(
-            filter_token_by_kind_opt(TokenType::LParen, ),
+            filter_token_by_kind_opt(TokenType::LParen),
             parser,
             filter_token_by_kind(TokenType::RParen, "Expected )"),
         ),
@@ -306,19 +306,52 @@ pub fn in_parenthesis_p<P: Parser>(parser: P) -> impl Parser<Output = P::Output>
 
 // TODO rename to keyword_choice_opt
 pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser {
-    filter_token(|token| Ok( token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into())))
+    filter_token(|token| {
+        Ok(token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into()))
+    })
 }
 
 pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser {
-    filter_token(|token| if token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into()) {
-        Ok(true)
-    } else {
-        // TODO fix me
-        Err(QError::SyntaxError(format!("Expected one of the following keywords: {}", "todo")))
+    filter_token(|token| {
+        if token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into()) {
+            Ok(true)
+        } else {
+            // TODO fix me
+            Err(QError::SyntaxError(format!(
+                "Expected one of the following keywords: {}",
+                "todo"
+            )))
+        }
     })
 }
 
 // TODO deprecate this
 pub fn identifier_without_dot_p() -> impl Parser {
     filter_token_by_kind_opt(TokenType::Identifier)
+}
+
+// TODO deprecate this
+pub fn opt_whitespace_p(reject_empty: bool) -> impl Parser<Output = Token> {
+    if reject_empty {
+        whitespace_p()
+    } else {
+        alt(whitespace_p(), EmptyWhitespaceTokenParser)
+    }
+}
+
+struct EmptyWhitespaceTokenParser;
+
+impl Parser for EmptyWhitespaceTokenParser {
+    type Output = Token;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        Ok(Some(Token {
+            kind: TokenType::Whitespace as i32,
+            text: String::new(),
+            position: Position {
+                begin: tokenizer.position(),
+                end: tokenizer.position(),
+            },
+        }))
+    }
 }

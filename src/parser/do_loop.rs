@@ -37,9 +37,7 @@ fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> {
     zero_or_more_statements_p(keyword_p(Keyword::Loop))
         .and_demand(keyword_p(Keyword::Loop).or_syntax_error("DO without LOOP"))
         .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LOOP"))
-        .and_demand(
-            keyword_choice(&[Keyword::Until, Keyword::While])
-        )
+        .and_demand(keyword_choice(&[Keyword::Until, Keyword::While]))
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
         .map(|((((statements, _), _), (k, _)), condition)| DoLoopNode {
             condition,

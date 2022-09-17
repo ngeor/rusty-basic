@@ -51,7 +51,7 @@ where
     }
 }
 
-pub fn filter_token_by_kind_opt<T: Copy>(kind: T) -> impl Parser<Item = Token> {
+pub fn filter_token_by_kind_opt<T: Copy>(kind: T) -> impl Parser<Output = Token> {
     FilterTokenByKindParser {
         kind,
         optional: true,
@@ -235,4 +235,38 @@ pub fn many_opt<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Output>> {
         parser,
         allow_empty: true,
     }
+}
+
+// Or Parser
+
+struct OrParser<L, R, T>
+where
+    L: Parser<Output = T>,
+    R: Parser<Output = T>,
+{
+    left: L,
+    right: R,
+}
+
+impl<L, R, T> Parser<Output = T> for OrParser<L, R, T>
+where
+    L: Parser<Output = T>,
+    R: Parser<Output = T>,
+{
+    type Output = ();
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self.left.parse(tokenizer)? {
+            Some(a) => Ok(Some(a)),
+            None => self.right.parse(tokenizer),
+        }
+    }
+}
+
+pub fn alt<L, R, T>(left: L, right: L) -> impl Parser<Output = T>
+where
+    L: Parser<Output = T>,
+    R: Parser<Output = T>,
+{
+    OrParser { left, right }
 }

@@ -35,7 +35,9 @@ fn non_eol_p() -> impl Parser {
 }
 
 fn eol_or_whitespace_p() -> impl Parser {
-    filter_token(|token| Ok(token.kind == TokenType::Eol as i32 || token.kind == TokenType::WhiteSpace as i32))
+    filter_token(|token| {
+        Ok(token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32)
+    })
 }
 
 #[cfg(test)]

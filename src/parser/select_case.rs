@@ -1,9 +1,11 @@
 use crate::common::*;
-use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, Parser};
+use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::specific::{demand_keyword_pair_p, keyword_p, keyword_pair_p, whitespace};
+use crate::parser::specific::{
+    demand_keyword_pair_p, keyword_p, keyword_pair_p, whitespace, LeadingWhitespace,
+};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -167,9 +169,8 @@ impl Parser for SimpleOrRangeParser {
         match expr {
             Some(expr) => {
                 let parenthesis = expr.is_parenthesis();
-                let (reader, result) = opt_whitespace_p(!parenthesis)
-                    .and(keyword_p(Keyword::To))
-                    .parse(reader)?;
+                let result =
+                    LeadingWhitespace::new(keyword_p(Keyword::To), !parenthesis).parse(reader)?;
                 match result {
                     Some(_) => {
                         let (reader, second_expr) = expression::guarded_expression_node_p()

@@ -1,7 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{AndOptTrait, AndTrait, Parser, TokenPredicate};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
-use crate::parser::specific::{item_p, TokenType};
+use crate::parser::specific::{item_p, whitespace, TokenKindParser, TokenType};
 
 // TODO split into two classes one for comments and one for non comments
 pub struct StatementSeparator {
@@ -103,23 +103,19 @@ impl Parser for EofOrStatementSeparator {
 
 // ':' <ws>*
 fn colon_separator_p() -> impl Parser {
-    and(
-        filter_token_by_kind_opt(TokenType::Colon),
-        opt_whitespace_p(false),
-    )
+    TokenKindParser::new(TokenType::Colon).and_opt(whitespace())
 }
 
 // <eol> < ws | eol >*
 // TODO rename to _opt
 fn eol_separator_p() -> impl Parser {
-    and(
-        filter_token_by_kind_opt(TokenType::Eol),
-        many_opt(eol_or_whitespace_opt()),
-    )
+    TokenKindParser::new(TokenType::Eol).and(many_opt(EolOrWhitespace))
 }
 
-fn eol_or_whitespace_opt() -> impl Parser {
-    filter_token(|token| {
-        Ok(token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32)
-    })
+struct EolOrWhitespace;
+
+impl TokenPredicate for EolOrWhitespace {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32
+    }
 }

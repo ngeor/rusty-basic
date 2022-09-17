@@ -1,9 +1,13 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, KeepLeftTrait, KeepRightTrait, Parser};
+    use crate::parser::base::parsers::{
+        AndDemandTrait, AndOptTrait, AndTrait, KeepLeftTrait, KeepRightTrait, Parser,
+    };
+    use crate::parser::specific::{
+        item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace,
+    };
     use crate::parser::*;
-    use crate::parser::specific::{item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::Open)

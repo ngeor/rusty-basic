@@ -162,7 +162,7 @@ where
 pub struct OptAndPC<L, R>(L, R);
 
 impl<L, R> OptAndPC<L, R> {
-    pub fn new(left : L, right: R) -> Self {
+    pub fn new(left: L, right: R) -> Self {
         Self(left, right)
     }
 }

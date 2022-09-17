@@ -1,8 +1,8 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
     use crate::parser::base::parsers::{AndDemandTrait, AndTrait, KeepRightTrait, Parser};
-    use crate::parser::*;
     use crate::parser::specific::{in_parenthesis, item_p, keyword_p};
+    use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::String_)

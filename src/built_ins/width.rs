@@ -2,8 +2,8 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, Parser};
-    use crate::parser::*;
     use crate::parser::specific::keyword_followed_by_whitespace_p;
+    use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Width)

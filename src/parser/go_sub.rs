@@ -1,7 +1,7 @@
 use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, KeepRightTrait, Parser};
 use crate::parser::name::bare_name_p;
-use crate::parser::{Keyword, Statement};
 use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_p, whitespace};
+use crate::parser::{Keyword, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoSub)

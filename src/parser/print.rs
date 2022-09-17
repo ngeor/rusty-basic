@@ -1,8 +1,10 @@
 use crate::common::*;
-use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndTrait, Parser};
+use crate::parser::base::parsers::{
+    AndDemandTrait, AndOptTrait, AndTrait, KeepLeftTrait, KeepRightTrait, Parser,
+};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
-use crate::parser::specific::{item_p, keyword_p, TokenType, whitespace};
+use crate::parser::specific::{item_p, keyword_p, whitespace, LeadingWhitespace, TokenType};
 use crate::parser::types::*;
 
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
@@ -49,13 +51,12 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
 }
 
 fn using_p(needs_leading_whitespace: bool) -> impl Parser<Output = ExpressionNode> {
-    opt_whitespace_p(needs_leading_whitespace)
-        .and(keyword_p(Keyword::Using))
+    LeadingWhitespace::new(keyword_p(Keyword::Using), needs_leading_whitespace)
         .and_demand(
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: expression after USING"),
         )
-        .and_demand(item_p(';').or_syntax_error("Expected: ;"))
+        .and_demand(item_p(';'))
         .keep_left()
         .keep_right()
 }

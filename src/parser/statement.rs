@@ -81,15 +81,15 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 
 mod end {
     use super::*;
+    use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
     use crate::parser::base::tokenizers::{Token, Tokenizer};
-    use crate::parser::specific::keyword_choice_p;
+    use crate::parser::specific::{keyword_choice_p, whitespace, LeadingWhitespace};
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::End)
             .and(
-                opt_whitespace_p(false)
-                    .and(AfterEndSeparator {})
+                OptAndPC::new(whitespace(), AfterEndSeparator {})
                     .map(|(l, r)| {
                         let mut s: String = String::new();
                         s.push_str(&l);
@@ -160,13 +160,14 @@ mod end {
 
 mod system {
     use super::*;
+    use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
+    use crate::parser::specific::whitespace;
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::System)
             .and_demand(
-                opt_whitespace_p(false)
-                    .and(EofOrStatementSeparator::new())
+                OptAndPC::new(whitespace(), EofOrStatementSeparator::new())
                     .map(|(l, r)| {
                         let mut s: String = String::new();
                         s.push_str(&l);

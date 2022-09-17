@@ -2,8 +2,8 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, Parser};
-    use crate::parser::*;
     use crate::parser::specific::{keyword_pair_p, whitespace};
+    use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair_p(Keyword::Line, Keyword::Input)

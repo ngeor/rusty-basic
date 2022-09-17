@@ -225,12 +225,10 @@ pub fn keyword(keyword: Keyword) -> impl NonOptParser<Output = Token> {
     KeywordParser { keyword }
 }
 
-
 // TODO deprecate this
 pub fn keyword_followed_by_whitespace_p(keyword: Keyword) -> impl Parser {
     keyword_p(keyword).and(whitespace())
 }
-
 
 // TODO rename to keyword_pair_opt
 pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
@@ -247,7 +245,7 @@ pub fn demand_keyword_pair_p(first: Keyword, second: Keyword) -> impl NonOptPars
 }
 
 pub struct KeywordChoice<'a> {
-    keywords: &'a [Keyword]
+    keywords: &'a [Keyword],
 }
 
 impl<'a> TokenPredicate for KeywordChoice<'a> {
@@ -268,7 +266,7 @@ impl<'a> ErrorProvider for KeywordChoice<'a> {
 
 // TODO rename to keyword_choice_opt
 pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = Token> {
-    KeywordChoice { keywords  }
+    KeywordChoice { keywords }
 }
 
 pub fn keyword_choice(keywords: &[Keyword]) -> impl NonOptParser<Output = Token> {
@@ -310,7 +308,6 @@ pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Par
         .keep_left()
         .keep_right()
 }
-
 
 // TODO deprecate this
 pub fn item_p(ch: char) -> TokenKindParser {
@@ -385,42 +382,49 @@ pub fn in_parenthesis_p<P: NonOptParser>(parser: P) -> impl Parser<Output = P::O
         .and_demand(TokenType::RParen)
 }
 
-
 // TODO deprecate this
 pub fn identifier_without_dot_p() -> impl Parser<Output = Token> {
     TokenKindParser(TokenType::Identifier)
 }
 
-//
-// // TODO deprecate this
-// pub fn opt_whitespace_p(reject_empty: bool) -> impl Parser<Output = Token> {
-//     if reject_empty {
-//         whitespace_p()
-//     } else {
-//         alt(whitespace_p(), EmptyWhitespaceTokenParser)
-//     }
-// }
-//
-// struct EmptyWhitespaceTokenParser;
-//
-// pub fn dummy_token(tokenizer: &impl Tokenizer) -> Token {
-//     Token {
-//         kind: TokenType::Whitespace as i32,
-//         text: String::new(),
-//         position: Position {
-//             begin: tokenizer.position(),
-//             end: tokenizer.position(),
-//         },
-//     }
-// }
-//
-// impl Parser for EmptyWhitespaceTokenParser {
-//     type Output = Token;
-//
-//     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-//         Ok(Some(dummy_token(tokenizer)))
-//     }
-// }
+pub struct LeadingWhitespace<P> {
+    parser: P,
+    needs_whitespace: bool,
+}
+
+impl<P> LeadingWhitespace<P> {
+    pub fn new(parser: P, needs_whitespace: bool) -> Self {
+        Self {
+            parser,
+            needs_whitespace,
+        }
+    }
+}
+
+impl<P> Parser for LeadingWhitespace<P>
+where
+    P: Parser,
+{
+    type Output = P::Output;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let opt_space = whitespace().parse(tokenizer)?;
+        if self.needs_whitespace && opt_space.is_none() {
+            Ok(None)
+        } else {
+            match self.parser.parse(tokenizer)? {
+                Some(value) => Ok(Some(value)),
+                None => {
+                    if let Some(space) = opt_space {
+                        tokenizer.unread(space);
+                    }
+                    Ok(None)
+                }
+            }
+        }
+    }
+}
+
 //
 // struct MapErrParser<P>(P, QError);
 //

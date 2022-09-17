@@ -1,8 +1,13 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
-use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, OptAndPC, Parser};
+use crate::parser::base::parsers::{
+    AndDemandTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait,
+    OptAndPC, Parser,
+};
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{item_p, keyword_p, whitespace, TokenType, in_parenthesis_p};
+use crate::parser::specific::{
+    in_parenthesis_p, item_p, keyword_p, whitespace, LeadingWhitespace, TokenType,
+};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -188,16 +193,14 @@ pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionN
 mod string_literal {
     use super::*;
     use crate::parser::base::parsers::{Parser, TokenPredicate};
-    use crate::parser::base::tokenizers::{Token, token_list_to_string};
+    use crate::parser::base::tokenizers::{token_list_to_string, Token};
     use crate::parser::specific::{TokenKindParser, TokenType};
 
     pub fn string_literal_p() -> impl Parser<Output = Expression> {
         string_delimiter()
-            .and_opt(
-                InsideString.many()
-            )
+            .and_opt(InsideString.many())
             .and_demand(string_delimiter())
-            .map(|(_, (token_list, _))|   Expression::StringLiteral(token_list_to_string(token_list)))
+            .map(|(_, (token_list, _))| Expression::StringLiteral(token_list_to_string(token_list)))
     }
 
     fn string_delimiter() -> TokenKindParser {
@@ -215,7 +218,9 @@ mod string_literal {
 
 mod number_literal {
     use crate::common::*;
-    use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, AndThenTrait, KeepRightTrait, NonOptParser, Parser};
+    use crate::parser::base::parsers::{
+        AndDemandTrait, AndOptTrait, AndThenTrait, KeepRightTrait, NonOptParser, Parser,
+    };
     use crate::parser::base::recognizers::is_digit;
     use crate::parser::base::tokenizers::Token;
     use crate::parser::specific::{item_p, TokenKindParser, TokenType};
@@ -813,9 +818,9 @@ fn and_or_p(
     keyword: Keyword,
     operator: Operator,
 ) -> impl Parser<Output = Locatable<Operator>> {
-    opt_whitespace_p(!had_parenthesis_before)
-        .and(keyword_p(keyword).map(move |_| operator).with_pos())
-        .keep_right()
+    LeadingWhitespace::new(keyword_p(keyword), !had_parenthesis_before)
+        .map(|_| operator)
+        .with_pos()
 }
 
 fn arithmetic_op_p() -> impl Parser<Output = Operator> {
@@ -836,9 +841,9 @@ fn arithmetic_op_p() -> impl Parser<Output = Operator> {
 }
 
 fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
-    opt_whitespace_p(!had_parenthesis_before)
-        .and(keyword_p(Keyword::Mod).map(|_| Operator::Modulo).with_pos())
-        .keep_right()
+    LeadingWhitespace::new(keyword_p(Keyword::Mod), !had_parenthesis_before)
+        .map(|_| Operator::Modulo)
+        .with_pos()
 }
 
 pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {

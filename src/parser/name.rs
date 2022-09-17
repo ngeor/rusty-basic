@@ -1,11 +1,11 @@
-use std::io::Read;
 use crate::common::QError;
 use crate::parser::base::parsers::Parser;
+use crate::parser::base::tokenizers::{token_list_to_string, Token, Tokenizer};
+use crate::parser::specific::TokenType;
 use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
+use std::io::Read;
 use std::str::FromStr;
-use crate::parser::base::tokenizers::{Token, token_list_to_string, Tokenizer};
-use crate::parser::specific::TokenType;
 
 /// Parses a name. The name must start with a letter and can include
 /// letters, digits or dots. The name can optionally be qualified by a type
@@ -95,7 +95,7 @@ impl Parser for IdentifierWithDotParser {
     type Output = String; // TODO check if Vec<Token> will work better for undo
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let mut list : Vec<Token> = Vec::new();
+        let mut list: Vec<Token> = Vec::new();
         loop {
             match tokenizer.read()? {
                 Some(token) => {
@@ -106,7 +106,9 @@ impl Parser for IdentifierWithDotParser {
                             tokenizer.unread(token);
                             break;
                         } else if list.last().unwrap().kind == TokenType::Dot as i32 {
-                            return Err(QError::syntax_error("Property cannot start with a number"));
+                            return Err(QError::syntax_error(
+                                "Property cannot start with a number",
+                            ));
                         } else {
                             list.push(token);
                         }

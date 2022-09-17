@@ -1,7 +1,9 @@
 use crate::parser::base::parsers::Parser;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::specific::{demand_keyword_pair_p, keyword_choice, keyword_choice_p, keyword_p, whitespace_p};
+use crate::parser::specific::{
+    demand_keyword_pair_p, keyword_choice, keyword_choice_p, keyword_p, whitespace_p,
+};
 use crate::parser::statements;
 use crate::parser::types::*;
 

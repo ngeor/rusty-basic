@@ -160,6 +160,7 @@ mod end {
 
 mod system {
     use super::*;
+    use crate::parser::specific::opt_whitespace_p;
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {

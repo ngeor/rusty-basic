@@ -1,5 +1,6 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{filter_token, Parser};
+use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
 use crate::parser::specific::{item_p, keyword_choice_p, whitespace_p, TokenType};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
@@ -77,10 +78,6 @@ fn is_token_letter(token: &Token) -> bool {
     token.kind == TokenType::Identifier as i32
         && token.text.len() == 1
         && is_letter(token.text.chars().next().unwrap())
-}
-
-fn is_letter(ch: char) -> bool {
-    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
 }
 
 #[cfg(test)]

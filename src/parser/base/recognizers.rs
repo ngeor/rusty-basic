@@ -181,7 +181,7 @@ pub fn single_new_line_recognizer() -> impl Recognizer {
 
 pub fn many_digits_recognizer() -> impl Recognizer {
     ManyPredicateRecognizer {
-        predicate: |ch| ch >= '0' && ch <= '9',
+        predicate: is_digit,
     }
 }
 
@@ -193,8 +193,16 @@ pub fn many_white_space_recognizer() -> impl Recognizer {
 
 pub fn many_letters_recognizer() -> impl Recognizer {
     ManyPredicateRecognizer {
-        predicate: |ch| (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'),
+        predicate: is_letter,
     }
+}
+
+pub fn is_letter(ch: char) -> bool {
+    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+}
+
+pub fn is_digit(ch: char) -> bool {
+    ch >= '0' && ch <= '9'
 }
 
 pub fn leading_remaining_recognizer<T: Fn(char) -> bool, U: Fn(char) -> bool>(

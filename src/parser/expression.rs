@@ -209,6 +209,7 @@ mod number_literal {
     use crate::parser::base::parsers::{
         and_then, filter_token_by_kind, filter_token_by_kind_opt, Parser,
     };
+    use crate::parser::base::recognizers::is_digit;
     use crate::parser::specific::{item_p, TokenType};
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
@@ -288,7 +289,7 @@ mod number_literal {
     }
 
     fn convert_hex_digit(ch: char) -> u8 {
-        if ch >= '0' && ch <= '9' {
+        if is_digit(ch) {
             (ch as u8) - ('0' as u8)
         } else if ch >= 'a' && ch <= 'f' {
             (ch as u8) - ('a' as u8) + 10

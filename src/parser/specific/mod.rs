@@ -67,9 +67,7 @@ impl OctOrHex {
     fn is_digit(&self, ch: char) -> bool {
         match self {
             Self::Oct => ch >= '0' && ch <= '7',
-            Self::Hex => {
-                (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
-            }
+            Self::Hex => is_digit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'),
         }
     }
 }
@@ -193,19 +191,19 @@ pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
 }
 
 #[cfg(test)]
-pub fn create_string_tokenizer(input: &str) -> impl Tokenizer {
+pub fn create_string_tokenizer(input: &str) -> impl Tokenizer + '_ {
     create_tokenizer(string_char_reader(input), create_recognizers())
 }
 
 // TODO rename to keyword_opt
 pub fn keyword_p(keyword: Keyword) -> impl Parser {
-    filter_token(|token| {
+    filter_token(move |token| {
         Ok(token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str())
     })
 }
 
 pub fn keyword(keyword: Keyword) -> impl Parser {
-    filter_token(|token| {
+    filter_token(move |token| {
         if token.kind == TokenType::Keyword as i32 && token.text == keyword.as_str() {
             Ok(true)
         } else {

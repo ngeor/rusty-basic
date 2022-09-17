@@ -1,12 +1,11 @@
 use crate::parser::base::parsers::Parser;
-use crate::parser::specific::keyword_followed_by_whitespace_p;
+use crate::parser::specific::{keyword_choice, keyword_followed_by_whitespace_p};
 use crate::parser::{ExitObject, Keyword, Statement};
 
 pub fn statement_exit_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Exit)
         .and_demand(
-            keyword_choice_p(&[Keyword::Function, Keyword::Sub])
-                .or_syntax_error("Expected: FUNCTION or SUB"),
+            keyword_choice(&[Keyword::Function, Keyword::Sub])
         )
         .map(|(_, (k, _))| Statement::Exit(keyword_to_exit_object(k)))
 }

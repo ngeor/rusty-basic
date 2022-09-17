@@ -2,9 +2,7 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::{
-        item_p, keyword_followed_by_whitespace_p, keyword_p, whitespace_p,
-    };
+    use crate::parser::specific::{item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace_p};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
@@ -37,13 +35,12 @@ pub mod parser {
     fn parse_open_mode_p() -> impl Parser<Output = Locatable<FileMode>> {
         keyword_followed_by_whitespace_p(Keyword::For)
             .and_demand(
-                keyword_choice_p(&[
+                keyword_choice(&[
                     Keyword::Append,
                     Keyword::Input,
                     Keyword::Output,
                     Keyword::Random,
                 ])
-                .or_syntax_error("Expected: APPEND, INPUT or OUTPUT")
                 .with_pos(),
             )
             .keep_right()

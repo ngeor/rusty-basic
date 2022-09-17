@@ -1,6 +1,6 @@
 use crate::common::QError;
 use crate::parser::base::parsers::Parser;
-use crate::parser::specific::{item_p, whitespace_p};
+use crate::parser::specific::{item_p, keyword_choice_p, whitespace_p};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>

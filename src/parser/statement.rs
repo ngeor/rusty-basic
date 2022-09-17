@@ -83,6 +83,7 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 mod end {
     use super::*;
     use crate::parser::base::tokenizers::Tokenizer;
+    use crate::parser::specific::keyword_choice_p;
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {

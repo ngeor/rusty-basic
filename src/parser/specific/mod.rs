@@ -291,3 +291,29 @@ pub fn in_parenthesis<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
         |(_, output, _)| output,
     )
 }
+
+// TODO rename to opt
+pub fn in_parenthesis_p<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
+    map(
+        seq3(
+            filter_token_by_kind_opt(TokenType::LParen, ),
+            parser,
+            filter_token_by_kind(TokenType::RParen, "Expected )"),
+        ),
+        |(_, output, _)| output,
+    )
+}
+
+// TODO rename to keyword_choice_opt
+pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser {
+    filter_token(|token| Ok( token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into())))
+}
+
+pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser {
+    filter_token(|token| if token.kind == TokenType::Keyword as i32 && keywords.contains(token.text.into()) {
+        Ok(true)
+    } else {
+        // TODO fix me
+        Err(QError::SyntaxError(format!("Expected one of the following keywords: {}", "todo")))
+    })
+}

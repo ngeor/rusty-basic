@@ -330,7 +330,7 @@ pub mod word {
     use crate::common::*;
     use crate::parser::base::parsers::Parser;
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::specific::item_p;
+    use crate::parser::specific::{in_parenthesis_p, item_p};
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;
@@ -538,7 +538,7 @@ pub mod word {
                     let input = "A(1).O..ops";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
+                    let err = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
                         QError::syntax_error("Expected: property name after period")
@@ -584,7 +584,7 @@ pub mod word {
                     let input = "abc$%";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
+                    let err = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }
 
@@ -656,7 +656,7 @@ pub mod word {
                     let input = "abc$.";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
+                    let err = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
                         QError::syntax_error("Expected: property name after period")
@@ -680,7 +680,7 @@ pub mod word {
                     let input = "A$(1).Oops";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
+                    let err = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
                         QError::syntax_error("Qualified name cannot have properties")
@@ -692,7 +692,7 @@ pub mod word {
                     let input = "A(1).Suit$";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, result) = parser.parse(eol_reader).expect("Should parse");
+                    let result = parser.parse(eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
                         Some(Expression::Property(
@@ -708,7 +708,7 @@ pub mod word {
                     let input = "A(1).Suit$.";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
+                    let err = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }
 
@@ -717,7 +717,7 @@ pub mod word {
                     let input = "A(1).Suit$%";
                     let eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
-                    let (_, err) = parser.parse(eol_reader).expect_err("Should not parse");
+                    let err = parser.parse(eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
                 }
             }

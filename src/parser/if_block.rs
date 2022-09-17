@@ -1,7 +1,7 @@
 use crate::parser::base::parsers::Parser;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::specific::{keyword_p, whitespace_p};
+use crate::parser::specific::{keyword_choice, keyword_choice_p, keyword_p, whitespace_p};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -72,7 +72,7 @@ fn multi_line_if_p() -> impl Parser<
         Option<StatementNodes>,
     ),
 > {
-    statements::zero_or_more_statements_p(keyword_choice_p(&[
+    statements::zero_or_more_statements_p(keyword_choice(&[
         Keyword::End,
         Keyword::Else,
         Keyword::ElseIf,

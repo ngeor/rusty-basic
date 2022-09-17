@@ -1,6 +1,6 @@
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
-use crate::parser::specific::item_p;
+use crate::parser::base::parsers::{filter_token, filter_token_by_kind_opt, Parser};
+use crate::parser::specific::{item_p, TokenType};
 use crate::parser::types::*;
 
 /// Tries to read a comment.
@@ -29,8 +29,13 @@ pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>
         .map(|x| x.unwrap_or_default())
 }
 
-fn is_not_eol(ch: char) -> bool {
-    !is_eol(ch)
+// TODO rename to non_eol_opt
+fn non_eol_p() -> impl Parser {
+    filter_token(|token| Ok(token.kind != TokenType::Eol as i32))
+}
+
+fn eol_or_whitespace_p() -> impl Parser {
+    filter_token(|token| Ok(token.kind == TokenType::Eol as i32 || token.kind == TokenType::WhiteSpace as i32))
 }
 
 #[cfg(test)]

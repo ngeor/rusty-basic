@@ -1,7 +1,8 @@
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{FnMapTrait, OrTrait, Parser};
 use crate::parser::name::bare_name_p;
-use crate::parser::specific::{keyword_p, whitespace, OrSyntaxErrorTrait};
+use crate::parser::specific::whitespace::WhitespaceTrait;
+use crate::parser::specific::{keyword_p, OrSyntaxErrorTrait};
 use crate::parser::statement_separator::peek_eof_or_statement_separator;
 use crate::parser::{Keyword, ResumeOption, Statement};
 
@@ -26,14 +27,14 @@ fn blank_resume() -> impl Parser<Output = ResumeOption> {
 }
 
 fn resume_next() -> impl Parser<Output = ResumeOption> {
-    whitespace()
-        .and(keyword_p(Keyword::Next))
+    keyword_p(Keyword::Next)
+        .preceded_by_req_ws()
         .fn_map(|_| ResumeOption::Next)
 }
 
 fn resume_label() -> impl Parser<Output = ResumeOption> {
-    whitespace()
-        .and(bare_name_p())
+    bare_name_p()
+        .preceded_by_req_ws()
         .fn_map(|(_, r)| ResumeOption::Label(r))
 }
 

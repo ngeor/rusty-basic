@@ -2,6 +2,7 @@ pub mod csv;
 pub mod keyword_choice;
 pub mod token_type_map;
 pub mod try_from_token_type;
+pub mod whitespace;
 pub mod with_pos;
 
 use std::fs::File;
@@ -13,10 +14,10 @@ use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::*;
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
 use crate::parser::base::recognizers::*;
-use crate::parser::base::surrounded_by::SurroundedBy;
 use crate::parser::base::tokenizers::*;
 use crate::parser::expression::expression_node_p;
 use crate::parser::specific::csv::csv_zero_or_more_allow_missing;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::{
     Expression, ExpressionNode, ExpressionNodes, Keyword, Statement, SORTED_KEYWORDS_STR,
 };
@@ -240,20 +241,20 @@ pub fn keyword(keyword: Keyword) -> impl NonOptParser<Output = Token> {
 
 // TODO deprecate this
 pub fn keyword_followed_by_whitespace_p(keyword: Keyword) -> impl Parser {
-    keyword_p(keyword).and(whitespace())
+    keyword_p(keyword).followed_by_req_ws()
 }
 
 // TODO rename to keyword_pair_opt
 pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
     keyword_p(first)
-        .and_demand(whitespace())
+        .followed_by_req_ws()
         .and_demand(keyword(second))
 }
 
 // TODO rename to keyword_pair
 pub fn demand_keyword_pair_p(first: Keyword, second: Keyword) -> impl NonOptParser {
     keyword(first)
-        .and_demand(whitespace())
+        .followed_by_req_ws()
         .and_demand(keyword(second))
 }
 
@@ -280,14 +281,6 @@ impl ErrorProvider for TokenKindParser {
         // TODO use Display instead of Debug
         QError::SyntaxError(format!("Expected token of type {:?}", self.0))
     }
-}
-
-pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
-    TokenKindParser(TokenType::Whitespace).parser()
-}
-
-pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
-    SurroundedBy::new(whitespace(), parser, whitespace())
 }
 
 // TODO deprecate this
@@ -371,49 +364,6 @@ pub fn identifier_without_dot_p() -> impl Parser<Output = Token> {
     TokenKindParser(TokenType::Identifier).parser()
 }
 
-pub struct LeadingWhitespace<P> {
-    parser: P,
-    needs_whitespace: bool,
-}
-
-impl<P> LeadingWhitespace<P> {
-    pub fn new(parser: P, needs_whitespace: bool) -> Self {
-        Self {
-            parser,
-            needs_whitespace,
-        }
-    }
-}
-
-impl<P> HasOutput for LeadingWhitespace<P>
-where
-    P: Parser,
-{
-    type Output = P::Output;
-}
-
-impl<P> Parser for LeadingWhitespace<P>
-where
-    P: Parser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_space = whitespace().parse(tokenizer)?;
-        if self.needs_whitespace && opt_space.is_none() {
-            Ok(None)
-        } else {
-            match self.parser.parse(tokenizer)? {
-                Some(value) => Ok(Some(value)),
-                None => {
-                    if let Some(space) = opt_space {
-                        tokenizer.unread(space);
-                    }
-                    Ok(None)
-                }
-            }
-        }
-    }
-}
-
 //
 // MapErr
 //
@@ -483,7 +433,7 @@ where
 }
 
 pub trait OrSyntaxErrorTrait {
-    fn or_syntax_error<'a>(self, msg: &'a str) -> OrSyntaxError<'a, Self>
+    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self>
     where
         Self: Sized;
 }

@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{
     AndOptFactoryTrait, AndOptTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepMiddleTrait,
     KeepRightTrait, OrTrait, Parser,
@@ -8,28 +8,26 @@ use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
 use crate::parser::specific::try_from_token_type::TryFromParser;
-use crate::parser::specific::{
-    item_p, keyword_p, whitespace, LeadingWhitespace, OrSyntaxErrorTrait, TokenType,
-};
+use crate::parser::specific::whitespace::WhitespaceTrait;
+use crate::parser::specific::{item_p, keyword_p, OrSyntaxErrorTrait, TokenType};
 use crate::parser::types::*;
 use std::convert::TryFrom;
 
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::Print)
-            .and_opt(ws_file_handle_comma_p())
-            .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
-            .and_opt_factory(|((_, opt_file_number), opt_using)|
+        .and_opt(ws_file_handle_comma_p())
+        .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
+        .and_opt_factory(|((_, opt_file_number), opt_using)|
                 // we're just past PRINT. No need for space for ; or , but we need it for expressions
-                PrintArgsParser::new(opt_file_number.is_none() && opt_using.is_none())
-            )
-            .fn_map(|(((_,opt_file_number), format_string), opt_args)| {
-                Statement::Print(PrintNode {
-                    file_number: opt_file_number.map(|x| x.element),
-                    lpt1: false,
-                    format_string,
-                    args: opt_args.unwrap_or_default(),
-                })
+                PrintArgsParser::new(opt_file_number.is_none() && opt_using.is_none()))
+        .fn_map(|(((_, opt_file_number), format_string), opt_args)| {
+            Statement::Print(PrintNode {
+                file_number: opt_file_number.map(|x| x.element),
+                lpt1: false,
+                format_string,
+                args: opt_args.unwrap_or_default(),
             })
+        })
 }
 
 pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
@@ -50,7 +48,8 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
 }
 
 fn using_p(needs_leading_whitespace: bool) -> impl Parser<Output = ExpressionNode> {
-    LeadingWhitespace::new(keyword_p(Keyword::Using), needs_leading_whitespace)
+    keyword_p(Keyword::Using)
+        .preceded_by_ws(needs_leading_whitespace)
         .and_demand(
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: expression after USING"),
@@ -125,20 +124,22 @@ impl Parser for PrintArgLookingBack {
 }
 
 fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
-    whitespace()
-        .and(expression::file_handle_p())
+    expression::file_handle_p()
+        .preceded_by_req_ws()
         .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
         .keep_middle()
 }
 
 struct PrintArgsParser {
-    seed_parser: FirstPrintArg
+    seed_parser: FirstPrintArg,
 }
 
 impl PrintArgsParser {
     pub fn new(needs_leading_whitespace: bool) -> Self {
         Self {
-            seed_parser: FirstPrintArg { needs_leading_whitespace_for_expression: needs_leading_whitespace }
+            seed_parser: FirstPrintArg {
+                needs_leading_whitespace_for_expression: needs_leading_whitespace,
+            },
         }
     }
 }
@@ -155,16 +156,16 @@ impl Parser for PrintArgsParser {
                 let mut args = vec![first_arg];
                 loop {
                     let parser = PrintArgLookingBack {
-                        prev_print_arg_was_expression: args.last().unwrap().is_expression()
+                        prev_print_arg_was_expression: args.last().unwrap().is_expression(),
                     };
                     match parser.parse(tokenizer)? {
                         Some(next_arg) => args.push(next_arg),
-                        None => break
+                        None => break,
                     }
                 }
                 Ok(Some(args))
             }
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 }

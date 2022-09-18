@@ -1,15 +1,13 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
-    use crate::parser::base::parsers::{
-        AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, Parser,
-    };
+    use crate::parser::base::and_pc::AndDemandTrait;
+    use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::keyword_choice::keyword_choice;
+    use crate::parser::specific::whitespace::WhitespaceTrait;
     use crate::parser::specific::with_pos::WithPosTrait;
     use crate::parser::specific::{
-        item_p, keyword_followed_by_whitespace_p, keyword_p, whitespace, LeadingWhitespace,
-        OrSyntaxErrorTrait,
+        item_p, keyword_followed_by_whitespace_p, keyword_p, OrSyntaxErrorTrait,
     };
     use crate::parser::*;
 
@@ -52,8 +50,7 @@ pub mod parser {
                 .with_pos(),
             )
             .keep_right()
-            .and_demand(whitespace())
-            .keep_left()
+            .followed_by_req_ws()
             .fn_map(
                 |Locatable {
                      element: (file_mode, _),
@@ -80,8 +77,7 @@ pub mod parser {
                     .or_syntax_error("Invalid file access"),
             )
             .keep_right()
-            .and_demand(whitespace())
-            .keep_left()
+            .followed_by_req_ws()
             .fn_map(|x| FileAccess::Read.at(x.pos()))
     }
 
@@ -97,10 +93,12 @@ pub mod parser {
     }
 
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
-        whitespace()
-            .token_and(keyword_p(Keyword::Len))
+        keyword_p(Keyword::Len)
+            .preceded_by_req_ws()
             .and_demand(
-                LeadingWhitespace::new(item_p('='), false).or_syntax_error("Expected: = after LEN"),
+                item_p('=')
+                    .preceded_by_opt_ws()
+                    .or_syntax_error("Expected: = after LEN"),
             )
             .and_demand(
                 expression::guarded_expression_node_p()

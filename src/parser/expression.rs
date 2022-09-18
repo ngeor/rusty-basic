@@ -1,6 +1,6 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
-use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{
     AndOptFactoryTrait, AndOptTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait,
@@ -9,11 +9,9 @@ use crate::parser::base::parsers::{
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
 use crate::parser::specific::token_type_map::TokenTypeMap;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{
-    in_parenthesis_p, item_p, keyword_p, whitespace, LeadingWhitespace, OrSyntaxErrorTrait,
-    TokenType,
-};
+use crate::parser::specific::{in_parenthesis_p, item_p, keyword_p, OrSyntaxErrorTrait, TokenType};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -41,8 +39,9 @@ pub fn demand_expression_node_p(err_msg: &str) -> impl NonOptParser<Output = Exp
 pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
-    OptAndPC::new(whitespace(), lazy_expression_node_p()).and_then(
-        |(opt_leading_whitespace, expression)| {
+    lazy_expression_node_p()
+        .preceded_by_ws_preserving()
+        .and_then(|(opt_leading_whitespace, expression)| {
             let needs_leading_whitespace = !expression.is_parenthesis();
             let has_leading_whitespace = opt_leading_whitespace.is_some();
             if has_leading_whitespace || !needs_leading_whitespace {
@@ -52,16 +51,15 @@ pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
                     "Expected: whitespace before expression",
                 ))
             }
-        },
-    )
+        })
 }
 
 pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr ws+
-    OptAndPC::new(whitespace(), lazy_expression_node_p())
-        .and_opt(whitespace())
-        .and_then(|((l, expr), r)| {
+    lazy_expression_node_p()
+        .surrounded_by_ws_preserving()
+        .and_then(|(l, expr, r)| {
             if expr.is_parenthesis() || (l.is_some() && r.is_some()) {
                 Ok(expr)
             } else {
@@ -77,7 +75,8 @@ pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
     single_expression_node_p()
         .and_opt_factory(|first_expr| {
             operator_p(first_expr.is_parenthesis()).and_demand(
-                LeadingWhitespace::new(lazy_expression_node_p(), false)
+                lazy_expression_node_p()
+                    .preceded_by_opt_ws()
                     .or_syntax_error("Expected: right side expression"),
             )
         })
@@ -183,9 +182,8 @@ pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
 }
 
 pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-    whitespace()
-        .token_and(file_handle_as_expression_node_p())
-        .keep_right()
+    file_handle_as_expression_node_p()
+        .preceded_by_ws()
         .or(guarded_expression_node_p())
 }
 
@@ -824,8 +822,9 @@ pub mod word {
 }
 
 fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
-    LeadingWhitespace::new(relational_operator_p(), false)
-        .or(LeadingWhitespace::new(arithmetic_op_p(), false).with_pos())
+    relational_operator_p()
+        .preceded_by_opt_ws()
+        .or(arithmetic_op_p().preceded_by_opt_ws().with_pos())
         .or(modulo_op_p(had_parenthesis_before))
         .or(and_or_p(
             had_parenthesis_before,
@@ -840,7 +839,8 @@ fn and_or_p(
     keyword: Keyword,
     operator: Operator,
 ) -> impl Parser<Output = Locatable<Operator>> {
-    LeadingWhitespace::new(keyword_p(keyword), !had_parenthesis_before)
+    keyword_p(keyword)
+        .preceded_by_ws(!had_parenthesis_before)
         .fn_map(move |_| operator)
         .with_pos()
 }
@@ -868,7 +868,8 @@ fn arithmetic_op_p() -> impl Parser<Output = Operator> {
 }
 
 fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
-    LeadingWhitespace::new(keyword_p(Keyword::Mod), !had_parenthesis_before)
+    keyword_p(Keyword::Mod)
+        .preceded_by_ws(!had_parenthesis_before)
         .fn_map(|_| Operator::Modulo)
         .with_pos()
 }

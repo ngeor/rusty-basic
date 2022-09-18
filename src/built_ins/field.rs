@@ -4,10 +4,9 @@ pub mod parser {
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::csv::{comma_surrounded_by_opt_ws, csv_one_or_more};
+    use crate::parser::specific::whitespace::{surrounded_by_opt_ws, WhitespaceTrait};
     use crate::parser::specific::with_pos::WithPosTrait;
-    use crate::parser::specific::{
-        keyword_p, surrounded_by_opt_ws, whitespace, OrSyntaxErrorTrait,
-    };
+    use crate::parser::specific::{keyword_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
@@ -17,8 +16,9 @@ pub mod parser {
     }
 
     fn field_node_p() -> impl Parser<Output = Statement> {
-        whitespace()
-            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
+        expression::file_handle_p()
+            .preceded_by_req_ws()
+            .or_syntax_error("Expected: file-number")
             .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
             .and_demand(csv_one_or_more(field_item_p()).or_syntax_error("Expected: field width"))
             .fn_map(|(((_, file_number), _), fields)| {

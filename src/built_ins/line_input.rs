@@ -3,12 +3,13 @@ pub mod parser {
     use crate::common::*;
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, Parser};
-    use crate::parser::specific::{keyword_pair_p, whitespace, OrSyntaxErrorTrait};
+    use crate::parser::specific::whitespace::WhitespaceTrait;
+    use crate::parser::specific::{keyword_pair_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair_p(Keyword::Line, Keyword::Input)
-            .and_demand(whitespace())
+            .followed_by_req_ws()
             .and_opt(expression::file_handle_comma_p())
             .and_demand(
                 expression::expression_node_p()

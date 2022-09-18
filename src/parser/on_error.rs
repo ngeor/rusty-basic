@@ -4,14 +4,15 @@ use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::expression::expression_node_p;
 use crate::parser::name::bare_name_p;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::{
-    keyword_followed_by_whitespace_p, keyword_pair_p, whitespace, OrSyntaxErrorTrait,
+    keyword_followed_by_whitespace_p, keyword_pair_p, OrSyntaxErrorTrait,
 };
 use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
     keyword_pair_p(Keyword::On, Keyword::Error)
-        .and_demand(whitespace())
+        .followed_by_req_ws()
         .and_demand(
             next()
                 .or(goto())

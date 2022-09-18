@@ -4,10 +4,10 @@ use crate::parser::base::parsers::{
     AndOptFactoryTrait, AndOptTrait, FnMapTrait, KeepRightTrait, Parser,
 };
 use crate::parser::expression;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    item_p, keyword, keyword_followed_by_whitespace_p, keyword_p, whitespace, LeadingWhitespace,
-    MapErrTrait, OrSyntaxErrorTrait,
+    item_p, keyword, keyword_followed_by_whitespace_p, keyword_p, MapErrTrait, OrSyntaxErrorTrait,
 };
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -51,7 +51,8 @@ fn parse_for_step_p() -> impl Parser<
 > {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
-            LeadingWhitespace::new(keyword_p(Keyword::Step), !upper.is_parenthesis())
+            keyword_p(Keyword::Step)
+                .preceded_by_ws(!upper.is_parenthesis())
                 .and_demand(
                     expression::guarded_expression_node_p()
                         .or_syntax_error("Expected: expression after STEP"),
@@ -70,7 +71,9 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
                 .or_syntax_error("Expected: name after FOR"),
         )
         .and_demand(
-            LeadingWhitespace::new(item_p('='), false).or_syntax_error("Expected: = after name"),
+            item_p('=')
+                .preceded_by_opt_ws()
+                .or_syntax_error("Expected: = after name"),
         )
         .and_demand(
             expression::back_guarded_expression_node_p()
@@ -85,9 +88,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
 }
 
 fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
-    whitespace()
-        .and(expression::word::word_p().with_pos())
-        .keep_right()
+    expression::word::word_p().preceded_by_req_ws().with_pos()
 }
 
 #[cfg(test)]

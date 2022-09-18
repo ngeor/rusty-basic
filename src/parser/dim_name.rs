@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
@@ -9,10 +9,11 @@ use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
 use crate::parser::specific::csv::csv_one_or_more;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     identifier_without_dot_p, in_parenthesis_p, item_p, keyword_followed_by_whitespace_p,
-    keyword_p, whitespace, OrSyntaxErrorTrait, TokenType,
+    keyword_p, OrSyntaxErrorTrait, TokenType,
 };
 use crate::parser::types::*;
 
@@ -68,8 +69,8 @@ fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
 fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
     expression::expression_node_p()
         .and_opt(
-            whitespace()
-                .token_and(keyword_p(Keyword::To))
+            keyword_p(Keyword::To)
+                .preceded_by_req_ws()
                 .and_demand(
                     expression::guarded_expression_node_p()
                         .or_syntax_error("Expected: expression after TO"),
@@ -90,8 +91,8 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
 
 fn type_definition_extended_p() -> impl Parser<Output = DimType> {
     // <ws+> AS <ws+> identifier
-    whitespace()
-        .token_and(keyword_followed_by_whitespace_p(Keyword::As))
+    keyword_followed_by_whitespace_p(Keyword::As)
+        .preceded_by_req_ws()
         .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
         .keep_right()
 }

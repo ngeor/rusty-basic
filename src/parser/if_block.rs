@@ -1,12 +1,14 @@
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait, TokenParserAndParserTrait};
+use crate::parser::base::guard_pc::GuardTrait;
 use crate::parser::base::parsers::{
     AndOptTrait, FnMapTrait, KeepMiddleTrait, KeepRightTrait, ManyTrait, OrTrait, Parser,
 };
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::keyword_choice::{keyword_choice, keyword_choice_p};
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{demand_keyword_pair_p, keyword_p, whitespace, OrSyntaxErrorTrait};
+use crate::parser::specific::{demand_keyword_pair_p, keyword_p, OrSyntaxErrorTrait};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -54,9 +56,9 @@ fn single_line_if_else_p() -> impl Parser<
     statements::single_line_non_comment_statements_p()
         .and_opt(
             // comment or ELSE
-            whitespace()
-                .and(comment::comment_p().with_pos())
-                .keep_right()
+            comment::comment_p()
+                .preceded_by_req_ws()
+                .with_pos()
                 .fn_map(|s| vec![s])
                 .or(single_line_else_p()),
         )
@@ -64,8 +66,8 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
-    whitespace()
-        .token_and(keyword_p(Keyword::Else))
+    keyword_p(Keyword::Else)
+        .preceded_by_req_ws()
         .and_demand(statements::single_line_statements_p())
         .keep_right()
 }

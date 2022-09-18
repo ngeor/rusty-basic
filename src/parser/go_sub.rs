@@ -1,9 +1,8 @@
 use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
 use crate::parser::name::bare_name_p;
-use crate::parser::specific::{
-    keyword_followed_by_whitespace_p, keyword_p, whitespace, OrSyntaxErrorTrait,
-};
+use crate::parser::specific::whitespace::WhitespaceTrait;
+use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_p, OrSyntaxErrorTrait};
 use crate::parser::{Keyword, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {
@@ -14,8 +13,9 @@ pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {
 
 pub fn statement_return_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::Return)
-        .and_opt(whitespace().token_and(bare_name_p()).keep_right())
-        .fn_map(|(_, opt_label)| Statement::Return(opt_label))
+        .and_opt(bare_name_p().preceded_by_req_ws())
+        .keep_right()
+        .fn_map(Statement::Return)
 }
 
 #[cfg(test)]

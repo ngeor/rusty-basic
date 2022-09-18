@@ -2,7 +2,8 @@ use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, OrTrait, Parser};
 use crate::parser::declaration;
-use crate::parser::specific::{demand_keyword_pair_p, keyword_p, LeadingWhitespace};
+use crate::parser::specific::whitespace::WhitespaceTrait;
+use crate::parser::specific::{demand_keyword_pair_p, keyword_p};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -52,7 +53,7 @@ where
     P: Parser<Output = T> + 'static,
 {
     parser
-        .and_opt(LeadingWhitespace::new(keyword_p(Keyword::Static), false))
+        .and_opt(keyword_p(Keyword::Static).preceded_by_opt_ws())
         .fn_map(|(l, r)| (l, r.is_some()))
 }
 

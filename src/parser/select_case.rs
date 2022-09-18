@@ -7,9 +7,9 @@ use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::csv::csv_one_or_more;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::{
-    demand_keyword_pair_p, keyword_p, keyword_pair_p, whitespace, LeadingWhitespace,
-    OrSyntaxErrorTrait,
+    demand_keyword_pair_p, keyword_p, keyword_pair_p, OrSyntaxErrorTrait,
 };
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -155,13 +155,14 @@ impl CaseExpressionParser {
 
     fn case_is() -> impl Parser<Output = CaseExpression> {
         keyword_p(Keyword::Is)
-            .and_opt(whitespace())
             .and_demand(
-                expression::relational_operator_p().or_syntax_error("Expected: Operator after IS"),
+                expression::relational_operator_p()
+                    .preceded_by_opt_ws()
+                    .or_syntax_error("Expected: Operator after IS"),
             )
-            .and_opt(whitespace())
             .and_demand(
                 expression::expression_node_p()
+                    .preceded_by_opt_ws()
                     .or_syntax_error("Expected: expression after IS operator"),
             )
             .fn_map(|(((_, op), _), r)| CaseExpression::Is(op.strip_location(), r))
@@ -180,8 +181,9 @@ impl Parser for SimpleOrRangeParser {
         match expr {
             Some(expr) => {
                 let parenthesis = expr.is_parenthesis();
-                let result =
-                    LeadingWhitespace::new(keyword_p(Keyword::To), !parenthesis).parse(reader)?;
+                let result = keyword_p(Keyword::To)
+                    .preceded_by_ws(!parenthesis)
+                    .parse(reader)?;
                 match result {
                     Some(_) => {
                         let (reader, second_expr) = expression::guarded_expression_node_p()

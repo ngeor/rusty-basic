@@ -86,9 +86,7 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 mod end {
     use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser};
     use crate::parser::base::tokenizers::{Token, Tokenizer};
-    use crate::parser::base::undo_pc::Undo;
     use crate::parser::specific::keyword_choice::keyword_choice_p;
-    use crate::parser::specific::whitespace;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
 
     use super::*;
@@ -163,8 +161,8 @@ mod end {
 }
 
 mod system {
-    use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
-    use crate::parser::specific::whitespace;
+    use crate::parser::base::parsers::FnMapTrait;
+    use crate::parser::specific::whitespace::WhitespaceTrait;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
 
     use super::*;
@@ -172,7 +170,8 @@ mod system {
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::System)
             .and_demand(
-                OptAndPC::new(whitespace(), peek_eof_or_statement_separator())
+                peek_eof_or_statement_separator()
+                    .preceded_by_opt_ws()
                     .or_syntax_error("Expected: end-of-statement"),
             )
             .fn_map(|_| Statement::System)

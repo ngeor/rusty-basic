@@ -50,10 +50,11 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::specific::keyword_choice::keyword_choice_p;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    demand_keyword_pair_p, item_p, keyword_followed_by_whitespace_p, keyword_p, whitespace,
-    MapErrTrait, OrSyntaxErrorTrait,
+    demand_keyword_pair_p, item_p, keyword_followed_by_whitespace_p, keyword_p, MapErrTrait,
+    OrSyntaxErrorTrait,
 };
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
@@ -98,8 +99,8 @@ fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> {
 
 fn element_node_p() -> impl Parser<Output = ElementNode> {
     bare_name_without_dot_p()
+        .followed_by_req_ws()
         .with_pos()
-        .and_demand(whitespace())
         .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
         .and_demand(comment::comments_and_whitespace_p())

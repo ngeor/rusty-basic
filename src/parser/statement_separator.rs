@@ -1,11 +1,10 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, HasOutput, OptAndPC, OrTrait, Parser, TokenPredicate,
+    AndOptTrait, FnMapTrait, HasOutput, OrTrait, Parser, TokenPredicate,
 };
 use crate::parser::base::tokenizers::{Token, Tokenizer};
-use crate::parser::specific::{
-    eol_or_whitespace, whitespace, OrSyntaxErrorTrait, TokenKindParser, TokenType,
-};
+use crate::parser::specific::whitespace::WhitespaceTrait;
+use crate::parser::specific::{eol_or_whitespace, OrSyntaxErrorTrait, TokenKindParser, TokenType};
 
 pub enum Separator {
     Comment,
@@ -27,7 +26,7 @@ impl Parser for Separator {
 
 // TODO convert to NonOptParser
 fn comment_separator() -> impl Parser<Output = ()> {
-    OptAndPC::new(whitespace(), eol_or_whitespace()).fn_map(|_| ())
+    eol_or_whitespace().preceded_by_opt_ws().fn_map(|_| ())
 }
 
 // <ws>* '\'' (undoing it)
@@ -35,14 +34,12 @@ fn comment_separator() -> impl Parser<Output = ()> {
 // <ws>* EOL <ws | eol>*
 // TODO convert to NonOptParser
 fn non_comment_separator() -> impl Parser<Output = ()> {
-    OptAndPC::new(
-        whitespace(),
-        SingleQuotePeek
-            .or(colon_separator_p())
-            .or(eol_separator_p())
-            .or_syntax_error("Expected: end-of-statement"),
-    )
-    .fn_map(|_| ())
+    SingleQuotePeek
+        .or(colon_separator_p())
+        .or(eol_separator_p())
+        .preceded_by_opt_ws()
+        .or_syntax_error("Expected: end-of-statement")
+        .fn_map(|_| ())
 }
 
 // '\'' (undoing it)
@@ -110,7 +107,7 @@ impl TokenPredicate for StatementSeparator2 {
 fn colon_separator_p() -> impl Parser<Output = ()> {
     TokenKindParser::new(TokenType::Colon)
         .parser()
-        .and_opt(whitespace())
+        .followed_by_opt_ws()
         .fn_map(|_| ())
 }
 

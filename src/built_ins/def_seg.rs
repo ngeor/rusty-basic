@@ -2,9 +2,8 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
-    use crate::parser::specific::{
-        item_p, keyword_pair_p, surrounded_by_opt_ws, OrSyntaxErrorTrait,
-    };
+    use crate::parser::specific::whitespace::surrounded_by_opt_ws;
+    use crate::parser::specific::{item_p, keyword_pair_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {

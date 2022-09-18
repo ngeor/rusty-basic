@@ -16,6 +16,7 @@ use crate::parser::expression::expression_node_p;
 use crate::parser::{
     Expression, ExpressionNode, ExpressionNodes, Keyword, Statement, SORTED_KEYWORDS_STR,
 };
+use crate::parser::specific::csv::csv_zero_or_more_allow_missing;
 
 /// specific module contains implementation that mirrors the base module
 /// but it is specific to QBasic
@@ -348,7 +349,7 @@ pub fn parse_built_in_sub_with_opt_args(
     built_in_sub: BuiltInSub,
 ) -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(keyword)
-        .and_opt(expression_node_p().csv_allow_missing())
+        .and_demand(csv_zero_or_more_allow_missing(expression_node_p()))
         .keep_right()
         .fn_map(move |opt_args| {
             Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
@@ -357,18 +358,16 @@ pub fn parse_built_in_sub_with_opt_args(
 
 /// Maps optional arguments to arguments, inserting a dummy first argument indicating
 /// which arguments were present in the form of a bit mask.
-fn map_opt_args_to_flags(args: Option<Vec<Option<ExpressionNode>>>) -> ExpressionNodes {
+fn map_opt_args_to_flags(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
     let mut result: ExpressionNodes = vec![];
     let mut mask = 1;
     let mut flags = 0;
-    if let Some(args) = args {
-        for arg in args {
-            if let Some(arg) = arg {
-                flags |= mask;
-                result.push(arg);
-            }
-            mask <<= 1;
+    for arg in args {
+        if let Some(arg) = arg {
+            flags |= mask;
+            result.push(arg);
         }
+        mask <<= 1;
     }
     result.insert(0, Expression::IntegerLiteral(flags).at(Location::start()));
     result

@@ -7,10 +7,19 @@ pub trait Undo {
     fn undo(self, tokenizer: &mut impl Tokenizer);
 }
 
-impl Undo for Option<Token> {
+impl Undo for Token {
+    fn undo(self, tokenizer: &mut impl Tokenizer) {
+        tokenizer.unread(self);
+    }
+}
+
+impl<T> Undo for Option<T>
+where
+    T: Undo,
+{
     fn undo(self, tokenizer: &mut impl Tokenizer) {
         if let Some(token) = self {
-            tokenizer.unread(token);
+            token.undo(tokenizer);
         }
     }
 }

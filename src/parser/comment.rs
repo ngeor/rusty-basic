@@ -1,41 +1,41 @@
 use crate::common::*;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, ManyTrait, OptAndPC, Parser, TokenPredicate};
-use crate::parser::base::tokenizers::{Token, TokenList};
+use crate::parser::base::parsers::{
+    AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, ManyTrait, Parser, TokenPredicate,
+};
+use crate::parser::base::surrounded_by::SurroundedBy;
+use crate::parser::base::tokenizers::{token_list_to_string, Token, TokenList};
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{item_p, TokenType};
 use crate::parser::types::*;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<Output = Statement> {
-    item_p('\'')
-        .and_opt(non_eol())
-        .keep_right()
-        .fn_map(|x| Statement::Comment(x.unwrap_or_default()))
+    comment_as_string().fn_map(Statement::Comment)
 }
 
 /// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> {
-    eol_or_whitespace()
-        .map_none_to_default()
-        .and_opt(
-            item_p('\'')
-                .with_pos()
-                .and_opt(non_eol())
-                .and_opt(eol_or_whitespace())
-                .keep_left()
-                .fn_map(|(Locatable { pos, .. }, opt_s)| opt_s.unwrap_or_default().at(pos))
-                .one_or_more(),
-        )
-        .and_opt(eol_or_whitespace())
-        .keep_middle()
-        .fn_map(|x| x.unwrap_or_default())
+    SurroundedBy::new(
+        eol_or_whitespace(),
+        comment_as_string()
+            .with_pos()
+            .and_opt(eol_or_whitespace())
+            .keep_left()
+            .one_or_more(),
+        eol_or_whitespace(),
+    )
 }
 
-fn non_eol() -> impl Parser<Output=TokenList> {
+fn comment_as_string() -> impl Parser<Output = String> {
+    // TODO prevent unwrap_or_default with NonOptParser
+    item_p('\'').and_opt(non_eol()).keep_right().fn_map(|x| token_list_to_string(&x.unwrap_or_default()))
+}
+
+fn non_eol() -> impl Parser<Output = TokenList> {
     NonEol.parser().one_or_more()
 }
 
-fn eol_or_whitespace() -> impl Parser<Output=TokenList> {
+fn eol_or_whitespace() -> impl Parser<Output = TokenList> {
     EolOrWhitespace.parser().one_or_more()
 }
 

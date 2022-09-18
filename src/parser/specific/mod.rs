@@ -13,6 +13,7 @@ use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::*;
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
 use crate::parser::base::recognizers::*;
+use crate::parser::base::surrounded_by::SurroundedBy;
 use crate::parser::base::tokenizers::*;
 use crate::parser::expression::expression_node_p;
 use crate::parser::specific::csv::csv_zero_or_more_allow_missing;
@@ -286,9 +287,7 @@ pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
 }
 
 pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
-    OptAndPC::new(whitespace(), parser)
-        .and_opt(whitespace())
-        .keep_middle()
+    SurroundedBy::new(whitespace(), parser, whitespace())
 }
 
 // TODO deprecate this

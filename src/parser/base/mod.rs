@@ -5,5 +5,6 @@ pub mod and_then_pc;
 pub mod parsers;
 pub mod readers;
 pub mod recognizers;
+pub mod surrounded_by;
 pub mod tokenizers;
 pub mod undo_pc;

@@ -36,14 +36,14 @@ pub fn param_name_node_p() -> impl Parser<Output = ParamNameNode> {
                             if b.contains('.') {
                                 Err(QError::IdentifierCannotIncludePeriod)
                             } else {
-                                Ok(Some(ParamName::new(b, final_param_type(param_type, is_array))
-                                    .at(pos)))
+                                Ok(ParamName::new(b, final_param_type(param_type, is_array))
+                                    .at(pos))
                             }
                         }
-                        _ => Ok(Some(ParamName::new(b, final_param_type(param_type, is_array)).at(pos))),
+                        _ => Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos)),
                     },
                     None => {
-                        Ok(Some(ParamName::new(b, final_param_type(ParamType::Bare, is_array)).at(pos)))
+                        Ok(ParamName::new(b, final_param_type(ParamType::Bare, is_array)).at(pos))
                     }
                 },
                 Name::Qualified(QualifiedName {
@@ -53,14 +53,14 @@ pub fn param_name_node_p() -> impl Parser<Output = ParamNameNode> {
                     Some(_) => Err(QError::syntax_error(
                         "Identifier cannot end with %, &, !, #, or $",
                     )),
-                    None => Ok(Some(ParamName::new(
+                    None => Ok(ParamName::new(
                         bare_name,
                         final_param_type(
                             ParamType::BuiltIn(qualifier, BuiltInStyle::Compact),
                             is_array,
                         ),
                     )
-                    .at(pos))),
+                    .at(pos)),
                 },
             },
         )
@@ -108,26 +108,26 @@ fn extended_type_p() -> impl Parser<Output = ParamType> {
         .with_pos()
         .and_then(
             |Locatable { element: x, pos }| match Keyword::from_str(&x) {
-                Ok(Keyword::Single) => Ok(Some(ParamType::BuiltIn(
+                Ok(Keyword::Single) => Ok(ParamType::BuiltIn(
                     TypeQualifier::BangSingle,
                     BuiltInStyle::Extended,
-                ))),
-                Ok(Keyword::Double) => Ok(Some(ParamType::BuiltIn(
+                )),
+                Ok(Keyword::Double) => Ok(ParamType::BuiltIn(
                     TypeQualifier::HashDouble,
                     BuiltInStyle::Extended,
-                ))),
-                Ok(Keyword::String_) => Ok(Some(ParamType::BuiltIn(
+                )),
+                Ok(Keyword::String_) => Ok(ParamType::BuiltIn(
                     TypeQualifier::DollarString,
                     BuiltInStyle::Extended,
-                ))),
-                Ok(Keyword::Integer) => Ok(Some(ParamType::BuiltIn(
+                )),
+                Ok(Keyword::Integer) => Ok(ParamType::BuiltIn(
                     TypeQualifier::PercentInteger,
                     BuiltInStyle::Extended,
-                ))),
-                Ok(Keyword::Long) => Ok(Some(ParamType::BuiltIn(
+                )),
+                Ok(Keyword::Long) => Ok(ParamType::BuiltIn(
                     TypeQualifier::AmpersandLong,
                     BuiltInStyle::Extended,
-                ))),
+                )),
                 Ok(_) => Err(QError::syntax_error(
                     "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
                 )),
@@ -136,7 +136,7 @@ fn extended_type_p() -> impl Parser<Output = ParamType> {
                         Err(QError::IdentifierTooLong)
                     } else {
                         let type_name: BareName = x.into();
-                        Ok(Some(ParamType::UserDefined(type_name.at(pos))))
+                        Ok(ParamType::UserDefined(type_name.at(pos)))
                     }
                 }
             },

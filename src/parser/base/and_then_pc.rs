@@ -11,7 +11,7 @@ where
 impl<P, F, U> HasOutput for AndThen<P, F>
 where
     P: Parser,
-    F: Fn(P::Output) -> Result<Option<U>, QError>,
+    F: Fn(P::Output) -> Result<U, QError>,
 {
     type Output = U;
 }
@@ -19,11 +19,11 @@ where
 impl<P, F, U> Parser for AndThen<P, F>
 where
     P: Parser,
-    F: Fn(P::Output) -> Result<Option<U>, QError>,
+    F: Fn(P::Output) -> Result<U, QError>,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.0.parse(tokenizer)? {
-            Some(value) => (self.1)(value),
+            Some(value) => (self.1)(value).map(Some),
             None => Ok(None),
         }
     }
@@ -38,7 +38,7 @@ pub trait AndThenTrait<F> {
 impl<P, F, U> AndThenTrait<F> for P
 where
     P: Parser,
-    F: Fn(P::Output) -> Result<Option<U>, QError>,
+    F: Fn(P::Output) -> Result<U, QError>,
 {
     fn and_then(self, mapper: F) -> AndThen<Self, F> {
         AndThen(self, mapper)

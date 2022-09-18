@@ -46,7 +46,7 @@ pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
             let needs_leading_whitespace = !expression.is_parenthesis();
             let has_leading_whitespace = opt_leading_whitespace.is_some();
             if has_leading_whitespace || !needs_leading_whitespace {
-                Ok(Some(expression))
+                Ok(expression)
             } else {
                 Err(QError::syntax_error(
                     "Expected: whitespace before expression",
@@ -63,7 +63,7 @@ pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> 
         .and_opt(whitespace())
         .and_then(|((l, expr), r)| {
             if expr.is_parenthesis() || (l.is_some() && r.is_some()) {
-                Ok(Some(expr))
+                Ok(expr)
             } else {
                 Err(QError::syntax_error(
                     "Expected: whitespace around expression",
@@ -149,7 +149,7 @@ pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
             |(Locatable { pos, .. }, digits)| match digits.text.parse::<u8>() {
                 Ok(d) => {
                     if d > 0 {
-                        Ok(Some(Locatable::new(d.into(), pos)))
+                        Ok(Locatable::new(d.into(), pos))
                     } else {
                         Err(QError::BadFileNameOrNumber)
                     }
@@ -237,17 +237,16 @@ mod number_literal {
         digits_p()
             .and_opt(item_p('.').and_demand(digits()).keep_right())
             .and_opt(item_p('#'))
-            .and_then(|((int_digits, opt_fraction_digits), opt_double)| {
-                (match opt_fraction_digits {
+            .and_then(
+                |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
                     Some(fraction_digits) => parse_floating_point_literal_no_pos(
                         int_digits.text,
                         fraction_digits.text,
                         opt_double.is_some(),
                     ),
                     _ => integer_literal_to_expression_node_no_pos(int_digits.text),
-                })
-                .map(Some)
-            })
+                },
+            )
             .with_pos()
     }
 
@@ -261,7 +260,6 @@ mod number_literal {
                     fraction_digits.text,
                     opt_double.is_some(),
                 )
-                .map(Some)
             })
             .with_pos()
     }
@@ -358,7 +356,7 @@ mod number_literal {
                 if s.starts_with('-') {
                     Err(QError::Overflow)
                 } else {
-                    convert_hex_digits(s).map(Some)
+                    convert_hex_digits(s)
                 }
             })
     }
@@ -375,7 +373,7 @@ mod number_literal {
                 if s.starts_with('-') {
                     Err(QError::Overflow)
                 } else {
-                    convert_oct_digits(s).map(Some)
+                    convert_oct_digits(s)
                 }
             })
     }
@@ -424,7 +422,7 @@ pub mod word {
                     // when there are no parenthesis and additional properties
                     let (mut name_props, opt_q) = name_to_properties(name.clone());
                     if name_props.len() == 1 {
-                        return Ok(Some(Expression::Variable(name, VariableInfo::unresolved())));
+                        return Ok(Expression::Variable(name, VariableInfo::unresolved()));
                     }
                     let mut base_expr = Expression::Variable(
                         Name::Bare(name_props.remove(0).into()),
@@ -443,7 +441,7 @@ pub mod word {
                         Name::new(name_props.remove(0).into(), opt_q),
                         ExpressionType::Unresolved,
                     );
-                    return Ok(Some(base_expr));
+                    return Ok(base_expr);
                 }
 
                 if !name.is_bare() && opt_properties.is_some() {
@@ -474,9 +472,9 @@ pub mod word {
                         ExpressionType::Unresolved,
                     );
 
-                    Ok(Some(base_expr))
+                    Ok(base_expr)
                 } else {
-                    Ok(Some(base_expr))
+                    Ok(base_expr)
                 }
             })
     }

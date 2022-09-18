@@ -28,7 +28,10 @@ pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>
 
 fn comment_as_string() -> impl Parser<Output = String> {
     // TODO prevent unwrap_or_default with NonOptParser
-    item_p('\'').and_opt(non_eol()).keep_right().fn_map(|x| token_list_to_string(&x.unwrap_or_default()))
+    item_p('\'')
+        .and_opt(non_eol())
+        .keep_right()
+        .fn_map(|x| token_list_to_string(&x.unwrap_or_default()))
 }
 
 fn non_eol() -> impl Parser<Output = TokenList> {

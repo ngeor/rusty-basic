@@ -5,6 +5,7 @@ use crate::parser::base::parsers::{
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::keyword_choice::{keyword_choice, keyword_choice_p};
+use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{demand_keyword_pair_p, keyword_p, whitespace, OrSyntaxErrorTrait};
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -56,7 +57,7 @@ fn single_line_if_else_p() -> impl Parser<
             whitespace()
                 .and(comment::comment_p().with_pos())
                 .keep_right()
-                .map(|s| vec![s])
+                .fn_map(|s| vec![s])
                 .or(single_line_else_p()),
         )
         .fn_map(|(l, r)| (l, vec![], r))

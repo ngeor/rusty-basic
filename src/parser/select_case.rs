@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{
-    AndOptTrait, HasOutput, KeepRightTrait, ManyTrait, OrTrait, Parser,
+    AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, ManyTrait, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
@@ -32,7 +32,7 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
         .and_opt(case_blocks())
         .and_opt(case_else())
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Select))
-        .map(
+        .fn_map(
             |((((expr, opt_inline_comments), opt_blocks), else_block), _)| {
                 Statement::SelectCase(SelectCaseNode {
                     expr,
@@ -117,7 +117,7 @@ impl CaseBlockParser {
             .and_demand(statements::zero_or_more_statements_p(
                 keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
             ))
-            .map(|(expression_list, statements)| CaseBlockNode {
+            .fn_map(|(expression_list, statements)| CaseBlockNode {
                 expression_list,
                 statements,
             })
@@ -164,7 +164,7 @@ impl CaseExpressionParser {
                 expression::expression_node_p()
                     .or_syntax_error("Expected: expression after IS operator"),
             )
-            .map(|(((_, op), _), r)| CaseExpression::Is(op.strip_location(), r))
+            .fn_map(|(((_, op), _), r)| CaseExpression::Is(op.strip_location(), r))
     }
 }
 

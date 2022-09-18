@@ -3,10 +3,10 @@ use std::str::FromStr;
 use crate::common::QError;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, Parser};
-use crate::parser::base::tokenizers::{token_list_to_string, Token, Tokenizer};
-use crate::parser::base::undo_pc::UndoTrait;
+use crate::parser::base::tokenizers::{token_list_to_string, Token, Tokenizer, TokenList};
+use crate::parser::base::undo_pc::{Undo, UndoTrait};
 use crate::parser::specific::TokenType;
-use crate::parser::type_qualifier::{type_qualifier_as_token, type_qualifier_p};
+use crate::parser::type_qualifier::{type_qualifier_as_token};
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 
 /// Parses a name. The name must start with a letter and can include
@@ -47,23 +47,50 @@ pub fn name_with_dot_p() -> impl Parser<Output = Name> {
 // bare name node
 
 pub fn bare_name_p() -> impl Parser<Output = BareName> {
-    any_word_with_dot_p().unless_followed_by(type_qualifier_p())
+    UnlessFollowedBy(identifier_with_dot(), type_qualifier_as_token())
+        .validate(ensure_length_and_not_keyword)
+        .fn_map(|x| token_list_to_string(&x).into()) // TODO make a parser for simpler .into() cases
+}
+
+struct UnlessFollowedBy<L, R>(L, R);
+
+impl<L, R> HasOutput for UnlessFollowedBy<L, R>
+where
+    L: HasOutput,
+{
+    type Output = L::Output;
+}
+
+impl<L, R> Parser for UnlessFollowedBy<L, R>
+where
+    L: Parser,
+    L::Output: Undo,
+    R: Parser,
+    R::Output: Undo,
+{
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self.0.parse(tokenizer)? {
+            Some(value) => match self.1.parse(tokenizer)? {
+                Some(needle) => {
+                    needle.undo(tokenizer);
+                    value.undo(tokenizer);
+                    Ok(None)
+                }
+                None => Ok(Some(value)),
+            },
+            None => Ok(None),
+        }
+    }
 }
 
 pub const MAX_LENGTH: usize = 40;
 
-/// Reads any word, i.e. any identifier which is not a keyword.
-pub fn any_word_with_dot_p() -> impl Parser<Output = BareName> {
-    identifier_with_dot()
-        .validate(ensure_length_and_not_keyword)
-        .fn_map(|x| x.into())
-}
-
-fn ensure_length_and_not_keyword(s: &String) -> Result<bool, QError> {
+fn ensure_length_and_not_keyword(list: &TokenList) -> Result<bool, QError> {
+    let s = token_list_to_string(list);
     if s.len() > MAX_LENGTH {
         Err(QError::IdentifierTooLong)
     } else {
-        match Keyword::from_str(s.as_ref()) {
+        match Keyword::from_str(&s) {
             Ok(_) => Ok(false),
             Err(_) => Ok(true),
         }
@@ -130,11 +157,11 @@ fn identifier_with_dot() -> IdentifierWithDotParser {
     IdentifierWithDotParser
 }
 
-fn ensure_token_list_length(list: Vec<Token>) -> Result<Option<Vec<Token>>, QError> {
+fn ensure_token_list_length(list: Vec<Token>) -> Result<Vec<Token>, QError> {
     if token_list_string_length(&list) > MAX_LENGTH {
         Err(QError::IdentifierTooLong)
     } else {
-        Ok(Some(list))
+        Ok(list)
     }
 }
 
@@ -159,9 +186,9 @@ mod tests {
         for i in 0..inputs.len() {
             let input = inputs[i];
             let expected_output = expected_outputs[i];
-            let eol_reader = create_string_tokenizer(input);
-            let mut parser = any_word_with_dot_p();
-            let result = parser.parse(eol_reader).expect("Should succeed");
+            let mut eol_reader = create_string_tokenizer(input);
+            let mut parser = bare_name_p();
+            let result = parser.parse(&mut eol_reader).expect("Should succeed");
             assert_eq!(result, Some(BareName::from(expected_output)));
         }
     }

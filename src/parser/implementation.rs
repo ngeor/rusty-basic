@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{AndOptTrait, KeepLeftTrait, OrTrait, Parser};
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, OrTrait, Parser};
 use crate::parser::declaration;
 use crate::parser::specific::{demand_keyword_pair_p, keyword_p};
 use crate::parser::statements;
@@ -53,7 +53,7 @@ where
 {
     parser
         .and_opt(keyword_p(Keyword::Static).preceded_by_opt_ws())
-        .map(|(l, r)| (l, r.is_some()))
+        .fn_map(|(l, r)| (l, r.is_some()))
 }
 
 #[cfg(test)]

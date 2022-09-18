@@ -1,6 +1,7 @@
 use crate::common::{Locatable, QError};
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{KeepRightTrait, OrTrait, Parser};
+use crate::parser::base::and_then_pc::AndThenTrait;
+use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::expression::expression_node_p;
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::{
@@ -16,11 +17,12 @@ pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
                 .or(goto())
                 .or_syntax_error("Expected: GOTO or RESUME"),
         )
-        .map(|(_, r)| Statement::OnError(r))
+        .fn_map(|(_, r)| Statement::OnError(r))
 }
 
 fn next() -> impl Parser<Output = OnErrorOption> {
-    keyword_pair_p(Keyword::Resume, Keyword::Next).map(|_| OnErrorOption::Next)
+    // TODO implement a fn_map that ignores its input
+    keyword_pair_p(Keyword::Resume, Keyword::Next).fn_map(|_| OnErrorOption::Next)
 }
 
 fn goto<R>() -> impl Parser<Output = OnErrorOption> {
@@ -34,7 +36,7 @@ fn goto<R>() -> impl Parser<Output = OnErrorOption> {
 }
 
 fn goto_label() -> impl Parser<Output = OnErrorOption> {
-    bare_name_p().map(OnErrorOption::Label)
+    bare_name_p().fn_map(OnErrorOption::Label)
 }
 
 fn goto_zero() -> impl Parser<Output = OnErrorOption> {

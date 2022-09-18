@@ -1,7 +1,8 @@
 use crate::common::*;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::{
-    AndOptFactoryTrait, AndOptTrait, HasOutput, KeepLeftTrait, KeepRightTrait, OrTrait, Parser,
+    AndOptFactoryTrait, AndOptTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepMiddleTrait,
+    KeepRightTrait, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
@@ -25,7 +26,7 @@ pub fn parse_print_p() -> impl Parser<Output = Statement> {
                     }
                 })
             )
-            .map(|(((_,opt_file_number), format_string), opt_args)| {
+            .fn_map(|(((_,opt_file_number), format_string), opt_args)| {
                 Statement::Print(PrintNode {
                     file_number: opt_file_number.map(|x| x.element),
                     lpt1: false,
@@ -46,7 +47,7 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
                 }
             })
         })
-        .map(|((_, format_string), opt_args)| {
+        .fn_map(|((_, format_string), opt_args)| {
             Statement::Print(PrintNode {
                 file_number: None,
                 lpt1: true,

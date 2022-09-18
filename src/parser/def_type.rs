@@ -1,7 +1,7 @@
 use crate::common::QError;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{ErrorProvider, FnMapTrait, OrTrait, Parser, TokenPredicate};
+use crate::parser::base::parsers::{ErrorProvider, FnMapTrait, NonOptParser, OrTrait, Parser, TokenPredicate};
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
 use crate::parser::specific::csv::csv_one_or_more;
@@ -45,14 +45,13 @@ fn letter_range_p() -> impl Parser<Output = LetterRange> {
 }
 
 fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
-    LetterToken.parser().fn_map(|l| LetterRange::Single(l))
+    letter_opt().fn_map(LetterRange::Single)
 }
 
 fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
-    LetterToken
-        .parser()
+    letter_opt()
         .and(item_p('-'))
-        .and_demand(LetterToken)
+        .and_demand(letter())
         .and_then(|((l, _), r)| {
             if l < r {
                 Ok(LetterRange::Range(l, r))
@@ -60,6 +59,14 @@ fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
                 Err(QError::syntax_error("Invalid letter range"))
             }
         })
+}
+
+fn letter_opt() -> impl Parser<Output = char> {
+    LetterToken.parser().fn_map(|token| token.text.chars().next().unwrap())
+}
+
+fn letter() -> impl NonOptParser<Output = char> {
+    LetterToken.parser().fn_map(|token| token.text.chars().next().unwrap())
 }
 
 struct LetterToken;

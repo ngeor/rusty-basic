@@ -1,4 +1,4 @@
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
 use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::expression::guarded_expression_node_p;
 use crate::parser::specific::keyword_choice::keyword_choice;
@@ -19,7 +19,7 @@ pub fn do_loop_p() -> impl Parser<Output = Statement> {
 
 fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
     whitespace()
-        .and(keyword_choice(&[Keyword::Until, Keyword::While]))
+        .token_and(keyword_choice(&[Keyword::Until, Keyword::While]))
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
         .and_demand(zero_or_more_statements_p(keyword_p(Keyword::Loop)))
         .and_demand(keyword_p(Keyword::Loop).or_syntax_error("DO without LOOP"))

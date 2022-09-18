@@ -1,5 +1,5 @@
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
-use crate::parser::base::parsers::{OrTrait, Parser};
+use crate::parser::base::parsers::{FnMapTrait, OrTrait, Parser};
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::{keyword_p, whitespace, OrSyntaxErrorTrait};
 use crate::parser::statement_separator::EofOrStatementSeparator;
@@ -14,7 +14,7 @@ pub fn statement_resume_p() -> impl Parser<Output = Statement> {
         .and_demand(
             resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
         )
-        .map(|(_, r)| Statement::Resume(r))
+        .fn_map(|(_, r)| Statement::Resume(r))
 }
 
 fn resume_option_p() -> impl Parser<Output = ResumeOption> {
@@ -24,19 +24,19 @@ fn resume_option_p() -> impl Parser<Output = ResumeOption> {
 fn blank_resume() -> impl Parser<Output = ResumeOption> {
     EofOrStatementSeparator::new()
         .peek()
-        .map(|_| ResumeOption::Bare)
+        .fn_map(|_| ResumeOption::Bare)
 }
 
 fn resume_next() -> impl Parser<Output = ResumeOption> {
     whitespace()
         .and(keyword_p(Keyword::Next))
-        .map(|_| ResumeOption::Next)
+        .fn_map(|_| ResumeOption::Next)
 }
 
 fn resume_label() -> impl Parser<Output = ResumeOption> {
     whitespace()
         .and(bare_name_p())
-        .map(|(_, r)| ResumeOption::Label(r))
+        .fn_map(|(_, r)| ResumeOption::Label(r))
 }
 
 #[cfg(test)]

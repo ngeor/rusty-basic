@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
@@ -69,7 +69,7 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
     expression::expression_node_p()
         .and_opt(
             whitespace()
-                .and(keyword_p(Keyword::To))
+                .token_and(keyword_p(Keyword::To))
                 .and_demand(
                     expression::guarded_expression_node_p()
                         .or_syntax_error("Expected: expression after TO"),
@@ -91,7 +91,7 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
 fn type_definition_extended_p() -> impl Parser<Output = DimType> {
     // <ws+> AS <ws+> identifier
     whitespace()
-        .and(keyword_followed_by_whitespace_p(Keyword::As))
+        .token_and(keyword_followed_by_whitespace_p(Keyword::As))
         .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
         .keep_right()
 }

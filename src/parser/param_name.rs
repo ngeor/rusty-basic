@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, Parser};
 use crate::parser::expression;
@@ -68,7 +68,7 @@ pub fn param_name_node_p() -> impl Parser<Output = ParamNameNode> {
 
 fn param_name_p() -> impl Parser<Output = (Name, bool)> {
     expression::word::word_p().and_then(|name_expr| match name_expr {
-        Expression::Variable(var_name, _) => Ok(Some((var_name, false))),
+        Expression::Variable(var_name, _) => Ok((var_name, false)),
         Expression::Property(_, _, _) => {
             // only allowed if we can fold it back into a single name
             name_expr
@@ -78,7 +78,7 @@ fn param_name_p() -> impl Parser<Output = (Name, bool)> {
         }
         Expression::FunctionCall(var_name, args) => {
             if args.is_empty() {
-                Ok(Some((var_name, true)))
+                Ok((var_name, true))
             } else {
                 Err(QError::syntax_error("Invalid parameter name"))
             }
@@ -98,7 +98,7 @@ fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
 fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
     // <ws+> AS <ws+> identifier
     whitespace()
-        .and(keyword_followed_by_whitespace_p(Keyword::As))
+        .token_and(keyword_followed_by_whitespace_p(Keyword::As))
         .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
         .keep_right()
 }
@@ -107,7 +107,7 @@ fn extended_type_p() -> impl Parser<Output = ParamType> {
     identifier_without_dot_p()
         .with_pos()
         .and_then(
-            |Locatable { element: x, pos }| match Keyword::from_str(&x) {
+            |Locatable { element: x, pos }| match Keyword::from_str(&x.text) {
                 Ok(Keyword::Single) => Ok(ParamType::BuiltIn(
                     TypeQualifier::BangSingle,
                     BuiltInStyle::Extended,
@@ -132,10 +132,10 @@ fn extended_type_p() -> impl Parser<Output = ParamType> {
                     "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
                 )),
                 Err(_) => {
-                    if x.len() > MAX_LENGTH {
+                    if x.text.len() > MAX_LENGTH {
                         Err(QError::IdentifierTooLong)
                     } else {
-                        let type_name: BareName = x.into();
+                        let type_name: BareName = x.text.into();
                         Ok(ParamType::UserDefined(type_name.at(pos)))
                     }
                 }

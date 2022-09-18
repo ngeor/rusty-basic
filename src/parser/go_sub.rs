@@ -1,4 +1,4 @@
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::{
@@ -14,7 +14,7 @@ pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {
 
 pub fn statement_return_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::Return)
-        .and_opt(whitespace().and(bare_name_p()).keep_right())
+        .and_opt(whitespace().token_and(bare_name_p()).keep_right())
         .fn_map(|(_, opt_label)| Statement::Return(opt_label))
 }
 

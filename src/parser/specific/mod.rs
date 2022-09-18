@@ -315,8 +315,7 @@ pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
 pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
     OptAndPC::new(whitespace(), parser)
         .and_opt(whitespace())
-        .keep_left()
-        .keep_right()
+        .keep_middle()
 }
 
 // TODO deprecate this
@@ -382,8 +381,7 @@ pub fn in_parenthesis<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = 
         .parser()
         .and_demand(parser)
         .and_demand(TokenKindParser(TokenType::RParen).parser())
-        .keep_left()
-        .keep_right()
+        .keep_middle()
 }
 
 // TODO rename to opt
@@ -393,8 +391,7 @@ pub fn in_parenthesis_p<P: NonOptParser>(parser: P) -> impl Parser<Output = P::O
         .parser()
         .and_demand(parser)
         .and_demand(TokenKindParser(TokenType::RParen).parser())
-        .keep_left()
-        .keep_right()
+        .keep_middle()
 }
 
 // TODO deprecate this

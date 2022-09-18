@@ -1,7 +1,7 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::Parser;
+    use crate::parser::base::parsers::{FnMapTrait, KeepMiddleTrait, Parser};
     use crate::parser::specific::{keyword_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
@@ -16,7 +16,7 @@ pub mod parser {
             .and_demand(
                 expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),
             )
-            .map(|(l, r)| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]))
+            .fn_map(|(l, r)| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]))
     }
 }
 

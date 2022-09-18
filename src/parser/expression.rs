@@ -8,9 +8,10 @@ use crate::parser::base::parsers::{
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
+use crate::parser::specific::token_type_map::TokenTypeMap;
 use crate::parser::specific::{
-    in_parenthesis_p, item_p, keyword_p, map_tokens, whitespace, LeadingWhitespace,
-    OrSyntaxErrorTrait, TokenType, WithPosTrait,
+    in_parenthesis_p, item_p, keyword_p, whitespace, LeadingWhitespace, OrSyntaxErrorTrait,
+    TokenType, WithPosTrait,
 };
 use crate::parser::types::*;
 
@@ -188,7 +189,7 @@ pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionN
 }
 
 mod string_literal {
-    use crate::parser::base::parsers::{ManyTrait, Parser, TokenPredicate};
+    use crate::parser::base::parsers::{ManyTrait, Parser, TokenPredicate, TokenPredicateParser};
     use crate::parser::base::tokenizers::{token_list_to_string, Token};
     use crate::parser::specific::{TokenKindParser, TokenType};
 
@@ -196,15 +197,15 @@ mod string_literal {
 
     pub fn string_literal_p() -> impl Parser<Output = Expression> {
         string_delimiter()
-            .and_demand(InsideString.zero_or_more())
+            .and_demand(InsideString.parser().zero_or_more())
             .and_demand(string_delimiter())
             .fn_map(|((_, token_list), _)| {
                 Expression::StringLiteral(token_list_to_string(&token_list))
             })
     }
 
-    fn string_delimiter() -> TokenKindParser {
-        TokenKindParser::new(TokenType::DoubleQuote)
+    fn string_delimiter() -> TokenPredicateParser<TokenKindParser> {
+        TokenKindParser::new(TokenType::DoubleQuote).parser()
     }
 
     struct InsideString;
@@ -220,7 +221,9 @@ mod number_literal {
     use crate::common::*;
     use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
     use crate::parser::base::and_then_pc::AndThenTrait;
-    use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, NonOptParser, Parser};
+    use crate::parser::base::parsers::{
+        AndOptTrait, KeepRightTrait, NonOptParser, Parser, TokenPredicate,
+    };
     use crate::parser::base::recognizers::is_digit;
     use crate::parser::base::tokenizers::Token;
     use crate::parser::specific::{item_p, TokenKindParser, TokenType, WithPosTrait};
@@ -341,43 +344,47 @@ mod number_literal {
     }
 
     pub fn hexadecimal_literal_p() -> impl Parser<Output = Expression> {
-        TokenKindParser::new(TokenType::HexDigits).and_then(|token| {
-            // token text is &HFFFF or &H-FFFF
-            let mut s: String = token.text;
-            // remove &
-            s.remove(0);
-            // remove H
-            s.remove(0);
-            if s.starts_with('-') {
-                Err(QError::Overflow)
-            } else {
-                convert_hex_digits(s).map(Some)
-            }
-        })
+        TokenKindParser::new(TokenType::HexDigits)
+            .parser()
+            .and_then(|token| {
+                // token text is &HFFFF or &H-FFFF
+                let mut s: String = token.text;
+                // remove &
+                s.remove(0);
+                // remove H
+                s.remove(0);
+                if s.starts_with('-') {
+                    Err(QError::Overflow)
+                } else {
+                    convert_hex_digits(s).map(Some)
+                }
+            })
     }
 
     pub fn octal_literal_p() -> impl Parser<Output = Expression> {
-        TokenKindParser::new(TokenType::OctDigits).and_then(|token| {
-            let mut s: String = token.text;
-            // remove &
-            s.remove(0);
-            // remove O
-            s.remove(0);
-            if s.starts_with('-') {
-                Err(QError::Overflow)
-            } else {
-                convert_oct_digits(s).map(Some)
-            }
-        })
+        TokenKindParser::new(TokenType::OctDigits)
+            .parser()
+            .and_then(|token| {
+                let mut s: String = token.text;
+                // remove &
+                s.remove(0);
+                // remove O
+                s.remove(0);
+                if s.starts_with('-') {
+                    Err(QError::Overflow)
+                } else {
+                    convert_oct_digits(s).map(Some)
+                }
+            })
     }
 
     pub fn digits() -> impl NonOptParser<Output = Token> {
-        TokenKindParser::new(TokenType::Digits)
+        TokenKindParser::new(TokenType::Digits).parser()
     }
 
     // TODO rename to opt
     pub fn digits_p() -> impl Parser<Output = Token> {
-        TokenKindParser::new(TokenType::Digits)
+        TokenKindParser::new(TokenType::Digits).parser()
     }
 }
 
@@ -838,25 +845,27 @@ fn and_or_p(
         .with_pos()
 }
 
-fn arithmetic_op_p() -> impl Parser<Output = Operator> {
-    map_tokens(&[
-        (TokenType::Plus, Operator::Plus),
-        (TokenType::Minus, Operator::Minus),
-        (TokenType::Star, Operator::Multiply),
-        (TokenType::Slash, Operator::Divide),
-    ])
-    // token_type_to_operator(TokenType::Plus, Operator::Plus)
-    //     .or(token_type_to_operator(TokenType::Minus, Operator::Minus))
-    //     .or(token_type_to_operator(TokenType::Star, Operator::Multiply))
-    //     .or(token_type_to_operator(TokenType::Slash, Operator::Divide))
+struct ArithmeticMap;
+
+impl HasOutput for ArithmeticMap {
+    type Output = Operator;
 }
-//
-// fn token_type_to_operator(
-//     token_type: TokenType,
-//     operator: Operator,
-// ) -> impl Parser<Output = Operator> {
-//     TokenKindParser::new(token_type).map(|_| operator)
-// }
+
+impl TokenTypeMap for ArithmeticMap {
+    fn try_map(&self, token_type: TokenType) -> Option<Self::Output> {
+        match token_type {
+            TokenType::Plus => Some(Operator::Plus),
+            TokenType::Minus => Some(Operator::Minus),
+            TokenType::Star => Some(Operator::Multiply),
+            TokenType::Slash => Some(Operator::Divide),
+            _ => None,
+        }
+    }
+}
+
+fn arithmetic_op_p() -> impl Parser<Output = Operator> {
+    ArithmeticMap.parser()
+}
 
 fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
     LeadingWhitespace::new(keyword_p(Keyword::Mod), !had_parenthesis_before)
@@ -864,32 +873,28 @@ fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<O
         .with_pos()
 }
 
+struct RelationalMap;
+
+impl HasOutput for RelationalMap {
+    type Output = Operator;
+}
+
+impl TokenTypeMap for RelationalMap {
+    fn try_map(&self, token_type: TokenType) -> Option<Self::Output> {
+        match token_type {
+            TokenType::LessEquals => Some(Operator::LessOrEqual),
+            TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+            TokenType::NotEquals => Some(Operator::NotEqual),
+            TokenType::Less => Some(Operator::Less),
+            TokenType::Greater => Some(Operator::Greater),
+            TokenType::Equals => Some(Operator::Equal),
+            _ => None,
+        }
+    }
+}
+
 pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
-    map_tokens(&[
-        (TokenType::LessEquals, Operator::LessOrEqual),
-        (TokenType::GreaterEquals, Operator::GreaterOrEqual),
-        (TokenType::NotEquals, Operator::NotEqual),
-        (TokenType::Less, Operator::Less),
-        (TokenType::Greater, Operator::Greater),
-        (TokenType::Equals, Operator::Equal),
-    ])
-    .with_pos()
-    // token_type_to_operator(TokenType::LessEquals, Operator::LessOrEqual)
-    //     .or(token_type_to_operator(
-    //         TokenType::GreaterEquals,
-    //         Operator::GreaterOrEqual,
-    //     ))
-    //     .or(token_type_to_operator(
-    //         TokenType::NotEquals,
-    //         Operator::NotEqual,
-    //     ))
-    //     .or(token_type_to_operator(TokenType::Less, Operator::Less))
-    //     .or(token_type_to_operator(
-    //         TokenType::Greater,
-    //         Operator::Greater,
-    //     ))
-    //     .or(token_type_to_operator(TokenType::Equals, Operator::Equal))
-    //     .with_pos()
+    RelationalMap.parser().with_pos()
 }
 
 #[cfg(test)]

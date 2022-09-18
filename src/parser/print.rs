@@ -6,10 +6,12 @@ use crate::parser::base::parsers::{
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
+use crate::parser::specific::try_from_token_type::TryFromParser;
 use crate::parser::specific::{
-    item_p, keyword_p, map_tokens, whitespace, LeadingWhitespace, OrSyntaxErrorTrait, TokenType,
+    item_p, keyword_p, whitespace, LeadingWhitespace, OrSyntaxErrorTrait, TokenType,
 };
 use crate::parser::types::*;
+use std::convert::TryFrom;
 
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
     keyword_p(Keyword::Print)
@@ -99,11 +101,20 @@ fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
         .or(expression::expression_node_p().map(|e| PrintArg::Expression(e)))
 }
 
+impl TryFrom<TokenType> for PrintArg {
+    type Error = QError;
+
+    fn try_from(value: TokenType) -> Result<Self, Self::Error> {
+        match value {
+            TokenType::Semicolon => Ok(PrintArg::Semicolon),
+            TokenType::Comma => Ok(PrintArg::Comma),
+            _ => Err(QError::ArgumentCountMismatch),
+        }
+    }
+}
+
 fn semicolon_or_comma_as_print_arg_p() -> impl Parser<Output = PrintArg> {
-    map_tokens(&[
-        (TokenType::Semicolon, PrintArg::Semicolon),
-        (TokenType::Comma, PrintArg::Comma),
-    ])
+    TryFromParser::new()
 }
 
 struct PrintArgLookingBack {

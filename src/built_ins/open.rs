@@ -52,7 +52,7 @@ pub mod parser {
             .keep_right()
             .and_demand(whitespace())
             .keep_left()
-            .map(
+            .fn_map(
                 |Locatable {
                      element: (file_mode, _),
                      pos,
@@ -80,7 +80,7 @@ pub mod parser {
             .keep_right()
             .and_demand(whitespace())
             .keep_left()
-            .map(|x| FileAccess::Read.at(x.pos()))
+            .fn_map(|x| FileAccess::Read.at(x.pos()))
     }
 
     // AS <ws+> expression

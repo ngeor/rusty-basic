@@ -21,33 +21,44 @@ pub fn to_impl_parser<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
     parser
 }
 
+// TODO check if possible to inherit from this and use it
+pub trait ParserFactory<P> {
+    fn parser(self) -> P;
+}
+
 //
 // TokenPredicate
 //
 
-pub trait TokenPredicate {
+pub trait TokenPredicate
+where
+    Self: Sized,
+{
     fn test(&self, token: &Token) -> bool;
+
+    fn parser(self) -> TokenPredicateParser<Self> {
+        TokenPredicateParser(self)
+    }
 }
 
 pub trait ErrorProvider {
     fn provide_error(&self) -> QError;
 }
 
-impl<T> HasOutput for T
-where
-    T: TokenPredicate,
-{
+pub struct TokenPredicateParser<P>(P);
+
+impl<P> HasOutput for TokenPredicateParser<P> {
     type Output = Token;
 }
 
-impl<T> Parser for T
+impl<P> Parser for TokenPredicateParser<P>
 where
-    T: TokenPredicate,
+    P: TokenPredicate,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) => {
-                if self.test(&token) {
+                if self.0.test(&token) {
                     Ok(Some(token))
                 } else {
                     tokenizer.unread(token);
@@ -59,20 +70,20 @@ where
     }
 }
 
-impl<T> NonOptParser for T
+impl<P> NonOptParser for TokenPredicateParser<P>
 where
-    T: TokenPredicate + ErrorProvider,
+    P: TokenPredicate + ErrorProvider,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => {
-                if self.test(&token) {
+                if self.0.test(&token) {
                     Ok(token)
                 } else {
-                    Err(self.provide_error())
+                    Err(self.0.provide_error())
                 }
             }
-            _ => Err(self.provide_error()),
+            _ => Err(self.0.provide_error()),
         }
     }
 }

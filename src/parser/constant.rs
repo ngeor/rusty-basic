@@ -1,5 +1,5 @@
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{FnMapTrait, Parser};
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::specific::{
@@ -19,7 +19,7 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
         .and_demand(expression::demand_expression_node_p(
             "Expected: const value",
         ))
-        .map(|(((_, const_name), _), const_value_expr)| {
+        .fn_map(|(((_, const_name), _), const_value_expr)| {
             Statement::Const(const_name, const_value_expr)
         })
 }

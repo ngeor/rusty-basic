@@ -1,4 +1,6 @@
 pub mod csv;
+pub mod token_type_map;
+pub mod try_from_token_type;
 
 use std::fs::File;
 use std::str::Chars;
@@ -224,12 +226,12 @@ impl ErrorProvider for KeywordParser {
 
 // TODO rename to keyword keep only one of those functions
 pub fn keyword_p(keyword: Keyword) -> impl Parser<Output = Token> {
-    KeywordParser { keyword }
+    KeywordParser { keyword }.parser()
 }
 
 // TODO rename to keyword_non_opt keep only one of those functions
 pub fn keyword(keyword: Keyword) -> impl NonOptParser<Output = Token> {
-    KeywordParser { keyword }
+    KeywordParser { keyword }.parser()
 }
 
 // TODO deprecate this
@@ -273,11 +275,11 @@ impl<'a> ErrorProvider for KeywordChoice<'a> {
 
 // TODO rename to keyword_choice_opt
 pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = Token> + '_ {
-    KeywordChoice { keywords }
+    KeywordChoice { keywords }.parser()
 }
 
 pub fn keyword_choice(keywords: &[Keyword]) -> impl NonOptParser<Output = Token> + '_ {
-    KeywordChoice { keywords }
+    KeywordChoice { keywords }.parser()
 }
 
 //
@@ -305,8 +307,8 @@ impl ErrorProvider for TokenKindParser {
     }
 }
 
-pub fn whitespace() -> TokenKindParser {
-    TokenKindParser(TokenType::Whitespace)
+pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
+    TokenKindParser(TokenType::Whitespace).parser()
 }
 
 pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
@@ -317,7 +319,7 @@ pub fn surrounded_by_opt_ws<P: Parser>(parser: P) -> impl Parser<Output = P::Out
 }
 
 // TODO deprecate this
-pub fn item_p(ch: char) -> TokenKindParser {
+pub fn item_p(ch: char) -> TokenPredicateParser<TokenKindParser> {
     TokenKindParser(match ch {
         ',' => TokenType::Comma,
         '=' => TokenType::Equals,
@@ -333,6 +335,7 @@ pub fn item_p(ch: char) -> TokenKindParser {
         ':' => TokenType::Colon,
         _ => panic!("not implemented {}", ch),
     })
+    .parser()
 }
 
 //
@@ -377,8 +380,9 @@ fn map_opt_args_to_flags(args: Option<Vec<Option<ExpressionNode>>>) -> Expressio
 
 pub fn in_parenthesis<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = P::Output> {
     TokenKindParser(TokenType::LParen)
+        .parser()
         .and_demand(parser)
-        .and_demand(TokenKindParser(TokenType::RParen))
+        .and_demand(TokenKindParser(TokenType::RParen).parser())
         .keep_left()
         .keep_right()
 }
@@ -387,15 +391,16 @@ pub fn in_parenthesis<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = 
 // TODO implementation is identical to above
 pub fn in_parenthesis_p<P: NonOptParser>(parser: P) -> impl Parser<Output = P::Output> {
     TokenKindParser(TokenType::LParen)
+        .parser()
         .and_demand(parser)
-        .and_demand(TokenKindParser(TokenType::RParen))
+        .and_demand(TokenKindParser(TokenType::RParen).parser())
         .keep_left()
         .keep_right()
 }
 
 // TODO deprecate this
 pub fn identifier_without_dot_p() -> impl Parser<Output = Token> {
-    TokenKindParser(TokenType::Identifier)
+    TokenKindParser(TokenType::Identifier).parser()
 }
 
 pub struct LeadingWhitespace<P> {
@@ -439,25 +444,6 @@ where
             }
         }
     }
-}
-
-pub fn map_token<U>(token_type: TokenType, result: U) -> impl Parser<Output = U> {
-    TokenKindParser::new(token_type).map(|_| result)
-}
-
-pub fn map_tokens<U: Copy>(pairs: &[(TokenType, U)]) -> impl Parser<Output = U> {
-    let mut accumulator: Option<Box<dyn Parser<Output = U>>> = None;
-    for (token_type, result) in pairs {
-        let pair_parser = map_token(*token_type, *result);
-        if accumulator.is_none() {
-            accumulator = Some(Box::new(pair_parser));
-        } else {
-            let old = accumulator.take().unwrap();
-            let n = old.or(pair_parser);
-            accumulator = Some(Box::new(n));
-        }
-    }
-    accumulator.unwrap()
 }
 
 //
@@ -560,7 +546,7 @@ where
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse(tokenizer)? {
             Some(value) => Ok(value),
-            None => Err(QError::syntax_error(self.2)),
+            None => Err(QError::syntax_error(self.1)),
         }
     }
 }
@@ -572,7 +558,7 @@ pub trait OrSyntaxErrorTrait {
 }
 
 impl<S> OrSyntaxErrorTrait for S {
-    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self>
+    fn or_syntax_error<'a>(self, msg: &'a str) -> OrSyntaxError<'a, Self>
     where
         Self: Sized,
     {

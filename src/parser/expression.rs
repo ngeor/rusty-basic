@@ -390,6 +390,7 @@ pub mod word {
     };
     use crate::parser::base::tokenizers::{Token, Tokenizer};
     use crate::parser::name::name_with_dot_p;
+    use crate::parser::specific::csv::csv_zero_or_more;
     use crate::parser::specific::{
         identifier_without_dot_p, in_parenthesis_p, item_p, OrSyntaxErrorTrait, TokenType,
     };
@@ -452,7 +453,7 @@ pub mod word {
                     while properties.len() > 1 {
                         base_expr = Expression::Property(
                             Box::new(base_expr),
-                            Name::Bare(properties.remove(0).into()),
+                            Name::Bare(properties.remove(0).text.into()),
                             ExpressionType::Unresolved,
                         );
                     }
@@ -460,7 +461,7 @@ pub mod word {
                     // take last (no need to check for bounds, because it was built with `one_or_more`)
                     base_expr = Expression::Property(
                         Box::new(base_expr),
-                        Name::new(properties.remove(0).into(), opt_q),
+                        Name::new(properties.remove(0).text.into(), opt_q),
                         ExpressionType::Unresolved,
                     );
 
@@ -493,7 +494,7 @@ pub mod word {
     }
 
     fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
-        in_parenthesis_p(lazy_expression_node_p().csv().map_none_to_default())
+        in_parenthesis_p(csv_zero_or_more(lazy_expression_node_p()))
     }
 
     fn dot_property_name() -> impl Parser<Output = Token> {

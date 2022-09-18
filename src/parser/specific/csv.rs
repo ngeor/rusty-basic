@@ -1,9 +1,19 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser};
+use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::specific::{item_p, surrounded_by_opt_ws};
 
 pub fn csv_one_or_more<P>(parser: P) -> impl Parser<Output = Vec<P::Output>>
+where
+    P: Parser,
+{
+    DelimitedPC {
+        parser,
+        delimiter: comma_surrounded_by_opt_ws(),
+    }
+}
+
+pub fn csv_zero_or_more<P>(parser: P) -> impl NonOptParser<Output = Vec<P::Output>>
 where
     P: Parser,
 {
@@ -38,6 +48,19 @@ where
         match self.parser.parse(tokenizer)? {
             Some(first) => self.after_element(tokenizer, vec![first]).map(Some),
             None => Ok(None),
+        }
+    }
+}
+
+impl<A, B> NonOptParser for DelimitedPC<A, B>
+where
+    A: Parser,
+    B: Parser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        match self.parser.parse(tokenizer)? {
+            Some(first) => self.after_element(tokenizer, vec![first]),
+            None => Ok(vec![]),
         }
     }
 }

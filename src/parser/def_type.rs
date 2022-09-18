@@ -1,9 +1,13 @@
 use crate::common::QError;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{ErrorProvider, FnMapTrait, OrTrait, Parser, TokenPredicate};
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
-use crate::parser::specific::{item_p, keyword_choice_p, whitespace, TokenType};
+use crate::parser::specific::csv::csv_one_or_more;
+use crate::parser::specific::{
+    item_p, keyword_choice_p, whitespace, OrSyntaxErrorTrait, TokenType,
+};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
@@ -15,11 +19,7 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 pub fn def_type_p() -> impl Parser<Output = DefType> {
     def_keyword_p()
         .and_demand(whitespace())
-        .and_demand(
-            letter_range_p()
-                .csv()
-                .or_syntax_error("Expected: letter ranges"),
-        )
+        .and_demand(csv_one_or_more(letter_range_p()).or_syntax_error("Expected: letter ranges"))
         .fn_map(|((l, _), r)| DefType::new(l, r))
 }
 

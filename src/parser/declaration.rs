@@ -2,6 +2,7 @@ use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
+use crate::parser::specific::csv::csv_zero_or_more;
 use crate::parser::specific::{
     in_parenthesis_p, keyword_followed_by_whitespace_p, whitespace, OrSyntaxErrorTrait,
     WithPosTrait,
@@ -57,7 +58,7 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
 }
 
 fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {
-    in_parenthesis_p(param_name_node_p().csv().map_none_to_default())
+    in_parenthesis_p(csv_zero_or_more(param_name_node_p()))
 }
 
 #[cfg(test)]

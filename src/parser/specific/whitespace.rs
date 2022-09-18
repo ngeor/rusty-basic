@@ -1,6 +1,5 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{HasOutput, Parser, TokenPredicate, TokenPredicateParser};
-use crate::parser::base::surrounded_by::SurroundedBy;
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::base::undo_pc::Undo;
 use crate::parser::specific::{TokenKindParser, TokenType};

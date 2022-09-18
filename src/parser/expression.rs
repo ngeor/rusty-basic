@@ -3,8 +3,8 @@ use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{
-    AndOptFactoryTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait,
-    ManyTrait, NonOptParser, OrTrait, Parser,
+    AndOptFactoryTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait, ManyTrait,
+    NonOptParser, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;

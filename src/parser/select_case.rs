@@ -1,6 +1,8 @@
 use crate::common::*;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, ManyTrait, NonOptParser, OrTrait, Parser};
+use crate::parser::base::parsers::{
+    AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, ManyTrait, NonOptParser, OrTrait, Parser,
+};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;

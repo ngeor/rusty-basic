@@ -1,8 +1,8 @@
 use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{
-    AndOptFactoryTrait, AndOptTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepMiddleTrait,
-    KeepRightTrait, OrTrait, Parser,
+    AndOptFactoryTrait, AndOptTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait, OrTrait,
+    Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
@@ -127,7 +127,7 @@ fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     expression::file_handle_p()
         .preceded_by_req_ws()
         .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
-        .keep_middle()
+        .keep_right()
 }
 
 struct PrintArgsParser {

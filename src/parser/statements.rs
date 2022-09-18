@@ -1,38 +1,35 @@
 use crate::common::*;
-use crate::parser::base::and_pc::TokenParserAndParserTrait;
 use crate::parser::base::guard_pc::GuardTrait;
 use crate::parser::base::parsers::{
-    AndOptFactoryTrait, HasOutput, KeepLeftTrait, KeepRightTrait, ManyTrait, NonOptParser, Parser,
+    AndOptFactoryTrait, HasOutput, KeepLeftTrait, ManyTrait, NonOptParser, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::base::undo_pc::Undo;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{item_p, OrSyntaxErrorTrait};
-use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::statement;
 use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
 
 pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
-    leading_ws(
-        statement::single_line_non_comment_statement_p()
-            .with_pos()
-            .one_or_more_delimited_by(
-                item_p(':').surrounded_by_opt_ws(),
-                QError::syntax_error("Error: trailing colon"),
-            ),
-    )
+    statement::single_line_non_comment_statement_p()
+        .with_pos()
+        .one_or_more_delimited_by(
+            item_p(':').surrounded_by_opt_ws(),
+            QError::syntax_error("Error: trailing colon"),
+        )
+        .preceded_by_req_ws()
 }
 
 pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
-    leading_ws(
-        statement::single_line_statement_p()
-            .with_pos()
-            .one_or_more_delimited_by(
-                item_p(':').surrounded_by_opt_ws(),
-                QError::syntax_error("Error: trailing colon"),
-            ),
-    )
+    statement::single_line_statement_p()
+        .with_pos()
+        .one_or_more_delimited_by(
+            item_p(':').surrounded_by_opt_ws(),
+            QError::syntax_error("Error: trailing colon"),
+        )
+        .preceded_by_req_ws()
 }
 
 // When `zero_or_more_statements_p` is called, it must always read first the first statement separator.

@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{
     AndOptFactoryTrait, AndOptTrait, FnMapTrait, KeepRightTrait, Parser,
 };
@@ -25,7 +25,7 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
         .and_opt(next_counter_p())
         .fn_map(
             |(
-                ((variable_name, lower_bound, upper_bound, opt_step), statements),
+                (((variable_name, lower_bound, upper_bound, opt_step), statements), _),
                 opt_next_name_node,
             )| {
                 Statement::ForLoop(ForLoopNode {

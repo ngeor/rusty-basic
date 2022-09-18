@@ -10,7 +10,7 @@ use std::str::Chars;
 
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Location, QError};
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::*;
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
 use crate::parser::base::recognizers::*;

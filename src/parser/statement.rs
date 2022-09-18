@@ -89,7 +89,7 @@ mod end {
     use crate::parser::base::undo_pc::Undo;
     use crate::parser::specific::keyword_choice::keyword_choice_p;
     use crate::parser::specific::whitespace;
-    use crate::parser::statement_separator::{peek_eof_or_statement_separator};
+    use crate::parser::statement_separator::peek_eof_or_statement_separator;
 
     use super::*;
 
@@ -128,7 +128,9 @@ mod end {
             // put back the ws if we read it
             opt_ws.undo(tokenizer);
 
-            opt_sep.ok_or(QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"))
+            opt_sep.ok_or(QError::syntax_error(
+                "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement",
+            ))
         }
     }
 
@@ -163,7 +165,7 @@ mod end {
 mod system {
     use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
     use crate::parser::specific::whitespace;
-    use crate::parser::statement_separator::{peek_eof_or_statement_separator};
+    use crate::parser::statement_separator::peek_eof_or_statement_separator;
 
     use super::*;
 

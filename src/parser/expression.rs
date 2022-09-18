@@ -33,7 +33,7 @@ impl Parser for LazyExpressionParser {
     }
 }
 
-pub fn demand_expression_node_p(err_msg: &str) -> impl NonOptParser<Output = ExpressionNode> {
+pub fn demand_expression_node_p(err_msg: &str) -> impl NonOptParser<Output = ExpressionNode> + '_ {
     expression_node_p().or_syntax_error(err_msg)
 }
 

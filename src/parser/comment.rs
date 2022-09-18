@@ -46,7 +46,6 @@ impl TokenPredicate for NonEol {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;

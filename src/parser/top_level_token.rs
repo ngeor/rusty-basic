@@ -66,7 +66,7 @@ fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
         .fn_map(TopLevelToken::DefType)
         .or(declaration::declaration_p())
         .or(implementation::implementation_p())
-        .or(statement::statement_p().map(TopLevelToken::Statement))
-        .or(user_defined_type::user_defined_type_p().map(TopLevelToken::UserDefinedType))
+        .or(statement::statement_p().fn_map(TopLevelToken::Statement))
+        .or(user_defined_type::user_defined_type_p().fn_map(TopLevelToken::UserDefinedType))
         .with_pos()
 }

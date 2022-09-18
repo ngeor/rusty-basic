@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::parsers::{HasOutput, Parser};
+use crate::parser::base::parsers::{AndOptTrait, HasOutput, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::specific::item_p;

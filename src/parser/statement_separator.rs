@@ -1,10 +1,32 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, OptAndPC, OrTrait, Parser, TokenPredicate};
+use crate::parser::base::parsers::{
+    AndOptTrait, FnMapTrait, HasOutput, OptAndPC, OrTrait, Parser, TokenPredicate,
+};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
-use crate::parser::specific::{whitespace, TokenKindParser, TokenType, eol_or_whitespace, OrSyntaxErrorTrait};
+use crate::parser::specific::{
+    eol_or_whitespace, whitespace, OrSyntaxErrorTrait, TokenKindParser, TokenType,
+};
+
+pub enum Separator {
+    Comment,
+    NonComment,
+}
+
+impl HasOutput for Separator {
+    type Output = ();
+}
+
+impl Parser for Separator {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self {
+            Self::Comment => comment_separator().parse(tokenizer),
+            Self::NonComment => non_comment_separator().parse(tokenizer),
+        }
+    }
+}
 
 // TODO convert to NonOptParser
-pub fn comment_separator() -> impl Parser<Output = ()> {
+fn comment_separator() -> impl Parser<Output = ()> {
     OptAndPC::new(whitespace(), eol_or_whitespace()).fn_map(|_| ())
 }
 
@@ -12,13 +34,15 @@ pub fn comment_separator() -> impl Parser<Output = ()> {
 // <ws>* ':' <ws*>
 // <ws>* EOL <ws | eol>*
 // TODO convert to NonOptParser
-pub fn non_comment_separator() -> impl Parser<Output = ()> {
-    OptAndPC::new(whitespace(),
-    SingleQuotePeek
-        .or(colon_separator_p())
-        .or(eol_separator_p())
-        .or_syntax_error("Expected: end-of-statement")
-    ).fn_map(|_| ())
+fn non_comment_separator() -> impl Parser<Output = ()> {
+    OptAndPC::new(
+        whitespace(),
+        SingleQuotePeek
+            .or(colon_separator_p())
+            .or(eol_separator_p())
+            .or_syntax_error("Expected: end-of-statement"),
+    )
+    .fn_map(|_| ())
 }
 
 // '\'' (undoing it)
@@ -41,7 +65,7 @@ impl Parser for SingleQuotePeek {
                     Ok(None)
                 }
             }
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 }
@@ -56,15 +80,18 @@ impl<P> HasOutput for PeekStatementSeparatorOrEof<P> {
     type Output = ();
 }
 
-impl<P> Parser for PeekStatementSeparatorOrEof<P> where P : TokenPredicate {
+impl<P> Parser for PeekStatementSeparatorOrEof<P>
+where
+    P: TokenPredicate,
+{
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<()>, QError> {
         match tokenizer.read()? {
             Some(token) => {
                 let found_it = self.0.test(&token);
                 tokenizer.unread(token);
-                Ok(if found_it { Some (()) } else { None })
+                Ok(if found_it { Some(()) } else { None })
             }
-            None => Ok(Some(()))
+            None => Ok(Some(())),
         }
     }
 }
@@ -81,16 +108,17 @@ impl TokenPredicate for StatementSeparator2 {
 
 // ':' <ws>*
 fn colon_separator_p() -> impl Parser<Output = ()> {
-    TokenKindParser::new(TokenType::Colon).parser()
+    TokenKindParser::new(TokenType::Colon)
+        .parser()
         .and_opt(whitespace())
         .fn_map(|_| ())
-
 }
 
 // <eol> < ws | eol >*
 // TODO rename to _opt
 fn eol_separator_p() -> impl Parser<Output = ()> {
-    TokenKindParser::new(TokenType::Eol).parser()
+    TokenKindParser::new(TokenType::Eol)
+        .parser()
         .and_opt(eol_or_whitespace())
         .fn_map(|_| ())
 }

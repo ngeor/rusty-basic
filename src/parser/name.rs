@@ -3,10 +3,10 @@ use std::str::FromStr;
 use crate::common::QError;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, Parser};
-use crate::parser::base::tokenizers::{token_list_to_string, Token, Tokenizer, TokenList};
+use crate::parser::base::tokenizers::{token_list_to_string, Token, TokenList, Tokenizer};
 use crate::parser::base::undo_pc::{Undo, UndoTrait};
 use crate::parser::specific::TokenType;
-use crate::parser::type_qualifier::{type_qualifier_as_token};
+use crate::parser::type_qualifier::type_qualifier_as_token;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 
 /// Parses a name. The name must start with a letter and can include

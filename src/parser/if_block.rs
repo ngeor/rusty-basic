@@ -1,4 +1,4 @@
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait, TokenParserAndParserTrait};
 use crate::parser::base::parsers::{
     AndOptTrait, FnMapTrait, KeepMiddleTrait, KeepRightTrait, ManyTrait, OrTrait, Parser,
 };
@@ -65,7 +65,7 @@ fn single_line_if_else_p() -> impl Parser<
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
     whitespace()
-        .and(keyword_p(Keyword::Else))
+        .token_and(keyword_p(Keyword::Else))
         .and_demand(statements::single_line_statements_p())
         .keep_right()
 }

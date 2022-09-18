@@ -1,7 +1,9 @@
 use crate::common::QError;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{ErrorProvider, FnMapTrait, NonOptParser, OrTrait, Parser, TokenPredicate};
+use crate::parser::base::parsers::{
+    ErrorProvider, FnMapTrait, NonOptParser, OrTrait, Parser, TokenPredicate,
+};
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
 use crate::parser::specific::csv::csv_one_or_more;
@@ -62,11 +64,15 @@ fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
 }
 
 fn letter_opt() -> impl Parser<Output = char> {
-    LetterToken.parser().fn_map(|token| token.text.chars().next().unwrap())
+    LetterToken
+        .parser()
+        .fn_map(|token| token.text.chars().next().unwrap())
 }
 
 fn letter() -> impl NonOptParser<Output = char> {
-    LetterToken.parser().fn_map(|token| token.text.chars().next().unwrap())
+    LetterToken
+        .parser()
+        .fn_map(|token| token.text.chars().next().unwrap())
 }
 
 struct LetterToken;

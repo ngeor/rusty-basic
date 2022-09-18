@@ -89,7 +89,7 @@ impl Parser for FirstPrintArg {
         if self.needs_leading_whitespace_for_expression {
             semicolon_or_comma_as_print_arg_p()
                 .preceded_by_opt_ws()
-                .or(expression::guarded_expression_node_p().map(|e| PrintArg::Expression(e)))
+                .or(expression::guarded_expression_node_p().fn_map(PrintArg::Expression))
                 .parse(reader)
         } else {
             any_print_arg_p().preceded_by_opt_ws().parse(reader)
@@ -99,7 +99,7 @@ impl Parser for FirstPrintArg {
 
 fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
     semicolon_or_comma_as_print_arg_p()
-        .or(expression::expression_node_p().map(|e| PrintArg::Expression(e)))
+        .or(expression::expression_node_p().fn_map(PrintArg::Expression))
 }
 
 impl TryFrom<TokenType> for PrintArg {

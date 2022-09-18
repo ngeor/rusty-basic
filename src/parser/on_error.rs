@@ -25,7 +25,7 @@ fn next() -> impl Parser<Output = OnErrorOption> {
     keyword_pair_p(Keyword::Resume, Keyword::Next).fn_map(|_| OnErrorOption::Next)
 }
 
-fn goto<R>() -> impl Parser<Output = OnErrorOption> {
+fn goto() -> impl Parser<Output = OnErrorOption> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_demand(
             goto_label()

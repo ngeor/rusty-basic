@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, OrTrait, Parser};
 use crate::parser::declaration;
-use crate::parser::specific::{demand_keyword_pair_p, keyword_p};
+use crate::parser::specific::{demand_keyword_pair_p, keyword_p, LeadingWhitespace};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -20,7 +20,7 @@ fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
         )))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Function))
         .keep_left()
-        .map(|(((name, params), is_static), body)| {
+        .fn_map(|(((name, params), is_static), body)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation {
                 name,
                 params,
@@ -37,7 +37,7 @@ fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
         )))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Sub))
         .keep_left()
-        .map(|(((name, params), is_static), body)| {
+        .fn_map(|(((name, params), is_static), body)| {
             TopLevelToken::SubImplementation(SubImplementation {
                 name,
                 params,
@@ -52,7 +52,7 @@ where
     P: Parser<Output = T> + 'static,
 {
     parser
-        .and_opt(keyword_p(Keyword::Static).preceded_by_opt_ws())
+        .and_opt(LeadingWhitespace::new(keyword_p(Keyword::Static), false))
         .fn_map(|(l, r)| (l, r.is_some()))
 }
 

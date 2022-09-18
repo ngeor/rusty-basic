@@ -483,13 +483,13 @@ where
 }
 
 pub trait OrSyntaxErrorTrait {
-    fn or_syntax_error<'a>(self, msg: &str) -> OrSyntaxError<'a, Self>
+    fn or_syntax_error<'a>(self, msg: &'a str) -> OrSyntaxError<'a, Self>
     where
         Self: Sized;
 }
 
 impl<S> OrSyntaxErrorTrait for S {
-    fn or_syntax_error<'a>(self, msg: &'a str) -> OrSyntaxError<'a, Self>
+    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self>
     where
         Self: Sized,
     {
@@ -509,5 +509,9 @@ impl TokenPredicate for EolOrWhitespace {
 
 /// `< ws | eol >*`
 pub fn eol_or_whitespace() -> impl Parser<Output = TokenList> {
+    EolOrWhitespace.parser().one_or_more()
+}
+
+pub fn eol_or_whitespace_non_opt() -> impl NonOptParser<Output = TokenList> {
     EolOrWhitespace.parser().one_or_more()
 }

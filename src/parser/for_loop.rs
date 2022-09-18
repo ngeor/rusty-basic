@@ -23,7 +23,7 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
         )))
         .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
         .and_opt(next_counter_p())
-        .map(
+        .fn_map(
             |(
                 ((variable_name, lower_bound, upper_bound, opt_step), statements),
                 opt_next_name_node,
@@ -70,9 +70,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
                 .or_syntax_error("Expected: name after FOR"),
         )
         .and_demand(
-            item_p('=')
-                .preceded_by_opt_ws()
-                .or_syntax_error("Expected: = after name"),
+            LeadingWhitespace::new(item_p('='), false).or_syntax_error("Expected: = after name"),
         )
         .and_demand(
             expression::back_guarded_expression_node_p()

@@ -1,6 +1,7 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{ErrorProvider, HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
+use crate::parser::base::undo_pc::Undo;
 use crate::parser::specific::TokenType;
 use crate::parser::Keyword;
 use std::str::FromStr;
@@ -11,6 +12,12 @@ pub struct KeywordChoice<'a> {
 
 impl<'a> HasOutput for KeywordChoice<'a> {
     type Output = (Keyword, Token);
+}
+
+impl Undo for (Keyword, Token) {
+    fn undo(self, tokenizer: &mut impl Tokenizer) {
+        self.1.undo(tokenizer)
+    }
 }
 
 impl<'a> Parser for KeywordChoice<'a> {

@@ -20,11 +20,7 @@ pub fn parse_print_p() -> impl Parser<Output = Statement> {
             .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
             .and_opt_factory(|((_, opt_file_number), opt_using)|
                 // we're just past PRINT. No need for space for ; or , but we need it for expressions
-                first_print_arg_p( opt_file_number.is_none() && opt_using.is_none()).one_or_more_looking_back(|prev_arg| {
-                    PrintArgLookingBack {
-                        prev_print_arg_was_expression: prev_arg.is_expression(),
-                    }
-                })
+                PrintArgsParser::new(opt_file_number.is_none() && opt_using.is_none())
             )
             .fn_map(|(((_,opt_file_number), format_string), opt_args)| {
                 Statement::Print(PrintNode {
@@ -41,11 +37,7 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
         .and_opt(using_p(true))
         .and_opt_factory(|(_keyword, opt_using)| {
             // we're just past LPRINT. No need for space for ; or , but we need it for expressions
-            first_print_arg_p(opt_using.is_none()).one_or_more_looking_back(|prev_arg| {
-                PrintArgLookingBack {
-                    prev_print_arg_was_expression: prev_arg.is_expression(),
-                }
-            })
+            PrintArgsParser::new(opt_using.is_none())
         })
         .fn_map(|((_, format_string), opt_args)| {
             Statement::Print(PrintNode {
@@ -66,14 +58,6 @@ fn using_p(needs_leading_whitespace: bool) -> impl Parser<Output = ExpressionNod
         .and_demand(item_p(';'))
         .keep_left()
         .keep_right()
-}
-
-fn first_print_arg_p(
-    needs_leading_whitespace_for_expression: bool,
-) -> impl Parser<Output = PrintArg> {
-    FirstPrintArg {
-        needs_leading_whitespace_for_expression,
-    }
 }
 
 struct FirstPrintArg {
@@ -145,6 +129,44 @@ fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
         .and(expression::file_handle_p())
         .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
         .keep_middle()
+}
+
+struct PrintArgsParser {
+    seed_parser: FirstPrintArg
+}
+
+impl PrintArgsParser {
+    pub fn new(needs_leading_whitespace: bool) -> Self {
+        Self {
+            seed_parser: FirstPrintArg { needs_leading_whitespace_for_expression: needs_leading_whitespace }
+        }
+    }
+}
+
+impl HasOutput for PrintArgsParser {
+    type Output = Vec<PrintArg>;
+}
+
+impl Parser for PrintArgsParser {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let opt_first_arg = self.seed_parser.parse(tokenizer)?;
+        match opt_first_arg {
+            Some(first_arg) => {
+                let mut args = vec![first_arg];
+                loop {
+                    let parser = PrintArgLookingBack {
+                        prev_print_arg_was_expression: args.last().unwrap().is_expression()
+                    };
+                    match parser.parse(tokenizer)? {
+                        Some(next_arg) => args.push(next_arg),
+                        None => break
+                    }
+                }
+                Ok(Some(args))
+            }
+            None => Ok(None)
+        }
+    }
 }
 
 #[cfg(test)]

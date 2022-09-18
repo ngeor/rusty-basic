@@ -67,7 +67,10 @@ fn single_line_if_else_p() -> impl Parser<
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
     keyword_p(Keyword::Else)
         .preceded_by_req_ws()
-        .and_demand(statements::single_line_statements_p())
+        .and_demand(
+            statements::single_line_statements_p()
+                .or_syntax_error("Expected statements for single line ELSE"),
+        )
         .keep_right()
 }
 

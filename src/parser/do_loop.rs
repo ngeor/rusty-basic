@@ -41,7 +41,7 @@ fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> {
         .and_demand(keyword(Keyword::Loop))
         .and_demand(keyword_choice(&[Keyword::Until, Keyword::While]).preceded_by_req_ws())
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
-        .fn_map(|((((statements, _), _), (k, _)), condition)| DoLoopNode {
+        .fn_map(|(((statements, _), (k, _)), condition)| DoLoopNode {
             condition,
             statements,
             position: DoLoopConditionPosition::Bottom,

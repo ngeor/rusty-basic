@@ -120,32 +120,26 @@ impl Parser for ExtendedTypeParser {
             }
             None => Ok(None),
         }
-        let (reader, opt_identifier) = identifier_without_dot_p().with_pos().parse(reader)?;
+        let opt_identifier = identifier_without_dot_p().with_pos().parse(reader)?;
         match opt_identifier {
             Some(Locatable { element: x, pos }) => match Keyword::from_str(x.as_str()) {
-                Ok(Keyword::Single) => Self::built_in(reader, TypeQualifier::BangSingle),
-                Ok(Keyword::Double) => Self::built_in(reader, TypeQualifier::HashDouble),
+                Ok(Keyword::Single) => Self::built_in(TypeQualifier::BangSingle),
+                Ok(Keyword::Double) => Self::built_in(TypeQualifier::HashDouble),
                 Ok(Keyword::String_) => Self::string(reader),
-                Ok(Keyword::Integer) => Self::built_in(reader, TypeQualifier::PercentInteger),
-                Ok(Keyword::Long) => Self::built_in(reader, TypeQualifier::AmpersandLong),
-                Ok(_) => Err((
-                    reader,
-                    QError::syntax_error(
-                        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                    ),
+                Ok(Keyword::Integer) => Self::built_in(TypeQualifier::PercentInteger),
+                Ok(Keyword::Long) => Self::built_in(TypeQualifier::AmpersandLong),
+                Ok(_) => Err(QError::syntax_error(
+                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
                 )),
                 Err(_) => {
-                    if x.len() > name::MAX_LENGTH {
-                        Err((reader, QError::IdentifierTooLong))
+                    if x.text.len() > name::MAX_LENGTH {
+                        Err(QError::IdentifierTooLong)
                     } else {
-                        Ok((
-                            reader,
-                            Some(DimType::UserDefined(BareName::from(x).at(pos))),
-                        ))
+                        Ok(Some(DimType::UserDefined(BareName::from(x).at(pos))))
                     }
                 }
             },
-            _ => Ok((reader, None)),
+            _ => Ok(None),
         }
     }
 }
@@ -156,7 +150,7 @@ impl ExtendedTypeParser {
     }
 
     fn string(reader: &mut impl Tokenizer) -> Result<Option<DimType>, QError> {
-        let (reader, opt_len) = item_p('*')
+        let opt_len = item_p('*')
             .surrounded_by_opt_ws()
             .and_demand(
                 expression::expression_node_p().or_syntax_error("Expected: string length after *"),
@@ -164,7 +158,7 @@ impl ExtendedTypeParser {
             .keep_right()
             .parse(reader)?;
         match opt_len {
-            Some(len) => Ok((reader, Some(DimType::FixedLengthString(len, 0)))),
+            Some(len) => Ok(Some(DimType::FixedLengthString(len, 0))),
             _ => Self::built_in(TypeQualifier::DollarString),
         }
     }

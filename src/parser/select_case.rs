@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{
     AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, ManyTrait, NonOptParser, OrTrait, Parser,
 };
@@ -79,7 +79,11 @@ fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
 fn case_block() -> impl Parser<Output = CaseBlockNode> {
     // CASE
     keyword_p(Keyword::Case)
-        .and(continue_after_case().preceded_by_opt_ws())
+        .and_demand(
+            continue_after_case()
+                .preceded_by_opt_ws()
+                .or_syntax_error("Expected case expression after CASE"),
+        )
         .keep_right()
 }
 

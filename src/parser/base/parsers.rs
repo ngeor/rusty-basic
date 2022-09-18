@@ -363,30 +363,13 @@ pub trait FnMapTrait<F> {
 
 impl<S, F, U> FnMapTrait<F> for S
 where
-    S: Parser,
+    S: HasOutput,
     F: Fn(S::Output) -> U,
 {
     fn fn_map(self, mapper: F) -> FnMapper<Self, F> {
         FnMapper(self, mapper)
     }
 }
-
-//
-// pub trait FnMapNonOptTrait<F> {
-//     fn map(self, mapper: F) -> FnMapper<Self, F>
-//     where
-//         Self: Sized;
-// }
-//
-// impl<S, F, U> FnMapNonOptTrait<F> for S
-// where
-//     S: NonOptParser,
-//     F: Fn(S::Output) -> U,
-// {
-//     fn map(self, mapper: F) -> FnMapper<Self, F> {
-//         FnMapper(self, mapper)
-//     }
-// }
 
 //
 // Or

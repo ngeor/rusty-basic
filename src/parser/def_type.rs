@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{
     ErrorProvider, FnMapTrait, NonOptParser, OrTrait, Parser, TokenPredicate,
@@ -53,7 +53,7 @@ fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
 
 fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
     letter_opt()
-        .and(item_p('-'))
+        .and_demand(item_p('-'))
         .and_demand(letter())
         .and_then(|((l, _), r)| {
             if l < r {

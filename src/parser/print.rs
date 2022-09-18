@@ -127,7 +127,7 @@ fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     expression::file_handle_p()
         .preceded_by_req_ws()
         .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
-        .keep_right()
+        .keep_left()
 }
 
 struct PrintArgsParser {

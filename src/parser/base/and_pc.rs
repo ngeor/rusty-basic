@@ -58,9 +58,9 @@ where
     }
 }
 
-pub struct AndPC<L, R>(L, R);
+pub struct AndDemandPC<L, R>(L, R);
 
-impl<L, R> HasOutput for AndPC<L, R>
+impl<L, R> HasOutput for AndDemandPC<L, R>
 where
     L: HasOutput,
     R: HasOutput,
@@ -68,7 +68,7 @@ where
     type Output = (L::Output, R::Output);
 }
 
-impl<L, R> Parser for AndPC<L, R>
+impl<L, R> Parser for AndDemandPC<L, R>
 where
     L: Parser,
     R: NonOptParser,
@@ -84,7 +84,7 @@ where
     }
 }
 
-impl<L, R> NonOptParser for AndPC<L, R>
+impl<L, R> NonOptParser for AndDemandPC<L, R>
 where
     L: NonOptParser,
     R: NonOptParser,
@@ -96,34 +96,14 @@ where
     }
 }
 
-pub trait AndTrait<P> {
-    fn and(self, other: P) -> AndPC<Self, P>
+pub trait AndDemandTrait<P> {
+    fn and_demand(self, other: P) -> AndDemandPC<Self, P>
     where
         Self: Sized;
 }
 
-impl<S, P> AndTrait<P> for S {
-    fn and(self, other: P) -> AndPC<Self, P> {
-        AndPC(self, other)
-    }
-}
-
-// TODO check if we can keep just the AddTrait as this is now the same
-
-pub trait AndDemandTrait<P>
-where
-    Self: Sized,
-    P: NonOptParser,
-{
-    fn and_demand(self, other: P) -> AndPC<Self, P>;
-}
-
-impl<S, P> AndDemandTrait<P> for S
-where
-    S: Parser,
-    P: NonOptParser,
-{
-    fn and_demand(self, other: P) -> AndPC<Self, P> {
-        AndPC(self, other)
+impl<S, P> AndDemandTrait<P> for S {
+    fn and_demand(self, other: P) -> AndDemandPC<Self, P> {
+        AndDemandPC(self, other)
     }
 }

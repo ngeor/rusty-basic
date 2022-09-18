@@ -218,7 +218,7 @@ mod string_literal {
 
 mod number_literal {
     use crate::common::*;
-    use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+    use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::and_then_pc::AndThenTrait;
     use crate::parser::base::parsers::{
         AndOptTrait, KeepRightTrait, NonOptParser, Parser, TokenPredicate,
@@ -250,7 +250,7 @@ mod number_literal {
 
     pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
         item_p('.')
-            .and(digits())
+            .and_demand(digits())
             .and_opt(item_p('#'))
             .and_then(|((_, fraction_digits), opt_double)| {
                 parse_floating_point_literal_no_pos(

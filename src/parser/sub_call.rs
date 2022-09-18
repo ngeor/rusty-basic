@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::base::parsers::{AndOptTrait, HasOutput, NonOptParser, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::expression;
 use crate::parser::specific::item_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
@@ -50,7 +50,7 @@ impl Parser for SubCallOrAssignment {
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<char>)> {
+    fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<Token>)> {
         expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
     }
 }

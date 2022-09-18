@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{FnMapTrait, KeepLeftTrait, OrTrait, Parser};
 use crate::parser::comment;
@@ -62,7 +62,7 @@ pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
 
 fn statement_label_p() -> impl Parser<Output = Statement> {
     bare_name_p()
-        .and(item_p(':'))
+        .and_demand(item_p(':'))
         .keep_left()
         .fn_map(|l| Statement::Label(l))
 }

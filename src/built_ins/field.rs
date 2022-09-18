@@ -2,7 +2,7 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
+    use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, NonOptParser, Parser};
     use crate::parser::specific::csv::{comma_surrounded_by_opt_ws, csv_one_or_more};
     use crate::parser::specific::whitespace::WhitespaceTrait;
     use crate::parser::specific::with_pos::WithPosTrait;
@@ -11,17 +11,17 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::Field)
-            .and_demand(field_node_p().or_syntax_error("Expected: file number after FIELD"))
+            .and_demand(field_node_p())
             .keep_right()
     }
 
-    fn field_node_p() -> impl Parser<Output = Statement> {
+    fn field_node_p() -> impl NonOptParser<Output = Statement> {
         expression::file_handle_p()
             .preceded_by_req_ws()
             .or_syntax_error("Expected: file-number")
             .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
             .and_demand(csv_one_or_more(field_item_p()).or_syntax_error("Expected: field width"))
-            .fn_map(|(((_, file_number), _), fields)| {
+            .fn_map(|((file_number, _), fields)| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
             })
     }

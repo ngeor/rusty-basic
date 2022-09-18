@@ -71,7 +71,7 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
         .and_demand(comment::comments_and_whitespace_p())
         .and_demand(element_nodes_p())
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Type))
-        .map(|((((_, name), comments), elements), _)| {
+        .fn_map(|((((_, name), comments), elements), _)| {
             UserDefinedType::new(name, comments, elements)
         })
 }

@@ -1,6 +1,6 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
-    use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+    use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::csv::csv_one_or_more;
     use crate::parser::specific::{in_parenthesis, item_p, keyword_p, OrSyntaxErrorTrait};
@@ -8,7 +8,7 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::String_)
-            .and(item_p('$'))
+            .and_demand(item_p('$'))
             .and_demand(in_parenthesis(
                 csv_one_or_more(expression::lazy_expression_node_p())
                     .or_syntax_error("Expected: expression"),

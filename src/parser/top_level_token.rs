@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{HasOutput, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::declaration;
 use crate::parser::def_type;
@@ -16,9 +16,11 @@ impl TopLevelTokensParser {
     }
 }
 
-impl Parser for TopLevelTokensParser {
+impl HasOutput for TopLevelTokensParser {
     type Output = ProgramNode;
+}
 
+impl Parser for TopLevelTokensParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];

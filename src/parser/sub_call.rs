@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{HasOutput, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::specific::item_p;
@@ -16,9 +16,11 @@ pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
 
 pub struct SubCallOrAssignment {}
 
-impl Parser for SubCallOrAssignment {
+impl HasOutput for SubCallOrAssignment {
     type Output = Statement;
+}
 
+impl Parser for SubCallOrAssignment {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let opt_item = Self::name_and_opt_eq_sign().parse(reader)?;
         match opt_item {

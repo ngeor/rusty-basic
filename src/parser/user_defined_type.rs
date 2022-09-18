@@ -44,7 +44,7 @@
 
 use crate::common::{Locatable, QError};
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{AndThenTrait, KeepRightTrait, ManyTrait, OrTrait, Parser};
+use crate::parser::base::parsers::{KeepRightTrait, ManyTrait, OrTrait, Parser};
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;

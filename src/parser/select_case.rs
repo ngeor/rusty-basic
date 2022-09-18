@@ -1,6 +1,8 @@
 use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, ManyTrait, OrTrait, Parser};
+use crate::parser::base::parsers::{
+    AndOptTrait, HasOutput, KeepRightTrait, ManyTrait, OrTrait, Parser,
+};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
@@ -76,12 +78,14 @@ fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
 
 struct CaseBlockParser;
 
-impl Parser for CaseBlockParser {
+impl HasOutput for CaseBlockParser {
     type Output = CaseBlockNode;
+}
 
+impl Parser for CaseBlockParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         // CASE
-        let (reader, result) = keyword_p(Keyword::Case)
+        let result = keyword_p(Keyword::Case)
             .and_opt(whitespace())
             .map(|((_, l), r)| {
                 let mut temp: String = String::new();
@@ -91,12 +95,12 @@ impl Parser for CaseBlockParser {
             })
             .parse(reader)?;
         if result.is_none() {
-            return Ok((reader, None));
+            return Ok(None);
         }
         let case_ws_str: String = result.unwrap_or_default();
-        let (reader, result) = Self::continue_after_case().parse(reader)?;
+        let result = Self::continue_after_case().parse(reader)?;
         if result.is_some() {
-            Ok((reader, result))
+            Ok(result)
         } else {
             Ok((reader.undo(case_ws_str), result))
         }
@@ -126,9 +130,11 @@ fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
 
 struct CaseExpressionParser;
 
-impl Parser for CaseExpressionParser {
+impl HasOutput for CaseExpressionParser {
     type Output = CaseExpression;
+}
 
+impl Parser for CaseExpressionParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let (reader, result) = keyword_p(Keyword::Else).peek().parse(reader)?;
         if result.is_some() {
@@ -164,9 +170,11 @@ impl CaseExpressionParser {
 
 struct SimpleOrRangeParser;
 
-impl Parser for SimpleOrRangeParser {
+impl HasOutput for SimpleOrRangeParser {
     type Output = CaseExpression;
+}
 
+impl Parser for SimpleOrRangeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let (reader, expr) = expression::expression_node_p().parse(reader)?;
         match expr {

@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::{
-    AndOptFactoryTrait, AndOptTrait, KeepLeftTrait, KeepRightTrait, OrTrait, Parser,
+    AndOptFactoryTrait, AndOptTrait, HasOutput, KeepLeftTrait, KeepRightTrait, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
@@ -77,9 +77,11 @@ struct FirstPrintArg {
     needs_leading_whitespace_for_expression: bool,
 }
 
-impl Parser for FirstPrintArg {
+impl HasOutput for FirstPrintArg {
     type Output = PrintArg;
+}
 
+impl Parser for FirstPrintArg {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if self.needs_leading_whitespace_for_expression {
             semicolon_or_comma_as_print_arg_p()
@@ -108,9 +110,11 @@ struct PrintArgLookingBack {
     prev_print_arg_was_expression: bool,
 }
 
-impl Parser for PrintArgLookingBack {
+impl HasOutput for PrintArgLookingBack {
     type Output = PrintArg;
+}
 
+impl Parser for PrintArgLookingBack {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if self.prev_print_arg_was_expression {
             // only comma or semicolon is allowed

@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{HasOutput, Parser};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::specific::{item_p, surrounded_by_opt_ws};
 
@@ -22,13 +22,18 @@ struct DelimitedPC<A, B> {
     delimiter: B,
 }
 
+impl<A, B> HasOutput for DelimitedPC<A, B>
+where
+    A: HasOutput,
+{
+    type Output = Vec<A::Output>;
+}
+
 impl<A, B> Parser for DelimitedPC<A, B>
 where
     A: Parser,
     B: Parser,
 {
-    type Output = Vec<A::Output>;
-
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.parser.parse(tokenizer)? {
             Some(first) => self.after_element(tokenizer, vec![first]).map(Some),

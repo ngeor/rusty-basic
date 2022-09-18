@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::common::QError;
-use crate::parser::base::parsers::Parser;
+use crate::parser::base::parsers::{HasOutput, Parser};
 use crate::parser::base::tokenizers::{token_list_to_string, Token, Tokenizer};
 use crate::parser::specific::TokenType;
 use crate::parser::type_qualifier::type_qualifier_p;
@@ -92,9 +92,11 @@ mod tests {
 
 struct IdentifierWithDotParser;
 
-impl Parser for IdentifierWithDotParser {
+impl HasOutput for IdentifierWithDotParser {
     type Output = String; // TODO check if Vec<Token> will work better for undo
+}
 
+impl Parser for IdentifierWithDotParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut list: Vec<Token> = Vec::new();
         loop {

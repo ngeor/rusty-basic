@@ -1,6 +1,8 @@
 use crate::common::QError;
 use crate::parser::base::and_pc::AndTrait;
-use crate::parser::base::parsers::{AndOptTrait, ManyTrait, OrTrait, Parser, TokenPredicate};
+use crate::parser::base::parsers::{
+    AndOptTrait, HasOutput, ManyTrait, OrTrait, Parser, TokenPredicate,
+};
 use crate::parser::base::tokenizers::{Position, Token, Tokenizer};
 use crate::parser::specific::{item_p, whitespace, TokenKindParser, TokenType};
 
@@ -47,9 +49,11 @@ impl StatementSeparator {
     }
 }
 
-impl Parser for StatementSeparator {
+impl HasOutput for StatementSeparator {
     type Output = String;
+}
 
+impl Parser for StatementSeparator {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         // skip any whitespace, so that the error will hit the first offending character
         let opt_buf = whitespace().parse(reader)?;
@@ -78,9 +82,11 @@ impl EofOrStatementSeparator {
     }
 }
 
-impl Parser for EofOrStatementSeparator {
+impl HasOutput for EofOrStatementSeparator {
     type Output = Token;
+}
 
+impl Parser for EofOrStatementSeparator {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) => {

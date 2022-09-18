@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::common::*;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
-use crate::parser::base::parsers::{AndOptTrait, AndThenTrait, FnMapTrait, KeepRightTrait, Parser};
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::name;
@@ -100,9 +100,11 @@ fn extended_type_p() -> impl Parser<Output = DimType> {
 
 struct ExtendedTypeParser;
 
-impl Parser for ExtendedTypeParser {
+impl HasOutput for ExtendedTypeParser {
     type Output = DimType;
+}
 
+impl Parser for ExtendedTypeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match reader.read()? {
             Some(token) => {

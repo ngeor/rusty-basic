@@ -1,8 +1,9 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
+use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{
-    AndOptFactoryTrait, AndOptTrait, AndThenTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait,
+    AndOptFactoryTrait, AndOptTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait,
     ManyTrait, NonOptParser, OptAndPC, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
@@ -19,9 +20,11 @@ pub fn lazy_expression_node_p() -> LazyExpressionParser {
 
 pub struct LazyExpressionParser;
 
-impl Parser for LazyExpressionParser {
+impl HasOutput for LazyExpressionParser {
     type Output = ExpressionNode;
+}
 
+impl Parser for LazyExpressionParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut parser = expression_node_p();
         parser.parse(reader)
@@ -216,9 +219,8 @@ mod string_literal {
 mod number_literal {
     use crate::common::*;
     use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
-    use crate::parser::base::parsers::{
-        AndOptTrait, AndThenTrait, KeepRightTrait, NonOptParser, Parser,
-    };
+    use crate::parser::base::and_then_pc::AndThenTrait;
+    use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, NonOptParser, Parser};
     use crate::parser::base::recognizers::is_digit;
     use crate::parser::base::tokenizers::Token;
     use crate::parser::specific::{item_p, TokenKindParser, TokenType, WithPosTrait};
@@ -382,8 +384,9 @@ mod number_literal {
 pub mod word {
     use crate::common::*;
     use crate::parser::base::and_pc::AndDemandTrait;
+    use crate::parser::base::and_then_pc::AndThenTrait;
     use crate::parser::base::parsers::{
-        AndOptTrait, AndThenTrait, KeepLeftTrait, KeepRightTrait, ManyTrait, Parser,
+        AndOptTrait, HasOutput, KeepLeftTrait, KeepRightTrait, ManyTrait, Parser,
     };
     use crate::parser::base::tokenizers::Tokenizer;
     use crate::parser::name::name_with_dot_p;
@@ -503,9 +506,11 @@ pub mod word {
 
     struct EnsureEndOfNameParser;
 
-    impl Parser for EnsureEndOfNameParser {
+    impl HasOutput for EnsureEndOfNameParser {
         type Output = ();
+    }
 
+    impl Parser for EnsureEndOfNameParser {
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
             match tokenizer.read()? {
                 Some(token) => {
@@ -545,7 +550,7 @@ pub mod word {
                 #[test]
                 fn test_any_word_without_dot() {
                     let input = "abc";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
@@ -554,7 +559,7 @@ pub mod word {
                 #[test]
                 fn test_array_or_function_no_dot_no_qualifier() {
                     let input = "A(1)";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
@@ -572,7 +577,7 @@ pub mod word {
                 #[test]
                 fn test_trailing_dot() {
                     let input = "abc.";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
@@ -581,7 +586,7 @@ pub mod word {
                 #[test]
                 fn test_two_consecutive_trailing_dots() {
                     let input = "abc..";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
@@ -590,7 +595,7 @@ pub mod word {
                 #[test]
                 fn test_possible_property() {
                     let input = "a.b.c";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
@@ -610,7 +615,7 @@ pub mod word {
                 #[test]
                 fn test_possible_variable() {
                     let input = "a.b.c.";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved("a.b.c.")));
@@ -619,7 +624,7 @@ pub mod word {
                 #[test]
                 fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
                     let input = "A(1).O..ops";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
                     assert_eq!(
@@ -631,7 +636,7 @@ pub mod word {
                 #[test]
                 fn test_bare_array_bare_property() {
                     let input = "A(1).Suit";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
@@ -657,7 +662,7 @@ pub mod word {
                 #[test]
                 fn test_qualified_var_without_dot() {
                     let input = "abc$";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
@@ -666,7 +671,7 @@ pub mod word {
                 #[test]
                 fn test_duplicate_qualifier_is_error() {
                     let input = "abc$%";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
@@ -675,7 +680,7 @@ pub mod word {
                 #[test]
                 fn test_array_or_function_no_dot_qualified() {
                     let input = "A$(1)";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
@@ -693,7 +698,7 @@ pub mod word {
                 #[test]
                 fn test_possible_qualified_property() {
                     let input = "a.b$";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
@@ -709,7 +714,7 @@ pub mod word {
                 #[test]
                 fn test_possible_qualified_property_reverts_to_array() {
                     let input = "a.b$(1)";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
@@ -721,7 +726,7 @@ pub mod word {
                 #[test]
                 fn test_qualified_var_with_dot() {
                     let input = "abc.$";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
@@ -730,7 +735,7 @@ pub mod word {
                 #[test]
                 fn test_qualified_var_with_two_dots() {
                     let input = "abc..$";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(result, Some(Expression::var_unresolved(input)));
@@ -739,7 +744,7 @@ pub mod word {
                 #[test]
                 fn test_dot_after_qualifier_is_error() {
                     let input = "abc$.";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
                     assert_eq!(
@@ -751,7 +756,7 @@ pub mod word {
                 #[test]
                 fn test_array_or_function_dotted_qualified() {
                     let input = "A.B$(1)";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
@@ -763,7 +768,7 @@ pub mod word {
                 #[test]
                 fn test_qualified_array_cannot_have_properties() {
                     let input = "A$(1).Oops";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
                     assert_eq!(
@@ -775,7 +780,7 @@ pub mod word {
                 #[test]
                 fn test_bare_array_qualified_property() {
                     let input = "A(1).Suit$";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
@@ -791,7 +796,7 @@ pub mod word {
                 #[test]
                 fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
                     let input = "A(1).Suit$.";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
@@ -800,7 +805,7 @@ pub mod word {
                 #[test]
                 fn test_bare_array_qualified_property_extra_qualifier_is_error() {
                     let input = "A(1).Suit$%";
-                    let eol_reader = create_string_tokenizer(input);
+                    let mut eol_reader = create_string_tokenizer(input);
                     let mut parser = word_p();
                     let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
                     assert_eq!(err, QError::syntax_error("Expected: end of name expr"));

@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::base::and_pc::AndTrait;
-use crate::parser::base::parsers::{KeepRightTrait, Parser};
+use crate::parser::base::parsers::{HasOutput, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::{item_p, whitespace, WithPosTrait};
 use crate::parser::statement;
@@ -63,9 +63,11 @@ impl StatementAndSeparator {
     }
 }
 
-impl Parser for StatementAndSeparator {
+impl HasOutput for StatementAndSeparator {
     type Output = StatementNode;
+}
 
+impl Parser for StatementAndSeparator {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let opt_statement_node = statement::statement_p().with_pos().parse(reader)?;
         match opt_statement_node {

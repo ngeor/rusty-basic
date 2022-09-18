@@ -378,7 +378,9 @@ fn map_opt_args_to_flags(args: Option<Vec<Option<ExpressionNode>>>) -> Expressio
 pub fn in_parenthesis<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = P::Output> {
     TokenKindParser(TokenType::LParen)
         .and_demand(parser)
-        .and_demand(TokenType::RParen)
+        .and_demand(TokenKindParser(TokenType::RParen))
+        .keep_left()
+        .keep_right()
 }
 
 // TODO rename to opt
@@ -386,7 +388,9 @@ pub fn in_parenthesis<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = 
 pub fn in_parenthesis_p<P: NonOptParser>(parser: P) -> impl Parser<Output = P::Output> {
     TokenKindParser(TokenType::LParen)
         .and_demand(parser)
-        .and_demand(TokenType::RParen)
+        .and_demand(TokenKindParser(TokenType::RParen))
+        .keep_left()
+        .keep_right()
 }
 
 // TODO deprecate this
@@ -408,12 +412,17 @@ impl<P> LeadingWhitespace<P> {
     }
 }
 
-impl<P> Parser for LeadingWhitespace<P>
+impl<P> HasOutput for LeadingWhitespace<P>
 where
     P: Parser,
 {
     type Output = P::Output;
+}
 
+impl<P> Parser for LeadingWhitespace<P>
+where
+    P: Parser,
+{
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let opt_space = whitespace().parse(tokenizer)?;
         if self.needs_whitespace && opt_space.is_none() {
@@ -457,12 +466,17 @@ pub fn map_tokens<U: Copy>(pairs: &[(TokenType, U)]) -> impl Parser<Output = U> 
 
 struct MapErrParser<P>(P, QError);
 
+impl<P> HasOutput for MapErrParser<P>
+where
+    P: HasOutput,
+{
+    type Output = P::Output;
+}
+
 impl<P> Parser for MapErrParser<P>
 where
     P: Parser,
 {
-    type Output = P::Output;
-
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.0.parse(tokenizer).map_err(|_| self.1)
     }
@@ -472,8 +486,6 @@ impl<P> NonOptParser for MapErrParser<P>
 where
     P: NonOptParser,
 {
-    type Output = P::Output;
-
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.0.parse_non_opt(tokenizer).map_err(|_| self.1)
     }
@@ -497,12 +509,17 @@ impl<S> MapErrTrait for S {
 
 pub struct WithPosMapper<P>(P);
 
+impl<P> HasOutput for WithPosMapper<P>
+where
+    P: HasOutput,
+{
+    type Output = Locatable<P::Output>;
+}
+
 impl<P> Parser for WithPosMapper<P>
 where
     P: Parser,
 {
-    type Output = Locatable<P::Output>;
-
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let pos = tokenizer.position();
         self.0
@@ -529,12 +546,17 @@ impl<S: Parser> WithPosTrait for S {
 
 pub struct OrSyntaxError<'a, P>(P, &'a str);
 
+impl<'a, P> HasOutput for OrSyntaxError<'a, P>
+where
+    P: HasOutput,
+{
+    type Output = P::Output;
+}
+
 impl<'a, P> NonOptParser for OrSyntaxError<'a, P>
 where
     P: Parser,
 {
-    type Output = P::Output;
-
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse(tokenizer)? {
             Some(value) => Ok(value),

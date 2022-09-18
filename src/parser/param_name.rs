@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::common::*;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
-use crate::parser::base::parsers::{AndOptTrait, AndThenTrait, KeepRightTrait, Parser};
+use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, Parser};
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
 use crate::parser::specific::{

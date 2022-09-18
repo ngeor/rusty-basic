@@ -1,6 +1,6 @@
 use crate::common::{Locatable, QError};
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{AndThenTrait, KeepRightTrait, OrTrait, Parser};
+use crate::parser::base::parsers::{KeepRightTrait, OrTrait, Parser};
 use crate::parser::expression::expression_node_p;
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::{

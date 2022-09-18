@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
-use crate::parser::base::parsers::{AndThenTrait, FnMapTrait, KeepLeftTrait, OrTrait, Parser};
+use crate::parser::base::parsers::{FnMapTrait, KeepLeftTrait, OrTrait, Parser};
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -83,7 +83,7 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 }
 
 mod end {
-    use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
+    use crate::parser::base::parsers::{FnMapTrait, HasOutput, OptAndPC};
     use crate::parser::base::tokenizers::{Token, Tokenizer};
     use crate::parser::specific::{keyword_choice_p, whitespace};
     use crate::parser::statement_separator::EofOrStatementSeparator;
@@ -110,9 +110,11 @@ mod end {
     /// Otherwise, it demands that we find an end-of-statement terminator.
     struct AfterEndSeparator {}
 
-    impl Parser for AfterEndSeparator {
+    impl HasOutput for AfterEndSeparator {
         type Output = Token;
+    }
 
+    impl Parser for AfterEndSeparator {
         fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
             let opt_result = allowed_keywords_after_end().parse(reader)?;
             match opt_result {

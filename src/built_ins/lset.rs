@@ -2,9 +2,10 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::Parser;
+    use crate::parser::base::parsers::{FnMapTrait, Parser};
     use crate::parser::specific::{
-        item_p, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait, WithPosTrait,
+        item_p, keyword_followed_by_whitespace_p, surrounded_by_opt_ws, OrSyntaxErrorTrait,
+        WithPosTrait,
     };
     use crate::parser::*;
 
@@ -15,13 +16,9 @@ pub mod parser {
                     .with_pos()
                     .or_syntax_error("Expected: variable after LSET"),
             )
-            .and_demand(
-                item_p('=')
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: ="),
-            )
+            .and_demand(surrounded_by_opt_ws(item_p('=')).or_syntax_error("Expected: ="))
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: expression"))
-            .map(|(((_, name_node), _), value_expr_node)| {
+            .fn_map(|(((_, name_node), _), value_expr_node)| {
                 Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_node, value_expr_node))
             })
     }

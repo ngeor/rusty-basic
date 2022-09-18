@@ -42,7 +42,7 @@ pub struct Token {
 
 pub type TokenList = Vec<Token>;
 
-pub fn token_list_to_string(list: TokenList) -> String {
+pub fn token_list_to_string(list: &[Token]) -> String {
     let mut result = String::new();
     for token in list {
         result.push_str(&token.text);

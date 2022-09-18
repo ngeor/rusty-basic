@@ -2,6 +2,8 @@ use std::convert::TryFrom;
 use std::fmt::Display;
 
 use crate::common::{CanCastTo, QError};
+use crate::parser::base::tokenizers::Token;
+use crate::parser::specific::TokenType;
 
 use super::Operator;
 
@@ -106,6 +108,11 @@ impl TypeQualifier {
             }
         }
     }
+
+    /// `Option<Token>` -> `Option<TypeQualifier>`
+    pub fn from_opt_token(opt_token: &Option<Token>) -> Option<Self> {
+        opt_token.and_then(|token| Self::try_from(token).ok())
+    }
 }
 
 // char -> TypeQualifier
@@ -140,6 +147,34 @@ impl From<TypeQualifier> for char {
             TypeQualifier::DollarString => '$',
             TypeQualifier::PercentInteger => '%',
             TypeQualifier::AmpersandLong => '&',
+        }
+    }
+}
+
+// Token -> TypeQualifier
+
+impl TryFrom<Token> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(token: Token) -> Result<TypeQualifier, QError> {
+        let token_type = token.kind as TokenType;
+        TryFrom::try_from(token_type)
+    }
+}
+
+// TokenType -> TypeQualifier
+
+impl TryFrom<TokenType> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(token_type: TokenType) -> Result<TypeQualifier, QError> {
+        match token_type {
+            TokenType::ExclamationMark => Ok(TypeQualifier::BangSingle),
+            TokenType::Pound => Ok(TypeQualifier::HashDouble),
+            TokenType::Percent => Ok(TypeQualifier::PercentInteger),
+            TokenType::Ampersand => Ok(TypeQualifier::AmpersandLong),
+            TokenType::DollarSign => Ok(TypeQualifier::DollarString),
+            _ => Err(QError::syntax_error("Expected: %, &, !, # or $")),
         }
     }
 }

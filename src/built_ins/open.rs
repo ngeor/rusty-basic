@@ -1,8 +1,10 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::{AndOptTrait, KeepLeftTrait, KeepRightTrait, Parser};
+    use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+    use crate::parser::base::parsers::{
+        AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, Parser,
+    };
     use crate::parser::specific::{
         item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace,
         OrSyntaxErrorTrait, WithPosTrait,
@@ -19,7 +21,7 @@ pub mod parser {
             .and_opt(parse_open_access_p())
             .and_demand(parse_file_number_p().or_syntax_error("Expected: AS file-number"))
             .and_opt(parse_len_p())
-            .map(
+            .fn_map(
                 |(((((_, file_name), opt_file_mode), opt_file_access), file_number), opt_len)| {
                     Statement::BuiltInSubCall(
                         BuiltInSub::Open,

@@ -3,7 +3,8 @@ use crate::parser::base::parsers::Parser;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::specific::{
-    item_p, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait, WithPosTrait,
+    item_p, keyword_followed_by_whitespace_p, surrounded_by_opt_ws, OrSyntaxErrorTrait,
+    WithPosTrait,
 };
 use crate::parser::types::{Keyword, Statement};
 
@@ -14,11 +15,7 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
                 .with_pos()
                 .or_syntax_error("Expected: const name"),
         )
-        .and_demand(
-            item_p('=')
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: ="),
-        )
+        .and_demand(surrounded_by_opt_ws(item_p('=')).or_syntax_error("Expected: ="))
         .and_demand(expression::demand_expression_node_p(
             "Expected: const value",
         ))

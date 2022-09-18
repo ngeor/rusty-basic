@@ -24,7 +24,7 @@ pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
         .and_demand(
             function_declaration_p()
                 .fn_map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
-                .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
+                .or(sub_declaration_p().fn_map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
                 .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
         )
         .keep_right()

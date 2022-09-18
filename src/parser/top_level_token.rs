@@ -1,9 +1,10 @@
 use crate::common::*;
-use crate::parser::base::parsers::{HasOutput, Parser};
+use crate::parser::base::parsers::{FnMapTrait, HasOutput, OrTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
+use crate::parser::specific::WithPosTrait;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
@@ -62,7 +63,7 @@ impl Parser for TopLevelTokensParser {
 
 fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
     def_type::def_type_p()
-        .map(TopLevelToken::DefType)
+        .fn_map(TopLevelToken::DefType)
         .or(declaration::declaration_p())
         .or(implementation::implementation_p())
         .or(statement::statement_p().map(TopLevelToken::Statement))

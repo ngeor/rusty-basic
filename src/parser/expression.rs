@@ -199,7 +199,7 @@ mod string_literal {
             .and_demand(InsideString.zero_or_more())
             .and_demand(string_delimiter())
             .fn_map(|((_, token_list), _)| {
-                Expression::StringLiteral(token_list_to_string(token_list))
+                Expression::StringLiteral(token_list_to_string(&token_list))
             })
     }
 
@@ -388,7 +388,7 @@ pub mod word {
     use crate::parser::base::parsers::{
         AndOptTrait, HasOutput, KeepLeftTrait, KeepRightTrait, ManyTrait, Parser,
     };
-    use crate::parser::base::tokenizers::Tokenizer;
+    use crate::parser::base::tokenizers::{Token, Tokenizer};
     use crate::parser::name::name_with_dot_p;
     use crate::parser::specific::{
         identifier_without_dot_p, in_parenthesis_p, item_p, OrSyntaxErrorTrait, TokenType,
@@ -496,7 +496,7 @@ pub mod word {
         in_parenthesis_p(lazy_expression_node_p().csv().map_none_to_default())
     }
 
-    fn dot_property_name() -> impl Parser<Output = String> {
+    fn dot_property_name() -> impl Parser<Output = Token> {
         item_p('.')
             .and_demand(
                 identifier_without_dot_p().or_syntax_error("Expected: property name after period"),

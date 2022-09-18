@@ -2,7 +2,7 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::{AndOptTrait, Parser};
+    use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, Parser};
     use crate::parser::specific::{keyword_pair_p, whitespace, OrSyntaxErrorTrait};
     use crate::parser::*;
 
@@ -14,7 +14,7 @@ pub mod parser {
                 expression::expression_node_p()
                     .or_syntax_error("Expected: #file-number or variable"),
             )
-            .map(|((_, opt_loc_file_handle), variable)| {
+            .fn_map(|((_, opt_loc_file_handle), variable)| {
                 let mut args: Vec<ExpressionNode> = vec![];
                 // add dummy arguments to encode the file number
                 if let Some(Locatable { element, pos }) = opt_loc_file_handle {

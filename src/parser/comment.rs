@@ -1,8 +1,6 @@
 use crate::common::*;
-use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, ManyTrait, Parser, TokenPredicate,
-};
-use crate::parser::base::tokenizers::Token;
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, ManyTrait, OptAndPC, Parser, TokenPredicate};
+use crate::parser::base::tokenizers::{Token, TokenList};
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{item_p, TokenType};
 use crate::parser::types::*;
@@ -10,27 +8,35 @@ use crate::parser::types::*;
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<Output = Statement> {
     item_p('\'')
-        .and_opt(NonEol)
+        .and_opt(non_eol())
         .keep_right()
         .fn_map(|x| Statement::Comment(x.unwrap_or_default()))
 }
 
 /// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> {
-    EolOrWhitespace
+    eol_or_whitespace()
         .map_none_to_default()
         .and_opt(
             item_p('\'')
                 .with_pos()
-                .and_opt(NonEol)
-                .and_opt(EolOrWhitespace)
+                .and_opt(non_eol())
+                .and_opt(eol_or_whitespace())
                 .keep_left()
                 .fn_map(|(Locatable { pos, .. }, opt_s)| opt_s.unwrap_or_default().at(pos))
                 .one_or_more(),
         )
-        .and_opt(EolOrWhitespace)
+        .and_opt(eol_or_whitespace())
         .keep_middle()
         .fn_map(|x| x.unwrap_or_default())
+}
+
+fn non_eol() -> impl Parser<Output=TokenList> {
+    NonEol.parser().one_or_more()
+}
+
+fn eol_or_whitespace() -> impl Parser<Output=TokenList> {
+    EolOrWhitespace.parser().one_or_more()
 }
 
 struct NonEol;

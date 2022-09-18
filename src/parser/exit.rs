@@ -1,6 +1,7 @@
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{FnMapTrait, Parser};
-use crate::parser::specific::{keyword_choice, keyword_followed_by_whitespace_p};
+use crate::parser::specific::keyword_choice::keyword_choice;
+use crate::parser::specific::keyword_followed_by_whitespace_p;
 use crate::parser::{ExitObject, Keyword, Statement};
 
 pub fn statement_exit_p() -> impl Parser<Output = Statement> {

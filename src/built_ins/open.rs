@@ -1,13 +1,14 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+    use crate::parser::base::and_pc::{AndDemandTrait, TokenParserAndParserTrait};
     use crate::parser::base::parsers::{
         AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, Parser,
     };
+    use crate::parser::specific::keyword_choice::keyword_choice;
     use crate::parser::specific::with_pos::WithPosTrait;
     use crate::parser::specific::{
-        item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace,
+        item_p, keyword_followed_by_whitespace_p, keyword_p, whitespace, LeadingWhitespace,
         OrSyntaxErrorTrait,
     };
     use crate::parser::*;
@@ -97,11 +98,9 @@ pub mod parser {
 
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
         whitespace()
-            .and(keyword_p(Keyword::Len))
+            .token_and(keyword_p(Keyword::Len))
             .and_demand(
-                item_p('=')
-                    .preceded_by_opt_ws()
-                    .or_syntax_error("Expected: = after LEN"),
+                LeadingWhitespace::new(item_p('='), false).or_syntax_error("Expected: = after LEN"),
             )
             .and_demand(
                 expression::guarded_expression_node_p()

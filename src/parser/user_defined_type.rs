@@ -45,14 +45,15 @@
 use crate::common::{Locatable, QError};
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{KeepRightTrait, ManyTrait, OrTrait, Parser};
+use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, ManyTrait, OrTrait, Parser};
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::specific::keyword_choice::keyword_choice_p;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    demand_keyword_pair_p, item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p,
-    whitespace, MapErrTrait, OrSyntaxErrorTrait,
+    demand_keyword_pair_p, item_p, keyword_followed_by_whitespace_p, keyword_p, whitespace,
+    MapErrTrait, OrSyntaxErrorTrait,
 };
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
@@ -116,7 +117,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
         Keyword::Single,
         Keyword::Double,
     ])
-    .map(|(k, _)| match k {
+    .fn_map(|(k, _)| match k {
         Keyword::Integer => ElementType::Integer,
         Keyword::Long => ElementType::Long,
         Keyword::Single => ElementType::Single,

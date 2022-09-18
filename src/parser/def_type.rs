@@ -5,9 +5,8 @@ use crate::parser::base::parsers::{ErrorProvider, FnMapTrait, OrTrait, Parser, T
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
 use crate::parser::specific::csv::csv_one_or_more;
-use crate::parser::specific::{
-    item_p, keyword_choice_p, whitespace, OrSyntaxErrorTrait, TokenType,
-};
+use crate::parser::specific::keyword_choice::keyword_choice_p;
+use crate::parser::specific::{item_p, whitespace, OrSyntaxErrorTrait, TokenType};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
@@ -46,11 +45,12 @@ fn letter_range_p() -> impl Parser<Output = LetterRange> {
 }
 
 fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
-    LetterToken.fn_map(|l| LetterRange::Single(l))
+    LetterToken.parser().fn_map(|l| LetterRange::Single(l))
 }
 
 fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
     LetterToken
+        .parser()
         .and(item_p('-'))
         .and_demand(LetterToken)
         .and_then(|((l, _), r)| {

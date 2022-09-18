@@ -21,6 +21,10 @@ pub fn to_impl_parser<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
     parser
 }
 
+pub fn to_impl_non_opt_parser<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = P::Output> {
+    parser
+}
+
 // TODO check if possible to inherit from this and use it
 pub trait ParserFactory<P> {
     fn parser(self) -> P;

@@ -41,7 +41,10 @@ pub trait WithPosTrait {
         Self: Sized;
 }
 
-impl<S: Parser> WithPosTrait for S {
+impl<S> WithPosTrait for S
+where
+    S: HasOutput,
+{
     fn with_pos(self) -> WithPosMapper<Self> {
         WithPosMapper(self)
     }

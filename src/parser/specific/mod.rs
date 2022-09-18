@@ -1,4 +1,5 @@
 pub mod csv;
+pub mod keyword_choice;
 pub mod token_type_map;
 pub mod try_from_token_type;
 pub mod with_pos;
@@ -253,35 +254,6 @@ pub fn demand_keyword_pair_p(first: Keyword, second: Keyword) -> impl NonOptPars
     keyword(first)
         .and_demand(whitespace())
         .and_demand(keyword(second))
-}
-
-pub struct KeywordChoice<'a> {
-    keywords: &'a [Keyword],
-}
-
-impl<'a> TokenPredicate for KeywordChoice<'a> {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Keyword as i32 && self.keywords.contains(token.text.into())
-    }
-}
-
-impl<'a> ErrorProvider for KeywordChoice<'a> {
-    fn provide_error(&self) -> QError {
-        // TODO fix me
-        QError::SyntaxError(format!(
-            "Expected one of the following keywords: {}",
-            "todo"
-        ))
-    }
-}
-
-// TODO rename to keyword_choice_opt
-pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = Token> + '_ {
-    KeywordChoice { keywords }.parser()
-}
-
-pub fn keyword_choice(keywords: &[Keyword]) -> impl NonOptParser<Output = Token> + '_ {
-    KeywordChoice { keywords }.parser()
 }
 
 //

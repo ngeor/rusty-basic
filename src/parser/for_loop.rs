@@ -4,9 +4,10 @@ use crate::parser::base::parsers::{
     AndOptFactoryTrait, AndOptTrait, FnMapTrait, KeepRightTrait, Parser,
 };
 use crate::parser::expression;
+use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     item_p, keyword, keyword_followed_by_whitespace_p, keyword_p, whitespace, LeadingWhitespace,
-    MapErrTrait, OrSyntaxErrorTrait, WithPosTrait,
+    MapErrTrait, OrSyntaxErrorTrait,
 };
 use crate::parser::statements;
 use crate::parser::types::*;

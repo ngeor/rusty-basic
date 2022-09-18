@@ -1,19 +1,19 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
+    use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
+    use crate::parser::specific::csv::csv_zero_or_more_allow_missing;
     use crate::parser::specific::keyword_followed_by_whitespace_p;
     use crate::parser::*;
-    use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::specific::csv::csv_zero_or_more_allow_missing;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Width)
-            .and_demand(csv_zero_or_more_allow_missing(expression::expression_node_p()))
+            .and_demand(csv_zero_or_more_allow_missing(
+                expression::expression_node_p(),
+            ))
             .keep_right()
-            .fn_map(|opt_args| {
-                Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args))
-            })
+            .fn_map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
     }
 
     fn map_args(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {

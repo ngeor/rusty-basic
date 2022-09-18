@@ -3,9 +3,9 @@ use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, OrTr
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
 use crate::parser::specific::csv::csv_zero_or_more;
+use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     in_parenthesis_p, keyword_followed_by_whitespace_p, whitespace, OrSyntaxErrorTrait,
-    WithPosTrait,
 };
 use crate::parser::types::*;
 

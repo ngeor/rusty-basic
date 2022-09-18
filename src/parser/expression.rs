@@ -9,9 +9,10 @@ use crate::parser::base::parsers::{
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
 use crate::parser::specific::token_type_map::TokenTypeMap;
+use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     in_parenthesis_p, item_p, keyword_p, whitespace, LeadingWhitespace, OrSyntaxErrorTrait,
-    TokenType, WithPosTrait,
+    TokenType,
 };
 use crate::parser::types::*;
 
@@ -226,7 +227,8 @@ mod number_literal {
     };
     use crate::parser::base::recognizers::is_digit;
     use crate::parser::base::tokenizers::Token;
-    use crate::parser::specific::{item_p, TokenKindParser, TokenType, WithPosTrait};
+    use crate::parser::specific::with_pos::WithPosTrait;
+    use crate::parser::specific::{item_p, TokenKindParser, TokenType};
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 

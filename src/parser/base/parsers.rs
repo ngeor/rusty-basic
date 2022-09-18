@@ -267,7 +267,6 @@ where
     }
 }
 
-
 //
 // Keep Middle
 //
@@ -275,15 +274,15 @@ where
 pub struct KeepMiddleMapper<P>(P);
 
 impl<P, L, M, R> HasOutput for KeepMiddleMapper<P>
-    where
-        P: HasOutput<Output = ((L, M), R)>,
+where
+    P: HasOutput<Output = ((L, M), R)>,
 {
     type Output = M;
 }
 
 impl<P, L, M, R> Parser for KeepMiddleMapper<P>
-    where
-        P: Parser<Output = ((L, M), R)>,
+where
+    P: Parser<Output = ((L, M), R)>,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.0
@@ -293,25 +292,23 @@ impl<P, L, M, R> Parser for KeepMiddleMapper<P>
 }
 
 impl<P, L, M, R> NonOptParser for KeepMiddleMapper<P>
-    where
-        P: NonOptParser<Output = ((L, M), R)>,
+where
+    P: NonOptParser<Output = ((L, M), R)>,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0
-            .parse_non_opt(tokenizer)
-            .map(|((l, m), r)| m)
+        self.0.parse_non_opt(tokenizer).map(|((l, m), r)| m)
     }
 }
 
 pub trait KeepMiddleTrait {
     fn keep_middle(self) -> KeepMiddleMapper<Self>
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 }
 
 impl<P, L, M, R> KeepMiddleTrait for P
-    where
-        P: HasOutput<Output = ((L,M), R)>,
+where
+    P: HasOutput<Output = ((L, M), R)>,
 {
     fn keep_middle(self) -> KeepMiddleMapper<Self> {
         KeepMiddleMapper(self)

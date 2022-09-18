@@ -1,22 +1,23 @@
 pub mod csv;
 pub mod token_type_map;
 pub mod try_from_token_type;
+pub mod with_pos;
 
 use std::fs::File;
 use std::str::Chars;
 
 use crate::built_ins::BuiltInSub;
-use crate::common::{AtLocation, AtRowCol, Locatable, Location, QError};
+use crate::common::{AtLocation, Location, QError};
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::*;
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
 use crate::parser::base::recognizers::*;
 use crate::parser::base::tokenizers::*;
 use crate::parser::expression::expression_node_p;
+use crate::parser::specific::csv::csv_zero_or_more_allow_missing;
 use crate::parser::{
     Expression, ExpressionNode, ExpressionNodes, Keyword, Statement, SORTED_KEYWORDS_STR,
 };
-use crate::parser::specific::csv::csv_zero_or_more_allow_missing;
 
 /// specific module contains implementation that mirrors the base module
 /// but it is specific to QBasic
@@ -482,43 +483,6 @@ pub trait MapErrTrait {
 impl<S> MapErrTrait for S {
     fn map_err(self, err: QError) -> MapErrParser<Self> {
         MapErrParser(self, err)
-    }
-}
-
-//
-// WithPos
-//
-
-pub struct WithPosMapper<P>(P);
-
-impl<P> HasOutput for WithPosMapper<P>
-where
-    P: HasOutput,
-{
-    type Output = Locatable<P::Output>;
-}
-
-impl<P> Parser for WithPosMapper<P>
-where
-    P: Parser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let pos = tokenizer.position();
-        self.0
-            .parse(tokenizer)
-            .map(|opt_x| opt_x.map(|x| x.at_rc(pos.row, pos.col)))
-    }
-}
-
-pub trait WithPosTrait {
-    fn with_pos(self) -> WithPosMapper<Self>
-    where
-        Self: Sized;
-}
-
-impl<S: Parser> WithPosTrait for S {
-    fn with_pos(self) -> WithPosMapper<Self> {
-        WithPosMapper(self)
     }
 }
 

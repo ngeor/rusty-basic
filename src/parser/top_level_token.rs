@@ -4,7 +4,7 @@ use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
-use crate::parser::specific::WithPosTrait;
+use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;

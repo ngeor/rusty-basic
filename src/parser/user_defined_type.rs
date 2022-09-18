@@ -49,9 +49,10 @@ use crate::parser::base::parsers::{KeepRightTrait, ManyTrait, OrTrait, Parser};
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
+use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     demand_keyword_pair_p, item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p,
-    whitespace, MapErrTrait, OrSyntaxErrorTrait, WithPosTrait,
+    whitespace, MapErrTrait, OrSyntaxErrorTrait,
 };
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,

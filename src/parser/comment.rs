@@ -3,7 +3,8 @@ use crate::parser::base::parsers::{
     AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, ManyTrait, Parser, TokenPredicate,
 };
 use crate::parser::base::tokenizers::Token;
-use crate::parser::specific::{item_p, TokenType, WithPosTrait};
+use crate::parser::specific::with_pos::WithPosTrait;
+use crate::parser::specific::{item_p, TokenType};
 use crate::parser::types::*;
 
 /// Tries to read a comment.

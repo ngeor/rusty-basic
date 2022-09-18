@@ -6,9 +6,9 @@ use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, Parser};
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
+use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     identifier_without_dot_p, keyword_followed_by_whitespace_p, whitespace, OrSyntaxErrorTrait,
-    WithPosTrait,
 };
 use crate::parser::types::*;
 

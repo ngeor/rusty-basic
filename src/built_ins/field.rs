@@ -4,8 +4,9 @@ pub mod parser {
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::csv::{comma_surrounded_by_opt_ws, csv_one_or_more};
+    use crate::parser::specific::with_pos::WithPosTrait;
     use crate::parser::specific::{
-        keyword_p, surrounded_by_opt_ws, whitespace, OrSyntaxErrorTrait, WithPosTrait,
+        keyword_p, surrounded_by_opt_ws, whitespace, OrSyntaxErrorTrait,
     };
     use crate::parser::*;
 

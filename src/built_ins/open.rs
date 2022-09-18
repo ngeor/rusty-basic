@@ -5,9 +5,10 @@ pub mod parser {
     use crate::parser::base::parsers::{
         AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, Parser,
     };
+    use crate::parser::specific::with_pos::WithPosTrait;
     use crate::parser::specific::{
         item_p, keyword_choice, keyword_followed_by_whitespace_p, keyword_p, whitespace,
-        OrSyntaxErrorTrait, WithPosTrait,
+        OrSyntaxErrorTrait,
     };
     use crate::parser::*;
 

@@ -9,9 +9,10 @@ use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
 use crate::parser::specific::csv::csv_one_or_more;
+use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     identifier_without_dot_p, in_parenthesis_p, item_p, keyword_followed_by_whitespace_p,
-    keyword_p, whitespace, OrSyntaxErrorTrait, TokenType, WithPosTrait,
+    keyword_p, whitespace, OrSyntaxErrorTrait, TokenType,
 };
 use crate::parser::types::*;
 

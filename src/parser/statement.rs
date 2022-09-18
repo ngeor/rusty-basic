@@ -84,58 +84,51 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 }
 
 mod end {
-    use crate::parser::base::parsers::{FnMapTrait, HasOutput, OptAndPC};
+    use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser};
     use crate::parser::base::tokenizers::{Token, Tokenizer};
+    use crate::parser::base::undo_pc::Undo;
     use crate::parser::specific::keyword_choice::keyword_choice_p;
     use crate::parser::specific::whitespace;
-    use crate::parser::statement_separator::EofOrStatementSeparator;
+    use crate::parser::statement_separator::{peek_eof_or_statement_separator};
 
     use super::*;
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::End)
-            .and(
-                OptAndPC::new(whitespace(), AfterEndSeparator {})
-                    .fn_map(|(l, r)| {
-                        let mut s: String = String::new();
-                        s.push_str(&l);
-                        s.push_str(&r);
-                        s
-                    })
-                    .peek(),
-            )
+            .and_demand(AfterEndSeparator)
             .fn_map(|_| Statement::End)
     }
 
     /// Parses the next token after END. If it is one of the valid keywords that
     /// can follow END, it is undone so that the entire parsing will be undone.
     /// Otherwise, it demands that we find an end-of-statement terminator.
-    struct AfterEndSeparator {}
+    struct AfterEndSeparator;
 
     impl HasOutput for AfterEndSeparator {
-        type Output = Token;
+        type Output = ();
     }
 
-    impl Parser for AfterEndSeparator {
-        fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-            let opt_result = allowed_keywords_after_end().parse(reader)?;
-            match opt_result {
-                Some(s) => {
-                    // undo and return None, as another parser will handle this
-                    reader.unread(s);
-                    Ok(None)
-                }
-                _ => {
-                    let opt_str = EofOrStatementSeparator::new().parse(reader)?;
-                    match opt_str {
-                        Some(s) => Ok(Some(s)),
-                        _ => {
-                            // error
-                            Err(QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"))
-                        }
-                    }
+    impl NonOptParser for AfterEndSeparator {
+        fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+            let opt_ws = whitespace().parse(tokenizer)?;
+            if opt_ws.is_some() {
+                // maybe it is followed by a legit keyword after END
+                let opt_k = allowed_keywords_after_end().parse(tokenizer)?;
+                if opt_k.is_some() {
+                    // got it
+                    tokenizer.unread(opt_k.unwrap());
+                    tokenizer.unread(opt_ws.unwrap());
+                    return Ok(());
                 }
             }
+
+            // is the next token eof or end of statement?
+            let opt_sep = peek_eof_or_statement_separator().parse(tokenizer)?;
+
+            // put back the ws if we read it
+            opt_ws.undo(tokenizer);
+
+            opt_sep.ok_or(QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"))
         }
     }
 
@@ -170,21 +163,14 @@ mod end {
 mod system {
     use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
     use crate::parser::specific::whitespace;
-    use crate::parser::statement_separator::EofOrStatementSeparator;
+    use crate::parser::statement_separator::{peek_eof_or_statement_separator};
 
     use super::*;
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::System)
             .and_demand(
-                OptAndPC::new(whitespace(), EofOrStatementSeparator::new())
-                    .fn_map(|(l, r)| {
-                        let mut s: String = String::new();
-                        s.push_str(&l);
-                        s.push_str(&r);
-                        s
-                    })
-                    .peek()
+                OptAndPC::new(whitespace(), peek_eof_or_statement_separator())
                     .or_syntax_error("Expected: end-of-statement"),
             )
             .fn_map(|_| Statement::System)

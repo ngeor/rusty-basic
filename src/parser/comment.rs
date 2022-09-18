@@ -5,7 +5,7 @@ use crate::parser::base::parsers::{
 use crate::parser::base::surrounded_by::SurroundedBy;
 use crate::parser::base::tokenizers::{token_list_to_string, Token, TokenList};
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{item_p, TokenType};
+use crate::parser::specific::{eol_or_whitespace, item_p, TokenType};
 use crate::parser::types::*;
 
 /// Tries to read a comment.
@@ -38,10 +38,6 @@ fn non_eol() -> impl Parser<Output = TokenList> {
     NonEol.parser().one_or_more()
 }
 
-fn eol_or_whitespace() -> impl Parser<Output = TokenList> {
-    EolOrWhitespace.parser().one_or_more()
-}
-
 struct NonEol;
 
 impl TokenPredicate for NonEol {
@@ -50,13 +46,6 @@ impl TokenPredicate for NonEol {
     }
 }
 
-struct EolOrWhitespace;
-
-impl TokenPredicate for EolOrWhitespace {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32
-    }
-}
 
 #[cfg(test)]
 mod tests {

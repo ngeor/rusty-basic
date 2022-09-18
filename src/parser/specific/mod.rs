@@ -496,3 +496,18 @@ impl<S> OrSyntaxErrorTrait for S {
         OrSyntaxError(self, msg)
     }
 }
+
+// EolOrWhitespace
+
+struct EolOrWhitespace;
+
+impl TokenPredicate for EolOrWhitespace {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32
+    }
+}
+
+/// `< ws | eol >*`
+pub fn eol_or_whitespace() -> impl Parser<Output = TokenList> {
+    EolOrWhitespace.parser().one_or_more()
+}

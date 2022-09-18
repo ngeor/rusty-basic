@@ -1,140 +1,96 @@
 use crate::common::QError;
-use crate::parser::base::and_pc::AndTrait;
-use crate::parser::base::parsers::{
-    AndOptTrait, HasOutput, ManyTrait, OrTrait, Parser, TokenPredicate,
-};
-use crate::parser::base::tokenizers::{Position, Token, Tokenizer};
-use crate::parser::specific::{item_p, whitespace, TokenKindParser, TokenType};
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, OptAndPC, OrTrait, Parser, TokenPredicate};
+use crate::parser::base::tokenizers::{Token, Tokenizer};
+use crate::parser::specific::{whitespace, TokenKindParser, TokenType, eol_or_whitespace, OrSyntaxErrorTrait};
 
-// TODO split into two classes one for comments and one for non comments
-pub struct StatementSeparator {
-    comment_mode: bool,
+// TODO convert to NonOptParser
+pub fn comment_separator() -> impl Parser<Output = ()> {
+    OptAndPC::new(whitespace(), eol_or_whitespace()).fn_map(|_| ())
 }
 
-impl StatementSeparator {
-    pub fn new(comment_mode: bool) -> Self {
-        Self { comment_mode }
-    }
-
-    fn parse_comment(
-        &self,
-        reader: &mut impl Tokenizer,
-        mut buf: String,
-    ) -> Result<Option<String>, QError> {
-        let opt_item = eol_separator_p().parse(reader)?;
-        let item = opt_item.unwrap();
-        buf.push_str(item.as_str());
-        Ok(Some(buf))
-    }
-
-    // <ws>* '\'' (undoing it)
-    // <ws>* ':' <ws*>
-    // <ws>* EOL <ws | eol>*
-    fn parse_non_comment(
-        &self,
-        reader: &mut impl Tokenizer,
-        mut buf: String,
-    ) -> Result<Option<String>, QError> {
-        let opt_item = comment_separator_p()
-            .or(colon_separator_p())
-            .or(eol_separator_p())
-            .parse(reader)?;
-        match opt_item {
-            Some(item) => {
-                buf.push_str(item.as_str());
-                Ok(Some(buf))
-            }
-            _ => Err(QError::syntax_error("Expected: end-of-statement")),
-        }
-    }
-}
-
-impl HasOutput for StatementSeparator {
-    type Output = String;
-}
-
-impl Parser for StatementSeparator {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        // skip any whitespace, so that the error will hit the first offending character
-        let opt_buf = whitespace().parse(reader)?;
-        let buf = opt_buf.unwrap_or_default();
-        if self.comment_mode {
-            self.parse_comment(reader, buf)
-        } else {
-            self.parse_non_comment(reader, buf)
-        }
-    }
+// <ws>* '\'' (undoing it)
+// <ws>* ':' <ws*>
+// <ws>* EOL <ws | eol>*
+// TODO convert to NonOptParser
+pub fn non_comment_separator() -> impl Parser<Output = ()> {
+    OptAndPC::new(whitespace(),
+    SingleQuotePeek
+        .or(colon_separator_p())
+        .or(eol_separator_p())
+        .or_syntax_error("Expected: end-of-statement")
+    ).fn_map(|_| ())
 }
 
 // '\'' (undoing it)
-fn comment_separator_p<R>() -> impl Parser<Output = String> {
-    // not adding the ' character in the resulting string because it was already undone
-    item_p('\'').peek_reader_item().map(|_| String::new())
+// not adding the ' character in the resulting string because it was already undone
+struct SingleQuotePeek;
+
+impl HasOutput for SingleQuotePeek {
+    type Output = ();
 }
 
-/// A parser that succeeds on EOF, EOL, colon and comment.
-/// Does not undo anything.
-pub struct EofOrStatementSeparator;
-
-impl EofOrStatementSeparator {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl HasOutput for EofOrStatementSeparator {
-    type Output = Token;
-}
-
-impl Parser for EofOrStatementSeparator {
+impl Parser for SingleQuotePeek {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) => {
-                if token.kind == TokenType::Colon as i32
-                    || token.kind == TokenType::SingleQuote as i32
-                    || token.kind == TokenType::Eol as i32
-                {
-                    Ok(Some(token))
+                if token.kind == TokenType::SingleQuote as i32 {
+                    tokenizer.unread(token);
+                    Ok(Some(()))
                 } else {
                     tokenizer.unread(token);
                     Ok(None)
                 }
             }
-            _ => {
-                // EOF is accepted
-                // TODO fix this so it doesn't need a dummy token
-                Ok(Some(dummy_token(tokenizer)))
-            }
+            None => Ok(None)
         }
     }
 }
 
-fn dummy_token(tokenizer: &impl Tokenizer) -> Token {
-    Token {
-        kind: TokenType::Whitespace as i32,
-        text: String::new(),
-        position: Position {
-            begin: tokenizer.position(),
-            end: tokenizer.position(),
-        },
+pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
+    PeekStatementSeparatorOrEof(StatementSeparator2)
+}
+
+struct PeekStatementSeparatorOrEof<P>(P);
+
+impl<P> HasOutput for PeekStatementSeparatorOrEof<P> {
+    type Output = ();
+}
+
+impl<P> Parser for PeekStatementSeparatorOrEof<P> where P : TokenPredicate {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<()>, QError> {
+        match tokenizer.read()? {
+            Some(token) => {
+                let found_it = self.0.test(&token);
+                tokenizer.unread(token);
+                Ok(if found_it { Some (()) } else { None })
+            }
+            None => Ok(Some(()))
+        }
+    }
+}
+
+struct StatementSeparator2;
+
+impl TokenPredicate for StatementSeparator2 {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Colon as i32
+            || token.kind == TokenType::SingleQuote as i32
+            || token.kind == TokenType::Eol as i32
     }
 }
 
 // ':' <ws>*
-fn colon_separator_p() -> impl Parser {
-    TokenKindParser::new(TokenType::Colon).and_opt(whitespace())
+fn colon_separator_p() -> impl Parser<Output = ()> {
+    TokenKindParser::new(TokenType::Colon).parser()
+        .and_opt(whitespace())
+        .fn_map(|_| ())
+
 }
 
 // <eol> < ws | eol >*
 // TODO rename to _opt
-fn eol_separator_p() -> impl Parser {
-    TokenKindParser::new(TokenType::Eol).and(EolOrWhitespace.zero_or_more())
-}
-
-struct EolOrWhitespace;
-
-impl TokenPredicate for EolOrWhitespace {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32
-    }
+fn eol_separator_p() -> impl Parser<Output = ()> {
+    TokenKindParser::new(TokenType::Eol).parser()
+        .and_opt(eol_or_whitespace())
+        .fn_map(|_| ())
 }

@@ -5,7 +5,7 @@ use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{item_p, whitespace};
 use crate::parser::statement;
-use crate::parser::statement_separator::StatementSeparator;
+use crate::parser::statement_separator::{comment_separator, non_comment_separator};
 use crate::parser::types::*;
 
 pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
@@ -45,7 +45,7 @@ where
     // loop
     //      negate exit source
     //      statement node and separator
-    StatementSeparator::new(false)
+    non_comment_separator()
         .and(
             exit_source
                 .negate()
@@ -78,7 +78,12 @@ impl Parser for StatementAndSeparator {
                 } else {
                     false
                 };
-                let opt_separator = StatementSeparator::new(is_comment).parse(reader)?;
+                let parser = if is_comment {
+                    Box::new(comment_separator())
+                } else {
+                    Box::new(non_comment_separator())
+                };
+                let opt_separator = parser.parse(reader)?;
                 match opt_separator {
                     Some(_) => Ok(Some(statement_node)),
                     _ => Err(QError::syntax_error("Expected: end-of-statement")),

@@ -2,7 +2,7 @@ use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::{FnMapTrait, OrTrait, Parser};
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::{keyword_p, whitespace, OrSyntaxErrorTrait};
-use crate::parser::statement_separator::EofOrStatementSeparator;
+use crate::parser::statement_separator::{peek_eof_or_statement_separator};
 use crate::parser::{Keyword, ResumeOption, Statement};
 
 // RESUME
@@ -22,8 +22,7 @@ fn resume_option_p() -> impl Parser<Output = ResumeOption> {
 }
 
 fn blank_resume() -> impl Parser<Output = ResumeOption> {
-    EofOrStatementSeparator::new()
-        .peek()
+    peek_eof_or_statement_separator()
         .fn_map(|_| ResumeOption::Bare)
 }
 

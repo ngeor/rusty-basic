@@ -1,12 +1,12 @@
 use crate::common::*;
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptFactoryTrait, AndOptTrait, AndTrait, KeepLeftTrait, KeepRightTrait,
-    OrTrait, Parser,
+    AndOptFactoryTrait, AndOptTrait, KeepLeftTrait, KeepRightTrait, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::specific::{
-    item_p, keyword_p, map_tokens, whitespace, LeadingWhitespace, TokenType,
+    item_p, keyword_p, map_tokens, whitespace, LeadingWhitespace, OrSyntaxErrorTrait, TokenType,
 };
 use crate::parser::types::*;
 
@@ -136,9 +136,10 @@ fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::assert_parser_err;
     use crate::parser::test_utils::*;
+
+    use super::*;
 
     #[test]
     fn test_print_no_args() {

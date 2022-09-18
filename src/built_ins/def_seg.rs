@@ -1,8 +1,7 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::{
-        AndDemandTrait, AndOptTrait, FnMapTrait, KeepRightTrait, Parser,
-    };
+    use crate::parser::base::and_pc::AndDemandTrait;
+    use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::{item_p, keyword_pair_p, surrounded_by_opt_ws};
     use crate::parser::*;
 
@@ -10,8 +9,8 @@ pub mod parser {
         keyword_pair_p(Keyword::Def, Keyword::Seg)
             .and_opt(equal_sign_and_expression())
             .keep_right()
-            .map(opt_arg_to_args)
-            .map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
+            .fn_map(opt_arg_to_args)
+            .fn_map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {

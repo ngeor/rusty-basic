@@ -1,5 +1,6 @@
-use super::tokenizers::{Token, Tokenizer};
 use crate::common::QError;
+
+use super::tokenizers::{Token, Tokenizer};
 
 /// A parser that either succeeds or returns an error.
 pub trait NonOptParser {
@@ -7,11 +8,19 @@ pub trait NonOptParser {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 }
 
+pub type NonOptParserResult<T> = Result<T, QError>;
+
 // TODO rename to OptParser
 /// A parser that either succeeds, or returns nothing, or returns an error.
 pub trait Parser {
     type Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
+}
+
+pub type ParserResult<T> = Result<Option<T>, QError>;
+
+pub fn to_parser<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
+    parser
 }
 
 //
@@ -158,11 +167,8 @@ where
     }
 }
 
-//
-// The left side is optional, the right is not.
-// If the right is missing, the left is reverted.
-//
-
+/// The left side is optional, the right is not.
+/// If the right is missing, the left is reverted.
 pub struct OptAndPC<L, R>(L, R);
 
 impl<L, R> OptAndPC<L, R> {
@@ -191,107 +197,6 @@ where
         }
     }
 }
-
-//
-// Both parts must succeed.
-//
-
-pub struct AndPC<L, R>(L, R);
-
-impl<L, R> Parser for AndPC<L, R>
-where
-    L: Parser<Output = Token>,
-    R: Parser,
-{
-    type Output = (Token, R::Output);
-
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(left) => match self.1.parse(tokenizer)? {
-                Some(right) => Ok(Some((left, right))),
-                None => {
-                    tokenizer.unread(left);
-                    Ok(None)
-                }
-            },
-            None => Ok(None),
-        }
-    }
-}
-
-// impl<L, R> Parser for AndPC<L, R>
-// where
-//     L: Parser,
-//     R: NonOptParser,
-// {
-//     type Output = (L::Output, R::Output);
-//
-//     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-//         match self.0.parse(tokenizer)? {
-//             Some(left) => {
-//                 let right = self.1.parse_non_opt(tokenizer)?;
-//                 Ok(Some((left, right)))
-//             }
-//             None => Ok(None),
-//         }
-//     }
-// }
-
-impl<L, R> NonOptParser for AndPC<L, R>
-where
-    L: NonOptParser,
-    R: NonOptParser,
-{
-    type Output = (L::Output, R::Output);
-
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let left = self.0.parse_non_opt(tokenizer)?;
-        let right = self.1.parse_non_opt(tokenizer)?;
-        Ok((left, right))
-    }
-}
-
-pub trait AndTrait<P> {
-    fn and(self, other: P) -> AndPC<Self, P>
-    where
-        Self: Sized;
-}
-
-impl<S, P> AndTrait<P> for S
-where
-    S: Parser<Output = Token>,
-    P: Parser,
-{
-    fn and(self, other: P) -> AndPC<Self, P> {
-        AndPC(self, other)
-    }
-}
-
-pub trait AndDemandTrait<P> {
-    fn and_demand(self, other: P) -> AndPC<Self, P>
-    where
-        Self: Sized;
-}
-
-impl<S, P> AndDemandTrait<P> for S
-where
-    S: Parser,
-    P: NonOptParser,
-{
-    fn and_demand(self, other: P) -> AndPC<Self, P> {
-        AndPC(self, other)
-    }
-}
-
-// impl<S, P> AndDemandTrait<P> for S
-// where
-//     S: NonOptParser,
-//     P: NonOptParser,
-// {
-//     fn and_demand(self, other: P) -> AndPC<Self, P> {
-//         AndPC(self, other)
-//     }
-// }
 
 //
 // Keep Left
@@ -394,7 +299,7 @@ where
 }
 
 pub trait FnMapTrait<F> {
-    fn map(self, mapper: F) -> FnMapper<Self, F>
+    fn fn_map(self, mapper: F) -> FnMapper<Self, F>
     where
         Self: Sized;
 }
@@ -404,26 +309,27 @@ where
     S: Parser,
     F: Fn(S::Output) -> U,
 {
-    fn map(self, mapper: F) -> FnMapper<Self, F> {
+    fn fn_map(self, mapper: F) -> FnMapper<Self, F> {
         FnMapper(self, mapper)
     }
 }
 
-pub trait FnMapNonOptTrait<F> {
-    fn map(self, mapper: F) -> FnMapper<Self, F>
-    where
-        Self: Sized;
-}
-
-impl<S, F, U> FnMapNonOptTrait<F> for S
-where
-    S: NonOptParser,
-    F: Fn(S::Output) -> U,
-{
-    fn map(self, mapper: F) -> FnMapper<Self, F> {
-        FnMapper(self, mapper)
-    }
-}
+//
+// pub trait FnMapNonOptTrait<F> {
+//     fn map(self, mapper: F) -> FnMapper<Self, F>
+//     where
+//         Self: Sized;
+// }
+//
+// impl<S, F, U> FnMapNonOptTrait<F> for S
+// where
+//     S: NonOptParser,
+//     F: Fn(S::Output) -> U,
+// {
+//     fn map(self, mapper: F) -> FnMapper<Self, F> {
+//         FnMapper(self, mapper)
+//     }
+// }
 
 //
 // Or

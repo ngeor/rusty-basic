@@ -1,7 +1,7 @@
 use crate::common::QError;
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::{
-    AndDemandTrait, AndThenTrait, AndTrait, ErrorProvider, FnMapTrait, OrTrait, Parser,
-    TokenPredicate,
+    AndThenTrait, ErrorProvider, FnMapTrait, OrTrait, Parser, TokenPredicate,
 };
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
@@ -22,7 +22,7 @@ pub fn def_type_p() -> impl Parser<Output = DefType> {
                 .csv()
                 .or_syntax_error("Expected: letter ranges"),
         )
-        .map(|((l, _), r)| DefType::new(l, r))
+        .fn_map(|((l, _), r)| DefType::new(l, r))
 }
 
 fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
@@ -33,7 +33,7 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
         Keyword::DefSng,
         Keyword::DefStr,
     ])
-    .map(|(k, _)| match k {
+    .fn_map(|(k, _)| match k {
         Keyword::DefInt => TypeQualifier::PercentInteger,
         Keyword::DefLng => TypeQualifier::AmpersandLong,
         Keyword::DefSng => TypeQualifier::BangSingle,
@@ -48,7 +48,7 @@ fn letter_range_p() -> impl Parser<Output = LetterRange> {
 }
 
 fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
-    LetterToken.map(|l| LetterRange::Single(l))
+    LetterToken.fn_map(|l| LetterRange::Single(l))
 }
 
 fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
@@ -82,11 +82,12 @@ impl ErrorProvider for LetterToken {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::{Statement, TopLevelToken};
+
+    use super::*;
 
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {

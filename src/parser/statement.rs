@@ -1,7 +1,6 @@
 use crate::common::*;
-use crate::parser::base::parsers::{
-    AndDemandTrait, AndThenTrait, AndTrait, KeepLeftTrait, OrTrait, Parser,
-};
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::parsers::{AndThenTrait, FnMapTrait, KeepLeftTrait, OrTrait, Parser};
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -63,13 +62,13 @@ fn statement_label_p() -> impl Parser<Output = Statement> {
     bare_name_p()
         .and(item_p(':'))
         .keep_left()
-        .map(|l| Statement::Label(l))
+        .fn_map(|l| Statement::Label(l))
 }
 
 fn statement_go_to_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_demand(bare_name_p().or_syntax_error("Expected: label"))
-        .map(|(_, l)| Statement::GoTo(l))
+        .fn_map(|(_, l)| Statement::GoTo(l))
 }
 
 fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
@@ -84,17 +83,18 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 }
 
 mod end {
-    use super::*;
     use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
     use crate::parser::base::tokenizers::{Token, Tokenizer};
     use crate::parser::specific::{keyword_choice_p, whitespace};
     use crate::parser::statement_separator::EofOrStatementSeparator;
 
+    use super::*;
+
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::End)
             .and(
                 OptAndPC::new(whitespace(), AfterEndSeparator {})
-                    .map(|(l, r)| {
+                    .fn_map(|(l, r)| {
                         let mut s: String = String::new();
                         s.push_str(&l);
                         s.push_str(&r);
@@ -102,7 +102,7 @@ mod end {
                     })
                     .peek(),
             )
-            .map(|_| Statement::End)
+            .fn_map(|_| Statement::End)
     }
 
     /// Parses the next token after END. If it is one of the valid keywords that
@@ -147,8 +147,9 @@ mod end {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::assert_parser_err;
+
+        use super::*;
 
         #[test]
         fn test_sub_call_end_no_args_allowed() {
@@ -163,16 +164,17 @@ mod end {
 }
 
 mod system {
-    use super::*;
     use crate::parser::base::parsers::{FnMapTrait, OptAndPC};
     use crate::parser::specific::whitespace;
     use crate::parser::statement_separator::EofOrStatementSeparator;
+
+    use super::*;
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::System)
             .and_demand(
                 OptAndPC::new(whitespace(), EofOrStatementSeparator::new())
-                    .map(|(l, r)| {
+                    .fn_map(|(l, r)| {
                         let mut s: String = String::new();
                         s.push_str(&l);
                         s.push_str(&r);
@@ -181,7 +183,7 @@ mod system {
                     .peek()
                     .or_syntax_error("Expected: end-of-statement"),
             )
-            .map(|_| Statement::System)
+            .fn_map(|_| Statement::System)
     }
 
     #[cfg(test)]

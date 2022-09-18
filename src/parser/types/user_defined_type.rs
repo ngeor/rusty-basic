@@ -1,9 +1,10 @@
+use std::collections::HashMap;
+use std::slice::Iter;
+
 use crate::common::{Locatable, QError, StringUtils};
 use crate::parser::types::{BareName, BareNameNode, ExpressionNode};
 use crate::parser::{ExpressionType, HasExpressionType, Name, QualifiedName, TypeQualifier};
 use crate::variant::{UserDefinedTypeValue, Variant};
-use std::collections::HashMap;
-use std::slice::Iter;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedType {

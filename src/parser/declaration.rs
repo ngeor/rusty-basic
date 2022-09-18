@@ -1,6 +1,5 @@
-use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser,
-};
+use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
 use crate::parser::specific::{
@@ -24,7 +23,7 @@ pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
     keyword_followed_by_whitespace_p(Keyword::Declare)
         .and_demand(
             function_declaration_p()
-                .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
+                .fn_map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
                 .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
                 .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
         )
@@ -40,7 +39,7 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
         )
         .and_opt(whitespace())
         .and_opt(declaration_parameters_p())
-        .map(|(((_, function_name_node), _), opt_p)| {
+        .fn_map(|(((_, function_name_node), _), opt_p)| {
             (function_name_node, opt_p.unwrap_or_default())
         })
 }
@@ -54,7 +53,7 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
         )
         .and_opt(whitespace())
         .and_opt(declaration_parameters_p())
-        .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
+        .fn_map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
 }
 
 fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {

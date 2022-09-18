@@ -1,6 +1,7 @@
+use std::iter;
+
 use super::readers::CharReader;
 use super::recognizers::{Recognition, Recognizer};
-use std::iter;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RowCol {

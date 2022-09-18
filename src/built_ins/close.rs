@@ -1,7 +1,8 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::base::and_pc::TokenParserAndParserTrait;
     use crate::parser::base::parsers::{
-        AndOptTrait, AndTrait, FnMapTrait, KeepRightTrait, ManyTrait, Parser,
+        AndOptTrait, FnMapTrait, KeepRightTrait, ManyTrait, Parser,
     };
     use crate::parser::specific::{item_p, keyword_p, surrounded_by_opt_ws};
     use crate::parser::*;
@@ -11,13 +12,13 @@ pub mod parser {
             .and_opt(
                 expression::guarded_file_handle_or_expression_p().and_opt(
                     surrounded_by_opt_ws(item_p(','))
-                        .and(expression::file_handle_or_expression_p())
+                        .token_and(expression::file_handle_or_expression_p())
                         .keep_right()
                         .one_or_more(),
                 ),
             )
             .keep_right()
-            .map(|opt_first_and_remaining| {
+            .fn_map(|opt_first_and_remaining| {
                 let mut args: ExpressionNodes = vec![];
                 if let Some((first, opt_remaining)) = opt_first_and_remaining {
                     args.push(first);

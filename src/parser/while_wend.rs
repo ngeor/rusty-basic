@@ -1,5 +1,6 @@
 use crate::common::*;
-use crate::parser::base::parsers::{AndDemandTrait, FnMapTrait, Parser};
+use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::parsers::{FnMapTrait, Parser};
 use crate::parser::expression::guarded_expression_node_p;
 use crate::parser::specific::{keyword, keyword_p, MapErrTrait, OrSyntaxErrorTrait};
 use crate::parser::statements::*;
@@ -10,7 +11,7 @@ pub fn while_wend_p() -> impl Parser<Output = Statement> {
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after WHILE"))
         .and_demand(zero_or_more_statements_p(keyword_p(Keyword::Wend)))
         .and_demand(keyword(Keyword::Wend).map_err(QError::WhileWithoutWend))
-        .map(|(((_, condition), statements), _)| {
+        .fn_map(|(((_, condition), statements), _)| {
             Statement::While(ConditionalBlockNode {
                 condition,
                 statements,

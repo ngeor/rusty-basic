@@ -1,7 +1,8 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, FnMapTrait, Parser};
+    use crate::parser::base::and_pc::AndDemandTrait;
+    use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, Parser};
     use crate::parser::specific::keyword_followed_by_whitespace_p;
     use crate::parser::*;
 
@@ -17,7 +18,7 @@ pub mod parser {
                     .csv()
                     .or_syntax_error("Expected: #file-number or variable"),
             )
-            .map(|((_, opt_loc_file_number), variables)| {
+            .fn_map(|((_, opt_loc_file_number), variables)| {
                 let mut args: Vec<ExpressionNode> = vec![];
                 if let Some(Locatable { element, pos }) = opt_loc_file_number {
                     args.push(Expression::IntegerLiteral(1.into()).at(Location::start()));

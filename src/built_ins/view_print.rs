@@ -1,8 +1,7 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::{
-        AndDemandTrait, AndOptTrait, FnMapTrait, KeepRightTrait, Parser,
-    };
+    use crate::parser::base::and_pc::AndDemandTrait;
+    use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::{keyword, keyword_pair_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
@@ -10,7 +9,7 @@ pub mod parser {
         keyword_pair_p(Keyword::View, Keyword::Print)
             .and_opt(parse_args())
             .keep_right()
-            .map(|opt_args| {
+            .fn_map(|opt_args| {
                 Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args.unwrap_or_default())
             })
     }
@@ -21,7 +20,7 @@ pub mod parser {
             .and_demand(
                 expression::guarded_expression_node_p().or_syntax_error("Expected: expression"),
             )
-            .map(|((l, _), r)| vec![l, r])
+            .fn_map(|((l, _), r)| vec![l, r])
     }
 }
 

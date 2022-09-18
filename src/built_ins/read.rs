@@ -1,6 +1,7 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::{AndDemandTrait, FnMapTrait, KeepRightTrait, Parser};
+    use crate::parser::base::and_pc::AndDemandTrait;
+    use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::{keyword_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
@@ -8,7 +9,7 @@ pub mod parser {
         keyword_p(Keyword::Read)
             .and_demand(expression::expression_nodes_p().or_syntax_error("Expected: variable"))
             .keep_right()
-            .map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
+            .fn_map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
     }
 }
 

@@ -1,7 +1,9 @@
-use super::Operator;
-use crate::common::{CanCastTo, QError};
 use std::convert::TryFrom;
 use std::fmt::Display;
+
+use crate::common::{CanCastTo, QError};
+
+use super::Operator;
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable

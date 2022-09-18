@@ -1,8 +1,11 @@
 use crate::common::{Locatable, QError};
-use crate::parser::base::parsers::{AndDemandTrait, AndThenTrait, KeepRightTrait, Parser};
+use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::parsers::{AndThenTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::expression::expression_node_p;
 use crate::parser::name::bare_name_p;
-use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_pair_p, whitespace};
+use crate::parser::specific::{
+    keyword_followed_by_whitespace_p, keyword_pair_p, whitespace, OrSyntaxErrorTrait,
+};
 use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {

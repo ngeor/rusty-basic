@@ -11,7 +11,7 @@ pub fn comment_p() -> impl Parser<Output = Statement> {
     item_p('\'')
         .and_opt(NonEol)
         .keep_right()
-        .map(|x| Statement::Comment(x.unwrap_or_default()))
+        .fn_map(|x| Statement::Comment(x.unwrap_or_default()))
 }
 
 /// Reads multiple comments and the surrounding whitespace.
@@ -24,12 +24,12 @@ pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>
                 .and_opt(NonEol)
                 .and_opt(EolOrWhitespace)
                 .keep_left()
-                .map(|(Locatable { pos, .. }, opt_s)| opt_s.unwrap_or_default().at(pos))
+                .fn_map(|(Locatable { pos, .. }, opt_s)| opt_s.unwrap_or_default().at(pos))
                 .one_or_more(),
         )
         .and_opt(EolOrWhitespace)
         .keep_middle()
-        .map(|x| x.unwrap_or_default())
+        .fn_map(|x| x.unwrap_or_default())
 }
 
 struct NonEol;

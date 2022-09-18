@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::parsers::{
-    AndDemandTrait, AndThenTrait, AndTrait, KeepRightTrait, Parser,
-};
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::parsers::{AndOptTrait, AndThenTrait, KeepRightTrait, Parser};
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
 use crate::parser::specific::{
-    identifier_without_dot_p, keyword_followed_by_whitespace_p, whitespace,
+    identifier_without_dot_p, keyword_followed_by_whitespace_p, whitespace, OrSyntaxErrorTrait,
+    WithPosTrait,
 };
 use crate::parser::types::*;
 

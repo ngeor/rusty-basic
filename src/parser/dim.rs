@@ -1,4 +1,5 @@
-use crate::parser::base::parsers::{AndDemandTrait, AndOptTrait, FnMapTrait, Parser};
+use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, Parser};
 use crate::parser::specific::keyword_followed_by_whitespace_p;
 use crate::parser::{dim_name, DimList, Keyword, Statement};
 
@@ -11,7 +12,7 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
                 .csv()
                 .or_syntax_error("Expected: name after DIM"),
         )
-        .map(|((_, opt_shared), variables)| {
+        .fn_map(|((_, opt_shared), variables)| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
@@ -28,7 +29,7 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
                 .csv()
                 .or_syntax_error("Expected: name after REDIM"),
         )
-        .map(|((_, opt_shared), variables)| {
+        .fn_map(|((_, opt_shared), variables)| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
@@ -38,9 +39,8 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
 
 #[cfg(test)]
 mod tests {
-    use crate::common::*;
-
     use crate::assert_parser_err;
+    use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::*;
 

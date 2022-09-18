@@ -1,6 +1,7 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
-    use crate::parser::base::parsers::{AndDemandTrait, KeepRightTrait, Parser};
+    use crate::parser::base::and_pc::AndDemandTrait;
+    use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::{in_parenthesis, keyword_p};
     use crate::parser::*;
 
@@ -12,7 +13,7 @@ pub mod parser {
                     .or_syntax_error("Expected: variable"),
             ))
             .keep_right()
-            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
+            .fn_map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }
 }
 

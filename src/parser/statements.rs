@@ -1,5 +1,6 @@
 use crate::common::*;
-use crate::parser::base::parsers::{AndTrait, KeepRightTrait, Parser};
+use crate::parser::base::and_pc::AndTrait;
+use crate::parser::base::parsers::{KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::{item_p, whitespace, WithPosTrait};
 use crate::parser::statement;

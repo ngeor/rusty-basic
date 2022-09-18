@@ -1,3 +1,13 @@
+use std::fs::File;
+
+use crate::common::*;
+use crate::parser::base::parsers::Parser;
+use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::specific::{create_file_tokenizer, create_string_tokenizer};
+use crate::parser::top_level_token::TopLevelTokensParser;
+
+pub use self::types::*;
+
 mod assignment;
 pub mod base;
 mod comment;
@@ -33,15 +43,6 @@ mod while_wend;
 #[cfg(test)]
 pub mod test_utils;
 
-pub use self::types::*;
-
-use crate::common::*;
-use crate::parser::base::parsers::Parser;
-use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{create_file_tokenizer, create_string_tokenizer};
-use crate::parser::top_level_token::TopLevelTokensParser;
-use std::fs::File;
-
 /// Parses a QBasic file.
 ///
 /// Syntax reference
@@ -74,10 +75,11 @@ fn parse_reader(reader: &mut impl Tokenizer) -> Result<ProgramNode, QErrorNode> 
 
 #[cfg(test)]
 mod tests {
-    use super::test_utils::*;
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::types::*;
+
+    use super::test_utils::*;
 
     #[test]
     fn test_parse_fixture_fib() {

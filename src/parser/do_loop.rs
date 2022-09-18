@@ -1,8 +1,7 @@
-use crate::parser::base::parsers::{
-    AndDemandTrait, AndTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser,
-};
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, OrTrait, Parser};
 use crate::parser::expression::guarded_expression_node_p;
-use crate::parser::specific::{keyword, keyword_choice, keyword_p, whitespace};
+use crate::parser::specific::{keyword, keyword_choice, keyword_p, whitespace, OrSyntaxErrorTrait};
 use crate::parser::statements::*;
 use crate::parser::types::*;
 
@@ -14,7 +13,7 @@ pub fn do_loop_p() -> impl Parser<Output = Statement> {
                 .or_syntax_error("Expected: WHILE, UNTIL or statement after DO"),
         )
         .keep_right()
-        .map(Statement::DoLoop)
+        .fn_map(Statement::DoLoop)
 }
 
 fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
@@ -41,7 +40,7 @@ fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> {
         .and_demand(whitespace())
         .and_demand(keyword_choice(&[Keyword::Until, Keyword::While]))
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
-        .map(|((((statements, _), _), (k, _)), condition)| DoLoopNode {
+        .fn_map(|((((statements, _), _), (k, _)), condition)| DoLoopNode {
             condition,
             statements,
             position: DoLoopConditionPosition::Bottom,

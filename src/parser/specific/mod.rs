@@ -1,5 +1,9 @@
+use std::fs::File;
+use std::str::Chars;
+
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, AtRowCol, Locatable, Location, QError};
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::*;
 use crate::parser::base::readers::{file_char_reader, string_char_reader};
 use crate::parser::base::recognizers::*;
@@ -8,8 +12,6 @@ use crate::parser::expression::expression_node_p;
 use crate::parser::{
     Expression, ExpressionNode, ExpressionNodes, Keyword, Statement, SORTED_KEYWORDS_STR,
 };
-use std::fs::File;
-use std::str::Chars;
 
 /// specific module contains implementation that mirrors the base module
 /// but it is specific to QBasic
@@ -343,7 +345,7 @@ pub fn parse_built_in_sub_with_opt_args(
     keyword_followed_by_whitespace_p(keyword)
         .and_opt(expression_node_p().csv_allow_missing())
         .keep_right()
-        .map(move |opt_args| {
+        .fn_map(move |opt_args| {
             Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
         })
 }

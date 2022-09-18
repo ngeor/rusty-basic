@@ -1,11 +1,11 @@
+use std::str::FromStr;
+
 use crate::common::QError;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::{token_list_to_string, Token, Tokenizer};
 use crate::parser::specific::TokenType;
 use crate::parser::type_qualifier::type_qualifier_p;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
-use std::io::Read;
-use std::str::FromStr;
 
 /// Parses a name. The name must start with a letter and can include
 /// letters, digits or dots. The name can optionally be qualified by a type
@@ -71,8 +71,9 @@ fn ensure_length_and_not_keyword(s: &String) -> Result<bool, QError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::parser::specific::create_string_tokenizer;
+
+    use super::*;
 
     #[test]
     fn test_any_word_with_dot() {

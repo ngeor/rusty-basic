@@ -1,6 +1,7 @@
+use std::convert::TryFrom;
+
 use crate::common::{Locatable, QError};
 use crate::parser::types::{BareName, TypeQualifier};
-use std::convert::TryFrom;
 
 /// A qualified name is a bare name followed by a built-in type qualifier.
 /// Example: `name$`, `age%`.

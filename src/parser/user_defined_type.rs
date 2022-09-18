@@ -43,13 +43,14 @@
 // Type must be defined Before DECLARE SUB
 
 use crate::common::{Locatable, QError};
-use crate::parser::base::parsers::{AndDemandTrait, AndThenTrait, KeepRightTrait, OrTrait, Parser};
+use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::parsers::{AndThenTrait, KeepRightTrait, ManyTrait, OrTrait, Parser};
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::specific::{
     demand_keyword_pair_p, item_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p,
-    whitespace, OrSyntaxErrorTrait, WithPosTrait,
+    whitespace, MapErrTrait, OrSyntaxErrorTrait, WithPosTrait,
 };
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
@@ -155,11 +156,12 @@ fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::assert_parser_err;
     use crate::common::AtRowCol;
     use crate::parser::test_utils::*;
     use crate::parser::types::TopLevelToken;
+
+    use super::*;
 
     #[test]
     fn parse_type() {

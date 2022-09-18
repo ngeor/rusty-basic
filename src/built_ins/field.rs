@@ -1,7 +1,8 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::parsers::{AndDemandTrait, KeepRightTrait, Parser};
+    use crate::parser::base::and_pc::AndDemandTrait;
+    use crate::parser::base::parsers::{KeepRightTrait, Parser};
     use crate::parser::specific::{
         item_p, keyword_p, surrounded_by_opt_ws, whitespace, OrSyntaxErrorTrait, WithPosTrait,
     };

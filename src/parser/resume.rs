@@ -1,4 +1,5 @@
-use crate::parser::base::parsers::{AndDemandTrait, AndTrait, OrTrait, Parser};
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::parsers::{OrTrait, Parser};
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::{keyword_p, whitespace, OrSyntaxErrorTrait};
 use crate::parser::statement_separator::EofOrStatementSeparator;

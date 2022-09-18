@@ -1,9 +1,10 @@
+use std::convert::TryFrom;
+
 use crate::common::{AtLocation, Location, QError};
 use crate::parser::{
     ArrayDimensions, BareNameNode, BuiltInStyle, Expression, ExpressionNode, ExpressionType,
     HasExpressionType, TypeQualifier,
 };
-use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DimType {

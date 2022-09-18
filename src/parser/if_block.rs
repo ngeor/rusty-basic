@@ -1,10 +1,12 @@
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptTrait, AndTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser,
+    AndOptTrait, FnMapTrait, KeepRightTrait, ManyTrait, OrTrait, Parser,
 };
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::{
-    demand_keyword_pair_p, keyword_choice, keyword_choice_p, keyword_p, whitespace, WithPosTrait,
+    demand_keyword_pair_p, keyword_choice, keyword_choice_p, keyword_p, whitespace,
+    OrSyntaxErrorTrait, WithPosTrait,
 };
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -16,7 +18,7 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
                 .or(multi_line_if_p())
                 .or_syntax_error("Expected: single or multi line IF"),
         )
-        .map(|(condition, (statements, else_if_blocks, else_block))| {
+        .fn_map(|(condition, (statements, else_if_blocks, else_block))| {
             Statement::IfBlock(IfBlockNode {
                 if_block: ConditionalBlockNode {
                     condition,
@@ -59,7 +61,7 @@ fn single_line_if_else_p() -> impl Parser<
                 .map(|s| vec![s])
                 .or(single_line_else_p()),
         )
-        .map(|(l, r)| (l, vec![], r))
+        .fn_map(|(l, r)| (l, vec![], r))
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
@@ -84,7 +86,7 @@ fn multi_line_if_p() -> impl Parser<
     .and_opt(else_if_block_p().one_or_more())
     .and_opt(else_block_p())
     .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::If))
-    .map(|(((if_block, opt_else_if_blocks), opt_else), _)| {
+    .fn_map(|(((if_block, opt_else_if_blocks), opt_else), _)| {
         (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
     })
 }
@@ -106,7 +108,7 @@ fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
             Keyword::Else,
             Keyword::ElseIf,
         ])))
-        .map(|(condition, statements)| ConditionalBlockNode {
+        .fn_map(|(condition, statements)| ConditionalBlockNode {
             condition,
             statements,
         })

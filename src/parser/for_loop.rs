@@ -1,6 +1,7 @@
 use crate::common::QError;
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptFactoryTrait, AndOptTrait, AndTrait, FnMapTrait, KeepRightTrait, Parser,
+    AndOptFactoryTrait, AndOptTrait, FnMapTrait, KeepRightTrait, Parser,
 };
 use crate::parser::expression;
 use crate::parser::specific::{
@@ -56,7 +57,7 @@ fn parse_for_step_p() -> impl Parser<
                 )
                 .keep_right()
         })
-        .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
+        .fn_map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 
 /// Parses the "FOR I = 1 TO 2" part
@@ -81,7 +82,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: upper bound of FOR loop"),
         )
-        .map(|(((((_, n), _), l), _), u)| (n, l, u))
+        .fn_map(|(((((_, n), _), l), _), u)| (n, l, u))
 }
 
 fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
@@ -92,10 +93,11 @@ fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::types::*;
+
+    use super::super::test_utils::*;
 
     #[test]
     fn test_for_loop() {

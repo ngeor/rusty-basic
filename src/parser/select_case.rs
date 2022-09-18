@@ -1,7 +1,6 @@
 use crate::common::*;
-use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptTrait, KeepRightTrait, ManyTrait, OrTrait, Parser,
-};
+use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, ManyTrait, OrTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
@@ -208,10 +207,11 @@ fn case_else() -> impl Parser<Output = StatementNodes> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::types::*;
+
+    use super::super::test_utils::*;
 
     #[test]
     fn test_select_case_inline_comment() {

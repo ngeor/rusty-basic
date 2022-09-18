@@ -9,7 +9,7 @@ pub mod parser {
         keyword_followed_by_whitespace_p(Keyword::Width)
             .and_opt(expression::expression_node_p().csv_allow_missing())
             .keep_right()
-            .map(|opt_args| {
+            .fn_map(|opt_args| {
                 Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args.unwrap_or_default()))
             })
     }

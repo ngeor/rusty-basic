@@ -1,8 +1,9 @@
-use super::{parse_main_file, parse_main_str};
-use crate::common::*;
-
-use crate::parser::types::*;
 use std::fs::File;
+
+use crate::common::*;
+use crate::parser::types::*;
+
+use super::{parse_main_file, parse_main_str};
 
 /// Parses the given string and demands success.
 ///

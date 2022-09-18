@@ -1,16 +1,15 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::parsers::{
-    AndDemandTrait, AndOptTrait, AndThenTrait, AndTrait, FnMapTrait, KeepRightTrait, Parser,
-};
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::parsers::{AndOptTrait, AndThenTrait, FnMapTrait, KeepRightTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
 use crate::parser::specific::{
     identifier_without_dot_p, in_parenthesis_p, item_p, keyword_followed_by_whitespace_p,
-    keyword_p, whitespace, TokenType, WithPosTrait,
+    keyword_p, whitespace, OrSyntaxErrorTrait, TokenType, WithPosTrait,
 };
 use crate::parser::types::*;
 
@@ -76,7 +75,7 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
                 )
                 .keep_right(),
         )
-        .map(|(l, opt_r)| match opt_r {
+        .fn_map(|(l, opt_r)| match opt_r {
             Some(r) => ArrayDimension {
                 lbound: Some(l),
                 ubound: r,

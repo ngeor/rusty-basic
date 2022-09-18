@@ -1,7 +1,6 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{
-    AndOptTrait, AndTrait, ManyTrait, OrTrait, Parser, TokenPredicate,
-};
+use crate::parser::base::and_pc::AndTrait;
+use crate::parser::base::parsers::{AndOptTrait, ManyTrait, OrTrait, Parser, TokenPredicate};
 use crate::parser::base::tokenizers::{Position, Token, Tokenizer};
 use crate::parser::specific::{item_p, whitespace, TokenKindParser, TokenType};
 

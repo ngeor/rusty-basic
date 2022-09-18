@@ -8,8 +8,6 @@ pub trait NonOptParser {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 }
 
-pub type NonOptParserResult<T> = Result<T, QError>;
-
 // TODO rename to OptParser
 /// A parser that either succeeds, or returns nothing, or returns an error.
 pub trait Parser {
@@ -17,9 +15,7 @@ pub trait Parser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
 }
 
-pub type ParserResult<T> = Result<Option<T>, QError>;
-
-pub fn to_parser<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
+pub fn to_impl_parser<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
     parser
 }
 

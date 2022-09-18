@@ -2,14 +2,14 @@ pub mod parser {
     use crate::built_ins::BuiltInFunction;
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
-    use crate::parser::specific::{in_parenthesis, keyword_p};
+    use crate::parser::specific::csv::csv_one_or_more;
+    use crate::parser::specific::{in_parenthesis, keyword_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::Len)
             .and_demand(in_parenthesis(
-                expression::lazy_expression_node_p()
-                    .csv()
+                csv_one_or_more(expression::lazy_expression_node_p())
                     .or_syntax_error("Expected: variable"),
             ))
             .keep_right()

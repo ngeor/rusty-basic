@@ -4,6 +4,7 @@ use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, ManyTrait, OrTra
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
+use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::{
     demand_keyword_pair_p, keyword_p, keyword_pair_p, whitespace, LeadingWhitespace,
     OrSyntaxErrorTrait,
@@ -120,7 +121,7 @@ impl CaseBlockParser {
 }
 
 fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
-    CaseExpressionParser::new().csv()
+    csv_one_or_more(CaseExpressionParser::new())
 }
 
 struct CaseExpressionParser;

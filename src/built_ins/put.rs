@@ -1,20 +1,17 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::Parser;
-    use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
+    use crate::parser::base::parsers::{FnMapTrait, Parser};
+    use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
+    use crate::parser::specific::{keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Put)
             .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(
-                item_p(',')
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: ,"),
-            )
+            .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
-            .map(|(((_, file_number), _), r)| {
+            .fn_map(|(((_, file_number), _), r)| {
                 Statement::BuiltInSubCall(
                     BuiltInSub::Put,
                     vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],

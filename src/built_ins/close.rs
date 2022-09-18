@@ -4,14 +4,15 @@ pub mod parser {
     use crate::parser::base::parsers::{
         AndOptTrait, FnMapTrait, KeepRightTrait, ManyTrait, Parser,
     };
-    use crate::parser::specific::{item_p, keyword_p, surrounded_by_opt_ws};
+    use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
+    use crate::parser::specific::keyword_p;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_p(Keyword::Close)
             .and_opt(
                 expression::guarded_file_handle_or_expression_p().and_opt(
-                    surrounded_by_opt_ws(item_p(','))
+                    comma_surrounded_by_opt_ws()
                         .token_and(expression::file_handle_or_expression_p())
                         .keep_right()
                         .one_or_more(),

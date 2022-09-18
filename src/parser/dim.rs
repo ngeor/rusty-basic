@@ -1,6 +1,7 @@
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, Parser};
-use crate::parser::specific::keyword_followed_by_whitespace_p;
+use crate::parser::specific::csv::csv_one_or_more;
+use crate::parser::specific::{keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
 use crate::parser::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement
@@ -8,8 +9,7 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Dim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(
-            dim_name::dim_name_node_p()
-                .csv()
+            csv_one_or_more(dim_name::dim_name_node_p())
                 .or_syntax_error("Expected: name after DIM"),
         )
         .fn_map(|((_, opt_shared), variables)| {
@@ -25,8 +25,7 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Redim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(
-            dim_name::redim_name_node_p()
-                .csv()
+            csv_one_or_more(dim_name::redim_name_node_p())
                 .or_syntax_error("Expected: name after REDIM"),
         )
         .fn_map(|((_, opt_shared), variables)| {

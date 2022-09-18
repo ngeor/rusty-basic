@@ -1,7 +1,7 @@
 //! Contains parser combinators where both parts must succeed.
 
 use crate::common::QError;
-use crate::parser::base::parsers::{NonOptParser, NonOptParserResult, Parser, ParserResult};
+use crate::parser::base::parsers::{NonOptParser, Parser};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 
 pub struct TokenParserAndParser<L, R>(L, R)
@@ -15,7 +15,7 @@ where
 {
     type Output = (Token, R::Output);
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> ParserResult<Self::Output> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.0.parse(tokenizer)? {
             Some(left) => match self.1.parse(tokenizer)? {
                 Some(right) => Ok(Some((left, right))),
@@ -79,7 +79,7 @@ where
 {
     type Output = (L::Output, R::Output);
 
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> NonOptParserResult<Self::Output> {
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let left = self.0.parse_non_opt(tokenizer)?;
         let right = self.1.parse_non_opt(tokenizer)?;
         Ok((left, right))

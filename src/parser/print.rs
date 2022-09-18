@@ -5,6 +5,7 @@ use crate::parser::base::parsers::{
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
+use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
 use crate::parser::specific::{
     item_p, keyword_p, map_tokens, whitespace, LeadingWhitespace, OrSyntaxErrorTrait, TokenType,
 };
@@ -126,11 +127,7 @@ impl Parser for PrintArgLookingBack {
 fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     whitespace()
         .and(expression::file_handle_p())
-        .and_demand(
-            item_p(',')
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: ,"),
-        )
+        .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
         .keep_middle()
 }
 

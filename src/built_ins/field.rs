@@ -2,9 +2,10 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::{KeepRightTrait, Parser};
+    use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
+    use crate::parser::specific::csv::{comma_surrounded_by_opt_ws, csv_one_or_more};
     use crate::parser::specific::{
-        item_p, keyword_p, surrounded_by_opt_ws, whitespace, OrSyntaxErrorTrait, WithPosTrait,
+        keyword_p, surrounded_by_opt_ws, whitespace, OrSyntaxErrorTrait, WithPosTrait,
     };
     use crate::parser::*;
 
@@ -17,13 +18,9 @@ pub mod parser {
     fn field_node_p() -> impl Parser<Output = Statement> {
         whitespace()
             .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(surrounded_by_opt_ws(item_p(',')).or_syntax_error("Expected: ,"))
-            .and_demand(
-                field_item_p()
-                    .csv()
-                    .or_syntax_error("Expected: field width"),
-            )
-            .map(|(((_, file_number), _), fields)| {
+            .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
+            .and_demand(csv_one_or_more(field_item_p()).or_syntax_error("Expected: field width"))
+            .fn_map(|(((_, file_number), _), fields)| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
             })
     }
@@ -33,16 +30,14 @@ pub mod parser {
             // TODO 'AS' does not need leading whitespace if expression has parenthesis
             // TODO solve this not by peeking the previous but with a new expression:: function
             .and_demand(
-                keyword_p(Keyword::As)
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: AS"),
+                surrounded_by_opt_ws(keyword_p(Keyword::As)).or_syntax_error("Expected: AS"),
             )
             .and_demand(
                 name::name_with_dot_p()
                     .with_pos()
                     .or_syntax_error("Expected: variable name"),
             )
-            .map(|((width, _), name)| (width, name))
+            .fn_map(|((width, _), name)| (width, name))
     }
 
     fn build_args(

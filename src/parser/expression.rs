@@ -6,9 +6,10 @@ use crate::parser::base::parsers::{
     ManyTrait, NonOptParser, OptAndPC, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
 use crate::parser::specific::{
-    in_parenthesis_p, item_p, keyword_p, map_tokens, surrounded_by_opt_ws, whitespace,
-    LeadingWhitespace, OrSyntaxErrorTrait, TokenType, WithPosTrait,
+    in_parenthesis_p, item_p, keyword_p, map_tokens, whitespace, LeadingWhitespace,
+    OrSyntaxErrorTrait, TokenType, WithPosTrait,
 };
 use crate::parser::types::*;
 
@@ -94,7 +95,7 @@ pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
 pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
     guarded_expression_node_p()
         .and_demand(
-            surrounded_by_opt_ws(item_p(','))
+            comma_surrounded_by_opt_ws()
                 .and_demand(demand_expression_node_p("Expected: expression after comma"))
                 .keep_right()
                 .zero_or_more(),
@@ -172,7 +173,7 @@ pub fn parenthesis_p() -> impl Parser<Output = Expression> {
 
 pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     file_handle_p()
-        .and_demand(surrounded_by_opt_ws(item_p(',')).or_syntax_error("Expected: ,"))
+        .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
         .keep_left()
 }
 

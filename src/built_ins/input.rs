@@ -3,7 +3,8 @@ pub mod parser {
     use crate::common::*;
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, Parser};
-    use crate::parser::specific::keyword_followed_by_whitespace_p;
+    use crate::parser::specific::csv::csv_one_or_more;
+    use crate::parser::specific::{keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
@@ -14,8 +15,7 @@ pub mod parser {
         keyword_followed_by_whitespace_p(Keyword::Input)
             .and_opt(expression::file_handle_comma_p())
             .and_demand(
-                expression::expression_node_p()
-                    .csv()
+                csv_one_or_more(expression::expression_node_p())
                     .or_syntax_error("Expected: #file-number or variable"),
             )
             .fn_map(|((_, opt_loc_file_number), variables)| {

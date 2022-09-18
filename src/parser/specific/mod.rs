@@ -1,3 +1,5 @@
+pub mod csv;
+
 use std::fs::File;
 use std::str::Chars;
 

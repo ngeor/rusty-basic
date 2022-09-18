@@ -7,6 +7,7 @@ use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
+use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::{
     identifier_without_dot_p, in_parenthesis_p, item_p, keyword_followed_by_whitespace_p,
     keyword_p, whitespace, OrSyntaxErrorTrait, TokenType, WithPosTrait,
@@ -58,9 +59,7 @@ pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
 
 fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
     in_parenthesis_p(
-        array_dimension_p()
-            .csv()
-            .or_syntax_error("Expected: array dimension"),
+        csv_one_or_more(array_dimension_p()).or_syntax_error("Expected: array dimension"),
     )
 }
 

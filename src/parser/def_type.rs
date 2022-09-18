@@ -22,7 +22,7 @@ pub fn def_type_p() -> impl Parser<Output = DefType> {
     def_keyword_p()
         .followed_by_req_ws()
         .and_demand(csv_one_or_more(letter_range_p()).or_syntax_error("Expected: letter ranges"))
-        .fn_map(|((l, _), r)| DefType::new(l, r))
+        .fn_map(|(l, r)| DefType::new(l, r))
 }
 
 fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {

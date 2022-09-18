@@ -24,7 +24,7 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
         .and_demand(zero_or_more_statements_p(keyword_p(Keyword::Loop)))
         .and_demand(keyword_p(Keyword::Loop).or_syntax_error("DO without LOOP"))
-        .fn_map(|((((_, (k, _)), condition), statements), _)| DoLoopNode {
+        .fn_map(|((((k, _), condition), statements), _)| DoLoopNode {
             condition,
             statements,
             position: DoLoopConditionPosition::Top,

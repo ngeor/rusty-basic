@@ -104,7 +104,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
         .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
         .and_demand(comment::comments_and_whitespace_p())
-        .map(
+        .fn_map(
             |((((Locatable { element, pos }, _), _), element_type), comments)| {
                 Locatable::new(Element::new(element, element_type, comments), pos)
             },
@@ -133,10 +133,10 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
         )
         .and_demand(demand_string_length_p())
         .keep_right()
-        .map(|e| ElementType::FixedLengthString(e, 0)))
+        .fn_map(|e| ElementType::FixedLengthString(e, 0)))
     .or(bare_name_without_dot_p()
         .with_pos()
-        .map(|n| ElementType::UserDefined(n)))
+        .fn_map(ElementType::UserDefined))
 }
 
 fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> {

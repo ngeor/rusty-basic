@@ -33,7 +33,7 @@ where
         match tokenizer.read()? {
             Some(token) => match O::try_from(token.kind as TokenType) {
                 Ok(value) => Ok(Some(value)),
-                None => {
+                Err(_) => {
                     tokenizer.unread(token);
                     Ok(None)
                 }

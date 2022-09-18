@@ -1,8 +1,6 @@
 use crate::common::*;
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, ManyTrait, OrTrait, Parser,
-};
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, ManyTrait, NonOptParser, OrTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
@@ -73,55 +71,25 @@ fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
 fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
-    CaseBlockParser::new().one_or_more()
+    case_block().one_or_more()
 }
 
-struct CaseBlockParser;
-
-impl HasOutput for CaseBlockParser {
-    type Output = CaseBlockNode;
+fn case_block() -> impl Parser<Output = CaseBlockNode> {
+    // CASE
+    keyword_p(Keyword::Case)
+        .and(continue_after_case().preceded_by_opt_ws())
+        .keep_right()
 }
 
-impl Parser for CaseBlockParser {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        // CASE
-        let result = keyword_p(Keyword::Case)
-            .and_opt(whitespace())
-            .map(|((_, l), r)| {
-                let mut temp: String = String::new();
-                temp.push_str(l.as_str());
-                temp.push_str(r.unwrap_or_default().as_str());
-                temp
-            })
-            .parse(reader)?;
-        if result.is_none() {
-            return Ok(None);
-        }
-        let case_ws_str: String = result.unwrap_or_default();
-        let result = Self::continue_after_case().parse(reader)?;
-        if result.is_some() {
-            Ok(result)
-        } else {
-            Ok((reader.undo(case_ws_str), result))
-        }
-    }
-}
-
-impl CaseBlockParser {
-    fn new() -> Self {
-        Self
-    }
-
-    fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
-        case_expression_list()
-            .and_demand(statements::zero_or_more_statements_p(
-                keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
-            ))
-            .fn_map(|(expression_list, statements)| CaseBlockNode {
-                expression_list,
-                statements,
-            })
-    }
+fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
+    case_expression_list()
+        .and_demand(statements::zero_or_more_statements_p(
+            keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
+        ))
+        .fn_map(|(expression_list, statements)| CaseBlockNode {
+            expression_list,
+            statements,
+        })
 }
 
 fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
@@ -165,7 +133,7 @@ impl CaseExpressionParser {
                     .preceded_by_opt_ws()
                     .or_syntax_error("Expected: expression after IS operator"),
             )
-            .fn_map(|(((_, op), _), r)| CaseExpression::Is(op.strip_location(), r))
+            .fn_map(|((_, op), r)| CaseExpression::Is(op.strip_location(), r))
     }
 }
 
@@ -177,27 +145,23 @@ impl HasOutput for SimpleOrRangeParser {
 
 impl Parser for SimpleOrRangeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let (reader, expr) = expression::expression_node_p().parse(reader)?;
-        match expr {
+        match expression::expression_node_p().parse(reader)? {
             Some(expr) => {
                 let parenthesis = expr.is_parenthesis();
-                let result = keyword_p(Keyword::To)
+                let to_keyword = keyword_p(Keyword::To)
                     .preceded_by_ws(!parenthesis)
                     .parse(reader)?;
-                match result {
+                match to_keyword {
                     Some(_) => {
-                        let (reader, second_expr) = expression::guarded_expression_node_p()
+                        let second_expr = expression::guarded_expression_node_p()
                             .or_syntax_error("Expected: expression after TO")
-                            .parse(reader)?;
-                        Ok((
-                            reader,
-                            Some(CaseExpression::Range(expr, second_expr.unwrap())),
-                        ))
+                            .parse_non_opt(reader)?;
+                        Ok(Some(CaseExpression::Range(expr, second_expr)))
                     }
-                    None => Ok((reader, Some(CaseExpression::Simple(expr)))),
+                    None => Ok(Some(CaseExpression::Simple(expr))),
                 }
             }
-            _ => Ok((reader, None)),
+            _ => Ok(None),
         }
     }
 }

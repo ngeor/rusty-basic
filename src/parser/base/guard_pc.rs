@@ -17,7 +17,7 @@ where
     R: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer) {
+        match self.0.parse(tokenizer)? {
             Some(_) => self.1.parse(tokenizer),
             None => Ok(None),
         }

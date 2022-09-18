@@ -2,7 +2,7 @@ use crate::common::QError;
 use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::specific::item_p;
-use crate::parser::specific::whitespace::surrounded_by_opt_ws;
+use crate::parser::specific::whitespace::{WhitespaceTrait};
 
 pub fn csv_one_or_more<P>(parser: P) -> impl Parser<Output = Vec<P::Output>>
 where
@@ -37,7 +37,7 @@ where
 }
 
 pub fn comma_surrounded_by_opt_ws() -> impl Parser<Output = Token> {
-    surrounded_by_opt_ws(item_p(','))
+    item_p(',').surrounded_by_opt_ws()
 }
 
 struct DelimitedPC<A, B> {

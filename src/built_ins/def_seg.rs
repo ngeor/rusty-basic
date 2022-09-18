@@ -2,7 +2,7 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
-    use crate::parser::specific::whitespace::surrounded_by_opt_ws;
+    use crate::parser::specific::whitespace::{WhitespaceTrait};
     use crate::parser::specific::{item_p, keyword_pair_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
@@ -15,7 +15,7 @@ pub mod parser {
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
-        surrounded_by_opt_ws(item_p('='))
+        item_p('=').surrounded_by_opt_ws()
             .and_demand(
                 expression::expression_node_p()
                     .or_syntax_error("Expected expression after equal sign"),

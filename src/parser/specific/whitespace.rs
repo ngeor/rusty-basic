@@ -5,16 +5,9 @@ use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::base::undo_pc::Undo;
 use crate::parser::specific::{TokenKindParser, TokenType};
 
-fn whitespace() -> TokenPredicateParser<TokenKindParser> {
-    TokenKindParser(TokenType::Whitespace).parser()
-}
-
 #[deprecated]
-pub fn surrounded_by_opt_ws<P>(parser: P) -> impl Parser<Output = P::Output>
-where
-    P: Parser,
-{
-    SurroundedBy::new(whitespace(), parser, whitespace())
+pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
+    TokenKindParser(TokenType::Whitespace).parser()
 }
 
 pub struct LeadingWhitespace<P> {

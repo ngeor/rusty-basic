@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::csv::{comma_surrounded_by_opt_ws, csv_one_or_more};
-    use crate::parser::specific::whitespace::{surrounded_by_opt_ws, WhitespaceTrait};
+    use crate::parser::specific::whitespace::{WhitespaceTrait};
     use crate::parser::specific::with_pos::WithPosTrait;
     use crate::parser::specific::{keyword_p, OrSyntaxErrorTrait};
     use crate::parser::*;
@@ -31,7 +31,7 @@ pub mod parser {
             // TODO 'AS' does not need leading whitespace if expression has parenthesis
             // TODO solve this not by peeking the previous but with a new expression:: function
             .and_demand(
-                surrounded_by_opt_ws(keyword_p(Keyword::As)).or_syntax_error("Expected: AS"),
+                keyword_p(Keyword::As).surrounded_by_opt_ws().or_syntax_error("Expected: AS"),
             )
             .and_demand(
                 name::name_with_dot_p()

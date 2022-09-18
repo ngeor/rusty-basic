@@ -35,7 +35,7 @@ fn resume_next() -> impl Parser<Output = ResumeOption> {
 fn resume_label() -> impl Parser<Output = ResumeOption> {
     bare_name_p()
         .preceded_by_req_ws()
-        .fn_map(|(_, r)| ResumeOption::Label(r))
+        .fn_map(ResumeOption::Label)
 }
 
 #[cfg(test)]

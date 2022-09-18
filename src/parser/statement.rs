@@ -18,6 +18,7 @@ use crate::parser::select_case;
 use crate::parser::specific::{
     item_p, keyword_followed_by_whitespace_p, keyword_p, OrSyntaxErrorTrait,
 };
+use crate::parser::specific::keyword_choice::keyword_choice_p;
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
@@ -73,8 +74,7 @@ fn statement_go_to_p() -> impl Parser<Output = Statement> {
 }
 
 fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
-    keyword_p(Keyword::Wend)
-        .or(keyword_p(Keyword::Else))
+    keyword_choice_p(&[Keyword::Wend, Keyword::Else, Keyword::Loop])
         .and_then(|(k, _)| match k {
             Keyword::Wend => Err(QError::WendWithoutWhile),
             Keyword::Else => Err(QError::ElseWithoutIf),
@@ -87,6 +87,7 @@ mod end {
     use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser};
     use crate::parser::base::tokenizers::{Token, Tokenizer};
     use crate::parser::specific::keyword_choice::keyword_choice_p;
+    use crate::parser::specific::whitespace::whitespace;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
 
     use super::*;
@@ -114,7 +115,7 @@ mod end {
                 let opt_k = allowed_keywords_after_end().parse(tokenizer)?;
                 if opt_k.is_some() {
                     // got it
-                    tokenizer.unread(opt_k.unwrap());
+                    tokenizer.unread(opt_k.unwrap().1);
                     tokenizer.unread(opt_ws.unwrap());
                     return Ok(());
                 }
@@ -132,7 +133,7 @@ mod end {
         }
     }
 
-    fn allowed_keywords_after_end() -> impl Parser<Output = Token> {
+    fn allowed_keywords_after_end() -> impl Parser<Output = (Keyword, Token)> {
         keyword_choice_p(&[
             Keyword::Function,
             Keyword::If,

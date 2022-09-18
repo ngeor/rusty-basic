@@ -3,6 +3,7 @@ use crate::parser::base::parsers::{AndOptTrait, HasOutput, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::expression;
 use crate::parser::specific::item_p;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::types::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
@@ -26,10 +27,10 @@ impl Parser for SubCallOrAssignment {
         match opt_item {
             Some((name_expr, opt_equal_sign)) => match opt_equal_sign {
                 Some(_) => {
-                    let opt_v =
+                    let right_side_expr =
                         expression::demand_expression_node_p("Expected: expression for assignment")
-                            .parse(reader)?;
-                    Ok(Some(Statement::Assignment(name_expr, opt_v.unwrap())))
+                            .parse_non_opt(reader)?;
+                    Ok(Some(Statement::Assignment(name_expr, right_side_expr)))
                 }
                 _ => match expr_to_bare_name_args(name_expr) {
                     Ok((bare_name, Some(args))) => Ok(Some(Statement::SubCall(bare_name, args))),

@@ -3,8 +3,8 @@ use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{
-    AndOptFactoryTrait, AndOptTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait,
-    ManyTrait, NonOptParser, OptAndPC, OrTrait, Parser,
+    AndOptFactoryTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait,
+    ManyTrait, NonOptParser, OrTrait, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
@@ -183,7 +183,7 @@ pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
 
 pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
     file_handle_as_expression_node_p()
-        .preceded_by_ws()
+        .preceded_by_req_ws()
         .or(guarded_expression_node_p())
 }
 

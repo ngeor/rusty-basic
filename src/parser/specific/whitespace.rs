@@ -1,5 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser, TokenPredicate, TokenPredicateParser};
+use crate::parser::base::parsers::{
+    HasOutput, NonOptParser, Parser, TokenPredicate, TokenPredicateParser,
+};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::base::undo_pc::Undo;
 use crate::parser::specific::{TokenKindParser, TokenType};
@@ -9,12 +11,18 @@ pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
     TokenKindParser(TokenType::Whitespace).parser()
 }
 
-pub struct LeadingWhitespace<P> {
+pub struct LeadingWhitespace<P>
+where
+    P: HasOutput,
+{
     parser: P,
     needs_whitespace: bool,
 }
 
-impl<P> LeadingWhitespace<P> {
+impl<P> LeadingWhitespace<P>
+where
+    P: HasOutput,
+{
     pub fn new(parser: P, needs_whitespace: bool) -> Self {
         Self {
             parser,
@@ -25,7 +33,7 @@ impl<P> LeadingWhitespace<P> {
 
 impl<P> HasOutput for LeadingWhitespace<P>
 where
-    P: Parser,
+    P: HasOutput,
 {
     type Output = P::Output;
 }
@@ -52,12 +60,32 @@ where
     }
 }
 
-pub struct TrailingWhitespace<P> {
+impl<P> NonOptParser for LeadingWhitespace<P>
+where
+    P: NonOptParser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let opt_space = whitespace().parse(tokenizer)?;
+        if self.needs_whitespace && opt_space.is_none() {
+            Err(QError::syntax_error("Expected whitespace"))
+        } else {
+            self.parser.parse_non_opt(tokenizer)
+        }
+    }
+}
+
+pub struct TrailingWhitespace<P>
+where
+    P: HasOutput,
+{
     parser: P,
     needs_whitespace: bool,
 }
 
-impl<P> TrailingWhitespace<P> {
+impl<P> TrailingWhitespace<P>
+where
+    P: HasOutput,
+{
     pub fn new(parser: P, needs_whitespace: bool) -> Self {
         Self {
             parser,
@@ -68,7 +96,7 @@ impl<P> TrailingWhitespace<P> {
 
 impl<P> HasOutput for TrailingWhitespace<P>
 where
-    P: Parser,
+    P: HasOutput,
 {
     type Output = P::Output;
 }
@@ -96,7 +124,9 @@ where
 }
 
 // TODO refactor so that LeadingWhitespace becomes a smaller type that depends on this one
-pub struct LeadingWhitespacePreserving<P>(P);
+pub struct LeadingWhitespacePreserving<P>(P)
+where
+    P: HasOutput;
 
 impl<P> HasOutput for LeadingWhitespacePreserving<P>
 where
@@ -121,7 +151,10 @@ where
     }
 }
 
-pub struct SurroundedByWhitespacePreserving<P> {
+pub struct SurroundedByWhitespacePreserving<P>
+where
+    P: HasOutput,
+{
     leading_parser: LeadingWhitespacePreserving<P>,
 }
 
@@ -147,7 +180,10 @@ where
     }
 }
 
-pub struct SurroundedByWhitespace<P> {
+pub struct SurroundedByWhitespace<P>
+where
+    P: HasOutput,
+{
     parser: SurroundedByWhitespacePreserving<P>,
 }
 
@@ -169,97 +205,66 @@ where
     }
 }
 
-pub trait WhitespaceTrait {
-    fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self>
-    where
-        Self: Sized;
+pub trait WhitespaceTrait
+where
+    Self: Sized + HasOutput,
+{
+    fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self>;
 
-    fn preceded_by_opt_ws(self) -> LeadingWhitespace<Self>
-    where
-        Self: Sized,
-    {
+    fn preceded_by_opt_ws(self) -> LeadingWhitespace<Self> {
         self.preceded_by_ws(false)
     }
 
-    fn preceded_by_req_ws(self) -> LeadingWhitespace<Self>
-    where
-        Self: Sized,
-    {
+    fn preceded_by_req_ws(self) -> LeadingWhitespace<Self> {
         self.preceded_by_ws(true)
     }
 
-    fn followed_by_ws(self, mandatory: bool) -> TrailingWhitespace<Self>
-    where
-        Self: Sized;
+    fn followed_by_ws(self, mandatory: bool) -> TrailingWhitespace<Self>;
 
-    fn followed_by_opt_ws(self) -> TrailingWhitespace<Self>
-    where
-        Self: Sized,
-    {
+    fn followed_by_opt_ws(self) -> TrailingWhitespace<Self> {
         self.followed_by_ws(false)
     }
 
-    fn followed_by_req_ws(self) -> TrailingWhitespace<Self>
-    where
-        Self: Sized,
-    {
+    fn followed_by_req_ws(self) -> TrailingWhitespace<Self> {
         self.followed_by_ws(true)
     }
 
-    fn preceded_by_ws_preserving(self) -> LeadingWhitespacePreserving<Self>
-    where
-        Self: Sized;
+    fn preceded_by_ws_preserving(self) -> LeadingWhitespacePreserving<Self>;
 
-    fn surrounded_by_ws_preserving(self) -> SurroundedByWhitespacePreserving<Self>
-    where
-        Self: Sized;
+    fn surrounded_by_ws_preserving(self) -> SurroundedByWhitespacePreserving<Self>;
 
-    fn surrounded_by_opt_ws(self) -> SurroundedByWhitespace<Self>
-    where
-        Self: Sized;
+    fn surrounded_by_opt_ws(self) -> SurroundedByWhitespace<Self>;
 }
 
-impl<P> WhitespaceTrait for P {
-    fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self>
-    where
-        Self: Sized,
-    {
+impl<P> WhitespaceTrait for P
+where
+    P: Sized + HasOutput,
+{
+    fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self> {
         LeadingWhitespace {
             parser: self,
             needs_whitespace: mandatory,
         }
     }
 
-    fn followed_by_ws(self, mandatory: bool) -> TrailingWhitespace<Self>
-    where
-        Self: Sized,
-    {
+    fn followed_by_ws(self, mandatory: bool) -> TrailingWhitespace<Self> {
         TrailingWhitespace {
             parser: self,
             needs_whitespace: mandatory,
         }
     }
 
-    fn preceded_by_ws_preserving(self) -> LeadingWhitespacePreserving<Self>
-    where
-        Self: Sized,
-    {
+    fn preceded_by_ws_preserving(self) -> LeadingWhitespacePreserving<Self> {
         LeadingWhitespacePreserving(self)
     }
 
-    fn surrounded_by_ws_preserving(self) -> SurroundedByWhitespacePreserving<Self>
-    where
-        Self: Sized,
-    {
+    fn surrounded_by_ws_preserving(self) -> SurroundedByWhitespacePreserving<Self> {
         SurroundedByWhitespacePreserving {
             leading_parser: self.preceded_by_ws_preserving(),
         }
     }
 
-    fn surrounded_by_opt_ws(self) -> SurroundedByWhitespace<Self>
-    where
-        Self: Sized,
-    {
+    fn surrounded_by_opt_ws(self) -> SurroundedByWhitespace<Self> {
         SurroundedByWhitespace {
             parser: self.surrounded_by_ws_preserving(),
         }

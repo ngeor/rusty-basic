@@ -59,8 +59,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use crate::parser::test_utils::*;
     use crate::common::*;
+    use crate::parser::test_utils::*;
 
     use super::*;
 

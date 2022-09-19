@@ -3,7 +3,7 @@ use std::fs::File;
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{create_file_tokenizer};
+use crate::parser::specific::create_file_tokenizer;
 use crate::parser::top_level_token::TopLevelTokensParser;
 
 pub use self::types::*;

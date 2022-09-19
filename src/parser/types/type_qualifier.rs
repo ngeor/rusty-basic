@@ -112,15 +112,11 @@ impl TypeQualifier {
     /// `Option<Token>` -> `Option<TypeQualifier>`
     pub fn from_opt_token(opt_token: &Option<Token>) -> Option<Self> {
         match opt_token {
-            Some(token) => {
-                match TokenType::try_from(token.kind) {
-                    Ok(token_type) => {
-                        TryFrom::try_from(token_type).ok()
-                    }
-                    Err(_) => None
-                }
-            }
-            None => None
+            Some(token) => match TokenType::try_from(token.kind) {
+                Ok(token_type) => TryFrom::try_from(token_type).ok(),
+                Err(_) => None,
+            },
+            None => None,
         }
     }
 }

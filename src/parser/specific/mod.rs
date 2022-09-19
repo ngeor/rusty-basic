@@ -13,7 +13,7 @@ use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Location, QError};
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::*;
-use crate::parser::base::readers::{file_char_reader};
+use crate::parser::base::readers::file_char_reader;
 use crate::parser::base::recognizers::*;
 use crate::parser::base::tokenizers::*;
 use crate::parser::expression::expression_node_p;
@@ -100,7 +100,10 @@ impl TryFrom<i32> for TokenType {
         if value >= 0 && value < all_tokens.len() as i32 {
             Ok(all_tokens[value as usize])
         } else {
-            Err(QError::InternalError(format!("Token index {} out of bounds", value)))
+            Err(QError::InternalError(format!(
+                "Token index {} out of bounds",
+                value
+            )))
         }
     }
 }

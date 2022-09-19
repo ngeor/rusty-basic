@@ -6,10 +6,10 @@ use crate::parser::base::parsers::{
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::base::undo_pc::Undo;
+use crate::parser::specific::keyword_choice::keyword_choice_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{item_p, OrSyntaxErrorTrait};
-use crate::parser::specific::keyword_choice::keyword_choice_p;
 use crate::parser::statement;
 use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
@@ -34,12 +34,14 @@ pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
         .preceded_by_req_ws()
 }
 
-pub fn zero_or_more_statements_opt_lazy(keywords: &[Keyword]) -> impl Parser<Output=StatementNodes> + '_ {
+pub fn zero_or_more_statements_opt_lazy(
+    keywords: &[Keyword],
+) -> impl Parser<Output = StatementNodes> + '_ {
     LazyZeroOrMoreStatements { keywords }
 }
 
 struct LazyZeroOrMoreStatements<'a> {
-    keywords: &'a[Keyword]
+    keywords: &'a [Keyword],
 }
 
 impl<'a> HasOutput for LazyZeroOrMoreStatements<'a> {
@@ -51,7 +53,6 @@ impl<'a> Parser for LazyZeroOrMoreStatements<'a> {
         zero_or_more_statements_p(keyword_choice_p(self.keywords)).parse(tokenizer)
     }
 }
-
 
 // When `zero_or_more_statements_p` is called, it must always read first the first statement separator.
 // `top_level_token` handles the case where the first statement does not start with

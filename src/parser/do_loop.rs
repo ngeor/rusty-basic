@@ -22,7 +22,10 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
     keyword_choice_p(&[Keyword::Until, Keyword::While])
         .preceded_by_req_ws()
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
-        .and_demand(zero_or_more_statements_opt_lazy(&[Keyword::Loop]).or_syntax_error("Expected statements"))
+        .and_demand(
+            zero_or_more_statements_opt_lazy(&[Keyword::Loop])
+                .or_syntax_error("Expected statements"),
+        )
         .and_demand(keyword_p(Keyword::Loop).or_syntax_error("DO without LOOP"))
         .fn_map(|((((k, _), condition), statements), _)| DoLoopNode {
             condition,

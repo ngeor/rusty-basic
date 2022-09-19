@@ -124,7 +124,9 @@ where
 }
 
 impl<P> NonOptParser for TrailingWhitespace<P>
-where P : NonOptParser {
+where
+    P: NonOptParser,
+{
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let result = self.parser.parse_non_opt(tokenizer)?;
         if self.needs_whitespace {

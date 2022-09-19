@@ -8,7 +8,7 @@ pub trait CharReader {
 }
 
 #[cfg(test)]
-use std::io::{Cursor};
+use std::io::Cursor;
 #[cfg(test)]
 pub fn string_char_reader<T>(input: T) -> impl CharReader
 where

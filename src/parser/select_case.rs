@@ -8,7 +8,9 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{demand_keyword_pair_p, keyword_p, keyword_pair_p, OrSyntaxErrorTrait, TokenType};
+use crate::parser::specific::{
+    demand_keyword_pair_p, keyword_p, keyword_pair_p, OrSyntaxErrorTrait, TokenType,
+};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -87,7 +89,9 @@ fn case_block() -> impl Parser<Output = CaseBlockNode> {
 
 fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
     case_expression_list()
-        .and_demand(statements::zero_or_more_statements_opt_lazy(&[Keyword::Case, Keyword::End]).or_syntax_error("Expected statements")
+        .and_demand(
+            statements::zero_or_more_statements_opt_lazy(&[Keyword::Case, Keyword::End])
+                .or_syntax_error("Expected statements"),
         )
         .fn_map(|(expression_list, statements)| CaseBlockNode {
             expression_list,
@@ -109,22 +113,22 @@ impl Parser for CaseExpressionParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match reader.read()? {
             Some(token) => {
-                let found_else = token.kind == TokenType::Keyword as i32 && token.text == Keyword::Else.as_str();
+                let found_else =
+                    token.kind == TokenType::Keyword as i32 && token.text == Keyword::Else.as_str();
                 reader.unread(token);
                 if found_else {
                     Ok(None)
                 } else {
                     match Self::case_is()
                         .or(SimpleOrRangeParser::new())
-                        .parse(reader)? {
+                        .parse(reader)?
+                    {
                         Some(x) => Ok(Some(x)),
-                        None => Err(QError::syntax_error("Expected: IS or expression"))
+                        None => Err(QError::syntax_error("Expected: IS or expression")),
                     }
                 }
             }
-            None => {
-                Ok(None)
-            }
+            None => Ok(None),
         }
     }
 }
@@ -187,7 +191,9 @@ impl SimpleOrRangeParser {
 
 fn case_else() -> impl Parser<Output = StatementNodes> {
     keyword_pair_p(Keyword::Case, Keyword::Else)
-        .and_demand(statements::zero_or_more_statements_opt_lazy(&[Keyword::End]).or_syntax_error("Expected statements")
+        .and_demand(
+            statements::zero_or_more_statements_opt_lazy(&[Keyword::End])
+                .or_syntax_error("Expected statements"),
         )
         .keep_right()
 }

@@ -27,7 +27,6 @@ use crate::parser::{
 /// but it is specific to QBasic
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TokenType {
-    Unknown,
     Eol,
     Whitespace,
     Digits,
@@ -58,6 +57,7 @@ pub enum TokenType {
     Identifier,
     OctDigits,
     HexDigits,
+    Unknown,
 }
 
 impl TryFrom<i32> for TokenType {
@@ -65,7 +65,6 @@ impl TryFrom<i32> for TokenType {
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         let all_tokens = [
-            TokenType::Unknown,
             TokenType::Eol,
             TokenType::Whitespace,
             TokenType::Digits,
@@ -96,6 +95,7 @@ impl TryFrom<i32> for TokenType {
             TokenType::Identifier,
             TokenType::OctDigits,
             TokenType::HexDigits,
+            TokenType::Unknown,
         ];
         if value >= 0 && value < all_tokens.len() as i32 {
             Ok(all_tokens[value as usize])
@@ -207,13 +207,13 @@ impl OctHexDigitsRecognizer {
 
 pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
     vec![
-        Box::new(any_single_char_recognizer()),
         Box::new(single_new_line_recognizer()),
         Box::new(many_white_space_recognizer()),
         Box::new(many_digits_recognizer()),
         Box::new(single_char_recognizer('(')),
         Box::new(single_char_recognizer(')')),
         Box::new(single_char_recognizer(':')),
+        Box::new(single_char_recognizer(';')),
         Box::new(single_char_recognizer(',')),
         Box::new(single_char_recognizer('\'')),
         Box::new(single_char_recognizer('"')),
@@ -243,6 +243,7 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
         Box::new(OctHexDigitsRecognizer {
             mode: OctOrHex::Hex,
         }),
+        Box::new(any_single_char_recognizer()),
     ]
 }
 
@@ -270,7 +271,7 @@ pub struct KeywordParser {
 
 impl TokenPredicate for KeywordParser {
     fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Keyword as i32 && token.text == self.keyword.as_str()
+        token.kind == TokenType::Keyword as i32 && token.text.eq_ignore_ascii_case(self.keyword.as_str())
     }
 }
 

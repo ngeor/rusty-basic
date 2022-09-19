@@ -10,3 +10,4 @@ pub mod recognizers;
 pub mod surrounded_by;
 pub mod tokenizers;
 pub mod undo_pc;
+pub mod logging;

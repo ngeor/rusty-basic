@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::iter;
 
 use super::readers::CharReader;
@@ -26,6 +27,12 @@ impl RowCol {
             row: self.row,
             col: self.col + 1,
         }
+    }
+}
+
+impl Display for RowCol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.row, self.col)
     }
 }
 
@@ -213,7 +220,10 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
     }
 
     fn position(&self) -> RowCol {
-        self.tokenizer.pos
+        match self.buffer.last() {
+            Some(token) => token.position.begin,
+            _ => self.tokenizer.pos
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 use std::fs::File;
 
 use crate::common::*;
+use crate::parser::base::logging::LoggingTrait;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::create_file_tokenizer;
@@ -69,7 +70,7 @@ pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QEr
 }
 
 fn parse_reader(reader: &mut impl Tokenizer) -> Result<ProgramNode, QErrorNode> {
-    match TopLevelTokensParser::new().parse(reader) {
+    match TopLevelTokensParser::new().logging("TopLevelTokensParser").parse(reader) {
         Ok(opt_program) => Ok(opt_program.unwrap_or_default()),
         Err(err) => Err(ErrorEnvelope::Pos(err, reader.position().into())),
     }

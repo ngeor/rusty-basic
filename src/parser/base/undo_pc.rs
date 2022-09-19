@@ -12,6 +12,14 @@ impl Undo for Token {
     }
 }
 
+impl Undo for (Option<Token>, Token, Option<Token>) {
+    fn undo(self, tokenizer: &mut impl Tokenizer) {
+        self.2.undo(tokenizer);
+        self.1.undo(tokenizer);
+        self.0.undo(tokenizer);
+    }
+}
+
 impl<T> Undo for Option<T>
 where
     T: Undo,

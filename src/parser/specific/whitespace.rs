@@ -6,7 +6,6 @@ use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::base::undo_pc::Undo;
 use crate::parser::specific::{TokenKindParser, TokenType};
 
-#[deprecated]
 pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
     TokenKindParser(TokenType::Whitespace).parser()
 }

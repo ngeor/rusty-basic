@@ -1,6 +1,6 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::and_pc::TokenParserAndParserTrait;
+    use crate::parser::base::and_pc::AndTrait;
     use crate::parser::base::parsers::{
         AndOptTrait, FnMapTrait, KeepRightTrait, ManyTrait, Parser,
     };
@@ -13,7 +13,7 @@ pub mod parser {
             .and_opt(
                 expression::guarded_file_handle_or_expression_p().and_opt(
                     comma_surrounded_by_opt_ws()
-                        .token_and(expression::file_handle_or_expression_p())
+                        .and(expression::file_handle_or_expression_p())
                         .keep_right()
                         .one_or_more(),
                 ),

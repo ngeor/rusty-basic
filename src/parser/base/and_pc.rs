@@ -2,23 +2,23 @@
 
 use crate::common::QError;
 use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
-use crate::parser::base::tokenizers::{Token, Tokenizer};
+use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::base::undo_pc::Undo;
 
-pub struct TokenParserAndParser<L, R>(L, R)
-where
-    L: Parser<Output = Token>;
+pub struct AndPC<L, R>(L, R);
 
-impl<L, R> HasOutput for TokenParserAndParser<L, R>
+impl<L, R> HasOutput for AndPC<L, R>
 where
-    L: Parser<Output = Token>,
-    R: Parser,
+    L: HasOutput,
+    R: HasOutput,
 {
-    type Output = (Token, R::Output);
+    type Output = (L::Output, R::Output);
 }
 
-impl<L, R> Parser for TokenParserAndParser<L, R>
+impl<L, R> Parser for AndPC<L, R>
 where
-    L: Parser<Output = Token>,
+    L: Parser,
+    L::Output: Undo,
     R: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
@@ -26,7 +26,7 @@ where
             Some(left) => match self.1.parse(tokenizer)? {
                 Some(right) => Ok(Some((left, right))),
                 None => {
-                    tokenizer.unread(left);
+                    left.undo(tokenizer);
                     Ok(None)
                 }
             },
@@ -35,26 +35,19 @@ where
     }
 }
 
-pub fn token_parser_and_parser<L, R>(left: L, right: R) -> impl Parser<Output = (Token, R::Output)>
+pub trait AndTrait<P>
 where
-    L: Parser<Output = Token>,
-    R: Parser,
+    Self: Sized,
 {
-    TokenParserAndParser(left, right)
+    fn and(self, other: P) -> AndPC<Self, P>;
 }
 
-pub trait TokenParserAndParserTrait<P> {
-    fn token_and(self, other: P) -> TokenParserAndParser<Self, P>
-    where
-        Self: Sized + Parser<Output = Token>;
-}
-
-impl<S, P> TokenParserAndParserTrait<P> for S
+impl<S, P> AndTrait<P> for S
 where
-    S: Parser<Output = Token>,
+    S: Sized,
 {
-    fn token_and(self, other: P) -> TokenParserAndParser<Self, P> {
-        TokenParserAndParser(self, other)
+    fn and(self, other: P) -> AndPC<Self, P> {
+        AndPC(self, other)
     }
 }
 

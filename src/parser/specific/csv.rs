@@ -34,6 +34,6 @@ where
     parser.one_or_more_delimited_by_allow_missing(comma_surrounded_by_opt_ws())
 }
 
-pub fn comma_surrounded_by_opt_ws() -> impl Parser<Output = Token> {
-    item_p(',').surrounded_by_opt_ws()
+pub fn comma_surrounded_by_opt_ws() -> impl Parser<Output = (Option<Token>, Token, Option<Token>)> {
+    item_p(',').surrounded_by_ws_preserving()
 }

@@ -214,7 +214,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.parser
             .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|(l, m, r)| m))
+            .map(|opt_result| opt_result.map(|(_, m, _)| m))
     }
 }
 

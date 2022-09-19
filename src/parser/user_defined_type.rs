@@ -47,7 +47,6 @@ use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, ManyTrait, NonOptParser, OrTrait, Parser};
 use crate::parser::comment;
-use crate::parser::expression;
 use crate::parser::expression::expression_node_p;
 use crate::parser::name;
 use crate::parser::specific::keyword_choice::keyword_choice_p;

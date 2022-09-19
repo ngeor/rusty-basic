@@ -8,9 +8,7 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{
-    demand_keyword_pair_p, keyword_p, keyword_pair_p, OrSyntaxErrorTrait,
-};
+use crate::parser::specific::{demand_keyword_pair_p, keyword_p, keyword_pair_p, OrSyntaxErrorTrait, TokenType};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -109,15 +107,25 @@ impl HasOutput for CaseExpressionParser {
 
 impl Parser for CaseExpressionParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let (reader, result) = keyword_p(Keyword::Else).peek().parse(reader)?;
-        if result.is_some() {
-            return Ok(None);
+        match reader.read()? {
+            Some(token) => {
+                let found_else = token.kind == TokenType::Keyword as i32 && token.text == Keyword::Else.as_str();
+                reader.unread(token);
+                if found_else {
+                    Ok(None)
+                } else {
+                    match Self::case_is()
+                        .or(SimpleOrRangeParser::new())
+                        .parse(reader)? {
+                        Some(x) => Ok(Some(x)),
+                        None => Err(QError::syntax_error("Expected: IS or expression"))
+                    }
+                }
+            }
+            None => {
+                Ok(None)
+            }
         }
-
-        Self::case_is()
-            .or(SimpleOrRangeParser::new())
-            .or_syntax_error("Expected: IS or expression")
-            .parse(reader)
     }
 }
 

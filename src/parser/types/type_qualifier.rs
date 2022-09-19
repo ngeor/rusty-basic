@@ -111,7 +111,17 @@ impl TypeQualifier {
 
     /// `Option<Token>` -> `Option<TypeQualifier>`
     pub fn from_opt_token(opt_token: &Option<Token>) -> Option<Self> {
-        opt_token.and_then(|token| Self::try_from(token).ok())
+        match opt_token {
+            Some(token) => {
+                match TokenType::try_from(token.kind) {
+                    Ok(token_type) => {
+                        TryFrom::try_from(token_type).ok()
+                    }
+                    Err(_) => None
+                }
+            }
+            None => None
+        }
     }
 }
 
@@ -148,17 +158,6 @@ impl From<TypeQualifier> for char {
             TypeQualifier::PercentInteger => '%',
             TypeQualifier::AmpersandLong => '&',
         }
-    }
-}
-
-// Token -> TypeQualifier
-
-impl TryFrom<Token> for TypeQualifier {
-    type Error = QError;
-
-    fn try_from(token: Token) -> Result<TypeQualifier, QError> {
-        let token_type = TokenType::try_from(token.kind)?;
-        TryFrom::try_from(token_type)
     }
 }
 

@@ -377,7 +377,7 @@ pub fn identifier_without_dot_p() -> impl Parser<Output = Token> {
 // MapErr
 //
 
-struct MapErrParser<P>(P, QError);
+pub struct MapErrParser<P>(P, QError);
 
 impl<P> HasOutput for MapErrParser<P>
 where
@@ -391,7 +391,7 @@ where
     P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.0.parse(tokenizer).map_err(|_| self.1)
+        self.0.parse(tokenizer).map_err(|_| self.1.clone())
     }
 }
 
@@ -400,7 +400,7 @@ where
     P: NonOptParser,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map_err(|_| self.1)
+        self.0.parse_non_opt(tokenizer).map_err(|_| self.1.clone())
     }
 }
 

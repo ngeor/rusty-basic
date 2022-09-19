@@ -13,7 +13,7 @@ use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     identifier_without_dot_p, in_parenthesis_p, item_p, keyword_followed_by_whitespace_p,
-    keyword_p, OrSyntaxErrorTrait, TokenType,
+    keyword_p, OrSyntaxErrorTrait,
 };
 use crate::parser::types::*;
 
@@ -109,17 +109,6 @@ impl HasOutput for ExtendedTypeParser {
 
 impl Parser for ExtendedTypeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match reader.read()? {
-            Some(token) => {
-                if token.kind == TokenType::Keyword as i32 {
-                } else if token.kind == TokenType::Identifier as i32 {
-                } else {
-                    reader.unread(token);
-                    Ok(None)
-                }
-            }
-            None => Ok(None),
-        }
         let opt_identifier = identifier_without_dot_p().with_pos().parse(reader)?;
         match opt_identifier {
             Some(Locatable { element: x, pos }) => match Keyword::from_str(&x.text) {

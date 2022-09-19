@@ -187,7 +187,7 @@ mod tests {
             let input = inputs[i];
             let expected_output = expected_outputs[i];
             let mut eol_reader = create_string_tokenizer(input);
-            let mut parser = bare_name_p();
+            let parser = bare_name_p();
             let result = parser.parse(&mut eol_reader).expect("Should succeed");
             assert_eq!(result, Some(BareName::from(expected_output)));
         }

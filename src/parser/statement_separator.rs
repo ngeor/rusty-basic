@@ -4,7 +4,7 @@ use crate::parser::base::parsers::{
 };
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{eol_or_whitespace, OrSyntaxErrorTrait, TokenKindParser, TokenType};
+use crate::parser::specific::{eol_or_whitespace, TokenKindParser, TokenType};
 
 pub enum Separator {
     Comment,

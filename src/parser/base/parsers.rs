@@ -195,7 +195,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.0
             .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|(l, r)| l))
+            .map(|opt_result| opt_result.map(|(l, _)| l))
     }
 }
 
@@ -204,7 +204,7 @@ where
     P: NonOptParser<Output = (L, R)>,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map(|(l, r)| l)
+        self.0.parse_non_opt(tokenizer).map(|(l, _)| l)
     }
 }
 
@@ -243,7 +243,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.0
             .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|(l, r)| r))
+            .map(|opt_result| opt_result.map(|(_, r)| r))
     }
 }
 
@@ -252,7 +252,7 @@ where
     P: NonOptParser<Output = (L, R)>,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map(|(l, r)| r)
+        self.0.parse_non_opt(tokenizer).map(|(_, r)| r)
     }
 }
 
@@ -291,7 +291,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.0
             .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|((l, m), r)| m))
+            .map(|opt_result| opt_result.map(|((_, m), _)| m))
     }
 }
 
@@ -300,7 +300,7 @@ where
     P: NonOptParser<Output = ((L, M), R)>,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map(|((l, m), r)| m)
+        self.0.parse_non_opt(tokenizer).map(|((_, m), _)| m)
     }
 }
 

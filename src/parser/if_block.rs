@@ -5,7 +5,6 @@ use crate::parser::base::parsers::{
 };
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::specific::keyword_choice::keyword_choice_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{demand_keyword_pair_p, keyword_p, OrSyntaxErrorTrait};

@@ -100,8 +100,8 @@ pub struct AndOptPC<L, R>(L, R);
 
 impl<L, R> HasOutput for AndOptPC<L, R>
 where
-    L: Parser,
-    R: Parser,
+    L: HasOutput,
+    R: HasOutput,
 {
     type Output = (L::Output, Option<R::Output>);
 }

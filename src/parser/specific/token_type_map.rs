@@ -2,6 +2,7 @@ use crate::common::QError;
 use crate::parser::base::parsers::{HasOutput, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::TokenType;
+use std::convert::TryFrom;
 
 pub trait TokenTypeMap: HasOutput {
     fn try_map(&self, token_type: TokenType) -> Option<Self::Output>;
@@ -30,7 +31,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) => {
-                let token_type: TokenType = token.kind as TokenType;
+                let token_type: TokenType = TokenType::try_from(token.kind)?;
                 match self.0.try_map(token_type) {
                     Some(result) => Ok(Some(result)),
                     None => {

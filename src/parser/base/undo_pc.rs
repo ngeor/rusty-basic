@@ -1,7 +1,6 @@
 use crate::common::QError;
 use crate::parser::base::parsers::{HasOutput, Parser};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
-use std::marker::PhantomData;
 
 pub trait Undo {
     fn undo(self, tokenizer: &mut impl Tokenizer);
@@ -51,20 +50,20 @@ where
     }
 }
 
-pub struct UndoParser<P, F, O>(P, F, O);
+pub struct UndoParser<P, F>(P, F);
 
-impl<P, F, O> HasOutput for UndoParser<P, F, O>
+impl<P, F> HasOutput for UndoParser<P, F>
 where
-    P: HasOutput<Output = O>,
-    O: Undo,
+    P: HasOutput,
+    P::Output: Undo,
 {
     type Output = P::Output;
 }
 
-impl<P, F, O> Parser for UndoParser<P, F, O>
+impl<P, F> Parser for UndoParser<P, F>
 where
-    P: Parser<Output = O>,
-    O: Undo,
+    P: Parser,
+    P::Output: Undo,
     F: Fn(&P::Output) -> Result<bool, QError>,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
@@ -83,21 +82,21 @@ where
     }
 }
 
-pub trait UndoTrait<F, O> {
-    fn validate(self, f: F) -> UndoParser<Self, F, O>
+pub trait UndoTrait<F> {
+    fn validate(self, f: F) -> UndoParser<Self, F>
     where
-        Self: Sized + Parser<Output = O>,
-        F: Fn(&O) -> Result<bool, QError>,
-        O: Undo;
+        Self: Sized + Parser,
+        F: Fn(&Self::Output) -> Result<bool, QError>,
+        Self::Output: Undo;
 }
 
-impl<P, F, O> UndoTrait<F, O> for P
+impl<P, F> UndoTrait<F> for P
 where
-    P: Parser<Output = O>,
-    F: Fn(&O) -> Result<bool, QError>,
-    O: Undo,
+    P: Parser,
+    P::Output: Undo,
+    F: Fn(&P::Output) -> Result<bool, QError>,
 {
-    fn validate(self, f: F) -> UndoParser<Self, F, O> {
-        UndoParser(self, f, PhantomData)
+    fn validate(self, f: F) -> UndoParser<Self, F> {
+        UndoParser(self, f)
     }
 }

@@ -5,6 +5,7 @@ pub mod try_from_token_type;
 pub mod whitespace;
 pub mod with_pos;
 
+use std::convert::TryFrom;
 use std::fs::File;
 use std::str::Chars;
 
@@ -57,6 +58,14 @@ pub enum TokenType {
     Identifier,
     OctDigits,
     HexDigits,
+}
+
+impl TryFrom<i32> for TokenType {
+    type Error = QError;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        todo!()
+    }
 }
 
 #[derive(Clone, Copy)]

@@ -122,7 +122,7 @@ impl Parser for ExtendedTypeParser {
         }
         let opt_identifier = identifier_without_dot_p().with_pos().parse(reader)?;
         match opt_identifier {
-            Some(Locatable { element: x, pos }) => match Keyword::from_str(x.as_str()) {
+            Some(Locatable { element: x, pos }) => match Keyword::from_str(&x.text) {
                 Ok(Keyword::Single) => Self::built_in(TypeQualifier::BangSingle),
                 Ok(Keyword::Double) => Self::built_in(TypeQualifier::HashDouble),
                 Ok(Keyword::String_) => Self::string(reader),
@@ -135,7 +135,7 @@ impl Parser for ExtendedTypeParser {
                     if x.text.len() > name::MAX_LENGTH {
                         Err(QError::IdentifierTooLong)
                     } else {
-                        Ok(Some(DimType::UserDefined(BareName::from(x).at(pos))))
+                        Ok(Some(DimType::UserDefined(BareName::from(x.text).at(pos))))
                     }
                 }
             },

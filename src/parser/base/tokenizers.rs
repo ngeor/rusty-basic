@@ -35,6 +35,7 @@ pub struct Position {
 }
 
 pub struct Token {
+    // TODO support enum type
     pub kind: i32,
     pub text: String,
     pub position: Position,

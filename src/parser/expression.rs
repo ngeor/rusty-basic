@@ -401,6 +401,7 @@ pub mod word {
     };
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
+    use std::convert::TryFrom;
 
     use super::lazy_expression_node_p;
 
@@ -520,7 +521,7 @@ pub mod word {
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
             match tokenizer.read()? {
                 Some(token) => {
-                    let token_type = token.kind as TokenType;
+                    let token_type = TokenType::try_from(token.kind)?;
                     tokenizer.unread(token);
                     match token_type {
                         TokenType::Dot

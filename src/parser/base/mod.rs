@@ -2,6 +2,7 @@
 //! it's generic and not specific to QBasic
 pub mod and_pc;
 pub mod and_then_pc;
+pub mod delimited_pc;
 pub mod guard_pc;
 pub mod parsers;
 pub mod readers;

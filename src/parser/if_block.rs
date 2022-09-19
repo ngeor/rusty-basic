@@ -1,4 +1,5 @@
 use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::guard_pc::GuardTrait;
 use crate::parser::base::parsers::{
     AndOptTrait, FnMapTrait, KeepMiddleTrait, KeepRightTrait, ManyTrait, OrTrait, Parser,
 };
@@ -106,11 +107,9 @@ fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
 
 fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
     else_if_expr_then_p()
-        .and_demand(statements::zero_or_more_statements_p(keyword_choice_p(&[
-            Keyword::End,
-            Keyword::Else,
-            Keyword::ElseIf,
-        ])))
+        .and_demand(statements::zero_or_more_statements_non_opt(
+            keyword_choice_p(&[Keyword::End, Keyword::Else, Keyword::ElseIf]),
+        ))
         .fn_map(|(condition, statements)| ConditionalBlockNode {
             condition,
             statements,
@@ -118,11 +117,9 @@ fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
 }
 
 fn else_block_p() -> impl Parser<Output = StatementNodes> {
-    keyword_p(Keyword::Else)
-        .and_demand(statements::zero_or_more_statements_p(keyword_p(
-            Keyword::End,
-        )))
-        .keep_right()
+    keyword_p(Keyword::Else).then_use(statements::zero_or_more_statements_p(keyword_p(
+        Keyword::End,
+    )))
 }
 
 #[cfg(test)]

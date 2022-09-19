@@ -89,7 +89,7 @@ fn case_block() -> impl Parser<Output = CaseBlockNode> {
 
 fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
     case_expression_list()
-        .and_demand(statements::zero_or_more_statements_p(
+        .and_demand(statements::zero_or_more_statements_non_opt(
             keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
         ))
         .fn_map(|(expression_list, statements)| CaseBlockNode {

@@ -1,4 +1,5 @@
 use crate::common::*;
+use crate::parser::base::delimited_pc::DelimitedTrait;
 use crate::parser::base::guard_pc::GuardTrait;
 use crate::parser::base::parsers::{
     AndOptFactoryTrait, HasOutput, KeepLeftTrait, ManyTrait, NonOptParser, Parser,
@@ -35,7 +36,21 @@ pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
 // When `zero_or_more_statements_p` is called, it must always read first the first statement separator.
 // `top_level_token` handles the case where the first statement does not start with
 // a separator.
-pub fn zero_or_more_statements_p<S>(exit_source: S) -> impl NonOptParser<Output = StatementNodes>
+pub fn zero_or_more_statements_p<S>(exit_source: S) -> impl Parser<Output = StatementNodes>
+where
+    S: Parser,
+    S::Output: Undo,
+{
+    // first separator
+    // loop
+    //      negate exit source
+    //      statement node and separator
+    Separator::NonComment.then_use(guarded_statement(exit_source).zero_or_more())
+}
+
+pub fn zero_or_more_statements_non_opt<S>(
+    exit_source: S,
+) -> impl NonOptParser<Output = StatementNodes>
 where
     S: Parser,
     S::Output: Undo,

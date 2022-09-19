@@ -5,9 +5,11 @@ use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
 use crate::parser::specific::with_pos::WithPosTrait;
+use crate::parser::specific::TokenType;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
+use std::convert::TryFrom;
 
 pub struct TopLevelTokensParser;
 
@@ -29,15 +31,16 @@ impl Parser for TopLevelTokensParser {
             let opt_item = reader.read()?;
             match opt_item {
                 Some(ch) => {
-                    if ch == ' ' {
+                    let token_type = TokenType::try_from(ch.kind)?;
+                    if token_type == TokenType::Whitespace {
                         // skip whitespace
-                    } else if ch == '\r' || ch == '\n' || ch == ':' {
+                    } else if token_type == TokenType::Eol || token_type == TokenType::Colon {
                         read_separator = true;
                     } else {
                         // if it is a comment, we are allowed to read it without a separator
-                        let can_read = ch == '\'' || read_separator;
+                        let can_read = token_type == TokenType::SingleQuote || read_separator;
                         if !can_read {
-                            return Err(QError::SyntaxError(format!("No separator: {}", ch)));
+                            return Err(QError::SyntaxError(format!("No separator: {}", ch.text)));
                         }
                         reader.unread(ch);
                         let opt_top_level_token = top_level_token_one_p().parse(reader)?;

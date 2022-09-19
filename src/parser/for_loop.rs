@@ -18,7 +18,7 @@ use crate::parser::types::*;
 
 pub fn for_loop_p() -> impl Parser<Output = Statement> {
     parse_for_step_p()
-        .and_demand(statements::zero_or_more_statements_p(keyword_p(
+        .and_demand(statements::zero_or_more_statements_non_opt(keyword_p(
             Keyword::Next,
         )))
         .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))

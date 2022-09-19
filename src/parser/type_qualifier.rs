@@ -14,7 +14,9 @@ struct TypeQualifierPredicate;
 
 impl TokenPredicate for TypeQualifierPredicate {
     fn test(&self, token: &Token) -> bool {
-        TypeQualifier::try_from(token.kind as TokenType).is_ok()
+        TokenType::try_from(token.kind)
+            .and_then(TypeQualifier::try_from)
+            .is_ok()
     }
 }
 

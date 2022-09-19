@@ -105,7 +105,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
         .and_demand(comment::comments_and_whitespace_p())
         .fn_map(
-            |((((Locatable { element, pos }, _), _), element_type), comments)| {
+            |(((Locatable { element, pos }, _), element_type), comments)| {
                 Locatable::new(Element::new(element, element_type, comments), pos)
             },
         )

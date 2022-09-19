@@ -157,7 +157,7 @@ impl TryFrom<Token> for TypeQualifier {
     type Error = QError;
 
     fn try_from(token: Token) -> Result<TypeQualifier, QError> {
-        let token_type = token.kind as TokenType;
+        let token_type = TokenType::try_from(token.kind)?;
         TryFrom::try_from(token_type)
     }
 }

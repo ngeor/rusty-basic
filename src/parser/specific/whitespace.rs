@@ -123,6 +123,19 @@ where
     }
 }
 
+impl<P> NonOptParser for TrailingWhitespace<P>
+where P : NonOptParser {
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let result = self.parser.parse_non_opt(tokenizer)?;
+        if self.needs_whitespace {
+            whitespace().parse_non_opt(tokenizer)?;
+        } else {
+            whitespace().parse(tokenizer)?;
+        }
+        Ok(result)
+    }
+}
+
 // TODO refactor so that LeadingWhitespace becomes a smaller type that depends on this one
 pub struct LeadingWhitespacePreserving<P>(P)
 where

@@ -89,9 +89,8 @@ fn case_block() -> impl Parser<Output = CaseBlockNode> {
 
 fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
     case_expression_list()
-        .and_demand(statements::zero_or_more_statements_non_opt(
-            keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
-        ))
+        .and_demand(statements::zero_or_more_statements_opt_lazy(&[Keyword::Case, Keyword::End]).or_syntax_error("Expected statements")
+        )
         .fn_map(|(expression_list, statements)| CaseBlockNode {
             expression_list,
             statements,
@@ -180,9 +179,8 @@ impl SimpleOrRangeParser {
 
 fn case_else() -> impl Parser<Output = StatementNodes> {
     keyword_pair_p(Keyword::Case, Keyword::Else)
-        .and_demand(statements::zero_or_more_statements_p(keyword_p(
-            Keyword::End,
-        )))
+        .and_demand(statements::zero_or_more_statements_opt_lazy(&[Keyword::End]).or_syntax_error("Expected statements")
+        )
         .keep_right()
 }
 

@@ -82,11 +82,11 @@ fn multi_line_if_p() -> impl Parser<
         Option<StatementNodes>,
     ),
 > {
-    statements::zero_or_more_statements_p(keyword_choice_p(&[
+    statements::zero_or_more_statements_opt_lazy(&[
         Keyword::End,
         Keyword::Else,
         Keyword::ElseIf,
-    ]))
+    ])
     .and_opt(else_if_block_p().one_or_more())
     .and_opt(else_block_p())
     .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::If))
@@ -107,9 +107,9 @@ fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
 
 fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
     else_if_expr_then_p()
-        .and_demand(statements::zero_or_more_statements_non_opt(
-            keyword_choice_p(&[Keyword::End, Keyword::Else, Keyword::ElseIf]),
-        ))
+        .and_demand(statements::zero_or_more_statements_opt_lazy(
+            &[Keyword::End, Keyword::Else, Keyword::ElseIf]).or_syntax_error("Expected statements"),
+        )
         .fn_map(|(condition, statements)| ConditionalBlockNode {
             condition,
             statements,
@@ -117,9 +117,9 @@ fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
 }
 
 fn else_block_p() -> impl Parser<Output = StatementNodes> {
-    keyword_p(Keyword::Else).then_use(statements::zero_or_more_statements_p(keyword_p(
+    keyword_p(Keyword::Else).then_use(statements::zero_or_more_statements_opt_lazy(&[
         Keyword::End,
-    )))
+    ]))
 }
 
 #[cfg(test)]

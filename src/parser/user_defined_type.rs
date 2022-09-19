@@ -45,9 +45,10 @@
 use crate::common::{Locatable, QError};
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, ManyTrait, OrTrait, Parser};
+use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, ManyTrait, NonOptParser, OrTrait, Parser};
 use crate::parser::comment;
 use crate::parser::expression;
+use crate::parser::expression::expression_node_p;
 use crate::parser::name;
 use crate::parser::specific::keyword_choice::keyword_choice_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
@@ -68,8 +69,8 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
                 .with_pos()
                 .or_syntax_error("Expected: name after TYPE"),
         )
-        .and_demand(comment::comments_and_whitespace_p())
-        .and_demand(element_nodes_p())
+        .and_demand(comment::comments_and_whitespace_p().or_syntax_error("Expected comments and whitespace"))
+        .and_demand(element_nodes_p().or_syntax_error("Expected elements nodes"))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Type))
         .fn_map(|((((_, name), comments), elements), _)| {
             UserDefinedType::new(name, comments, elements)
@@ -103,7 +104,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
         .with_pos()
         .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
-        .and_demand(comment::comments_and_whitespace_p())
+        .and_demand(comment::comments_and_whitespace_p().or_syntax_error("Expected comments and whitespace"))
         .fn_map(
             |(((Locatable { element, pos }, _), element_type), comments)| {
                 Locatable::new(Element::new(element, element_type, comments), pos)
@@ -139,8 +140,8 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
         .fn_map(ElementType::UserDefined))
 }
 
-fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> {
-    expression::demand_expression_node_p("Expected: string length").and_then(
+fn demand_string_length_p() -> impl NonOptParser<Output = ExpressionNode> {
+    expression_node_p().and_then(
         |Locatable { element, pos }| match element {
             Expression::IntegerLiteral(i) => {
                 if i > 0 && i < crate::variant::MAX_INTEGER {
@@ -155,7 +156,7 @@ fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> {
             }
             _ => Err(QError::syntax_error("Illegal string length")),
         },
-    )
+    ).or_syntax_error("Expected: string length")
 }
 
 #[cfg(test)]

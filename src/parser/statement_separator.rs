@@ -38,7 +38,6 @@ fn non_comment_separator() -> impl Parser<Output = ()> {
         .or(colon_separator_p())
         .or(eol_separator_p())
         .preceded_by_opt_ws()
-        .or_syntax_error("Expected: end-of-statement")
         .fn_map(|_| ())
 }
 

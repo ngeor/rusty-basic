@@ -1,4 +1,5 @@
 use crate::common::*;
+use crate::parser::base::logging::LoggingTrait;
 use crate::parser::base::parsers::{FnMapTrait, HasOutput, OrTrait, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::declaration;
@@ -10,7 +11,6 @@ use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
 use std::convert::TryFrom;
-use crate::parser::base::logging::LoggingTrait;
 
 pub struct TopLevelTokensParser;
 
@@ -72,5 +72,6 @@ fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
         .or(implementation::implementation_p())
         .or(statement::statement_p().fn_map(TopLevelToken::Statement))
         .or(user_defined_type::user_defined_type_p().fn_map(TopLevelToken::UserDefinedType))
-        .with_pos().logging("top_level_token_one_p")
+        .with_pos()
+        .logging("top_level_token_one_p")
 }

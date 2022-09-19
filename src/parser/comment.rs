@@ -11,7 +11,9 @@ use crate::parser::types::*;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<Output = Statement> {
-    comment_as_string().fn_map(Statement::Comment).logging("comment_p")
+    comment_as_string()
+        .fn_map(Statement::Comment)
+        .logging("comment_p")
 }
 
 /// Reads multiple comments and the surrounding whitespace.
@@ -29,14 +31,15 @@ pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>
 
 fn comment_as_string() -> impl Parser<Output = String> {
     // TODO prevent unwrap_or_default with NonOptParser
-    item_p('\'').logging("\tcomment_as_string item_p")
+    item_p('\'')
+        .logging("comment_as_string item_p")
         .and_opt(non_eol())
         .keep_right()
         .fn_map(|x| token_list_to_string(&x.unwrap_or_default()))
 }
 
 fn non_eol() -> impl Parser<Output = TokenList> {
-    NonEol.parser().one_or_more().logging("\t\tnon_eol")
+    NonEol.parser().one_or_more().logging("non_eol")
 }
 
 struct NonEol;

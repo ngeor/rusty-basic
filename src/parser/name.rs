@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use crate::common::QError;
 use crate::parser::base::and_then_pc::AndThenTrait;
+use crate::parser::base::logging::LoggingTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, Parser};
 use crate::parser::base::tokenizers::{token_list_to_string, Token, TokenList, Tokenizer};
 use crate::parser::base::undo_pc::{Undo, UndoTrait};
@@ -17,8 +18,9 @@ use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 /// is not a keyword (with the exception of strings, e.g. `end$`).
 pub fn name_with_dot_p() -> impl Parser<Output = Name> {
     identifier_with_dot()
+        .logging("identifier_with_dot")
         .and_then(ensure_token_list_length)
-        .and_opt(type_qualifier_as_token())
+        .and_opt(type_qualifier_as_token().logging("type_qualifier_as_token"))
         .validate(|(n, opt_q)| {
             // TODO preserve the string and type qualifier for the fn_map step
             let full_name = token_list_to_string(n);

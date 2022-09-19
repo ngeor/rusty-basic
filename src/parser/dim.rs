@@ -1,4 +1,5 @@
 use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::logging::LoggingTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, Parser};
 use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::{keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
@@ -18,6 +19,7 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
                 variables,
             })
         })
+        .logging("dim_p")
 }
 
 /// Parses REDIM statement

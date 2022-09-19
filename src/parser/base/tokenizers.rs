@@ -222,7 +222,7 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
     fn position(&self) -> RowCol {
         match self.buffer.last() {
             Some(token) => token.position.begin,
-            _ => self.tokenizer.pos
+            _ => self.tokenizer.pos,
         }
     }
 }

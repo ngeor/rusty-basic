@@ -4,35 +4,90 @@ use crate::parser::base::tokenizers::Tokenizer;
 
 pub struct LoggingPC<P>(P, String);
 
-impl<P> HasOutput for LoggingPC<P> where P : HasOutput {
+impl<P> HasOutput for LoggingPC<P>
+where
+    P: HasOutput,
+{
     type Output = P::Output;
 }
 
-impl<P> Parser for LoggingPC<P> where P : Parser {
+static mut INDENTATION_LEVEL: i32 = 0;
+
+fn indentation() -> String {
+    let mut s = String::new();
+    unsafe {
+        for _ in 0..INDENTATION_LEVEL {
+            s.push('\t');
+        }
+    }
+    s
+}
+
+impl<P> Parser for LoggingPC<P>
+where
+    P: Parser,
+{
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        println!("{} Parsing current position {} peek token {}", self.1, tokenizer.position(), peek_token(tokenizer));
-        match self.0.parse(tokenizer) {
+        println!(
+            "{}{} Parsing current position {} peek token {}",
+            indentation(),
+            self.1,
+            tokenizer.position(),
+            peek_token(tokenizer)
+        );
+        unsafe {
+            INDENTATION_LEVEL += 1;
+        }
+        let result = self.0.parse(tokenizer);
+        unsafe {
+            INDENTATION_LEVEL -= 1;
+        }
+        match result {
             Ok(Some(value)) => {
-                println!("{} Success current position {} peek token {}", self.1, tokenizer.position(), peek_token(tokenizer));
+                println!(
+                    "{}{} Success current position {} peek token {}",
+                    indentation(),
+                    self.1,
+                    tokenizer.position(),
+                    peek_token(tokenizer)
+                );
                 Ok(Some(value))
             }
             Ok(None) => {
-                println!("{} None current position {} peek token {}", self.1, tokenizer.position(), peek_token(tokenizer));
+                println!(
+                    "{}{} None current position {} peek token {}",
+                    indentation(),
+                    self.1,
+                    tokenizer.position(),
+                    peek_token(tokenizer)
+                );
                 Ok(None)
             }
             Err(err) => {
-                println!("{} Err current position {} peek token {}", self.1, tokenizer.position(), peek_token(tokenizer));
+                println!(
+                    "{}{} Err current position {} peek token {}",
+                    indentation(),
+                    self.1,
+                    tokenizer.position(),
+                    peek_token(tokenizer)
+                );
                 Err(err)
             }
         }
     }
 }
 
-pub trait LoggingTrait where Self : Sized {
+pub trait LoggingTrait
+where
+    Self: Sized,
+{
     fn logging(self, name: &str) -> LoggingPC<Self>;
 }
 
-impl<P> LoggingTrait for P where P : Sized {
+impl<P> LoggingTrait for P
+where
+    P: Sized,
+{
     fn logging(self, name: &str) -> LoggingPC<Self> {
         LoggingPC(self, name.to_owned())
     }

@@ -1,12 +1,14 @@
 use std::collections::VecDeque;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Cursor};
+use std::io::{BufRead, BufReader};
 
 pub trait CharReader {
     fn read(&mut self) -> std::io::Result<Option<char>>;
     fn unread(&mut self, item: char);
 }
 
+#[cfg(test)]
+use std::io::{Cursor};
 #[cfg(test)]
 pub fn string_char_reader<T>(input: T) -> impl CharReader
 where

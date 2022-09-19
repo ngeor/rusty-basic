@@ -1,4 +1,3 @@
-use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, OrTrait, Parser};
 use crate::parser::declaration;
@@ -61,6 +60,7 @@ where
 mod tests {
     use crate::assert_parser_err;
     use crate::parser::test_utils::*;
+    use crate::common::*;
 
     use super::*;
 

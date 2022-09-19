@@ -64,7 +64,44 @@ impl TryFrom<i32> for TokenType {
     type Error = QError;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
-        todo!()
+        let all_tokens = [
+            TokenType::Unknown,
+            TokenType::Eol,
+            TokenType::Whitespace,
+            TokenType::Digits,
+            TokenType::LParen,
+            TokenType::RParen,
+            TokenType::Colon,
+            TokenType::Semicolon,
+            TokenType::Comma,
+            TokenType::SingleQuote,
+            TokenType::DoubleQuote,
+            TokenType::Dot,
+            TokenType::Equals,
+            TokenType::Greater,
+            TokenType::Less,
+            TokenType::GreaterEquals,
+            TokenType::LessEquals,
+            TokenType::NotEquals,
+            TokenType::Plus,
+            TokenType::Minus,
+            TokenType::Star,
+            TokenType::Slash,
+            TokenType::Ampersand,
+            TokenType::ExclamationMark,
+            TokenType::Pound,
+            TokenType::DollarSign,
+            TokenType::Percent,
+            TokenType::Keyword,
+            TokenType::Identifier,
+            TokenType::OctDigits,
+            TokenType::HexDigits,
+        ];
+        if value >= 0 && value < all_tokens.len() as i32 {
+            Ok(all_tokens[value as usize])
+        } else {
+            Err(QError::InternalError(format!("Token index {} out of bounds", value)))
+        }
     }
 }
 

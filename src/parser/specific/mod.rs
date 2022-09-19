@@ -13,7 +13,7 @@ use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Location, QError};
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::*;
-use crate::parser::base::readers::{file_char_reader, string_char_reader};
+use crate::parser::base::readers::{file_char_reader};
 use crate::parser::base::recognizers::*;
 use crate::parser::base::tokenizers::*;
 use crate::parser::expression::expression_node_p;
@@ -210,6 +210,8 @@ pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
     create_tokenizer(file_char_reader(input), create_recognizers())
 }
 
+#[cfg(test)]
+use crate::parser::base::readers::string_char_reader;
 #[cfg(test)]
 pub fn create_string_tokenizer<T>(input: T) -> impl Tokenizer
 where

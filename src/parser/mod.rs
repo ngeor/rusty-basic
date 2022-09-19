@@ -3,7 +3,7 @@ use std::fs::File;
 use crate::common::*;
 use crate::parser::base::parsers::Parser;
 use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::{create_file_tokenizer, create_string_tokenizer};
+use crate::parser::specific::{create_file_tokenizer};
 use crate::parser::top_level_token::TopLevelTokensParser;
 
 pub use self::types::*;
@@ -60,6 +60,8 @@ pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
     parse_reader(&mut reader)
 }
 
+#[cfg(test)]
+use crate::parser::specific::create_string_tokenizer;
 #[cfg(test)]
 pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
     let mut reader = create_string_tokenizer(s);

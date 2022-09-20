@@ -4,7 +4,7 @@ use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::given::given;
 use crate::parser::base::or_pc::OrTrait;
 use crate::parser::base::parsers::{
-    ErrorProvider, FnMapTrait, NonOptParser, Parser, TokenPredicate,
+    ErrorProvider, FnMapTrait, KeepLeftTrait, NonOptParser, Parser, TokenPredicate,
 };
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
@@ -22,9 +22,12 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 pub fn def_type_p() -> impl Parser<Output = DefType> {
     given(def_keyword_p().followed_by_req_ws())
-        .then(csv_one_or_more(letter_range_p()).or_syntax_error("Expected: letter ranges"))
+        .then(letter_ranges())
         .fn_map(|(l, r)| DefType::new(l, r))
 }
+
+// TODO in this case keyword_choice_p does not need to carry the keyword _AND_ the token
+// TODO implement the TokenTypeMap for Keywords too
 
 fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
     keyword_choice_p(&[
@@ -44,6 +47,10 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
     })
 }
 
+fn letter_ranges() -> impl NonOptParser<Output = Vec<LetterRange>> {
+    csv_one_or_more(letter_range_p()).or_syntax_error("Expected: letter ranges")
+}
+
 fn letter_range_p() -> impl Parser<Output = LetterRange> {
     two_letter_range_p().or(single_letter_range_p())
 }
@@ -53,10 +60,9 @@ fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
 }
 
 fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
-    given(LetterToken.parser().and(item_p('-')))
+    given(letter_and_hyphen())
         .then(letter())
-        .and_then(|((l, _), r)| {
-            let l = token_to_char(&l);
+        .and_then(|(l, r)| {
             if l < r {
                 Ok(LetterRange::Range(l, r))
             } else {
@@ -65,12 +71,20 @@ fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
         })
 }
 
+fn letter_and_hyphen() -> impl Parser<Output = char> {
+    LetterToken
+        .parser()
+        .and(item_p('-'))
+        .keep_left()
+        .fn_map(token_to_char)
+}
+
 fn letter_opt() -> impl Parser<Output = char> {
-    LetterToken.parser().fn_map(|token| token_to_char(&token)) // TODO add fn_ref_map
+    LetterToken.parser().fn_map(token_to_char)
 }
 
 fn letter() -> impl NonOptParser<Output = char> {
-    LetterToken.parser().fn_map(|token| token_to_char(&token))
+    LetterToken.parser().fn_map(token_to_char)
 }
 
 struct LetterToken;
@@ -79,7 +93,7 @@ impl TokenPredicate for LetterToken {
     fn test(&self, token: &Token) -> bool {
         token.kind == TokenType::Identifier as i32
             && token.text.len() == 1
-            && is_letter(token_to_char(token))
+            && is_letter(token_ref_to_char(token))
     }
 }
 
@@ -89,7 +103,11 @@ impl ErrorProvider for LetterToken {
     }
 }
 
-fn token_to_char(token: &Token) -> char {
+fn token_ref_to_char(token: &Token) -> char {
+    token.text.chars().next().unwrap()
+}
+
+fn token_to_char(token: Token) -> char {
     token.text.chars().next().unwrap()
 }
 

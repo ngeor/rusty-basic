@@ -45,9 +45,8 @@
 use crate::common::{Locatable, QError};
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{
-    FnMapTrait, KeepRightTrait, ManyTrait, NonOptParser, OrTrait, Parser,
-};
+use crate::parser::base::or_pc::alt3;
+use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, ManyTrait, NonOptParser, Parser};
 use crate::parser::comment;
 use crate::parser::expression::expression_node_p;
 use crate::parser::name;
@@ -120,31 +119,33 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
 }
 
 fn element_type_p() -> impl Parser<Output = ElementType> {
-    keyword_choice_p(&[
-        Keyword::Integer,
-        Keyword::Long,
-        Keyword::Single,
-        Keyword::Double,
-    ])
-    .fn_map(|(k, _)| match k {
-        Keyword::Integer => ElementType::Integer,
-        Keyword::Long => ElementType::Long,
-        Keyword::Single => ElementType::Single,
-        Keyword::Double => ElementType::Double,
-        _ => panic!("Parser should not have parsed this"),
-    })
-    .or(keyword_p(Keyword::String_)
-        .and_demand(
-            item_p('*')
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: *"),
-        )
-        .and_demand(demand_string_length_p())
-        .keep_right()
-        .fn_map(|e| ElementType::FixedLengthString(e, 0)))
-    .or(bare_name_without_dot_p()
-        .with_pos()
-        .fn_map(ElementType::UserDefined))
+    alt3(
+        keyword_choice_p(&[
+            Keyword::Integer,
+            Keyword::Long,
+            Keyword::Single,
+            Keyword::Double,
+        ])
+        .fn_map(|(k, _)| match k {
+            Keyword::Integer => ElementType::Integer,
+            Keyword::Long => ElementType::Long,
+            Keyword::Single => ElementType::Single,
+            Keyword::Double => ElementType::Double,
+            _ => panic!("Parser should not have parsed this"),
+        }),
+        keyword_p(Keyword::String_)
+            .and_demand(
+                item_p('*')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: *"),
+            )
+            .and_demand(demand_string_length_p())
+            .keep_right()
+            .fn_map(|e| ElementType::FixedLengthString(e, 0)),
+        bare_name_without_dot_p()
+            .with_pos()
+            .fn_map(ElementType::UserDefined),
+    )
 }
 
 fn demand_string_length_p() -> impl NonOptParser<Output = ExpressionNode> {

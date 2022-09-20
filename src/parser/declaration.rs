@@ -1,5 +1,6 @@
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, OrTrait, Parser};
+use crate::parser::base::or_pc::OrTrait;
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
 use crate::parser::specific::csv::csv_zero_or_more;

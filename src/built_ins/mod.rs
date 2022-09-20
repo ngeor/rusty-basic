@@ -409,27 +409,38 @@ impl BuiltInSub {
 }
 
 pub mod parser {
-    use crate::parser::base::parsers::{OrTrait, Parser};
+    use crate::parser::base::or_pc::{alt4, OrTrait};
+    use crate::parser::base::parsers::Parser;
     use crate::parser::{Expression, Statement};
 
     /// Parses built-in subs which have a special syntax.
     pub fn parse() -> impl Parser<Output = Statement> {
-        crate::built_ins::close::parser::parse()
-            .or(crate::built_ins::color::parser::parse())
-            .or(crate::built_ins::data::parser::parse())
-            .or(crate::built_ins::def_seg::parser::parse())
-            .or(crate::built_ins::field::parser::parse())
-            .or(crate::built_ins::get::parser::parse())
-            .or(crate::built_ins::input::parser::parse())
-            .or(crate::built_ins::line_input::parser::parse())
-            .or(crate::built_ins::locate::parser::parse())
-            .or(crate::built_ins::lset::parser::parse())
-            .or(crate::built_ins::name::parser::parse())
-            .or(crate::built_ins::open::parser::parse())
-            .or(crate::built_ins::put::parser::parse())
-            .or(crate::built_ins::read::parser::parse())
-            .or(crate::built_ins::view_print::parser::parse())
-            .or(crate::built_ins::width::parser::parse())
+        alt4(
+            alt4(
+                crate::built_ins::close::parser::parse(),
+                crate::built_ins::color::parser::parse(),
+                crate::built_ins::data::parser::parse(),
+                crate::built_ins::def_seg::parser::parse(),
+            ),
+            alt4(
+                crate::built_ins::field::parser::parse(),
+                crate::built_ins::get::parser::parse(),
+                crate::built_ins::input::parser::parse(),
+                crate::built_ins::line_input::parser::parse(),
+            ),
+            alt4(
+                crate::built_ins::locate::parser::parse(),
+                crate::built_ins::lset::parser::parse(),
+                crate::built_ins::name::parser::parse(),
+                crate::built_ins::open::parser::parse(),
+            ),
+            alt4(
+                crate::built_ins::put::parser::parse(),
+                crate::built_ins::read::parser::parse(),
+                crate::built_ins::view_print::parser::parse(),
+                crate::built_ins::width::parser::parse(),
+            ),
+        )
     }
 
     // needed for built-in functions that are also keywords (e.g. LEN), so they

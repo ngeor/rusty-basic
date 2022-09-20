@@ -1,5 +1,6 @@
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{FnMapTrait, OrTrait, Parser};
+use crate::parser::base::or_pc::OrTrait;
+use crate::parser::base::parsers::{FnMapTrait, Parser};
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::{keyword_p, OrSyntaxErrorTrait};

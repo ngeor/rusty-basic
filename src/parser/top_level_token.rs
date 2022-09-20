@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::base::logging::LoggingTrait;
-use crate::parser::base::parsers::{FnMapTrait, HasOutput, OrTrait, Parser};
+use crate::parser::base::or_pc::{alt2, alt4};
+use crate::parser::base::parsers::{FnMapTrait, HasOutput, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::declaration;
 use crate::parser::def_type;
@@ -66,12 +67,15 @@ impl Parser for TopLevelTokensParser {
 }
 
 fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
-    def_type::def_type_p()
-        .fn_map(TopLevelToken::DefType)
-        .or(declaration::declaration_p())
-        .or(implementation::implementation_p())
-        .or(statement::statement_p().fn_map(TopLevelToken::Statement))
-        .or(user_defined_type::user_defined_type_p().fn_map(TopLevelToken::UserDefinedType))
-        .with_pos()
-        .logging("top_level_token_one_p")
+    alt2(
+        alt4(
+            def_type::def_type_p().fn_map(TopLevelToken::DefType),
+            declaration::declaration_p(),
+            implementation::implementation_p(),
+            statement::statement_p().fn_map(TopLevelToken::Statement),
+        ),
+        user_defined_type::user_defined_type_p().fn_map(TopLevelToken::UserDefinedType),
+    )
+    .with_pos()
+    .logging("top_level_token_one_p")
 }

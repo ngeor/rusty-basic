@@ -1,7 +1,9 @@
 use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{FnMapTrait, KeepLeftTrait, OrTrait, Parser};
+use crate::parser::base::logging::LoggingTrait;
+use crate::parser::base::or_pc::{alt3, alt4, OrTrait};
+use crate::parser::base::parsers::{FnMapTrait, KeepLeftTrait, Parser};
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -32,26 +34,38 @@ pub fn statement_p() -> impl Parser<Output = Statement> {
         .or(while_wend::while_wend_p())
         .or(do_loop::do_loop_p())
         .or(illegal_starting_keywords())
+        .logging("statement_p")
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
 pub fn single_line_non_comment_statement_p() -> impl Parser<Output = Statement> {
-    dim::dim_p()
-        .or(dim::redim_p())
-        .or(constant::constant_p())
-        .or(crate::built_ins::parser::parse())
-        .or(print::parse_print_p())
-        .or(print::parse_lprint_p())
-        .or(sub_call::sub_call_or_assignment_p())
-        .or(statement_go_to_p())
-        .or(statement_go_sub_p())
-        .or(statement_return_p())
-        .or(statement_exit_p())
-        .or(statement_on_error_go_to_p())
-        .or(statement_resume_p())
-        .or(end::parse_end_p())
-        .or(system::parse_system_p())
+    alt4(
+        alt4(
+            dim::dim_p(),
+            dim::redim_p(),
+            constant::constant_p(),
+            crate::built_ins::parser::parse(),
+        ),
+        alt4(
+            print::parse_print_p(),
+            print::parse_lprint_p(),
+            sub_call::sub_call_or_assignment_p(),
+            statement_go_to_p(),
+        ),
+        alt4(
+            statement_go_sub_p(),
+            statement_return_p(),
+            statement_exit_p(),
+            statement_on_error_go_to_p(),
+        ),
+        alt3(
+            statement_resume_p(),
+            end::parse_end_p(),
+            system::parse_system_p(),
+        ),
+    )
+    .logging("single_line_non_comment_statement_p")
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,

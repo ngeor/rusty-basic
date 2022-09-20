@@ -1,8 +1,9 @@
 use crate::common::QError;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
+use crate::parser::base::or_pc::OrTrait;
 use crate::parser::base::parsers::{
-    ErrorProvider, FnMapTrait, NonOptParser, OrTrait, Parser, TokenPredicate,
+    ErrorProvider, FnMapTrait, NonOptParser, Parser, TokenPredicate,
 };
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;

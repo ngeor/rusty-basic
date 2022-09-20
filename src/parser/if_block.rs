@@ -1,7 +1,8 @@
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::guard_pc::GuardTrait;
+use crate::parser::base::or_pc::OrTrait;
 use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, KeepMiddleTrait, KeepRightTrait, ManyTrait, OrTrait, Parser,
+    AndOptTrait, FnMapTrait, KeepMiddleTrait, KeepRightTrait, ManyTrait, Parser,
 };
 use crate::parser::comment;
 use crate::parser::expression;

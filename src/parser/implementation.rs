@@ -1,5 +1,6 @@
 use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, OrTrait, Parser};
+use crate::parser::base::or_pc::OrTrait;
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, Parser};
 use crate::parser::declaration;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::{demand_keyword_pair_p, keyword_p};

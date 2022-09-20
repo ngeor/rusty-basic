@@ -372,49 +372,6 @@ where
 }
 
 //
-// Or
-//
-
-pub struct OrPC<L, R>(L, R);
-
-impl<L, R> HasOutput for OrPC<L, R>
-where
-    L: HasOutput,
-    R: HasOutput<Output = L::Output>,
-{
-    type Output = L::Output;
-}
-
-impl<L, R> Parser for OrPC<L, R>
-where
-    L: Parser,
-    R: Parser<Output = L::Output>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(first) => Ok(Some(first)),
-            None => self.1.parse(tokenizer),
-        }
-    }
-}
-
-pub trait OrTrait<P> {
-    fn or(self, other: P) -> OrPC<Self, P>
-    where
-        Self: Sized;
-}
-
-impl<S, P> OrTrait<P> for S
-where
-    S: Parser,
-    P: Parser<Output = S::Output>,
-{
-    fn or(self, other: P) -> OrPC<Self, P> {
-        OrPC(self, other)
-    }
-}
-
-//
 // AndOptFactory
 //
 

@@ -2,9 +2,10 @@ use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
+use crate::parser::base::or_pc::{alt2, alt3, alt4, OrTrait};
 use crate::parser::base::parsers::{
     AndOptFactoryTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait, ManyTrait,
-    NonOptParser, OrTrait, Parser,
+    NonOptParser, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
@@ -111,17 +112,21 @@ pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
 }
 
 fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-    string_literal::string_literal_p()
-        .with_pos()
-        .or(built_in_function_call_p().with_pos())
-        .or(word::word_p().with_pos())
-        .or(number_literal::number_literal_p())
-        .or(number_literal::float_without_leading_zero_p())
-        .or(number_literal::hexadecimal_literal_p().with_pos())
-        .or(number_literal::octal_literal_p().with_pos())
-        .or(parenthesis_p().with_pos())
-        .or(unary_not_p())
-        .or(unary_minus_p())
+    alt3(
+        alt4(
+            string_literal::string_literal_p().with_pos(),
+            built_in_function_call_p().with_pos(),
+            word::word_p().with_pos(),
+            number_literal::number_literal_p(),
+        ),
+        alt4(
+            number_literal::float_without_leading_zero_p(),
+            number_literal::hexadecimal_literal_p().with_pos(),
+            number_literal::octal_literal_p().with_pos(),
+            parenthesis_p().with_pos(),
+        ),
+        alt2(unary_not_p(), unary_minus_p()),
+    )
 }
 
 fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {

@@ -1,7 +1,6 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, HasOutput, OrTrait, Parser, TokenPredicate,
-};
+use crate::parser::base::or_pc::alt3;
+use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, Parser, TokenPredicate};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::{eol_or_whitespace, TokenKindParser, TokenType};
@@ -34,9 +33,7 @@ fn comment_separator() -> impl Parser<Output = ()> {
 // <ws>* EOL <ws | eol>*
 // TODO convert to NonOptParser
 fn non_comment_separator() -> impl Parser<Output = ()> {
-    SingleQuotePeek
-        .or(colon_separator_p())
-        .or(eol_separator_p())
+    alt3(SingleQuotePeek, colon_separator_p(), eol_separator_p())
         .preceded_by_opt_ws()
         .fn_map(|_| ())
 }

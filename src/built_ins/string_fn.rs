@@ -3,16 +3,20 @@ pub mod parser {
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::csv::csv_one_or_more;
-    use crate::parser::specific::{in_parenthesis, item_p, keyword_p, OrSyntaxErrorTrait};
+    use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
+    use crate::parser::specific::{item_p, keyword_p, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword_p(Keyword::String_)
             .and_demand(item_p('$'))
-            .and_demand(in_parenthesis(
-                csv_one_or_more(expression::lazy_expression_node_p())
-                    .or_syntax_error("Expected: expression"),
-            ))
+            .and_demand(
+                /* TODO refactor this expression, exists also in len.rs for instance */
+                in_parenthesis_non_opt(
+                    csv_one_or_more(expression::lazy_expression_node_p())
+                        .or_syntax_error("Expected: expression"),
+                ),
+            )
             .keep_right()
             .fn_map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))
     }

@@ -9,11 +9,12 @@ use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
 use crate::parser::specific::csv::csv_one_or_more;
+use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    identifier_without_dot_p, in_parenthesis_p, item_p, keyword_followed_by_whitespace_p,
-    keyword_p, OrSyntaxErrorTrait,
+    identifier_or_keyword_without_dot, item_p, keyword_followed_by_whitespace_p, keyword_p,
+    OrSyntaxErrorTrait,
 };
 use crate::parser::types::*;
 
@@ -61,7 +62,7 @@ pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
 }
 
 fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
-    in_parenthesis_p(
+    in_parenthesis_non_opt(
         csv_one_or_more(array_dimension_p()).or_syntax_error("Expected: array dimension"),
     )
 }
@@ -109,7 +110,9 @@ impl HasOutput for ExtendedTypeParser {
 
 impl Parser for ExtendedTypeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_identifier = identifier_without_dot_p().with_pos().parse(reader)?;
+        let opt_identifier = identifier_or_keyword_without_dot()
+            .with_pos()
+            .parse(reader)?;
         match opt_identifier {
             Some(Locatable { element: x, pos }) => match Keyword::from_str(&x.text) {
                 Ok(Keyword::Single) => Self::built_in(TypeQualifier::BangSingle),

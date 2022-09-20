@@ -1,4 +1,5 @@
 pub mod csv;
+pub mod in_parenthesis;
 pub mod keyword_choice;
 pub mod token_type_map;
 pub mod try_from_token_type;
@@ -53,10 +54,13 @@ pub enum TokenType {
     Pound,
     DollarSign,
     Percent,
+    // keyword needs to be before Identifier
     Keyword,
     Identifier,
     OctDigits,
     HexDigits,
+
+    // unknown must be last
     Unknown,
 }
 
@@ -235,7 +239,7 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
         Box::new(single_char_recognizer('%')),
         Box::new(keyword_recognizer(&SORTED_KEYWORDS_STR)),
         Box::new(leading_remaining_recognizer(is_letter, |ch| {
-            is_letter(ch) || is_digit(ch)
+            is_letter(ch) || is_digit(ch) || ch == '.'
         })),
         Box::new(OctHexDigitsRecognizer {
             mode: OctOrHex::Oct,
@@ -374,30 +378,32 @@ pub fn demand_keyword_pair_p(first: Keyword, second: Keyword) -> impl NonOptPars
 // TokenKindParser
 //
 
-pub struct TokenKindParser(TokenType);
+pub struct TokenKindParser {
+    token_type: TokenType,
+}
 
 impl TokenKindParser {
     pub fn new(token_type: TokenType) -> Self {
-        Self(token_type)
+        Self { token_type }
     }
 }
 
 impl TokenPredicate for TokenKindParser {
     fn test(&self, token: &Token) -> bool {
-        token.kind == self.0 as i32
+        token.kind == self.token_type as i32
     }
 }
 
 impl ErrorProvider for TokenKindParser {
     fn provide_error(&self) -> QError {
         // TODO use Display instead of Debug
-        QError::SyntaxError(format!("Expected token of type {:?}", self.0))
+        QError::SyntaxError(format!("Expected token of type {:?}", self.token_type))
     }
 }
 
 // TODO deprecate this
 pub fn item_p(ch: char) -> TokenPredicateParser<TokenKindParser> {
-    TokenKindParser(match ch {
+    TokenKindParser::new(match ch {
         ',' => TokenType::Comma,
         '=' => TokenType::Equals,
         '$' => TokenType::DollarSign,
@@ -447,33 +453,6 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
     }
     result.insert(0, Expression::IntegerLiteral(flags).at(Location::start()));
     result
-}
-
-//
-// In Parenthesis
-//
-
-pub fn in_parenthesis<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = P::Output> {
-    TokenKindParser(TokenType::LParen)
-        .parser()
-        .and_demand(parser)
-        .and_demand(TokenKindParser(TokenType::RParen).parser())
-        .keep_middle()
-}
-
-// TODO rename to opt
-// TODO implementation is identical to above
-pub fn in_parenthesis_p<P: NonOptParser>(parser: P) -> impl Parser<Output = P::Output> {
-    TokenKindParser(TokenType::LParen)
-        .parser()
-        .and_demand(parser)
-        .and_demand(TokenKindParser(TokenType::RParen).parser())
-        .keep_middle()
-}
-
-// TODO deprecate this
-pub fn identifier_without_dot_p() -> impl Parser<Output = Token> {
-    TokenKindParser(TokenType::Identifier).parser()
 }
 
 //
@@ -576,4 +555,31 @@ pub fn eol_or_whitespace() -> impl Parser<Output = TokenList> {
 
 pub fn eol_or_whitespace_non_opt() -> impl NonOptParser<Output = TokenList> {
     EolOrWhitespace.parser().one_or_more()
+}
+
+// IdentifierOrKeyword
+
+struct IdentifierOrKeyword;
+
+impl TokenPredicate for IdentifierOrKeyword {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32
+    }
+}
+
+pub fn identifier_or_keyword() -> impl Parser<Output = Token> {
+    IdentifierOrKeyword.parser()
+}
+
+struct IdentifierOrKeywordWithoutDot;
+
+impl TokenPredicate for IdentifierOrKeywordWithoutDot {
+    fn test(&self, token: &Token) -> bool {
+        (token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32)
+            && !token.text.contains('.')
+    }
+}
+
+pub fn identifier_or_keyword_without_dot() -> impl Parser<Output = Token> {
+    IdentifierOrKeywordWithoutDot.parser()
 }

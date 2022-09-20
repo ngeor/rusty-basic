@@ -1,8 +1,8 @@
 use crate::common::*;
-use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::logging::LoggingTrait;
-use crate::parser::base::or_pc::{alt3, alt4, OrTrait};
+use crate::parser::base::or_pc::{alt2, alt3, alt4, OrTrait};
 use crate::parser::base::parsers::{FnMapTrait, KeepLeftTrait, Parser};
 use crate::parser::comment;
 use crate::parser::constant;
@@ -12,7 +12,7 @@ use crate::parser::exit::statement_exit_p;
 use crate::parser::for_loop;
 use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
-use crate::parser::name::bare_name_p;
+use crate::parser::name::{bare_name_as_token, bare_name_p};
 use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
@@ -26,15 +26,22 @@ use crate::parser::types::*;
 use crate::parser::while_wend;
 
 pub fn statement_p() -> impl Parser<Output = Statement> {
-    statement_label_p()
-        .or(single_line_statement_p())
-        .or(if_block::if_block_p())
-        .or(for_loop::for_loop_p())
-        .or(select_case::select_case_p())
-        .or(while_wend::while_wend_p())
-        .or(do_loop::do_loop_p())
-        .or(illegal_starting_keywords())
-        .logging("statement_p")
+    alt3(
+        alt3(
+            statement_label_p(),
+            single_line_statement_p(),
+            if_block::if_block_p(),
+        )
+        .logging("statement_p_1"),
+        alt3(
+            for_loop::for_loop_p(),
+            select_case::select_case_p(),
+            while_wend::while_wend_p(),
+        )
+        .logging("statement_p_2"),
+        alt2(do_loop::do_loop_p(), illegal_starting_keywords()).logging("statement_p_3"),
+    )
+    .logging("statement_p")
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
@@ -75,10 +82,11 @@ pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
 }
 
 fn statement_label_p() -> impl Parser<Output = Statement> {
-    bare_name_p()
-        .and_demand(item_p(':'))
+    // labels can have dots
+    bare_name_as_token()
+        .and(item_p(':'))
         .keep_left()
-        .fn_map(|l| Statement::Label(l))
+        .fn_map(|l| Statement::Label(l.text.into()))
 }
 
 fn statement_go_to_p() -> impl Parser<Output = Statement> {

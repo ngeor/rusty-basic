@@ -9,10 +9,11 @@ use crate::parser::base::parsers::{
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
+use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
 use crate::parser::specific::token_type_map::TokenTypeMap;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{in_parenthesis_p, item_p, keyword_p, OrSyntaxErrorTrait, TokenType};
+use crate::parser::specific::{item_p, keyword_p, OrSyntaxErrorTrait, TokenType};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -174,7 +175,7 @@ pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
 }
 
 pub fn parenthesis_p() -> impl Parser<Output = Expression> {
-    in_parenthesis_p(
+    in_parenthesis_non_opt(
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
     .fn_map(|child| Expression::Parenthesis(Box::new(child)))
@@ -401,8 +402,9 @@ pub mod word {
     use crate::parser::base::tokenizers::{Token, Tokenizer};
     use crate::parser::name::name_with_dot_p;
     use crate::parser::specific::csv::csv_zero_or_more;
+    use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
     use crate::parser::specific::{
-        identifier_without_dot_p, in_parenthesis_p, item_p, OrSyntaxErrorTrait, TokenType,
+        identifier_or_keyword_without_dot, item_p, OrSyntaxErrorTrait, TokenType,
     };
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
@@ -505,13 +507,14 @@ pub mod word {
     }
 
     fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
-        in_parenthesis_p(csv_zero_or_more(lazy_expression_node_p()))
+        in_parenthesis_non_opt(csv_zero_or_more(lazy_expression_node_p()))
     }
 
     fn dot_property_name() -> impl Parser<Output = Token> {
         item_p('.')
             .and_demand(
-                identifier_without_dot_p().or_syntax_error("Expected: property name after period"),
+                identifier_or_keyword_without_dot()
+                    .or_syntax_error("Expected: property name after period"),
             )
             .keep_right()
     }

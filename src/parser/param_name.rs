@@ -9,7 +9,7 @@ use crate::parser::name::MAX_LENGTH;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    identifier_without_dot_p, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait,
+    identifier_or_keyword_without_dot, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait,
 };
 use crate::parser::types::*;
 
@@ -105,7 +105,7 @@ fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
 }
 
 fn extended_type_p() -> impl Parser<Output = ParamType> {
-    identifier_without_dot_p()
+    identifier_or_keyword_without_dot()
         .with_pos()
         .and_then(
             |Locatable { element: x, pos }| match Keyword::from_str(&x.text) {

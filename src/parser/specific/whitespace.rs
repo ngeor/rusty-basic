@@ -7,7 +7,7 @@ use crate::parser::base::undo_pc::Undo;
 use crate::parser::specific::{TokenKindParser, TokenType};
 
 pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
-    TokenKindParser(TokenType::Whitespace).parser()
+    TokenKindParser::new(TokenType::Whitespace).parser()
 }
 
 pub struct LeadingWhitespace<P>

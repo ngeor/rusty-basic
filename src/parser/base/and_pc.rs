@@ -100,3 +100,40 @@ impl<S, P> AndDemandTrait<P> for S {
         AndDemandPC(self, other)
     }
 }
+
+//
+// AndDemandRef
+//
+
+pub struct AndDemandRef<'a, 'b, A, B>(&'a A, &'b B);
+
+impl<'a, 'b, A, B> AndDemandRef<'a, 'b, A, B> {
+    pub fn new(left: &'a A, right: &'b B) -> Self {
+        Self(left, right)
+    }
+}
+
+impl<'a, 'b, A, B> HasOutput for AndDemandRef<'a, 'b, A, B>
+where
+    A: HasOutput,
+    B: HasOutput,
+{
+    type Output = (A::Output, B::Output);
+}
+
+impl<'a, 'b, A, B> Parser for AndDemandRef<'a, 'b, A, B>
+where
+    A: Parser,
+    B: NonOptParser,
+{
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        // TODO duplicate implementation with AndDemand above
+        match self.0.parse(tokenizer)? {
+            Some(left) => {
+                let right = self.1.parse_non_opt(tokenizer)?;
+                Ok(Some((left, right)))
+            }
+            None => Ok(None),
+        }
+    }
+}

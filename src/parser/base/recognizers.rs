@@ -25,7 +25,7 @@ struct SingleNewLineRecognizer {}
 
 impl Recognizer for SingleNewLineRecognizer {
     fn recognize(&self, buffer: &str) -> Recognition {
-        if buffer == "r" || buffer == "\n" || buffer == "\r\n" {
+        if buffer == "\r" || buffer == "\n" || buffer == "\r\n" {
             Recognition::Positive
         } else {
             Recognition::Negative

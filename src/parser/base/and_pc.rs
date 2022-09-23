@@ -128,12 +128,11 @@ impl<S, P> AndDemandTrait<P> for S {
 }
 
 pub fn seq3<A, B, C, F, U>(a: A, b: B, c: C, f: F) -> impl Parser<Output = U>
-    where
-        A: Parser,
-        B: NonOptParser,
-        C: NonOptParser,
-        F: Fn(A::Output, B::Output, C::Output) -> U,
+where
+    A: Parser,
+    B: NonOptParser,
+    C: NonOptParser,
+    F: Fn(A::Output, B::Output, C::Output) -> U,
 {
     AndDemandPC::new(a, b.and(c)).fn_map(move |(x, (y, z))| f(x, y, z))
 }
-

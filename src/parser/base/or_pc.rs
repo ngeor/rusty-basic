@@ -93,3 +93,18 @@ pub fn alt3<A, B, C>(a: A, b: B, c: C) -> Or3PC<A, B, C> {
 pub fn alt4<A, B, C, D>(a: A, b: B, c: C, d: D) -> OrPC<A, Or3PC<B, C, D>> {
     alt2(a, alt3(b, c, d))
 }
+
+pub fn alt5<A, B, C, D, E>(a: A, b: B, c: C, d: D, e: E) -> OrPC<OrPC<A, B>, Or3PC<C, D, E>> {
+    alt2(alt2(a, b), alt3(c, d, e))
+}
+
+pub fn alt6<A, B, C, D, E, F>(
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+    e: E,
+    f: F,
+) -> OrPC<Or3PC<A, B, C>, Or3PC<D, E, F>> {
+    alt2(alt3(a, b, c), alt3(d, e, f))
+}

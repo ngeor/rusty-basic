@@ -2,7 +2,7 @@ use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::or_pc::{alt2, alt3, alt4, OrTrait};
+use crate::parser::base::or_pc::{alt2, alt4, alt5, alt6, OrTrait};
 use crate::parser::base::parsers::{
     AndOptFactoryTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait, ManyTrait,
     NonOptParser, Parser,
@@ -113,20 +113,21 @@ pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
 }
 
 fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-    alt3(
-        alt4(
+    alt2(
+        alt6(
             string_literal::string_literal_p().with_pos(),
             built_in_function_call_p().with_pos(),
             word::word_p().with_pos(),
             number_literal::number_literal_p(),
-        ),
-        alt4(
             number_literal::float_without_leading_zero_p(),
             number_literal::hexadecimal_literal_p().with_pos(),
+        ),
+        alt4(
             number_literal::octal_literal_p().with_pos(),
             parenthesis_p().with_pos(),
+            unary_not_p(),
+            unary_minus_p(),
         ),
-        alt2(unary_not_p(), unary_minus_p()),
     )
 }
 
@@ -831,16 +832,13 @@ pub mod word {
 }
 
 fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
-    relational_operator_p()
-        .preceded_by_opt_ws()
-        .or(arithmetic_op_p().preceded_by_opt_ws().with_pos())
-        .or(modulo_op_p(had_parenthesis_before))
-        .or(and_or_p(
-            had_parenthesis_before,
-            Keyword::And,
-            Operator::And,
-        ))
-        .or(and_or_p(had_parenthesis_before, Keyword::Or, Operator::Or))
+    alt5(
+        relational_operator_p().preceded_by_opt_ws(),
+        arithmetic_op_p().with_pos().preceded_by_opt_ws(),
+        modulo_op_p(had_parenthesis_before),
+        and_or_p(had_parenthesis_before, Keyword::And, Operator::And),
+        and_or_p(had_parenthesis_before, Keyword::Or, Operator::Or),
+    )
 }
 
 fn and_or_p(

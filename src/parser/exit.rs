@@ -1,9 +1,9 @@
+use crate::parser::base::and_pc::seq3;
 use crate::parser::base::parsers::Parser;
 use crate::parser::specific::keyword;
 use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::whitespace;
 use crate::parser::{ExitObject, Keyword, Statement};
-use crate::parser::base::and_pc::seq3;
 
 pub fn statement_exit_p() -> impl Parser<Output = Statement> {
     seq3(

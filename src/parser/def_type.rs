@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::and_pc::{AndTrait, seq3};
+use crate::parser::base::and_pc::{seq3, AndTrait};
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::parsers::{
     AndOptTrait, ErrorProvider, FnMapTrait, NonOptParser, Parser, TokenPredicate,

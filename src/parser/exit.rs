@@ -1,13 +1,15 @@
-use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::and_pc::AndTrait;
+use crate::parser::base::given::given;
 use crate::parser::base::parsers::{FnMapTrait, Parser};
+use crate::parser::specific::keyword;
 use crate::parser::specific::keyword_choice::keyword_choice;
-use crate::parser::specific::keyword_followed_by_whitespace_p;
+use crate::parser::specific::whitespace::whitespace;
 use crate::parser::{ExitObject, Keyword, Statement};
 
 pub fn statement_exit_p() -> impl Parser<Output = Statement> {
-    keyword_followed_by_whitespace_p(Keyword::Exit)
-        .and_demand(keyword_choice(&[Keyword::Function, Keyword::Sub]))
-        .fn_map(|(_, (k, _))| Statement::Exit(keyword_to_exit_object(k)))
+    given(keyword(Keyword::Exit))
+        .then(whitespace().and(keyword_choice(&[Keyword::Function, Keyword::Sub])))
+        .fn_map(|(_, (_, (k, _)))| Statement::Exit(keyword_to_exit_object(k)))
 }
 
 fn keyword_to_exit_object(keyword: Keyword) -> ExitObject {

@@ -1,11 +1,11 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
-    use crate::parser::specific::keyword_p;
+    use crate::parser::specific::keyword;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_p(Keyword::Data)
+        keyword(Keyword::Data)
             .and_opt(expression::expression_nodes_p())
             .keep_right()
             .fn_map(|opt_args| {

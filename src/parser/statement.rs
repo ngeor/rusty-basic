@@ -17,10 +17,8 @@ use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
-use crate::parser::specific::keyword_choice::keyword_choice_p;
-use crate::parser::specific::{
-    item_p, keyword_followed_by_whitespace_p, keyword_p, OrSyntaxErrorTrait,
-};
+use crate::parser::specific::keyword_choice::keyword_choice;
+use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
@@ -96,7 +94,7 @@ fn statement_go_to_p() -> impl Parser<Output = Statement> {
 }
 
 fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
-    keyword_choice_p(&[Keyword::Wend, Keyword::Else, Keyword::Loop]).and_then(|(k, _)| match k {
+    keyword_choice(&[Keyword::Wend, Keyword::Else, Keyword::Loop]).and_then(|(k, _)| match k {
         Keyword::Wend => Err(QError::WendWithoutWhile),
         Keyword::Else => Err(QError::ElseWithoutIf),
         Keyword::Loop => Err(QError::syntax_error("LOOP without DO")),
@@ -108,14 +106,15 @@ mod end {
     use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser};
     use crate::parser::base::tokenizers::{Token, Tokenizer};
     use crate::parser::base::undo_pc::Undo;
-    use crate::parser::specific::keyword_choice::keyword_choice_p;
+    use crate::parser::specific::keyword;
+    use crate::parser::specific::keyword_choice::keyword_choice;
     use crate::parser::specific::whitespace::whitespace;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
 
     use super::*;
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
-        keyword_p(Keyword::End)
+        keyword(Keyword::End)
             .and_demand(AfterEndSeparator)
             .fn_map(|_| Statement::End)
     }
@@ -156,7 +155,7 @@ mod end {
     }
 
     fn allowed_keywords_after_end() -> impl Parser<Output = (Keyword, Token)> {
-        keyword_choice_p(&[
+        keyword_choice(&[
             Keyword::Function,
             Keyword::If,
             Keyword::Select,
@@ -185,13 +184,14 @@ mod end {
 
 mod system {
     use crate::parser::base::parsers::FnMapTrait;
+    use crate::parser::specific::keyword;
     use crate::parser::specific::whitespace::WhitespaceTrait;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
 
     use super::*;
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
-        keyword_p(Keyword::System)
+        keyword(Keyword::System)
             .and_demand(
                 peek_eof_or_statement_separator()
                     .preceded_by_opt_ws()

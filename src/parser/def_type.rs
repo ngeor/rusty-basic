@@ -2,16 +2,15 @@ use crate::common::QError;
 use crate::parser::base::and_pc::AndTrait;
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::given::given;
-use crate::parser::base::or_pc::OrTrait;
 use crate::parser::base::parsers::{
-    ErrorProvider, FnMapTrait, KeepLeftTrait, NonOptParser, Parser, TokenPredicate,
+    AndOptTrait, ErrorProvider, FnMapTrait, NonOptParser, Parser, TokenPredicate,
 };
 use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
-use crate::parser::specific::csv::csv_one_or_more;
-use crate::parser::specific::keyword_choice::keyword_choice_p;
+use crate::parser::specific::csv::csv_one_or_more_non_opt;
+use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{item_p, OrSyntaxErrorTrait, TokenType};
+use crate::parser::specific::{item_p, TokenType};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
@@ -26,11 +25,11 @@ pub fn def_type_p() -> impl Parser<Output = DefType> {
         .fn_map(|(l, r)| DefType::new(l, r))
 }
 
-// TODO in this case keyword_choice_p does not need to carry the keyword _AND_ the token
+// TODO in this case keyword_choice does not need to carry the keyword _AND_ the token
 // TODO implement the TokenTypeMap for Keywords too
 
 fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
-    keyword_choice_p(&[
+    keyword_choice(&[
         Keyword::DefDbl,
         Keyword::DefInt,
         Keyword::DefLng,
@@ -48,42 +47,25 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
 }
 
 fn letter_ranges() -> impl NonOptParser<Output = Vec<LetterRange>> {
-    csv_one_or_more(letter_range_p()).or_syntax_error("Expected: letter ranges")
+    csv_one_or_more_non_opt(letter_range())
 }
 
-fn letter_range_p() -> impl Parser<Output = LetterRange> {
-    two_letter_range_p().or(single_letter_range_p())
-}
-
-fn single_letter_range_p() -> impl Parser<Output = LetterRange> {
-    letter_opt().fn_map(LetterRange::Single)
-}
-
-fn two_letter_range_p() -> impl Parser<Output = LetterRange> {
-    given(letter_and_hyphen())
-        .then(letter())
-        .and_then(|(l, r)| {
-            if l < r {
-                Ok(LetterRange::Range(l, r))
-            } else {
-                Err(QError::syntax_error("Invalid letter range"))
+fn letter_range() -> impl NonOptParser<Output = LetterRange> {
+    letter()
+        .and_opt(item_p('-').and(letter()))
+        .and_then(|(l, opt_r)| match opt_r {
+            Some((_, r)) => {
+                if l < r {
+                    Ok(LetterRange::Range(l, r))
+                } else {
+                    Err(QError::syntax_error("Invalid letter range"))
+                }
             }
+            None => Ok(LetterRange::Single(l)),
         })
 }
 
-fn letter_and_hyphen() -> impl Parser<Output = char> {
-    LetterToken
-        .parser()
-        .and(item_p('-'))
-        .keep_left()
-        .fn_map(token_to_char)
-}
-
-fn letter_opt() -> impl Parser<Output = char> {
-    LetterToken.parser().fn_map(token_to_char)
-}
-
-fn letter() -> impl NonOptParser<Output = char> {
+fn letter() -> impl Parser<Output = char> + NonOptParser<Output = char> {
     LetterToken.parser().fn_map(token_to_char)
 }
 
@@ -99,7 +81,7 @@ impl TokenPredicate for LetterToken {
 
 impl ErrorProvider for LetterToken {
     fn provide_error(&self) -> QError {
-        QError::syntax_error("Expected letter")
+        QError::syntax_error("Expected: letter")
     }
 }
 
@@ -180,9 +162,9 @@ mod tests {
 
     #[test]
     fn test_parse_def_int_word_instead_of_letter() {
-        assert_parser_err!("DEFINT HELLO", QError::syntax_error("No separator: E"));
-        assert_parser_err!("DEFINT HELLO,Z", QError::syntax_error("No separator: E"));
-        assert_parser_err!("DEFINT A,HELLO", QError::syntax_error("No separator: E"));
+        assert_parser_err!("DEFINT HELLO", QError::syntax_error("Expected: letter"));
+        assert_parser_err!("DEFINT HELLO,Z", QError::syntax_error("Expected: letter"));
+        assert_parser_err!("DEFINT A,HELLO", QError::syntax_error("Expected: letter"));
     }
 
     #[test]

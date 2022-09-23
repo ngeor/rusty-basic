@@ -345,24 +345,18 @@ impl NonOptParser for KeywordParser {
     }
 }
 
-// TODO rename to keyword keep only one of those functions
-pub fn keyword_p(keyword: Keyword) -> impl Parser<Output = Token> {
-    KeywordParser { keyword }
-}
-
-// TODO rename to keyword_non_opt keep only one of those functions
-pub fn keyword(keyword: Keyword) -> impl NonOptParser<Output = Token> + 'static {
+pub fn keyword(keyword: Keyword) -> impl Parser<Output = Token> + NonOptParser<Output = Token> {
     KeywordParser { keyword }
 }
 
 // TODO deprecate this
-pub fn keyword_followed_by_whitespace_p(keyword: Keyword) -> impl Parser {
-    keyword_p(keyword).followed_by_req_ws()
+pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
+    keyword(k).followed_by_req_ws()
 }
 
 // TODO rename to keyword_pair_opt
 pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
-    keyword_p(first)
+    keyword(first)
         .followed_by_req_ws()
         .and_demand(keyword(second))
 }

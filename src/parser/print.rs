@@ -9,12 +9,12 @@ use crate::parser::expression;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
 use crate::parser::specific::try_from_token_type::TryFromParser;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{item_p, keyword_p, OrSyntaxErrorTrait, TokenType};
+use crate::parser::specific::{item_p, keyword, OrSyntaxErrorTrait, TokenType};
 use crate::parser::types::*;
 use std::convert::TryFrom;
 
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
-    keyword_p(Keyword::Print)
+    keyword(Keyword::Print)
         .and_opt(ws_file_handle_comma_p())
         .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
         .and_opt_factory(|((_, opt_file_number), opt_using)|
@@ -31,7 +31,7 @@ pub fn parse_print_p() -> impl Parser<Output = Statement> {
 }
 
 pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
-    keyword_p(Keyword::LPrint)
+    keyword(Keyword::LPrint)
         .and_opt(using_p(true))
         .and_opt_factory(|(_keyword, opt_using)| {
             // we're just past LPRINT. No need for space for ; or , but we need it for expressions
@@ -48,7 +48,7 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
 }
 
 fn using_p(needs_leading_whitespace: bool) -> impl Parser<Output = ExpressionNode> {
-    keyword_p(Keyword::Using)
+    keyword(Keyword::Using)
         .preceded_by_ws(needs_leading_whitespace)
         .and_demand(
             expression::guarded_expression_node_p()

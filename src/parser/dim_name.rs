@@ -13,7 +13,7 @@ use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    identifier_or_keyword_without_dot, item_p, keyword_followed_by_whitespace_p, keyword_p,
+    identifier_or_keyword_without_dot, item_p, keyword, keyword_followed_by_whitespace_p,
     OrSyntaxErrorTrait,
 };
 use crate::parser::types::*;
@@ -70,7 +70,7 @@ fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
 fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
     expression::expression_node_p()
         .and_opt(
-            keyword_p(Keyword::To)
+            keyword(Keyword::To)
                 .preceded_by_req_ws()
                 .and_demand(
                     expression::guarded_expression_node_p()

@@ -3,7 +3,7 @@ use crate::parser::base::or_pc::OrTrait;
 use crate::parser::base::parsers::{FnMapTrait, Parser};
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword_p, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword, OrSyntaxErrorTrait};
 use crate::parser::statement_separator::peek_eof_or_statement_separator;
 use crate::parser::{Keyword, ResumeOption, Statement};
 
@@ -12,7 +12,7 @@ use crate::parser::{Keyword, ResumeOption, Statement};
 // RESUME label
 
 pub fn statement_resume_p() -> impl Parser<Output = Statement> {
-    keyword_p(Keyword::Resume)
+    keyword(Keyword::Resume)
         .and_demand(
             resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
         )
@@ -28,7 +28,7 @@ fn blank_resume() -> impl Parser<Output = ResumeOption> {
 }
 
 fn resume_next() -> impl Parser<Output = ResumeOption> {
-    keyword_p(Keyword::Next)
+    keyword(Keyword::Next)
         .preceded_by_req_ws()
         .fn_map(|_| ResumeOption::Next)
 }

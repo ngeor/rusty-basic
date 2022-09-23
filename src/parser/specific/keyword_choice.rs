@@ -42,7 +42,7 @@ impl<'a> NonOptParser for KeywordChoice<'a> {
                 Some(keyword) => Ok((keyword, token)),
                 None => Err(self.provide_error()),
             },
-            None => Err(QError::InputPastEndOfFile),
+            None => Err(self.provide_error()),
         }
     }
 }
@@ -68,19 +68,16 @@ impl<'a> ErrorProvider for KeywordChoice<'a> {
         let mut s = String::new();
         for keyword in self.keywords.iter() {
             if !s.is_empty() {
-                s.push_str(", ");
+                s.push_str(" or ");
             }
             s.push_str(keyword.as_str());
         }
-        QError::SyntaxError(format!("Expected one of the following keywords: {}", s))
+        QError::SyntaxError(format!("Expected: {}", s))
     }
 }
 
-// TODO rename to keyword_choice_opt
-pub fn keyword_choice_p(keywords: &[Keyword]) -> impl Parser<Output = (Keyword, Token)> + '_ {
-    KeywordChoice { keywords }
-}
-
-pub fn keyword_choice(keywords: &[Keyword]) -> impl NonOptParser<Output = (Keyword, Token)> + '_ {
+pub fn keyword_choice(
+    keywords: &[Keyword],
+) -> impl Parser<Output = (Keyword, Token)> + NonOptParser<Output = (Keyword, Token)> + '_ {
     KeywordChoice { keywords }
 }

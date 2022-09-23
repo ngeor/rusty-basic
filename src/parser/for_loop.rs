@@ -7,7 +7,7 @@ use crate::parser::expression;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    item_p, keyword, keyword_followed_by_whitespace_p, keyword_p, MapErrTrait, OrSyntaxErrorTrait,
+    item_p, keyword, keyword_followed_by_whitespace_p, MapErrTrait, OrSyntaxErrorTrait,
 };
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -52,7 +52,7 @@ fn parse_for_step_p() -> impl Parser<
 > {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
-            keyword_p(Keyword::Step)
+            keyword(Keyword::Step)
                 .preceded_by_ws(!upper.is_parenthesis())
                 .and_demand(
                     expression::guarded_expression_node_p()
@@ -80,7 +80,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
             expression::back_guarded_expression_node_p()
                 .or_syntax_error("Expected: lower bound of FOR loop"),
         )
-        .and_demand(keyword_p(Keyword::To).or_syntax_error("Expected: TO"))
+        .and_demand(keyword(Keyword::To))
         .and_demand(
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: upper bound of FOR loop"),

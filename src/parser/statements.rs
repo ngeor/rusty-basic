@@ -6,7 +6,7 @@ use crate::parser::base::parsers::{
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::base::undo_pc::Undo;
-use crate::parser::specific::keyword_choice::keyword_choice_p;
+use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{item_p, OrSyntaxErrorTrait};
@@ -50,7 +50,7 @@ impl<'a> HasOutput for LazyZeroOrMoreStatements<'a> {
 
 impl<'a> Parser for LazyZeroOrMoreStatements<'a> {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        zero_or_more_statements_p(keyword_choice_p(self.keywords)).parse(tokenizer)
+        zero_or_more_statements_p(keyword_choice(self.keywords)).parse(tokenizer)
     }
 }
 

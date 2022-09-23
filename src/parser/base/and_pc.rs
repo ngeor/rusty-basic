@@ -5,6 +5,10 @@ use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::base::undo_pc::Undo;
 
+//
+// And (with undo if the left parser supports it)
+//
+
 pub struct AndPC<L, R>(L, R);
 
 impl<L, R> HasOutput for AndPC<L, R>
@@ -35,6 +39,18 @@ where
     }
 }
 
+impl<L, R> NonOptParser for AndPC<L, R>
+where
+    L: NonOptParser,
+    R: NonOptParser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let first = self.0.parse_non_opt(tokenizer)?;
+        let second = self.1.parse_non_opt(tokenizer)?;
+        Ok((first, second))
+    }
+}
+
 pub trait AndTrait<P>
 where
     Self: Sized,
@@ -50,6 +66,10 @@ where
         AndPC(self, other)
     }
 }
+
+//
+// And Demand
+//
 
 pub struct AndDemandPC<L, R>(L, R);
 
@@ -135,5 +155,18 @@ where
             }
             None => Ok(None),
         }
+    }
+}
+
+impl<'a, 'b, A, B> NonOptParser for AndDemandRef<'a, 'b, A, B>
+where
+    A: NonOptParser,
+    B: NonOptParser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        // TODO duplicate implementation with AndDemand above
+        let left = self.0.parse_non_opt(tokenizer)?;
+        let right = self.1.parse_non_opt(tokenizer)?;
+        Ok((left, right))
     }
 }

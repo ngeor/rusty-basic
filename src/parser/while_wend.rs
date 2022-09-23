@@ -2,12 +2,12 @@ use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{FnMapTrait, Parser};
 use crate::parser::expression::guarded_expression_node_p;
-use crate::parser::specific::{keyword, keyword_p, MapErrTrait, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword, MapErrTrait, OrSyntaxErrorTrait};
 use crate::parser::statements::*;
 use crate::parser::types::*;
 
 pub fn while_wend_p() -> impl Parser<Output = Statement> {
-    keyword_p(Keyword::While)
+    keyword(Keyword::While)
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after WHILE"))
         .and_demand(
             zero_or_more_statements_opt_lazy(&[Keyword::Wend])

@@ -10,7 +10,7 @@ use crate::parser::expression;
 use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::{
-    demand_keyword_pair_p, keyword_p, keyword_pair_p, OrSyntaxErrorTrait, TokenType,
+    demand_keyword_pair_p, keyword, keyword_pair_p, OrSyntaxErrorTrait, TokenType,
 };
 use crate::parser::statements;
 use crate::parser::types::*;
@@ -79,7 +79,7 @@ fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
 
 fn case_block() -> impl Parser<Output = CaseBlockNode> {
     // CASE
-    keyword_p(Keyword::Case)
+    keyword(Keyword::Case)
         .and_demand(
             continue_after_case()
                 .preceded_by_opt_ws()
@@ -140,7 +140,7 @@ impl CaseExpressionParser {
     }
 
     fn case_is() -> impl Parser<Output = CaseExpression> {
-        keyword_p(Keyword::Is)
+        keyword(Keyword::Is)
             .and_demand(
                 expression::relational_operator_p()
                     .preceded_by_opt_ws()
@@ -166,7 +166,7 @@ impl Parser for SimpleOrRangeParser {
         match expression::expression_node_p().parse(reader)? {
             Some(expr) => {
                 let parenthesis = expr.is_parenthesis();
-                let to_keyword = keyword_p(Keyword::To)
+                let to_keyword = keyword(Keyword::To)
                     .preceded_by_ws(!parenthesis)
                     .parse(reader)?;
                 match to_keyword {

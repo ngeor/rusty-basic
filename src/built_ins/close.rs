@@ -5,11 +5,11 @@ pub mod parser {
         AndOptTrait, FnMapTrait, KeepRightTrait, ManyTrait, Parser,
     };
     use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
-    use crate::parser::specific::keyword_p;
+    use crate::parser::specific::keyword;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_p(Keyword::Close)
+        keyword(Keyword::Close)
             .and_opt(
                 expression::guarded_file_handle_or_expression_p().and_opt(
                     comma_surrounded_by_opt_ws()

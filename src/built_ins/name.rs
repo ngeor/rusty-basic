@@ -2,16 +2,16 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepMiddleTrait, Parser};
-    use crate::parser::specific::{keyword_p, OrSyntaxErrorTrait};
+    use crate::parser::specific::{keyword, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_p(Keyword::Name)
+        keyword(Keyword::Name)
             .and_demand(
                 expression::back_guarded_expression_node_p()
                     .or_syntax_error("Expected: old file name"),
             )
-            .and_demand(keyword_p(Keyword::As).or_syntax_error("Expected: AS"))
+            .and_demand(keyword(Keyword::As))
             .keep_middle()
             .and_demand(
                 expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),

@@ -1,16 +1,14 @@
 //! Mappers that are able to return an error
 
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser};
+use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 
-pub struct AndThen<P, F>(P, F)
-where
-    P: Parser;
+pub struct AndThen<P, F>(P, F);
 
 impl<P, F, U> HasOutput for AndThen<P, F>
 where
-    P: Parser,
+    P: HasOutput,
     F: Fn(P::Output) -> Result<U, QError>,
 {
     type Output = U;
@@ -29,15 +27,26 @@ where
     }
 }
 
-pub trait AndThenTrait<F> {
-    fn and_then(self, mapper: F) -> AndThen<Self, F>
-    where
-        Self: Sized + Parser;
+impl<P, F, U> NonOptParser for AndThen<P, F>
+where
+    P: NonOptParser,
+    F: Fn(P::Output) -> Result<U, QError>,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.0.parse_non_opt(tokenizer).and_then(&self.1)
+    }
+}
+
+pub trait AndThenTrait<F>
+where
+    Self: Sized,
+{
+    fn and_then(self, mapper: F) -> AndThen<Self, F>;
 }
 
 impl<P, F, U> AndThenTrait<F> for P
 where
-    P: Parser,
+    P: HasOutput,
     F: Fn(P::Output) -> Result<U, QError>,
 {
     fn and_then(self, mapper: F) -> AndThen<Self, F> {

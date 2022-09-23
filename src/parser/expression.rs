@@ -13,7 +13,7 @@ use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
 use crate::parser::specific::token_type_map::TokenTypeMap;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{item_p, keyword_p, OrSyntaxErrorTrait, TokenType};
+use crate::parser::specific::{item_p, keyword, OrSyntaxErrorTrait, TokenType};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -140,7 +140,7 @@ fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {
 }
 
 pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
-    keyword_p(Keyword::Not)
+    keyword(Keyword::Not)
         .with_pos()
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"))
         .fn_map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
@@ -845,10 +845,10 @@ fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Op
 
 fn and_or_p(
     had_parenthesis_before: bool,
-    keyword: Keyword,
+    k: Keyword,
     operator: Operator,
 ) -> impl Parser<Output = Locatable<Operator>> {
-    keyword_p(keyword)
+    keyword(k)
         .preceded_by_ws(!had_parenthesis_before)
         .fn_map(move |_| operator)
         .with_pos()
@@ -877,7 +877,7 @@ fn arithmetic_op_p() -> impl Parser<Output = Operator> {
 }
 
 fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
-    keyword_p(Keyword::Mod)
+    keyword(Keyword::Mod)
         .preceded_by_ws(!had_parenthesis_before)
         .fn_map(|_| Operator::Modulo)
         .with_pos()

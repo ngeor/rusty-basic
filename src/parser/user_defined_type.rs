@@ -50,11 +50,11 @@ use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, ManyTrait, NonOpt
 use crate::parser::comment;
 use crate::parser::expression::expression_node_p;
 use crate::parser::name;
-use crate::parser::specific::keyword_choice::keyword_choice_p;
+use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    demand_keyword_pair_p, item_p, keyword_followed_by_whitespace_p, keyword_p, MapErrTrait,
+    demand_keyword_pair_p, item_p, keyword, keyword_followed_by_whitespace_p, MapErrTrait,
     OrSyntaxErrorTrait,
 };
 use crate::parser::types::{
@@ -120,7 +120,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
 
 fn element_type_p() -> impl Parser<Output = ElementType> {
     alt3(
-        keyword_choice_p(&[
+        keyword_choice(&[
             Keyword::Integer,
             Keyword::Long,
             Keyword::Single,
@@ -133,7 +133,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
             Keyword::Double => ElementType::Double,
             _ => panic!("Parser should not have parsed this"),
         }),
-        keyword_p(Keyword::String_)
+        keyword(Keyword::String_)
             .and_demand(
                 item_p('*')
                     .surrounded_by_opt_ws()

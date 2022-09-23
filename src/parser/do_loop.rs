@@ -2,14 +2,14 @@ use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::or_pc::OrTrait;
 use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
 use crate::parser::expression::guarded_expression_node_p;
-use crate::parser::specific::keyword_choice::{keyword_choice, keyword_choice_p};
+use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword, keyword_p, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword, OrSyntaxErrorTrait};
 use crate::parser::statements::*;
 use crate::parser::types::*;
 
 pub fn do_loop_p() -> impl Parser<Output = Statement> {
-    keyword_p(Keyword::Do)
+    keyword(Keyword::Do)
         .and_demand(
             do_condition_top()
                 .or(do_condition_bottom())
@@ -20,14 +20,14 @@ pub fn do_loop_p() -> impl Parser<Output = Statement> {
 }
 
 fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
-    keyword_choice_p(&[Keyword::Until, Keyword::While])
+    keyword_choice(&[Keyword::Until, Keyword::While])
         .preceded_by_req_ws()
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
         .and_demand(
             zero_or_more_statements_opt_lazy(&[Keyword::Loop])
                 .or_syntax_error("Expected statements"),
         )
-        .and_demand(keyword_p(Keyword::Loop).or_syntax_error("DO without LOOP"))
+        .and_demand(keyword(Keyword::Loop))
         .fn_map(|((((k, _), condition), statements), _)| DoLoopNode {
             condition,
             statements,

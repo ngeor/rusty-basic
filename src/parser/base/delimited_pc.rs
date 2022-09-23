@@ -2,6 +2,43 @@ use crate::common::QError;
 use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 
+//
+// NonOptDelimitedPC
+//
+
+pub struct NonOptDelimitedPC<A, B> {
+    parser: A,
+    delimiter: B,
+}
+
+impl<A, B> HasOutput for NonOptDelimitedPC<A, B>
+where
+    A: HasOutput,
+{
+    type Output = Vec<A::Output>;
+}
+
+impl<A, B> NonOptParser for NonOptDelimitedPC<A, B>
+where
+    A: NonOptParser,
+    B: Parser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let mut result: Vec<A::Output> = vec![];
+        let mut has_more = true;
+        while has_more {
+            let next = self.parser.parse_non_opt(tokenizer)?;
+            result.push(next);
+            has_more = self.delimiter.parse(tokenizer)?.is_some();
+        }
+        Ok(result)
+    }
+}
+
+//
+// DelimitedPC
+//
+
 pub struct DelimitedPC<A, B> {
     parser: A,
     delimiter: B,
@@ -15,6 +52,8 @@ where
     type Output = Vec<A::Output>;
 }
 
+// reject zero elements
+
 impl<A, B> Parser for DelimitedPC<A, B>
 where
     A: Parser,
@@ -27,6 +66,8 @@ where
         }
     }
 }
+
+// allow zero elements
 
 impl<A, B> NonOptParser for DelimitedPC<A, B>
 where
@@ -71,6 +112,8 @@ where
         }
     }
 }
+
+// allow missing elements between delimiters
 
 pub struct DelimitedAllowMissingPC<A, B> {
     parser: A,
@@ -153,6 +196,8 @@ where
         self,
         delimiter: P,
     ) -> DelimitedAllowMissingPC<Self, P>;
+
+    fn one_or_more_delimited_by_non_opt(self, delimiter: P) -> NonOptDelimitedPC<Self, P>;
 }
 
 impl<S, P> DelimitedTrait<P> for S {
@@ -173,6 +218,13 @@ impl<S, P> DelimitedTrait<P> for S {
         delimiter: P,
     ) -> DelimitedAllowMissingPC<Self, P> {
         DelimitedAllowMissingPC {
+            parser: self,
+            delimiter,
+        }
+    }
+
+    fn one_or_more_delimited_by_non_opt(self, delimiter: P) -> NonOptDelimitedPC<Self, P> {
+        NonOptDelimitedPC {
             parser: self,
             delimiter,
         }

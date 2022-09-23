@@ -5,6 +5,13 @@ use crate::parser::base::tokenizers::Token;
 use crate::parser::specific::item_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 
+pub fn csv_one_or_more_non_opt<P>(parser: P) -> impl NonOptParser<Output = Vec<P::Output>>
+where
+    P: NonOptParser,
+{
+    parser.one_or_more_delimited_by_non_opt(comma_surrounded_by_opt_ws())
+}
+
 pub fn csv_one_or_more<P>(parser: P) -> impl Parser<Output = Vec<P::Output>>
 where
     P: Parser,

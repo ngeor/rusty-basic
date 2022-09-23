@@ -4,11 +4,11 @@ pub mod parser {
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::csv::csv_one_or_more;
     use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
-    use crate::parser::specific::{item_p, keyword_p, OrSyntaxErrorTrait};
+    use crate::parser::specific::{item_p, keyword, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {
-        keyword_p(Keyword::String_)
+        keyword(Keyword::String_)
             .and_demand(item_p('$'))
             .and_demand(
                 /* TODO refactor this expression, exists also in len.rs for instance */

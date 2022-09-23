@@ -7,12 +7,12 @@ pub mod parser {
     use crate::parser::specific::whitespace::WhitespaceTrait;
     use crate::parser::specific::with_pos::WithPosTrait;
     use crate::parser::specific::{
-        item_p, keyword_followed_by_whitespace_p, keyword_p, OrSyntaxErrorTrait,
+        item_p, keyword, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait,
     };
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_p(Keyword::Open)
+        keyword(Keyword::Open)
             .and_demand(
                 expression::back_guarded_expression_node_p()
                     .or_syntax_error("Expected: file name after OPEN"),
@@ -71,11 +71,7 @@ pub mod parser {
     // ACCESS <ws+> READ <ws+>
     fn parse_open_access_p() -> impl Parser<Output = Locatable<FileAccess>> {
         keyword_followed_by_whitespace_p(Keyword::Access)
-            .and_demand(
-                keyword_p(Keyword::Read)
-                    .with_pos()
-                    .or_syntax_error("Invalid file access"),
-            )
+            .and_demand(keyword(Keyword::Read).with_pos())
             .keep_right()
             .followed_by_req_ws()
             .fn_map(|x| FileAccess::Read.at(x.pos()))
@@ -84,7 +80,7 @@ pub mod parser {
     // AS <ws+> expression
     // AS ( expression )
     fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
-        keyword_p(Keyword::As)
+        keyword(Keyword::As)
             .and_demand(
                 expression::guarded_file_handle_or_expression_p()
                     .or_syntax_error("Expected: #file-number%"),
@@ -93,7 +89,7 @@ pub mod parser {
     }
 
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
-        keyword_p(Keyword::Len)
+        keyword(Keyword::Len)
             .preceded_by_req_ws()
             .and_demand(
                 item_p('=')

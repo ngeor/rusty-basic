@@ -8,7 +8,7 @@ use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{demand_keyword_pair_p, keyword_p, OrSyntaxErrorTrait};
+use crate::parser::specific::{demand_keyword_pair_p, keyword, OrSyntaxErrorTrait};
 use crate::parser::statements;
 use crate::parser::types::*;
 
@@ -37,12 +37,12 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
 // multi line if    ::= statements else-if-blocks else-block END IF
 
 fn if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
-    keyword_p(Keyword::If)
+    keyword(Keyword::If)
         .and_demand(
             expression::back_guarded_expression_node_p()
                 .or_syntax_error("Expected: expression after IF"),
         )
-        .and_demand(keyword_p(Keyword::Then).or_syntax_error("Expected: THEN"))
+        .and_demand(keyword(Keyword::Then))
         .keep_middle()
 }
 
@@ -66,7 +66,7 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
-    keyword_p(Keyword::Else)
+    keyword(Keyword::Else)
         .preceded_by_req_ws()
         .and_demand(
             statements::single_line_statements_p()
@@ -92,12 +92,12 @@ fn multi_line_if_p() -> impl Parser<
 }
 
 fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
-    keyword_p(Keyword::ElseIf)
+    keyword(Keyword::ElseIf)
         .and_demand(
             expression::back_guarded_expression_node_p()
                 .or_syntax_error("Expected: expression after ELSEIF"),
         )
-        .and_demand(keyword_p(Keyword::Then).or_syntax_error("Expected: THEN"))
+        .and_demand(keyword(Keyword::Then))
         .keep_middle()
 }
 
@@ -118,7 +118,7 @@ fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
 }
 
 fn else_block_p() -> impl Parser<Output = StatementNodes> {
-    keyword_p(Keyword::Else).then_use(statements::zero_or_more_statements_opt_lazy(&[
+    keyword(Keyword::Else).then_use(statements::zero_or_more_statements_opt_lazy(&[
         Keyword::End,
     ]))
 }

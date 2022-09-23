@@ -122,17 +122,25 @@ where
     }
 }
 
+impl<L, R> NonOptParser for AndOptPC<L, R>
+where
+    L: NonOptParser,
+    R: Parser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let left = self.0.parse_non_opt(tokenizer)?;
+        let opt_right = self.1.parse(tokenizer)?;
+        Ok((left, opt_right))
+    }
+}
+
 pub trait AndOptTrait<P> {
     fn and_opt(self, other: P) -> AndOptPC<Self, P>
     where
         Self: Sized;
 }
 
-impl<S, P> AndOptTrait<P> for S
-where
-    S: Parser,
-    P: Parser,
-{
+impl<S, P> AndOptTrait<P> for S {
     fn and_opt(self, other: P) -> AndOptPC<Self, P> {
         AndOptPC(self, other)
     }

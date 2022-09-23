@@ -1,7 +1,7 @@
 //! Contains parser combinators where both parts must succeed.
 
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
+use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::base::undo_pc::Undo;
 
@@ -73,6 +73,12 @@ where
 
 pub struct AndDemandPC<L, R>(L, R);
 
+impl<L, R> AndDemandPC<L, R> {
+    pub fn new(left: L, right: R) -> Self {
+        Self(left, right)
+    }
+}
+
 impl<L, R> HasOutput for AndDemandPC<L, R>
 where
     L: HasOutput,
@@ -121,52 +127,13 @@ impl<S, P> AndDemandTrait<P> for S {
     }
 }
 
-//
-// AndDemandRef
-//
-
-pub struct AndDemandRef<'a, 'b, A, B>(&'a A, &'b B);
-
-impl<'a, 'b, A, B> AndDemandRef<'a, 'b, A, B> {
-    pub fn new(left: &'a A, right: &'b B) -> Self {
-        Self(left, right)
-    }
-}
-
-impl<'a, 'b, A, B> HasOutput for AndDemandRef<'a, 'b, A, B>
-where
-    A: HasOutput,
-    B: HasOutput,
+pub fn seq3<A, B, C, F, U>(a: A, b: B, c: C, f: F) -> impl Parser<Output = U>
+    where
+        A: Parser,
+        B: NonOptParser,
+        C: NonOptParser,
+        F: Fn(A::Output, B::Output, C::Output) -> U,
 {
-    type Output = (A::Output, B::Output);
+    AndDemandPC::new(a, b.and(c)).fn_map(move |(x, (y, z))| f(x, y, z))
 }
 
-impl<'a, 'b, A, B> Parser for AndDemandRef<'a, 'b, A, B>
-where
-    A: Parser,
-    B: NonOptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        // TODO duplicate implementation with AndDemand above
-        match self.0.parse(tokenizer)? {
-            Some(left) => {
-                let right = self.1.parse_non_opt(tokenizer)?;
-                Ok(Some((left, right)))
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-impl<'a, 'b, A, B> NonOptParser for AndDemandRef<'a, 'b, A, B>
-where
-    A: NonOptParser,
-    B: NonOptParser,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        // TODO duplicate implementation with AndDemand above
-        let left = self.0.parse_non_opt(tokenizer)?;
-        let right = self.1.parse_non_opt(tokenizer)?;
-        Ok((left, right))
-    }
-}

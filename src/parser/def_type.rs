@@ -1,7 +1,6 @@
 use crate::common::QError;
-use crate::parser::base::and_pc::AndTrait;
+use crate::parser::base::and_pc::{AndTrait, seq3};
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::given::given;
 use crate::parser::base::parsers::{
     AndOptTrait, ErrorProvider, FnMapTrait, NonOptParser, Parser, TokenPredicate,
 };
@@ -9,7 +8,7 @@ use crate::parser::base::recognizers::is_letter;
 use crate::parser::base::tokenizers::Token;
 use crate::parser::specific::csv::csv_one_or_more_non_opt;
 use crate::parser::specific::keyword_choice::keyword_choice;
-use crate::parser::specific::whitespace::WhitespaceTrait;
+use crate::parser::specific::whitespace::whitespace;
 use crate::parser::specific::{item_p, TokenType};
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
@@ -20,9 +19,9 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type_p() -> impl Parser<Output = DefType> {
-    given(def_keyword_p().followed_by_req_ws())
-        .then(letter_ranges())
-        .fn_map(|(l, r)| DefType::new(l, r))
+    seq3(def_keyword_p(), whitespace(), letter_ranges(), |l, _, r| {
+        DefType::new(l, r)
+    })
 }
 
 // TODO in this case keyword_choice does not need to carry the keyword _AND_ the token

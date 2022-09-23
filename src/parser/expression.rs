@@ -148,21 +148,37 @@ pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
 }
 
 pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
-    item_p('#')
-        .with_pos()
-        .and_demand(number_literal::digits())
-        .and_then(
-            |(Locatable { pos, .. }, digits)| match digits.text.parse::<u8>() {
-                Ok(d) => {
-                    if d > 0 {
-                        Ok(Locatable::new(d.into(), pos))
-                    } else {
-                        Err(QError::BadFileNameOrNumber)
+    FileHandleParser
+}
+
+// TODO support simple functions without `&self` for cases like FileHandleParser
+
+struct FileHandleParser;
+
+impl HasOutput for FileHandleParser {
+    type Output = Locatable<FileHandle>;
+}
+
+impl Parser for FileHandleParser {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let pos: Location = tokenizer.position().into(); // TODO fix location vs rowcol
+        match tokenizer.read()? {
+            Some(token) if token.kind == TokenType::Pound as i32 => match tokenizer.read()? {
+                Some(token) if token.kind == TokenType::Digits as i32 => {
+                    match token.text.parse::<u8>() {
+                        Ok(d) if d > 0 => Ok(Some(FileHandle::from(d).at(pos))),
+                        _ => Err(QError::BadFileNameOrNumber),
                     }
                 }
-                Err(_) => Err(QError::BadFileNameOrNumber),
+                _ => Err(QError::syntax_error("Expected: digits after #")),
             },
-        )
+            Some(token) => {
+                tokenizer.unread(token);
+                Ok(None)
+            }
+            _ => Ok(None),
+        }
+    }
 }
 
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
@@ -239,7 +255,7 @@ mod number_literal {
 
     pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
-        digits_p()
+        digits()
             .and_opt(item_p('.').and_demand(digits()).keep_right())
             .and_opt(item_p('#'))
             .and_then(
@@ -383,12 +399,7 @@ mod number_literal {
             })
     }
 
-    pub fn digits() -> impl NonOptParser<Output = Token> {
-        TokenKindParser::new(TokenType::Digits).parser()
-    }
-
-    // TODO rename to opt
-    pub fn digits_p() -> impl Parser<Output = Token> {
+    pub fn digits() -> impl Parser<Output = Token> + NonOptParser<Output = Token> {
         TokenKindParser::new(TokenType::Digits).parser()
     }
 }
@@ -539,7 +550,7 @@ pub mod word {
                         | TokenType::Percent
                         | TokenType::Ampersand
                         | TokenType::DollarSign => {
-                            Err(QError::syntax_error("Expected: end of name expression"))
+                            Err(QError::syntax_error("Expected: end of name expr"))
                         }
                         _ => Ok(Some(())),
                     }
@@ -847,9 +858,9 @@ fn and_or_p(
     operator: Operator,
 ) -> impl Parser<Output = Locatable<Operator>> {
     keyword(k)
-        .preceded_by_ws(!had_parenthesis_before)
-        .fn_map(move |_| operator)
         .with_pos()
+        .preceded_by_ws(!had_parenthesis_before)
+        .fn_map(move |Locatable{ pos, .. }| operator.at(pos))
 }
 
 struct ArithmeticMap;
@@ -1512,7 +1523,7 @@ mod tests {
                 ExpressionType::Unresolved
             )
         );
-        assert_parser_err!("PRINT 1AND 2", QError::syntax_error("No separator: A"));
+        assert_parser_err!("PRINT 1AND 2", QError::syntax_error("No separator: AND"));
         assert_expression!(
             "(1 OR 2)AND 3",
             Expression::BinaryExpression(
@@ -1542,7 +1553,7 @@ mod tests {
                 ExpressionType::Unresolved
             )
         );
-        assert_parser_err!("PRINT 1OR 2", QError::syntax_error("No separator: O"));
+        assert_parser_err!("PRINT 1OR 2", QError::syntax_error("No separator: OR"));
         assert_expression!(
             "(1 AND 2)OR 3",
             Expression::BinaryExpression(

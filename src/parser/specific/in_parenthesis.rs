@@ -117,7 +117,7 @@ where
                 right_paren(tokenizer)?;
                 Ok(result)
             }
-            _ => Err(QError::syntax_error("Expected: opening parenthesis")),
+            _ => Err(QError::syntax_error("Expected: (")),
         }
     }
 }

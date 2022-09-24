@@ -26,7 +26,7 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
         Keyword::DefSng,
         Keyword::DefStr,
     ])
-    .fn_map(|(k, _)| match k {
+    .map(|(k, _)| match k {
         Keyword::DefInt => TypeQualifier::PercentInteger,
         Keyword::DefLng => TypeQualifier::AmpersandLong,
         Keyword::DefSng => TypeQualifier::BangSingle,
@@ -56,7 +56,7 @@ fn letter_range() -> impl NonOptParser<Output = LetterRange> {
 }
 
 fn letter() -> impl Parser<Output = char> + NonOptParser<Output = char> {
-    LetterToken.parser().fn_map(token_to_char)
+    LetterToken.parser().map(token_to_char)
 }
 
 struct LetterToken;

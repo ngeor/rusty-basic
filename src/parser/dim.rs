@@ -10,7 +10,7 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
             csv_one_or_more(dim_name::dim_name_node_p())
                 .or_syntax_error("Expected: name after DIM"),
         )
-        .fn_map(|((_, opt_shared), variables)| {
+        .map(|((_, opt_shared), variables)| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
@@ -26,7 +26,7 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
             csv_one_or_more(dim_name::redim_name_node_p())
                 .or_syntax_error("Expected: name after REDIM"),
         )
-        .fn_map(|((_, opt_shared), variables)| {
+        .map(|((_, opt_shared), variables)| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),
                 variables,

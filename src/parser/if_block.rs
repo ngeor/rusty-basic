@@ -10,7 +10,7 @@ use crate::parser::types::*;
 pub fn if_block_p() -> impl Parser<Output = Statement> {
     if_expr_then_p()
         .and_demand(single_line_if_else_p().or(multi_line_if_p()))
-        .fn_map(|(condition, (statements, else_if_blocks, else_block))| {
+        .map(|(condition, (statements, else_if_blocks, else_block))| {
             Statement::IfBlock(IfBlockNode {
                 if_block: ConditionalBlockNode {
                     condition,
@@ -50,10 +50,10 @@ fn single_line_if_else_p() -> impl Parser<
             comment::comment_p()
                 .preceded_by_req_ws()
                 .with_pos()
-                .fn_map(|s| vec![s])
+                .map(|s| vec![s])
                 .or(single_line_else_p()),
         )
-        .fn_map(|(l, r)| (l, vec![], r))
+        .map(|(l, r)| (l, vec![], r))
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
@@ -80,7 +80,7 @@ fn multi_line_if_p() -> impl NonOptParser<
     .and_demand(else_if_block_p().zero_or_more())
     .and_opt(else_block_p())
     .and_demand(keyword_pair(Keyword::End, Keyword::If))
-    .fn_map(|(((if_block, else_if_blocks), opt_else), _)| (if_block, else_if_blocks, opt_else))
+    .map(|(((if_block, else_if_blocks), opt_else), _)| (if_block, else_if_blocks, opt_else))
 }
 
 fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
@@ -100,7 +100,7 @@ fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
             Keyword::Else,
             Keyword::ElseIf,
         ])))
-        .fn_map(|(condition, statements)| ConditionalBlockNode {
+        .map(|(condition, statements)| ConditionalBlockNode {
             condition,
             statements,
         })

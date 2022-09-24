@@ -13,7 +13,7 @@ pub mod parser {
                 expression::expression_node_p()
                     .or_syntax_error("Expected: #file-number or variable"),
             )
-            .fn_map(|((_, opt_loc_file_handle), variable)| {
+            .map(|((_, opt_loc_file_handle), variable)| {
                 let mut args: Vec<ExpressionNode> = vec![];
                 // add dummy arguments to encode the file number
                 if let Some(Locatable { element, pos }) = opt_loc_file_handle {

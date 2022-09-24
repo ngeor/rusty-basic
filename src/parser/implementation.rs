@@ -16,7 +16,7 @@ fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
         .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
         .and_demand(keyword_pair(Keyword::End, Keyword::Function))
         .keep_left()
-        .fn_map(|(((name, params), is_static), body)| {
+        .map(|(((name, params), is_static), body)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation {
                 name,
                 params,
@@ -31,7 +31,7 @@ fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
         .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
         .and_demand(keyword_pair(Keyword::End, Keyword::Sub))
         .keep_left()
-        .fn_map(|(((name, params), is_static), body)| {
+        .map(|(((name, params), is_static), body)| {
             TopLevelToken::SubImplementation(SubImplementation {
                 name,
                 params,
@@ -47,7 +47,7 @@ where
 {
     parser
         .and_opt(keyword(Keyword::Static).preceded_by_opt_ws())
-        .fn_map(|(l, r)| (l, r.is_some()))
+        .map(|(l, r)| (l, r.is_some()))
 }
 
 #[cfg(test)]

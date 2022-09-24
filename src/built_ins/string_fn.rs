@@ -15,7 +15,7 @@ pub mod parser {
                 ),
             )
             .keep_right()
-            .fn_map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))
+            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))
     }
 }
 

@@ -13,7 +13,7 @@ pub fn statement_resume_p() -> impl Parser<Output = Statement> {
         .and_demand(
             resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
         )
-        .fn_map(|(_, r)| Statement::Resume(r))
+        .map(|(_, r)| Statement::Resume(r))
 }
 
 fn resume_option_p() -> impl Parser<Output = ResumeOption> {
@@ -21,19 +21,17 @@ fn resume_option_p() -> impl Parser<Output = ResumeOption> {
 }
 
 fn blank_resume() -> impl Parser<Output = ResumeOption> {
-    peek_eof_or_statement_separator().fn_map(|_| ResumeOption::Bare)
+    peek_eof_or_statement_separator().map(|_| ResumeOption::Bare)
 }
 
 fn resume_next() -> impl Parser<Output = ResumeOption> {
     keyword(Keyword::Next)
         .preceded_by_req_ws()
-        .fn_map(|_| ResumeOption::Next)
+        .map(|_| ResumeOption::Next)
 }
 
 fn resume_label() -> impl Parser<Output = ResumeOption> {
-    bare_name_p()
-        .preceded_by_req_ws()
-        .fn_map(ResumeOption::Label)
+    bare_name_p().preceded_by_req_ws().map(ResumeOption::Label)
 }
 
 #[cfg(test)]

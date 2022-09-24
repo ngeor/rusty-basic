@@ -11,7 +11,7 @@ pub mod parser {
                     .or_syntax_error("Expected: variable"),
             ))
             .keep_right()
-            .fn_map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
+            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }
 }
 

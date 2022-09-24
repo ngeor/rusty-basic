@@ -364,7 +364,7 @@ where
 }
 
 pub trait FnMapTrait<F> {
-    fn fn_map(self, mapper: F) -> FnMapper<Self, F>
+    fn map(self, mapper: F) -> FnMapper<Self, F>
     where
         Self: Sized;
 }
@@ -374,7 +374,7 @@ where
     S: HasOutput,
     F: Fn(S::Output) -> U,
 {
-    fn fn_map(self, mapper: F) -> FnMapper<Self, F> {
+    fn map(self, mapper: F) -> FnMapper<Self, F> {
         FnMapper(self, mapper)
     }
 }

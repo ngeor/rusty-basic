@@ -17,7 +17,7 @@ pub mod parser {
             .or_syntax_error("Expected: file-number")
             .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
             .and_demand(csv_one_or_more(field_item_p()).or_syntax_error("Expected: field width"))
-            .fn_map(|((file_number, _), fields)| {
+            .map(|((file_number, _), fields)| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
             })
     }
@@ -36,7 +36,7 @@ pub mod parser {
                     .with_pos()
                     .or_syntax_error("Expected: variable name"),
             )
-            .fn_map(|((width, _), name)| (width, name))
+            .map(|((width, _), name)| (width, name))
     }
 
     fn build_args(

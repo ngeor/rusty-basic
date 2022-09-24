@@ -9,7 +9,7 @@ pub mod parser {
             .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
             .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
-            .fn_map(|(((_, file_number), _), r)| {
+            .map(|(((_, file_number), _), r)| {
                 Statement::BuiltInSubCall(
                     BuiltInSub::Get,
                     vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],

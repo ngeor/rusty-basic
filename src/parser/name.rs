@@ -32,7 +32,7 @@ pub fn name_with_dot_p() -> impl Parser<Output = Name> {
                 Ok(true)
             }
         })
-        .fn_map(|(n, opt_q)| Name::new(n.text.into(), TypeQualifier::from_opt_token(&opt_q)))
+        .map(|(n, opt_q)| Name::new(n.text.into(), TypeQualifier::from_opt_token(&opt_q)))
 }
 
 // bare name node
@@ -46,7 +46,7 @@ pub fn bare_name_as_token() -> impl Parser<Output = Token> {
 }
 
 pub fn bare_name_p() -> impl Parser<Output = BareName> {
-    bare_name_as_token().fn_map(|x| x.text.into()) // TODO make a parser for simpler .into() cases
+    bare_name_as_token().map(|x| x.text.into()) // TODO make a parser for simpler .into() cases
 }
 
 struct UnlessFollowedBy<L, R>(L, R);

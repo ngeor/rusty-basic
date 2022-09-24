@@ -94,7 +94,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
         .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
         .and_demand(comment::comments_and_whitespace_p())
-        .fn_map(
+        .map(
             |(((Locatable { element, pos }, _), element_type), comments)| {
                 Locatable::new(Element::new(element, element_type, comments), pos)
             },
@@ -109,7 +109,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
             Keyword::Single,
             Keyword::Double,
         ])
-        .fn_map(|(k, _)| match k {
+        .map(|(k, _)| match k {
             Keyword::Integer => ElementType::Integer,
             Keyword::Long => ElementType::Long,
             Keyword::Single => ElementType::Single,
@@ -124,10 +124,10 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
             )
             .and_demand(demand_string_length_p())
             .keep_right()
-            .fn_map(|e| ElementType::FixedLengthString(e, 0)),
+            .map(|e| ElementType::FixedLengthString(e, 0)),
         bare_name_without_dot_p()
             .with_pos()
-            .fn_map(ElementType::UserDefined),
+            .map(ElementType::UserDefined),
     )
 }
 

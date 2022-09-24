@@ -13,7 +13,7 @@ pub fn while_wend_p() -> impl Parser<Output = Statement> {
             QError::WhileWithoutWend,
         ))
         .and_demand(keyword(Keyword::Wend).map_err(QError::WhileWithoutWend))
-        .fn_map(|(((_, condition), statements), _)| {
+        .map(|(((_, condition), statements), _)| {
             Statement::While(ConditionalBlockNode {
                 condition,
                 statements,

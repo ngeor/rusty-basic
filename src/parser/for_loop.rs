@@ -14,7 +14,7 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
         .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Next)))
         .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
         .and_opt(next_counter_p())
-        .fn_map(
+        .map(
             |(
                 (((variable_name, lower_bound, upper_bound, opt_step), statements), _),
                 opt_next_name_node,
@@ -50,7 +50,7 @@ fn parse_for_step_p() -> impl Parser<
                 )
                 .keep_right()
         })
-        .fn_map(|((n, l, u), opt_step)| (n, l, u, opt_step))
+        .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 
 /// Parses the "FOR I = 1 TO 2" part
@@ -75,7 +75,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: upper bound of FOR loop"),
         )
-        .fn_map(|(((((_, n), _), l), _), u)| (n, l, u))
+        .map(|(((((_, n), _), l), _), u)| (n, l, u))
 }
 
 fn next_counter_p() -> impl Parser<Output = ExpressionNode> {

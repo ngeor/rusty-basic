@@ -8,7 +8,7 @@ pub mod parser {
         keyword(Keyword::Read)
             .and_demand(expression::expression_nodes_p().or_syntax_error("Expected: variable"))
             .keep_right()
-            .fn_map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
+            .map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
     }
 }
 

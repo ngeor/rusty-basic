@@ -19,7 +19,7 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
         .and_demand(expression::demand_expression_node_p(
             "Expected: const value",
         ))
-        .fn_map(|(((_, const_name), _), const_value_expr)| {
+        .map(|(((_, const_name), _), const_value_expr)| {
             Statement::Const(const_name, const_value_expr)
         })
 }

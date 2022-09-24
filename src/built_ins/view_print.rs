@@ -8,7 +8,7 @@ pub mod parser {
         keyword_pair(Keyword::View, Keyword::Print)
             .and_opt(parse_args())
             .keep_right()
-            .fn_map(|opt_args| {
+            .map(|opt_args| {
                 Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args.unwrap_or_default())
             })
     }
@@ -19,7 +19,7 @@ pub mod parser {
             .and_demand(
                 expression::guarded_expression_node_p().or_syntax_error("Expected: expression"),
             )
-            .fn_map(|((l, _), r)| vec![l, r])
+            .map(|((l, _), r)| vec![l, r])
     }
 }
 

@@ -68,7 +68,7 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
                 )
                 .keep_right(),
         )
-        .fn_map(|(l, opt_r)| match opt_r {
+        .map(|(l, opt_r)| match opt_r {
             Some(r) => ArrayDimension {
                 lbound: Some(l),
                 ubound: r,

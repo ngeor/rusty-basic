@@ -24,7 +24,7 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
         .and_demand(case_blocks())
         .and_opt(case_else())
         .and_demand(keyword_pair(Keyword::End, Keyword::Select))
-        .fn_map(
+        .map(
             |((((expr, inline_comments), case_blocks), else_block), _)| {
                 Statement::SelectCase(SelectCaseNode {
                     expr,
@@ -124,7 +124,7 @@ fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
             Keyword::Case,
             Keyword::End,
         ])))
-        .fn_map(|(expression_list, statements)| CaseBlockNode {
+        .map(|(expression_list, statements)| CaseBlockNode {
             expression_list,
             statements,
         })
@@ -163,7 +163,7 @@ impl CaseExpressionParser {
                     .preceded_by_opt_ws()
                     .or_syntax_error("Expected: expression after IS operator"),
             )
-            .fn_map(|((_, op), r)| CaseExpression::Is(op.strip_location(), r))
+            .map(|((_, op), r)| CaseExpression::Is(op.strip_location(), r))
     }
 }
 

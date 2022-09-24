@@ -6,7 +6,7 @@ use crate::parser::types::*;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<Output = Statement> {
-    CommentAsString.fn_map(Statement::Comment)
+    CommentAsString.map(Statement::Comment)
 }
 
 /// Reads multiple comments and the surrounding whitespace.

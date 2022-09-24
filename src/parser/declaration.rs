@@ -19,8 +19,8 @@ pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
     keyword_followed_by_whitespace_p(Keyword::Declare)
         .and_demand(
             function_declaration_p()
-                .fn_map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
-                .or(sub_declaration_p().fn_map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
+                .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
+                .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
                 .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
         )
         .keep_right()
@@ -34,7 +34,7 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
                 .or_syntax_error("Expected: function name"),
         )
         .and_opt(declaration_parameters_p().preceded_by_opt_ws())
-        .fn_map(|((_, function_name_node), opt_p)| (function_name_node, opt_p.unwrap_or_default()))
+        .map(|((_, function_name_node), opt_p)| (function_name_node, opt_p.unwrap_or_default()))
 }
 
 pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes)> {
@@ -45,7 +45,7 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
                 .or_syntax_error("Expected: sub name"),
         )
         .and_opt(declaration_parameters_p().preceded_by_opt_ws())
-        .fn_map(|((_, sub_name_node), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
+        .map(|((_, sub_name_node), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
 }
 
 fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {

@@ -11,7 +11,7 @@ pub mod parser {
                 expression::expression_node_p(),
             ))
             .keep_right()
-            .fn_map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
+            .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
     }
 
     fn map_args(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {

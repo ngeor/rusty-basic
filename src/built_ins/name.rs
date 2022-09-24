@@ -15,7 +15,7 @@ pub mod parser {
             .and_demand(
                 expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),
             )
-            .fn_map(|(l, r)| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]))
+            .map(|(l, r)| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]))
     }
 }
 

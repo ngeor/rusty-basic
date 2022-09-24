@@ -8,8 +8,8 @@ pub mod parser {
         keyword_pair(Keyword::Def, Keyword::Seg)
             .and_opt(equal_sign_and_expression())
             .keep_right()
-            .fn_map(opt_arg_to_args)
-            .fn_map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
+            .map(opt_arg_to_args)
+            .map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {

@@ -8,7 +8,7 @@ pub mod parser {
         keyword(Keyword::Data)
             .and_opt(expression::expression_nodes_p())
             .keep_right()
-            .fn_map(|opt_args| {
+            .map(|opt_args| {
                 Statement::BuiltInSubCall(BuiltInSub::Data, opt_args.unwrap_or_default())
             })
     }

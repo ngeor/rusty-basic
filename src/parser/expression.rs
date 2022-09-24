@@ -70,7 +70,7 @@ pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
                     .or_syntax_error("Expected: right side expression"),
             )
         })
-        .fn_map(|(left_side, opt_right_side)| {
+        .map(|(left_side, opt_right_side)| {
             (match opt_right_side {
                 Some((loc_op, right_side)) => {
                     let Locatable { element: op, pos } = loc_op;
@@ -94,7 +94,7 @@ pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
                 .keep_right()
                 .zero_or_more(),
         )
-        .fn_map(|(first, mut remaining)| {
+        .map(|(first, mut remaining)| {
             remaining.insert(0, first);
             remaining
         })
@@ -125,14 +125,14 @@ fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {
         .and_demand(
             lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
         )
-        .fn_map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos))
+        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos))
 }
 
 pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
     keyword(Keyword::Not)
         .with_pos()
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"))
-        .fn_map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
+        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
 }
 
 pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
@@ -172,7 +172,7 @@ impl Parser for FileHandleParser {
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
 pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     file_handle_p()
-        .fn_map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
+        .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
 }
 
 pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
@@ -183,7 +183,7 @@ pub fn parenthesis_p() -> impl Parser<Output = Expression> {
     in_parenthesis_non_opt(
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
-    .fn_map(|child| Expression::Parenthesis(Box::new(child)))
+    .map(|child| Expression::Parenthesis(Box::new(child)))
 }
 
 pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
@@ -207,7 +207,7 @@ mod string_literal {
         string_delimiter()
             .and_demand(InsideString.parser().zero_or_more())
             .and_demand(string_delimiter())
-            .fn_map(|((_, token_list), _)| {
+            .map(|((_, token_list), _)| {
                 Expression::StringLiteral(token_list_to_string(&token_list))
             })
     }
@@ -855,7 +855,7 @@ fn and_or_p(
     keyword(k)
         .with_pos()
         .preceded_by_ws(!had_parenthesis_before)
-        .fn_map(move |Locatable { pos, .. }| operator.at(pos))
+        .map(move |Locatable { pos, .. }| operator.at(pos))
 }
 
 struct ArithmeticMap;
@@ -883,7 +883,7 @@ fn arithmetic_op_p() -> impl Parser<Output = Operator> {
 fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
     keyword(Keyword::Mod)
         .preceded_by_ws(!had_parenthesis_before)
-        .fn_map(|_| Operator::Modulo)
+        .map(|_| Operator::Modulo)
         .with_pos()
 }
 

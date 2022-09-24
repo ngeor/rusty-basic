@@ -15,7 +15,7 @@ pub mod parser {
             .and_opt(parse_open_access_p())
             .and_demand(parse_file_number_p().or_syntax_error("Expected: AS file-number"))
             .and_opt(parse_len_p())
-            .fn_map(
+            .map(
                 |(((((_, file_name), opt_file_mode), opt_file_access), file_number), opt_len)| {
                     Statement::BuiltInSubCall(
                         BuiltInSub::Open,
@@ -45,7 +45,7 @@ pub mod parser {
             )
             .keep_right()
             .followed_by_req_ws()
-            .fn_map(
+            .map(
                 |Locatable {
                      element: (file_mode, _),
                      pos,
@@ -68,7 +68,7 @@ pub mod parser {
             .and_demand(keyword(Keyword::Read).with_pos())
             .keep_right()
             .followed_by_req_ws()
-            .fn_map(|x| FileAccess::Read.at(x.pos()))
+            .map(|x| FileAccess::Read.at(x.pos()))
     }
 
     // AS <ws+> expression

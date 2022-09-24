@@ -16,7 +16,7 @@ pub mod parser {
                 csv_one_or_more(expression::expression_node_p())
                     .or_syntax_error("Expected: #file-number or variable"),
             )
-            .fn_map(|((_, opt_loc_file_number), variables)| {
+            .map(|((_, opt_loc_file_number), variables)| {
                 let mut args: Vec<ExpressionNode> = vec![];
                 if let Some(Locatable { element, pos }) = opt_loc_file_number {
                     args.push(Expression::IntegerLiteral(1.into()).at(Location::start()));

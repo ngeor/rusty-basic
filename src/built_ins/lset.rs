@@ -18,7 +18,7 @@ pub mod parser {
                     .or_syntax_error("Expected: ="),
             )
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: expression"))
-            .fn_map(|(((_, name_node), _), value_expr_node)| {
+            .map(|(((_, name_node), _), value_expr_node)| {
                 Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_node, value_expr_node))
             })
     }

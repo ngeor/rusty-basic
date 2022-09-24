@@ -75,13 +75,13 @@ fn statement_label_p() -> impl Parser<Output = Statement> {
     bare_name_as_token()
         .and(item_p(':'))
         .keep_left()
-        .fn_map(|l| Statement::Label(l.text.into()))
+        .map(|l| Statement::Label(l.text.into()))
 }
 
 fn statement_go_to_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_demand(bare_name_p().or_syntax_error("Expected: label"))
-        .fn_map(|(_, l)| Statement::GoTo(l))
+        .map(|(_, l)| Statement::GoTo(l))
 }
 
 fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
@@ -103,7 +103,7 @@ mod end {
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::End)
             .and_demand(AfterEndSeparator)
-            .fn_map(|_| Statement::End)
+            .map(|_| Statement::End)
     }
 
     /// Parses the next token after END. If it is one of the valid keywords that
@@ -182,7 +182,7 @@ mod system {
                     .preceded_by_opt_ws()
                     .or_syntax_error("Expected: end-of-statement"),
             )
-            .fn_map(|_| Statement::System)
+            .map(|_| Statement::System)
     }
 
     #[cfg(test)]

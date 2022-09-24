@@ -16,7 +16,7 @@ pub mod parser {
                 ),
             )
             .keep_right()
-            .fn_map(|opt_first_and_remaining| {
+            .map(|opt_first_and_remaining| {
                 let mut args: ExpressionNodes = vec![];
                 if let Some((first, opt_remaining)) = opt_first_and_remaining {
                     args.push(first);

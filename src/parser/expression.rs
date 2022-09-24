@@ -4,6 +4,11 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
+/// `( expr [, expr]* )`
+pub fn expressions_non_opt(err_msg: &str) -> impl NonOptParser<Output = ExpressionNodes> + '_ {
+    in_parenthesis_non_opt(lazy_expression_node_p().csv().or_syntax_error(err_msg))
+}
+
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
     LazyExpressionParser
 }

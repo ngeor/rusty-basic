@@ -5,17 +5,12 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {
-        keyword(Keyword::String_)
-            .and_demand(item_p('$'))
-            .and_demand(
-                /* TODO refactor this expression, exists also in len.rs for instance */
-                in_parenthesis_non_opt(
-                    csv_one_or_more(expression::lazy_expression_node_p())
-                        .or_syntax_error("Expected: expression"),
-                ),
-            )
-            .keep_right()
-            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))
+        seq3(
+            keyword(Keyword::String_),
+            item_p('$'),
+            expression::expressions_non_opt("Expected: expression"),
+            |_, _, v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v),
+        )
     }
 }
 

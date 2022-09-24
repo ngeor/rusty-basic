@@ -5,13 +5,11 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {
-        keyword(Keyword::Len)
-            .and_demand(in_parenthesis_non_opt(
-                csv_one_or_more(expression::lazy_expression_node_p())
-                    .or_syntax_error("Expected: variable"),
-            ))
-            .keep_right()
-            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
+        seq2(
+            keyword(Keyword::Len),
+            expression::expressions_non_opt("Expected: variable"),
+            |_, v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v),
+        )
     }
 }
 

@@ -185,7 +185,7 @@ mod tests {
         let input = "LINE INPUT";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: whitespace after LINE INPUT")
+            QError::syntax_error("Expected: whitespace")
         );
     }
 

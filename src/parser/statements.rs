@@ -68,12 +68,10 @@ where
                     result.push(statement_node);
                     state = 1;
                 } else {
-                    return Err(
-                        match &self.1 {
-                            Some(custom_error) => custom_error.clone(),
-                            _ => QError::syntax_error("Expected: statement")
-                        }
-                    );
+                    return Err(match &self.1 {
+                        Some(custom_error) => custom_error.clone(),
+                        _ => QError::syntax_error("Expected: statement"),
+                    });
                 }
             } else if state == 1 {
                 // looking for separator after statement

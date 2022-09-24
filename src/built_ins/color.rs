@@ -116,7 +116,7 @@ mod tests {
         let input = "COLOR";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: whitespace after COLOR"),
+            QError::syntax_error("Expected: whitespace"),
             1,
             6
         );

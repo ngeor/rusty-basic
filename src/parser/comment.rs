@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::base::delimited_pc::DelimitedTrait;
 use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::specific::whitespace::WhitespaceTrait;
@@ -15,18 +14,36 @@ pub fn comment_p() -> impl Parser<Output = Statement> {
 
 /// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p() -> impl NonOptParser<Output = Vec<Locatable<String>>> {
-    CommentAsString
-        .with_pos()
-        .one_or_more_delimited_by_allow_missing(Separator::Comment)
-        .fn_map(keep_non_empty)
-        .preceded_by_opt_ws()
+    CommentsAndWhitespace.preceded_by_opt_ws()
 }
 
-fn keep_non_empty<E>(x: Vec<Option<E>>) -> Vec<E> {
-    x.into_iter()
-        .filter(Option::is_some)
-        .map(Option::unwrap)
-        .collect()
+struct CommentsAndWhitespace;
+
+impl HasOutput for CommentsAndWhitespace {
+    type Output = Vec<Locatable<String>>;
+}
+
+impl NonOptParser for CommentsAndWhitespace {
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let mut result: Vec<Locatable<String>> = vec![];
+        let sep = Separator::Comment;
+        let parser = CommentAsString.with_pos();
+        let mut found_separator = true;
+        let mut found_comment = true;
+        while found_separator || found_comment {
+            found_separator = sep.parse(tokenizer)?.is_some();
+            match parser.parse(tokenizer)? {
+                Some(comment) => {
+                    result.push(comment);
+                    found_comment = true;
+                }
+                _ => {
+                    found_comment = false;
+                }
+            }
+        }
+        Ok(result)
+    }
 }
 
 struct CommentAsString;

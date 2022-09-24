@@ -212,10 +212,7 @@ mod tests {
     #[test]
     fn test_no_whitespace_after_input() {
         let input = "INPUT";
-        assert_parser_err!(
-            input,
-            QError::syntax_error("Expected: whitespace")
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: whitespace"));
     }
 
     #[test]

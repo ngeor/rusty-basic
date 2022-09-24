@@ -5,7 +5,14 @@ use crate::parser::base::undo_pc::Undo;
 use crate::parser::specific::TokenType;
 
 pub enum Separator {
+    /// `<ws>* EOL <ws | eol>*`
     Comment,
+
+    /// ````text
+    /// <ws>* '\'' (undoing it)
+    /// <ws>* ':' <ws*>
+    /// <ws>* EOL <ws | eol>*
+    /// ```
     NonComment,
 }
 
@@ -22,7 +29,6 @@ impl Parser for Separator {
     }
 }
 
-// <ws>* EOL <ws | eol>*
 struct CommentSeparator;
 
 impl HasOutput for CommentSeparator {
@@ -55,9 +61,6 @@ impl Parser for CommentSeparator {
     }
 }
 
-// <ws>* '\'' (undoing it)
-// <ws>* ':' <ws*>
-// <ws>* EOL <ws | eol>*
 struct CommonSeparator;
 
 impl HasOutput for CommonSeparator {

@@ -127,61 +127,54 @@ where
     type Output = Vec<Option<A::Output>>;
 }
 
+enum ListItem<A> {
+    Empty,
+    FinalItem(A, Box<ListItem<A>>),
+    Delimited(Option<A>, Box<ListItem<A>>),
+}
+
 impl<A, B> NonOptParser for DelimitedAllowMissingPC<A, B>
 where
     A: Parser,
     B: Parser,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.parser.parse(tokenizer)? {
-            Some(first) => self.after_element(tokenizer, vec![Some(first)]),
-            None => self.after_element_miss(tokenizer, vec![]),
-        }
-    }
-}
-
-impl<A, B> DelimitedAllowMissingPC<A, B>
-where
-    A: Parser,
-    B: Parser,
-{
-    fn after_element(
-        &self,
-        tokenizer: &mut impl Tokenizer,
-        collected: Vec<Option<A::Output>>,
-    ) -> Result<Vec<Option<A::Output>>, QError> {
-        match self.delimiter.parse(tokenizer)? {
-            Some(_) => self.after_delimiter(tokenizer, collected),
-            None => Ok(collected),
-        }
-    }
-
-    fn after_element_miss(
-        &self,
-        tokenizer: &mut impl Tokenizer,
-        mut collected: Vec<Option<A::Output>>,
-    ) -> Result<Vec<Option<A::Output>>, QError> {
-        match self.delimiter.parse(tokenizer)? {
-            Some(_) => {
-                collected.push(None);
-                self.after_delimiter(tokenizer, collected)
+        let mut item = ListItem::Empty;
+        loop {
+            let opt_value = self.parser.parse(tokenizer)?;
+            match self.delimiter.parse(tokenizer)? {
+                Some(_) => {
+                    item = ListItem::Delimited(opt_value, Box::new(item));
+                }
+                None => {
+                    if let Some(value) = opt_value {
+                        item = ListItem::FinalItem(value, Box::new(item));
+                    }
+                    break;
+                }
             }
-            None => Ok(collected),
         }
-    }
 
-    fn after_delimiter(
-        &self,
-        tokenizer: &mut impl Tokenizer,
-        mut collected: Vec<Option<A::Output>>,
-    ) -> Result<Vec<Option<A::Output>>, QError> {
-        match self.parser.parse(tokenizer)? {
-            Some(next) => {
-                collected.push(Some(next));
-                self.after_element(tokenizer, collected)
+        let mut result: Vec<Option<A::Output>> = vec![];
+        loop {
+            match item {
+                ListItem::Empty => {
+                    break;
+                }
+                ListItem::FinalItem(value, box_next) => {
+                    result.insert(0, Some(value));
+                    item = *box_next;
+                }
+                ListItem::Delimited(opt_value, box_next) => {
+                    if result.is_empty() {
+                        return Err(QError::syntax_error("Error: trailing comma"));
+                    }
+                    result.insert(0, opt_value);
+                    item = *box_next;
+                }
             }
-            None => self.after_element_miss(tokenizer, collected),
         }
+        Ok(result)
     }
 }
 

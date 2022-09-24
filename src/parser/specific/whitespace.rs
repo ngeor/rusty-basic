@@ -66,7 +66,7 @@ where
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let opt_space = whitespace().parse(tokenizer)?;
         if self.needs_whitespace && opt_space.is_none() {
-            Err(QError::syntax_error("Expected whitespace"))
+            Err(QError::syntax_error("Expected: whitespace"))
         } else {
             self.parser.parse_non_opt(tokenizer)
         }
@@ -110,7 +110,7 @@ where
                 if self.needs_whitespace {
                     match whitespace().parse(tokenizer)? {
                         Some(_) => Ok(Some(value)),
-                        None => Err(QError::syntax_error("Expected whitespace")),
+                        None => Err(QError::syntax_error("Expected: whitespace")),
                     }
                 } else {
                     whitespace().parse(tokenizer)?;

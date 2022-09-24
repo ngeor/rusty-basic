@@ -200,7 +200,7 @@ pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionN
 
 mod string_literal {
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{TokenKindParser, TokenType};
+    use crate::parser::pc_specific::*;
     use crate::parser::Expression;
 
     pub fn string_literal_p() -> impl Parser<Output = Expression> {

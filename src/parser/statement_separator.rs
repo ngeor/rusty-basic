@@ -1,8 +1,8 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{FnMapTrait, HasOutput, Parser, TokenPredicate};
-use crate::parser::base::tokenizers::{Token, Tokenizer};
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{eol_or_whitespace, TokenType};
+use crate::parser::base::parsers::{HasOutput, Parser, TokenPredicate};
+use crate::parser::base::tokenizers::{Token, TokenList, Tokenizer};
+use crate::parser::base::undo_pc::Undo;
+use crate::parser::specific::TokenType;
 
 pub enum Separator {
     Comment,
@@ -16,25 +16,48 @@ impl HasOutput for Separator {
 impl Parser for Separator {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self {
-            Self::Comment => comment_separator().parse(tokenizer),
-            Self::NonComment => non_comment_separator().parse(tokenizer),
+            Self::Comment => CommentSeparator.parse(tokenizer),
+            Self::NonComment => CommonSeparator.parse(tokenizer),
         }
     }
 }
 
-// TODO convert to NonOptParser
-fn comment_separator() -> impl Parser<Output = ()> {
-    eol_or_whitespace().preceded_by_opt_ws().fn_map(|_| ())
+// <ws>* EOL <ws | eol>*
+struct CommentSeparator;
+
+impl HasOutput for CommentSeparator {
+    type Output = ();
+}
+
+impl Parser for CommentSeparator {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let mut tokens: TokenList = vec![];
+        let mut found_eol = false;
+        while let Some(token) = tokenizer.read()? {
+            if token.kind == TokenType::Whitespace as i32 {
+                if !found_eol {
+                    tokens.push(token);
+                }
+            } else if token.kind == TokenType::Eol as i32 {
+                found_eol = true;
+                tokens.clear();
+            } else {
+                tokenizer.unread(token);
+                break;
+            }
+        }
+        if found_eol {
+            Ok(Some(()))
+        } else {
+            tokens.undo(tokenizer);
+            Ok(None)
+        }
+    }
 }
 
 // <ws>* '\'' (undoing it)
 // <ws>* ':' <ws*>
 // <ws>* EOL <ws | eol>*
-// TODO convert to NonOptParser
-fn non_comment_separator() -> impl Parser<Output = ()> {
-    CommonSeparator
-}
-
 struct CommonSeparator;
 
 impl HasOutput for CommonSeparator {

@@ -54,7 +54,7 @@ use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    demand_keyword_pair_p, item_p, keyword, keyword_followed_by_whitespace_p, MapErrTrait,
+    item_p, keyword, keyword_followed_by_whitespace_p, keyword_pair, MapErrTrait,
     OrSyntaxErrorTrait,
 };
 use crate::parser::types::{
@@ -69,12 +69,9 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
                 .with_pos()
                 .or_syntax_error("Expected: name after TYPE"),
         )
-        .and_demand(
-            comment::comments_and_whitespace_p()
-                .or_syntax_error("Expected comments and whitespace"),
-        )
+        .and_demand(comment::comments_and_whitespace_p())
         .and_demand(element_nodes_p().or_syntax_error("Expected elements nodes"))
-        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Type))
+        .and_demand(keyword_pair(Keyword::End, Keyword::Type))
         .fn_map(|((((_, name), comments), elements), _)| {
             UserDefinedType::new(name, comments, elements)
         })
@@ -107,10 +104,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
         .with_pos()
         .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
-        .and_demand(
-            comment::comments_and_whitespace_p()
-                .or_syntax_error("Expected comments and whitespace"),
-        )
+        .and_demand(comment::comments_and_whitespace_p())
         .fn_map(
             |(((Locatable { element, pos }, _), element_type), comments)| {
                 Locatable::new(Element::new(element, element_type, comments), pos)

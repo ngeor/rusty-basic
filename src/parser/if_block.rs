@@ -9,7 +9,7 @@ use crate::parser::expression;
 use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{demand_keyword_pair_p, keyword, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword, keyword_pair, OrSyntaxErrorTrait};
 use crate::parser::statements;
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
@@ -87,7 +87,7 @@ fn multi_line_if_p() -> impl NonOptParser<
     ]))
     .and_opt(else_if_block_p().one_or_more())
     .and_opt(else_block_p())
-    .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::If))
+    .and_demand(keyword_pair(Keyword::End, Keyword::If))
     .fn_map(|(((if_block, opt_else_if_blocks), opt_else), _)| {
         (if_block, opt_else_if_blocks.unwrap_or_default(), opt_else)
     })

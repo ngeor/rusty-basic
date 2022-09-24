@@ -3,7 +3,7 @@ use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::guard_pc::GuardTrait;
 use crate::parser::base::or_pc::OrTrait;
 use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, ManyTrait, NonOptParser, Parser,
+    AndOptTrait, FnMapTrait, HasOutput, ManyTrait, NonOptParser, Parser,
 };
 use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
@@ -11,9 +11,7 @@ use crate::parser::expression;
 use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{
-    demand_keyword_pair_p, keyword, keyword_pair_p, OrSyntaxErrorTrait, TokenType,
-};
+use crate::parser::specific::{keyword, keyword_pair, OrSyntaxErrorTrait, TokenType};
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 
@@ -31,30 +29,25 @@ use crate::parser::types::*;
 
 pub fn select_case_p() -> impl Parser<Output = Statement> {
     select_case_expr_p()
-        .and_opt(comment::comments_and_whitespace_p())
+        .and_demand(comment::comments_and_whitespace_p())
         .and_opt(case_blocks())
         .and_opt(case_else())
-        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Select))
-        .fn_map(
-            |((((expr, opt_inline_comments), opt_blocks), else_block), _)| {
-                Statement::SelectCase(SelectCaseNode {
-                    expr,
-                    case_blocks: opt_blocks.unwrap_or_default(),
-                    else_block,
-                    inline_comments: opt_inline_comments.unwrap_or_default(),
-                })
-            },
-        )
+        .and_demand(keyword_pair(Keyword::End, Keyword::Select))
+        .fn_map(|((((expr, inline_comments), opt_blocks), else_block), _)| {
+            Statement::SelectCase(SelectCaseNode {
+                expr,
+                case_blocks: opt_blocks.unwrap_or_default(),
+                else_block,
+                inline_comments,
+            })
+        })
 }
 
 /// Parses the `SELECT CASE expression` part
 fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
-    keyword_pair_p(Keyword::Select, Keyword::Case)
-        .and_demand(
-            expression::guarded_expression_node_p()
-                .or_syntax_error("Expected: expression after CASE"),
-        )
-        .keep_right()
+    keyword_pair(Keyword::Select, Keyword::Case).then_use(
+        expression::guarded_expression_node_p().or_syntax_error("Expected: expression after CASE"),
+    )
 }
 
 // SELECT CASE expr
@@ -81,13 +74,49 @@ fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
 
 fn case_block() -> impl Parser<Output = CaseBlockNode> {
     // CASE
-    keyword(Keyword::Case)
-        .and_demand(
-            continue_after_case()
-                .preceded_by_opt_ws()
-                .or_syntax_error("Expected case expression after CASE"),
-        )
-        .keep_right()
+    CaseButNotElse.then_use(
+        continue_after_case()
+            .preceded_by_opt_ws()
+            .or_syntax_error("Expected case expression after CASE"),
+    )
+}
+
+struct CaseButNotElse;
+
+impl HasOutput for CaseButNotElse {
+    type Output = ();
+}
+
+impl Parser for CaseButNotElse {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match tokenizer.read()? {
+            Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
+                Some(space_token) if space_token.kind == TokenType::Whitespace as i32 => {
+                    match tokenizer.read()? {
+                        Some(else_token) if Keyword::Else == else_token => {
+                            tokenizer.unread(else_token);
+                            tokenizer.unread(space_token);
+                            tokenizer.unread(case_token);
+                            Ok(None)
+                        }
+                        Some(other_token) => {
+                            tokenizer.unread(other_token);
+                            Ok(Some(()))
+                        }
+                        None => Err(QError::syntax_error(
+                            "Expected: ELSE or expression after CASE",
+                        )),
+                    }
+                }
+                _ => Err(QError::syntax_error("Expected: whitespace after CASE")),
+            },
+            Some(token) => {
+                tokenizer.unread(token);
+                Ok(None)
+            }
+            None => Ok(None),
+        }
+    }
 }
 
 fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
@@ -114,25 +143,7 @@ impl HasOutput for CaseExpressionParser {
 
 impl Parser for CaseExpressionParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match reader.read()? {
-            Some(token) => {
-                let found_else =
-                    token.kind == TokenType::Keyword as i32 && token.text == Keyword::Else.as_str();
-                reader.unread(token);
-                if found_else {
-                    Ok(None)
-                } else {
-                    match Self::case_is()
-                        .or(SimpleOrRangeParser::new())
-                        .parse(reader)?
-                    {
-                        Some(x) => Ok(Some(x)),
-                        None => Err(QError::syntax_error("Expected: IS or expression")),
-                    }
-                }
-            }
-            None => Ok(None),
-        }
+        Self::case_is().or(SimpleOrRangeParser::new()).parse(reader)
     }
 }
 
@@ -193,7 +204,7 @@ impl SimpleOrRangeParser {
 }
 
 fn case_else() -> impl Parser<Output = StatementNodes> {
-    keyword_pair_p(Keyword::Case, Keyword::Else)
+    keyword_pair(Keyword::Case, Keyword::Else)
         .then_use(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 
@@ -306,12 +317,7 @@ mod tests {
         let input = "
         SELECT CASE1
         END SELECT";
-        assert_parser_err!(
-            input,
-            QError::syntax_error("Expected: CASE after SELECT"),
-            2,
-            16
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: CASE"), 2, 16);
     }
 
     #[test]
@@ -320,7 +326,7 @@ mod tests {
         SELECT CASE X
         CASE1
         END SELECT";
-        assert_parser_err!(input, QError::syntax_error("Expected: END SELECT"), 3, 9);
+        assert_parser_err!(input, QError::syntax_error("Expected: END"), 3, 9);
     }
 
     #[test]

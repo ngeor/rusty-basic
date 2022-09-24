@@ -6,13 +6,11 @@ use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
 use crate::parser::expression::expression_node_p;
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{
-    keyword_followed_by_whitespace_p, keyword_pair_p, OrSyntaxErrorTrait,
-};
+use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_pair, OrSyntaxErrorTrait};
 use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
-    keyword_pair_p(Keyword::On, Keyword::Error)
+    keyword_pair(Keyword::On, Keyword::Error)
         .followed_by_req_ws()
         .and_demand(
             next()
@@ -24,7 +22,7 @@ pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
 
 fn next() -> impl Parser<Output = OnErrorOption> {
     // TODO implement a fn_map that ignores its input
-    keyword_pair_p(Keyword::Resume, Keyword::Next).fn_map(|_| OnErrorOption::Next)
+    keyword_pair(Keyword::Resume, Keyword::Next).fn_map(|_| OnErrorOption::Next)
 }
 
 fn goto() -> impl Parser<Output = OnErrorOption> {

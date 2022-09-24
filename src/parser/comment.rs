@@ -1,52 +1,61 @@
 use crate::common::*;
-use crate::parser::base::logging::LoggingTrait;
-use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, KeepLeftTrait, KeepRightTrait, ManyTrait, Parser, TokenPredicate,
-};
-use crate::parser::base::surrounded_by::SurroundedBy;
-use crate::parser::base::tokenizers::{token_list_to_string, Token, TokenList};
+use crate::parser::base::delimited_pc::DelimitedTrait;
+use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser, Parser};
+use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{eol_or_whitespace, item_p, TokenType};
+use crate::parser::specific::TokenType;
+use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<Output = Statement> {
-    comment_as_string()
-        .fn_map(Statement::Comment)
-        .logging("comment_p")
+    CommentAsString.fn_map(Statement::Comment)
 }
 
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> {
-    SurroundedBy::new(
-        eol_or_whitespace(),
-        comment_as_string()
-            .with_pos()
-            .and_opt(eol_or_whitespace())
-            .keep_left()
-            .one_or_more(),
-        eol_or_whitespace(),
-    )
+pub fn comments_and_whitespace_p() -> impl NonOptParser<Output = Vec<Locatable<String>>> {
+    CommentAsString
+        .with_pos()
+        .one_or_more_delimited_by_allow_missing(Separator::Comment)
+        .fn_map(keep_non_empty)
+        .preceded_by_opt_ws()
 }
 
-fn comment_as_string() -> impl Parser<Output = String> {
-    // TODO prevent unwrap_or_default with NonOptParser
-    item_p('\'')
-        .logging("comment_as_string item_p")
-        .and_opt(non_eol())
-        .keep_right()
-        .fn_map(|x| token_list_to_string(&x.unwrap_or_default()))
+fn keep_non_empty<E>(x: Vec<Option<E>>) -> Vec<E> {
+    x.into_iter()
+        .filter(Option::is_some)
+        .map(Option::unwrap)
+        .collect()
 }
 
-fn non_eol() -> impl Parser<Output = TokenList> {
-    NonEol.parser().one_or_more().logging("non_eol")
+struct CommentAsString;
+
+impl HasOutput for CommentAsString {
+    type Output = String;
 }
 
-struct NonEol;
-
-impl TokenPredicate for NonEol {
-    fn test(&self, token: &Token) -> bool {
-        token.kind != TokenType::Eol as i32
+impl Parser for CommentAsString {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match tokenizer.read()? {
+            Some(token) if token.kind == TokenType::SingleQuote as i32 => {
+                let mut result = String::new();
+                while let Some(token) = tokenizer.read()? {
+                    if token.kind == TokenType::Eol as i32 {
+                        tokenizer.unread(token);
+                        break;
+                    } else {
+                        result.push_str(&token.text);
+                    }
+                }
+                Ok(Some(result))
+            }
+            Some(token) => {
+                tokenizer.unread(token);
+                Ok(None)
+            }
+            None => Ok(None),
+        }
     }
 }
 

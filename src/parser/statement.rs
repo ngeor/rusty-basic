@@ -1,7 +1,6 @@
 use crate::common::*;
 use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
 use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::logging::LoggingTrait;
 use crate::parser::base::or_pc::{alt2, alt3, alt4, OrTrait};
 use crate::parser::base::parsers::{FnMapTrait, KeepLeftTrait, Parser};
 use crate::parser::comment;
@@ -29,17 +28,14 @@ pub fn statement_p() -> impl Parser<Output = Statement> {
             statement_label_p(),
             single_line_statement_p(),
             if_block::if_block_p(),
-        )
-        .logging("statement_p_1"),
+        ),
         alt3(
             for_loop::for_loop_p(),
             select_case::select_case_p(),
             while_wend::while_wend_p(),
-        )
-        .logging("statement_p_2"),
-        alt2(do_loop::do_loop_p(), illegal_starting_keywords()).logging("statement_p_3"),
+        ),
+        alt2(do_loop::do_loop_p(), illegal_starting_keywords()),
     )
-    .logging("statement_p")
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
@@ -70,7 +66,6 @@ pub fn single_line_non_comment_statement_p() -> impl Parser<Output = Statement> 
             system::parse_system_p(),
         ),
     )
-    .logging("single_line_non_comment_statement_p")
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,

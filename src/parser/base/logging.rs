@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser};
+use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 
 pub struct LoggingPC<P>(P, String);
@@ -62,6 +62,50 @@ where
                     peek_token(tokenizer)
                 );
                 Ok(None)
+            }
+            Err(err) => {
+                println!(
+                    "{}{} Err current position {} peek token {}",
+                    indentation(),
+                    self.1,
+                    tokenizer.position(),
+                    peek_token(tokenizer)
+                );
+                Err(err)
+            }
+        }
+    }
+}
+
+impl<P> NonOptParser for LoggingPC<P>
+where
+    P: NonOptParser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        println!(
+            "{}{} Parsing non-opt current position {} peek token {}",
+            indentation(),
+            self.1,
+            tokenizer.position(),
+            peek_token(tokenizer)
+        );
+        unsafe {
+            INDENTATION_LEVEL += 1;
+        }
+        let result = self.0.parse_non_opt(tokenizer);
+        unsafe {
+            INDENTATION_LEVEL -= 1;
+        }
+        match result {
+            Ok(value) => {
+                println!(
+                    "{}{} Success current position {} peek token {}",
+                    indentation(),
+                    self.1,
+                    tokenizer.position(),
+                    peek_token(tokenizer)
+                );
+                Ok(value)
             }
             Err(err) => {
                 println!(

@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::base::logging::LoggingTrait;
 use crate::parser::base::or_pc::{alt2, alt4};
 use crate::parser::base::parsers::{FnMapTrait, HasOutput, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
@@ -77,5 +76,4 @@ fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
         user_defined_type::user_defined_type_p().fn_map(TopLevelToken::UserDefinedType),
     )
     .with_pos()
-    .logging("top_level_token_one_p")
 }

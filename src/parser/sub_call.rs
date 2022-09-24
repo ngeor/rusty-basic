@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::base::logging::LoggingTrait;
 use crate::parser::base::parsers::{AndOptTrait, HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::expression;
@@ -13,10 +12,10 @@ use crate::parser::types::*;
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 
 pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
-    SubCallOrAssignment {}.logging("sub_call_or_assignment_p")
+    SubCallOrAssignment
 }
 
-struct SubCallOrAssignment {}
+struct SubCallOrAssignment;
 
 impl HasOutput for SubCallOrAssignment {
     type Output = Statement;
@@ -52,9 +51,7 @@ impl Parser for SubCallOrAssignment {
 
 impl SubCallOrAssignment {
     fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<Token>)> {
-        expression::word::word_p()
-            .and_opt(item_p('=').surrounded_by_opt_ws())
-            .logging("name_and_opt_eq_sign")
+        expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
     }
 }
 

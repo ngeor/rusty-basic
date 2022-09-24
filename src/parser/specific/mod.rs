@@ -292,9 +292,7 @@ impl Parser for KeywordParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) => {
-                if token.kind == TokenType::Keyword as i32
-                    && token.text.eq_ignore_ascii_case(self.keyword.as_str())
-                {
+                if self.keyword == token {
                     // check for trailing dollar sign
                     match tokenizer.read()? {
                         Some(follow_up) => {
@@ -323,19 +321,14 @@ impl NonOptParser for KeywordParser {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => {
-                if token.kind == TokenType::Keyword as i32
-                    && token.text.eq_ignore_ascii_case(self.keyword.as_str())
-                {
+                if self.keyword == token {
                     // check for trailing dollar sign
                     match tokenizer.read()? {
                         Some(follow_up) => {
                             if follow_up.kind == TokenType::DollarSign as i32 {
                                 tokenizer.unread(follow_up);
                                 tokenizer.unread(token);
-                                Err(QError::SyntaxError(format!(
-                                    "Expected keyword {}",
-                                    self.keyword
-                                )))
+                                Err(QError::SyntaxError(format!("Expected: {}", self.keyword)))
                             } else {
                                 tokenizer.unread(follow_up);
                                 Ok(token)
@@ -345,10 +338,7 @@ impl NonOptParser for KeywordParser {
                     }
                 } else {
                     tokenizer.unread(token);
-                    Err(QError::SyntaxError(format!(
-                        "Expected keyword {}",
-                        self.keyword
-                    )))
+                    Err(QError::SyntaxError(format!("Expected: {}", self.keyword)))
                 }
             }
             None => Err(QError::InputPastEndOfFile),
@@ -365,15 +355,7 @@ pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
     keyword(k).followed_by_req_ws()
 }
 
-// TODO rename to keyword_pair_opt
-pub fn keyword_pair_p(first: Keyword, second: Keyword) -> impl Parser {
-    keyword(first)
-        .followed_by_req_ws()
-        .and_demand(keyword(second))
-}
-
-// TODO rename to keyword_pair
-pub fn demand_keyword_pair_p(first: Keyword, second: Keyword) -> impl NonOptParser {
+pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser + NonOptParser {
     keyword(first)
         .followed_by_req_ws()
         .and_demand(keyword(second))
@@ -546,25 +528,6 @@ impl<S> OrSyntaxErrorTrait for S {
     {
         OrSyntaxError(self, msg)
     }
-}
-
-// EolOrWhitespace
-
-struct EolOrWhitespace;
-
-impl TokenPredicate for EolOrWhitespace {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Eol as i32 || token.kind == TokenType::Whitespace as i32
-    }
-}
-
-/// `< ws | eol >*`
-pub fn eol_or_whitespace() -> impl Parser<Output = TokenList> {
-    EolOrWhitespace.parser().one_or_more()
-}
-
-pub fn eol_or_whitespace_non_opt() -> impl NonOptParser<Output = TokenList> {
-    EolOrWhitespace.parser().one_or_more()
 }
 
 // IdentifierOrKeyword

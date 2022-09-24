@@ -2,11 +2,11 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
-    use crate::parser::specific::{keyword, keyword_pair_p, OrSyntaxErrorTrait};
+    use crate::parser::specific::{keyword, keyword_pair, OrSyntaxErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_pair_p(Keyword::View, Keyword::Print)
+        keyword_pair(Keyword::View, Keyword::Print)
             .and_opt(parse_args())
             .keep_right()
             .fn_map(|opt_args| {

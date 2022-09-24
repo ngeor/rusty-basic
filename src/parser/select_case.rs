@@ -110,7 +110,13 @@ impl Parser for CaseButNotElse {
                         )),
                     }
                 }
-                _ => Err(QError::syntax_error("Expected: whitespace after CASE")),
+                Some(paren_token) if paren_token.kind == TokenType::LParen as i32 => {
+                    tokenizer.unread(paren_token);
+                    Ok(Some(()))
+                }
+                _ => Err(QError::syntax_error(
+                    "Expected: whitespace or parenthesis after CASE",
+                )),
             },
             Some(token) => {
                 tokenizer.unread(token);

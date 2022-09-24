@@ -406,18 +406,16 @@ mod number_literal {
 
 pub mod word {
     use crate::common::*;
-    use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::and_then_pc::AndThenTrait;
+    use crate::parser::base::guard_pc::GuardTrait;
     use crate::parser::base::parsers::{
-        AndOptTrait, HasOutput, KeepLeftTrait, KeepRightTrait, ManyTrait, Parser,
+        AndOptTrait, HasOutput, KeepLeftTrait, NonOptParser, Parser,
     };
-    use crate::parser::base::tokenizers::{Token, Tokenizer};
+    use crate::parser::base::tokenizers::Tokenizer;
     use crate::parser::name::name_with_dot_p;
     use crate::parser::specific::csv::csv_zero_or_more;
     use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
-    use crate::parser::specific::{
-        identifier_or_keyword_without_dot, item_p, OrErrorTrait, TokenType,
-    };
+    use crate::parser::specific::{item_p, TokenType};
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;
@@ -429,9 +427,7 @@ pub mod word {
             .and_opt(parenthesis_with_zero_or_more_expressions_p())
             .and_opt(
                 // TODO rewrite this
-                dot_property_name()
-                    .one_or_more()
-                    .and_opt(type_qualifier_p()),
+                dot_property_name().and_opt(type_qualifier_p()),
             )
             .and_opt(EnsureEndOfNameParser)
             .keep_left()
@@ -479,7 +475,7 @@ pub mod word {
                     while properties.len() > 1 {
                         base_expr = Expression::Property(
                             Box::new(base_expr),
-                            Name::Bare(properties.remove(0).text.into()),
+                            Name::Bare(properties.remove(0).into()),
                             ExpressionType::Unresolved,
                         );
                     }
@@ -487,7 +483,7 @@ pub mod word {
                     // take last (no need to check for bounds, because it was built with `one_or_more`)
                     base_expr = Expression::Property(
                         Box::new(base_expr),
-                        Name::new(properties.remove(0).text.into(), opt_q),
+                        Name::new(properties.remove(0).into(), opt_q),
                         ExpressionType::Unresolved,
                     );
 
@@ -524,13 +520,38 @@ pub mod word {
     }
 
     // TODO rewrite this
-    fn dot_property_name() -> impl Parser<Output = Token> {
-        item_p('.')
-            .and_demand(
-                identifier_or_keyword_without_dot()
-                    .or_syntax_error("Expected: property name after period"),
-            )
-            .keep_right()
+    fn dot_property_name() -> impl Parser<Output = Vec<String>> {
+        item_p('.').then_use(Properties)
+    }
+
+    struct Properties;
+
+    impl HasOutput for Properties {
+        type Output = Vec<String>;
+    }
+
+    impl NonOptParser for Properties {
+        fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+            let mut result: Vec<String> = vec![];
+            while let Some(token) = tokenizer.read()? {
+                if token.kind == TokenType::Keyword as i32 {
+                    result.push(token.text);
+                } else if token.kind == TokenType::Identifier as i32 {
+                    for item in token.text.split('.') {
+                        if item.is_empty() {
+                            return Err(QError::syntax_error(
+                                "Expected: property name after period",
+                            ));
+                        }
+                        result.push(item.to_owned());
+                    }
+                } else {
+                    tokenizer.unread(token);
+                    break;
+                }
+            }
+            Ok(result)
+        }
     }
 
     struct EnsureEndOfNameParser;
@@ -778,7 +799,7 @@ pub mod word {
                     let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
                     assert_eq!(
                         err,
-                        QError::syntax_error("Expected: property name after period")
+                        QError::syntax_error("Qualified name cannot have properties")
                     );
                 }
 

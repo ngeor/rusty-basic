@@ -7,7 +7,7 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Put)
             .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
+            .and_demand(comma_surrounded_by_opt_ws())
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
             .map(|(((_, file_number), _), r)| {
                 Statement::BuiltInSubCall(

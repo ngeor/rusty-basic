@@ -188,7 +188,7 @@ pub fn parenthesis_p() -> impl Parser<Output = Expression> {
 
 pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     file_handle_p()
-        .and_demand(comma_surrounded_by_opt_ws().or_syntax_error("Expected: ,"))
+        .and_demand(comma_surrounded_by_opt_ws())
         .keep_left()
 }
 

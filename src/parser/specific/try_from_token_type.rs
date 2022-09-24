@@ -1,6 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::base::*;
 use crate::parser::specific::TokenType;
 use std::convert::TryFrom;
 use std::marker::PhantomData;

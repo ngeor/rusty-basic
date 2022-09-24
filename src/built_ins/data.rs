@@ -1,6 +1,6 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
+    use crate::parser::base::*;
     use crate::parser::specific::keyword;
     use crate::parser::*;
 

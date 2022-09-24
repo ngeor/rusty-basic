@@ -1,9 +1,6 @@
 use crate::common::*;
-use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::TokenType;
+use crate::parser::base::*;
+use crate::parser::specific::*;
 use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
 

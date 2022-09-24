@@ -1,19 +1,7 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::or_pc::{alt2, alt4, alt5, alt6, OrTrait};
-use crate::parser::base::parsers::{
-    AndOptFactoryTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait, ManyTrait,
-    NonOptParser, Parser,
-};
-use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
-use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
-use crate::parser::specific::token_type_map::TokenTypeMap;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{item_p, keyword, OrErrorTrait, TokenType};
+use crate::parser::base::*;
+use crate::parser::specific::*;
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -211,11 +199,9 @@ pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionN
 }
 
 mod string_literal {
-    use crate::parser::base::parsers::{ManyTrait, Parser, TokenPredicate, TokenPredicateParser};
-    use crate::parser::base::tokenizers::{token_list_to_string, Token};
+    use crate::parser::base::*;
     use crate::parser::specific::{TokenKindParser, TokenType};
-
-    use super::*;
+    use crate::parser::Expression;
 
     pub fn string_literal_p() -> impl Parser<Output = Expression> {
         string_delimiter()
@@ -241,15 +227,8 @@ mod string_literal {
 
 mod number_literal {
     use crate::common::*;
-    use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::and_then_pc::AndThenTrait;
-    use crate::parser::base::parsers::{
-        AndOptTrait, KeepRightTrait, NonOptParser, Parser, TokenPredicate,
-    };
-    use crate::parser::base::recognizers::is_digit;
-    use crate::parser::base::tokenizers::Token;
-    use crate::parser::specific::with_pos::WithPosTrait;
-    use crate::parser::specific::{item_p, TokenKindParser, TokenType};
+    use crate::parser::base::*;
+    use crate::parser::specific::*;
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
@@ -406,16 +385,9 @@ mod number_literal {
 
 pub mod word {
     use crate::common::*;
-    use crate::parser::base::and_then_pc::AndThenTrait;
-    use crate::parser::base::guard_pc::GuardTrait;
-    use crate::parser::base::parsers::{
-        AndOptTrait, HasOutput, KeepLeftTrait, NonOptParser, Parser,
-    };
-    use crate::parser::base::tokenizers::Tokenizer;
+    use crate::parser::base::*;
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::specific::csv::csv_zero_or_more;
-    use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
-    use crate::parser::specific::{item_p, TokenType};
+    use crate::parser::specific::*;
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;

@@ -1,7 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser, TokenPredicate};
-use crate::parser::base::tokenizers::{Token, TokenList, Tokenizer};
-use crate::parser::base::undo_pc::Undo;
+use crate::parser::base::*;
 use crate::parser::specific::TokenType;
 
 pub enum Separator {

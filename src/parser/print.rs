@@ -1,15 +1,7 @@
 use crate::common::*;
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::or_pc::OrTrait;
-use crate::parser::base::parsers::{
-    AndOptFactoryTrait, AndOptTrait, FnMapTrait, HasOutput, KeepLeftTrait, KeepRightTrait, Parser,
-};
-use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::base::*;
 use crate::parser::expression;
-use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
-use crate::parser::specific::try_from_token_type::TryFromParser;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{item_p, keyword, OrErrorTrait, TokenType};
+use crate::parser::specific::*;
 use crate::parser::types::*;
 use std::convert::TryFrom;
 

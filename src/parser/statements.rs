@@ -1,11 +1,6 @@
 use crate::common::*;
-use crate::parser::base::delimited_pc::DelimitedTrait;
-use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::base::undo_pc::Undo;
-use crate::parser::specific::item_p;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::with_pos::WithPosTrait;
+use crate::parser::base::*;
+use crate::parser::specific::*;
 use crate::parser::statement;
 use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;

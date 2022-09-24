@@ -1,6 +1,6 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::parsers::Parser;
+    use crate::parser::base::Parser;
     use crate::parser::specific::parse_built_in_sub_with_opt_args;
     use crate::parser::*;
 

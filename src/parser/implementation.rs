@@ -1,9 +1,6 @@
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::or_pc::OrTrait;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, Parser};
+use crate::parser::base::*;
 use crate::parser::declaration;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword, keyword_pair};
+use crate::parser::specific::*;
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 

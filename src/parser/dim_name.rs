@@ -1,21 +1,11 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::base::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
-use crate::parser::specific::csv::csv_one_or_more;
-use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{
-    identifier_or_keyword_without_dot, item_p, keyword, keyword_followed_by_whitespace_p,
-    OrErrorTrait,
-};
+use crate::parser::specific::*;
 use crate::parser::types::*;
 
 // Parses a declared name. Possible options:

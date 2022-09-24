@@ -1,13 +1,7 @@
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::or_pc::OrTrait;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
+use crate::parser::base::*;
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
-use crate::parser::specific::csv::csv_one_or_more;
-use crate::parser::specific::in_parenthesis::in_parenthesis_opt;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{keyword_followed_by_whitespace_p, OrErrorTrait};
+use crate::parser::specific::*;
 use crate::parser::types::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)

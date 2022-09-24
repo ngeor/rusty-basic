@@ -1,17 +1,10 @@
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::guard_pc::GuardTrait;
-use crate::parser::base::or_pc::OrTrait;
-use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, KeepMiddleTrait, KeepRightTrait, ManyTrait, NonOptParser, Parser,
-};
+use crate::parser::base::*;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::specific::keyword_choice::keyword_choice;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{keyword, keyword_pair, OrErrorTrait};
-use crate::parser::statements;
-use crate::parser::statements::ZeroOrMoreStatements;
+use crate::parser::specific::*;
+use crate::parser::statements::{
+    single_line_non_comment_statements_p, single_line_statements_p, ZeroOrMoreStatements,
+};
 use crate::parser::types::*;
 
 pub fn if_block_p() -> impl Parser<Output = Statement> {
@@ -51,7 +44,7 @@ fn single_line_if_else_p() -> impl Parser<
         Option<StatementNodes>,
     ),
 > {
-    statements::single_line_non_comment_statements_p()
+    single_line_non_comment_statements_p()
         .and_opt(
             // comment or ELSE
             comment::comment_p()
@@ -67,8 +60,7 @@ fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
     keyword(Keyword::Else)
         .preceded_by_req_ws()
         .and_demand(
-            statements::single_line_statements_p()
-                .or_syntax_error("Expected statements for single line ELSE"),
+            single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
         )
         .keep_right()
 }

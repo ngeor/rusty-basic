@@ -1,9 +1,7 @@
 //! Contains parser combinators where both parts must succeed.
 
 use crate::common::QError;
-use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::base::undo_pc::Undo;
+use crate::parser::base::*;
 
 //
 // And (with undo if the left parser supports it)

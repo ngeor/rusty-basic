@@ -1,17 +1,8 @@
 use crate::common::*;
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::guard_pc::GuardTrait;
-use crate::parser::base::or_pc::OrTrait;
-use crate::parser::base::parsers::{
-    AndOptTrait, FnMapTrait, HasOutput, ManyTrait, NonOptParser, Parser,
-};
-use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::base::*;
 use crate::parser::comment;
 use crate::parser::expression;
-use crate::parser::specific::csv::csv_one_or_more;
-use crate::parser::specific::keyword_choice::keyword_choice;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword, keyword_pair, OrErrorTrait, TokenType};
+use crate::parser::specific::*;
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 

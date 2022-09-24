@@ -1,7 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
-use crate::parser::base::undo_pc::Undo;
+use crate::parser::base::*;
 
 pub struct SurroundedBy<L, M, R>(L, M, R);
 

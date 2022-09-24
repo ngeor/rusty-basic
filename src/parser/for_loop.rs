@@ -1,14 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::parsers::{
-    AndOptFactoryTrait, AndOptTrait, FnMapTrait, KeepRightTrait, Parser,
-};
+use crate::parser::base::*;
 use crate::parser::expression;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{
-    item_p, keyword, keyword_followed_by_whitespace_p, MapErrTrait, OrErrorTrait,
-};
+use crate::parser::specific::*;
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 

@@ -1,12 +1,9 @@
 use crate::common::*;
-use crate::parser::base::or_pc::{alt2, alt4};
-use crate::parser::base::parsers::{FnMapTrait, HasOutput, Parser};
-use crate::parser::base::tokenizers::Tokenizer;
+use crate::parser::base::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
-use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::TokenType;
+use crate::parser::specific::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;

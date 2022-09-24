@@ -1,7 +1,5 @@
-use crate::parser::base::parsers::{Parser, TokenPredicate};
-use crate::parser::base::tokenizers::Token;
-use crate::parser::specific::try_from_token_type::TryFromParser;
-use crate::parser::specific::TokenType;
+use crate::parser::base::*;
+use crate::parser::specific::*;
 use crate::parser::TypeQualifier;
 use std::convert::TryFrom;
 

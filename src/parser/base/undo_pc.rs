@@ -1,6 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser};
-use crate::parser::base::tokenizers::{Token, Tokenizer};
+use crate::parser::base::*;
 
 pub trait Undo {
     fn undo(self, tokenizer: &mut impl Tokenizer);

@@ -1,10 +1,6 @@
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::or_pc::OrTrait;
-use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, NonOptParser, Parser};
+use crate::parser::base::*;
 use crate::parser::expression::guarded_expression_node_p;
-use crate::parser::specific::keyword_choice::keyword_choice;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword, OrErrorTrait};
+use crate::parser::specific::*;
 use crate::parser::statements::*;
 use crate::parser::types::*;
 

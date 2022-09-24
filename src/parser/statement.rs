@@ -1,8 +1,5 @@
 use crate::common::*;
-use crate::parser::base::and_pc::{AndDemandTrait, AndTrait};
-use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::or_pc::{alt2, alt3, alt4, OrTrait};
-use crate::parser::base::parsers::{FnMapTrait, KeepLeftTrait, Parser};
+use crate::parser::base::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -16,8 +13,7 @@ use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
-use crate::parser::specific::keyword_choice::keyword_choice;
-use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, OrErrorTrait};
+use crate::parser::specific::*;
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
@@ -98,15 +94,11 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 }
 
 mod end {
-    use crate::parser::base::parsers::{FnMapTrait, HasOutput, NonOptParser};
-    use crate::parser::base::tokenizers::{Token, Tokenizer};
-    use crate::parser::base::undo_pc::Undo;
-    use crate::parser::specific::keyword;
-    use crate::parser::specific::keyword_choice::keyword_choice;
-    use crate::parser::specific::whitespace::whitespace;
+    use crate::common::QError;
+    use crate::parser::base::*;
+    use crate::parser::specific::*;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
-
-    use super::*;
+    use crate::parser::{Keyword, Statement};
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::End)
@@ -178,12 +170,10 @@ mod end {
 }
 
 mod system {
-    use crate::parser::base::parsers::FnMapTrait;
-    use crate::parser::specific::keyword;
-    use crate::parser::specific::whitespace::WhitespaceTrait;
+    use crate::parser::base::*;
+    use crate::parser::specific::*;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
-
-    use super::*;
+    use crate::parser::{Keyword, Statement};
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::System)

@@ -1,9 +1,7 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::{FnMapTrait, Parser};
-    use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
-    use crate::parser::specific::{keyword_followed_by_whitespace_p, OrErrorTrait};
+    use crate::parser::base::*;
+    use crate::parser::specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {

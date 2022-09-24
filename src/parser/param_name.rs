@@ -1,16 +1,10 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::and_pc::AndDemandTrait;
-use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{AndOptTrait, KeepRightTrait, Parser};
+use crate::parser::base::*;
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
-use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{
-    identifier_or_keyword_without_dot, keyword_followed_by_whitespace_p, OrErrorTrait,
-};
+use crate::parser::specific::*;
 use crate::parser::types::*;
 
 // Parses a Param name. Possible options:

@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::fmt::Display;
 
 use crate::common::{CanCastTo, QError};
-use crate::parser::base::tokenizers::Token;
+use crate::parser::base::Token;
 use crate::parser::specific::TokenType;
 
 use super::Operator;

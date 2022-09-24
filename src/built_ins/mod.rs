@@ -409,8 +409,7 @@ impl BuiltInSub {
 }
 
 pub mod parser {
-    use crate::parser::base::or_pc::{alt4, OrTrait};
-    use crate::parser::base::parsers::Parser;
+    use crate::parser::base::*;
     use crate::parser::{Expression, Statement};
 
     /// Parses built-in subs which have a special syntax.

@@ -1,15 +1,6 @@
 use crate::common::QError;
-use crate::parser::base::and_pc::{seq3, AndTrait};
-use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{
-    AndOptTrait, ErrorProvider, FnMapTrait, NonOptParser, Parser, TokenPredicate,
-};
-use crate::parser::base::recognizers::is_letter;
-use crate::parser::base::tokenizers::Token;
-use crate::parser::specific::csv::csv_one_or_more_non_opt;
-use crate::parser::specific::keyword_choice::keyword_choice;
-use crate::parser::specific::whitespace::whitespace;
-use crate::parser::specific::{item_p, TokenType};
+use crate::parser::base::*;
+use crate::parser::specific::*;
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>

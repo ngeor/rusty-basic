@@ -1,11 +1,8 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::base::and_pc::AndDemandTrait;
-    use crate::parser::base::parsers::{FnMapTrait, Parser};
-    use crate::parser::specific::whitespace::WhitespaceTrait;
-    use crate::parser::specific::with_pos::WithPosTrait;
-    use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, OrErrorTrait};
+    use crate::parser::base::*;
+    use crate::parser::specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {

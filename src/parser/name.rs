@@ -1,11 +1,8 @@
 use std::str::FromStr;
 
 use crate::common::QError;
-use crate::parser::base::and_then_pc::AndThenTrait;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, Parser, TokenPredicate};
-use crate::parser::base::tokenizers::{Token, Tokenizer};
-use crate::parser::base::undo_pc::{Undo, UndoTrait};
-use crate::parser::specific::{identifier_or_keyword, TokenKindParser, TokenType};
+use crate::parser::base::*;
+use crate::parser::specific::*;
 use crate::parser::type_qualifier::type_qualifier_as_token;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::common::CmpIgnoreAsciiCase;
-use crate::parser::base::tokenizers::Token;
+use crate::parser::base::Token;
 use crate::parser::specific::TokenType;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

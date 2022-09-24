@@ -1,11 +1,11 @@
 use std::str::FromStr;
 
 use crate::common::*;
-use crate::parser::base::*;
 use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 // Parses a declared name. Possible options:

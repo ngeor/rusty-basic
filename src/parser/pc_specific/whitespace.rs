@@ -1,6 +1,6 @@
 use crate::common::QError;
-use crate::parser::base::*;
-use crate::parser::specific::{TokenKindParser, TokenType};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::{TokenKindParser, TokenType};
 
 pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
     TokenKindParser::new(TokenType::Whitespace).parser()

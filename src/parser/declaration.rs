@@ -1,7 +1,7 @@
-use crate::parser::base::*;
 use crate::parser::name;
 use crate::parser::param_name::param_name_node_p;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)

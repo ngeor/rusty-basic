@@ -1,6 +1,6 @@
 use crate::common::QError;
-use crate::parser::base::*;
-use crate::parser::specific::TokenType;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::TokenType;
 
 pub enum Separator {
     /// `<ws>* EOL <ws | eol>*`

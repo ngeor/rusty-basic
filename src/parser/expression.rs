@@ -1,7 +1,7 @@
 use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
-use crate::parser::base::*;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -199,8 +199,8 @@ pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionN
 }
 
 mod string_literal {
-    use crate::parser::base::*;
-    use crate::parser::specific::{TokenKindParser, TokenType};
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::{TokenKindParser, TokenType};
     use crate::parser::Expression;
 
     pub fn string_literal_p() -> impl Parser<Output = Expression> {
@@ -227,8 +227,8 @@ mod string_literal {
 
 mod number_literal {
     use crate::common::*;
-    use crate::parser::base::*;
-    use crate::parser::specific::*;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
@@ -385,9 +385,9 @@ mod number_literal {
 
 pub mod word {
     use crate::common::*;
-    use crate::parser::base::*;
     use crate::parser::name::name_with_dot_p;
-    use crate::parser::specific::*;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;
@@ -565,7 +565,7 @@ pub mod word {
             use super::*;
 
             mod no_dots {
-                use crate::parser::specific::create_string_tokenizer;
+                use crate::parser::pc_specific::create_string_tokenizer;
 
                 use super::*;
 
@@ -592,7 +592,7 @@ pub mod word {
             }
 
             mod dots {
-                use crate::parser::specific::create_string_tokenizer;
+                use crate::parser::pc_specific::create_string_tokenizer;
 
                 use super::*;
 
@@ -677,7 +677,7 @@ pub mod word {
             use super::*;
 
             mod no_dots {
-                use crate::parser::specific::create_string_tokenizer;
+                use crate::parser::pc_specific::create_string_tokenizer;
 
                 use super::*;
 
@@ -713,7 +713,7 @@ pub mod word {
             }
 
             mod dots {
-                use crate::parser::specific::create_string_tokenizer;
+                use crate::parser::pc_specific::create_string_tokenizer;
 
                 use super::*;
 

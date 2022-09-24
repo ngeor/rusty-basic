@@ -1,6 +1,6 @@
-use crate::parser::base::*;
 use crate::parser::name::bare_name_p;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::{Keyword, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {

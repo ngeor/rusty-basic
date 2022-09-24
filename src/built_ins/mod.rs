@@ -409,7 +409,7 @@ impl BuiltInSub {
 }
 
 pub mod parser {
-    use crate::parser::base::*;
+    use crate::parser::pc::*;
     use crate::parser::{Expression, Statement};
 
     /// Parses built-in subs which have a special syntax.

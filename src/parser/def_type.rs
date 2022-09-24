@@ -1,6 +1,6 @@
 use crate::common::QError;
-use crate::parser::base::*;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>

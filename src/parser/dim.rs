@@ -1,5 +1,5 @@
-use crate::parser::base::*;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement

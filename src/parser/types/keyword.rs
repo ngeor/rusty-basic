@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use crate::common::CmpIgnoreAsciiCase;
-use crate::parser::base::Token;
-use crate::parser::specific::TokenType;
+use crate::parser::pc::Token;
+use crate::parser::pc_specific::TokenType;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Keyword {

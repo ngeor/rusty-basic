@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::parser::base::*;
 use crate::parser::comment;
 use crate::parser::constant;
 use crate::parser::dim;
@@ -10,10 +9,11 @@ use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
 use crate::parser::name::{bare_name_as_token, bare_name_p};
 use crate::parser::on_error::statement_on_error_go_to_p;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
-use crate::parser::specific::*;
 use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
@@ -95,8 +95,8 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
 
 mod end {
     use crate::common::QError;
-    use crate::parser::base::*;
-    use crate::parser::specific::*;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
     use crate::parser::{Keyword, Statement};
 
@@ -170,8 +170,8 @@ mod end {
 }
 
 mod system {
-    use crate::parser::base::*;
-    use crate::parser::specific::*;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
     use crate::parser::{Keyword, Statement};
 

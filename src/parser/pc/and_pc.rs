@@ -1,7 +1,7 @@
 //! Contains parser combinators where both parts must succeed.
 
 use crate::common::QError;
-use crate::parser::base::*;
+use crate::parser::pc::*;
 
 //
 // And (with undo if the left parser supports it)

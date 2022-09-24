@@ -1,8 +1,8 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Location, QError};
-use crate::parser::base::*;
 use crate::parser::expression::expression_node_p;
-use crate::parser::specific::{csv_zero_or_more_allow_missing, WhitespaceTrait};
+use crate::parser::pc::*;
+use crate::parser::pc_specific::{csv_zero_or_more_allow_missing, WhitespaceTrait};
 use crate::parser::{
     Expression, ExpressionNode, ExpressionNodes, Keyword, Statement, SORTED_KEYWORDS_STR,
 };
@@ -10,8 +10,6 @@ use std::convert::TryFrom;
 use std::fs::File;
 use std::str::Chars;
 
-/// specific module contains implementation that mirrors the base module
-/// but it is specific to QBasic
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TokenType {
     Eol,

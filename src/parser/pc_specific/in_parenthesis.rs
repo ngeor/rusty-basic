@@ -3,8 +3,8 @@
 //
 
 use crate::common::QError;
-use crate::parser::base::*;
-use crate::parser::specific::TokenType;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::TokenType;
 
 pub fn in_parenthesis_opt<P>(parser: P, accept_empty_parenthesis: bool) -> InParenthesisOpt<P> {
     InParenthesisOpt {

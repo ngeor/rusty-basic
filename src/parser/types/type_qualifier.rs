@@ -2,8 +2,8 @@ use std::convert::TryFrom;
 use std::fmt::Display;
 
 use crate::common::{CanCastTo, QError};
-use crate::parser::base::Token;
-use crate::parser::specific::TokenType;
+use crate::parser::pc::Token;
+use crate::parser::pc_specific::TokenType;
 
 use super::Operator;
 

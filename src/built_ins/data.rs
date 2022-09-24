@@ -1,7 +1,7 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::base::*;
-    use crate::parser::specific::keyword;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::keyword;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {

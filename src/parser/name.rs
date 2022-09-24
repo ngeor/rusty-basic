@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use crate::common::QError;
-use crate::parser::base::*;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::type_qualifier::type_qualifier_as_token;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 
@@ -103,7 +103,7 @@ fn ensure_token_list_length(token: Token) -> Result<Token, QError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::specific::create_string_tokenizer;
+    use crate::parser::pc_specific::create_string_tokenizer;
 
     use super::*;
 

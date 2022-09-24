@@ -1,7 +1,7 @@
 use crate::common::QError;
-use crate::parser::base::*;
-use crate::parser::specific::item_p;
-use crate::parser::specific::whitespace::WhitespaceTrait;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::item_p;
+use crate::parser::pc_specific::whitespace::WhitespaceTrait;
 
 pub fn csv_one_or_more_non_opt<P>(parser: P) -> impl NonOptParser<Output = Vec<P::Output>>
 where

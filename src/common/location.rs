@@ -2,7 +2,7 @@
 // Location
 //
 
-use crate::parser::base::RowCol;
+use crate::parser::pc::RowCol;
 use std::ops::Deref;
 
 /// The location of a token within a text file, expressed in row and column.

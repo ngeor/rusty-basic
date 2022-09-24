@@ -1,9 +1,9 @@
 use crate::common::*;
-use crate::parser::base::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;

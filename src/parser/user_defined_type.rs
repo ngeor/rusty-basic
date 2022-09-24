@@ -43,11 +43,11 @@
 // Type must be defined Before DECLARE SUB
 
 use crate::common::{Locatable, QError};
-use crate::parser::base::*;
 use crate::parser::comment;
 use crate::parser::expression::expression_node_p;
 use crate::parser::name;
-use crate::parser::specific::*;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,

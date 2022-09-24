@@ -1,6 +1,6 @@
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::or_pc::OrTrait;
-use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
+use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, NonOptParser, Parser};
 use crate::parser::expression::guarded_expression_node_p;
 use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
@@ -10,11 +10,7 @@ use crate::parser::types::*;
 
 pub fn do_loop_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Do)
-        .and_demand(
-            do_condition_top()
-                .or(do_condition_bottom())
-                .or_syntax_error("Expected: WHILE, UNTIL or statement after DO"),
-        )
+        .and_demand(do_condition_top().or(do_condition_bottom()))
         .keep_right()
         .fn_map(Statement::DoLoop)
 }
@@ -23,10 +19,7 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
     keyword_choice(&[Keyword::Until, Keyword::While])
         .preceded_by_req_ws()
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
-        .and_demand(
-            zero_or_more_statements_opt_lazy(&[Keyword::Loop])
-                .or_syntax_error("Expected statements"),
-        )
+        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Loop)))
         .and_demand(keyword(Keyword::Loop))
         .fn_map(|((((k, _), condition), statements), _)| DoLoopNode {
             condition,
@@ -40,8 +33,8 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
         })
 }
 
-fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> {
-    zero_or_more_statements_opt_lazy(&[Keyword::Loop])
+fn do_condition_bottom() -> impl NonOptParser<Output = DoLoopNode> {
+    ZeroOrMoreStatements::new(keyword(Keyword::Loop))
         .and_demand(keyword(Keyword::Loop))
         .and_demand(keyword_choice(&[Keyword::Until, Keyword::While]).preceded_by_req_ws())
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))

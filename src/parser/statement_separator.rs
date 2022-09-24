@@ -1,9 +1,8 @@
 use crate::common::QError;
-use crate::parser::base::or_pc::alt3;
-use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, HasOutput, Parser, TokenPredicate};
+use crate::parser::base::parsers::{FnMapTrait, HasOutput, Parser, TokenPredicate};
 use crate::parser::base::tokenizers::{Token, Tokenizer};
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{eol_or_whitespace, TokenKindParser, TokenType};
+use crate::parser::specific::{eol_or_whitespace, TokenType};
 
 pub enum Separator {
     Comment,
@@ -33,33 +32,50 @@ fn comment_separator() -> impl Parser<Output = ()> {
 // <ws>* EOL <ws | eol>*
 // TODO convert to NonOptParser
 fn non_comment_separator() -> impl Parser<Output = ()> {
-    alt3(SingleQuotePeek, colon_separator_p(), eol_separator_p())
-        .preceded_by_opt_ws()
-        .fn_map(|_| ())
+    CommonSeparator
 }
 
-// '\'' (undoing it)
-// not adding the ' character in the resulting string because it was already undone
-struct SingleQuotePeek;
+struct CommonSeparator;
 
-impl HasOutput for SingleQuotePeek {
+impl HasOutput for CommonSeparator {
     type Output = ();
 }
 
-impl Parser for SingleQuotePeek {
+impl Parser for CommonSeparator {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match tokenizer.read()? {
-            Some(token) => {
-                if token.kind == TokenType::SingleQuote as i32 {
-                    tokenizer.unread(token);
-                    Ok(Some(()))
+        let mut sep = TokenType::Unknown;
+        while let Some(token) = tokenizer.read()? {
+            if token.kind == TokenType::Whitespace as i32 {
+                // skip whitespace
+            } else if token.kind == TokenType::SingleQuote as i32 {
+                tokenizer.unread(token);
+                return Ok(Some(()));
+            } else if token.kind == TokenType::Colon as i32 {
+                if sep == TokenType::Unknown {
+                    // same line separator
+                    sep = TokenType::Colon;
                 } else {
                     tokenizer.unread(token);
-                    Ok(None)
+                    break;
                 }
+            } else if token.kind == TokenType::Eol as i32 {
+                if sep == TokenType::Unknown || sep == TokenType::Eol {
+                    // multiline separator
+                    sep = TokenType::Eol;
+                } else {
+                    tokenizer.unread(token);
+                    break;
+                }
+            } else {
+                tokenizer.unread(token);
+                break;
             }
-            None => Ok(None),
         }
+        Ok(if sep != TokenType::Unknown {
+            Some(())
+        } else {
+            None
+        })
     }
 }
 
@@ -97,21 +113,4 @@ impl TokenPredicate for StatementSeparator2 {
             || token.kind == TokenType::SingleQuote as i32
             || token.kind == TokenType::Eol as i32
     }
-}
-
-// ':' <ws>*
-fn colon_separator_p() -> impl Parser<Output = ()> {
-    TokenKindParser::new(TokenType::Colon)
-        .parser()
-        .followed_by_opt_ws()
-        .fn_map(|_| ())
-}
-
-// <eol> < ws | eol >*
-// TODO rename to _opt
-fn eol_separator_p() -> impl Parser<Output = ()> {
-    TokenKindParser::new(TokenType::Eol)
-        .parser()
-        .and_opt(eol_or_whitespace())
-        .fn_map(|_| ())
 }

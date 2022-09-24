@@ -860,7 +860,7 @@ fn and_or_p(
     keyword(k)
         .with_pos()
         .preceded_by_ws(!had_parenthesis_before)
-        .fn_map(move |Locatable{ pos, .. }| operator.at(pos))
+        .fn_map(move |Locatable { pos, .. }| operator.at(pos))
 }
 
 struct ArithmeticMap;

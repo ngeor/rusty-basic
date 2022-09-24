@@ -112,6 +112,17 @@ impl TryFrom<i32> for TokenType {
     }
 }
 
+impl TryFrom<TokenType> for char {
+    type Error = QError;
+
+    fn try_from(value: TokenType) -> Result<Self, Self::Error> {
+        match value {
+            TokenType::Semicolon => Ok(';'),
+            _ => Err(QError::InternalError(format!("not implemented"))),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 enum OctOrHex {
     Oct,
@@ -390,8 +401,13 @@ impl TokenPredicate for TokenKindParser {
 
 impl ErrorProvider for TokenKindParser {
     fn provide_error(&self) -> QError {
-        // TODO use Display instead of Debug
-        QError::SyntaxError(format!("Expected token of type {:?}", self.token_type))
+        match char::try_from(self.token_type) {
+            Ok(ch) => QError::SyntaxError(format!("Expected: {}", ch)),
+            _ => {
+                // TODO use Display instead of Debug
+                QError::SyntaxError(format!("Expected: token of type {:?}", self.token_type))
+            }
+        }
     }
 }
 

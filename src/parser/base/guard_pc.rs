@@ -14,11 +14,11 @@ where
 impl<L, R> Parser for GuardPC<L, R>
 where
     L: Parser,
-    R: Parser,
+    R: NonOptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.0.parse(tokenizer)? {
-            Some(_) => self.1.parse(tokenizer),
+            Some(_) => self.1.parse_non_opt(tokenizer).map(Some),
             None => Ok(None),
         }
     }

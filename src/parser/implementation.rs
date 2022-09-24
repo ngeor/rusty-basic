@@ -4,7 +4,7 @@ use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepLeftTrait, Parse
 use crate::parser::declaration;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::{demand_keyword_pair_p, keyword};
-use crate::parser::statements;
+use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
@@ -16,9 +16,7 @@ pub fn implementation_p() -> impl Parser<Output = TopLevelToken> {
 
 fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
     static_declaration_p(declaration::function_declaration_p())
-        .and_demand(statements::zero_or_more_statements_non_opt(keyword(
-            Keyword::End,
-        )))
+        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Function))
         .keep_left()
         .fn_map(|(((name, params), is_static), body)| {
@@ -33,9 +31,7 @@ fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
 
 fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
     static_declaration_p(declaration::sub_declaration_p())
-        .and_demand(statements::zero_or_more_statements_non_opt(keyword(
-            Keyword::End,
-        )))
+        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
         .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Sub))
         .keep_left()
         .fn_map(|(((name, params), is_static), body)| {

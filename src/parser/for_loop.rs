@@ -9,7 +9,7 @@ use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     item_p, keyword, keyword_followed_by_whitespace_p, MapErrTrait, OrSyntaxErrorTrait,
 };
-use crate::parser::statements;
+use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 
 // FOR I = 0 TO 5 STEP 1
@@ -18,10 +18,7 @@ use crate::parser::types::*;
 
 pub fn for_loop_p() -> impl Parser<Output = Statement> {
     parse_for_step_p()
-        .and_demand(
-            statements::zero_or_more_statements_opt_lazy(&[Keyword::Next])
-                .or_syntax_error("Expected statements"),
-        )
+        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Next)))
         .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
         .and_opt(next_counter_p())
         .fn_map(

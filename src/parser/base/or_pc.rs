@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::base::parsers::{HasOutput, Parser};
+use crate::parser::base::parsers::{HasOutput, NonOptParser, Parser};
 use crate::parser::base::tokenizers::Tokenizer;
 
 //
@@ -23,6 +23,19 @@ where
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         or_parse(&self.0, &self.1, tokenizer)
+    }
+}
+
+impl<L, R> NonOptParser for OrPC<L, R>
+where
+    L: Parser,
+    R: NonOptParser<Output = L::Output>,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        match self.0.parse(tokenizer)? {
+            Some(left) => Ok(left),
+            _ => self.1.parse_non_opt(tokenizer),
+        }
     }
 }
 
@@ -75,7 +88,7 @@ pub trait OrTrait<P> {
 impl<S, P> OrTrait<P> for S
 where
     S: Parser,
-    P: Parser<Output = S::Output>,
+    P: HasOutput<Output = S::Output>,
 {
     fn or(self, other: P) -> OrPC<Self, P> {
         OrPC(self, other)

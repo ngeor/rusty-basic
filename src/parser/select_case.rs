@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::guard_pc::GuardTrait;
 use crate::parser::base::or_pc::OrTrait;
 use crate::parser::base::parsers::{
     AndOptTrait, FnMapTrait, HasOutput, KeepRightTrait, ManyTrait, NonOptParser, Parser,
@@ -8,11 +9,12 @@ use crate::parser::base::tokenizers::Tokenizer;
 use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::specific::csv::csv_one_or_more;
+use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::{
     demand_keyword_pair_p, keyword, keyword_pair_p, OrSyntaxErrorTrait, TokenType,
 };
-use crate::parser::statements;
+use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 
 // SELECT CASE expr ' comment
@@ -90,10 +92,10 @@ fn case_block() -> impl Parser<Output = CaseBlockNode> {
 
 fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
     case_expression_list()
-        .and_demand(
-            statements::zero_or_more_statements_opt_lazy(&[Keyword::Case, Keyword::End])
-                .or_syntax_error("Expected statements"),
-        )
+        .and_demand(ZeroOrMoreStatements::new(keyword_choice(&[
+            Keyword::Case,
+            Keyword::End,
+        ])))
         .fn_map(|(expression_list, statements)| CaseBlockNode {
             expression_list,
             statements,
@@ -192,11 +194,7 @@ impl SimpleOrRangeParser {
 
 fn case_else() -> impl Parser<Output = StatementNodes> {
     keyword_pair_p(Keyword::Case, Keyword::Else)
-        .and_demand(
-            statements::zero_or_more_statements_opt_lazy(&[Keyword::End])
-                .or_syntax_error("Expected statements"),
-        )
-        .keep_right()
+        .then_use(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 
 #[cfg(test)]
